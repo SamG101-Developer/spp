@@ -60,4 +60,20 @@ namespace spp::codegen {
     Str const &name,
     LlvmCtx *ctx)
     -> llvm::Value*;
+
+  /// The reverse of widening: read the variant at "source_ptr" as
+  /// "target", a variant made of some of its members ("Opt[S32]"
+  /// out of "Some[S32] or None or GenDone"). Gives the check that
+  /// the source holds one of the target's members, and a slot
+  /// holding the value re-tagged as the target, valid only when
+  /// that check holds. Both are null if "target" is not such a
+  /// sub-variant.
+  SPP_EXP_FUN auto NarrowVariant(
+    llvm::Value *source_ptr,
+    TypeRef const &source,
+    TypeRef const &target,
+    Scope const &scope,
+    Str const &name,
+    LlvmCtx *ctx)
+    -> Pair<llvm::Value*, llvm::Value*>;
 }

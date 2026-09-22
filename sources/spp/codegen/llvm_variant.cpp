@@ -239,8 +239,8 @@ auto spp::codegen::CoerceToVariant(
   if (IsTypeTup(target, scope) and IsTypeTup(source, scope)) {
     const auto target_args = target.Sym->TypeArgTypes();
     const auto source_args = source.Sym->TypeArgTypes();
-    const auto target_llvm_type = target.Sym->LlvmInfo->LlvmType;
-    const auto source_llvm_type = source.Sym->LlvmInfo->LlvmType;
+    const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
+    const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
     if (target_llvm_type != nullptr and source_llvm_type != nullptr and target_llvm_type != source_llvm_type
       and target_args.Len() == source_args.Len()) {
       auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
@@ -262,7 +262,9 @@ auto spp::codegen::CoerceToVariant(
   if (not IsTypeVariant(target, scope)) { return llvm_val; }
   if (TypeEq(target, source, scope, scope, false)) { return llvm_val; }
 
-  const auto target_llvm_type = target.Sym->LlvmInfo->LlvmType;
+  // Asked for rather than read, as a type is only lowered when
+  // something first needs it.
+  const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
   SPP_ASSERT(target_llvm_type != nullptr);
 
   // A member value (source) is wrapped: tagged and copied into
@@ -291,7 +293,7 @@ auto spp::codegen::CoerceToVariant(
   // Otherwise, we need to widen one variant into another, like
   // "Str or Bool" into "Str or Bool or S32". As the order is not
   // guaranteed to match, a mapping is needed.
-  const auto source_llvm_type = source.Sym->LlvmInfo->LlvmType;
+  const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
   SPP_ASSERT(source_llvm_type != nullptr);
 
   auto tag_map = Vec<std::uint64_t>();
@@ -346,4 +348,69 @@ auto spp::codegen::CoerceToVariant(
     dl.getTypeAllocSize(source_payload_type).getFixedValue());
 
   return ctx->Builder.CreateLoad(target_llvm_type, target_slot, name);
+}
+
+auto spp::codegen::NarrowVariant(
+  llvm::Value *source_ptr,
+  TypeRef const &source,
+  TypeRef const &target,
+  Scope const &scope,
+  Str const &name,
+  LlvmCtx *ctx)
+  -> Pair<llvm::Value*, llvm::Value*> {
+  //
+  using analyse::utils::type_compare::VariantMembers;
+  using analyse::utils::type_predicates::IsTypeVariant;
+
+  if (not IsTypeVariant(target, scope) or not IsTypeVariant(source, scope)) { return {nullptr, nullptr}; }
+  const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
+  const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
+  if (source_llvm_type == nullptr or target_llvm_type == nullptr) { return {nullptr, nullptr}; }
+
+  // Where each of the target's members sits in the source. Any
+  // member the source lacks means this is not a sub-variant.
+  auto source_tags = Vec<std::uint64_t>();
+  for (auto const &member : VariantMembers(target, scope)) {
+    const auto source_tag = GetVariantIndexOfMember(source, member, scope);
+    if (not source_tag.has_value()) { return {nullptr, nullptr}; }
+    source_tags.EmplaceBack(*source_tag);
+  }
+  if (source_tags.IsEmpty()) { return {nullptr, nullptr}; }
+
+  // The source holds the target when its tag is any of those.
+  // The target's own tag is picked by the same comparisons, as a
+  // chain of selects defaulting to its last member.
+  const auto tag_type = GetVariantTagType(ctx);
+  const auto source_tag = LoadVariantTag(source_ptr, source_llvm_type, name + ".from.tag", ctx);
+  auto is_member = static_cast<llvm::Value*>(nullptr);
+  auto target_tag = static_cast<llvm::Value*>(llvm::ConstantInt::get(tag_type, source_tags.Len() - 1));
+  for (auto i = source_tags.Len(); i > 0; --i) {
+    const auto matches = ctx->Builder.CreateICmpEQ(
+      source_tag, llvm::ConstantInt::get(tag_type, source_tags[i - 1]), name + ".from.is");
+    is_member = is_member == nullptr ? matches : ctx->Builder.CreateOr(is_member, matches, name + ".is.any");
+    if (i < source_tags.Len()) {
+      target_tag = ctx->Builder.CreateSelect(
+        matches, llvm::ConstantInt::get(tag_type, i - 1), target_tag, name + ".to.tag");
+    }
+  }
+
+  // The target's members are a subset of the source's, so its
+  // payload buffer is never the larger, and its size is the
+  // amount worth copying.
+  const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
+  ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
+  ctx->Builder.CreateStore(
+    target_tag, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, 0, name + ".to.tag.ptr"));
+
+  if (llvm::cast<llvm::StructType>(target_llvm_type)->getNumElements() < 2) { return {is_member, target_slot}; }
+  auto const &dl = ctx->Module->getDataLayout();
+  const auto target_payload_type = llvm::cast<llvm::StructType>(target_llvm_type)->getElementType(1);
+  ctx->Builder.CreateMemCpy(
+    GetVariantPayloadPtr(target_slot, target_llvm_type, name + ".to.payload.ptr", ctx),
+    dl.getABITypeAlign(target_payload_type),
+    GetVariantPayloadPtr(source_ptr, source_llvm_type, name + ".from.payload.ptr", ctx),
+    dl.getABITypeAlign(llvm::cast<llvm::StructType>(source_llvm_type)->getElementType(1)),
+    dl.getTypeAllocSize(target_payload_type).getFixedValue());
+
+  return {is_member, target_slot};
 }
