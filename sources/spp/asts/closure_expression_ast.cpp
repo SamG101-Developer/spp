@@ -420,10 +420,13 @@ auto ClosureExpressionAst::Stage11_CodeGen(
       "closure.env.gep." + std::to_string(i));
 
     // For a borrowed capture (&x / &mut x) the env field is a
-    // pointer, so store the address of thec captured variable;
-    // for a by-value (mov) capture, store the value itself.
+    // pointer to what is captured; for a by-value (mov) capture,
+    // it is the value itself. A variable that is already a borrow
+    // (an "out: &mut Str" parameter) is re-borrowed, so the field
+    // is the address it points at, not that of the local holding
+    // the pointer - writing through the latter overwrote the local.
     const auto val = capture->Conv != nullptr
-      ? sm->CurrentScope->GetVarSymbol(capture->Val->To<IdentifierAst>())->LlvmInfo->Alloca
+      ? codegen::llvm_addr_of(*capture->Val, sm, meta, ctx)
       : capture->Val->Stage11_CodeGen(sm, meta, ctx);
     ctx->Builder.CreateStore(val, field_ptr);
   }
