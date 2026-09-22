@@ -708,6 +708,18 @@ SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
     "Change the expression/type to a generator or a type that superimposes it.");
 }
 
+SppYieldTypeContainsGenDoneError::SppYieldTypeContainsGenDoneError(
+  Ast const &expr,
+  Ast const &yield_type,
+  const StrView what) {
+  AddHeader(110, "Yield Type Contains GenDone Error");
+  AddErr(&expr, "Generator yields " + INLINE_INFO(TypeForMessage(yield_type)));
+  AddFooter(
+    "Resuming a generator answers " + INLINE_NOTE("GenDone") + " once it has finished, so a yielded " +
+    INLINE_NOTE("GenDone") + " could not be told apart from that in a " + INLINE_NOTE(what) + " context.",
+    "Remove " + INLINE_HELP("GenDone") + " from the generator's yield type.");
+}
+
 SppExpressionNotTryError::SppExpressionNotTryError(
   Ast const &expr,
   Ast const &type) {

@@ -49,6 +49,19 @@ namespace spp::analyse::utils::type_utils {
     bool raise = true)
     -> Tup<TypeSymbol*, Shared<TypeAst>, bool>;
 
+  /// Resuming a finished "Gen" answers "GenDone", so a yield type
+  /// holding it would be indistinguishable from that. Raised on
+  /// "expr" when it does. A "GenOnce" has no sentinel, so is
+  /// never checked. Basically prevent "GenDone" from manually
+  /// appearing - always injected.
+  SPP_EXP_FUN auto EnforceYieldTypeWithoutGenDone(
+    TypeAst const *yield_type,
+    bool is_once,
+    Scope const &scope,
+    Ast const &expr,
+    StrView what)
+    -> void;
+
   /// Check the type and search the supertypes to identifier a
   /// try-type superimposition. Retrieve its symbol, whose "Value"
   /// and "Residual" arguments are what an early return reads. The

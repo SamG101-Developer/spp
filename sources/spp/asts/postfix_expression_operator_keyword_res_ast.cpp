@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -84,9 +85,11 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
 
   // Check the left-hand-side is a generator type (for specific errors).
   const auto lhs = meta->PostfixExpressionLhs;
-  GetGenAndYieldTypes(
+  const auto [_, yield_type, is_once] = GetGenAndYieldTypes(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
+  analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone(
+    yield_type.get(), is_once, *sm->CurrentScope, *lhs, "resume expression");
 
   // Check the argument (send value) is valid, by passing it into the ".send" function call.
   auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
@@ -194,50 +197,67 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     return ctx->Builder.CreateLoad(llvm_yield_ty, llvm_yield_slot, "gen.yield.value");
   };
 
-  // A "GenOnce" is guaranteed to yield exactly once before it completes, so there is no exhausted case to report and
-  // nothing to resume past: the value is already in the slot, put there by the ramp running up to the first suspend.
-  if (is_once) { return read_yielded_val(); }
+  // Generators are lazy: creating one runs nothing, and each resumption runs the body on to its next "gen", so the
+  // value is read after resuming, never before. A "GenOnce" is guaranteed to yield exactly once, so it has no
+  // finished case to report.
+  const auto resume = [&] {
+    ctx->Builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
+  };
+  if (is_once) {
+    resume();
+    return read_yielded_val();
+  }
 
-  // Otherwise the result says whether the generator had a value at all, so completion has to be tested before it is
-  // read. A coroutine parked on its final suspend has already run its body to the end and left nothing in the slot.
-  const auto llvm_done = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_done, {}, {llvm_generator_env->Handle}, {}, "gen.done" + uid);
-
+  // A coroutine parked on its final suspend must not be resumed again, so completion is tested both before resuming
+  // (finished last time) and after (finished this time); either way there is no value, and the answer is "GenDone".
   const auto llvm_func_target = ctx->Builder.GetInsertBlock()->getParent();
+  const auto resume_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.resume" + uid, llvm_func_target);
   const auto yielded_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.yielded" + uid, llvm_func_target);
   const auto exhausted_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.exhausted" + uid, llvm_func_target);
   const auto joined_bb = llvm::BasicBlock::Create(*ctx->Context, "gen.joined" + uid, llvm_func_target);
+  const auto llvm_was_done = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_done, {}, {llvm_generator_env->Handle}, {}, "gen.was.done" + uid);
+  ctx->Builder.CreateCondBr(llvm_was_done, exhausted_bb, resume_bb);
+
+  ctx->Builder.SetInsertPoint(resume_bb);
+  resume();
+  const auto llvm_done = ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::coro_done, {}, {llvm_generator_env->Handle}, {}, "gen.done" + uid);
   ctx->Builder.CreateCondBr(llvm_done, exhausted_bb, yielded_bb);
 
-  // The result type is "Yield or None", so both edges tag their way into it.
+  // The result type is "Yield or GenDone", so both edges
+  // tag their way into it. A yield type that is itself a
+  // variant ("Opt[Str]") is flattened into the result
+  // rather than being one member of it, so it is re-tagged
+  // member by member instead.
   const auto res_type = InferType(sm, meta);
   const auto llvm_res_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*res_type, *sm->CurrentScope), ctx);
-  const auto none_type = generate::common_types::None(PosStart());
+  const auto done_type = generate::common_types::GenDone(PosStart());
   const auto res_ref = TypeRef::Of(*res_type, *sm->CurrentScope);
-  const auto yield_tag = codegen::GetVariantIndexOfMember(
-    res_ref, TypeRef::Of(*yield_type, *sm->CurrentScope), *sm->CurrentScope);
-  const auto none_tag = codegen::GetVariantIndexOfMember(
-    res_ref, TypeRef::Of(*none_type, *sm->CurrentScope), *sm->CurrentScope);
+  const auto yield_ref = TypeRef::Of(*yield_type, *sm->CurrentScope);
+  const auto yield_tag = codegen::GetVariantIndexOfMember(res_ref, yield_ref, *sm->CurrentScope);
+  const auto yield_is_variant = analyse::utils::type_predicates::IsTypeVariant(yield_ref, *sm->CurrentScope);
+  const auto done_tag = codegen::GetVariantIndexOfMember(
+    res_ref, TypeRef::Of(*done_type, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto bad_shape_msg = Str(
-    "The result of a resumption is not the \"Yield or None\" variant it has to be, so there is no discriminant to "
-    "tag the yielded value or the exhausted case into");
+    "The result of a resumption is not the \"Yield or GenDone\" variant it has to be, so there is no discriminant "
+    "to tag the yielded value or the finished case into");
   RaiseIf<analyse::errors::SppInternalCompilerError>(
-    llvm_res_ty == nullptr or not yield_tag.has_value() or not none_tag.has_value(),
+    llvm_res_ty == nullptr or (not yield_tag.has_value() and not yield_is_variant) or not done_tag.has_value(),
     {sm->CurrentScope}, ERR_ARGS(*this, bad_shape_msg));
 
-  // Read before resuming, not after. The ramp already ran the body up to its first suspend, so the value waiting in
-  // the slot is this resumption's; resuming first would step over it and hand back the following one.
+  // The resumption just made put this value in the slot.
   ctx->Builder.SetInsertPoint(yielded_bb);
   const auto llvm_yielded_val = read_yielded_val();
-  ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
-  const auto llvm_some = codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx);
+  const auto llvm_some = yield_tag.has_value()
+    ? codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx)
+    : codegen::CoerceToVariant(llvm_yielded_val, res_ref, yield_ref, *sm->CurrentScope, "gen.some" + uid, ctx);
   const auto some_from_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(joined_bb);
 
   ctx->Builder.SetInsertPoint(exhausted_bb);
-  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *none_tag, "gen.none" + uid, ctx);
+  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *done_tag, "gen.done" + uid, ctx);
   const auto none_from_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(joined_bb);
 
@@ -251,7 +271,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 auto PostfixExpressionOperatorKeywordResAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
-  // "Generated[Yield or None]", because a "Gen" may be exhausted, and "GenOnce" as "Generated[Yield]", because it
+  // "Generated[Yield or GenDone]", because a "Gen" may be finished, and "GenOnce" as "Generated[Yield]", because it
   // cannot be. Reading it off the declaration keeps the two in step instead of deciding it a second time here.
   // "Generated" is the compiler-known wrapper the coroutine machinery travels in, and is unwrapped on the way out.
   return _MappedFunc->InferTypeRef(sm, meta).Sym->TypeArgType("Yield");

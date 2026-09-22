@@ -102,6 +102,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::errors::SppInvalidPrimaryExpressionError;
   using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  using analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone;
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Simple statements to move from.
@@ -112,7 +113,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   _IterableName = iterable_name;
 
   // Grab the generator's inner type.
-  auto [_, yield_type, _] = [&] {
+  auto [_, yield_type, is_once] = [&] {
     const auto clone_expr = AstClone(Iterable);
     auto tm = ScopeManager(
       sm->GlobalScope, sm->CurrentScope);
@@ -122,6 +123,8 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
       clone_expr->InferTypeRef(&tm, meta), *tm.CurrentScope, *Iterable,
       [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
   }();
+  EnforceYieldTypeWithoutGenDone(
+    yield_type.get(), is_once, *sm->CurrentScope, *Iterable, "loop iterable");
 
   // Create the initial let statement to materialize the
   // condition being iterated.

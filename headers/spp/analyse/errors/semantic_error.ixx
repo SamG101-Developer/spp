@@ -51,6 +51,7 @@ use(spp::analyse::errors, struct SppDestructureSkipsOwnedPartError);
 use(spp::analyse::errors, struct SppPartialMoveOfDestructibleValueError);
 use(spp::analyse::errors, struct SppExpressionNotBooleanError);
 use(spp::analyse::errors, struct SppExpressionNotGeneratorError);
+use(spp::analyse::errors, struct SppYieldTypeContainsGenDoneError);
 use(spp::analyse::errors, struct SppExpressionNotTryError);
 use(spp::analyse::errors, struct SppExpressionAmbiguousGeneratorError);
 use(spp::analyse::errors, struct SppExpressionAmbiguousTryError);
@@ -397,6 +398,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotBooleanError final : Se
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotGeneratorError final : SemanticError {
   explicit SppExpressionNotGeneratorError(Ast const &expr, Ast const &expr_type, StrView what);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppYieldTypeContainsGenDoneError final : SemanticError {
+  explicit SppYieldTypeContainsGenDoneError(Ast const &expr, Ast const &yield_type, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppExpressionNotTryError final : SemanticError {

@@ -157,6 +157,33 @@ auto spp::analyse::utils::type_utils::GetGenAndYieldTypes(
   return {generator_sym, yield_type, is_once};
 }
 
+auto spp::analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone(
+  TypeAst const *yield_type,
+  const bool is_once,
+  Scope const &scope,
+  Ast const &expr,
+  const StrView what)
+  -> void {
+  //
+  using type_compare::TypeEq;
+  using type_compare::VariantMembers;
+  if (is_once or yield_type == nullptr) { return; }
+
+  // A variant yield is checked member by member, as that is how
+  // it is flattened into the result.
+  const auto done_ref = TypeRef::Of(*generate::common_types::GenDone(expr.PosStart()), scope);
+  if (done_ref.Sym == nullptr) { return; }
+  const auto yield_ref = TypeRef::Of(*yield_type, scope);
+  auto members = VariantMembers(yield_ref, scope);
+  if (members.IsEmpty()) { members.EmplaceBack(yield_ref); }
+
+  const auto holds_done = genex::any_of(
+    members, [&](auto const &m) { return m.Sym != nullptr and TypeEq(m, done_ref, scope, scope, false); });
+  if (holds_done) {
+    Raise<errors::SppYieldTypeContainsGenDoneError>({&scope}, ERR_ARGS(expr, *yield_type, what));
+  }
+}
+
 auto spp::analyse::utils::type_utils::GetTryType(
   TypeRef const &ref,
   ExpressionAst const &expr,
