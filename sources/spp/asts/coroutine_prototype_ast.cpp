@@ -140,6 +140,8 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     auto [generator_sym, yield_type, is_once] = GetGenAndYieldTypes(
       TypeRef::Of(*ret_type_sym->FqName(), *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
+    analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone(
+      yield_type.get(), is_once, *sm->CurrentScope, *ReturnType, "coroutine return type");
     _YieldType = yield_type;
     _SendType = is_once
       ? generate::common_types_precompiled::VOID
@@ -320,6 +322,17 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     *ctx->Context, "coro.suspend" + uid);
   const auto final_bb = llvm::BasicBlock::Create(
     *ctx->Context, "coro.final" + uid);
+
+  // Generators are lazy: calling a coroutine only builds its frame
+  // (the parameters are already stored into it above) and parks,
+  // and the body starts on the first "res". Running on to the
+  // first "gen" here instead made every generator a value ahead,
+  // so one fed by I/O blocked producing the next value before the
+  // caller had even seen this one.
+  codegen::EmitLlvmGeneratorSuspend(
+    false, suspend_bb, cleanup_bb,
+    "coro.initial.suspend" + uid,
+    "coro.initial.resume" + uid, ctx);
 
   {
     const auto _meta_guard = MetaGuard(meta);
