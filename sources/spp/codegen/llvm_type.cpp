@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_type;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_compare;
@@ -318,7 +319,27 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // and then adopts the result. It cannot be completed as
   // itself: there is no prototype on it to read a layout
   // from, and the guard below would turn it away.
-  const auto linked_sym = type_sym.AsClassSymbol();
+  auto linked_sym = type_sym.AsClassSymbol();
+
+  // An alias ("type Opt[T] = Some[T] or None") has a prototype
+  // of its own, but it is the target that has the layout, and
+  // both mangle to the same name: lowering the alias as itself
+  // would register an empty struct under the target's name.
+  // Todo: Remove last 2 nullptr checks?
+  if (type_sym.LlvmInfo->LlvmType == nullptr
+    and type_sym.Kind == TypeKind::Alias
+    and type_sym.Alias != nullptr
+    and type_sym.Alias->Resolved != nullptr) {
+    const auto lookup = type_sym.LinkedScope != nullptr
+      ? type_sym.LinkedScope
+      : type_sym.Alias->DeclScope;
+
+    if (const auto target = lookup != nullptr ? lookup->GetTypeSymbol(type_sym.Alias->Resolved.get()) : nullptr;
+      target != nullptr) {
+      linked_sym = target;
+    }
+  }
+
   if (linked_sym != &type_sym) {
     // Stand-ins can name each other - the "Self" of a scope
     // whose class scope carries another "Self" - and following
