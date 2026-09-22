@@ -31,7 +31,9 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_defer;
+import spp.codegen.llvm_func;
 import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ptr;
 import spp.utils.uid;
@@ -254,7 +256,24 @@ auto GenExpressionAst::Stage11_CodeGen(
   // rebuilt here, so the store cannot be wider than the
   // storage the frame reserved for it.
   const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
-  const auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+  auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+
+  // A yielded value is coerced into the yield type as "ret" and
+  // "let" coerce theirs: a member into a variant ("gen None()"
+  // into an "Opt[S32]"), and a named function into a function
+  // type. Otherwise the slot holds the bare member, untagged.
+  if (llvm_yield_val != nullptr and Conv == nullptr and _GenType != nullptr) {
+    const auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
+      TypeRef::Of(*_GenType, *sm->CurrentScope), *sm->CurrentScope, *_GenType, [&] { return _GenType; },
+      "coroutine", false);
+    if (yield_type != nullptr) {
+      const auto yield_ref = TypeRef::Of(*yield_type, *sm->CurrentScope);
+      const auto expr_ref = TypeRef::Of(*Expr->InferType(sm, meta), *sm->CurrentScope);
+      llvm_yield_val = codegen::CoerceToFunctionValue(llvm_yield_val, yield_ref, expr_ref, *sm, ctx);
+      llvm_yield_val = codegen::CoerceToVariant(
+        llvm_yield_val, yield_ref, expr_ref, *sm->CurrentScope, "gen.yield.coerce", ctx);
+    }
+  }
 
   // A bare "gen" yields Void, so there is nothing to store.
   if (llvm_yield_val != nullptr) {
