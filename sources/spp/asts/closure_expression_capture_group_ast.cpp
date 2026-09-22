@@ -108,6 +108,13 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
     ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).first;
   }
   for (auto const &cap : Captures) {
+    // The closure's own copy of the capture is initialised here,
+    // as a parameter is. A loop body is checked twice against the
+    // same scopes, so without this the second pass would still see
+    // whatever the body did to the copy on the first.
+    const auto inner_sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    if (inner_sym != nullptr) { inner_sym->MemInfo->InitializedBy(*cap, sm->CurrentScope); }
+
     if (cap->Conv != nullptr) {
       // Mark the borrow on the closure's own copy of the symbol.
       const auto cap_val = cap->Val->To<IdentifierAst>();
@@ -132,11 +139,11 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
     else {
       // Mark the symbol from the outer context as moved, unless
       // the type of the capture is copyable, in which case no
-      // action needs to be taken. Todo: Remove nullptr check?
+      // action needs to be taken.
       const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
       const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Sym;
       if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
-        cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+        cap_sym->MemInfo->AstMoved = {cap.get(), sm->CurrentScope};
       }
     }
   }
