@@ -316,10 +316,21 @@ auto CaseExpressionAst::Stage11_CodeGen(
   // A "case" yields a value when something is catching it, or
   // when it is the desugaring of an "is", which is a boolean
   // expression wherever it appears, including the condition
-  // positions that assign nothing.
+  // positions that assign nothing, or being passed straight to
+  // a call ("f(case b { x } else { y })")
+  const auto has_else = not Branches.IsEmpty()
+    and Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() != nullptr;
+  const auto yields_value = has_else and not LoweredFromIsExpr and [&] {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->IgnoreMissingElseBranchForInference = true;
+    return not codegen::IsValuelessType(
+      codegen::GetLlvmTypeOf(TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope), ctx));
+  }();
+
   const auto is_expr = meta->AssignmentTarget != nullptr
     or LoweredFromIsExpr
-    or LoweredFromTryOperator;
+    or LoweredFromTryOperator
+    or yields_value;
   const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
 
   // Get the function, and create the end basic block. We
