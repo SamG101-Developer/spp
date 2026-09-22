@@ -48,10 +48,12 @@ auto LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
 
 auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<LoopControlFlowStatementAst>(
+  auto p = MakeUnique<LoopControlFlowStatementAst>(
     AstCloneVec(TokSeqExit),
     AstClone(TokSkip),
     AstClone(Expr));
+  p->_ExprIsNever = _ExprIsNever;
+  return p;
 }
 
 auto LoopControlFlowStatementAst::ToString() const -> Str {
@@ -98,6 +100,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 
       expr_type = Expr->InferType(sm, meta);
+      _ExprIsNever = expr_type->IsNeverType();
     }
 
     // Insert or check the depth's corresponding exit type.
@@ -193,7 +196,7 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   if (target.Phi != nullptr) {
     // A "!" value never reaches the phi, but the edge still needs
     // an operand of the phi's type.
-    const auto incoming_val = llvm_val != nullptr and Expr != nullptr and Expr->InferTypeRef(sm, meta).IsNever
+    const auto incoming_val = llvm_val != nullptr and _ExprIsNever
       ? llvm::PoisonValue::get(target.Phi->getType())
       : llvm_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();

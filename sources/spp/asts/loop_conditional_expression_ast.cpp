@@ -58,6 +58,7 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body),
     AstClone(ElseBlock));
   if (_IterDesugar) { cloned->MarkAsIterDesugar(); }
+  cloned->m_loop_exit_type_info = m_loop_exit_type_info;
   return cloned;
 }
 
@@ -154,11 +155,14 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // Determine if this loop will be yielding an expression.
   // A "Void" loop (used as a statement) and a "Never" loop
   // ("loop true" with no "exit"s) have no value to merge,
-  // so no phi node.
+  // so no phi node. Any other loop yields its value wherever
+  // it stands, not only under an assignment target: a value
+  // that is produced must be used, and "f(loop .. { exit 5 })"
+  // passes it straight to a call - which, without the phi,
+  // left the "exit" nothing to feed and crashed the compiler.
   const auto uid = "." + spp::utils::Uid(this);
   const auto ret_type = InferType(sm, meta);
-  const auto is_expr = meta->AssignmentTarget != nullptr
-    and not IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
+  const auto is_expr = not IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
     and not ret_type->IsNeverType();
 
   // Create the key required blocks: the condition entry
