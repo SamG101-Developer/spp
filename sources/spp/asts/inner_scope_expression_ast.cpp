@@ -125,6 +125,12 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // Nothing has been deferred in this scope yet. Cleared on entry
+  // because a loop body is checked twice against the same scope,
+  // and the first pass's registrations would otherwise run at an
+  // exit written above the "defer" on the second.
+  sm->CurrentScope->Deferred.Clear();
+
   // Check the memory of each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 

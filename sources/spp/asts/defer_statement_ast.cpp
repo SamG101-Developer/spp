@@ -108,8 +108,8 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
   // Registered where it is reached, so an exit written above
   // this statement does not run it - which is what a "defer"
-  // means. Guarded against repeats because a loop body is
-  // walked twice, and the scope is the same one both times.
+  // means. Guarded against repeats in case the scope is walked
+  // again without being re-entered.
   if (not genex::contains(sm->CurrentScope->Deferred, this)) {
     sm->CurrentScope->Deferred.EmplaceBack(this);
   }
