@@ -18,6 +18,8 @@ import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_positional_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -247,6 +249,25 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     meta->AssignmentTarget = saved_assignment_target;
 
     auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
+
+    // A method taking "self" by value consumes its receiver, so it
+    // cannot be reached through a borrow ("a.take()" with "a: &mut
+    // A", or the "&mut" a chaining method hands back): the value
+    // would be moved out while its owner still owns it, and freed
+    // twice. The checks below miss it - moving a borrow variable is
+    // fine, and a chained receiver is a temporary with no symbol.
+    if (arg->GetSelfType() != nullptr and arg->Conv == nullptr and meta->TargetCallFunctionPrototype != nullptr) {
+      const auto self_param = meta->TargetCallFunctionPrototype->FnParamGroup->GetSelfParam();
+      const auto receiver = arg->Val->InferTypeRef(sm, meta);
+      if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
+        and receiver.Sym != nullptr and not receiver.Sym->IsCopyable()) {
+        auto const *where_borrow = sym != nullptr and spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr
+          ? spp::get<0>(sym->MemInfo->AstBorrowed)
+          : static_cast<Ast const*>(arg->Val.get());
+        Raise<analyse::errors::SppMoveFromBorrowedMemoryError>(
+          {sm->CurrentScope}, ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
+      }
+    }
 
     // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
     // outermost symbol, and so is invisible to all three branches below. "v[mut i]" is the shape; see the note on
