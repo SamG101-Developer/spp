@@ -41,6 +41,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
@@ -267,7 +268,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
     // Find the index in the variant's member types, of the
     // member type being flowed into. A variant can hold a borrow
-    // as a member in its own right ("&S32 or None", which is what
+    // as a member in its own right ("&S32 or GenDone", which is what
     // resuming a "Gen[&S32]" gives), and then the convention is
     // part of what identifies the member rather than something
     // attached to the pattern, so the exact type is tried first.
@@ -304,7 +305,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       SPP_ASSERT(llvm_subject_ty != nullptr);
 
       // A variant can hold a borrow as a member in its own
-      // right ("&S32 or None", which is what resuming a
+      // right ("&S32 or GenDone", which is what resuming a
       // "Gen[&S32]" gives), and then the convention is part
       // of what identifies the member rather than something
       // attached to the pattern, so the exact type is tried
@@ -317,7 +318,23 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
         tag = codegen::GetVariantIndexOfMember(
           subject_ref, pattern_ref.WithoutConvention(), *sm->CurrentScope);
       }
-      if (not tag.has_value()) { break; }
+
+      // A pattern naming several of the subject's members at once
+      // ("is Opt[S32](..)" on "Some[S32] or None or GenDone") is
+      // not one member, so it matches any of them, and binds the
+      // value re-tagged as that narrower variant.
+      if (not tag.has_value()) {
+        const auto [is_member, narrowed] = codegen::NarrowVariant(
+          current_ptr, TypeRef::Of(*subject_type->WithoutConvention(), *sm->CurrentScope),
+          pattern_ref.WithoutConvention(), *sm->CurrentScope, "case.pattern.narrow" + level_uid, ctx);
+        if (is_member != nullptr) {
+          llvm_tag_check = llvm_tag_check == nullptr
+            ? is_member
+            : ctx->Builder.CreateAnd(llvm_tag_check, is_member, "case.pattern.is.all" + level_uid);
+          current_ptr = narrowed;
+        }
+        break;
+      }
 
       const auto check = ctx->Builder.CreateICmpEQ(
         codegen::LoadVariantTag(current_ptr, llvm_subject_ty, "case.pattern.tag" + level_uid, ctx),
@@ -369,8 +386,24 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // so it is read rather than rebuilt: it may be the variant
       // value itself, or a pointer to it when the condition was
       // reached through a borrow.
-      const auto llvm_variant_ty = sm->CurrentScope->GetTypeSymbol(
-        bare_cond_type.get())->LlvmInfo->LlvmType;
+      const auto llvm_variant_ty = codegen::GetLlvmType(
+        *sm->CurrentScope->GetTypeSymbol(bare_cond_type.get()), ctx);
+
+      // A pattern naming several of the subject's members at once
+      // is not one member, so it matches any of them. Without this
+      // no check was emitted at all, and the branch was taken
+      // whatever the subject held.
+      if (not tag.has_value() and llvm_variant_ty != nullptr) {
+        auto cond_ptr = meta->LlvmCaseCondition;
+        if (not cond_ptr->getType()->isPointerTy()) {
+          cond_ptr = codegen::LlvmEntryAlloca(llvm_variant_ty, "case.pattern.subject.slot" + uid, ctx);
+          ctx->Builder.CreateStore(meta->LlvmCaseCondition, cond_ptr);
+        }
+        const auto [is_member, _] = codegen::NarrowVariant(
+          cond_ptr, cond_ref, type_ref.WithoutConvention(), *sm->CurrentScope,
+          "case.pattern.narrow" + uid, ctx);
+        if (is_member != nullptr) { llvm_tag_check = is_member; }
+      }
 
       auto llvm_tag = static_cast<llvm::Value*>(nullptr);
       if (tag.has_value() and meta->LlvmCaseCondition->getType()->isPointerTy()) {
