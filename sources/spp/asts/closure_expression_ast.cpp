@@ -338,6 +338,17 @@ auto ClosureExpressionAst::Stage11_CodeGen(
         and not llvm_ret_ty->isVoidTy()) {
         body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
       }
+
+      // The body's value is returned as a "ret" would return it,
+      // so it is coerced the same way: a member into a variant
+      // return type, and a named function into a function type.
+      if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
+        const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
+        const auto body_ref = Body->InferTypeRef(sm, meta);
+        body_val = codegen::CoerceToFunctionValue(body_val, ret_ref, body_ref, *sm, ctx);
+        body_val = codegen::CoerceToVariant(
+          body_val, ret_ref, body_ref, *sm->CurrentScope, "closure.ret.variant" + uid, ctx);
+      }
       if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
       else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
       else { ctx->Builder.CreateUnreachable(); }
