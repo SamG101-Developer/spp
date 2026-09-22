@@ -1542,12 +1542,14 @@ SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
 SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   Ast const &deferred,
   Ast const &consumed_at,
+  Ast const &exit_point,
   const StrView symbol_name,
   const StrView exit_what) {
   AddHeader(99, "Defer Consumes Moved Value Error");
+  AddCtxForErr(&consumed_at, INLINE_INFO(symbol_name) + " consumed here");
   AddCtxForErr(&deferred, "Deferred here, so it runs at every exit of this scope");
   AddErrExact(
-    &consumed_at, Str(exit_what) + " reached with " + INLINE_INFO(symbol_name) + " already consumed here");
+    &exit_point, Str(exit_what) + " reached here with " + INLINE_INFO(symbol_name) + " already consumed");
   AddFooter(
     "A deferred expression is not conditional - it is emitted at every exit,\n\t"
     "with nothing at runtime to record that one path already consumed the\n\t"

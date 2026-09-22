@@ -311,7 +311,7 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
       // it is consumed twice on this path. Raise memory error.
       if (const auto where_moved = spp::get<0>(sym->MemInfo->AstMoved); where_moved != nullptr) {
         Raise<errors::SppDeferConsumesMovedValueError>(
-          {sm.CurrentScope}, ERR_ARGS(*stmt, *where_moved, name->Val, exit_what));
+          {sm.CurrentScope}, ERR_ARGS(*stmt, *where_moved, exit_point, name->Val, exit_what));
       }
 
       // The same thing one branch at a time. A "case" leaves the

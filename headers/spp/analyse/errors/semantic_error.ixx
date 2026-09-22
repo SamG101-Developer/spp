@@ -685,7 +685,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppFeatureNotYetSupportedError final : 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final : SemanticError {
-  explicit SppDeferConsumesMovedValueError(Ast const &deferred, Ast const &consumed_at,
+  explicit SppDeferConsumesMovedValueError(Ast const &deferred, Ast const &consumed_at, Ast const &exit_point,
     StrView symbol_name, StrView exit_what);
 };
 
