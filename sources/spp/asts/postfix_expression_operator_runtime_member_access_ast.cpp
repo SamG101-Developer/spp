@@ -152,7 +152,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   // Numeric index access (for tuples).
   if (std::isdigit(Name->Val[0])) {
     // The lhs's type is only spelled out for the errors.
-    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention();
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
@@ -466,7 +466,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
 
   // Numeric index access (for tuples).
   if (std::isdigit(Name->Val[0])) {
-    return GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope);
+    return GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
   }
 
   // Get the field symbol and return its type. Resolved by
