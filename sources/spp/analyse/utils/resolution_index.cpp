@@ -163,35 +163,112 @@ namespace spp::analyse::utils::resolution_index {
       return formatter->SpanOfAst(ast);
     }
 
+    /// Where a type was declared. A "use" import is walked through to what it imported, because nobody wants to land
+    /// on the import; a "type" statement is not, because the alias is the thing that was named.
+    auto DefinitionOfType(
+      TypeSymbol const &sym)
+      -> spp::utils::errors::SourceSpan {
+      auto target = &sym;
+      for (auto hops = 0; hops < 8; ++hops) {
+        const auto alias = target->Alias.get();
+        if (alias == nullptr
+          or not alias->FromUseStmt
+          or alias->Written == nullptr
+          or alias->DeclScope == nullptr) { break; }
+
+        const auto next = alias->DeclScope->GetTypeSymbol(alias->Written->WithoutGenerics().get());
+        if (next == nullptr or next == target) { break; }
+        target = next;
+      }
+
+      // The definition requires a different ast and scope depending
+      // on whether an alias is being used or not.
+      if (target->Alias != nullptr
+        and not target->Alias->FromUseStmt
+        and target->Alias->Stmt != nullptr
+        and target->Alias->DeclScope != nullptr) {
+        return SpanOf(target->Alias->Stmt->NewType.get(), *target->Alias->DeclScope);
+      }
+      if (sym.Type != nullptr and sym.Type->GetAstScope() != nullptr) {
+        return SpanOf(sym.Type->Name.get(), *sym.Type->GetAstScope());
+      }
+      if (sym.ScopeDefinedIn != nullptr) {
+        return SpanOf(sym.Name.get(), *sym.ScopeDefinedIn);
+      }
+      return {};
+    }
+
+    /// Whether a type name is writable by the user or not. This
+    /// filters out compiler-generated function mock $Types, and
+    /// has a flag to determine whether to allow generics or not.
+    auto IsWritableTypeName(
+      TypeSymbol const &sym,
+      const bool generics)
+      -> bool {
+      // Check the flags on the symbol, the name as a failsafe,
+      // the generic state vs whether generics are allowed, and
+      // the symbol kind.
+      if (sym.Name == nullptr or sym.InstanceOf != nullptr or sym.IsMock() or sym.IsSelf()) { return false; }
+      if (sym.Name->ToString().starts_with("$")) { return false; }
+      if (sym.IsTypeGeneric()) { return generics; }
+      return sym.Kind == TypeKind::Class or sym.Kind == TypeKind::Alias;
+    }
+
+    /// Whether a variable name is writable by the user or not.
+    /// This filters out compiler-generated variable names like
+    /// $xyz that are used in preprocessing / ast manipulation.
+    auto IsWritableVarName(
+      VariableSymbol const &sym)
+      -> bool {
+      // Check the flags on the symbol, and the name as a failsafe.
+      if (sym.Name == nullptr or sym.Kind == VariableKind::Temporary) { return false; }
+      return not sym.Name->ToString().starts_with("$");
+    }
+
+    /// The uniform key creation function the the "seen" tables.
+    /// The joining character is a character that no variable or
+    /// type name will ever contain. The first part is the "kind",
+    /// followed by the uniquely identifying information.
+    template <typename... Parts>
+    auto KeyOf(Parts const &... parts) -> Str {
+      auto key = Str();
+      ((key += std::format("{}", parts), key += '|'), ...);
+      return key;
+    }
+
+    /// The wrapper to generate a key from span information. Pull
+    /// the attributes off of the span, and pass them into the
+    /// general key creation method.
+    auto KeyOfSpan(Str const &what, SourceSpan const &span) -> Str {
+      return KeyOf(what, span.File, span.StartLine, span.StartCol, span.EndLine, span.EndCol);
+    }
+
+    /// Whether the analysis is at the stage where filling out
+    /// completion lists is actually correct. Sup scope handling,
+    /// visibility, etc, must have all been processed.
+    auto WantsMembersYet(CompilerMetaData const &meta) -> bool {
+      return meta.CurrentStage >= CompilerStage::kAnalyseSemantics;
+    }
+
     /// Everything one type holds, its super types included - the
     /// same set a member access is resolved against, which is
     /// what makes the list an editor offers the list that would
-    /// actually work. Todo: Nested types.
+    /// actually work.
     auto MembersOfTypeScope(
       Scope const &type_scope, ScopeManager const &sm,
       CompilerMetaData const &meta) -> Vec<Member> {
+      auto members = Vec<Member>();
+      auto seen = Set<Str>();
+
       // Iterate through all the variable symbols on the type,
       // which are reachable like "Type::constant" and also
       // "Type::method()".
-      auto members = Vec<Member>();
-      auto seen = Set<Str>();
-      for (const auto sym : type_scope.AllVarSymbols(false, true)) {
-        if (sym == nullptr or sym->Name == nullptr) { continue; }
-
-        // A method is held as a mock constant named after it,
-        // and the mock's own "$" name is not what anyone types.
-        auto name = sym->Name->ToString();
-        if (name.starts_with("$")) { continue; }
-
-        // Apply as visibility check so that completion menus don't
-        // suggest unusable elements.
+      for (const auto sym : type_scope.AllVarSymbols(true, true)) {
+        if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
         if (not visibility_utils::IsTypeMemberVisible(*sym, type_scope, sm, meta)) { continue; }
 
-        // One entry per name and signature: a method written as
-        // several overloads is several symbols of one name, and
-        // a list offering the same word four times says nothing
-        // extra. The arg/param suggestions will differentiate.
-        auto key = name + "|" + (sym->Type != nullptr ? sym->Type->ToString() : Str());
+        auto name = sym->Name->ToString();
+        auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
         if (not seen.insert(std::move(key)).second) { continue; }
 
         members.EmplaceBack(Member{
@@ -202,39 +279,47 @@ namespace spp::analyse::utils::resolution_index {
           .Signatures = SignaturesOf(*sym, type_scope)
         });
       }
+
+      // Iterate through all the type symbols on the type, which
+      // are reachable like "Type::Inner", defined on the sup
+      // blocks.
+      for (auto const *sym : type_scope.AllTypeSymbols(true, true)) {
+        if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
+        if (not visibility_utils::IsTypeTypeVisible(*sym, type_scope, sm, meta)) { continue; }
+
+        auto name = sym->Name->ToString();
+        auto key = KeyOf("type", name);
+        if (not seen.insert(std::move(key)).second) { continue; }
+
+        members.EmplaceBack(Member{
+          .Name = std::move(name),
+          .Kind = "type",
+          .Type = Str(),
+          .Definition = DefinitionOfType(*sym)
+        });
+      }
       return members;
     }
 
-    /// Everything one type holds, its super types included - the
-    /// same set a member access is resolved against, which is
-    /// what makes the list an editor offers the list that would
-    /// actually work. Todo: Nested types.
+    /// Everything one namespace holds - the same set a member
+    /// access is resolved against, which is what makes the
+    /// list an editor offers the list that would actually work.
     auto MembersOfNamespaceScope(
       Scope const &ns_scope, ScopeManager const &sm,
       CompilerMetaData const &meta) -> Vec<Member> {
+      auto members = Vec<Member>();
+      auto seen = Set<Str>();
+
       // Iterate through all the variable symbols on the namespace,
       // which are reachable like "namespace::constant" and also
       // "namespace::inner::constant".
-      auto members = Vec<Member>();
-      auto seen = Set<Str>();
       for (const auto sym : ns_scope.AllVarSymbols(true, false)) {
-        if (sym == nullptr or sym->Name == nullptr) { continue; }
-
-        // A method is held as a mock constant named after it,
-        // and the mock's own "$" name is not what anyone types.
-        auto name = sym->Name->ToString();
-        if (name.starts_with("$")) { continue; }
-
-        // Apply as visibility check so that completion menus don't
-        // suggest unusable elements.
+        if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
         const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
         if (not visibility_utils::IsModuleMemberVisible(*sym, *definition_scope, sm, meta)) { continue; }
 
-        // One entry per name and signature: a method written as
-        // several overloads is several symbols of one name, and
-        // a list offering the same word four times says nothing
-        // extra. The arg/param suggestions will differentiate.
-        auto key = name + "|" + (sym->Type != nullptr ? sym->Type->ToString() : Str());
+        auto name = sym->Name->ToString();
+        auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
         if (not seen.insert(std::move(key)).second) { continue; }
 
         members.EmplaceBack(Member{
@@ -246,8 +331,27 @@ namespace spp::analyse::utils::resolution_index {
         });
       }
 
-      // Grab the namespaces that are nested too, as these are valid
-      // suggestions.
+      // Iterate through all the type symbols on the namespace,
+      // which are reachable like "namespace::Type".
+      for (auto const *sym : ns_scope.AllTypeSymbols(true, false)) {
+        if (sym == nullptr or not IsWritableTypeName(*sym, false)) { continue; }
+        const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
+        if (not visibility_utils::IsModuleTypeVisible(*sym, *definition_scope, sm, meta)) { continue; }
+
+        auto name = sym->Name->ToString();
+        auto key = KeyOf("type", name);
+        if (not seen.insert(std::move(key)).second) { continue; }
+
+        members.EmplaceBack(Member{
+          .Name = std::move(name),
+          .Kind = "type",
+          .Type = Str(),
+          .Definition = DefinitionOfType(*sym)
+        });
+      }
+
+      // Iterate through all the namespace symbols on the namespace,
+      // which are reachable like "namespace::inner_ns".
       for (const auto sym : ns_scope.AllNsSymbols(true)) {
         if (sym == nullptr or sym->Name == nullptr) { continue; }
         members.EmplaceBack(Member{
@@ -262,24 +366,12 @@ namespace spp::analyse::utils::resolution_index {
 
     /// Keep what a name resolved to, dropping it when it is not
     /// in a file being indexed. Every other recorder ends here.
-    auto Record(
-      ResolvedName &&entry)
-      -> void {
+    auto Record(ResolvedName &&entry) -> void {
       // A name with no place in the source is one the compiler
       // made up (internally generated), and a name written in
       // another file is not what was asked for; neither kept.
       if (entry.Use.Generated or not Wants(entry.Use.File)) { return; }
-
-      // A node can be analysed more than once (like a cached type
-      // re-checked where it is read again) and the same place
-      // resolving to the same thing twice is one answer, not two.
-      // Keyed by where it ends as well as where it starts:
-      // "v.method" and "v.method()" begin at the same place and
-      // are different things, and only the end can determine that.
-      auto key = std::format(
-        "{}:{}:{}:{}:{}", entry.Use.StartLine, entry.Use.StartCol,
-        entry.Use.EndCol, entry.Kind, entry.Name);
-
+      auto key = KeyOfSpan("use", entry.Use) + KeyOf(entry.Kind, entry.Name);
       if (not Current().Seen.insert(std::move(key)).second) { return; }
       Current().Entries.EmplaceBack(std::move(entry));
     }
@@ -293,16 +385,16 @@ namespace spp::analyse::utils::resolution_index {
       // no work needs to be done here.
       auto const &use_scope = *sm.CurrentScope;
       if (not WantsScope(use_scope)) { return; }
-
       auto span = RegionOf(&arguments, use_scope);
       if (span.Generated) { return; }
 
       // One record per call, however many times the node is analysed.
-      auto key = std::format("{}:{}:{}", span.StartLine, span.StartCol, span.EndCol);
+      auto key = KeyOfSpan("call", span);
       if (not Current().SeenCalls.insert(std::move(key)).second) { return; }
-      Current().Signatures.EmplaceBack(Signature{
+      auto signature = Signature{
         .Arguments = std::move(span), .Name = std::move(name), .Params = std::move(params)
-      });
+      };
+      Current().Signatures.EmplaceBack(std::move(signature));
     }
 
     /// Get a list of the members of the type, push it into the
@@ -312,7 +404,8 @@ namespace spp::analyse::utils::resolution_index {
       CompilerMetaData const &meta) -> void {
       // Get the members of a type and create a member list containing
       // them, assigned against the owner type (pre-serialized).
-      if (owner.empty() or not Current().SeenOwners.insert(owner).second) { return; }
+      if (owner.empty() or not WantsMembersYet(meta) or not type_scope.SupsAttached) { return; }
+      if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
       auto members = MembersOfTypeScope(type_scope, sm, meta);
       Current().Members.EmplaceBack(MemberList{
         .Owner = std::move(owner), .Of = "type", .Members = std::move(members)
@@ -327,14 +420,15 @@ namespace spp::analyse::utils::resolution_index {
       // Get the members of a namespace and create a member list
       // containing them, assigned against the owner namespace
       // (pre-serialized).
-      if (owner.empty() or not Current().SeenOwners.insert(owner).second) { return; }
+      if (owner.empty() or not WantsMembersYet(meta)) { return; }
+      if (not Current().SeenOwners.insert(KeyOf("ns", owner)).second) { return; }
       auto members = MembersOfNamespaceScope(ns_scope, sm, meta);
       Current().Members.EmplaceBack(MemberList{
         .Owner = std::move(owner), .Of = "namespace", .Members = std::move(members)
       });
     }
 
-    /// Keep a use of a namespace - the "std", "mem" and "ops" of
+    /// Keep the use of a namespace - the "std", "mem" and "ops" of
     /// "std::mem::ops::mem_cmp". A namespace is a folder or a file
     /// rather than a declaration, so navigate to the representing
     /// file.
@@ -502,38 +596,6 @@ auto spp::analyse::utils::resolution_index::RecordType(
   if (sym_ptr == nullptr or not WantsScope(use_scope)) { return; }
   auto const &sym = *sym_ptr;
 
-  // The aliasing system is slightly more complex fort types;
-  // we want to skip through "use" statement aliases, but not
-  // "type" statement aliases.
-  auto target = &sym;
-  for (auto hops = 0; hops < 8; ++hops) {
-    const auto alias = target->Alias.get();
-    if (alias == nullptr
-      or not alias->FromUseStmt
-      or alias->Written == nullptr
-      or alias->DeclScope == nullptr) { break; }
-
-    const auto next = alias->DeclScope->GetTypeSymbol(alias->Written->WithoutGenerics().get());
-    if (next == nullptr or next == target) { break; }
-    target = next;
-  }
-
-  // The definition requires a different ast and scope depending
-  // on whether an alias is being used or not.
-  auto definition = SourceSpan();
-  if (target->Alias != nullptr
-    and not target->Alias->FromUseStmt
-    and target->Alias->Stmt != nullptr
-    and target->Alias->DeclScope != nullptr) {
-    definition = SpanOf(target->Alias->Stmt->NewType.get(), *target->Alias->DeclScope);
-  }
-  else if (sym.Type != nullptr and sym.Type->GetAstScope() != nullptr) {
-    definition = SpanOf(sym.Type->Name.get(), *sym.Type->GetAstScope());
-  }
-  else if (sym.ScopeDefinedIn != nullptr) {
-    definition = SpanOf(sym.Name.get(), *sym.ScopeDefinedIn);
-  }
-
   // And what the type itself holds is what is offered after a
   // "::" on its name.
   if (sym.LinkedScope != nullptr and sym.FqName() != nullptr) {
@@ -547,7 +609,7 @@ auto spp::analyse::utils::resolution_index::RecordType(
     .Kind = "type",
     .Name = sym.Name != nullptr ? sym.Name->ToString() : Str(),
     .Type = sym.FqName() != nullptr ? sym.FqName()->ToString() : Str(),
-    .Definition = std::move(definition)
+    .Definition = DefinitionOfType(sym)
   });
 }
 
@@ -713,10 +775,7 @@ auto spp::analyse::utils::resolution_index::RecordComptimeValue(
   // mock type.
   auto where = SpanOf(&name, use_scope);
   if (where.Generated) { return; }
-
-  // Build and insert the cache-key for the state's seen comp
-  // values (mark it as seen).
-  auto key = std::format("{}:{}", where.StartLine, where.StartCol);
+  auto key = KeyOfSpan("value", where);
   if (not Current().SeenValues.insert(std::move(key)).second) { return; }
 
   // Give the compiler generated value to the entry that holds
@@ -744,17 +803,16 @@ auto spp::analyse::utils::resolution_index::RecordScopeOf(
   // what the node that made it does [function/class]-enclosing.
   auto where = whole_file ? scope.GetErrorFormatter()->SpanOfWholeFile() : RegionOf(&node, scope);
   if (where.Generated) { return; }
-
-  auto key = std::format("{}:{}:{}:{}", where.StartLine, where.StartCol, where.EndLine, where.EndCol);
+  auto key = KeyOfSpan("scope", where);
   if (not Current().SeenScopes.insert(std::move(key)).second) { return; }
 
   // The variable symbols within the scope.
   auto names = Vec<Member>();
   auto seen = Set<Str>();
   for (const auto sym : scope.AllVarSymbols(true, false)) {
-    if (sym == nullptr or sym->Name == nullptr) { continue; }
+    if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
     auto name = sym->Name->ToString();
-    if (name.starts_with("$") or not seen.insert(name).second) { continue; }
+    if (not seen.insert(KeyOf("var", name)).second) { continue; }
     names.EmplaceBack(Member{
       .Name = std::move(name),
       .Kind = KindOf(*sym),
@@ -765,9 +823,9 @@ auto spp::analyse::utils::resolution_index::RecordScopeOf(
 
   // The type symbols within the scope.
   for (const auto sym : scope.AllTypeSymbols(true, false)) {
-    if (sym == nullptr or sym->Name == nullptr) { continue; }
+    if (sym == nullptr or not IsWritableTypeName(*sym, true)) { continue; }
     auto name = sym->Name->ToString();
-    if (name.starts_with("$") or name == "Self" or not seen.insert(name).second) { continue; }
+    if (not seen.insert(KeyOf("type", name)).second) { continue; }
     names.EmplaceBack(Member{.Name = std::move(name), .Kind = "type", .Type = Str(), .Definition = {}});
   }
 
