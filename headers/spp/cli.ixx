@@ -32,17 +32,14 @@ namespace spp::cli {
   /// runtimes a project ships are host objects, so there is
   /// nothing to link a foreign object against. "skip_vcs"
   /// skips fetching the [vcs] dependencies first.
-  ///
-  /// Answers whether the build ran to completion. Every
-  /// failure has already said what it was, so a caller reports
-  /// nothing further - but it has to ask, because "an
-  /// executable is there" is a different question: a build
-  /// that stopped before clearing the last one away leaves one
-  /// behind that has nothing to do with this build.
   SPP_EXP_FUN auto handle_build(
     Str const &mode,
     Str const &target = "",
-    bool skip_vcs = false)
+    bool skip_vcs = false,
+    Str const &message_format = "human",
+    bool analyse_only = false,
+    Vec<Str> const &index_files = {},
+    bool index_project = false)
     -> bool;
 
   /// Compile the project and run what it produced. Only a host

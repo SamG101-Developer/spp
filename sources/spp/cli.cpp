@@ -14,13 +14,19 @@ module;
   bp::v1::std_out > bp::v1::null
 
 module spp.cli;
+import spp.analyse.errors.diagnostic_sink;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.resolution_index;
 import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
+import spp.lsp.diagnostic;
+import spp.parse.errors.parser_error;
+import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.features;
 import spp.utils.files;
@@ -54,68 +60,55 @@ std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" 
 
 namespace spp::cli {
   namespace {
-    /**
-     * Iterate a directory that may not be there. The optional folders are only created inside this project, so a
-     * dependency legitimately has none of them and walking one must not throw.
-     */
+    /// Iterate a directory that may not be there. The optional
+    /// folders are only created inside this project, so a
+    /// dependency legitimately has none of them and walking one
+    /// must not throw.
     auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
       return std::filesystem::exists(dir)
         ? std::filesystem::directory_iterator(dir)
         : std::filesystem::directory_iterator();
     }
 
-    /**
-     * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
-     * @param[in,out] c The compiler to run.
-     * @return @c true if the build produced its artefact; @c false once the error has been printed, and for a back-end
-     * failure - a module llvm rejects, an object it cannot write, a linker that returns non-zero - which reports
-     * itself as it happens rather than by throwing.
-     */
+    /// Run a compilation and report a mistake in the source being
+    /// compiled.
     auto CompileReportingErrors(
-      spp::compiler::Compiler &c)
-      -> bool {
+      compiler::Compiler &c, Str const &message_format = "human") -> bool {
+      // Json is asked for by something reading the output rather
+      // than someone looking at it, so it catches in every build:
+      // a debugger is not what is on the other end of the pipe.
+      // Used by the IDEA plugin.
+      if (message_format == "json") {
+        return lsp::CompileReportingJson(c);
+      }
+
 #if SPP_DEBUG
-      // A debug build deliberately does not: "Compiler::Compile" leaves
-      // its own catch out under the same condition, so the stack is still
-      // standing where the throw happened and a debugger can be pointed
-      // at it. That build is the compiler's own; this is the one a
-      // program is compiled with.
+      // A debug build deliberately does not: "Compiler::Compile"
+      // leaves its own catch out under the same condition, so the
+      // stack is still standing where the throw happened and a
+      // debugger can be pointed at it. That build is the compiler's
+      // own; this is the one a program is compiled with.
       return c.Compile();
 #else
       try {
         return c.Compile();
       }
-      catch (spp::utils::errors::AbstractError const &e) {
+      catch (utils::errors::AbstractError const &e) {
         std::cerr << e.what() << "\n";
         return false;
       }
 #endif
     }
 
-    /**
-     * Wrap a command so the process it starts cannot exhaust the machine.
-     *
-     * @n
-     * The allocator already models running out of memory - @c GlobalAlloc::allocate maps a null @c malloc to
-     * @c AllocOomErr - but on linux that branch is unreachable by default: overcommit hands out address space that has
-     * no memory behind it, @c malloc succeeds, and the process is killed by the kernel when it touches the pages. A
-     * compiled program with a runaway allocation therefore does not fail, it takes the machine down with it, and the
-     * failure surfaces in @c dmesg rather than anywhere the user is looking.
-     *
-     * An address-space limit on the child restores the contract the allocator was written against: @c malloc returns
-     * null at the cap, @c AllocOomErr propagates, and the program reports itself. The limit is set on the command
-     * rather than on this process so the compiler keeps its own budget, and it is set through the shell because that
-     * is what @c std::system starts anyway.
-     *
-     * @param command The command to run.
-     * @return The command, prefixed with the limit, on the platforms whose shell can set one.
-     */
+    /// Force a memory limit on the process. This was originally
+    /// required for when the early STD was extremely bugged,
+    /// causing allocations that blew up WSL by overwriting
+    /// critical process memory space (not sure how). Not required
+    /// anymore I don't think. Good failsafe?
     auto WithMemoryLimit(Str const &command) -> Str {
 #if SPP_PLATFORM_WINDOWS
       return command;
 #else
-      // A run that needs more than this is not one this is meant to catch, and the value can be raised - or removed
-      // with a zero - for the run that legitimately does.
       constexpr auto default_kb = 4ull * 1024 * 1024;
       const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
       const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
@@ -123,12 +116,8 @@ namespace spp::cli {
 #endif
     }
 
-    /**
-     * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
-     * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
-     * @param args The arguments to pass to git.
-     * @return @c true when git exited cleanly.
-     */
+    /// Run a git command invocation, reporting a non-zero exit
+    /// rather than discarding it. Wraps all git command calls.
     auto RunGit(Str const &args) -> bool {
       const auto command = "git " + args;
       if (const auto status = std::system(command.c_str()); status != 0) {
@@ -139,7 +128,7 @@ namespace spp::cli {
     }
 
     auto HostOf(Str const &url) -> Str {
-      auto rest = spp::StrView(url);
+      auto rest = StrView(url);
       if (const auto scheme = rest.find("://"); scheme != StrView::npos) { rest.remove_prefix(scheme + 3); }
 
       // Only a "user@" before the first "/" is credentials;
@@ -149,7 +138,7 @@ namespace spp::cli {
         at != StrView::npos and (slash == StrView::npos or at < slash)) {
         rest.remove_prefix(at + 1);
       }
-      return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
+      return Str(rest.substr(0, rest.find_first_of(":/?")));
     }
 
     auto IsRemoteReachable(Str const &url) -> bool {
@@ -198,6 +187,19 @@ auto spp::cli::run_cli(
   auto run_target = Str();
   auto clean_target = Str();
 
+  // How a failure is reported: as the blocks a person reads, or
+  // as one diagnostic object per error for whatever is reading
+  // the output - the editor integration, today.
+  auto build_message_format = Str("human");
+
+  // Both are for whatever is driving the compiler rather than
+  // for a person: skip the dependency fetch a build normally
+  // starts with, and stop once the analysis is done.
+  auto build_skip_vcs = false;
+  auto build_analyse_only = false;
+  auto build_index_files = Vec<Str>();
+  auto build_index_project = false;
+
   // No example triple: which ones resolve depends on the backends
   // this binary was linked with, so an example here would be wrong
   // for a default build. Passing an unrecognised one lists what
@@ -205,6 +207,9 @@ auto spp::cli::run_cli(
   constexpr auto target_help =
     "Target triple to build for; the host by default. Pass an unknown one to list what this build supports. A "
     "target other than the host is compiled and an object emitted, but not linked - see the note the build prints.";
+
+  constexpr auto message_format_help =
+    "How errors are reported: 'human' for the annotated source blocks, or 'json' for one diagnostic object per error.";
 
   app.add_subcommand("init", "Initialize the new project")
      ->fallthrough()
@@ -219,9 +224,31 @@ auto spp::cli::run_cli(
            ->check(CLI::IsMember({"dev", "rel"}))
            ->default_val("dev");
   build_cmd->add_option("-t,--target", build_target, target_help);
-  build_cmd->callback([&build_mode, &build_target] {
-    if (not handle_build(build_mode, build_target)) { throw CLI::RuntimeError(1); }
-  });
+  build_cmd->add_option("--message-format", build_message_format, message_format_help)
+           ->check(CLI::IsMember({"human", "json"}))
+           ->default_val("human");
+  build_cmd->add_flag(
+    "--skip-vcs", build_skip_vcs,
+    "Do not fetch the [vcs] dependencies before building");
+  build_cmd->add_flag(
+    "--analyse-only", build_analyse_only,
+    "Stop once the analysis is done: report errors, but generate and write nothing");
+  build_cmd->add_option(
+    "--index-file", build_index_files,
+    "Also report what every name written in this file resolved to; may be given more than once. Needs "
+    "'--message-format=json'");
+  build_cmd->add_flag(
+    "--index-project", build_index_project,
+    "Report what every name in the project's own files resolved to - the same compile answers for all of them");
+  build_cmd->callback(
+    [&build_mode, &build_target, &build_message_format, &build_skip_vcs, &build_analyse_only, &build_index_files,
+      &build_index_project] {
+      if (not handle_build(
+        build_mode, build_target, build_skip_vcs, build_message_format, build_analyse_only, build_index_files,
+        build_index_project)) {
+        throw CLI::RuntimeError(1);
+      }
+    });
 
   const auto run_cmd = app.add_subcommand("run", "Run the project")->fallthrough();
   run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
@@ -395,7 +422,11 @@ auto spp::cli::handle_vcs()
 auto spp::cli::handle_build(
   Str const &mode,
   Str const &target,
-  const bool skip_vcs)
+  const bool skip_vcs,
+  Str const &message_format,
+  const bool analyse_only,
+  Vec<Str> const &index_files,
+  const bool index_project)
   -> bool {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
@@ -418,8 +449,11 @@ auto spp::cli::handle_build(
 
   // Remove the executable first, so a build that fails leaves
   // nothing behind for "run" to pick up and execute as if it
-  // were the build that just happened.
-  std::filesystem::remove(out.ExecutablePath());
+  // were the build that just happened. An analysis-only run
+  // produces no executable and must not disturb the one a real
+  // build left there - an editor analysing on every save would
+  // otherwise keep deleting it. Stages 1-9 inclusive.
+  if (not analyse_only) { std::filesystem::remove(out.ExecutablePath()); }
 
   // Handle VCS if not skipped. Building against a half-fetched
   // "vcs" folder reports every imported symbol as undefined
@@ -451,11 +485,16 @@ auto spp::cli::handle_build(
     return false;
   }
 
-  // Compile the code.
+  // Compile the code. Call the resolution index hooks depending
+  // on what is being indexed (project, specific files, etc).
   auto c = compiler::Compiler(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-  return CompileReportingErrors(c);
+
+  c.SetAnalyseOnly(analyse_only);
+  if (index_project) { analyse::utils::resolution_index::EnableProject(); }
+  else { analyse::utils::resolution_index::EnableFiles(index_files); }
+  return CompileReportingErrors(c, message_format);
 }
 
 auto spp::cli::handle_run(
