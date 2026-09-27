@@ -262,8 +262,9 @@ auto ScopeManager::CoalesceMethodMock(
   // here, and do an ast check too.
   if (scope.TySym == nullptr or scope.TySym->Kind != TypeKind::FunctionMock or scope.Parent == nullptr) { return; }
   const auto sup_node = scope.Parent->AstNode;
-  if (AstAs<SupPrototypeFunctionsAst>(sup_node) == nullptr) { return; }
-  if (AstAs<SupPrototypeExtensionAst>(sup_node) == nullptr) { return; }
+  if (AstAs<SupPrototypeFunctionsAst>(sup_node) == nullptr and AstAs<SupPrototypeExtensionAst>(sup_node) == nullptr) {
+    return;
+  }
 
   // Get the symbol for the type name being superimposed over, and
   // all the sup-blocks for that type. There might be none, in
