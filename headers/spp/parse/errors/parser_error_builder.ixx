@@ -93,6 +93,8 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     // Inject the error message into the error object for
     // this builder, and call the internal raise steps for
     // the abstract builder.
+    this->_ErrObj->message = err_msg;
+    this->_ErrObj->span = this->_ErrFormatters[0]->SpanOfRawPos(Pos, 1);
     this->_ErrObj->messages = {
       this->_ErrFormatters[0]->ErrorRawPos(
         Pos, 1, std::move(err_msg), "Syntax error")
