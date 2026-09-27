@@ -315,8 +315,8 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
   iter_copy = sm->CurrentIterator();
   Stage3_GenTopLvlAliases(sm, meta);
 
-  // sm->Reset(current_scope, iter_copy);
-  // Stage4_ResolveDeclarations(sm, meta);
+  sm->Reset(current_scope, iter_copy);
+  Stage4_ResolveDeclarations(sm, meta);
 }
 
 auto TypeStatementAst::Stage8_CheckMemory(
