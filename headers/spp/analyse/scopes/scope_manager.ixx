@@ -115,6 +115,12 @@ public:
   /// reached.
   auto ExhaustScope() -> void;
 
+  /// Iterate the tree walker until we are on the last scope
+  /// of the inputted "scope"'s scope tree. This is needed, so
+  /// that when collecting multiple errors, we can go "this
+  /// function threw", now skip past it, onto the next function.
+  auto SkipPastScope(Scope const *scope) -> bool;
+
   /// For every type discovered up to this point, attach the
   /// designated supertypes to it, checking each generic
   /// constraint as it is attached. A constraint is checked

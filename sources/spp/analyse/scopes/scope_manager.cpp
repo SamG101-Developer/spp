@@ -169,6 +169,24 @@ auto ScopeManager::ExhaustScope() -> void {
   }
 }
 
+auto ScopeManager::SkipPastScope(
+  Scope const *const scope)
+  -> bool {
+  // A member with no scope of its own consumed none of
+  // the walk, so there is nothing to skip.
+  if (scope == nullptr) { return true; }
+
+  // Walk to the final nested subtree scope of the
+  // inputted "scope".
+  const auto final_scope = scope->FinalChildScope();
+  const auto end = ScopeIterator();
+  while (CurrentScope != final_scope) {
+    if (++_It == end) { return false; }
+    CurrentScope = *_It;
+  }
+  return true;
+}
+
 auto ScopeManager::AttachAllSuperScopes(
   CompilerMetaData *meta) -> void {
   // Attach every type's super scopes, checking each generic
