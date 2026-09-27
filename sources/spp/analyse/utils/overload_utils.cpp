@@ -359,9 +359,20 @@ namespace spp::analyse::utils::overload_utils {
       TypeAst const &expr_ty)
       -> Unique<FunctionPrototypeAst> {
       // Extract the parameter and return types from the
-      // expression type.
-      auto ret_ty = expr_ty.LastTypePart()->GnArgGroup->At("Out")->TypeVal;
-      auto p_tys = expr_ty.LastTypePart()->GnArgGroup->At("Args")->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()
+      // expression type. A type that carries neither is not one
+      // a call can be built from (like an alias that was never
+      // resolved, say) and the caller reports it as having no
+      // valid signatures rather than crashing on it. As alias
+      // analysis improves, this can be removed.
+      const auto gn_args = expr_ty.LastTypePart()->GnArgGroup.get();
+      const auto out_arg = gn_args != nullptr ? gn_args->At("Out") : nullptr;
+      const auto args_arg = gn_args != nullptr ? gn_args->At("Args") : nullptr;
+      if (out_arg == nullptr or args_arg == nullptr
+        or out_arg->TypeVal == nullptr or args_arg->TypeVal == nullptr
+        or args_arg->TypeVal->LastTypePart()->GnArgGroup == nullptr) { return nullptr; }
+
+      auto ret_ty = out_arg->TypeVal;
+      auto p_tys = args_arg->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()
         | genex::views::transform([](auto *g) {
           return MakeUnique<FunctionParameterRequiredAst>(nullptr, nullptr, g->TypeVal);
         })
@@ -481,8 +492,9 @@ namespace spp::analyse::utils::overload_utils {
       // If there are no scopes, assume that this is a closure
       // (do functional type check).
       const auto closure_fn_type = IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
-      if (closure_fn_type != nullptr) {
-        auto closure_fn_proto = CreateCallablePrototype(*closure_fn_type);
+      if (auto closure_fn_proto = closure_fn_type != nullptr
+        ? CreateCallablePrototype(*closure_fn_type)
+        : nullptr; closure_fn_proto != nullptr) {
         all_overloads.EmplaceBack(func_utils::FunctionOverload{
           .FnScope = sm->CurrentScope,
           .Proto = closure_fn_proto.get(),
