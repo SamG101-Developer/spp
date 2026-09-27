@@ -231,7 +231,7 @@ auto RetStatementAst::Stage11_CodeGen(
 
   // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
   // coerced into the return variant before it leaves the function.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto ret_type = _RetType != nullptr
     ? _RetType
     : meta->EnclosingFunctionRetType.IsEmpty()

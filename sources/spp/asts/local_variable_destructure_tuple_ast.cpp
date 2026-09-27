@@ -121,7 +121,7 @@ auto LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
   // and index on it.
   const ExpressionAst *effective_val = val;
   if (not IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
-    _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
+    _TmpName = BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();
   }
   else {

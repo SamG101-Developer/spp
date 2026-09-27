@@ -179,7 +179,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   const ExpressionAst *effective_val = val;
   if (not IsDestructurePlaceExpression(*val)
     and not meta->LetStatementFromUninitialized) {
-    _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
+    _TmpName = BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();
   }
   else {
@@ -191,7 +191,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   if (_FromCasePattern
     and not conv_only_mismatch
     and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = spp::utils::Uid();
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
     _CondLet = MakeUnique<LetStatementInitializedAst>(
@@ -288,7 +288,7 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
     if (_FlowSym != nullptr and _CondSym != nullptr and _CondSym->LlvmInfo->Alloca != nullptr) {
       const auto bare_cond_type = _CondSym->Type->WithoutConvention();
       if (IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
-        const auto uid = "." + spp::utils::Uid(this);
+        const auto uid = "." + spp::utils::Uid();
         const auto variant_ty = sm->CurrentScope->GetTypeSymbol(
           bare_cond_type.get())->LlvmInfo->LlvmType;
 

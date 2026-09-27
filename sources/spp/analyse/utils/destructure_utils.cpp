@@ -65,11 +65,11 @@ auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
 }
 
 auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
-  Ast const &owner, ExpressionAst *val, Shared<TypeAst> const &val_type,
+  ExpressionAst *val, Shared<TypeAst> const &val_type,
   ScopeManager &sm) -> Shared<IdentifierAst> {
   // The "$" prefix cannot be written in user code, so the
   // temporary can never collide with a real binding.
-  auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid(&owner));
+  auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid());
 
   // Mirror the symbol an initialized single-identifier "let"
   // would create.
@@ -184,7 +184,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   Shared<IdentifierAst> const &tmp_name, llvm::Value *llvm_subject,
   ScopeManager &sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void {
   // Give the temporary its own stack slot.
-  const auto uid = "." + spp::utils::Uid(tmp_name.get());
+  const auto uid = "." + spp::utils::Uid();
   const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
 
   const auto no_tmp_msg = Str(

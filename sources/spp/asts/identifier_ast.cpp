@@ -229,7 +229,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // Get the allocation for the variable from the current
   // scope. The "alloca" will have been filled from wherever
   // this identifier was introduced ("let", param, etc).
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
 
   // An identifier that reaches code generation with no symbol

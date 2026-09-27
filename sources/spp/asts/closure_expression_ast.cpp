@@ -260,7 +260,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // with fields for captures. The safety is already guaranteed
   // by semantic analysis.
   // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto closure_env_ty = llvm::StructType::create(
     *ctx->Context, "closure.env_type." + uid);
   auto closure_env_field_tys = Vec<llvm::Type*>{};
@@ -530,7 +530,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // generic is resolved again inside that generic's own scope.
   const auto mod_scope = sm->GlobalScope.get();
   auto mock_name = MakeShared<TypeIdentifierAst>(
-    PosStart(), Str("$closure") + spp::utils::Uid(this), nullptr);
+    PosStart(), Str("$closure") + spp::utils::Uid(), nullptr);
   auto mock_ast = MakeUnique<ClassPrototypeAst>(
     SPP_NO_ANNOTATIONS, nullptr, mock_name, nullptr, nullptr);
   auto mock_scope = MakeUnique<Scope>(

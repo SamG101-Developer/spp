@@ -422,7 +422,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // prepending the environment pointer (the closure function
   // is compiled as "(env*, ...params) -> ret").
   if (_ClosureDummyProto != nullptr) {
-    const auto closure_uid = "." + spp::utils::Uid(this);
+    const auto closure_uid = "." + spp::utils::Uid();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
 
@@ -517,7 +517,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       &tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
   }
 
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto o = "Call target has no llvm declaration: " + Target()->PrintSignature("");
   RaiseIf<analyse::errors::SppInternalCompilerError>(
     Target()->GetLlvmFunc() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));

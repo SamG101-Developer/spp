@@ -55,7 +55,7 @@ namespace spp::analyse::utils::bin_utils {
       // first. Todo: Standardise materialization?
       if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
         const auto temp_var_name = [&] {
-          const auto uid = spp::utils::Uid(bin_lhs->Rhs.get());
+          const auto uid = spp::utils::Uid();
           return MakeShared<IdentifierAst>(
             bin_lhs->Rhs->PosStart(), uid);
         }();

@@ -82,7 +82,7 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the left-hand-side expression, which analysis has
   // guaranteed is a boolean, owned or borrowed.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(lhs_val != nullptr);
 

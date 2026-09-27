@@ -34,7 +34,7 @@ FunctionParameterAst::FunctionParameterAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
     this->TokColon, SppTokenType::TK_COLON, ":", var ? var->PosEnd() : 0);
   if (this->Var == nullptr) {
-    const auto uid = spp::utils::Uid(this);
+    const auto uid = spp::utils::Uid();
     const auto pos = this->Type ? this->Type->PosStart() : 0uz;
     auto var_name = MakeShared<IdentifierAst>(pos, uid);
     this->Var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);

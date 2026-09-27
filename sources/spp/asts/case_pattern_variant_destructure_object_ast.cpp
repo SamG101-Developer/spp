@@ -243,7 +243,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // members live behind the discriminant, so the narrowed
   // bindings index from the payload buffer rather than from
   // the variant's base address.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSym and _CondSym) {
     // The subject's storage is read through the symbol the

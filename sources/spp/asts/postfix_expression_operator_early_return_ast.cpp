@@ -87,7 +87,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     meta->WithinDeferTok != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*meta->WithinDeferTok, *this));
 
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   auto temp_name = MakeShared<IdentifierAst>(PosStart(), "$temp" + uid);
 
   // Build the materializing left-hand-side to contain the

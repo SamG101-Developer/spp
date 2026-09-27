@@ -69,7 +69,7 @@ namespace spp::analyse::utils::case_utils {
       using type_members::GetFieldIndexInType;
       using type_predicates::IsTypeArr;
 
-      const auto uid = "." + spp::utils::Uid(&field_name);
+      const auto uid = "." + spp::utils::Uid();
       const auto bare_type = base_type.WithoutConvention();
       const auto base_type_sym = sm.CurrentScope->GetTypeSymbol(bare_type.get());
       if (base_type_sym == nullptr or base_type_sym->LlvmInfo->LlvmType == nullptr) { return nullptr; }

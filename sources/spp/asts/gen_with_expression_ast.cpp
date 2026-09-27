@@ -92,7 +92,7 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   // Desugar the standard "gen with <Expr>" into the expanded
   // "loop _tmp in <Expr> { gen _tmp }". This keeps all "gen"
   // analysis uniform.
-  const auto uid = "_" + spp::utils::Uid(this);
+  const auto uid = "_" + spp::utils::Uid();
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with" + uid), nullptr);
   auto gen_value = MakeUnique<IdentifierAst>(

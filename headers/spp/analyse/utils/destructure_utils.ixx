@@ -43,7 +43,6 @@ namespace spp::analyse::utils::destructure_utils {
   /// otherwise we end up cloning the temporary and breaking
   /// lots of analysis.
   SPP_EXP_FUN auto BindDestructureTemporary(
-    Ast const &owner,
     ExpressionAst *val,
     Shared<TypeAst> const &val_type,
     ScopeManager &sm)

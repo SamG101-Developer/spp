@@ -154,7 +154,7 @@ auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   // Build the variable bindings from the environment object.
   // This allows the body to remain unchanged as the variables
   // get loaded from the environment struct.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
     const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
     const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);

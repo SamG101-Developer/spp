@@ -200,7 +200,7 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   // Generate the branch architecture. Start by defining blocks
   // for the branch's "body" and "next" (after body) zones.
   sm->MoveToNextScope();
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
   const auto body_bb = llvm::BasicBlock::Create(
     *ctx->Context, "case.branch.body" + uid, func);

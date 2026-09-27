@@ -337,7 +337,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   const auto want_address = meta->LlvmWantAddress;
 
   // Get the type of the left-hand-side expression.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
   const auto lhs_type_sym = lhs_ref.Sym;
 

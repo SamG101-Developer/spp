@@ -287,7 +287,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   // Step 2: Invoke the coroutine suspension intrinsic,
   // allowing the caller to use the yielded value. Control
   // comes back into the block this leaves the builder in.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto parked_bb = ctx->Builder.GetInsertBlock();
   const auto destroy_bb = llvm::BasicBlock::Create(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());

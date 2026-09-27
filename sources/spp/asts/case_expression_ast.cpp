@@ -311,7 +311,7 @@ auto CaseExpressionAst::Stage11_CodeGen(
   // Determine if this "case" will be yielding an expression,
   // and generate the condition. The expression flag is needed
   // when considering PHI node handling.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
 
   // A "case" yields a value when something is catching it, or
   // when it is the desugaring of an "is", which is a boolean

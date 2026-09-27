@@ -327,7 +327,7 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   // The "and" and "or" operations cannot map from the function
   // as there is no function to map from. Instead, they have
   // manual codegen, like the "not" operator.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto is_and = TokOp->TokenType == lex::SppTokenType::KW_AND;
   const auto llvm_bool_ty = llvm::Type::getInt1Ty(*ctx->Context);
 

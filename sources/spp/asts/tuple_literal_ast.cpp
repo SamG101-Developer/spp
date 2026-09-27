@@ -138,7 +138,7 @@ auto TupleLiteralAst::Stage9_CompTimeResolve(
 auto TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto tuple_type_sym = InferTypeRef(sm, meta).Sym;
   const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);

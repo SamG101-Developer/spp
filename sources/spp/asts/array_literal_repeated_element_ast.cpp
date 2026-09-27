@@ -209,7 +209,7 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
 
     // Allocate the array into the enclosing function
     // using the uniform entry alloca function.
-    const auto uid = "." + Uid(this);
+    const auto uid = "." + Uid();
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.repeated.alloca" + uid, ctx);
 

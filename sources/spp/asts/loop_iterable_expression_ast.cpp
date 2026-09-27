@@ -106,7 +106,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::GetGenAndYieldTypes;
 
   // Simple statements to move from.
-  const auto uid = "_" + spp::utils::Uid(this);
+  const auto uid = "_" + spp::utils::Uid();
   auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter" + uid);
   auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res" + uid);
   auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok" + uid);

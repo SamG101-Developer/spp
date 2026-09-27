@@ -314,7 +314,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
         value = codegen::CoerceToVariant(
           value, TypeRef::Of(*target_type, *sm->CurrentScope),
           Rhs[i]->InferTypeRef(sm, meta), *sm->CurrentScope,
-          "assign.variant." + spp::utils::Uid(this), ctx);
+          "assign.variant." + spp::utils::Uid(), ctx);
       }
 
       return value;

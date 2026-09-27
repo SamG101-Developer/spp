@@ -191,7 +191,7 @@ auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
 auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Create the alloca for the variable.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto borrows = Conv != nullptr;
   const auto llvm_type = borrows
     ? static_cast<llvm::Type*>(llvm::PointerType::get(*ctx->Context, 0))

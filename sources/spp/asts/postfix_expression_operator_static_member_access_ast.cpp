@@ -240,7 +240,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
 
   // In a constant context the caller wants a value,
   // not a load. Resolve recursively and return the

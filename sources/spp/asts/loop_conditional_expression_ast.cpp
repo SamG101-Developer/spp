@@ -160,7 +160,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // that is produced must be used, and "f(loop .. { exit 5 })"
   // passes it straight to a call - which, without the phi,
   // left the "exit" nothing to feed and crashed the compiler.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + spp::utils::Uid();
   const auto ret_type = InferType(sm, meta);
   const auto is_expr = not IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
     and not ret_type->IsNeverType();

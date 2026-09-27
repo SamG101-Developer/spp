@@ -123,7 +123,7 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   // and index on it.
   auto effective_val = static_cast<const ExpressionAst*>(val);
   if (not IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
-    _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
+    _TmpName = BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();
   }
   else {

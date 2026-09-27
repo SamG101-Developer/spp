@@ -30,7 +30,7 @@ auto spp::codegen::llvm_materialize(
   -> asts::IdentifierAst* {
   // Materialise an expression by assigning it to a temporary
   // variable.
-  const auto uid = "." + spp::utils::Uid(&ast);
+  const auto uid = "." + spp::utils::Uid();
   auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + uid);
   const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
 

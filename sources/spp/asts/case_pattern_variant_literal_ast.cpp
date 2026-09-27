@@ -88,7 +88,7 @@ auto CasePatternVariantLiteralAst::Stage11_CodeGen(
 auto CasePatternVariantLiteralAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Create the local variable literal binding AST.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = spp::utils::Uid();
   auto var_name = MakeShared<IdentifierAst>(PosStart(), uid);
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, std::move(var_name), nullptr);

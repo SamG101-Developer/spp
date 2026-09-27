@@ -158,7 +158,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
   // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
   // and storing those into a narrower binding writes past it.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = spp::utils::Uid();
   const auto lhs = meta->PostfixExpressionLhs;
   auto [generator_sym, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
