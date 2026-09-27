@@ -109,7 +109,7 @@ namespace spp::cli {
 #if SPP_PLATFORM_WINDOWS
       return command;
 #else
-      constexpr auto default_kb = 4ull * 1024 * 1024;
+      constexpr auto default_kb = 16ull * 1024 * 1024;
       const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
       const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
       return limit_kb == 0 ? command : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
