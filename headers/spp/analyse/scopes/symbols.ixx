@@ -206,6 +206,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// than of whatever shares its name.
   std::uint64_t BindsParamId = 0;
 
+  /// Whether this symbol names a variadic comp generic parameter
+  /// like "..n", or binds one. Its type is one element's ("Bool"
+  /// for "..n: Bool"), so this is what says it holds a tuple.
+  bool IsVariadic = false;
+
   /// Whether the symbol is mutable, ie can the variable it
   /// represents be re-assigned a new value.
   bool IsMutable = false;
