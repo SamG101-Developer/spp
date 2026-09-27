@@ -93,7 +93,8 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 
   // Check the loop condition is boolean.
   if (not IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *Cond->InferType(sm, meta), "loop"));
+    const auto cond_ty = Cond->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "loop"));
   }
 
   // Set the loop level information into the "meta" object.

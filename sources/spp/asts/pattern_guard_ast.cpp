@@ -67,7 +67,8 @@ auto PatternGuardAst::Stage7_AnalyseSemantics(
 
   // Check the guard's type is boolean.
   if (not IsTypeBool(Expr->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Expr, *Expr->InferType(sm, meta), "pattern guard"));
+    const auto expr_ty = Expr->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Expr, *expr_ty, "pattern guard"));
   }
 }
 

@@ -242,11 +242,15 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
       const auto what = Str("\"") + TokOp->TokenData + "\" expression";
       // An owned "Bool" each (a borrow is not one); the type is only spelled out for the error.
+      // Held, not passed through: the error's arguments are bound as references, and these types are nobody
+      // else's - the temporary they came back in would be gone before the error was built.
       if (not IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *Lhs->InferType(sm, meta), what));
+        const auto lhs_ty = Lhs->InferType(sm, meta);
+        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_ty, what));
       }
       if (not IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Rhs, *Rhs->InferType(sm, meta), what));
+        const auto rhs_ty = Rhs->InferType(sm, meta);
+        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_ty, what));
       }
 
       _LogicalAnalysed = true;

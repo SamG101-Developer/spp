@@ -61,9 +61,10 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
 
   // Check the left-hand-side is an owned boolean expression.
   if (not IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta);
     Raise<SppExpressionNotBooleanError>(
       {sm->CurrentScope},
-      ERR_ARGS(*meta->PostfixExpressionLhs, *meta->PostfixExpressionLhs->InferType(sm, meta), "not expression"));
+      ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_ty, "not expression"));
   }
 }
 
