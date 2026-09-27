@@ -10,6 +10,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.resolution_index;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_control_flow_statement_ast;
@@ -85,6 +86,7 @@ auto InnerScopeExpressionAst::DiscardsFinalMember() const -> bool {
 auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   using analyse::utils::expr_utils::ValidateNoUnreachableCode;
+  using namespace analyse::utils;
 
   // Create a scope for the InnerScopeAst node.
   auto scope_name = ScopeBlockName::FromParts(
@@ -107,8 +109,14 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     const auto discarded = DiscardsFinalMember() ? Members.Len() : Members.Len() - 1;
     for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
       if (i >= discarded) { break; }
-      analyse::utils::expr_utils::ValidateDiscardedValue(*m, sm->CurrentScope, *sm, meta);
+      expr_utils::ValidateDiscardedValue(*m, sm->CurrentScope, *sm, meta);
     }
+  }
+
+  // What can be written in this block - a function's body among
+  // them - for an editor offering names.
+  if (resolution_index::IsEnabled()) {
+    resolution_index::RecordScopeOf(*this, *sm);
   }
 
   sm->MoveOutOfCurrentScope();

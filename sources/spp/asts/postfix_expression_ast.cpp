@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_utils;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
@@ -109,6 +110,19 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  {
+    const auto produces_value =
+     Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr or
+     Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+
+    if (produces_value) {
+      analyse::utils::resolution_index::RecordExpression(
+        *this, *sm, *meta, [this, sm, meta] { return InferType(sm, meta); });
+    }
+  }
 }
 
 auto PostfixExpressionAst::Stage8_CheckMemory(

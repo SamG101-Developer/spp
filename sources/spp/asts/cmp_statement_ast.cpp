@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -244,6 +245,7 @@ auto CmpStatementAst::Stage8_CheckMemory(
 auto CmpStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
+  using namespace analyse::utils;
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -262,6 +264,11 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
     Value->Stage9_CompTimeResolve(&tm, meta);
     Value = AstClone(meta->CmpResult);
     var_sym->CompTimeValue = std::move(meta->CmpResult);
+
+    // Use the hook to record information for the resolution and
+    // completion plugin.
+    resolution_index::RecordComptimeValue(
+      *Name, *sm, *meta, Value != nullptr ? Value->ToString() : Str());
   }
   sm->ExhaustScope();
   sm->MoveOutOfCurrentScope();

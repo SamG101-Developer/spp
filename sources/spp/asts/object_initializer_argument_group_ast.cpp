@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -88,12 +89,18 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   using analyse::errors::SppIdentifierDuplicateError;
   using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
   using analyse::utils::type_members::GetAllAttrs;
+  using namespace analyse::utils;
 
   const auto all_attrs = GetAllAttrs(
     *sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get()));
   const auto all_attr_names = all_attrs
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  resolution_index::RecordObjectInitializerArguments(
+    GetKeywordArgs(), all_attrs, *sm, *meta);
 
   // Check there is at most 1 autofill argument.
   const auto af_args = GetShorthandArgs()

@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.generic_argument_ast;
@@ -153,6 +154,7 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   using analyse::errors::SppSelfIdentifierInvalidContextError;
   using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
   using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
+  using namespace analyse::utils;
 
   // Check there is a symbol with the same name in the
   // current scope. Also check for invalid "self" (just
@@ -176,6 +178,10 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   if (sym != nullptr and sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
     CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
   }
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  resolution_index::RecordIdentifier(*this, *sm, *meta, sym);
 }
 
 auto IdentifierAst::Stage9_CompTimeResolve(

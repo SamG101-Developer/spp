@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_utils;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.expression_ast;
@@ -107,6 +108,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   using analyse::utils::expr_utils::MembersReachableBy;
   using analyse::utils::expr_utils::ScopesDeclaringVar;
   using analyse::errors::SppMemberAccessRuntimeOperatorExpectedError;
+  using namespace analyse::utils;
 
   // Handle types on the left-hand-side of a static member access.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
@@ -115,7 +117,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      const auto [fwd_ref_sym, _] = analyse::utils::type_utils::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
+      const auto [fwd_ref_sym, _] = type_utils::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
       const auto lhs_fwd_ref_type_sym = fwd_ref_sym != nullptr ? fwd_ref_sym->BoundTypeArg("T") : nullptr;
       const auto found = lhs_fwd_ref_type_sym
         ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)
@@ -133,7 +135,11 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     }
 
     // Check there is only 1 target field on the type at the highest level.
-    if (_LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true)->Kind == VariableKind::Function) {
+    if (const auto named = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
+      named->Kind == VariableKind::Function) {
+      // Use the hook to record information for the resolution and
+      // completion plugin.
+      resolution_index::RecordVariable(*Name, *sm, *meta, named);
       return;
     }
 
@@ -167,6 +173,11 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
       CheckTypeMemberVisibility(
         declared_sym != nullptr ? *declared_sym : *closest[0].Symbol, *Name,
         declared_sym != nullptr ? *scope : *closest[0].Where, *sm, *meta);
+
+      // Use the hook to record information for the resolution and
+      // completion plugin.
+      resolution_index::RecordVariable(
+        *Name, *sm, *meta, declared_sym != nullptr ? declared_sym : closest[0].Symbol);
     }
 
     RaiseIfAmbiguous(
@@ -196,9 +207,15 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   }
 
   // Enforce visibility on the accessed namespace symbol.
-  // Only for var symbols, not namespace symbols.
+  // Only for var symbols, not namespace symbols. Use the
+  // hook to record information for the resolution and
+  // completion plugin.
   if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name.get())) {
     CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm, *meta);
+    resolution_index::RecordVariable(*Name, *sm, *meta, sym);
+  }
+  else {
+    resolution_index::RecordNamespaceMember(*Name, *sm, *meta, *lhs_ns_sym->LinkedScope);
   }
 }
 

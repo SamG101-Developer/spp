@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.cmp_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -135,6 +136,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   using analyse::utils::type_utils::BuildFwdCall;
   using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
   using analyse::utils::visibility_utils::IsTypeMemberVisible;
+  using namespace analyse::utils;
 
   // Already rewritten against a forwarded-to value by an
   // earlier pass, which analysed the rewrite as it built
@@ -226,6 +228,13 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::Function; })
       | genex::to<Vec>();
 
+    // Use the hook to record information for the resolution and
+    // completion plugin.
+    if (not fn_scopes_and_syms.IsEmpty()) {
+      resolution_index::RecordVariable(
+        *Name, *sm, *meta, fn_scopes_and_syms.Back().Symbol);
+    }
+
     if (not fn_scopes_and_syms.IsEmpty()) {
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
@@ -259,7 +268,12 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
       const auto scope = closest[0].Where->NonGenericScope;
-      CheckTypeMemberVisibility(*scope->GetVarSymbol(Name.get(), true), *Name, *scope, *sm, *meta);
+      const auto member_sym = scope->GetVarSymbol(Name.get(), true);
+      CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);
+
+      // Use the hook to record information for the resolution and
+      // completion plugin.
+      resolution_index::RecordVariable(*Name, *sm, *meta, member_sym);
     }
 
     RaiseIfAmbiguous(closest, *Name, *sm);

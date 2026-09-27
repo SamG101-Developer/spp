@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.resolution_index;
 import spp.asts.class_member_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -84,6 +85,7 @@ template <typename T>
 auto InnerScopeAst<T>::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create a scope for the InnerScopeAst node.
+  using namespace analyse::utils;
   auto scope_name = ScopeBlockName::FromParts(
     "inner-scope", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
@@ -91,6 +93,14 @@ auto InnerScopeAst<T>::Stage7_AnalyseSemantics(
 
   // Analyse the members of the inner scope.
   for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
+
+  // What can be written in this block, for an editor offering
+  // names where nothing is being accessed. Recorded from here,
+  // where the block and its scope are both to hand and both
+  // alive.
+  if (resolution_index::IsEnabled()) {
+    resolution_index::RecordScopeOf(*this, *sm);
+  }
   sm->MoveOutOfCurrentScope();
 }
 

@@ -17,6 +17,7 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.instantiation_queue;
 import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -594,6 +595,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the function scope, as it is now ready for
   // memory checking.
+  using namespace analyse::utils;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
@@ -614,9 +616,16 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
     // parameters, so there is nothing to hold to the rule.
     if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
       and not Impl->Terminates()) {
-      analyse::utils::linear_utils::CheckScopeExit(
+      linear_utils::CheckScopeExit(
         *sm->CurrentScope, *Impl, "Function end", *sm, meta);
     }
+  }
+
+  // What the function's own scope holds - its parameters and
+  // its generic parameters - which can be named anywhere in
+  // it, for an editor offering names.
+  if (resolution_index::IsEnabled()) {
+    resolution_index::RecordScopeOf(*this, *sm);
   }
 
   // Move out of the function scope, as it is now complete.

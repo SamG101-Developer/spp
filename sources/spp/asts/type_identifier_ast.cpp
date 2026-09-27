@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.generic_bindings;
 import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -215,6 +216,14 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   const auto type_sym = GetTypeSymOrError(
     *scope, *WithoutGenerics()->ToUnchecked<TypeIdentifierAst>(), *sm);
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  if (_IsSourceWritten) {
+    analyse::utils::resolution_index::RecordType(
+      *this, *sm, *meta, type_sym);
+  }
+
   if (Name == "Self") {
     _HasAnalysed = true;
     return;

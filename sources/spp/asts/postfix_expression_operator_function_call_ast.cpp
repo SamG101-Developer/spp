@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.func_utils;
 import spp.analyse.utils.monomorphization_utils;
 import spp.analyse.utils.overload_utils;
+import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -145,6 +146,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::FUN_REF;
   using generate::common_types_precompiled::FUN_MUT;
   using generate::common_types_precompiled::GEN_ONCE;
+  using namespace analyse::utils;
 
   // Prevent double analysis.
   // Todo: See why this might be happening anyway, and remove this check preferably.
@@ -198,6 +200,14 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     .OverloadScope = overload.FnScope,
     .Proto = overload.Proto
   };
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  if (overload.FnScope != nullptr) {
+    resolution_index::RecordFunctionCallArguments(
+      *FnArgGroup, *sm, *meta, *overload.Proto, *overload.FnScope);
+  }
+
   // The matched overload's arguments already carry the "self"
   // convention, set in "ValidateArgsMatchParams".
   FnArgGroup->Args = std::move(overload.FnArgs->Args);
@@ -206,7 +216,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   // the overload that type picks; a generic one is minted here.
   auto const &params = _OverloadInfo->Proto->FnParamGroup->Params;
   for (auto i = 0uz; i < FnArgGroup->Args.Len() and i < params.Len(); ++i) {
-    analyse::utils::func_utils::InstantiateFunctionValue(
+    func_utils::InstantiateFunctionValue(
       FnArgGroup->Args[i]->InferTypeRef(sm, meta),
       TypeRef::Of(*params[i]->Type, *sm->CurrentScope), sm, meta);
   }
