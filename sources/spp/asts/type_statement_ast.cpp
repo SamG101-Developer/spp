@@ -306,16 +306,21 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
   // Otherwise, run all generation steps.
   const auto current_scope = sm->CurrentScope;
   auto iter_copy = sm->CurrentIterator();
+  const auto _meta_guard = MetaGuard(meta);
+  const auto real_stage = meta->CurrentStage;
 
   sm->Reset(current_scope, iter_copy);
   iter_copy = sm->CurrentIterator();
+  meta->CurrentStage = spp::asts::meta::CompilerStage::kGenTopLvlScopes;
   Stage2_GenTopLvlScopes(sm, meta);
 
   sm->Reset(current_scope, iter_copy);
   iter_copy = sm->CurrentIterator();
+  meta->CurrentStage = spp::asts::meta::CompilerStage::kGenTopLvlAliases;
   Stage3_GenTopLvlAliases(sm, meta);
 
   sm->Reset(current_scope, iter_copy);
+  meta->CurrentStage = real_stage;
   Stage4_ResolveDeclarations(sm, meta);
 }
 
