@@ -12,9 +12,11 @@ import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
@@ -45,8 +47,8 @@ namespace spp::analyse::utils::expr_utils {
       // discard. We are left only with the scopes that found contain
       // the symbol directly.
       auto out = Vec<Entry>();
-      for (auto *const scope : scopes) {
-        if (auto *const sym = lookup(*scope, name); sym != nullptr) {
+      for (const auto scope : scopes) {
+        if (const auto sym = lookup(*scope, name); sym != nullptr) {
           out.EmplaceBack(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
         }
       }
@@ -96,33 +98,61 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   ExpressionAst const &expr, ScopeManager const &sm,
   PrimaryExpressionOptions &&options) -> bool {
   // Only allow types if types are explicitly allowed, or
-  // are zero type.
-  if (not options.AllowTypeAst and expr.To<TypeAst>() != nullptr) {
-    const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<TypeAst>());
-    return type_sym->IsZeroType();
+  // are zero type. "()" in value position is the empty
+  // tuple's type, which has exactly one value, like any
+  // zero type.
+  if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
+    const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
+    return type_sym != nullptr and (type_sym->IsZeroType()
+      or (type_predicates::IsTupSymbol(*type_sym) and type_sym->TypeArgTypes().IsEmpty()));
   }
 
   // Only allow tokens when they're explicit allowed,
   // like "5 + .."
-  if (not options.AllowTokenAst and expr.To<TokenAst>() != nullptr) { return false; }
+  if (not options.AllowTokenAst and expr.To<asts::TokenAst>() != nullptr) { return false; }
   return true;
 }
 
-auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
-  Vec<StatementAst*> const &members, ScopeManager const &sm) -> void {
-  using errors::SppUnreachableCodeError;
+auto spp::analyse::utils::expr_utils::Diverges(
+  StatementAst &stmt, ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // The written forms first: they need no analysis, and "ret"
+  // or "exit" has no "!" type to find.
+  if (stmt.Terminates()) { return true; }
 
-  // Check for statements after a terminating statement has
-  // been reached. Asked of the statement rather than matched
-  // against "ret" and "exit"/"skip" by hand: a block whose
-  // last statement returns, or a "case" whose every branch
-  // does, ends the scope just as surely, and only the two
-  // written forms were being caught.
-  for (auto const &[i, member] : members | genex::views::enumerate) {
-    RaiseIf<SppUnreachableCodeError>(
-      member->Terminates() and member != members.Back(),
-      {sm.CurrentScope}, ERR_ARGS(*member, *members[i + 1]));
+  // A block diverges when its last statement does, read in the
+  // block's own scope. Its type alone misses a trailing "let"
+  // bound to a "!" value, which is typed "Void".
+  if (const auto block = stmt.To<asts::InnerScopeExpressionAst>(); block != nullptr) {
+    if (block->Members.IsEmpty()) { return false; }
+    auto tm = ScopeManager(sm->GlobalScope, block->GetAstScope());
+    return Diverges(*block->Members.Back(), &tm, meta);
   }
+
+  // The same for a "case": it has to have an "else" (or it can
+  // fall through), and then every branch has to diverge.
+  if (const auto case_expr = stmt.To<CaseExpressionAst>(); case_expr != nullptr) {
+    if (case_expr->Branches.IsEmpty()) { return false; }
+    if (case_expr->Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
+    return genex::all_of(case_expr->Branches, [&](auto const &branch) { return Diverges(*branch->Body, sm, meta); });
+  }
+
+  // Otherwise it is the value's type: "!" is only met by what
+  // never produces one. A "let" is not an expression, but it
+  // runs its value.
+  const auto let = stmt.To<LetStatementInitializedAst>();
+  const auto expr = let != nullptr ? let->Val.get() : stmt.To<ExpressionAst>();
+  if (expr == nullptr) { return false; }
+  const auto _meta_guard = MetaGuard(meta);
+  meta->IgnoreMissingElseBranchForInference = true;
+  return expr->InferTypeRef(sm, meta).IsNever;
+}
+
+auto spp::analyse::utils::expr_utils::ValidateNoUnreachableCode(
+  StatementAst &member, StatementAst const *next, ScopeManager *sm, CompilerMetaData *meta) -> void {
+  using errors::SppUnreachableCodeError;
+  RaiseIf<SppUnreachableCodeError>(
+    next != nullptr and Diverges(member, sm, meta),
+    {sm->CurrentScope}, ERR_ARGS(member, *next));
 }
 
 auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
