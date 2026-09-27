@@ -37,6 +37,17 @@ namespace spp::analyse::utils::visibility_utils {
     -> void;
 
   /// Check if a type's nested type is accessible from where it
+  /// is being named. The non-throwing core, for a caller listing
+  /// what can be reached rather than checking one name that was
+  /// written.
+  SPP_EXP_FUN auto IsTypeTypeVisible(
+    TypeSymbol const &sym,
+    Scope const &type_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
+
+  /// Check if a type's nested type is accessible from where it
   /// is being named. Throws an error on bad visibility, uses
   /// the (internal) type member core.
   SPP_EXP_FUN auto CheckTypeTypeVisibility(
@@ -68,6 +79,17 @@ namespace spp::analyse::utils::visibility_utils {
     ScopeManager const &sm,
     CompilerMetaData const &meta)
     -> void;
+
+  /// Check if a module type member is accessible from where it
+  /// is being named. The non-throwing core, for a caller listing
+  /// what can be reached rather than checking one name that was
+  /// written.
+  SPP_EXP_FUN auto IsModuleTypeVisible(
+    TypeSymbol const &sym,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
 
   /// Check if a module type member is accessible from where it
   /// is being named. Throws an error on bad visibility, uses

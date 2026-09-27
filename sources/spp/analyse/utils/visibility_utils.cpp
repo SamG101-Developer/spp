@@ -151,6 +151,15 @@ auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(
   RaiseIfNotVisible(IsTypeMemberVisibleImpl(sym, type_scope, sm, meta), sym, access_ast, type_scope, sm, "symbol");
 }
 
+auto spp::analyse::utils::visibility_utils::IsTypeTypeVisible(
+  TypeSymbol const &sym,
+  Scope const &type_scope,
+  ScopeManager const &sm,
+  CompilerMetaData const &meta)
+  -> bool {
+  return IsTypeMemberVisibleImpl(sym, type_scope, sm, meta);
+}
+
 auto spp::analyse::utils::visibility_utils::CheckTypeTypeVisibility(
   TypeSymbol const &sym,
   Ast const &access_ast,
@@ -179,6 +188,15 @@ auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
   -> void {
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(sym, definition_scope, sm, meta), sym, access_ast, definition_scope, sm, "symbol");
+}
+
+auto spp::analyse::utils::visibility_utils::IsModuleTypeVisible(
+  TypeSymbol const &sym,
+  Scope const &definition_scope,
+  ScopeManager const &sm,
+  CompilerMetaData const &meta)
+  -> bool {
+  return IsModuleMemberVisibleImpl(sym, definition_scope, sm, meta);
 }
 
 auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
