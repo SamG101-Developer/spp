@@ -25,6 +25,7 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_prototype_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -35,17 +36,34 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.files;
 import genex;
+import std;
 
 namespace spp::asts {
   namespace {
-    /**
-     * The first block in @p scopes extending a type matching @p name with a super class matching @p super_class. The
-     * super class is compared first: it rejects the large majority of candidates for a fraction of the cost of a name
-     * comparison, which is the type-symbol lookup this compiler spends most of its time on. The names are then tried
-     * both ways round, because a variadic pack binds an argument list only when it sits on the right, so which of two
-     * blocks was attached first would otherwise decide whether they are seen to match.
-     */
+    /// The package a scope belongs to. This is the library folder
+    /// that is a direct child of the "vcs" folder, or "" for the
+    /// project's modules.
+    auto PackageOfScope(Scope const *const scope) -> std::optional<Str> {
+      const auto mod_scope = scope != nullptr ? scope->ParentModule() : nullptr;
+      const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
+      if (mod_ast == nullptr) { return std::nullopt; }
+
+      auto const &path = mod_ast->FilePath;
+      for (auto it = path.begin(); it != path.end(); ++it) {
+        if (*it != "vcs") { continue; }
+        if (const auto lib = std::next(it); lib != path.end()) { return spp::utils::files::NativeString(*lib); }
+      }
+      return Str();
+    }
+
+    /// The first block in "scopes" extending a type matching
+    /// "name" with a super class matching "super_class". The
+    /// super class is compared first: it rejects the large
+    /// majority of candidates for a fraction of the cost of a
+    /// name comparison, which is the type-symbol lookup this
+    /// compiler spends most of its time on.
     auto FindMatchingExtension(
       Vec<Scope*> const &scopes,
       TypeAst const &super_class,
@@ -208,9 +226,13 @@ auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
 auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
+  using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_predicates::IsTypeBorrowed;
   using analyse::errors::SppGenericTypeInvalidUsageError;
   using analyse::errors::SppSecondClassBorrowViolationError;
+  using analyse::errors::SppSuperimpositionExternalMarkerExtensionError;
+  using generate::common_types_precompiled::COPY;
+  using generate::common_types_precompiled::DROP;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();
@@ -269,6 +291,29 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   RaiseIf<SppGenericTypeInvalidUsageError>(
     sup_sym->IsTypeGeneric(), {sm->CurrentScope},
     ERR_ARGS(*SuperClass, *SuperClass, "superimposition supertype"));
+
+  // A marker is restricted to the package declaring the type:
+  // "Copy" and "Drop" decide how every value of that type is
+  // handled, so one superimposed from outside would silently
+  // change the analysis of code that cannot see it - including
+  // the package's own, which is analysed as if it were absent.
+  if (not Name->IsCompilerGeneratedType()) {
+    const auto is_marker =
+      TypeEq(*SuperClass, *COPY, *sm->CurrentScope, *sm->CurrentScope) or
+      TypeEq(*SuperClass, *DROP, *sm->CurrentScope, *sm->CurrentScope);
+
+    // A blanket "sup [T] T ext Copy" names a generic parameter
+    // rather than a type, so no package declares what it marks,
+    // and it marks every type there is.
+    auto owner_package = std::optional<Str>();
+    if (is_marker and base_cls_sym->Kind != TypeKind::GenericParam) {
+      owner_package = PackageOfScope(base_cls_sym->LinkedScope);
+    }
+
+    RaiseIf<SppSuperimpositionExternalMarkerExtensionError>(
+      is_marker and owner_package != PackageOfScope(sm->CurrentScope),
+      {sm->CurrentScope}, ERR_ARGS(*Name, *SuperClass));
+  }
 
   // Load the implementation and move out of the scope.
   Impl->Stage5_LoadSupScopes(sm, meta);
