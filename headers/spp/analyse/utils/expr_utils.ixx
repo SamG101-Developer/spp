@@ -33,13 +33,26 @@ namespace spp::analyse::utils::expr_utils {
     PrimaryExpressionOptions &&options = {})
     -> bool;
 
-  /// Check that there is no unreachable code by member ast
-  /// checking. Ie if there are expressions after a top level
-  /// terminating expression, then that is an error. Prevents
-  /// any dead code at all.
+  /// Whether control never continues past a statement: it is
+  /// written to leave ("ret", "exit", "skip", or a block/case
+  /// every path of which does), or its analysed type is "!" (a
+  /// call to "abort", a loop with no way out). A "let" diverges
+  /// when its value does. The statement must be analysed.
+  SPP_EXP_FUN auto Diverges(
+    StatementAst &stmt,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> bool;
+
+  /// Check that nothing follows a statement that diverges: the
+  /// "next" statement would be dead code. Called per statement,
+  /// after it is analysed and before "next" is. Todo: Replace
+  /// usages with "Diverges" and delete this function?
   SPP_EXP_FUN auto ValidateNoUnreachableCode(
-    Vec<StatementAst*> const &members,
-    ScopeManager const &sm)
+    StatementAst &member,
+    StatementAst const *next,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
     -> void;
 
   /// Prevent statements/expressions from being used whose
