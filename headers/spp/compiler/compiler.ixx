@@ -56,6 +56,11 @@ private:
 
   bool m_for_cpp_google_test = false;
 
+  /// Stop once the analysis is done, leaving monomorphisation, pre-codegen and codegen unrun. What an editor asks for
+  /// is decided by stage 9 - types, errors, what a name resolved to, what a "cmp" evaluated to - and the stages after
+  /// it cost more than every stage before them put together.
+  bool m_analyse_only = false;
+
   /// How many unit tests the generated harness runs. Read off the boot once parsing has written the harness.
   std::size_t m_test_count = 0;
 
@@ -102,6 +107,12 @@ public:
    * applied while the harness is written rather than when it runs.
    */
   auto SetTestFilters(Str name_filter, Str group_filter) const -> void;
+
+  /**
+   * Stop after stage 9 rather than going on to generate anything. Must be set before @c Compile . Nothing is written
+   * to the output tree in this mode, so the artefacts of a real build are left as they were.
+   */
+  auto SetAnalyseOnly(bool analyse_only) -> void;
 
   /** How many unit tests the generated harness ended up running. Valid once @c Compile has run. */
   SPP_ATTR_NODISCARD auto TestCount() const -> std::size_t;

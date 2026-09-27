@@ -3,10 +3,12 @@ module;
 
 module spp.compiler.compiler;
 
+import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.instantiation_queue;
+import spp.analyse.utils.resolution_index;
 import spp.asts.ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.identifier_ast;
@@ -92,6 +94,11 @@ auto spp::compiler::Compiler::Compile() -> bool {
 #if !SPP_DEBUG
   try {
 #endif
+    // Whatever a previous compile in this process recovered
+    // from, or resolved, is not this compile's.
+    analyse::errors::diagnostic_sink::Clear();
+    analyse::utils::resolution_index::Clear();
+
     m_boot->Lex(next_bar(), *m_modules);
     m_boot->Parse(next_bar(), *m_modules);
     m_test_count = m_boot->TestCount;
@@ -111,9 +118,17 @@ auto spp::compiler::Compiler::Compile() -> bool {
     m_boot->Stage8_CheckMemory(next_bar(), *m_modules, m_scope_manager.get());
     m_boot->Stage9_CompTimeResolve(next_bar(), *m_modules, m_scope_manager.get());
     CollectCompTimeConstants();
-    m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
-    m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
-    built = m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
+
+    // Builds that are "analyse only" (IDEA indexing), can stop
+    // after stage 9.
+    if (m_analyse_only or analyse::errors::diagnostic_sink::HasErrors()) {
+      built = not analyse::errors::diagnostic_sink::HasErrors();
+    }
+    else {
+      m_boot->Stage9_5_Monomorphise(next_bar(), *m_modules, m_scope_manager.get());
+      m_boot->Stage10_PreCodeGen(next_bar(), *m_modules, m_scope_manager.get());
+      built = m_boot->Stage11_CodeGen(next_bar(), *m_modules, m_scope_manager.get(), m_mode == Mode::REL ? 3u : 0u);
+    }
 #if !SPP_DEBUG
   }
   catch (...) {
@@ -134,6 +149,12 @@ auto spp::compiler::Compiler::SetTestFilters(
   -> void {
   m_boot->TestNameFilter = std::move(name_filter);
   m_boot->TestGroupFilter = std::move(group_filter);
+}
+
+auto spp::compiler::Compiler::SetAnalyseOnly(
+  const bool analyse_only)
+  -> void {
+  m_analyse_only = analyse_only;
 }
 
 auto spp::compiler::Compiler::TestCount() const
