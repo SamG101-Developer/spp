@@ -1041,6 +1041,18 @@ SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
     "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
 }
 
+SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarkerExtensionError(
+  Ast const &type,
+  Ast const &marker) {
+  AddHeader(111, "Superimposition External Marker Extension Error");
+  AddCtxForErr(&type, "Type superimposed over here");
+  AddErr(&marker, "Marker superimposed from outside its package here");
+  AddFooter(
+    "A marker decides how every value of a type is handled, so only the package declaring the type may superimpose "
+    "one over it.",
+    "Superimpose the marker where the type is declared, or wrap the type in one this package owns.");
+}
+
 SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
   Ast const &new_method,
   Ast const &super_class) {

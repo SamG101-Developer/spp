@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.errors.semantic_error;
+import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.types;
 import std;
@@ -79,6 +80,7 @@ use(spp::analyse::errors, struct SppDivisionByZeroError);
 use(spp::analyse::errors, struct SppShiftAmountOutOfBoundsError);
 use(spp::analyse::errors, struct SppSuperimpositionDoubleExtensionError);
 use(spp::analyse::errors, struct SppSuperimpositionSelfExtensionError);
+use(spp::analyse::errors, struct SppSuperimpositionExternalMarkerExtensionError);
 use(spp::analyse::errors, struct SppSuperimpositionExtensionMethodInvalidError);
 use(spp::analyse::errors, struct SppSuperimpositionExtensionNonVirtualMethodOverriddenError);
 use(spp::analyse::errors, struct SppSuperimpositionOptionalGenericParameterError);
@@ -153,6 +155,13 @@ SPP_EXP_CLS struct spp::analyse::errors::ErrorInformation {
   ErrorInformationKind Kind;
   Str Tag;
   Str Msg;
+
+  /// Where the ast sits in the source. Filled in as the error
+  /// is raised, which is the one moment the formatter that can
+  /// answer it is to hand, so that a caught error carries its
+  /// own positions and a consumer needs nothing else to place
+  /// them.
+  utils::errors::SourceSpan Span = {};
 };
 
 /// The base semantic error type forms the basis for all the
@@ -512,6 +521,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionDoubleExtensionError 
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionSelfExtensionError final : SemanticError {
   explicit SppSuperimpositionSelfExtensionError(Ast const &first_extension,
     Ast const &second_extension);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionExternalMarkerExtensionError final : SemanticError {
+  explicit SppSuperimpositionExternalMarkerExtensionError(Ast const &type,
+    Ast const &marker);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSuperimpositionExtensionMethodInvalidError final : SemanticError {
