@@ -43,8 +43,9 @@ namespace spp::asts {
     /// annotation tag into a genuine visibility tag. Returns
     /// std::nullopt if the annotation is not a visibility tag.
     auto VisibilityOf(Str const &fq_name) -> std::optional<Visibility> {
+      IMPORT_UTILS;
       // Declare enums to cast between.
-      using A = analyse::utils::annotation_utils::BuiltinAnnotations;
+      using A = annotation_utils::BuiltinAnnotations;
       using V = Visibility;
 
       // Simple comparison and return the actual visibility, or
@@ -128,6 +129,7 @@ auto AnnotationAst::Stage2_GenTopLvlScopes(
 
 auto AnnotationAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   // Get the fully qualified name of the annotation, to bypass
   // "use"-imports annotations. Needed to check if we are
   // currently analysing a "!annotation" annotation.
@@ -149,7 +151,7 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
   // so future steps can read off it properly. Root of all
   // annotations.
   if (fq_name == "std::annotations::annotation") {
-    RaiseIf<analyse::errors::SppAnnotationTargetNotACmpFunctionError>(
+    RaiseIf<SppAnnotationTargetNotACmpFunctionError>(
       not(func_ctx and func_ctx->TokCmp), {_Scope},
       ERR_ARGS(*this, *_Ctx));
     func_ctx->MarkAsAnnotation();
@@ -159,8 +161,8 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
 
 auto AnnotationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Handle builtin annotations.
-  using A = analyse::utils::annotation_utils::BuiltinAnnotations;
+  IMPORT_UTILS;
+  using A = annotation_utils::BuiltinAnnotations;
 
   // Analyse the target to ensure that it is valid. This needs
   // to *not* include the "()" call on it, just the actual
@@ -292,6 +294,7 @@ auto AnnotationAst::Stage5_LoadSupScopes(
 
 auto AnnotationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Todo: Validate "Void" return type on annotation + test.
 
   // Convert the target into a function call to ensure it exists
@@ -312,7 +315,7 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   // Check the target function is an annotation (via the "!annotation"
   // annotation).
   const auto overload = fn_ptr->Target();
-  RaiseIf<analyse::errors::SppAnnotationTargetNotAnAnnotationError>(
+  RaiseIf<SppAnnotationTargetNotAnAnnotationError>(
     not overload->GetAnnotationInfo(),
     {_Scope}, ERR_ARGS(*this, *overload));
 
@@ -323,8 +326,8 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
 
 auto AnnotationAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::annotation_utils::AnnotationInfo;
-  using analyse::errors::SppCalledAnnotationAppliedToInvalidAstError;
+  IMPORT_UTILS;
+  using annotation_utils::AnnotationInfo;
 
   // Load up different asts casts that an annotation may apply to.
   // These can receive the property fine-tune updates based on the
