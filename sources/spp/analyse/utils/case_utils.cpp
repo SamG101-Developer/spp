@@ -7,12 +7,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.linear_utils;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.boolean_literal_ast;
+import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_destructure_array_ast;
@@ -23,8 +24,6 @@ import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
-import spp.asts.case_pattern_variant_single_identifier_ast;
-import spp.asts.class_prototype_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
@@ -35,9 +34,10 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.is_expression_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.literal_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.object_initializer_ast;
+import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -45,8 +45,6 @@ import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
-import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
@@ -127,29 +125,6 @@ namespace spp::analyse::utils::case_utils {
       return field_ptr;
     }
 
-    /// Compare two escaping-borrow container lists by the memory
-    /// regions they each name. Each branch of a "case" builds
-    /// its own ast nodes, so the same borrow written in two
-    /// branches is two pointers but one region, and only the
-    /// region is that makes the branches disagree or agree.
-    /// Todo: Verify this.
-    auto EscapingBorrowContainersDiffer(
-      Vec<Tup<Ast const*, Ast const*>> const &lhs,
-      Vec<Tup<Ast const*, Ast const*>> const &rhs)
-      -> bool {
-      // The region converter takes the escaping borrows lists
-      // and stringifies them, then sorts and compares.
-      const auto regions = [](auto const &list) {
-        auto out = Vec<Str>();
-        for (auto const &[container, borrow] : list) {
-          out.EmplaceBack(container->ToString() + " <- " + borrow->ToString());
-        }
-        genex::actions::sort(out);
-        return out;
-      };
-      return regions(lhs) != regions(rhs);
-    }
-
     /// Build the "cond.<field>.eq(&literal)" for a literal
     /// element of a pattern, analyse it where the pattern is
     /// (and walk back the scope as the condition might
@@ -213,7 +188,7 @@ namespace spp::analyse::utils::case_utils {
         }
       }
 
-      // Todo: move "max length" into type_utils function, and route the
+      // Todo: move "max length" into type_resolution function, and route the
       //  "is in bounds" through that too.
       auto num_rhs_elems = std::optional<std::size_t>{};
       const auto real_index = [&](const std::size_t i) -> std::size_t {
@@ -377,8 +352,17 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // back to the binding, so shouldn't be considered for type
   // checking.
   auto valued_branches_type_info = branches_type_info
-    | genex::views::remove_if([](auto const &x) { return x.first->Body->Terminates(); })
+    | genex::views::remove_if([&sm, meta](auto const &x) { return control_flow::Diverges(*x.first->Body, &sm, meta); })
     | genex::to<Vec>();
+
+  // When every branch diverges, the ones typed "!" stand for the
+  // case (it fits whatever it is assigned to); a "ret" branch's
+  // own type is "Void", which the case never produces.
+  if (valued_branches_type_info.IsEmpty()) {
+    valued_branches_type_info = branches_type_info
+      | genex::views::filter([](auto const &x) { return x.second->IsNeverType(); })
+      | genex::to<Vec>();
+  }
   if (valued_branches_type_info.IsEmpty()) { valued_branches_type_info = branches_type_info; }
 
   // Filter the branch types down to variant types for custom
@@ -437,7 +421,9 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   if (not mismatch_branches_type_info.IsEmpty()) {
     const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
     const auto [master_branch, master_branch_type] = master_branch_type_info;
-    const auto final_member = master_branch ? master_branch->Body->FinalMember() : meta->AssignmentTarget.get();
+    const auto final_member = master_branch != nullptr ? master_branch->Body->FinalMember()
+      : meta->AssignmentTarget != nullptr ? static_cast<Ast*>(meta->AssignmentTarget.get())
+      : mismatch_branch->Body->FinalMember();
     Raise<SppTypeMismatchError>(
       {sm.CurrentScope},
       ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
