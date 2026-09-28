@@ -4,9 +4,9 @@ module;
 export module spp.analyse.utils.annotation_utils;
 import std;
 
-use(spp::asts, struct AnnotationAst);
 use(spp::analyse::utils::annotation_utils, struct AnnotationInfo);
 use(spp::analyse::utils::annotation_utils, struct BuiltinAnnotations);
+use(spp::asts, struct AnnotationAst);
 
 /// The AnnotationInfo holds a small set of metadata about an
 /// annotation, used to enforce the validity of an annotation
@@ -18,8 +18,6 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   constexpr static auto kClassContext = 8;
   constexpr static auto kTypeStmtCtx = 16;
   constexpr static auto kCmpStmtCtx = 32;
-
-  std::uint32_t Ctx = 0; // Dead code?
 
   /// For functions that themselves are annotations, like "fun
   /// public" is, bind the !annotation annotation onto it. This
@@ -46,8 +44,8 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
   constexpr static auto kZeroType = "std::annotations::zero_type";
   constexpr static auto kThreadHazard = "std::annotations::thread_hazard";
   constexpr static auto kTest = "std::annotations::test";
-  constexpr static auto kCfg = "std::annotations::cfg";
-  constexpr static auto kVersioned = "std::annotations::versioned";
+  constexpr static auto kCfg = "std::annotations::cfg"; // TODO: HANDLE
+  constexpr static auto kVersioned = "std::annotations::versioned"; // TODO: HANDLE
   constexpr static auto kLlvmInline = "std::llvm::inline";
   constexpr static auto kLlvmAlwaysInline = "std::llvm::always_inline";
   constexpr static auto kLlvmNoInline = "std::llvm::noinline";
