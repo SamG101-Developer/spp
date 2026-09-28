@@ -36,7 +36,7 @@ jobs:
 
       # uv manages the documentation build's own Python environment, from the lockfile at the repository root.
       - name: Set up uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
