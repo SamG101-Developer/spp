@@ -12,17 +12,18 @@ use(spp::asts, struct Ast);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::linear_utils {
-  /// Record what the deferred statements for this scope take
-  /// when they run. A defer doesn't consume anything when
-  /// written, because by definition it is being deferred to
-  /// the end of the scope. So only when the scope leaves do
-  /// the deferred statements run, followed by linear memory
-  /// system checks.
+  /// Check and record what the deferred statements for this
+  /// scope do when they run. A defer does nothing when written,
+  /// because by definition it is being deferred to the end of
+  /// the scope. So only when the scope leaves do the deferred
+  /// statements run, each checked against the state this exit
+  /// is reached with ("DeferStatementAst::CheckAtExit").
   SPP_EXP_FUN auto CheckDeferredForScope(
     Scope const &scope,
     Ast const &exit_point,
     StrView exit_what,
-    ScopeManager &sm)
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 
   /// Check all the symbols created in the scope, and ensure

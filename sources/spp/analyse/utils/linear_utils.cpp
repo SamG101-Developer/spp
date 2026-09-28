@@ -99,38 +99,13 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
   Scope const &scope,
   Ast const &exit_point,
   const StrView exit_what,
-  ScopeManager &sm)
+  ScopeManager &sm,
+  CompilerMetaData *meta)
   -> void {
   // Reverse order: the statements run last-registered-first,
   // so a value deferred after another is released first.
   for (auto i = scope.Deferred.Len(); i > 0uz; --i) {
-    const auto stmt = scope.Deferred[i - 1uz];
-
-    // Resolved by name against this scope, so that an
-    // instantiation's own copies of the symbols are the ones
-    // marked.
-    for (auto const &name : stmt->Consumed) {
-      const auto sym = scope.GetVarSymbolOutermost(*name).first;
-      if (sym == nullptr) { continue; }
-
-      // Running a deferred expression consumes what it names,
-      // so reaching this exit with the value already gone means
-      // it is consumed twice on this path. Raise memory error.
-      if (const auto where_moved = spp::get<0>(sym->MemInfo->AstMoved); where_moved != nullptr) {
-        Raise<errors::SppDeferConsumesMovedValueError>(
-          {sm.CurrentScope}, ERR_ARGS(*stmt, *where_moved, exit_point, name->Val, exit_what));
-      }
-
-      // The same thing one branch at a time. A "case" leaves the
-      // state of its first branch behind, so a value consumed
-      // only in a later branch reads as live here while the
-      // inconsistency flag is what remembers the disagreement -
-      // and a deferred expression cannot be conditional,
-      // because there is no flag at runtime to make it so.
-      mem_utils::RaiseIfInconsistentlyMoved(*sym, *stmt, sm.CurrentScope);
-
-      sym->MemInfo->MovedBy(exit_point, sm.CurrentScope);
-    }
+    scope.Deferred[i - 1uz]->CheckAtExit(exit_point, exit_what, sm, meta);
   }
 }
 
@@ -149,11 +124,15 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // even though the mark itself is not made until the branches are done. Leaving a branch early is not what
     // abandoned it.
     //
-    // Matched by name rather than by symbol, because a pattern that narrows the subject adds a flow-typed symbol of
-    // its own to the branch scope - same name, same storage, narrower type - and that one is what a check inside the
-    // branch actually finds.
-    if (meta != nullptr and sym->Name != nullptr and genex::any_of(
-      meta->CaseConsumedSubjects, [&sym](auto const &subject) { return *sym->Name == *subject; })) { continue; }
+    // A pattern that narrows the subject adds a flow-typed symbol of its own to the branch scope - same name, same
+    // storage, narrower type - and that one is what a check inside the branch actually finds, so a symbol narrowing
+    // the subject is the subject too. Matched by symbol, not name: anything else spelled the same (a closure's
+    // parameter) is a different value that is still owed.
+    const auto is_subject = [&](VariableSymbol const *subject) {
+      for (auto const *s = sym; s != nullptr; s = s->NarrowsSym.get()) { if (s == subject) { return true; } }
+      return false;
+    };
+    if (meta != nullptr and genex::any_of(meta->CaseConsumedSubjects, is_subject)) { continue; }
 
     // A symbol declared after the point control leaves from does not hold anything yet: a "ret" part-way through a
     // scope is reached before the "let"s below it ever run. Stage 7 fills the initialization ast in for every symbol
@@ -200,7 +179,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
   // had already happened.
   const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFunctionScope);
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
-    CheckDeferredForScope(*scope, exit_point, exit_what, sm);
+    CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
     if (scope == meta->EnclosingFunctionScope) { break; }
   }
@@ -232,7 +211,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
       if (loops_seen > num_exits) { break; }
     }
 
-    CheckDeferredForScope(*scope, exit_point, exit_what, sm);
+    CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
     if (is_loop and loops_seen == num_exits and not has_skip) { break; }
     if (scope == meta->EnclosingFunctionScope) { break; }
