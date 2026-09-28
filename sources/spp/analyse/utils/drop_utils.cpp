@@ -1,29 +1,31 @@
 module;
-#include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.drop_utils;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.overload_utils;
+import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.overload_resolution;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
-import spp.asts.annotation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import genex;
 
 namespace spp::analyse::utils::drop_utils {
   namespace {
-    using func_utils::FunctionOverload;
+
+    using overload_resolution::FunctionOverload;
 
     /// Find an overload for a types destructor, rather than
     /// just the prototype; instantiating it needs the block
@@ -63,7 +65,7 @@ namespace spp::analyse::utils::drop_utils {
       const auto superimposes_drop = genex::any_of(
         type_sym.LinkedScope->SupScopes(), [&](auto const *sup_scope) {
           if (sup_scope->TySym == nullptr) { return false; }
-          return type_predicates::IsTemplate(*sup_scope->TySym, *DROP, *sup_scope);
+          return type_compare::IsTemplate(*sup_scope->TySym, *DROP, *sup_scope);
         });
       if (not superimposes_drop) { return none(); }
 
@@ -73,7 +75,7 @@ namespace spp::analyse::utils::drop_utils {
       // implementation inherited from a type it extends
       // are both found here.
       const auto drop_name = IdentifierAst(0, "drop");
-      auto overloads = func_utils::GetAllFunctionScopes(
+      auto overloads = overload_resolution::GetAllFunctionScopes(
         drop_name, type_sym.LinkedScope, sm, meta);
 
       for (auto &overload : overloads) {
@@ -117,9 +119,9 @@ namespace spp::analyse::utils::drop_utils {
       // will only instantiate it if it hasn't already been).
       auto tm = ScopeManager(sm.GlobalScope, sym.LinkedScope);
       return instantiate
-        ? overload_utils::InstantiateOverload(
+        ? monomorphization::InstantiateOverload(
           overload.Proto, overload.FnScope, *overload.SupGenerics, &tm, meta)
-        : overload_utils::FindInstantiatedOverload(
+        : monomorphization::FindInstantiatedOverload(
           overload.Proto, *overload.SupGenerics, &tm);
     }
   }
@@ -215,4 +217,55 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
 
   // Recursive drop search.
   walk(walk, type_sym);
+}
+
+/**
+ * Raise if @p sym holds a value with a destructor that can no longer be run, because a part of it has been moved
+ * out and nothing put one back. Asked of every place a recorded move reached through, not only of @p sym itself:
+ * @c {o.inner.val} leaves @c {o.inner} unable to be destroyed even when @c {o} has no destructor of its own. Only
+ * a type with a @c drop of its own has anything to lose here: everything else is destroyed field by field, which
+ * a partial move has already done for the parts it took.
+ * @param sym The symbol being checked.
+ * @param exit_point The ast to report the error against.
+ * @param sm The scope manager, positioned where the symbol's type resolves from.
+ * @param meta Associated metadata, for resolving the destructor overload.
+ */
+auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
+  VariableSymbol const &sym,
+  Ast const &exit_point,
+  ScopeManager &sm,
+  meta::CompilerMetaData *const meta)
+  -> void {
+  // Nothing taken out of it is nothing to put back.
+  if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return; }
+  if (sym.Type == nullptr) { return; }
+
+  // A borrow does not own what it points at, so the value
+  // behind it is not this scope's to destroy.
+  if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return; }
+  if (sym.Type->GetConvention() != nullptr) { return; }
+
+  const auto root_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
+  for (auto const *move : sym.MemInfo->AstPartialMoves) {
+    // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
+    // own type first, then one step further in for each name the path passes on its way. The place the move
+    // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
+    // it, and only taking something from inside a value strands the value's own. That is what stops the last
+    // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
+    const auto path = regions::RegionPath(*move);
+
+    for (auto i = 0uz; i + 1 < path.Len(); ++i) {
+      const auto [type_sym, part_scope] = regions::DescendToPart(root_sym, *sm.CurrentScope, path, i);
+      if (type_sym == nullptr or part_scope == nullptr) { break; }
+
+      const auto destructor = drop_utils::FindDropOverload(*type_sym, sm, meta);
+      if (destructor == nullptr) { continue; }
+
+      // Held in a local so the view handed to the error
+      // outlives it.
+      const auto owner_name = type_sym->FqName()->WithoutGenerics()->ToString();
+      Raise<errors::SppPartialMoveOfDestructibleValueError>(
+        {sm.CurrentScope}, ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
+    }
+  }
 }
