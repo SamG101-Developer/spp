@@ -14,10 +14,6 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::type_predicates {
-  /// Check if a type symbol is the tuple type symbol. Used
-  /// to optimize tuple-[early return guards].
-  SPP_EXP_FUN auto IsTupSymbol(TypeSymbol const &sym) -> bool;
-
   /// Check if "Self" appears anywhere in a type, at any depth
   /// ("Opt[Self]", "&Self"), not only as the whole type.
   SPP_EXP_FUN auto NamesSelfType(TypeAst const &type) -> bool;

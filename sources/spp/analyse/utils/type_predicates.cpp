@@ -33,16 +33,6 @@ auto spp::analyse::utils::type_predicates::NamesSelfType(
   return type.AnyPart([](TypeIdentifierAst const &part) { return part.Name == "Self"; });
 }
 
-auto spp::analyse::utils::type_predicates::IsTupSymbol(
-  TypeSymbol const &sym)
-  -> bool {
-  // Compared against the precompiled name rather than through a scope, because the symbol's own qualified name is
-  // already the answer: an alias for the tuple resolves to "std::tuple::Tup" just as the type itself does.
-  using generate::common_types_precompiled::TUP;
-  const auto as_unary = dynamic_shared_cast<TypeUnaryExpressionAst>(sym.FqName()->WithoutGenerics());
-  return as_unary != nullptr and *as_unary == *TUP->ToUnchecked<TypeUnaryExpressionAst>();
-}
-
 auto spp::analyse::utils::type_predicates::IsTypeGen(
   TypeSymbol const &sym,
   Scope const &scope)
