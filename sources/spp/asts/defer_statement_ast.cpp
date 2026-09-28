@@ -76,7 +76,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
   RaiseIf<SppDeferTerminatesError>(
-    Expr->Terminates(), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
+    analyse::utils::expr_utils::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value

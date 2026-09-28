@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
@@ -19,7 +20,6 @@ import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.identifier_ast;
-import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -98,25 +98,21 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   meta->EnclosingFunctionCmp = TokCmp.get();
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
-  // Handle the "!" never type.
-  auto tm = ScopeManager(
-    sm->GlobalScope, sm->CurrentScope->Children[0].get());
-  const auto is_never = [&] {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->IgnoreMissingElseBranchForInference = true;
-    return not Impl->Members.IsEmpty() and Impl->FinalMember()->To<StatementAst>()->InferTypeRef(&tm, meta).IsNever;
-  }();
-
   // Check for a void return type.
   const auto is_void = TypeEq(
     *ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope);
 
-  // Check there is a return statement at the end (for non-void functions).
+  // Check there is a return statement at the end (for non-void
+  // functions).
   const auto final_member = Impl->FinalMember();
   const auto annotation_blocks_ret = FfiAnnotation or BuiltinAnnotation or AbstractAnnotation;
-  const auto final_member_check = (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>());
+
+  // A body that never reaches its end ("ret", "abort()", a loop
+  // with no way out, a "case" every branch of which does one of
+  // those) needs no value there.
+  const auto body_diverges = analyse::utils::expr_utils::Diverges(*Impl, sm, meta);
   RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
-    is_void or is_never or annotation_blocks_ret or final_member_check,
+    is_void or annotation_blocks_ret or body_diverges,
     {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
