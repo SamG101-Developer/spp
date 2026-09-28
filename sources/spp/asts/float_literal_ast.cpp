@@ -109,7 +109,7 @@ auto FloatLiteralAst::BigVal() const -> numex::BigDec {
 
 auto FloatLiteralAst::ValidateBounds(
   Ast const &owner, Scope const &scope) const -> void {
-  using analyse::errors::SppFloatOutOfBoundsError;
+  IMPORT_UTILS;
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.
@@ -182,7 +182,7 @@ auto FloatLiteralAst::Stage11_CodeGen(
 auto FloatLiteralAst::_PrecompiledTypeSym(
   ScopeManager *sm) const -> TypeSymbol* {
   //
-  using analyse::errors::SppInternalCompilerError;
+  IMPORT_UTILS;
   using namespace generate::common_types_precompiled;
 
   // Map the type string literal to the correct SPP type.

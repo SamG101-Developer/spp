@@ -81,10 +81,7 @@ auto PostfixExpressionOperatorIndexAst::ToString() const -> Str {
 auto PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   if (_MappedFunc != nullptr) { return; }
 
   // Determine the left-hand-side type.

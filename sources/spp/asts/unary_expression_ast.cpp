@@ -52,8 +52,7 @@ auto UnaryExpressionAst::ToString() const -> Str {
 auto UnaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   // "async" lowers the call into a closure, and has to rebuild
   // it from how it was written. Analysis rewrites a call's args
@@ -66,7 +65,7 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
   // Analyse the operator and right-hand-side expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Expr, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
   const auto _meta_guard = MetaGuard(meta);

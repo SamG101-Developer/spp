@@ -11,16 +11,16 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.builtins;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.instantiation_queue;
+import spp.analyse.utils.function_values;
 import spp.analyse.utils.linear_utils;
-import spp.analyse.utils.resolution_index;
+import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -59,9 +59,11 @@ import spp.asts.mixins.compiler_stages;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
+import spp.codegen.builtins;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import genex;
 
 SPP_MOD_BEGIN
@@ -138,8 +140,9 @@ auto FunctionPrototypeAst::ToString() const -> Str {
 
 auto FunctionPrototypeAst::GenerateLlvmDeclaration(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> Shared<codegen::LlvmFuncWrapper> {
+  IMPORT_UTILS;
   // Generate the return and parameter types.
-  using A = analyse::utils::annotation_utils::BuiltinAnnotations;
+  using A = annotation_utils::BuiltinAnnotations;
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGeneric(
     sm, meta, ctx);
 
@@ -334,8 +337,8 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
 
 auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   using analyse::scopes::ScopeBlockName;
-  using analyse::errors::SppSelfIdentifierInvalidContextError;
 
   // Create a new scope for the function prototype, and
   // move into it.
@@ -380,8 +383,7 @@ auto FunctionPrototypeAst::Stage4_ResolveDeclarations(
 
 auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
 
   // Analyse the signature before sup scopes are attached.
   sm->MoveToNextScope();
@@ -397,7 +399,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
         if (mock_sym->Kind == VariableKind::Function) {
           // Enforce that all overloads have the same
           // visibility.
-          RaiseIf<analyse::errors::SppFunctionOverloadVisibilityMismatchError>(
+          RaiseIf<SppFunctionOverloadVisibilityMismatchError>(
             mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.first,
             {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
           mock_sym->Visibility = Visibility.first;
@@ -408,13 +410,13 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   }
 
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
-  ReturnType = analyse::utils::type_utils::ResolveWrittenType(
-    *ReturnType, *sm, *meta, analyse::utils::type_utils::SelfPolicy::kKeep);
+  ReturnType = type_resolution::ResolveWrittenType(
+    *ReturnType, *sm, *meta, analyse::utils::type_resolution::SelfPolicy::kKeep);
 
   // Ensure the function's return type does not have
   // a convention.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*ReturnType, *sm),
+    type_predicates::IsTypeBorrowed(*ReturnType, *sm),
     {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
   sm->MoveOutOfCurrentScope();
@@ -422,9 +424,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
 
 auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::func_utils::CheckForConflictingOverload;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
-  using analyse::errors::SppFunctionPrototypeConflictError;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::SELF_VAR;
 
   // Perform conflict checking before standard semantic
@@ -453,7 +453,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // aren't reachable from its class scope until now.
   // Todo: Maybe need 2 scopes if the conflict is across
   //  modules (if possible, esp in sup-blocks)?
-  const auto conflict = CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
+  const auto conflict = function_values::CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
   RaiseIf<SppFunctionPrototypeConflictError>(
     conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
 
@@ -462,13 +462,13 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     const auto self_sym = sm->CurrentScope->GetVarSymbol(SELF_VAR.get(), true);
     const auto self_conv = self_param->Conv.get();
 
-    self_sym->Type = SubstituteSelfTypeAndAnalyse(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(
+    self_sym->Type = self_type::SubstituteSelfTypeAndAnalyse(*self_sym->Type, *sm->CurrentScope, *sm, *meta)->WithConvention(
       AstClone(self_conv));
 
     for (auto const &param : FnParamGroup->GetAllParams()) {
       const auto var_sym = sm->CurrentScope->GetVarSymbol(param->ExtractName().get());
       if (var_sym == nullptr) { continue; } // Destructuring parameters.
-      var_sym->Type = SubstituteSelfTypeAndAnalyse(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
+      var_sym->Type = self_type::SubstituteSelfTypeAndAnalyse(*var_sym->Type, *sm->CurrentScope, *sm, *meta);
     }
   }
 
@@ -489,6 +489,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
 auto FunctionPrototypeAst::_InstallLoweredImpl(
   ScopeManager *sm) -> void {
+  IMPORT_UTILS;
   //
   if (BuiltinAnnotation) {
     const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
@@ -510,23 +511,20 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
     forget_body_asts(forget_body_asts, sm->CurrentScope);
 
     const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
-    RaiseIf<analyse::errors::SppInternalCompilerError>(
-      not analyse::utils::builtins::kBuiltinFuncs.contains(name),
+    RaiseIf<SppInternalCompilerError>(
+      not codegen::builtins::kBuiltinFuncs.contains(name),
       {sm->CurrentScope}, ERR_ARGS(*Name, err1));
 
     const auto err2 = "compiler_builtin function '" + name + "' missing builtin comptime implementation";
-    RaiseIf<analyse::errors::SppInternalCompilerError>(
-      TokCmp != nullptr and analyse::utils::builtins::kBuiltinFuncs.at(name).cmp_fn == nullptr,
+    RaiseIf<SppInternalCompilerError>(
+      TokCmp != nullptr and codegen::builtins::kBuiltinFuncs.at(name).cmp_fn == nullptr,
       {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
   }
 }
 
 auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppEmptyBodyRequiredError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // Move into the function scope, as it is now ready for
   // semantic analysis.
@@ -541,7 +539,6 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // annotation binds, because that runs per-annotation and
   // has no view of the rest of the prototype.
   if (TestAnnotation != nullptr) {
-    using analyse::errors::SppUnitTestInvalidSignatureError;
     using generate::common_types_precompiled::VOID;
     const auto bad = [&](const StrView requirement) {
       Raise<SppUnitTestInvalidSignatureError>(
@@ -550,7 +547,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
     if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
     if (not FnParamGroup->Params.IsEmpty()) { bad("declares parameters"); }
     if (not GnParamGroup->Params.IsEmpty()) { bad("declares generic parameters"); }
-    if (not TypeEq(*ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope)) {
+    if (not type_compare::TypeEq(*ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope)) {
       bad("does not return 'Void'");
     }
   }
@@ -571,7 +568,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
   // Repeated convention check for generic substitutions.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*ReturnType, *sm),
+    type_predicates::IsTypeBorrowed(*ReturnType, *sm),
     {sm->CurrentScope}, ERR_ARGS(
       *ReturnType, *ReturnType, "function return type"));
 
@@ -595,7 +592,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the function scope, as it is now ready for
   // memory checking.
-  using namespace analyse::utils;
+  IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
@@ -615,7 +612,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
     // overrides it. There is no body that could have consumed the
     // parameters, so there is nothing to hold to the rule.
     if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-      and not analyse::utils::expr_utils::Diverges(*Impl, sm, meta)) {
+      and not control_flow::Diverges(*Impl, sm, meta)) {
       linear_utils::CheckScopeExit(
         *sm->CurrentScope, *Impl, "Function end", *sm, meta);
     }
@@ -624,8 +621,8 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   // What the function's own scope holds - its parameters and
   // its generic parameters - which can be named anywhere in
   // it, for an editor offering names.
-  if (resolution_index::IsEnabled()) {
-    resolution_index::RecordScopeOf(*this, *sm);
+  if (lsp::resolution_index::IsEnabled()) {
+    lsp::resolution_index::RecordScopeOf(*this, *sm);
   }
 
   // Move out of the function scope, as it is now complete.
@@ -692,6 +689,7 @@ auto FunctionPrototypeAst::_CodeGenGenericSubstitutions(
 
 auto FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Iterating while appending is deliberate, and is why the
   // substitutions are held in a list: analysing one instantiation
   // can instantiate this very prototype again (a generic function
@@ -758,8 +756,8 @@ auto FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr and not analyse::utils::expr_utils::Diverges(*sub.Proto->Impl, &tm, meta)) {
-      analyse::utils::linear_utils::CheckScopeExit(
+      and sub.Proto->AbstractAnnotation == nullptr and not control_flow::Diverges(*sub.Proto->Impl, &tm, meta)) {
+      linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
 
@@ -769,6 +767,7 @@ auto FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
 
 auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   FunctionPrototypeAst const &sub_proto, ScopeManager &tm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
   if (sub_proto.BuiltinAnnotation == nullptr) { return; }
 
@@ -783,7 +782,7 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   const auto t_ast = TypeIdentifierAst::FromString("T");
   const auto t_sym = tm.CurrentScope->GetTypeSymbol(t_ast.get());
   if (t_sym == nullptr) { return; }
-  analyse::utils::drop_utils::EnsureDropInstantiated(*t_sym, tm, meta);
+  drop_utils::EnsureDropInstantiated(*t_sym, tm, meta);
 }
 
 auto FunctionPrototypeAst::GetFfiSymbolName() const -> Str {
@@ -837,6 +836,7 @@ auto FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
 
 auto FunctionPrototypeAst::RegisterGenericSubstitution(
   Unique<Scope> &&scope, Unique<FunctionPrototypeAst> &&new_ast, Unique<GenericArgumentGroupAst> &&gn_args) -> void {
+  IMPORT_UTILS;
   // Store the scope for object persistence (and codegen), keyed
   // by the arguments that produced it.
   _GenericSubstitutions.emplace_back(
@@ -853,7 +853,7 @@ auto FunctionPrototypeAst::RegisterGenericSubstitution(
   // happens to live, from wherever the call that produced it was
   // written. Record the template so the monomorphisation stage
   // comes back for it.
-  analyse::utils::instantiation_queue::Enqueue(this);
+  monomorphization::EnqueueInstantiation(this);
 }
 
 auto FunctionPrototypeAst::FindGenericSubstitution(
@@ -890,8 +890,9 @@ auto FunctionPrototypeAst::GetNonGenericImpl() const -> FunctionPrototypeAst* {
 }
 
 auto FunctionPrototypeAst::MarkAsAnnotation() -> void {
+  IMPORT_UTILS;
   // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
-  _AnnotationInfo = MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>();
+  _AnnotationInfo = MakeUnique<annotation_utils::AnnotationInfo>();
 }
 
 auto FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo* {
@@ -899,6 +900,7 @@ auto FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotati
 }
 
 auto FunctionPrototypeAst::_DeduceMockClassType() const -> Pair<Shared<TypeAst>, Str> {
+  IMPORT_UTILS;
   //
   using generate::common_types::FunMovType;
   using generate::common_types::FunMutType;
@@ -911,10 +913,10 @@ auto FunctionPrototypeAst::_DeduceMockClassType() const -> Pair<Shared<TypeAst>,
   if (const auto sup_ctx = _Ctx->To<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) { owner = sup_ctx->Name; }
   if (const auto ext_ctx = _Ctx->To<SupPrototypeExtensionAst>(); ext_ctx != nullptr) { owner = ext_ctx->Name; }
   const auto with_owner = [&owner](Shared<TypeAst> const &type) -> Shared<TypeAst> {
-    if (owner == nullptr or not analyse::utils::type_predicates::NamesSelfType(*type)) {
+    if (owner == nullptr or not type_predicates::NamesSelfType(*type)) {
       return type;
     }
-    return analyse::utils::type_utils::SubstituteSelfTypeWith(*type->WithoutConvention(), *owner)
+    return self_type::SubstituteSelfTypeWith(*type->WithoutConvention(), *owner)
       ->WithConvention(AstClone(type->GetConvention()));
   };
 
@@ -955,10 +957,10 @@ auto FunctionPrototypeAst::_IsPureGeneric(
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx const *ctx) const -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   //
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
+  IMPORT_UTILS;
 
   // Convert the return and parameter types to LLVM types.
-  const auto ret_type = SubstituteSelfTypeAndAnalyse(
+  const auto ret_type = self_type::SubstituteSelfTypeAndAnalyse(
     *ReturnType, *sm->CurrentScope, *sm, *meta);
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(
     TypeRef::Of(*ret_type, *sm->CurrentScope), ctx);
@@ -975,7 +977,7 @@ auto FunctionPrototypeAst::_IsPureGeneric(
         ? VariadicPackType
         : x->Type;
 
-      const auto param_type = SubstituteSelfTypeAndAnalyse(
+      const auto param_type = self_type::SubstituteSelfTypeAndAnalyse(
         *source_type, *sm->CurrentScope, *sm, *meta);
 
       return codegen::GetLlvmTypeOf(
@@ -993,7 +995,7 @@ auto FunctionPrototypeAst::_IsPureGeneric(
       llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_type = SubstituteSelfTypeAndAnalyse(
+      const auto self_type = self_type::SubstituteSelfTypeAndAnalyse(
         *self_param->Type, *sm->CurrentScope, *sm, *meta);
       const auto self_ty_sym = sm->CurrentScope->GetTypeSymbol(self_type.get());
       const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);

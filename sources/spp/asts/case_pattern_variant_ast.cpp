@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_pattern_variant_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.case_utils;
 import spp.asts.boolean_literal_ast;
@@ -40,23 +42,23 @@ auto CasePatternVariantAst::ConvToVar(
 auto CasePatternVariantAst::AnalyseDestructure(
   ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta) -> void {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
+  IMPORT_UTILS;
   // Create the new variable from the pattern, in the
   // pattern's scope.
   auto var = ConvToVar(meta);
   _MappedLet = MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(var), nullptr, nullptr, AstClone(cond));
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-  CreateAndAnalysePatternEqFuncsDummyCore(
+  case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
     elems, sm, meta);
 }
 
 auto CasePatternVariantAst::ResolveDestructure(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta) const -> void {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
+  IMPORT_UTILS;
   // Transform the pattern into comptime values: all of them
   // must be true for it to match.
-  const auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
+  const auto comptime_transforms = case_utils::CreateAndAnalysePatternEqCompTime(
     elems, sm, meta);
   const auto all_true = genex::all_of(
     comptime_transforms, [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });

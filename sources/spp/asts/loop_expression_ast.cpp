@@ -46,8 +46,7 @@ LoopExpressionAst::~LoopExpressionAst() = default;
 auto LoopExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types::VoidType;
 
   // Get the loop's exit type (or Void if there are no
@@ -75,7 +74,7 @@ auto LoopExpressionAst::InferType(
       : *sm->CurrentScope;
 
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
+      not type_compare::TypeEq(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
   }
 

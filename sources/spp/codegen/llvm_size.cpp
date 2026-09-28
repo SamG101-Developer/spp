@@ -80,7 +80,7 @@ namespace spp::codegen {
     using namespace spp;
     using codegen::Layout;
     using analyse::utils::type_compare::VariantMembers;
-    using analyse::utils::type_predicates::IsTemplate;
+    using analyse::utils::type_compare::IsTemplate;
     using analyse::utils::type_predicates::IsTypeArr;
     using analyse::utils::type_predicates::IsTypeFunc;
     using analyse::utils::type_predicates::IsTypeGen;

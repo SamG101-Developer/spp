@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_type_inline_constraints_ast;
 import spp.asts.token_ast;
@@ -133,7 +133,7 @@ auto GenericParameterGroupAst::OptToReq() const -> Unique<GenericParameterGroupA
 
 auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppIdentifierDuplicateError;
+  IMPORT_UTILS;
 
   // Checked here rather than at stage 7, where the rest of
   // this group's validation lives, because the parameters
@@ -189,11 +189,11 @@ auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
 
 auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppOrderInvalidError;
+  IMPORT_UTILS;
 
   // Duplicate parameter names are caught at stage 2, before
   // the symbols are registered.
-  const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
+  const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());

@@ -12,6 +12,8 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+use_ns(spp::analyse::utils);
+
 SPP_MOD_BEGIN
 auto ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
   Unique<ExpressionAst> &&val) -> Unique<ObjectInitializerArgumentShorthandAst> {
@@ -56,7 +58,7 @@ auto ObjectInitializerArgumentShorthandAst::ToString() const -> Str {
 
 auto ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppObjectInitializerInvalidArgumentError;
+  IMPORT_UTILS;
 
   // The parser allows Type(123) as a postfix function call
   // over a type, which is invalid as type initialization.

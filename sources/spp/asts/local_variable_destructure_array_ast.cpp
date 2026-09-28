@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_predicates;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.expression_ast;
@@ -81,12 +82,7 @@ auto LocalVariableDestructureArrayAst::BindsByMove() const -> bool {
 
 auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppMultipleRestPatternsError;
-  using analyse::errors::SppVariableArrayDestructureArraySizeMismatchError;
-  using analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError;
-  using analyse::utils::destructure_utils::BindDestructureTemporary;
-  using analyse::utils::destructure_utils::IsDestructurePlaceExpression;
-  using analyse::utils::type_predicates::IsTypeArr;
+  IMPORT_UTILS;
 
   // Only 1 "multi-skip" allowed in a destructure.
   const auto multi_arg_skips = Elems
@@ -102,7 +98,7 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
   RaiseIf<SppVariableArrayDestructureArrayTypeMismatchError>(
-    not IsTypeArr(TypeRef::OfHead(*val_type, *sm->CurrentScope), *sm->CurrentScope),
+    not type_predicates::IsTypeArr(TypeRef::OfHead(*val_type, *sm->CurrentScope), *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*this, *val, *val_type));
 
   // Determine number of elements in the left-hand-side and
@@ -122,8 +118,8 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   // for the whole pattern. Effectively, materialize the rhs
   // and index on it.
   auto effective_val = static_cast<const ExpressionAst*>(val);
-  if (not IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
-    _TmpName = BindDestructureTemporary(val, val_type, *sm);
+  if (not regions::IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
+    _TmpName = destructure_utils::BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();
   }
   else {
@@ -203,30 +199,30 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
 auto LocalVariableDestructureArrayAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Use shared helper.
-  using analyse::utils::destructure_utils::DestructureStage8;
-  DestructureStage8(
+  IMPORT_UTILS;
+  destructure_utils::DestructureStage8(
     *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
 auto LocalVariableDestructureArrayAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Use shared helper.
-  using analyse::utils::destructure_utils::DestructureStage9;
-  DestructureStage9(_NewAsts, _TmpName, nullptr, *sm, meta);
+  IMPORT_UTILS;
+  destructure_utils::DestructureStage9(_NewAsts, _TmpName, nullptr, *sm, meta);
 }
 
 auto LocalVariableDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once,
   // before the elements index it.
-  using analyse::utils::destructure_utils::DestructureTempStage11;
+  IMPORT_UTILS;
 
   const auto _meta_guard = MetaGuard(meta);
   const auto llvm_subject = meta->LetStatementPrecomputedValue;
   meta->LetStatementPrecomputedValue = nullptr;
 
   if (_TmpName != nullptr) {
-    DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
+    destructure_utils::DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
   }
 
   // Generate the "let" statements for each element.
@@ -236,14 +232,14 @@ auto LocalVariableDestructureArrayAst::Stage11_CodeGen(
 
 auto LocalVariableDestructureArrayAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Walk the nested bindings for variable names.
-  using analyse::utils::destructure_utils::GetNestedBindingIdentifiers;
-  return GetNestedBindingIdentifiers(Elems);
+  IMPORT_UTILS;
+  return destructure_utils::GetNestedBindingIdentifiers(Elems);
 }
 
 auto LocalVariableDestructureArrayAst::ExtractName() const -> Shared<IdentifierAst> {
   // No single identifier for destructured bindings.
-  using analyse::utils::destructure_utils::UnmatchableSingleIdentifier;
-  return UnmatchableSingleIdentifier(PosStart());
+  IMPORT_UTILS;
+  return destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

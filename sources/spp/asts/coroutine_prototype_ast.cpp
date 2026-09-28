@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 #include <spp/codegen/macros.hpp>
 
 module spp.asts.coroutine_prototype_ast;
@@ -9,7 +10,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
@@ -89,6 +91,7 @@ CoroutinePrototypeAst::CoroutinePrototypeAst(
 CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
+  IMPORT_UTILS;
   auto ast = MakeUnique<CoroutinePrototypeAst>(
     AstCloneVec(Annotations),
     nullptr, // "cmp cor" not syntactically allowed. Todo: Raise semantic error instead?
@@ -100,7 +103,7 @@ auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(ReturnType),
     AstClone(Impl));
   ast->_AnnotationInfo = _AnnotationInfo
-    ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
+    ? MakeUnique<annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
   ast->_Ctx = _Ctx;
@@ -121,7 +124,7 @@ auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
 
 auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS;
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
@@ -137,10 +140,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto [generator_sym, yield_type, is_once] = GetGenAndYieldTypes(
+    auto [generator_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
       TypeRef::Of(*ret_type_sym->FqName(), *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
-    analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone(
+    marker_sups::EnforceYieldTypeWithoutGenDone(
       yield_type.get(), is_once, *sm->CurrentScope, *ReturnType, "coroutine return type");
     _YieldType = yield_type;
     _SendType = is_once
@@ -213,7 +216,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   }
 
   //
-  using spp::utils::Uid;
+  IMPORT_UTILS_AND_UID;
   sm->MoveToNextScope();
 
   // Create the entry block for this function. The first

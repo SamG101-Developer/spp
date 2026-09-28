@@ -86,10 +86,7 @@ auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
 auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppAsyncTargetNotFunctionCallError;
-  using analyse::utils::async_utils::CaptureBorrow;
-  using analyse::utils::async_utils::CaptureOnce;
-  using analyse::utils::async_utils::CaptureReceiver;
+  IMPORT_UTILS;
 
   // Check that the right-hand-side to the "async" keyword is
   // a function call ast. This blocks things like "async 123"
@@ -142,7 +139,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   if (const auto target = pristine->Lhs->To<IdentifierAst>(); target != nullptr) {
     const auto sym = scope.GetVarSymbol(target);
     if (sym != nullptr and sym->ScopeDefinedIn != scope.ParentModule()) {
-      CaptureOnce(captures, AstClone(target), nullptr);
+      async_utils::CaptureOnce(captures, AstClone(target), nullptr);
     }
   }
 
@@ -150,7 +147,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // object - has a receiver, used the way the method's "self"
   // says - see "CaptureReceiver".
   else if (IsRuntimeMemberAccess(pristine->Lhs.get())) {
-    CaptureReceiver(
+    async_utils::CaptureReceiver(
       *pristine->Lhs->ToUnchecked<PostfixExpressionAst>(),
       rhs_fn_call->Target(), scope, prelude, captures, pos);
   }
@@ -160,7 +157,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // callable - "async (chooser())()" - so it is evaluated here into
   // a local of its own, and that local is captured.
   else if (pristine->Lhs->To<PostfixExpressionAst>() == nullptr) {
-    CaptureOnce(
+    async_utils::CaptureOnce(
       captures,
       BindLocal(pristine->Lhs, prelude, pos), nullptr);
   }
@@ -168,7 +165,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   for (auto const &arg : pristine_call->FnArgGroup->Args) {
     // A borrow - see "CaptureBorrow".
     if (arg->Conv != nullptr) {
-      CaptureBorrow(arg->Val, *arg->Conv, scope, prelude, captures, pos);
+      async_utils::CaptureBorrow(arg->Val, *arg->Conv, scope, prelude, captures, pos);
       continue;
     }
 
@@ -180,12 +177,12 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     // body reads the caller's own symbol - which is what makes
     // a moved argument report against the right variable.
     if (const auto ident = arg->Val->To<IdentifierAst>(); ident != nullptr) {
-      CaptureOnce(captures, AstClone(ident), nullptr);
+      async_utils::CaptureOnce(captures, AstClone(ident), nullptr);
       continue;
     }
 
     // Anything else is bound to a local the closure owns.
-    CaptureOnce(captures, BindLocal(arg->Val, prelude, pos), nullptr);
+    async_utils::CaptureOnce(captures, BindLocal(arg->Val, prelude, pos), nullptr);
   }
 
   // Copy the async flag into the original function for

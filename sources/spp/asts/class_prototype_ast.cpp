@@ -150,6 +150,7 @@ auto ClassPrototypeAst::Stage4_ResolveDeclarations(
 
 auto ClassPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   using generate::common_types_precompiled::COPY;
 
   // Load the super scopes for the class body.
@@ -172,7 +173,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   // Mark the "Copy" class itself as copyable. Minimise
   // `TypeEq` calls.
   if (_ClsSym != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
-    if (analyse::utils::type_predicates::IsTemplate(*_ClsSym, *COPY, *sm->CurrentScope)) {
+    if (type_compare::IsTemplate(*_ClsSym, *COPY, *sm->CurrentScope)) {
       sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
       _ClsSym->IsDirectlyCopyable = true;
     }
@@ -201,14 +202,15 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
 
 auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Pre-analyse semantics for the class body.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   Impl->Stage6_PreAnalyseSemantics(sm, meta);
 
   // Check the type isn't recursive.
-  const auto recursion = analyse::utils::type_predicates::IsTypeRecursive(*this, *sm);
-  RaiseIf<analyse::errors::SppRecursiveTypeError>(
+  const auto recursion = type_members::IsTypeRecursive(*this, *sm);
+  RaiseIf<SppRecursiveTypeError>(
     recursion != nullptr, {sm->CurrentScope},
     ERR_ARGS(*this, *recursion));
 
@@ -217,6 +219,7 @@ auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
 
 auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Analyse semantics for the class body.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -231,7 +234,7 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   // every use of one assumes as much - so it cannot declare
   // state of its own. Being zero-sized says nothing about
   // copying: a marker is still linear unless it is "Copy".
-  RaiseIf<analyse::errors::SppEmptyBodyRequiredError>(
+  RaiseIf<SppEmptyBodyRequiredError>(
     ZeroTypeAnnotation != nullptr and not Impl->Members.IsEmpty(),
     {sm->CurrentScope}, ERR_ARGS(
       *ZeroTypeAnnotation, *Impl->Members.Front(), "a '!zero_type' class",
@@ -423,9 +426,7 @@ static auto ApplyStructLayout(
 
 auto ClassPrototypeAst::FillLlvmLayout(
   ScopeManager const *sm, TypeSymbol const *type_sym, codegen::LlvmCtx const *ctx) const -> void {
-  using analyse::utils::type_predicates::IsTypeTup;
-  using analyse::utils::type_members::GetAllAttrs;
-  using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
+  IMPORT_UTILS;
 
   // Todo: error if attribute's default value if a comp generic
   //  value?? Also TEST THIS
@@ -445,7 +446,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
 
   // Next we need to handle tuples (anonymous index-attribute
   // based classes) vs standard struct classes.
-  const auto is_tuple = IsTypeTup(*type_sym, *sm->CurrentScope);
+  const auto is_tuple = type_predicates::IsTypeTup(*type_sym, *sm->CurrentScope);
   auto types = Vec<llvm::Type*>();
 
   // The "Spp" layout sorts the fields by size and alignment, so
@@ -469,7 +470,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
 
   // Class attributes are read from the attribute types.
   else {
-    types = GetAllAttrs(*type_sym)
+    types = type_members::GetAllAttrs(*type_sym)
       | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
       | genex::views::transform([&](auto const &type) { return lower_field(type); })
       | genex::to<Vec>();
@@ -479,7 +480,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
   // "Iterator[T]" over "Gen[T]") shares its exact runtime shape too.
   // The fat pointer's fields go ahead of whatever fields this class
   // declares of its own.
-  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(*type_sym);
+  const auto fat_pointer_field_count = type_members::GetSuperimposedFatPointerFieldCount(*type_sym);
   if (fat_pointer_field_count > 0) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     auto prefixed = Vec<llvm::Type*>(fat_pointer_field_count, ptr_ty);

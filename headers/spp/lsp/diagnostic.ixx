@@ -3,8 +3,8 @@ module;
 
 export module spp.lsp.diagnostic;
 import spp.analyse.errors.semantic_error;
-import spp.analyse.utils.resolution_index;
 import spp.compiler.compiler;
+import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
 import spp.utils.types;
@@ -55,23 +55,23 @@ namespace spp::lsp {
   /// Render what one name resolved to as one line of json.
   /// Shares the output with the diagnostics, so both carry
   /// a "kind" telling a reader which of the two it has.
-  SPP_EXP_FUN auto ToJson(analyse::utils::resolution_index::ResolvedName const &name) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::ResolvedName const &name) -> Str;
 
   /// Render what one type or namespace holds as one line of
   /// json - the list an editor offers after a "." or a "::".
-  SPP_EXP_FUN auto ToJson(analyse::utils::resolution_index::MemberList const &members) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::MemberList const &members) -> Str;
 
   /// Render what a call resolved to as one line of json:
   /// where its arguments are, and the parameters they fill.
-  SPP_EXP_FUN auto ToJson(analyse::utils::resolution_index::Signature const &signature) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::Signature const &signature) -> Str;
 
   /// Render what a "cmp" declaration computed as one line
   /// of json.
-  SPP_EXP_FUN auto ToJson(analyse::utils::resolution_index::ComptimeValue const &value) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::ComptimeValue const &value) -> Str;
 
   /// Render what one part of a file can name as one line of
   /// json.
-  SPP_EXP_FUN auto ToJson(analyse::utils::resolution_index::NamesInScope const &scope) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::NamesInScope const &scope) -> Str;
 
   /// Run a compilation for something reading the output rather
   /// than someone looking at it: every diagnostic, then the

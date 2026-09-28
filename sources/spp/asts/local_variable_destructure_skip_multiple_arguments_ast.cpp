@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.utils.destructure_utils;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -57,10 +59,11 @@ auto LocalVariableDestructureSkipMultipleArgumentsAst::ExtractNames() const -> V
 }
 
 auto LocalVariableDestructureSkipMultipleArgumentsAst::ExtractName() const -> Shared<IdentifierAst> {
+  IMPORT_UTILS;
   // If there is a binding, use it, otherwise this is unmatchable.
   return Binding != nullptr
     ? Binding->ExtractName()
-    : analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+    : destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

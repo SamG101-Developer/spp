@@ -10,10 +10,9 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.resolution_index;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_ast;
@@ -27,6 +26,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import genex;
 import llvm;
 
@@ -148,8 +148,7 @@ auto CmpStatementAst::Stage3_GenTopLvlAliases(
 
 auto CmpStatementAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveWrittenType;
+  IMPORT_UTILS;
 
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
@@ -165,7 +164,7 @@ auto CmpStatementAst::Stage4_ResolveDeclarations(
     // Todo: a class-typed "cmp" in a generic sup gets a global
     //  of the unbound "Unit[T=T]", which LLVM rejects as unsized
     //  SupCmpStatementGeneric.test_valid_class_typed_cmp_in_a_generic_sup.
-    Type = ResolveWrittenType(*Type, *sm, *meta);
+    Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
     _AliasSym->Type = Type;
   }
   sm->MoveOutOfCurrentScope();
@@ -197,8 +196,7 @@ auto CmpStatementAst::Stage6_PreAnalyseSemantics(
 
 auto CmpStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   //
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
@@ -216,7 +214,7 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
 
   // Check the value's type is the same as the given type;
   // it is only spelled out for the error.
-  if (not IsFromUseStatement() and not TypeEq(
+  if (not IsFromUseStatement() and not type_compare::TypeEq(
     TypeRef::Of(*Type, *sm->CurrentScope), Value->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto inferred_type = Value->InferType(sm, meta);
@@ -228,11 +226,11 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
 auto CmpStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the type.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   Value->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
 
   //
   if (not _FromUseStatement) {
@@ -245,7 +243,7 @@ auto CmpStatementAst::Stage8_CheckMemory(
 auto CmpStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using namespace analyse::utils;
+  IMPORT_UTILS;
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -267,7 +265,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
 
     // Use the hook to record information for the resolution and
     // completion plugin.
-    resolution_index::RecordComptimeValue(
+    lsp::resolution_index::RecordComptimeValue(
       *Name, *sm, *meta, Value != nullptr ? Value->ToString() : Str());
   }
   sm->ExhaustScope();
@@ -276,6 +274,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
 
 auto CmpStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS;
   // A "cmp" generic parameter builds one of these on the
   // spot to get its storage allocated and calls only this
   // stage on it, so there is no scope from stage 2 to step

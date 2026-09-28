@@ -5,26 +5,13 @@ export module spp.analyse.utils.linear_utils;
 import spp.utils.types;
 import std;
 
-use(spp::asts, struct Ast);
-use(spp::asts, struct IdentifierAst);
-use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::asts, struct Ast);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::linear_utils {
-  /// The first part of a value that a destructure has not
-  /// accounted for, and would otherwise silently drop. Copyable
-  /// parts are ignored, following usual memory rules, and a
-  /// value who has all fields copyable will never provide a
-  /// response here.
-  SPP_EXP_FUN auto FirstUnaccountedPart(
-    VariableSymbol const &sym,
-    Vec<IdentifierAst*> const &region,
-    ScopeManager const &sm)
-    -> Str;
-
   /// Record what the deferred statements for this scope take
   /// when they run. A defer doesn't consume anything when
   /// written, because by definition it is being deferred to
@@ -72,5 +59,16 @@ namespace spp::analyse::utils::linear_utils {
     bool has_skip,
     ScopeManager &sm,
     CompilerMetaData *meta)
+    -> void;
+
+  /// Assigning a whole new value to a symbol, or shadowing it
+  /// in its own scope, discards the value it holds, and nothing
+  /// destroys a value implicitly, so the old value must already
+  /// have been consumed.
+  SPP_EXP_FUN auto CheckOverwrite(
+    VariableSymbol const &sym,
+    Ast const &site,
+    StrView site_what,
+    ScopeManager &sm)
     -> void;
 }

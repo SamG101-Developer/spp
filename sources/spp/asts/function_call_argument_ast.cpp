@@ -32,13 +32,12 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
 
 auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
+  IMPORT_UTILS;
 
   // Analyse the semantics of the value expression.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Val, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Val));
 }
 

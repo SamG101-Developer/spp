@@ -9,11 +9,12 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.func_utils;
+import spp.analyse.utils.function_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -75,18 +76,12 @@ auto RetStatementAst::ToString() const -> Str {
 auto RetStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
-  using analyse::errors::SppCoroutineContainsReturnStatementError;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::scopes::ScopeTypeIdentifierName;
+  IMPORT_UTILS;
   using generate::common_types::VoidType;
 
   // Analyse the expression.
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
+    Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
   // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
@@ -107,7 +102,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
       ? nullptr
       : meta->EnclosingFunctionRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
-      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
+      meta->AssignmentTargetType = self_type::SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
     }
     meta->AssignmentTarget = meta->AssignmentTargetType
@@ -139,7 +134,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 
   // Type check the expression type against the return type of the enclosing subroutine.
   if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
-    const auto direct_match = TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+    const auto direct_match = type_compare::TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
     const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
     RaiseIf<SppTypeMismatchError>(
       not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
@@ -148,7 +143,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
     // A function named as the value stands for the overload the
     // return type asks for.
     if (Expr != nullptr) {
-      analyse::utils::func_utils::InstantiateFunctionValue(
+      function_values::InstantiateFunctionValue(
         TypeRef::Of(*expr_type, *sm->CurrentScope),
         TypeRef::Of(*_RetType, *sm->CurrentScope), sm, meta);
     }
@@ -158,7 +153,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 auto RetStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Ensure the argument isn't moved or partially moved (for all conventions)
   if (Expr != nullptr) {
@@ -170,7 +165,7 @@ auto RetStatementAst::Stage8_CheckMemory(
   // closing brace is ever reached for them and their own scope-exit
   // checks never run against this path. Checked after the returned
   // value moves, so returning a value counts as consuming it.
-  analyse::utils::linear_utils::CheckLiveUpToFunction(
+  linear_utils::CheckLiveUpToFunction(
     *TokRet, "Return", *sm, meta);
 }
 
@@ -187,6 +182,7 @@ auto RetStatementAst::Stage9_CompTimeResolve(
 
 auto RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // A "GenOnce" is lowered into an ordinary subroutine, where
   // a "gen" reads as the return. A "ret" written after one is
   // therefore unreachable: the block it lands in has already
@@ -221,7 +217,7 @@ auto RetStatementAst::Stage11_CodeGen(
     // is nothing to return, so the coroutine's own guarantee is
     // what has been broken.
     const auto block = ctx->Builder.GetInsertBlock();
-    RaiseIf<analyse::errors::SppGenOnceFinishesWithoutYieldingError>(
+    RaiseIf<SppGenOnceFinishesWithoutYieldingError>(
       block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
       {sm->CurrentScope}, ERR_ARGS(*this));
 
@@ -231,7 +227,7 @@ auto RetStatementAst::Stage11_CodeGen(
 
   // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
   // coerced into the return variant before it leaves the function.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto ret_type = _RetType != nullptr
     ? _RetType
     : meta->EnclosingFunctionRetType.IsEmpty()

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -7,11 +8,12 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.resolution_index;
 import spp.asts.ast;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_control_flow_statement_ast;
 import spp.asts.ret_statement_ast;
@@ -24,6 +26,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.ptr;
 import genex;
 
@@ -85,8 +88,7 @@ auto InnerScopeExpressionAst::DiscardsFinalMember() const -> bool {
 
 auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::expr_utils::ValidateNoUnreachableCode;
-  using namespace analyse::utils;
+  IMPORT_UTILS;
 
   // Create a scope for the InnerScopeAst node.
   auto scope_name = ScopeBlockName::FromParts(
@@ -115,8 +117,8 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 
   // What can be written in this block - a function's body among
   // them - for an editor offering names.
-  if (resolution_index::IsEnabled()) {
-    resolution_index::RecordScopeOf(*this, *sm);
+  if (lsp::resolution_index::IsEnabled()) {
+    lsp::resolution_index::RecordScopeOf(*this, *sm);
   }
 
   sm->MoveOutOfCurrentScope();
@@ -125,9 +127,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
 auto InnerScopeExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
-  using analyse::utils::linear_utils::CheckDeferredForScope;
-  using analyse::utils::linear_utils::CheckScopeExit;
+  IMPORT_UTILS;
 
   // Move into the next scope.
   sm->MoveToNextScope();
@@ -155,7 +155,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
       const auto move = meta->AssignmentTarget != nullptr
         ? static_cast<Ast const*>(meta->AssignmentTarget.get())
         : static_cast<Ast const*>(TokR.get());
-      ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
     }
   }
 
@@ -166,11 +166,11 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // because releasing them is what clears the very state the
   // check reads to tell that a symbol holding borrows is not
   // something this scope owes.
-  if (not Terminates()) {
-    CheckDeferredForScope(
+  if (not control_flow::Diverges(*this, sm, meta)) {
+    linear_utils::CheckDeferredForScope(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm);
-    CheckScopeExit(
+    linear_utils::CheckScopeExit(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm, meta);
   }

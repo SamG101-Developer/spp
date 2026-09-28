@@ -8,7 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.cmp_utils;
+import spp.analyse.utils.comp_generics;
+import spp.analyse.utils.comptime_intrinsics;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.binary_expression_ast;
@@ -149,13 +150,13 @@ auto GenericArgumentAst::Stage7_AnalyseSemantics(
 auto GenericArgumentAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Ensure a comp value isn't moved or partially moved
   // (for all conventions). A type value holds no memory.
   if (CompVal == nullptr) { return; }
   CompVal->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
+  mem_utils::ValidateSymbolMemory(
     *CompVal, *CompVal, *sm, true, true, true, true, meta);
 }
 
@@ -198,9 +199,7 @@ auto GenericArgumentAst::AnalyseTypeVal(
 
 auto GenericArgumentAst::AnalyseCompVal(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::cmp_utils::StampCompGenerics;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   // A comp expression ("n + 1") resolves its operator through
   // the sup scopes of its operand's type, which are only
@@ -210,15 +209,15 @@ auto GenericArgumentAst::AnalyseCompVal(
   if (is_expression and meta->CurrentStage<CompilerStage::kPreAnalyseSemantics) { return; }
 
   // A comp expression that folds has been evaluated by the
-  // comp-time intrinsics ("cmp_utils::FoldCompExpr"): its
+  // comp-time intrinsics ("comp_generics::FoldCompExpr"): its
   // value is checked against its type's bounds, and it is
   // not analysed as the operator call it desugars to.
   if (is_expression) {
-    if (const auto folded = analyse::utils::cmp_utils::FoldCompExpr(*CompVal, *sm->CurrentScope); folded != nullptr) {
+    if (const auto folded = comp_generics::FoldCompExpr(*CompVal, *sm->CurrentScope); folded != nullptr) {
       if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) {
         lit->ValidateBounds(*CompVal, *sm->CurrentScope);
       }
-      StampCompGenerics(*CompVal, *sm->CurrentScope);
+      comp_generics::StampCompGenerics(*CompVal, *sm->CurrentScope);
       return;
     }
   }
@@ -245,14 +244,14 @@ auto GenericArgumentAst::AnalyseCompVal(
     target.Stage7_AnalyseSemantics(sm, meta);
   }
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(target, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(target, *sm),
     {sm->CurrentScope}, ERR_ARGS(target));
 
   // Stamp every comp parameter named here - nested ones too
   // ("n + 1") - with that parameter, so a copy of this argument
   // carried into another scope keeps naming it there, where the
   // same spelling may name another.
-  StampCompGenerics(*CompVal, *sm->CurrentScope);
+  comp_generics::StampCompGenerics(*CompVal, *sm->CurrentScope);
 }
 
 SPP_MOD_END

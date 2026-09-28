@@ -7,7 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -162,11 +162,16 @@ auto ScopeManager::MoveToNextScope(
 }
 
 auto ScopeManager::ExhaustScope() -> void {
-  // Manual scope skipping.
-  const auto final_scope = CurrentScope->FinalChildScope();
-  while (CurrentScope != final_scope) {
-    MoveToNextScope(false);
-  }
+  // Manual scope skipping. The walk is advanced from wherever it
+  // is - part of the subtree may have been walked already - to
+  // the final scope, but the current scope goes back to the one
+  // exhausted, so a following "MoveOutOfCurrentScope" reaches its
+  // parent rather than the final scope's.
+  const auto exhausted = CurrentScope;
+  const auto final_scope = exhausted->FinalChildScope();
+  const auto end = ScopeIterator();
+  while (_It != end and *_It != final_scope) { ++_It; }
+  CurrentScope = exhausted;
 }
 
 auto ScopeManager::SkipPastScope(
@@ -221,7 +226,7 @@ auto ScopeManager::AttachAllSuperScopes(
 
 auto ScopeManager::AttachSpecificSuperScopes(
   Scope &scope, CompilerMetaData *meta) const -> bool {
-  using utils::type_predicates::TemplateOf;
+  using utils::type_compare::TemplateOf;
   // Handle type symbols, each once. Marked first, so a scope
   // reached again while its own attachment runs (a cycle) is
   // not attached twice.
@@ -303,8 +308,7 @@ auto ScopeManager::CoalesceMethodMock(
 auto ScopeManager::AttachSpecificSuperScopesImpl(
   Scope &scope, Vec<Scope*> const &sup_scopes,
   CompilerMetaData *meta) const -> void {
-  using utils::monomorphization_utils::CreateGenericSupScope;
-  using utils::type_compare::RelaxedTypeEq;
+  using utils::monomorphization::CreateGenericSupScope;
   using utils::type_compare::GenericInferenceMap;
   if (sup_scopes.IsEmpty()) { return; }
 

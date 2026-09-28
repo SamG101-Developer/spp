@@ -758,11 +758,16 @@ SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsErr
   const std::size_t num_controls,
   const std::size_t loop_depth) {
   AddHeader(40, "Loop Too Many Control Flow Statements Error");
-  AddCtxForErr(
-    &tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
-  AddErr(&stmt,
-         "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) +
-         " control flow statements");
+  if (loop_depth == 0) {
+    AddErr(&stmt, "Control flow statement defined here, outside of any loop");
+  }
+  else {
+    AddCtxForErr(
+      &tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
+    AddErr(&stmt,
+           "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) +
+           " control flow statements");
+  }
   AddFooter(
     "This loop contains too many control flow statements (exit/skip) for its depth.",
     "Reduce the number of control flow statements or increase the loop depth");
@@ -1469,6 +1474,27 @@ SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
     "A byte-prefixed char literal (" + INLINE_NOTE("b'...'") + ") must decode to a single byte, but this one decodes "
     "to a Unicode code point outside " + INLINE_NOTE("0..255") + ".",
     "Remove the " + INLINE_HELP("b") + " byte-prefix, or use a character whose code point fits in a single byte.");
+}
+
+SppCharLiteralLengthError::SppCharLiteralLengthError(
+  Ast const &literal) {
+  AddHeader(112, "Char Literal Length Error");
+  AddErr(&literal, "Char literal introduced here");
+  AddFooter(
+    "A char literal holds exactly one character: one escape sequence or one Unicode scalar value.",
+    "Use a string literal for more than one character.");
+}
+
+SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
+  Ast const &guard,
+  Ast const &symbol_definition) {
+  AddHeader(114, "Pattern Guard Moves Value Error");
+  AddCtxForErr(&symbol_definition, "Value introduced here");
+  AddErr(&guard, "Value moved by this pattern guard");
+  AddFooter(
+    "A pattern guard runs before its branch is chosen, so when it answers false the next branch runs with whatever "
+    "the guard moved already gone.",
+    "Borrow the value in the guard, or move it inside the branch body instead.");
 }
 
 SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(

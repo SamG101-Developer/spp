@@ -9,7 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -92,9 +93,7 @@ auto TypePostfixExpressionAst::ToString() const -> Str {
 auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::ClosestScopes;
-  using analyse::utils::expr_utils::RaiseIfAmbiguous;
-  using analyse::utils::expr_utils::ScopesDeclaringType;
+  IMPORT_UTILS;
 
   // Move through the left-hand-side type.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
@@ -109,8 +108,8 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   // is given all the overloads, so any one of them will do.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
   if (not op_nested->Name->IsCompilerGeneratedType()) {
-    RaiseIfAmbiguous(
-      ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
+    member_lookup::RaiseIfAmbiguous(
+      member_lookup::ClosestScopes(member_lookup::ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
       *op_nested->Name, *sm);
   }
 
@@ -129,6 +128,7 @@ auto TypePostfixExpressionAst::Stage11_CodeGen(
 
 auto TypePostfixExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  IMPORT_UTILS;
   // Infer the type of the left-hand-side.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
   const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Sym;
@@ -136,7 +136,7 @@ auto TypePostfixExpressionAst::InferType(
 
   // Infer the type of the postfix operation.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  return analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
+  return member_lookup::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
 }
 
 auto TypePostfixExpressionAst::AnyPart(

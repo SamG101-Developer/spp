@@ -1,10 +1,13 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.local_variable_single_identifier_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -123,7 +126,7 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
 auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // No value => nothing to check.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
   if (meta->LetStatementFromUninitialized) { return; }
 
@@ -156,9 +159,16 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // this, the read is recorded as a move whatever the binding
   // says, which leaves the subject partially initialized.
   const auto borrows = Conv != nullptr;
-  ValidateSymbolMemory(
+  mem_utils::ValidateSymbolMemory(
     *meta->LetStatementValue, *this, *sm, not borrows, true, not borrows, not borrows, meta);
   if (restore != nullptr) { sm->CurrentScope->AddVarSymbol(restore); }
+
+  // A binding shadowed in its own scope can never be named
+  // again, so its value has to have been consumed by now - the
+  // value just checked may be what consumed it ("let x = f(x)").
+  if (_PrevSym != nullptr) {
+    linear_utils::CheckOverwrite(*_PrevSym, *this, "Shadowing binding", *sm);
+  }
 
   // Get the name or alias symbol to mark it as initialized.
   const auto sym = _OwnSymbol(sm);
@@ -190,8 +200,9 @@ auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
 
 auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Create the alloca for the variable.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto borrows = Conv != nullptr;
   const auto llvm_type = borrows
     ? static_cast<llvm::Type*>(llvm::PointerType::get(*ctx->Context, 0))
@@ -236,6 +247,11 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     auto llvm_val = borrows
       ? codegen::llvm_addr_of(*meta->LetStatementValue, sm, meta, ctx)
       : meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
+
+    // Read while the name still means what the value was written
+    // against: "let val = val.val" would otherwise ask the new
+    // "val" for a "val" attribute.
+    const auto value_ref = meta->LetStatementValue->InferTypeRef(sm, meta);
     if (restore != nullptr) { sm->CurrentScope->AddVarSymbol(restore); }
 
     // The declared type may be a variant that the initializer
@@ -244,18 +260,20 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // the payload. Storing it raw put the member at offset zero,
     // on top of the tag, so the slot read back as whatever the
     // member's first bytes happened to be.
-    if (not is_void and not borrows and meta->LetStatementExplicitType != nullptr) {
+    // A "!" value ("let y = loop true { .. }") never arrives, so
+    // there is nothing to coerce or store.
+    const auto diverged = llvm_val == nullptr;
+    if (not is_void and not borrows and not diverged and meta->LetStatementExplicitType != nullptr) {
       llvm_val = codegen::CoerceToFunctionValue(
-        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
-        meta->LetStatementValue->InferTypeRef(sm, meta), *sm, ctx);
+        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm, ctx);
       llvm_val = codegen::CoerceToVariant(
         llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
-        meta->LetStatementValue->InferTypeRef(sm, meta), *sm->CurrentScope, "local.variant" + uid, ctx);
+        value_ref, *sm->CurrentScope, "local.variant" + uid, ctx);
     }
 
     // Skip storing Void (created via generic implementation
     // analysis).
-    if (not is_void) { ctx->Builder.CreateStore(llvm_val, alloca); }
+    if (not is_void and not diverged) { ctx->Builder.CreateStore(llvm_val, alloca); }
   }
 
   // Alloca already added; return nullptr.
@@ -291,6 +309,15 @@ auto LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
   if (_PrevSym == nullptr) { return sm->CurrentScope->RemVarSymbol(sym_name); }
   sm->CurrentScope->AddVarSymbol(_PrevSym);
   return _Sym;
+}
+
+auto LocalVariableSingleIdentifierAst::InferValueType(
+  ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst> {
+  if (_PrevSym == nullptr) { return value.InferType(sm, meta); }
+  const auto restore = _ExposePreviousSymbol(sm);
+  auto type = value.InferType(sm, meta);
+  if (restore != nullptr) { sm->CurrentScope->AddVarSymbol(restore); }
+  return type;
 }
 
 auto LocalVariableSingleIdentifierAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {

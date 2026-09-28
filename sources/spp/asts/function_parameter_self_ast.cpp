@@ -5,7 +5,7 @@ module spp.asts.function_parameter_self_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;

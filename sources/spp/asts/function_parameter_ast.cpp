@@ -1,13 +1,16 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.function_parameter_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
+import spp.asts.function_parameter_variadic_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_uninitialized_ast;
 import spp.asts.local_variable_ast;
@@ -48,9 +51,9 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the type. "Self" is kept, and substituted per
   // call.
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::utils::type_utils::SelfPolicy;
-  Type = ResolveWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
+  IMPORT_UTILS;
+  using type_resolution::SelfPolicy;
+  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
   // Create the variable for the parameter (use temp copies
   // and put them back).
@@ -58,12 +61,14 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   ast->Stage7_AnalyseSemantics(sm, meta);
   Var = std::move(ast->Var);
 
-  // Mark the symbol as initialized.
+  // Mark the symbol as initialized. A variadic parameter's symbol
+  // holds a pack, as a variadic comp parameter's does.
   const auto conv = Type->GetConvention();
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->GetVarSymbol(name.get());
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
+    sym->IsVariadic = To<FunctionParameterVariadicAst>() != nullptr;
   }
 }
 

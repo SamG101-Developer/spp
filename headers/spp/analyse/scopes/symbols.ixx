@@ -3,7 +3,7 @@ module;
 
 export module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.instance_key;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.asts.ast;
 import spp.asts.convention_ast;
 import spp.asts.utils.visibility;
@@ -24,6 +24,7 @@ use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct ConventionAst);
+use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
@@ -247,7 +248,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// The memory info for this variable, unique per symbol and
   /// used extensively in stage 8 memory analysis. Holds all move,
   /// initialization-stage, branch-inconsistencies, etc.
-  Unique<utils::mem_info_utils::MemoryInfo> MemInfo;
+  Unique<utils::memory_state::MemoryInfo> MemInfo;
 
   /// The LLVM symbol information used during stage 10 and 11 of
   /// the compilation pipeline. Currently, tracks the "alloca".

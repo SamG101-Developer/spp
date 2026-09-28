@@ -9,7 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.resolution_index;
+import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.generic_argument_ast;
@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.codegen.llvm_type;
+import spp.lsp.resolution_index;
 import spp.utils.interner;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -151,10 +152,7 @@ auto IdentifierAst::operator+(
 
 auto IdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSelfIdentifierInvalidContextError;
-  using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
-  using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
-  using namespace analyse::utils;
+  IMPORT_UTILS;
 
   // Check there is a symbol with the same name in the
   // current scope. Also check for invalid "self" (just
@@ -171,22 +169,22 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
 
   if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
-    RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
+    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
   }
 
   // Enforce module-level visibility on the accessed symbol.
   if (sym != nullptr and sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
-    CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
+    visibility_utils::CheckModuleMemberVisibility(*sym, *this, *sym->ScopeDefinedIn, *sm, *meta);
   }
 
   // Use the hook to record information for the resolution and
   // completion plugin.
-  resolution_index::RecordIdentifier(*this, *sm, *meta, sym);
+  lsp::resolution_index::RecordIdentifier(*this, *sm, *meta, sym);
 }
 
 auto IdentifierAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppCompileTimeConstantError;
+  IMPORT_UTILS;
 
   // Extract the value from the symbol table and return
   // it.
@@ -223,13 +221,12 @@ auto IdentifierAst::Stage9_CompTimeResolve(
 
 auto IdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::errors::SppInternalCompilerError;
-  using analyse::utils::type_predicates::IsTypeVoid;
+  IMPORT_UTILS_AND_UID;
 
   // Get the allocation for the variable from the current
   // scope. The "alloca" will have been filled from wherever
   // this identifier was introduced ("let", param, etc).
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto var_sym = sm->CurrentScope->GetVarSymbol(this);
 
   // An identifier that reaches code generation with no symbol
@@ -246,7 +243,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // implementation, to prevent any usages of it as this
   // level too.
   if (var_sym->Type != nullptr
-    and IsTypeVoid(var_sym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
+    and type_predicates::IsTypeVoid(var_sym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
     return nullptr;
   }
 

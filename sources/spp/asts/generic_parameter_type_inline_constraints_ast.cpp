@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -64,8 +64,7 @@ auto GenericParameterTypeInlineConstraintsAst::ToString() const -> Str {
 
 auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_utils::StampWrittenParts;
+  IMPORT_UTILS;
 
   // Analyse each constraint type.
   for (auto const &constraint : Constraints) {
@@ -85,8 +84,8 @@ auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
 
     // Stamp it with what it means here, as it is read from wherever
     // the parameter is bound. A constraint imported by a "use" is
-    // an alias here, which "type_utils::StampWrittenParts" follows.
-    StampWrittenParts(*constraint, *sm->CurrentScope);
+    // an alias here, which "type_resolution::StampWrittenParts" follows.
+    type_resolution::StampWrittenParts(*constraint, *sm->CurrentScope);
   }
 }
 

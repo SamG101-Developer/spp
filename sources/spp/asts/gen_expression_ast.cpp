@@ -9,9 +9,11 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.function_prototype_ast;
@@ -85,15 +87,7 @@ auto GenExpressionAst::ToString() const -> Str {
 
 auto GenExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
-  using analyse::errors::SppYieldedTypeMismatchError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
-  using analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_compare::TypeFwdEq;
-  using analyse::utils::type_utils::BuildFwdCall;
+  IMPORT_UTILS;
   using generate::common_types::GenType;
   using generate::common_types::VoidType;
 
@@ -111,12 +105,12 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     if (not meta->EnclosingFunctionRetType.IsEmpty()) {
       auto const &ret_type = meta->EnclosingFunctionRetType[0];
-      auto [_, yield_type, _] = GetGenAndYieldTypes(
+      auto [_, yield_type, _] = marker_sups::GetGenAndYieldTypes(
         TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *ret_type,
         [&] { return ret_type; }, "coroutine");
 
       meta->AssignmentTargetType = yield_type;
-      meta->AssignmentTargetType = SubstituteSelfTypeAndAnalyse(
+      meta->AssignmentTargetType = self_type::SubstituteSelfTypeAndAnalyse(
         *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
       meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
       SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
@@ -132,7 +126,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     Expr->Stage7_AnalyseSemantics(sm, meta);
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Expr, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Expr));
 
     expr_type = Expr->InferType(sm, meta);
@@ -155,7 +149,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   // Determine the "Yield" type of the enclosing function
   // (to type check the expression against).
   const auto gen_ref = TypeRef::Of(*_GenType, *sm->CurrentScope);
-  auto [gen_sym, yield_type, is_once] = GetGenAndYieldTypes(
+  auto [gen_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
     gen_ref, *sm->CurrentScope, *_GenType, [&] { return _GenType; }, "coroutine");
 
   // When we are yielding a value that *forwards* to the return
@@ -172,7 +166,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     }
   }
 
-  const auto direct_match = TypeEq(
+  const auto direct_match = type_compare::TypeEq(
     *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
 
   // The enclosing return type, unless it only reaches a generator
@@ -189,8 +183,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
 auto GenExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidMutationError;
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // If there is no expression, then now ork needs to be
   // done.
@@ -199,7 +192,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
   // Ensure the argument isn't moved or partially moved
   // (for all conventions)
   Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
+  mem_utils::ValidateSymbolMemory(
     *Expr, *TokGen, *sm, true, true, false, false, meta);
 
   // If the value is non-symbolic, then there is no borrow
@@ -211,7 +204,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
     // Ensure that attributes aren't being moved off of a
     // borrowed value and that pins are maintained. Mark the
     // move or partial move of the argument.
-    ValidateSymbolMemory(
+    mem_utils::ValidateSymbolMemory(
       *Expr, *TokGen, *sm, false, false, true, true, meta);
   }
 
@@ -231,6 +224,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
 
 auto GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Consider if we are in a subroutine by desugar (ie for a
   // lowered GenOnce check. If this is the case, use the return
   // instruction instead.
@@ -263,7 +257,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   // into an "Opt[S32]"), and a named function into a function
   // type. Otherwise the slot holds the bare member, untagged.
   if (llvm_yield_val != nullptr and Conv == nullptr and _GenType != nullptr) {
-    const auto [_, yield_type, _] = analyse::utils::type_utils::GetGenAndYieldTypes(
+    const auto [_, yield_type, _] = marker_sups::GetGenAndYieldTypes(
       TypeRef::Of(*_GenType, *sm->CurrentScope), *sm->CurrentScope, *_GenType, [&] { return _GenType; },
       "coroutine", false);
     if (yield_type != nullptr) {
@@ -287,7 +281,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   // Step 2: Invoke the coroutine suspension intrinsic,
   // allowing the caller to use the yielded value. Control
   // comes back into the block this leaves the builder in.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto parked_bb = ctx->Builder.GetInsertBlock();
   const auto destroy_bb = llvm::BasicBlock::Create(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());

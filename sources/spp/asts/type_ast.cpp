@@ -35,19 +35,26 @@ auto TypeAst::IsAllowedInDefault() const -> bool {
 
 auto TypeAst::WithSourceSpanOf(
   TypeAst const &written) const -> Shared<TypeAst> {
+  // A type rewritten more than once ("Self" substituted, then
+  // qualified) keeps the text first written, not a rewrite's.
+  auto copy = WithSourceSpanAt(written);
+  if (copy->_HasSourceSpan) {
+    copy->_WrittenText = written._WrittenText.empty() ? written.ToString() : written._WrittenText;
+  }
+  return copy;
+}
+
+auto TypeAst::WithSourceSpanAt(
+  Ast const &site) const -> Shared<TypeAst> {
   // Copied rather than stamped in place: a qualified name is
   // cached on its symbol and shared by every use of it.
   auto copy = AstCloneShared(this);
-  const auto start = written.PosStart();
-  const auto end = written.PosEnd();
+  const auto start = site.PosStart();
+  const auto end = site.PosEnd();
   if (start != 0 and end > start) {
     copy->_HasSourceSpan = true;
     copy->_SpanStart = start;
     copy->_SpanEnd = end;
-
-    // A type rewritten more than once ("Self" substituted, then
-    // qualified) keeps the text first written, not a rewrite's.
-    copy->_WrittenText = written._WrittenText.empty() ? written.ToString() : written._WrittenText;
   }
   return copy;
 }

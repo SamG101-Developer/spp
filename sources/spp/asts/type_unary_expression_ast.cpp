@@ -1,11 +1,14 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_unary_expression_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -82,12 +85,13 @@ auto TypeUnaryExpressionAst::ToString() const -> Str {
 
 auto TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Analyse the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
     const auto tm = ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-    const auto type_scope = analyse::utils::type_utils::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
+    const auto type_scope = member_lookup::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
     const auto _meta_guard = MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);

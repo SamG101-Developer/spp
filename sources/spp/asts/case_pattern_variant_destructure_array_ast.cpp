@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_pattern_variant_destructure_array_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.case_utils;
@@ -103,7 +105,7 @@ auto CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
 
 auto CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
+  IMPORT_UTILS;
 
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function.
@@ -115,7 +117,7 @@ auto CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
 
   // Combine all the generated transforms into a single "AND"ed
   // expression.
-  auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
+  auto llvm_transforms = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
 
   const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };

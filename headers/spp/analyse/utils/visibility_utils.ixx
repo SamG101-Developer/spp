@@ -11,7 +11,6 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
-use(spp::asts, struct IdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {

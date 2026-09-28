@@ -4,8 +4,8 @@ module;
 module spp.lsp.diagnostic;
 import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
-import spp.analyse.utils.resolution_index;
 import spp.compiler.compiler;
+import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
 import genex;
@@ -78,7 +78,7 @@ namespace spp::lsp {
     /// The members of a list, as json, shared by everything that
     /// reports a set of names.
     auto JsonMembers(
-      Vec<analyse::utils::resolution_index::Member> const &members)
+      Vec<lsp::resolution_index::Member> const &members)
       -> Str {
       auto out = Str("[");
       for (auto i = 0uz; i < members.Len(); ++i) {
@@ -192,7 +192,7 @@ auto spp::lsp::ToJson(Diagnostic const &diagnostic) -> Str {
   return out + "]}";
 }
 
-auto spp::lsp::ToJson(analyse::utils::resolution_index::ResolvedName const &name) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::ResolvedName const &name) -> Str {
   auto out = Str("{\"kind\":\"symbol\",\"symbol\":") + JsonString(name.Kind);
   out += ",\"name\":" + JsonString(name.Name);
   out += ",\"type\":" + JsonString(name.Type);
@@ -202,25 +202,25 @@ auto spp::lsp::ToJson(analyse::utils::resolution_index::ResolvedName const &name
   return out + "}";
 }
 
-auto spp::lsp::ToJson(analyse::utils::resolution_index::MemberList const &members) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::MemberList const &members) -> Str {
   auto out = Str("{\"kind\":\"members\",\"owner\":") + JsonString(members.Owner);
   out += ",\"of\":" + JsonString(members.Of);
 
   return out + ",\"members\":" + JsonMembers(members.Members) + "}";
 }
 
-auto spp::lsp::ToJson(analyse::utils::resolution_index::Signature const &signature) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::Signature const &signature) -> Str {
   auto out = Str("{\"kind\":\"signature\",\"name\":") + JsonString(signature.Name);
   out += ",\"arguments\":{" + JsonSpan(signature.Arguments) + "}";
   return out + ",\"members\":" + JsonMembers(signature.Params) + "}";
 }
 
-auto spp::lsp::ToJson(analyse::utils::resolution_index::NamesInScope const &scope) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::NamesInScope const &scope) -> Str {
   auto out = Str("{\"kind\":\"scope\",\"where\":{") + JsonSpan(scope.Where) + "}";
   return out + ",\"members\":" + JsonMembers(scope.Names) + "}";
 }
 
-auto spp::lsp::ToJson(analyse::utils::resolution_index::ComptimeValue const &value) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::ComptimeValue const &value) -> Str {
   auto out = Str("{\"kind\":\"comptime\",\"name\":") + JsonString(value.Name);
   out += ",\"value\":" + JsonString(value.Value);
   return out + ",\"where\":{" + JsonSpan(value.Where) + "}}";
@@ -232,7 +232,7 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
   // errors are collected rather than immediately crashing and
   // reporting.
   namespace sink = analyse::errors::diagnostic_sink;
-  namespace index = analyse::utils::resolution_index;
+  namespace index = lsp::resolution_index;
   sink::Enable(true);
 
   try {

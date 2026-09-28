@@ -17,7 +17,6 @@ module spp.cli;
 import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.resolution_index;
 import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
@@ -25,6 +24,7 @@ import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
 import spp.lsp.diagnostic;
+import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
 import spp.utils.errors;
@@ -492,8 +492,8 @@ auto spp::cli::handle_build(
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
 
   c.SetAnalyseOnly(analyse_only);
-  if (index_project) { analyse::utils::resolution_index::EnableProject(); }
-  else { analyse::utils::resolution_index::EnableFiles(index_files); }
+  if (index_project) { lsp::resolution_index::EnableProject(); }
+  else { lsp::resolution_index::EnableFiles(index_files); }
   return CompileReportingErrors(c, message_format);
 }
 

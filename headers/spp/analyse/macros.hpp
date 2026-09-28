@@ -33,3 +33,11 @@
   spp::MakePair(                                                 \
     numex::BigDec(("-" + LIMIT_F_MAG(digits, max_exp)).c_str()), \
     numex::BigDec(LIMIT_F_MAG(digits, max_exp).c_str()))
+
+#define IMPORT_UTILS                    \
+  using namespace spp::analyse::errors; \
+  using namespace spp::analyse::utils   \
+
+#define IMPORT_UTILS_AND_UID \
+  IMPORT_UTILS;              \
+  using spp::utils::Uid

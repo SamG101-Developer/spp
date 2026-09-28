@@ -5,11 +5,13 @@ module;
 module spp.asts.loop_control_flow_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.asts.expression_ast;
 import spp.asts.loop_expression_ast;
@@ -68,11 +70,7 @@ auto LoopControlFlowStatementAst::ToString() const -> Str {
 
 auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppLoopTooManyControlFlowStatementsError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types::VoidType;
 
   // Get the number of control flow statements, and the
@@ -82,10 +80,13 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   const auto nested_loop_depth = meta->LoopCurrentDepth;
 
   // Check the depth of the loop is greater than or equal
-  // to the number of control statements.
+  // to the number of control statements. Outside any loop
+  // there is no loop to point at, so the statement stands in.
   RaiseIf<SppLoopTooManyControlFlowStatementsError>(
     num_controls > nested_loop_depth, {sm->CurrentScope},
-    ERR_ARGS(*meta->LoopCurrentAst->TokLoop, *this, num_controls, nested_loop_depth));
+    ERR_ARGS(
+      meta->LoopCurrentAst != nullptr ? static_cast<Ast const&>(*meta->LoopCurrentAst->TokLoop) : *this,
+      *this, num_controls, nested_loop_depth));
 
   // Save and compare the loop's "exiting" type against
   // other nested loop's exit statement types.
@@ -96,7 +97,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     if (Expr != nullptr) {
       Expr->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
+        Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
         {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 
       expr_type = Expr->InferType(sm, meta);
@@ -116,7 +117,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       }
       else if (not expr_type->IsNeverType()) {
         RaiseIf<SppTypeMismatchError>(
-          not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
+          not type_compare::TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
           {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
       }
     }
@@ -137,7 +138,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   // memory checks.
   if (Expr != nullptr) {
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
+    mem_utils::ValidateSymbolMemory(
       *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
   }
 
@@ -147,7 +148,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   const auto exit_point = TokSeqExit.IsEmpty()
     ? static_cast<Ast const*>(TokSkip.get())
     : static_cast<Ast const*>(TokSeqExit.Back().get());
-  analyse::utils::linear_utils::CheckLiveUpToLoop(
+  linear_utils::CheckLiveUpToLoop(
     *exit_point, TokSeqExit.IsEmpty() ? "Loop skip" : "Loop exit",
     TokSeqExit.Len(), TokSkip != nullptr, *sm, meta);
 }
@@ -155,7 +156,6 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
 auto LoopControlFlowStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
-  using analyse::errors::SppInternalCompilerError;
 
   // The loop stack is ordered outermost-first, so the innermost
   // enclosing loop is the back element.

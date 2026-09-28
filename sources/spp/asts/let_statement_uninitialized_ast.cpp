@@ -1,11 +1,13 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.let_statement_uninitialized_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -64,10 +66,10 @@ auto LetStatementUninitializedAst::ToString() const -> Str {
 
 auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_utils::ResolveWrittenType;
+  IMPORT_UTILS;
 
   // Analyse the type, and create a mock value for analysis.
-  Type = ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
   const auto mock_init = MakeUnique<ObjectInitializerAst>(
     Type, nullptr);
 

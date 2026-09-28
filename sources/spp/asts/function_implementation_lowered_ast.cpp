@@ -8,8 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.builtins;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.self_type;
+import spp.analyse.utils.type_resolution;
+import spp.asts.char_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.function_prototype_ast;
@@ -17,8 +18,11 @@ import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.builtins;
 import spp.codegen.llvm_func_impls;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import spp.utils.strings;
 import spp.utils.traits;
 import genex;
 import std;
@@ -52,7 +56,7 @@ auto FunctionImplementationLoweredAst::SetProtoPtr(
 
 auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
-  using analyse::errors::SppDivisionByZeroError;
+  IMPORT_UTILS;
 
   // The dividing builtins all take the divisor second. Their
   // "_assign" forms divide just the same.
@@ -88,7 +92,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
 
 auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
-  using analyse::errors::SppShiftAmountOutOfBoundsError;
+  IMPORT_UTILS;
 
   // The shifting builtins take the amount second,
   // and shift the first operand's type.
@@ -122,11 +126,11 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
 auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
+  if (codegen::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
     return;
   }
 
-  auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
+  auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
   for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
     extracted_args.EmplaceBack(std::move(arg));
@@ -149,13 +153,14 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
 
 auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS;
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
-  const auto ret_type = analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse(
+  const auto ret_type = self_type::SubstituteSelfTypeAndAnalyse(
     *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
 
-  analyse::utils::builtins::kBuiltinFuncs
+  codegen::builtins::kBuiltinFuncs
     .at(_ScopePtr)
     .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
 

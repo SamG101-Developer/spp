@@ -174,8 +174,7 @@ auto GenericArgumentGroupAst::operator+=(
 auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppOrderInvalidError;
+  IMPORT_UTILS;
 
   // Check there are no duplicate type or comp argument names.
   const auto keyword_args = GetKeywordArgs();
@@ -190,7 +189,7 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
     ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword generic comp argument"));
 
   // Check the arguments are in the correct order.
-  const auto unordered_args = analyse::utils::order_utils::DoOrderArgs(Args
+  const auto unordered_args = order_utils::DoOrderArgs(Args
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());
@@ -221,12 +220,13 @@ auto GenericArgumentGroupAst::At(
 
 auto GenericArgumentGroupAst::MergeGenerics(
   decltype(Args) &&other_args) -> void {
+  IMPORT_UTILS;
   // Append the other arguments to this argument group, checking
   // named duplicates.
   for (auto &&other_arg : std::move(other_args)) {
     if (other_arg->Name == nullptr) {
       const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
-      Raise<analyse::errors::SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
+      Raise<SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
     }
     const auto *name = other_arg->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
     if (At(name) != nullptr) { continue; }

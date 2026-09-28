@@ -160,4 +160,5 @@
   using namespace ns
 
 #define use_ns(ns) \
+  namespace ns {} \
   using namespace ns

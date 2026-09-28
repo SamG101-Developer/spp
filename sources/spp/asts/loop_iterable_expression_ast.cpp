@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_iterable_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -9,7 +10,8 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.type_resolution;
 import spp.asts.assignment_statement_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_ast;
@@ -100,13 +102,10 @@ auto LoopIterableExpressionAst::ToString() const -> Str {
 
 auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone;
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS_AND_UID;
 
   // Simple statements to move from.
-  const auto uid = "_" + spp::utils::Uid();
+  const auto uid = "_" + Uid();
   auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter" + uid);
   auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res" + uid);
   auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok" + uid);
@@ -119,11 +118,11 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
       sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope, sm->CurrentIterator());
     clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-    return GetGenAndYieldTypes(
+    return marker_sups::GetGenAndYieldTypes(
       clone_expr->InferTypeRef(&tm, meta), *tm.CurrentScope, *Iterable,
       [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
   }();
-  EnforceYieldTypeWithoutGenDone(
+  marker_sups::EnforceYieldTypeWithoutGenDone(
     yield_type.get(), is_once, *sm->CurrentScope, *Iterable, "loop iterable");
 
   // Create the initial let statement to materialize the

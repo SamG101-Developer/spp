@@ -52,9 +52,7 @@ auto PostfixExpressionOperatorDerefAst::ToString() const -> Str {
 auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppDereferenceNonBorrowedTypeError;
-  using analyse::errors::SppNonCopyableTypeError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::STR_VIEW;
   using generate::common_types_precompiled::VIEW;
 
@@ -63,8 +61,8 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto is_view =
-    TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
-    TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
+    type_compare::TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
+    type_compare::TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
 
   // Check the right-hand-side expression is a borrowable
   // type.
@@ -87,8 +85,9 @@ auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Get the value underlying the borrow.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 

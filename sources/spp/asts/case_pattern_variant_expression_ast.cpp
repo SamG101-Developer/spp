@@ -57,37 +57,35 @@ auto CasePatternVariantExpressionAst::ToString() const -> Str {
 
 auto CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   // Forward analysis into the expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Expr, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-  CreateAndAnalysePatternEqFuncsDummyCore(
+  case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
     {this}, sm, meta);
 }
 
 auto CasePatternVariantExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of the expression. Todo: maybe
   // do this via generated == function?
   Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
+  mem_utils::ValidateSymbolMemory(
     *Expr, *Expr, *sm, true, true, true, true, meta);
 }
 
 auto CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
+  IMPORT_UTILS;
   // Transform the pattern into comptime values; all need to
   // be true.
-  auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
+  auto comptime_transforms = case_utils::CreateAndAnalysePatternEqCompTime(
     {this}, sm, meta);
 
   // Return the single result (only one expression will be here).
@@ -96,10 +94,10 @@ auto CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
 
 auto CasePatternVariantExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
+  IMPORT_UTILS;
 
   // Generate the LLVM.
-  const auto llvm_master_transform = CreateAndAnalysePatternEqFuncsLlvm(
+  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     {this}, sm, meta, ctx);
   return llvm_master_transform[0];
 }

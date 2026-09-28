@@ -12,7 +12,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.utils.monomorphization;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.expression_ast;
@@ -62,7 +62,7 @@ namespace {
       spp::analyse::scopes::TypeSymbol &open_instance, spp::analyse::scopes::Scope const &scope) {
       auto meta = spp::asts::meta::CompilerMetaData();
       meta.CurrentStage = stage;
-      return spp::analyse::utils::monomorphization_utils::InstantiateForScope(
+      return spp::analyse::utils::monomorphization::InstantiateForScope(
         open_instance, scope, sm->GlobalScope, &meta);
     };
   }
@@ -284,7 +284,7 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   analyse::scopes::ScopeManager *sm)
   -> void {
   //
-  using analyse::utils::monomorphization_utils::MonomorphiseToFixedPoint;
+  using analyse::utils::monomorphization::MonomorphiseToFixedPoint;
 
   // Monomorphisation stage. Not a walk over the modules -
   // see "MonomorphiseToFixedPoint" - so there is no per-module

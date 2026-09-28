@@ -4,8 +4,8 @@ module;
 module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
-import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -56,7 +56,7 @@ namespace {
   /// unbound generic safe.
   auto HasThreadSafeConstraint(
     TypeSymbol const &sym) -> bool {
-    using spp::analyse::utils::type_predicates::IsTemplate;
+    using spp::analyse::utils::type_compare::IsTemplate;
     using generate::common_types_precompiled::THREAD_SAFE;
 
     const auto scope = sym.ScopeDefinedIn != nullptr
@@ -76,7 +76,6 @@ namespace {
     TypeSymbol const *sym,
     spp::Set<TypeSymbol const*> &seen)
     -> bool {
-    using spp::analyse::utils::type_compare::TypeEq;
     using spp::analyse::utils::type_members::GetAllAttrs;
     using namespace spp::asts::generate::common_types_precompiled;
 
@@ -187,7 +186,7 @@ VariableSymbol::VariableSymbol(
   Kind(kind),
   IsMutable(is_mutable),
   Visibility(visibility),
-  MemInfo(MakeUnique<utils::mem_info_utils::MemoryInfo>()) {
+  MemInfo(MakeUnique<utils::memory_state::MemoryInfo>()) {
   LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
   CompTimeValue = nullptr;
 }
@@ -200,6 +199,7 @@ VariableSymbol::VariableSymbol(
   Kind(that.Kind),
   ParamId(that.ParamId),
   BindsParamId(that.BindsParamId),
+  IsVariadic(that.IsVariadic),
   IsMutable(that.IsMutable),
   AliasSym(that.AliasSym),
   NarrowsSym(that.NarrowsSym),
@@ -233,7 +233,7 @@ auto VariableSymbol::operator==(
 
 auto TypeSymbol::IsCopyable() const -> bool {
   using generate::common_types_precompiled::COPY;
-  using utils::type_predicates::IsTemplate;
+  using utils::type_compare::IsTemplate;
 
   // If this is a generic type, then check the copyable
   // flag on this type, and the bound type.

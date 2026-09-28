@@ -8,8 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -59,8 +60,7 @@ auto DeferStatementAst::ToString() const -> Str {
 auto DeferStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppDeferTerminatesError;
-  using analyse::utils::expr_utils::ValidateDiscardedValue;
+  IMPORT_UTILS;
 
   // Marked for the duration of the expression's own analysis,
   // so that a "?" anywhere inside it - however deeply nested
@@ -76,22 +76,19 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
   RaiseIf<SppDeferTerminatesError>(
-    analyse::utils::expr_utils::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
+    control_flow::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value
   // rule, which also reports a "case" against the expressions
   // its branches end on rather than against the "case".
-  ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
+  expr_utils::ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
 }
 
 auto DeferStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
-  auto saved = Vec<Pair<
-    Shared<VariableSymbol>,
-    analyse::utils::mem_info_utils::MemoryInfoSnapshot>>();
-
   // The expression has to be walked here, in the place it
   // is written, because the walk is what consumes the scopes
   // it owns. But it does not *run* here, so nothing it names
@@ -99,12 +96,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
   // the rest of the scope, which is the entire point of
   // deferring it. So the walk happens, and the memory state
   // it produced is rolled back.
-  for (auto const *scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
-    for (auto *sym : scope->AllVarSymbols(true)) {
-      saved.EmplaceBack(sym->SharedFromThis<VariableSymbol>(), sym->MemInfo->Snapshot());
-    }
-    if (scope == meta->EnclosingFunctionScope) { break; }
-  }
+  const auto saved = memory_state::SnapshotScopes(sm->CurrentScope, meta->EnclosingFunctionScope);
 
   // Registered where it is reached, so an exit written above
   // this statement does not run it - which is what a "defer"
@@ -133,7 +125,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
 auto DeferStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *) -> void {
-  using analyse::errors::SppDeferInCompileTimeFunctionError;
+  IMPORT_UTILS;
 
   // Only a body being evaluated at compile time reaches this:
   // a function prototype exhausts its scope at stage 9 rather

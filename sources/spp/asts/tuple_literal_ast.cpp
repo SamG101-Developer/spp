@@ -83,16 +83,13 @@ auto TupleLiteralAst::ToString() const -> Str {
 auto TupleLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
 
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*elem, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
       {sm->CurrentScope}, ERR_ARGS(*elem));
   }
 
@@ -100,7 +97,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   for (auto const &elem : Elems | genex::views::ptr) {
     auto elem_type = elem->InferType(sm, meta);
     RaiseIf<SppSecondClassBorrowViolationError>(
-      IsTypeBorrowed(*elem_type, *sm),
+      type_predicates::IsTypeBorrowed(*elem_type, *sm),
       {sm->CurrentScope}, ERR_ARGS(*elem, *elem_type, "tuple element type"));
   }
 
@@ -111,12 +108,12 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
 auto TupleLiteralAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of each element in the tuple literal.
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
   }
 }
 
@@ -137,8 +134,9 @@ auto TupleLiteralAst::Stage9_CompTimeResolve(
 
 auto TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto tuple_type_sym = InferTypeRef(sm, meta).Sym;
   const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);

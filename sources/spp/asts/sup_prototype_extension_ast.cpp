@@ -9,13 +9,14 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.function_values;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
+import spp.asts.class_attribute_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
@@ -71,16 +72,15 @@ namespace spp::asts {
       Scope const &check_scope,
       const bool check_constraints)
       -> Pair<Scope*, SupPrototypeExtensionAst const*> {
-      using analyse::utils::type_compare::GenericInferenceMap;
-      using analyse::utils::type_compare::RelaxedTypeEq;
-      using analyse::utils::type_compare::TypeEq;
+      IMPORT_UTILS;
+      using type_compare::GenericInferenceMap;
       for (auto *const sc : scopes) {
         const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-        if (ext == nullptr or not TypeEq(*ext->SuperClass, super_class, *sc, check_scope, false)) { continue; }
+        if (ext == nullptr or not type_compare::TypeEq(*ext->SuperClass, super_class, *sc, check_scope, false)) { continue; }
         auto fwd = GenericInferenceMap();
         auto rev = GenericInferenceMap();
-        if (RelaxedTypeEq(*ext->Name, name, *sc, check_scope, fwd, false, check_constraints)
-          or RelaxedTypeEq(name, *ext->Name, check_scope, *sc, rev, false, check_constraints)) {
+        if (type_compare::RelaxedTypeEq(*ext->Name, name, *sc, check_scope, fwd, false, check_constraints)
+          or type_compare::RelaxedTypeEq(name, *ext->Name, check_scope, *sc, rev, false, check_constraints)) {
           return {sc, ext};
         }
       }
@@ -161,8 +161,7 @@ auto SupPrototypeExtensionAst::Stage1_PreProcess(
 auto SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
-  using analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError;
+  IMPORT_UTILS;
 
   // Create a new scope for the superimposition extension.
   auto scope_name = ScopeBlockName::FromParts(
@@ -226,11 +225,7 @@ auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
 auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::errors::SppGenericTypeInvalidUsageError;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppSuperimpositionExternalMarkerExtensionError;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::COPY;
   using generate::common_types_precompiled::DROP;
 
@@ -249,7 +244,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   }
 
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*Name, *sm),
+    type_predicates::IsTypeBorrowed(*Name, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
 
   // A "$Func" mock keeps its bare name here. This is a
@@ -282,7 +277,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // (allows use in generic arguments to the superclass).
   SuperClass->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*SuperClass, *sm),
+    type_predicates::IsTypeBorrowed(*SuperClass, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *SuperClass, "superimposition supertype"));
   SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName()->WithSourceSpanOf(*SuperClass);
 
@@ -299,8 +294,8 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // the package's own, which is analysed as if it were absent.
   if (not Name->IsCompilerGeneratedType()) {
     const auto is_marker =
-      TypeEq(*SuperClass, *COPY, *sm->CurrentScope, *sm->CurrentScope) or
-      TypeEq(*SuperClass, *DROP, *sm->CurrentScope, *sm->CurrentScope);
+      type_compare::TypeEq(*SuperClass, *COPY, *sm->CurrentScope, *sm->CurrentScope) or
+      type_compare::TypeEq(*SuperClass, *DROP, *sm->CurrentScope, *sm->CurrentScope);
 
     // A blanket "sup [T] T ext Copy" names a generic parameter
     // rather than a type, so no package declares what it marks,
@@ -323,13 +318,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::func_utils::CheckForConflictingOverride;
-  using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::errors::SppSuperimpositionExtensionMethodInvalidError;
-  using analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError;
-  using analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError;
-  using analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::COPY;
 
   // Move to the next scope.
@@ -363,8 +352,11 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 
   // Mark the class as copyable if the "Copy" type is the
   // supertype.
+  // Todo: Nothing checks the attributes are all copyable, so
+  //  "Copy" over a class holding a "Str" duplicates the "Str"
+  //  (TestAstMemoryCopy.test_invalid_copy_over_a_type_holding_*).
   for (const auto sup_scope : sup_scopes) {
-    if (analyse::utils::type_predicates::IsTemplate(*sup_scope->TySym, *COPY, *sup_scope)) {
+    if (type_compare::IsTemplate(*sup_scope->TySym, *COPY, *sup_scope)) {
       sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())->IsDirectlyCopyable = true;
       cls_sym->IsDirectlyCopyable = true;
       break;
@@ -378,7 +370,7 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
       // Get the method and identify the base method it
       // is overriding.
       const auto this_method = ext_member->Impl->FinalMember()->To<FunctionPrototypeAst>();
-      const auto base_method = CheckForConflictingOverride(
+      const auto base_method = function_values::CheckForConflictingOverride(
         *member->GetAstScope(), sup_sym->LinkedScope, *this_method, *sm, meta);
 
       // Check the base method exists.
@@ -426,7 +418,7 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
-      CheckShadowedCmpAgreesInType(
+      type_members::CheckShadowedCmpAgreesInType(
         *cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
     }
   }
@@ -438,8 +430,8 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
 
 auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
-  using analyse::utils::generic_bindings::EnforceGenericConstraintsAllArgs;
 
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -459,13 +451,14 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
     if (cls_sym->Type)
-      analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
+      generic_inference::EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
 
     SuperClass->ResetCache();
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
       analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
+      generic_inference::EnforceGenericConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
     }
   }
 
@@ -513,7 +506,7 @@ auto SupPrototypeExtensionAst::Stage11_CodeGen(
 auto SupPrototypeExtensionAst::CheckCyclicExtension(
   TypeSymbol const &sup_sym, Scope &check_scope) const -> void {
   // Prevent cyclic inheritance: this block's super class already extending its type, at any level.
-  using analyse::errors::SppSuperimpositionCyclicExtensionError;
+  IMPORT_UTILS;
   const auto cycle = FindMatchingExtension(sup_sym.LinkedScope->SupScopes(), *Name, *SuperClass, check_scope, true);
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
     cycle.second != nullptr, {&check_scope}, ERR_ARGS(*cycle.second->SuperClass, *SuperClass));
@@ -523,7 +516,7 @@ auto SupPrototypeExtensionAst::CheckDoubleExtension(
   TypeSymbol const &cls_sym, Scope &check_scope) const -> void {
   // Prevent double inheritance: the same type extended by the same super class, at this level. A function class's
   // blocks are generated one per overload, so it is not checked.
-  using analyse::errors::SppSuperimpositionDoubleExtensionError;
+  IMPORT_UTILS;
   if (cls_sym.IsMock()) { return; }
   const auto twin = FindMatchingExtension(cls_sym.LinkedScope->DirectSupScopes, *SuperClass, *Name, check_scope, false);
   if (twin.second != nullptr) {
@@ -535,8 +528,7 @@ auto SupPrototypeExtensionAst::CheckDoubleExtension(
 auto SupPrototypeExtensionAst::CheckSelfExtension(
   Scope &check_scope) const -> void {
   //
-  using analyse::errors::SppSuperimpositionSelfExtensionError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // Optimization as $Types can never extend themselves, given
   // that they are compiler generated.
@@ -545,7 +537,7 @@ auto SupPrototypeExtensionAst::CheckSelfExtension(
 
   // Check if the superimposition is extending itself.
   RaiseIf<SppSuperimpositionSelfExtensionError>(
-    TypeEq(*Name, *SuperClass, check_scope, check_scope), {&check_scope},
+    type_compare::TypeEq(*Name, *SuperClass, check_scope, check_scope), {&check_scope},
     ERR_ARGS(*Name, *SuperClass));
 }
 

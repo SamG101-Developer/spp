@@ -56,11 +56,10 @@ auto PostfixExpressionOperatorKeywordNotAst::ToString() const -> Str {
 auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::utils::type_predicates::IsTypeBool;
+  IMPORT_UTILS;
 
   // Check the left-hand-side is an owned boolean expression.
-  if (not IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+  if (not type_predicates::IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
     const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta);
     Raise<SppExpressionNotBooleanError>(
       {sm->CurrentScope},
@@ -81,9 +80,10 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Generate the left-hand-side expression, which analysis has
   // guaranteed is a boolean, owned or borrowed.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(lhs_val != nullptr);
 

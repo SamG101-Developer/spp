@@ -28,22 +28,21 @@ ObjectInitializerArgumentAst::~ObjectInitializerArgumentAst() = default;
 auto ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   // Forward analysis into the value expression.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Val, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Val));
 }
 
 auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the value expression.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   Val->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Val, *this, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*Val, *this, *sm, true, true, true, true, meta);
 }
 
 auto ObjectInitializerArgumentAst::Stage9_CompTimeResolve(

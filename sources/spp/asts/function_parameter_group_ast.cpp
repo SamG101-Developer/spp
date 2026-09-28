@@ -62,10 +62,7 @@ auto FunctionParameterGroupAst::ToString() const -> Str {
 
 auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppMultipleSelfParametersError;
-  using analyse::errors::SppMultipleVariadicParametersError;
-  using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppOrderInvalidError;
+  IMPORT_UTILS;
 
   // Create sets of parameters based on conditions.
   const auto self_params = Params
@@ -85,7 +82,7 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
     | genex::views::duplicates({}, genex::meta::deref)
     | genex::to<Vec>();
 
-  const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
+  const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());

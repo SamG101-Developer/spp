@@ -104,6 +104,11 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   /// written type with no real span leaves the copy unstamped.
   SPP_ATTR_NODISCARD auto WithSourceSpanOf(TypeAst const &written) const -> Shared<TypeAst>;
 
+  /// A copy of this type that errors point at @p site, such as the
+  /// expression the type was inferred from ("1" for "S32"). Unlike
+  /// "WithSourceSpanOf", it keeps this type's own spelling.
+  SPP_ATTR_NODISCARD auto WithSourceSpanAt(Ast const &site) const -> Shared<TypeAst>;
+
   /// The text of the type written in source that this one was
   /// rebuilt from (see "WithSourceSpanOf"), for error messages
   /// to show beside the rebuilt, qualified form. Empty when this

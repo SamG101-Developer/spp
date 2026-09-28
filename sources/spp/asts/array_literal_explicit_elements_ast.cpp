@@ -100,13 +100,7 @@ auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
 
 auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeArr;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // Analyse the element inside the array. Also enforce that
   // the element is an acceptable primary expression, ie not
@@ -114,7 +108,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*elem, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
       {sm->CurrentScope}, ERR_ARGS(*elem));
   }
 
@@ -124,14 +118,14 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   // otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
-    IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
+    type_predicates::IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto z_type = from_target
     ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
     : z_elem->InferType(sm, meta);
 
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*z_type, *sm),
+    type_predicates::IsTypeBorrowed(*z_type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, "array element type"));
 
   // Check all elements have the same type as the "correct
@@ -143,7 +137,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     auto c_type = c_elem->InferType(sm, meta);
 
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::TypeEq(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
@@ -156,12 +150,12 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
 auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Alias the common utils functions and types.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of each element in the array literal.
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
   }
 }
 
@@ -185,7 +179,7 @@ auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
 
 auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using spp::utils::Uid;
+  IMPORT_UTILS_AND_UID;
 
   // Runtime allocation. This pathway generates each element
   // and then uses alloca into the entry block of the
@@ -289,7 +283,7 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 
 auto ArrayLiteralExplicitElementsAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  using analyse::utils::type_predicates::IsTypeArr;
+  IMPORT_UTILS;
 
   // Create a "T" type and "n" size, for the array type. If
   // a pre-defined array type has been given (ie the assignment
@@ -297,12 +291,13 @@ auto ArrayLiteralExplicitElementsAst::InferType(
   // element type is preserved; otherwise use the 0th element's
   // inferred type.
   auto size_tok = MakeUnique<TokenAst>(
-    TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
+    TokL->PosStart(), lex::SppTokenType::LX_NUMBER,
+    std::to_string(Elems.Len()));
   auto size_gen = MakeUnique<IntegerLiteralAst>(
     nullptr, std::move(size_tok), "uz");
 
   auto elem_gen = meta->AssignmentTargetType != nullptr
-    and IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
+    and type_predicates::IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
     ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 
@@ -318,7 +313,9 @@ auto ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
-  for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
+  for (auto const &elem : Elems) {
+    elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args)));
+  }
   return MakeShared<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL), std::move(elems), AstClone(TokR));
 }

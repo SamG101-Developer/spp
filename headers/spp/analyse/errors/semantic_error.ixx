@@ -117,6 +117,8 @@ use(spp::analyse::errors, struct SppMovingComptimeConstantMemoryError);
 use(spp::analyse::errors, struct SppHigherOrderGenericsNotSupportedError);
 use(spp::analyse::errors, struct SppGeneratedCodeError);
 use(spp::analyse::errors, struct SppCharLiteralOutOfBoundsError);
+use(spp::analyse::errors, struct SppCharLiteralLengthError);
+use(spp::analyse::errors, struct SppPatternGuardMovesValueError);
 use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
 use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
@@ -684,6 +686,14 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGeneratedCodeError final : SemanticE
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralOutOfBoundsError final : SemanticError {
   explicit SppCharLiteralOutOfBoundsError(Ast const &literal, std::uint32_t code_point);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralLengthError final : SemanticError {
+  explicit SppCharLiteralLengthError(Ast const &literal);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppPatternGuardMovesValueError final : SemanticError {
+  explicit SppPatternGuardMovesValueError(Ast const &guard, Ast const &symbol_definition);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueNotConsumedError final : SemanticError {

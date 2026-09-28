@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_branch_ast;
 import spp.analyse.errors.semantic_error;
@@ -197,10 +198,11 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
 
 auto CaseExpressionBranchAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Generate the branch architecture. Start by defining blocks
   // for the branch's "body" and "next" (after body) zones.
   sm->MoveToNextScope();
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
   const auto body_bb = llvm::BasicBlock::Create(
     *ctx->Context, "case.branch.body" + uid, func);

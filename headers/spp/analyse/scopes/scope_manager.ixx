@@ -109,10 +109,11 @@ public:
   auto MoveToNextScope(bool ignore_alias_class_scopes = true) -> Scope*;
 
   /// Advance the iterator past every scope that's a descendant
-  /// of the current scope - the final scope that will be the
-  /// new current scope is the "FinalChildScope". One more
+  /// of the current scope, up to its "FinalChildScope", from
+  /// wherever in that subtree the walk has got to. One more
   /// iteration and the immediate sibling to this scope will be
-  /// reached.
+  /// reached. The current scope stays the one exhausted, so that
+  /// "MoveOutOfCurrentScope" leaves it for its own parent.
   auto ExhaustScope() -> void;
 
   /// Iterate the tree walker until we are on the last scope

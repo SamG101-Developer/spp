@@ -12,7 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -156,6 +156,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
     // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sym->ParamId = NextGenericParamId();
+    sym->IsVariadic = TokEllipsis != nullptr;
     sm->CurrentScope->AddVarSymbol(std::move(sym));
     return;
   }
@@ -195,17 +196,16 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
 
 auto GenericParameterAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
 
   // An optional type parameter analyses its default where it
   // is written and stamps it with what it means there
-  // ("type_utils::StampWrittenParts"), as it is read from
+  // ("type_resolution::StampWrittenParts"), as it is read from
   // wherever the parameter is bound.
   if (CompType == nullptr) {
     if (TypeDefault != nullptr) {
       TypeDefault->Stage7_AnalyseSemantics(sm, meta);
-      analyse::utils::type_utils::StampWrittenParts(*TypeDefault, *sm->CurrentScope);
+      type_resolution::StampWrittenParts(*TypeDefault, *sm->CurrentScope);
     }
     return;
   }
@@ -218,7 +218,7 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // Todo: a method's "cmp p: Box[T]" (or "Self") in a generic
   //  sup keeps the sup's "T", unknown at the call (E26, located
   //  in std) - GenericParameterCompGenericClass.test_valid_comp_parameter_typed_by_the_class_generic.
-  CompType = analyse::utils::type_utils::ResolveWrittenType(*CompType, *sm, *meta);
+  CompType = type_resolution::ResolveWrittenType(*CompType, *sm, *meta);
   if (not IsInherited) {
     const auto sym = sm->CurrentScope->GetVarSymbol(
       IdentifierAst::FromType(*Name).get());
@@ -229,19 +229,30 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // convention, as this violates second class borrow
   // rules.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*CompType, *sm), {sm->CurrentScope},
+    type_predicates::IsTypeBorrowed(*CompType, *sm), {sm->CurrentScope},
     ERR_ARGS(*CompType, *CompType, "generic comp argument"));
 }
 
 auto GenericParameterAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // A type parameter analyses its name and any default.
+  // Its constraints were analysed in stage 4, before sup
+  // scopes load, which is too early for the constraints
+  // of their own generic arguments, so they are analysed
+  // again now that those can be checked.
   if (CompType == nullptr) {
     Name->Stage7_AnalyseSemantics(sm, meta);
     if (TypeDefault != nullptr) { TypeDefault->Stage7_AnalyseSemantics(sm, meta); }
+    if (Constraints != nullptr) {
+      const auto _meta_guard = MetaGuard(meta);
+      meta->AllowAbstractType = true;
+      for (auto const &constraint : Constraints->Constraints) {
+        constraint->ResetCache();
+        constraint->Stage7_AnalyseSemantics(sm, meta);
+      }
+    }
     return;
   }
 
@@ -249,7 +260,7 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
   // makes sure it is of the parameter's type.
   if (CompDefault == nullptr) { return; }
   CompDefault->Stage7_AnalyseSemantics(sm, meta);
-  if (not TypeEq(
+  if (not type_compare::TypeEq(
     TypeRef::Of(*CompType, *sm->CurrentScope), CompDefault->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto default_type = CompDefault->InferType(sm, meta);
@@ -259,7 +270,7 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
 
 auto GenericParameterAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Only an optional comp parameter's default holds memory to
   // check.
@@ -268,7 +279,7 @@ auto GenericParameterAst::Stage8_CheckMemory(
     return;
   }
   CompDefault->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, true, true, true, true, meta);
 }
 
 auto GenericParameterAst::Stage9_CompTimeResolve(

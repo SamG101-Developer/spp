@@ -90,6 +90,7 @@ auto UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
 auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Generate the top-level alias for the converted type statement.
   // const auto scope = sm->CurrentScope->convert_postfix_to_nested_scope(old_var->To<PostfixExpressionAst>()->lhs.get());
   const auto [old_var_sym, scope] = sm->CurrentScope->GetVarSymbolOutermost(*OldVar);
@@ -115,7 +116,7 @@ auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
     const auto closest_match = spp::utils::strings::ClosestMatch(
       OldVar->ToString(), {});
 
-    Raise<analyse::errors::SppIdentifierUnknownError>(
+    Raise<SppIdentifierUnknownError>(
       {sm->CurrentScope}, ERR_ARGS(*this, "constant variable", closest_match));
   }
 }

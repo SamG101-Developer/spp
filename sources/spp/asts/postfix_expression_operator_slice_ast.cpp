@@ -89,12 +89,7 @@ auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
 auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
-  using generate::common_types_precompiled::SLICE_MUT;
-  using generate::common_types_precompiled::SLICE_REF;
+  IMPORT_UTILS;
   if (_MappedFunc != nullptr) { return; }
 
   // Determine the left-hand-side type.

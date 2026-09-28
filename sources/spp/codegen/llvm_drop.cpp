@@ -6,7 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.function_prototype_ast;
@@ -32,8 +32,6 @@ auto spp::codegen::EmitDrop(
   using analyse::utils::drop_utils::FindDropOverload;
   using analyse::utils::drop_utils::NeedsDrop;
   using analyse::utils::type_members::GetAllParts;
-  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
-  using analyse::utils::type_predicates::IsIndexWithinBound;
   using analyse::utils::type_predicates::IsTypeArr;
   using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
 

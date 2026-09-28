@@ -10,8 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.resolution_index;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
@@ -25,6 +24,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lsp.resolution_index;
 
 SPP_MOD_BEGIN
 PostfixExpressionAst::PostfixExpressionAst(
@@ -65,10 +65,7 @@ auto PostfixExpressionAst::ToString() const -> Str {
 auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::expr_utils::PrimaryExpressionOptions;
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
+  IMPORT_UTILS;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
     {
@@ -86,7 +83,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-      temp_lhs = ResolveWrittenType(*temp_lhs, *sm, *meta);
+      temp_lhs = type_resolution::ResolveWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -101,7 +98,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
       // checking that the lhs is a valid form of primary expression.
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+        not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
     }
   }
@@ -119,7 +116,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
      Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
 
     if (produces_value) {
-      analyse::utils::resolution_index::RecordExpression(
+      lsp::resolution_index::RecordExpression(
         *this, *sm, *meta, [this, sm, meta] { return InferType(sm, meta); });
     }
   }
@@ -128,7 +125,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 auto PostfixExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Memory analysis used the transformed AST to not repeat lhs as self.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
@@ -170,7 +167,7 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
     // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
-    ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
   }
   Op->Stage8_CheckMemory(sm, meta);
 }

@@ -8,13 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.assignment_utils;
 import spp.analyse.utils.case_utils;
-import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
@@ -59,8 +59,7 @@ namespace spp::asts {
     auto NarrowedLevel(
       TypeAst const &pattern, TypeAst const &alt,
       Scope const &scope) -> Pair<Shared<TypeAst>, Shared<TypeAst>> {
-      using analyse::utils::type_compare::TypeEq;
-      using analyse::utils::type_predicates::IsTypeVariant;
+      IMPORT_UTILS;
 
       const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
         auto const &args = t.LastTypePart()->GnArgGroup->Args;
@@ -76,8 +75,8 @@ namespace spp::asts {
 
         // Check that a variant is being considered, and that
         // we don't have a direct (non-narrowing) match.
-        if (not IsTypeVariant(TypeRef::OfHead(*a, scope), scope)) { continue; }
-        if (TypeEq(*a, *p, scope, scope, false)) { continue; }
+        if (not type_predicates::IsTypeVariant(TypeRef::OfHead(*a, scope), scope)) { continue; }
+        if (type_compare::TypeEq(*a, *p, scope, scope, false)) { continue; }
         if (codegen::GetVariantIndexOfMember(
           TypeRef::Of(*a, scope), TypeRef::Of(*p, scope), scope).has_value()) {
           return {p, a};
@@ -156,19 +155,16 @@ auto CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
 
 auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_predicates::IsTypeVariant;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::errors::SppTypeMismatchError;
+  IMPORT_UTILS;
 
   // All factors type analysis.
-  Type = ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
 
   // Handle "@" in the condition and move into it. Todo is
   // this still needed? It helps with the variant breakdown
   // within the deref type.
   auto *mapped_cond = meta->CaseCondition;
-  if (analyse::utils::assignment_utils::IsDeref(mapped_cond)) {
+  if (regions::IsDeref(mapped_cond)) {
     auto *const inner = mapped_cond->To<PostfixExpressionAst>()->Lhs.get();
     if (inner->To<IdentifierAst>() != nullptr) { mapped_cond = inner; }
   }
@@ -183,9 +179,9 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   auto *const cond_sym = cond_as_id != nullptr ? sm->CurrentScope->GetVarSymbol(cond_as_id) : nullptr;
   _CondSym = cond_sym != nullptr ? cond_sym->SharedFromThis<VariableSymbol>() : nullptr;
   if (_CondSym != nullptr
-    and IsTypeVariant(_CondSym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
+    and type_predicates::IsTypeVariant(_CondSym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(
+      not type_compare::TypeEq(
         _CondSym->TypeRefIn(*sm->CurrentScope),
         TypeRef::Of(*Type, *sm->CurrentScope),
         *sm->CurrentScope, *sm->CurrentScope),
@@ -235,15 +231,13 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // Stupidly complex method but I think all parts are
   // covered now. Heavy documentation *READ IT ALL* when
   // making changes to this class.
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
-  using analyse::utils::type_predicates::IsTypeVariant;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS_AND_UID;
 
   // A flow symbol only exists for a variant condition, whose
   // members live behind the discriminant, so the narrowed
   // bindings index from the payload buffer rather than from
   // the variant's base address.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSym and _CondSym) {
     // The subject's storage is read through the symbol the
@@ -346,7 +340,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       current_ptr = codegen::GetVariantPayloadPtr(
         current_ptr, llvm_subject_ty, "case.pattern.payload" + level_uid, ctx);
 
-      const auto alts = analyse::utils::type_compare::DedupVariableInnerTypes(
+      const auto alts = type_compare::VariantMemberTypes(
         *subject_type->WithoutConvention(), *sm->CurrentScope);
       if (*tag >= alts.Len()) { break; }
 
@@ -374,7 +368,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
 
     if (bare_cond_type != nullptr
-      and IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
+      and type_predicates::IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
       const auto cond_ref = TypeRef::Of(*bare_cond_type, *sm->CurrentScope);
       const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope);
       auto tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref, *sm->CurrentScope);
@@ -435,7 +429,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
   // Combine all the generated transforms into a single "AND"ed
   // expression.
-  auto llvm_transforms = CreateAndAnalysePatternEqFuncsLlvm(
+  auto llvm_transforms = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
 
   const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };

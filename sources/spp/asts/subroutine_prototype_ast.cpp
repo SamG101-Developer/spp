@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
@@ -49,6 +50,7 @@ SubroutinePrototypeAst::SubroutinePrototypeAst(
 SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
 auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
+  IMPORT_UTILS;
   auto ast = MakeUnique<SubroutinePrototypeAst>(
     AstCloneVec(Annotations),
     AstClone(TokCmp),
@@ -60,7 +62,7 @@ auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(ReturnType),
     AstClone(Impl));
   ast->_AnnotationInfo = _AnnotationInfo
-    ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
+    ? MakeUnique<annotation_utils::AnnotationInfo>(*_AnnotationInfo)
     : nullptr;
   ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
   ast->_Ctx = _Ctx;
@@ -82,7 +84,7 @@ auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
 auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::VOID;
 
   // Perform default function prototype semantic analysis
@@ -99,7 +101,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
   // Check for a void return type.
-  const auto is_void = TypeEq(
+  const auto is_void = type_compare::TypeEq(
     *ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope);
 
   // Check there is a return statement at the end (for non-void
@@ -110,8 +112,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // A body that never reaches its end ("ret", "abort()", a loop
   // with no way out, a "case" every branch of which does one of
   // those) needs no value there.
-  const auto body_diverges = analyse::utils::expr_utils::Diverges(*Impl, sm, meta);
-  RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
+  const auto body_diverges = control_flow::Diverges(*Impl, sm, meta);
+  RaiseUnless<SppFunctionSubroutineMissingReturnStatementError>(
     is_void or annotation_blocks_ret or body_diverges,
     {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
@@ -121,7 +123,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   if (FfiAnnotation != nullptr) {
     const auto ffi_symbol = GetFfiSymbolName();
     for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
-      Raise<analyse::errors::SppFfiGenericParameterError>(
+      Raise<SppFfiGenericParameterError>(
         {sm->CurrentScope}, ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
     }
   }

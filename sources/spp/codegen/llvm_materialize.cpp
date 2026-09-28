@@ -5,7 +5,7 @@ module spp.codegen.llvm_materialize;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.assignment_utils;
+import spp.analyse.utils.regions;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -58,7 +58,7 @@ auto spp::codegen::llvm_addr_of(
   LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::assignment_utils::IsDeref;
+  using analyse::utils::regions::IsDeref;
 
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
   // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we

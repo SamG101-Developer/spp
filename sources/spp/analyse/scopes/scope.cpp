@@ -8,7 +8,10 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.cmp_utils;
+import spp.analyse.utils.comp_generics;
+import spp.analyse.utils.comptime_intrinsics;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
@@ -697,7 +700,7 @@ auto Scope::Canon(TypeSymbol &sym) const -> TypeSymbol* {
 auto Scope::InstanceIdentityKey(
   Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params) const
   -> InstanceKey {
-  using utils::cmp_utils::CompExprIdentity;
+  using utils::comp_generics::CompExprIdentity;
   using Tag = InstanceKey::Tag;
 
   // Start with an empty instance key. This will get built upon

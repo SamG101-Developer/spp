@@ -9,10 +9,11 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.function_values;
+import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
@@ -106,13 +107,12 @@ auto TypeStatementAst::Stage1_PreProcess(
 auto TypeStatementAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run top level scope generation for the annotations.
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // Check there are no conventions on the new type. Todo: Move to later stage? nothing is loaded in atm
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*NewType, *sm, false),
+    type_predicates::IsTypeBorrowed(*NewType, *sm, false),
     {sm->CurrentScope}, ERR_ARGS(*this, *NewType, "type statement new type"));
 
   // Create the type symbol for this type, that will point to the old type.
@@ -144,6 +144,7 @@ auto TypeStatementAst::Stage2_GenTopLvlScopes(
 
 auto TypeStatementAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -160,15 +161,15 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
     ? AstName(enclosing)
     : nullptr;
   OldType = (sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.IsEmpty()
-    ? analyse::utils::type_utils::SubstituteSelfTypeWith(*OldType, *sup_name)
-    : analyse::utils::type_utils::SubstituteSelfType(*OldType, *sm->CurrentScope, *meta))->WithSourceSpanOf(*OldType);
+    ? self_type::SubstituteSelfTypeWith(*OldType, *sup_name)
+    : self_type::SubstituteSelfType(*OldType, *sm->CurrentScope, *meta))->WithSourceSpanOf(*OldType);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
   // nothing is loaded yet; the old type has to wait until here, because it is a type expression to resolve rather
   // than a name to declare.
-  RaiseIf<analyse::errors::SppSecondClassBorrowViolationError>(
-    analyse::utils::type_predicates::IsTypeBorrowed(*OldType, *sm, false),
+  RaiseIf<SppSecondClassBorrowViolationError>(
+    type_predicates::IsTypeBorrowed(*OldType, *sm, false),
     {sm->CurrentScope}, ERR_ARGS(*this, *OldType, "type statement old type"));
 
   // Check the "old type" exists (non-generic).
@@ -179,7 +180,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   }
 
   // Recursively discover the actual type being mapped to.
-  auto [mapped_old_type, attach_generics, tracking_scope] = analyse::utils::type_utils::RecursiveAliasSearch(
+  auto [mapped_old_type, attach_generics, tracking_scope] = type_resolution::RecursiveAliasSearch(
     *this, _FromUseStatement, sm->CurrentScope->Parent, sm, meta);
 
   const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
@@ -205,6 +206,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
 
 auto TypeStatementAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Skip the class scope, and enter the type statement scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -224,7 +226,7 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
       sm->GlobalScope, alias.TrackingScope);
     GnParamGroup->Stage4_ResolveDeclarations(alias.ParamsFromTarget ? &tm : sm, meta);
     // Stamped from the scope of the lowest level alias, where its names mean what they were written to.
-    analyse::utils::type_utils::StampWrittenParts(*alias.Resolved, *alias.TrackingScope);
+    type_resolution::StampWrittenParts(*alias.Resolved, *alias.TrackingScope);
     alias.Resolved->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
 
     const auto old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved.get());
@@ -269,8 +271,7 @@ auto TypeStatementAst::Stage6_PreAnalyseSemantics(
 auto TypeStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams;
-  using analyse::utils::visibility_utils::CheckModuleTypeVisibility;
+  IMPORT_UTILS;
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
   // If this is a pre-generated AST (mod/sup context), skip any generation steps.
@@ -288,14 +289,14 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
 
     const auto cls_sym = sm->CurrentScope->GetTypeSymbol(resolved.get());
     if (cls_sym != nullptr and cls_sym->Type) {
-      EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
+      generic_inference::EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
     }
 
     // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
     // auto expansion.
     const auto named_target_sym = sm->CurrentScope->GetTypeSymbol(Source.OriginalOldType->WithoutGenerics().get());
     if (named_target_sym != nullptr and named_target_sym->ScopeDefinedIn != nullptr) {
-      CheckModuleTypeVisibility(
+      visibility_utils::CheckModuleTypeVisibility(
         *named_target_sym, *Source.OriginalOldType, *named_target_sym->ScopeDefinedIn, *sm, *meta);
     }
 
