@@ -1,20 +1,21 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.utils.mem_info_utils;
+export module spp.analyse.utils.memory_state;
 import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::memory_state, struct MemoryConsistency);
+use(spp::analyse::utils::memory_state, struct MemoryInfo);
+use(spp::analyse::utils::memory_state, struct MemoryState);
 use(spp::asts, struct Ast);
-use(spp::asts, struct ExpressionAst);
-use(spp::analyse::utils::mem_info_utils, struct MemoryState);
-use(spp::analyse::utils::mem_info_utils, struct MemoryConsistency);
-use(spp::analyse::utils::mem_info_utils, struct MemoryInfo);
+use(spp::asts, struct CaseExpressionBranchAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
-namespace spp::analyse::utils::mem_info_utils {
+namespace spp::analyse::utils::memory_state {
   /// Two conflicting branches in terms of memory integrity
   /// of reported symbols.
   SPP_EXP_CLS using InconsistentCondMemState = Pair<Ast*, Ast*>;
@@ -22,12 +23,18 @@ namespace spp::analyse::utils::mem_info_utils {
   /// A snapshot of the memory information of a symbol, used
   /// during branch analysis.
   SPP_EXP_CLS using MemoryInfoSnapshot = MemoryState;
+
+  /// Symbols with their saved memory states, put back by
+  /// "RestoreSnapshot". The symbols are held, so one replaced in
+  /// its scope meanwhile (a same-scope "let" shadowing it) is
+  /// still the one restored.
+  SPP_EXP_CLS using ScopeSnapshot = Vec<Pair<Shared<VariableSymbol>, MemoryInfoSnapshot>>;
 }
 
 /// The part of a symbol's memory information that branch
 /// analysis saves and restores - what initialized/moved it,
 /// partial moves, borrows etc.
-SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryState {
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   /// The ast that initialized this value, and the scope the
   /// initialized occurred in. Moving a value will set these
   /// to nullptr, so the initialization and moved state are
@@ -55,6 +62,11 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryState {
   /// escaping manner.
   Vec<Tup<Ast const*, Ast const*>> AstContainersOfEscapingBorrows;
 
+  /// On a generator yielding "&mut" borrows, the names of the
+  /// symbols holding one it yielded. Resuming it again can
+  /// yield the same element, so it ends every one of them.
+  Vec<Ast const*> AstYieldedMutBorrowHolders;
+
   /// The initialisation counter is the number of times the
   /// symbol has been initialised. This is used for "let"
   /// statements that aren't initialised on declaration,
@@ -67,7 +79,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryState {
 /// a "case" expression: each field records the pair of branches
 /// that disagreed about one aspect of it such as the
 /// initialisation state, and is empty when they all agreed.
-SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryConsistency {
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryConsistency {
   /// When a symbol is uninitialised before the "case" expression
   /// is analysed, and one of the branches initialises it and
   /// another doesn't.
@@ -92,7 +104,7 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryConsistency {
 /// consistency information, as-well as some additional
 /// fields such as if this is a borrow (say a function param)
 /// and a comptime field.
-SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo : MemoryState, MemoryConsistency {
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryInfo : MemoryState, MemoryConsistency {
   /// This is the same as the initialisation marker, but
   /// doesn't get set to nullptr on move. This is used to
   /// effectively track the origin of the symbol when it
@@ -112,7 +124,8 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo : MemoryState
   /// initialisation counter by 1.
   auto InitializedBy(Ast const &ast, Scope *scope) -> void;
 
-  /// Set the moved marker, reset the initialisation marker.
+  /// Set the moved marker, reset the initialisation marker. A
+  /// whole move also takes every part, so the partial moves go.
   auto MovedBy(Ast const &ast, Scope *scope) -> void;
 
   /// Remove a specific partial move from the partial move list.
@@ -132,3 +145,53 @@ SPP_EXP_CLS struct spp::analyse::utils::mem_info_utils::MemoryInfo : MemoryState
   /// the branch analysis has finished.
   auto FillFromSnapshot(MemoryInfoSnapshot const &snapshot) -> void;
 };
+
+namespace spp::analyse::utils::memory_state {
+  /// Similar to the type check validation, but for memory. This
+  /// is more complex as we must check every symbol, and reset
+  /// its status to the original snapshots. The final symbol
+  /// status is based off the consistent status's of every branch.
+  /// Errors are not thrown if one branch moves a symbol and
+  /// another doesn't; but the symbol mem-info is updated such
+  /// that *using* that symbol later in the function would
+  /// cause an error.
+  SPP_EXP_FUN auto ValidateInconsistentMemory(
+    Ast *parent,
+    Vec<CaseExpressionBranchAst*> const &branches,
+    VariableSymbol *subject,
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> void;
+
+  /// Mark "sym" inconsistently initialized, moved, partially
+  /// moved or borrowed wherever "other" (its state on the path
+  /// "other_path" out of a branch or loop) disagrees with "first"
+  /// (its state on "first_path", the one carried on). Nothing is
+  /// raised here: a later use of "sym" is what is rejected.
+  SPP_EXP_FUN auto MarkInconsistentPaths(
+    VariableSymbol &sym,
+    MemoryInfoSnapshot const &first,
+    MemoryInfoSnapshot const &other,
+    Ast *first_path,
+    Ast *other_path)
+    -> void;
+
+  /// The current memory state of each of "syms".
+  SPP_EXP_FUN auto SnapshotSymbols(
+    Vec<VariableSymbol*> const &syms)
+    -> ScopeSnapshot;
+
+  /// The current memory state of every symbol declared in "from"
+  /// and each scope enclosing it, up to and including "boundary"
+  /// (or the global scope if it is null). Shadowed symbols are
+  /// included.
+  SPP_EXP_FUN auto SnapshotScopes(
+    Scope const *from,
+    Scope const *boundary)
+    -> ScopeSnapshot;
+
+  /// Put every symbol in "snapshot" back into its saved state.
+  SPP_EXP_FUN auto RestoreSnapshot(
+    ScopeSnapshot const &snapshot)
+    -> void;
+}

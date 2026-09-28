@@ -2,16 +2,16 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_compare;
-import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
-use(spp::analyse::scopes, class Scope);
-use(spp::analyse::scopes, struct TypeRef);
 
 namespace spp::analyse::utils::type_compare {
   SPP_EXP_CLS using GenericInferenceMap = Map<
@@ -93,17 +93,6 @@ namespace spp::analyse::utils::type_compare {
     bool check_constraints = true)
     -> bool;
 
-  /// The expression variation of the relaxed type equality,
-  /// again reusing the equality functions on the expression
-  /// asts.
-  SPP_EXP_FUN auto RelaxedTypeEq(
-    ExpressionAst const &lhs_expr,
-    ExpressionAst const &rhs_expr,
-    Scope const &lhs_scope,
-    Scope const &rhs_scope,
-    GenericInferenceMap &generic_args)
-    -> bool;
-
   /// A method top check and enforce the generic constraints on
   /// a single argument, given its constraints off the equivalent
   /// generic parameter.
@@ -114,10 +103,10 @@ namespace spp::analyse::utils::type_compare {
     Scope const &concrete_scope)
     -> TypeAst const*;
 
-  /// The variant type de-duplicator, converting the variant type
-  /// "Str or Str or S32" into "Str or S32". Used in all variant
-  /// type analysis for uniform (and optimal) variant handling.
-  SPP_EXP_FUN auto DedupVariableInnerTypes(
+  /// A variant's members as types, flattened through nested
+  /// variants and without duplicates: "Str or Str or S32" is
+  /// "Str, S32". Members written directly keep their spelling.
+  SPP_EXP_FUN auto VariantMemberTypes(
     TypeAst const &type,
     Scope const &scope)
     -> Vec<Shared<TypeAst>>;
@@ -129,4 +118,14 @@ namespace spp::analyse::utils::type_compare {
     TypeRef const &ref,
     Scope const &scope)
     -> Vec<TypeRef>;
+
+  /// The template a symbol stands for where "scope" reads it ("Vec" for "Vec[Str]"), by the path its "FqName" takes:
+  /// a parameter is what the scope binds it to ("Scope::Canon"), a binding or "Self" the type it names, an alias its
+  /// target. A template, or a plain class, is its own.
+  SPP_EXP_FUN auto TemplateOf(TypeSymbol const &sym, Scope const &scope) -> TypeSymbol*;
+
+  /// Whether a symbol stands for the template a written type names ("Copy", or "Vec" for "Vec[Str]"), both taken to
+  /// the template they stand for, rather than comparing names.
+  SPP_EXP_FUN auto IsTemplate(TypeSymbol const &sym, TypeAst const &tmpl, Scope const &scope) -> bool;
+
 }

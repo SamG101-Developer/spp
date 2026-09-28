@@ -2,16 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_members;
-import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::type_members, struct TypePart);
 use(spp::asts, struct ClassAttributeAst);
+use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
@@ -97,4 +98,55 @@ namespace spp::analyse::utils::type_members {
     TypeSymbol const &type_sym,
     IdentifierAst const &field_name)
     -> std::size_t;
+
+  /// The classes "sym" is superimposed as ("sup Foo ext Bar"),
+  /// in the order its sup scopes list them. Empty for a type
+  /// with no scope of its own (a generic parameter).
+  SPP_EXP_FUN auto SuperClassTypes(TypeSymbol const &sym) -> Vec<TypeSymbol*>;
+
+  /// The classes among "sup_scopes", each named where its own sup
+  /// scope reads it: a sup type's name can hold a "Self" (as in
+  /// "S32 ext Ord[Rhs=Self]") only that scope has a symbol for.
+  SPP_EXP_FUN auto SuperClassNames(Vec<Scope*> const &sup_scopes) -> Vec<Pair<Shared<TypeAst>, Scope const*>>;
+
+  /// Get the number of synthetic fat-pointer fields on this
+  /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
+  /// fields prepended ahead of a type's own declared fields.
+  /// The fat pointer fields are always at the start of the
+  /// types for simplicity.
+  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(TypeSymbol const &type_sym) -> std::size_t;
+
+  /// The first type a value of @p ref holds by value (itself
+  /// included) that @p matches: as a tuple or array element, a
+  /// variant member, or an attribute, at any depth. A borrow or
+  /// a pointer holds nothing by value ("Vec[T]" keeps its "T"s
+  /// behind "RawBuf"'s pointer). Null when nothing matches.
+  SPP_EXP_FUN auto FindHeldByValue(
+    TypeRef const &ref,
+    Scope const &scope,
+    std::function<bool(TypeSymbol const &, Scope const &)> const &matches)
+    -> TypeSymbol const*;
+
+  /// Detect if a type is recursive by checking all the fields
+  /// of the type recursively, and making sure a look in the
+  /// type graph is never reached.
+  SPP_EXP_FUN auto IsTypeRecursive(ClassPrototypeAst const &type, ScopeManager const &sm) -> Shared<TypeAst>;
+
+  /// Check if an index is within the bounds of an array or tuple,
+  /// ie at compile-time check if the element requested is
+  /// genuinely reachable.
+  SPP_EXP_FUN auto IsIndexWithinBound(
+    std::size_t index,
+    TypeRef const &ref,
+    Scope const &scope)
+    -> Pair<bool, std::size_t>;
+
+  /// Get the nth type of a tuple, or for an array, all the types
+  /// are the same.
+  SPP_EXP_FUN auto GetNthTypeOfIndexableType(
+    std::size_t index,
+    TypeRef const &ref,
+    Scope const &scope)
+    -> Shared<TypeAst>;
+
 }

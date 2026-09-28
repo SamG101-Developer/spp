@@ -1,60 +1,32 @@
 module;
 #include <spp/analyse/macros.hpp>
 module spp.analyse.utils.type_compare;
-import spp.analyse.errors.semantic_error;
-import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.cmp_utils;
-import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.generic_bindings;
-import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.comp_generics;
+import spp.analyse.utils.function_values;
+import spp.analyse.utils.packs;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
-import spp.asts.annotation_ast;
 import spp.asts.ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.class_attribute_ast;
-import spp.asts.class_implementation_ast;
-import spp.asts.class_member_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_parameter_variadic_ast;
-import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
-import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.integer_literal_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.statement_ast;
-import spp.asts.sup_implementation_ast;
-import spp.asts.sup_prototype_extension_ast;
-import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.type_statement_ast;
-import spp.asts.type_unary_expression_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
-import spp.asts.utils.visibility;
 import spp.utils.algorithms;
-import spp.utils.interner;
 import spp.utils.ptr;
-import spp.utils.strings;
 import genex;
+import std;
 
 namespace spp::analyse::utils::type_compare {
   namespace {
@@ -70,22 +42,23 @@ namespace spp::analyse::utils::type_compare {
       TypeSymbol *Pack;
     };
 
-    auto ConstraintEq(
+    /** Whether "type" satisfies every constraint ("EnforceGenericConstraintsOneArg"); true when there are none. */
+    auto ConstraintsHold(
       Vec<Shared<TypeAst>> const &constraints,
       TypeAst const &type,
       Scope const &constraint_scope,
       Scope const &type_scope)
       -> bool {
-      // If there are no constraints, then the match is default true,
-      // because there are no restrictions on the "type" that can
-      // possibly be checked for.
-      if (constraints.IsEmpty()) { return true; }
+      return constraints.IsEmpty()
+        or EnforceGenericConstraintsOneArg(constraints, type, constraint_scope, type_scope) == nullptr;
+    }
 
-      // Check that all the constraints are satisfied. Wraps the call
-      // to the generic constraint enforcement (this function mainly
-      // exists for the naming uniformity in type equality).
-      return EnforceGenericConstraintsOneArg(
-        constraints, type, constraint_scope, type_scope) == nullptr;
+    /** The generic arguments a symbol holds, as its instantiation records them; an alias holds its target's. */
+    auto SymArgGroup(
+      TypeSymbol const &sym)
+      -> GenericArgumentGroupAst const& {
+      if (sym.Alias != nullptr and sym.Alias->Resolved != nullptr) { return *sym.Alias->Resolved->LastTypePart()->GnArgGroup; }
+      return *sym.Name->GnArgGroup;
     }
 
     /**
@@ -102,9 +75,7 @@ namespace spp::analyse::utils::type_compare {
       -> Vec<Unique<GenericArgumentAst>> const& {
       // An alias's instantiation has a scope of its own, so the target's arguments are read off what it resolves to.
       auto const *const sym = scope.GetTypeSymbol(&type);
-      if (sym != nullptr and sym->Alias != nullptr and sym->Alias->Resolved != nullptr) {
-        return sym->Alias->Resolved->LastTypePart()->GnArgGroup->Args;
-      }
+      if (sym != nullptr and sym->Alias != nullptr and sym->Alias->Resolved != nullptr) { return SymArgGroup(*sym).Args; }
 
       // An alias name can also resolve straight to its target's symbol, with no alias instantiation of its own in
       // between: a type is stamped with what it resolved to where it was written, and a stamp made through an alias
@@ -139,7 +110,7 @@ namespace spp::analyse::utils::type_compare {
       if (not rhs_args.IsEmpty()) {
         if (auto const &last = rhs_args.Back(); last->TypeVal != nullptr) {
           const auto sym = rhs_scope.GetTypeSymbol(last->TypeVal->WithoutGenerics().get(), false);
-          if (sym != nullptr and sym->IsTypeGeneric() and sym->IsVariadic and sym->AsBoundSymbol() == sym) { pack = sym; }
+          if (sym != nullptr and packs::IsTypePack(*sym) and sym->AsBoundSymbol() == sym) { pack = sym; }
         }
       }
 
@@ -189,7 +160,7 @@ namespace spp::analyse::utils::type_compare {
 
       for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
         if (lhs_args[i]->TypeVal == nullptr) { continue; }
-        if (not ConstraintEq(pack.GenericConstraints, *lhs_args[i]->TypeVal, pack_scope, arg_scope)) { return false; }
+        if (not ConstraintsHold(pack.GenericConstraints, *lhs_args[i]->TypeVal, pack_scope, arg_scope)) { return false; }
       }
       return true;
     }
@@ -237,14 +208,6 @@ namespace spp::analyse::utils::type_compare {
       return sym != nullptr and sym->Kind == TypeKind::GenericArg ? sym->AsBoundSymbol() : sym;
     }
 
-    /** The generic arguments a symbol holds, as its instantiation records them; an alias holds its target's. */
-    auto SymArgGroup(
-      TypeSymbol const &sym)
-      -> GenericArgumentGroupAst const& {
-      if (sym.Alias != nullptr and sym.Alias->Resolved != nullptr) { return *sym.Alias->Resolved->LastTypePart()->GnArgGroup; }
-      return *sym.Name->GnArgGroup;
-    }
-
     /** A resolved type as a written one, for the readers that still take one: its qualified name under its convention. */
     auto AsType(
       TypeRef const &ref)
@@ -255,27 +218,25 @@ namespace spp::analyse::utils::type_compare {
       return name;
     }
 
-    /** The members of a variant, flattened through nested variants and without duplicates; none for anything else. */
-    auto MembersOf(
-      TypeRef const &ref,
+    /**
+     * The members listed in a variant's "Variants" argument, flattened through nested variants and without duplicates.
+     * Each is paired with how it is named: as written for a member listed directly, by its symbol for one reached
+     * through a nested variant.
+     */
+    auto FlattenVariants(
+      TypeAst const &variants,
       Scope const &scope)
-      -> Vec<TypeRef> {
-      auto out = Vec<TypeRef>();
-      auto *const sym = ref.IsNever ? nullptr : CanonicalSym(ref.Sym);
-      if (sym == nullptr) { return out; }
-      auto const *const variants = SymArgGroup(*sym).At("Variants");
-      if (variants == nullptr or variants->TypeVal == nullptr) { return out; }
-
-      const auto add_unique = [&out, &scope](TypeRef const &member) {
-        if (not genex::any_of(out, [&](auto const &x) { return TypeEqCore(member, x, scope, scope, false); })) {
-          out.EmplaceBack(member);
-        }
+      -> Vec<Pair<Shared<TypeAst>, TypeRef>> {
+      auto out = Vec<Pair<Shared<TypeAst>, TypeRef>>();
+      const auto add_unique = [&](Shared<TypeAst> const &member, TypeRef const &ref) {
+        if (genex::any_of(out, [&](auto const &x) { return TypeEqCore(ref, x.second, scope, scope, false); })) { return; }
+        out.EmplaceBack(member, ref);
       };
-      for (auto const *arg : variants->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        const auto member = TypeRef::Of(*arg->TypeVal, scope);
-        const auto inner = MembersOf(member, scope);
-        if (inner.IsEmpty()) { add_unique(member); }
-        else { for (auto const &m : inner) { add_unique(m); } }
+      for (auto const *arg : variants.LastTypePart()->GnArgGroup->GetTypeArgs()) {
+        const auto ref = TypeRef::Of(*arg->TypeVal, scope);
+        const auto nested = type_compare::VariantMembers(ref, scope);
+        if (nested.IsEmpty()) { add_unique(arg->TypeVal, ref); }
+        else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
       }
       return out;
     }
@@ -287,9 +248,9 @@ namespace spp::analyse::utils::type_compare {
       Scope const &variant_scope,
       Scope const &type_scope)
       -> bool {
-      const auto variant_members = MembersOf(variant, variant_scope);
+      const auto variant_members = VariantMembers(variant, variant_scope);
       if (variant_members.IsEmpty()) { return false; }
-      const auto type_members = MembersOf(type, type_scope);
+      const auto type_members = VariantMembers(type, type_scope);
       if (not type_members.IsEmpty()) {
         return genex::all_of(type_members, [&](auto const &t) {
           return genex::any_of(variant_members, [&](auto const &v) { return TypeEqCore(v, t, variant_scope, type_scope, false); });
@@ -320,14 +281,10 @@ namespace spp::analyse::utils::type_compare {
       // The argument's own type is a candidate too, and then each type it is superimposed as.
       auto const &fwd_target = both_ref ? *FWD_REF : *FWD_MUT;
       auto candidates = Vec<TypeSymbol const*>{arg.Sym};
-      for (auto const *sup_scope : arg.Sym->LinkedScope->SupScopes()) {
-        if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) != nullptr and sup_scope->TySym != nullptr) {
-          candidates.EmplaceBack(sup_scope->TySym.get());
-        }
-      }
+      candidates.AppendRange(type_members::SuperClassTypes(*arg.Sym));
       for (auto const *candidate : candidates) {
         auto const &sup_sym = *candidate;
-        if (not type_predicates::IsTemplate(sup_sym, fwd_target, arg_scope)) { continue; }
+        if (not type_compare::IsTemplate(sup_sym, fwd_target, arg_scope)) { continue; }
         auto const *const target = SymArgGroup(sup_sym).At("T");
         if (target == nullptr or target->TypeVal == nullptr) { continue; }
         auto inner = TypeRef::Of(*target->TypeVal, param_scope);
@@ -344,16 +301,13 @@ namespace spp::analyse::utils::type_compare {
       Scope const &mock_scope,
       Scope const &func_scope)
       -> bool {
-      if (mock.Sym->LinkedScope != nullptr) {
-        for (auto const *sup_scope : mock.Sym->LinkedScope->SupScopes()) {
-          if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr or sup_scope->TySym == nullptr) { continue; }
-          const auto sup = TypeRef{.Sym = sup_scope->TySym.get()};
-          if (type_predicates::IsTypeFunc(sup, mock_scope) and TypeEqCore(sup, func, mock_scope, func_scope, true)) {
-            return true;
-          }
+      for (auto *sup_sym : type_members::SuperClassTypes(*mock.Sym)) {
+        const auto sup = TypeRef{.Sym = sup_sym};
+        if (type_predicates::IsTypeFunc(sup, mock_scope) and TypeEqCore(sup, func, mock_scope, func_scope, true)) {
+          return true;
         }
       }
-      return func_utils::MatchFunctionValue(mock, func, func_scope).has_value();
+      return function_values::MatchFunctionValue(mock, func, func_scope).has_value();
     }
 
     auto TypeEqCore(
@@ -461,18 +415,6 @@ namespace spp::analyse::utils::type_compare {
       return nullptr;
     }
 
-    /** Whether a resolved type satisfies every constraint ("EnforceGenericConstraintsOneArg"); nothing to check on a
-     * type that resolved to no symbol. */
-    auto ConstraintsHold(
-      Vec<Shared<TypeAst>> const &constraints,
-      TypeRef const &concrete,
-      Scope const &constraints_scope,
-      Scope const &concrete_scope)
-      -> bool {
-      if (constraints.IsEmpty() or concrete.Sym == nullptr) { return true; }
-      return EnforceGenericConstraintsOneArg(constraints, *AsType(concrete), constraints_scope, concrete_scope) == nullptr;
-    }
-
     /**
      * "RelaxedTypeEq" with the matched side resolved: "rhs_type" is the pattern as written, whose generics bind to the
      * resolved types opposite them in "lhs". Only the right binds, and a generic there accepts anything, held to its own
@@ -499,7 +441,9 @@ namespace spp::analyse::utils::type_compare {
         if (FindBinding(bindings, *name) == nullptr) {
           bindings.EmplaceBack(RelaxedBinding{.Name = std::move(name), .Type = lhs, .Comp = nullptr, .Written = lhs_written});
         }
-        return not check_constraints or ConstraintsHold(rhs_head->GenericConstraints, lhs, rhs_scope, lhs_scope);
+        // A type that resolved to no symbol has nothing to check.
+        return not check_constraints or lhs.Sym == nullptr
+          or ConstraintsHold(rhs_head->GenericConstraints, *AsType(lhs), rhs_scope, lhs_scope);
       }
 
       if (not ConventionTagEq(lhs.Conv, ConventionTagOf(rhs_type))) { return false; }
@@ -515,7 +459,7 @@ namespace spp::analyse::utils::type_compare {
       // A variant pattern takes any of its members.
       if (check_variant and type_predicates::IsTypeVariant(*rhs_head, rhs_scope)) {
         if (auto const *const rhs_sym = rhs_scope.GetTypeSymbol(&rhs_type); rhs_sym != nullptr) {
-          for (auto const &member : DedupVariableInnerTypes(*rhs_sym->FqName(), rhs_scope)) {
+          for (auto const &member : VariantMemberTypes(*rhs_sym->FqName(), rhs_scope)) {
             if (RelaxedMatch(
               lhs, lhs_written, *member, lhs_scope, rhs_scope, bindings, true, check_constraints)) { return true; }
           }
@@ -609,8 +553,8 @@ auto spp::analyse::utils::type_compare::TypeEq(
   // by parameter where not, and through parentheses ("(n + 1_uz)" is "n + 1_uz").
   auto lhs_identity = Str();
   auto rhs_identity = Str();
-  cmp_utils::CompExprIdentity(lhs_expr, lhs_scope, lhs_identity);
-  cmp_utils::CompExprIdentity(rhs_expr, rhs_scope, rhs_identity);
+  comp_generics::CompExprIdentity(lhs_expr, lhs_scope, lhs_identity);
+  comp_generics::CompExprIdentity(rhs_expr, rhs_scope, rhs_identity);
   return lhs_identity == rhs_identity;
 }
 
@@ -648,23 +592,6 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
   return matched;
 }
 
-auto spp::analyse::utils::type_compare::RelaxedTypeEq(
-  ExpressionAst const &lhs_expr,
-  ExpressionAst const &rhs_expr,
-  Scope const &,
-  Scope const &,
-  GenericInferenceMap &generic_args)
-  -> bool {
-  // Simple equality between the expressions, with generic matching.
-  // Save generic mapping for identifier expressions on one side.
-  if (const auto rhs_expr_as_identifier = rhs_expr.To<IdentifierAst>()) {
-    generic_args[TypeIdentifierAst::FromIdentifier(*rhs_expr_as_identifier)] =
-      const_cast<ExpressionAst*>(&lhs_expr);
-    return true;
-  }
-  return lhs_expr == rhs_expr;
-}
-
 auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
   Vec<Shared<TypeAst>> const &constraints,
   TypeAst const &concrete_type,
@@ -693,11 +620,7 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
       return constraints_owner_scope.GetTypeSymbol(constraint.get())->LinkedScope;
     }) | genex::to<Vec>();
   sup_info.EmplaceBack(concrete_sym->FqName(), &concrete_scope);
-  for (auto const *sup_scope : sup_scopes) {
-    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    const auto &sup_sym = sup_scope->TySym;
-    sup_info.EmplaceBack(sup_sym->FqName(), sup_scope);
-  }
+  sup_info.AppendRange(type_members::SuperClassNames(sup_scopes));
 
   // Compare each constraint against the concrete type and its supertypes.
   for (auto const &constraint : constraints) {
@@ -722,38 +645,68 @@ auto spp::analyse::utils::type_compare::EnforceGenericConstraintsOneArg(
   return nullptr;
 }
 
-auto spp::analyse::utils::type_compare::DedupVariableInnerTypes(
+auto spp::analyse::utils::type_compare::VariantMemberTypes(
   TypeAst const &type,
   Scope const &scope)
   -> Vec<Shared<TypeAst>> {
-  // A type not written as a variant ("Opt[S32]") is its variant's members, named as their symbols name them.
-  auto out = Vec<Shared<TypeAst>>();
+  // A written variant keeps its members as written, only a nested variant flattened into them - this is what a
+  // variant's own name is rebuilt from ("Str or S32 or Str" as "Str or S32"). A type not written as a variant
+  // ("Opt[S32]") is its variant's members, named as their symbols name them.
   auto const *const variants_arg = type.LastTypePart()->GnArgGroup->At("Variants");
-  if (variants_arg == nullptr or variants_arg->TypeVal == nullptr) {
-    for (auto const &member : MembersOf(TypeRef::Of(type, scope), scope)) { out.EmplaceBack(AsType(member)); }
-    return out;
+  if (variants_arg != nullptr and variants_arg->TypeVal != nullptr) {
+    return FlattenVariants(*variants_arg->TypeVal, scope)
+      | genex::views::transform([](auto const &x) { return x.first; })
+      | genex::to<Vec>();
   }
-
-  // A written one keeps its members as written, only a nested variant flattened into them - this is what a variant's
-  // own name is rebuilt from ("Str or S32 or Str" as "Str or S32").
-  auto refs = Vec<TypeRef>();
-  const auto add_unique = [&](Shared<TypeAst> const &member, TypeRef const &ref) {
-    if (genex::any_of(refs, [&](auto const &x) { return TypeEqCore(ref, x, scope, scope, false); })) { return; }
-    refs.EmplaceBack(ref);
-    out.EmplaceBack(member);
-  };
-  for (auto const *arg : variants_arg->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-    const auto ref = TypeRef::Of(*arg->TypeVal, scope);
-    const auto nested = MembersOf(ref, scope);
-    if (nested.IsEmpty()) { add_unique(arg->TypeVal, ref); }
-    else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
-  }
-  return out;
+  return VariantMembers(TypeRef::Of(type, scope), scope)
+    | genex::views::transform([](auto const &x) { return AsType(x); })
+    | genex::to<Vec>();
 }
 
 auto spp::analyse::utils::type_compare::VariantMembers(
   TypeRef const &ref,
   Scope const &scope)
   -> Vec<TypeRef> {
-  return MembersOf(ref, scope);
+  auto *const sym = ref.IsNever ? nullptr : CanonicalSym(ref.Sym);
+  if (sym == nullptr) { return {}; }
+  auto const *const variants = SymArgGroup(*sym).At("Variants");
+  if (variants == nullptr or variants->TypeVal == nullptr) { return {}; }
+  return FlattenVariants(*variants->TypeVal, scope)
+    | genex::views::transform([](auto const &x) { return x.second; })
+    | genex::to<Vec>();
+}
+
+auto spp::analyse::utils::type_compare::TemplateOf(
+  TypeSymbol const &sym,
+  Scope const &scope)
+  -> TypeSymbol* {
+  // Followed until nothing changes, capped against a cycle.
+  auto *s = const_cast<TypeSymbol*>(&sym);
+  for (auto step = 0; step < 8; ++step) {
+    auto *next = s;
+    if (s->Kind == TypeKind::GenericParam and s->ParamId != 0) {
+      if (auto *const bound = scope.Canon(*s); bound != nullptr) { next = bound; }
+    }
+    else if ((s->Kind == TypeKind::GenericArg or s->IsSelf()) and s->LinkedScope != nullptr
+      and s->LinkedScope->TySym != nullptr) {
+      next = s->LinkedScope->TySym.get();
+    }
+    else if (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
+      if (auto *const target = scope.GetTypeSymbol(s->Alias->Resolved->WithoutGenerics().get()); target != nullptr) {
+        next = target;
+      }
+    }
+    if (next == s) { break; }
+    s = next;
+  }
+  return s->InstanceOf != nullptr ? s->InstanceOf : s;
+}
+
+auto spp::analyse::utils::type_compare::IsTemplate(
+  TypeSymbol const &sym,
+  TypeAst const &tmpl,
+  Scope const &scope)
+  -> bool {
+  auto const *tmpl_sym = scope.GetTypeSymbol(&tmpl);
+  return tmpl_sym != nullptr and TemplateOf(sym, scope) == TemplateOf(*tmpl_sym, scope);
 }

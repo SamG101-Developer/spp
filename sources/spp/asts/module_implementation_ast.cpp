@@ -1,17 +1,20 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.module_implementation_ast;
 import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.resolution_index;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.lsp.resolution_index;
 import genex;
+
+use_ns(spp::analyse::utils);
 
 SPP_MOD_BEGIN
 namespace {
@@ -23,7 +26,8 @@ namespace {
   /// from different functions, to show at once.
   template <typename F>
   auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
-    namespace sink = spp::analyse::errors::diagnostic_sink;
+    IMPORT_UTILS;
+    namespace sink = diagnostic_sink;
     // Normal behaviour: run the member, an error stops execution,
     // displays the error and terminates the compiler.
     if (not sink::IsEnabled()) { return stage(member); }
@@ -42,7 +46,7 @@ namespace {
     try {
       stage(member);
     }
-    catch (spp::analyse::errors::SemanticError const &e) {
+    catch (SemanticError const &e) {
       sink::Report(e, member);
       sm->SkipPastScope(member->GetAstScope());
     }
@@ -125,8 +129,8 @@ auto ModuleImplementationAst::Stage7_AnalyseSemantics(
 
   // What the module itself holds - its own declarations, and everything imported into it - which can be named
   // anywhere in the file.
-  if (analyse::utils::resolution_index::IsEnabled()) {
-    analyse::utils::resolution_index::RecordScopeOf(*this, *sm, true);
+  if (lsp::resolution_index::IsEnabled()) {
+    lsp::resolution_index::RecordScopeOf(*this, *sm, true);
   }
 }
 
