@@ -8,9 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.bin_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.operator_desugaring;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.fold_expression_ast;
@@ -109,15 +109,7 @@ auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
 
 auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::bin_utils::CombineComparisonChain;
-  using analyse::utils::bin_utils::ConvertBinExprToFuncCall;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeBool;
-  using analyse::utils::type_predicates::IsTypeTup;
-  using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::errors::SppInvalidBinaryFoldExpressionError;
+  IMPORT_UTILS;
 
   // Todo: this guard shouldn't be needed?
   if (_MappedFunc or _LogicalAnalysed) { return; }
@@ -125,13 +117,13 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   // Handle lhs-folding.
   if (Lhs->To<FoldExpressionAst>()) {
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Rhs, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Rhs));
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
     const auto rhs_tuple_ref = Rhs->InferTypeRef(sm, meta);
-    if (not IsTypeTup(rhs_tuple_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTup(rhs_tuple_ref, *sm->CurrentScope)) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>(
         {sm->CurrentScope},
@@ -166,20 +158,20 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
       Rhs = std::move(new_ast);
     }
-    _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Handle rhs-folding.
   else if (Rhs->To<FoldExpressionAst>()) {
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Lhs, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Lhs));
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
     const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
-    if (not IsTypeTup(lhs_tuple_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTup(lhs_tuple_ref, *sm->CurrentScope)) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
     }
@@ -210,7 +202,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
       Lhs = std::move(new_ast);
     }
-    _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -219,18 +211,18 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     // its pairs first, so that the "and" it produces is
     // analysed as one - conditional right operand and all -
     // rather than being turned straight into a call.
-    const auto combined = CombineComparisonChain(*this, sm, meta, _ChainTemps);
+    const auto combined = operator_desugaring::CombineComparisonChain(*this, sm, meta, _ChainTemps);
     Lhs = std::move(combined->Lhs);
     TokOp = std::move(combined->TokOp);
     Rhs = std::move(combined->Rhs);
     _IsLogical = IsLogicalToken(TokOp.get());
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Lhs, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Lhs));
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*Rhs, *sm),
+      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Rhs));
 
     // "and" and "or" are not mapped to a method; they are built
@@ -244,11 +236,11 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       // An owned "Bool" each (a borrow is not one); the type is only spelled out for the error.
       // Held, not passed through: the error's arguments are bound as references, and these types are nobody
       // else's - the temporary they came back in would be gone before the error was built.
-      if (not IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+      if (not type_predicates::IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto lhs_ty = Lhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_ty, what));
       }
-      if (not IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+      if (not type_predicates::IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto rhs_ty = Rhs->InferType(sm, meta);
         Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_ty, what));
       }
@@ -258,14 +250,14 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     }
 
     // Standard non-folding binary expression.
-    _MappedFunc = ConvertBinExprToFuncCall(*this, sm, meta);
+    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
     _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
   }
 }
 
 auto BinaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   // Run memory analysis on the temporary materialized
   // comparison chain values.
   for (auto const &temp : _ChainTemps) { temp->Stage8_CheckMemory(sm, meta); }
@@ -276,9 +268,9 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
   // in all code.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Lhs, *this, *sm, true, true, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, true, true, false, false, meta);
     Rhs->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Rhs, *this, *sm, true, true, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, true, true, false, false, meta);
     return;
   }
 
@@ -309,6 +301,7 @@ auto BinaryExpressionAst::Stage9_CompTimeResolve(
 
 auto BinaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Forward the code generation to the mapped function. The common
   // expressions like "1 + 2" follow these steps:
   // |- 1 + 2
@@ -331,7 +324,7 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   // The "and" and "or" operations cannot map from the function
   // as there is no function to map from. Instead, they have
   // manual codegen, like the "not" operator.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto is_and = TokOp->TokenType == lex::SppTokenType::KW_AND;
   const auto llvm_bool_ty = llvm::Type::getInt1Ty(*ctx->Context);
 
