@@ -9,8 +9,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.resolution_index;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
@@ -21,10 +22,12 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_postfix_expression_ast;
 import spp.asts.type_postfix_expression_operator_nested_type_ast;
+import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_func;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.ptr;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -35,21 +38,20 @@ namespace {
     Scope &type_scope,
     IdentifierAst const &name)
     -> VariableSymbol* {
-    using spp::analyse::utils::expr_utils::LookupMemberForAccess;
-    using spp::analyse::utils::expr_utils::MemberAccessForm;
-    using spp::analyse::utils::expr_utils::MemberReachableBy;
+    IMPORT_UTILS;
+    using member_lookup::MemberAccessForm;
 
     // If the scope symbol exists (nullptr check for type
     // forwarding), and the member can be runtime-accessed,
     // then return the found symbol.
     const auto found = type_scope.GetVarSymbol(&name, true);
-    if (found == nullptr or MemberReachableBy(
+    if (found == nullptr or member_lookup::MemberReachableBy(
       *found, MemberAccessForm::Static)) { return found; }
 
     // If the cheap check gave a runtime symbol, then
     // search more deeply through the super scopes to
     // find the member in a static context.
-    const auto member = LookupMemberForAccess(
+    const auto member = member_lookup::LookupMemberForAccess(
       type_scope, name, MemberAccessForm::Static);
     return member != nullptr ? member : found;
   }
@@ -97,18 +99,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::ToString() const -> Str {
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
-  using analyse::utils::visibility_utils::CheckModuleMemberVisibility;
-  using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
-  using analyse::utils::expr_utils::ClosestScopes;
-  using analyse::utils::expr_utils::RaiseIfAmbiguous;
-  using analyse::utils::expr_utils::LookupMemberForAccess;
-  using analyse::utils::expr_utils::MemberAccessForm;
-  using analyse::utils::expr_utils::MemberReachableBy;
-  using analyse::utils::expr_utils::MembersReachableBy;
-  using analyse::utils::expr_utils::ScopesDeclaringVar;
-  using analyse::errors::SppMemberAccessRuntimeOperatorExpectedError;
-  using namespace analyse::utils;
+  IMPORT_UTILS;
+  using member_lookup::MemberAccessForm;
 
   // Handle types on the left-hand-side of a static member access.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
@@ -117,7 +109,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Check the target field exists on the type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      const auto [fwd_ref_sym, _] = type_utils::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
+      const auto [fwd_ref_sym, _] = marker_sups::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
       const auto lhs_fwd_ref_type_sym = fwd_ref_sym != nullptr ? fwd_ref_sym->BoundTypeArg("T") : nullptr;
       const auto found = lhs_fwd_ref_type_sym
         ? lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)
@@ -129,7 +121,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
         auto candidates = lhs_type_sym->LinkedScope->AllVarSymbols(true, true)
           | genex::views::filter([](auto const &sym) { return sym->Kind == VariableKind::Function; })
           | genex::to<Vec>();
-        RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+        member_lookup::RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
       }
       _LhsTypeSym = lhs_fwd_ref_type_sym;
     }
@@ -139,15 +131,15 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
       named->Kind == VariableKind::Function) {
       // Use the hook to record information for the resolution and
       // completion plugin.
-      resolution_index::RecordVariable(*Name, *sm, *meta, named);
+      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, named);
       return;
     }
 
     // A class attribute belongs to a value of the type rather
     // than to the type, so it is reached with "." instead.
     const auto found = _LhsTypeSym->LinkedScope->GetVarSymbol(Name.get(), true);
-    if (found != nullptr and not MemberReachableBy(*found, MemberAccessForm::Static)) {
-      const auto member = LookupMemberForAccess(
+    if (found != nullptr and not member_lookup::MemberReachableBy(*found, MemberAccessForm::Static)) {
+      const auto member = member_lookup::LookupMemberForAccess(
         *_LhsTypeSym->LinkedScope, *Name, MemberAccessForm::Static);
 
       RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
@@ -160,8 +152,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     // the members "::" reaches are in the running, so a class
     // attribute of the same name neither answers this nor makes
     // it ambiguous.
-    const auto closest = ClosestScopes(MembersReachableBy(
-      ScopesDeclaringVar(*_LhsTypeSym->LinkedScope, *Name, true), MemberAccessForm::Static));
+    const auto closest = member_lookup::ClosestScopes(member_lookup::MembersReachableBy(
+      member_lookup::ScopesDeclaringVar(*_LhsTypeSym->LinkedScope, *Name, true), MemberAccessForm::Static));
 
     // Enforce visibility on the accessed member. Visibility is
     // read off the non-generic scope, because that is where the
@@ -170,20 +162,21 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     if (not closest.IsEmpty()) {
       const auto scope = closest[0].Where->NonGenericScope;
       const auto declared_sym = scope->GetVarSymbol(Name.get());
-      CheckTypeMemberVisibility(
+      visibility_utils::CheckTypeMemberVisibility(
         declared_sym != nullptr ? *declared_sym : *closest[0].Symbol, *Name,
         declared_sym != nullptr ? *scope : *closest[0].Where, *sm, *meta);
 
       // Use the hook to record information for the resolution and
       // completion plugin.
-      resolution_index::RecordVariable(
+      lsp::resolution_index::RecordVariable(
         *Name, *sm, *meta, declared_sym != nullptr ? declared_sym : closest[0].Symbol);
     }
 
-    RaiseIfAmbiguous(
-      ClosestScopes(
-        MembersReachableBy(
-          ScopesDeclaringVar(*_LhsTypeSym->LinkedScope, *Name, false), MemberAccessForm::Static)), *Name,
+    member_lookup::RaiseIfAmbiguous(
+      member_lookup::ClosestScopes(
+        member_lookup::MembersReachableBy(
+          member_lookup::ScopesDeclaringVar(
+            *_LhsTypeSym->LinkedScope, *Name, false), MemberAccessForm::Static)), *Name,
       *sm);
     return;
   }
@@ -202,7 +195,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   const auto lhs_ns_sym = LhsNsScope(sm, meta)->NsSym;
   if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name.get(), true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(
     Name.get(), true)) {
-    RaiseMissingIdentifierAndClosestOptions(
+    member_lookup::RaiseMissingIdentifierAndClosestOptions(
       *Name, lhs_ns_sym->LinkedScope->AllVarSymbols(false, true), lhs_ns_sym->LinkedScope->AllNsSymbols(), *sm);
   }
 
@@ -211,11 +204,11 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   // hook to record information for the resolution and
   // completion plugin.
   if (const auto sym = lhs_ns_sym->LinkedScope->GetVarSymbol(Name.get())) {
-    CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm, *meta);
-    resolution_index::RecordVariable(*Name, *sm, *meta, sym);
+    visibility_utils::CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm, *meta);
+    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, sym);
   }
   else {
-    resolution_index::RecordNamespaceMember(*Name, *sm, *meta, *lhs_ns_sym->LinkedScope);
+    lsp::resolution_index::RecordNamespaceMember(*Name, *sm, *meta, *lhs_ns_sym->LinkedScope);
   }
 }
 
@@ -240,7 +233,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  const auto uid = "." + spp::utils::Uid();
+  IMPORT_UTILS_AND_UID;
+  const auto uid = "." + Uid();
 
   // In a constant context the caller wants a value,
   // not a load. Resolve recursively and return the
@@ -291,7 +285,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
-  using analyse::utils::type_utils::GetFwdTypes;
+  IMPORT_UTILS;
   // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
 
   // Get the left-hand-side type's member's type.
@@ -312,7 +306,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     if (sym != nullptr) { return sym->Type; }
 
     // This is where we need to handle the FwdRef/FwdMut logic.
-    const auto [fwd_ref_sym, _] = GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
+    const auto [fwd_ref_sym, _] = marker_sups::GetFwdTypes(*lhs_type_sym, *sm->CurrentScope);
     const auto inner_type_sym = fwd_ref_sym->BoundTypeArg("T");
     const auto fwd_sym = inner_type_sym->LinkedScope->GetVarSymbol(Name.get(), true);
     return fwd_sym->Type;

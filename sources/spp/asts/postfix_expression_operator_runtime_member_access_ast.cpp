@@ -8,13 +8,16 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.cmp_utils;
+import spp.analyse.utils.comptime_intrinsics;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.mem_info_utils;
-import spp.analyse.utils.resolution_index;
+import spp.analyse.utils.function_values;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
@@ -40,6 +43,7 @@ import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.algorithms;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -51,21 +55,20 @@ namespace {
     IdentifierAst const &name)
     -> VariableSymbol* {
     //
-    using spp::analyse::utils::expr_utils::LookupMemberForAccess;
-    using spp::analyse::utils::expr_utils::MemberAccessForm;
-    using spp::analyse::utils::expr_utils::MemberReachableBy;
+    IMPORT_UTILS;
+    using member_lookup::MemberAccessForm;
 
     // If the scope symbol exists (nullptr check for type
     // forwarding), and the member can be runtime-accessed,
     // then return the found symbol.
     const auto found = type_scope.GetVarSymbol(&name);
-    if (found == nullptr or MemberReachableBy(
+    if (found == nullptr or member_lookup::MemberReachableBy(
       *found, MemberAccessForm::Runtime)) { return found; }
 
     // If the cheap check gave a static symbol, then search
     // more deeply through the super scopes to find the
     // member in a runtime context.
-    const auto member = LookupMemberForAccess(
+    const auto member = member_lookup::LookupMemberForAccess(
       type_scope, name, MemberAccessForm::Runtime);
     return member != nullptr ? member : found;
   }
@@ -156,7 +159,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
-    if (not IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
       const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>(
         {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
@@ -164,7 +167,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Check the index is within the bounds of the tuple
     // or array.
-    if (auto [in_bounds, n] = IsIndexWithinBound(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope); not in_bounds) {
+    if (auto [in_bounds, n] = type_members::IsIndexWithinBound(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope); not in_bounds) {
       const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
       Raise<SppMemberAccessOutOfBoundsError>(
         {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));
@@ -193,7 +196,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
       // If we are accessing via forwarding, then build the
       // forward call, and store it for later analysis.
-      auto fwd_call = BuildFwdCall(*meta->PostfixExpressionLhs, lhs_ref, sm, meta);
+      auto fwd_call = marker_sups::BuildFwdCall(*meta->PostfixExpressionLhs, lhs_ref, sm, meta);
       if (fwd_call != nullptr) {
         _MappedFwd = MakeShared<PostfixExpressionAst>(
           std::move(fwd_call),
@@ -213,11 +216,11 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
       // Type field was not found on this type, or the
       // forwarding type (includes nested forwarding checks).
-      RaiseMissingIdentifierAndClosestOptions(
+      member_lookup::RaiseMissingIdentifierAndClosestOptions(
         *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
     }
 
-    auto all_scopes_and_syms = ScopesDeclaringVar(
+    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(
       *lhs_type_sym->LinkedScope, *Name, false);
 
     // Enforce visibility on functional (method) members.
@@ -231,17 +234,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // Use the hook to record information for the resolution and
     // completion plugin.
     if (not fn_scopes_and_syms.IsEmpty()) {
-      resolution_index::RecordVariable(
+      lsp::resolution_index::RecordVariable(
         *Name, *sm, *meta, fn_scopes_and_syms.Back().Symbol);
     }
 
     if (not fn_scopes_and_syms.IsEmpty()) {
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
-        return IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
+        return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
       });
       if (not any_visible) {
-        CheckTypeMemberVisibility(*fn_scopes_and_syms.Back().Symbol, *Name, *cls_scope, *sm, *meta);
+        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.Back().Symbol, *Name, *cls_scope, *sm, *meta);
       }
     }
 
@@ -249,7 +252,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       | genex::views::filter([](auto const &x) { return x.Symbol->Kind != VariableKind::Function; })
       | genex::to<Vec>();
 
-    const auto runtime_members = MembersReachableBy(
+    const auto runtime_members = member_lookup::MembersReachableBy(
       members, MemberAccessForm::Runtime);
 
     // A "cmp" constant belongs to the type rather than to any
@@ -263,27 +266,27 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // If we only have functional types, just return.
     if (runtime_members.Len() < 1) { return; }
-    const auto closest = ClosestScopes(runtime_members);
+    const auto closest = member_lookup::ClosestScopes(runtime_members);
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
       const auto scope = closest[0].Where->NonGenericScope;
       const auto member_sym = scope->GetVarSymbol(Name.get(), true);
-      CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);
+      visibility_utils::CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);
 
       // Use the hook to record information for the resolution and
       // completion plugin.
-      resolution_index::RecordVariable(*Name, *sm, *meta, member_sym);
+      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member_sym);
     }
 
-    RaiseIfAmbiguous(closest, *Name, *sm);
+    member_lookup::RaiseIfAmbiguous(closest, *Name, *sm);
   }
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::cmp_utils::GetCompTimeAttrValue;
+  IMPORT_UTILS;
 
   // A member reached by forwarding is resolved against the
   // forwarded-to value, which the rewritten access names.
@@ -315,14 +318,13 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
 
   // Handle normal attribute access (for objects).
   const auto cmp_obj = meta->CmpResult->To<ObjectInitializerAst>();
-  meta->CmpResult = GetCompTimeAttrValue(cmp_obj, Name.get());
+  meta->CmpResult = comptime_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
-  using analyse::utils::type_members::GetFieldIndexInType;
-  using analyse::utils::type_predicates::IsTypeArr;
+  IMPORT_UTILS_AND_UID;
 
   // A member reached by forwarding lives on the forwarded-to
   // value, so the mapped ast generates it: the forwarding call
@@ -337,7 +339,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   const auto want_address = meta->LlvmWantAddress;
 
   // Get the type of the left-hand-side expression.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
   const auto lhs_type_sym = lhs_ref.Sym;
 
@@ -420,7 +422,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
     // so it is indexed through the array itself: the leading
     // zero index steps over the pointer to the array, and the
     // second one selects the element.
-    if (IsTypeArr(*lhs_type_sym, *sm->CurrentScope)) {
+    if (type_predicates::IsTypeArr(*lhs_type_sym, *sm->CurrentScope)) {
       const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
       field_ptr = ctx->Builder.CreateGEP(
         llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -439,7 +441,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
     // because the S++ layout re-orders the fields to minimize
     // padding, so the declaration index has to be resolved
     // through the type's field index map.
-    const auto decl_index = GetFieldIndexInType(*lhs_type_sym, *Name);
+    const auto decl_index = type_members::GetFieldIndexInType(*lhs_type_sym, *Name);
     const auto field_index = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, decl_index);
     field_ptr = ctx->Builder.CreateStructGEP(llvm_type, base_ptr, field_index, "member_access.field_ptr" + uid);
   }
@@ -455,7 +457,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
-  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
+  IMPORT_UTILS;
 
   // A member reached by forwarding belongs to the forwarded-to
   // type, so the rewritten access knows its type.

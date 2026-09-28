@@ -8,8 +8,12 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
+import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -80,15 +84,15 @@ auto PostfixExpressionOperatorKeywordResAst::ToString() const -> Str {
 auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS;
   if (_MappedFunc != nullptr) { return; }
 
   // Check the left-hand-side is a generator type (for specific errors).
   const auto lhs = meta->PostfixExpressionLhs;
-  const auto [_, yield_type, is_once] = GetGenAndYieldTypes(
+  const auto [_, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
-  analyse::utils::type_utils::EnforceYieldTypeWithoutGenDone(
+  marker_sups::EnforceYieldTypeWithoutGenDone(
     yield_type.get(), is_once, *sm->CurrentScope, *lhs, "resume expression");
 
   // Check the argument (send value) is valid, by passing it into the ".send" function call.
@@ -112,6 +116,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
 
 auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // The three-step operation for the "res" operation is to
   // store the potential argument into the send slot of the
   // env, resume the coroutine, then use the yielded value.
@@ -236,14 +241,14 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   const auto res_ref = TypeRef::Of(*res_type, *sm->CurrentScope);
   const auto yield_ref = TypeRef::Of(*yield_type, *sm->CurrentScope);
   const auto yield_tag = codegen::GetVariantIndexOfMember(res_ref, yield_ref, *sm->CurrentScope);
-  const auto yield_is_variant = analyse::utils::type_predicates::IsTypeVariant(yield_ref, *sm->CurrentScope);
+  const auto yield_is_variant = type_predicates::IsTypeVariant(yield_ref, *sm->CurrentScope);
   const auto done_tag = codegen::GetVariantIndexOfMember(
     res_ref, TypeRef::Of(*done_type, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto bad_shape_msg = Str(
     "The result of a resumption is not the \"Yield or GenDone\" variant it has to be, so there is no discriminant "
     "to tag the yielded value or the finished case into");
-  RaiseIf<analyse::errors::SppInternalCompilerError>(
+  RaiseIf<SppInternalCompilerError>(
     llvm_res_ty == nullptr or (not yield_tag.has_value() and not yield_is_variant) or not done_tag.has_value(),
     {sm->CurrentScope}, ERR_ARGS(*this, bad_shape_msg));
 

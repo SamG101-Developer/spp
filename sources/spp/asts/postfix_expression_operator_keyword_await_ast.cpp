@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
@@ -72,7 +73,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::ToString() const -> Str {
 auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppAwaitTargetNotFutureError;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::FUT;
 
   // Already analysed => return early.
@@ -83,7 +84,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   // for the error.
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
   if (lhs_ref.KindSym() == nullptr
-    or not analyse::utils::type_predicates::IsTemplate(*lhs_ref.Sym, *FUT->WithoutGenerics(), *sm->CurrentScope)) {
+    or not type_compare::IsTemplate(*lhs_ref.Sym, *FUT->WithoutGenerics(), *sm->CurrentScope)) {
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     Raise<SppAwaitTargetNotFutureError>({sm->CurrentScope}, ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
   }
@@ -118,6 +119,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
 
 auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Release what the future was keeping pinned, freeing up
   // any escaping borrows. Todo: Maybe move into mem_utils?
   if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
