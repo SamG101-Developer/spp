@@ -8,10 +8,11 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.assignment_utils;
-import spp.analyse.utils.cmp_utils;
-import spp.analyse.utils.func_utils;
+import spp.analyse.utils.borrows;
+import spp.analyse.utils.comptime_intrinsics;
+import spp.analyse.utils.function_values;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -77,12 +78,7 @@ auto AssignmentStatementAst::ToString() const -> Str {
 
 auto AssignmentStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidMutationError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::assignment_utils::IsAttr;
-  using analyse::utils::assignment_utils::IsDeref;
-  using analyse::utils::assignment_utils::IsIdentifier;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // For each part of the LHS, ensure it is semantically valid.
   // Use the deref helper to allow a "move"-looking ast on the
@@ -132,53 +128,53 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
          lhs_syms) | genex::to<Vec>()) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
     const auto lhs_type = lhs_expr->InferType(sm, meta);
-    const auto lhs_deref_ref = IsDeref(lhs_expr)
+    const auto lhs_deref_ref = regions::IsDeref(lhs_expr)
       ? lhs_expr->To<PostfixExpressionAst>()->Lhs->InferTypeRef(sm, meta)
       : TypeRef{};
 
     // Full assignment (ie "x" = "y") requires the "x" symbol to
     // be marked as "mut" or never initialized.
     RaiseIf<SppInvalidMutationError>(
-      IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
+      regions::IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
       {sm->CurrentScope},
       ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
 
     // Attribute assignment (ie "x.y = z"), for a non-borrowed
     // symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
-      IsAttr(lhs_expr, sm) and not(spp::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
+      regions::IsAttr(lhs_expr, sm) and not(spp::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
       {sm->CurrentScope},
       ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol,
     // cannot be immutably borrowed.
     RaiseIf<SppInvalidMutationError>(
-      IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
+      regions::IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
       {sm->CurrentScope},
       ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a
     // borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
-      IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
+      regions::IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
       {sm->CurrentScope},
       ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
     // Prevent double initializations to immutable uninitialized
     // let statements.
-    if (IsIdentifier(lhs_expr)) {
+    if (regions::IsIdentifier(lhs_expr)) {
       lhs_sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     }
 
     // Ensure the lhs and rhs have the same type.
     auto rhs_type = rhs_expr->InferType(sm, meta);
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*lhs_type, *rhs_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::TypeEq(*lhs_type, *rhs_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
 
     // A function named as the value stands for the overload the
     // target's type asks for.
-    analyse::utils::func_utils::InstantiateFunctionValue(
+    function_values::InstantiateFunctionValue(
       TypeRef::Of(*rhs_type, *sm->CurrentScope),
       TypeRef::Of(*lhs_type, *sm->CurrentScope), sm, meta);
   }
@@ -186,10 +182,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
 
 auto AssignmentStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::assignment_utils::IsAttr;
-  using analyse::utils::assignment_utils::IsIdentifier;
-  using analyse::utils::mem_utils::PreventBorrowLifetimeExtension;
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // For each assignment, check the memory status and resolve
   // any (partial-)moves.
@@ -205,7 +198,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // expression, if it is an attribute being set. Don't mark
     // the move, but do some checks before calling the internal
     // memory checker on the postfix expression.
-    ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, IsAttr(lhs_expr, sm), false, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, regions::IsAttr(lhs_expr, sm), false, true, false, meta);
 
     {
       const auto _meta_guard = MetaGuard(meta);
@@ -220,15 +213,15 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // "PreventBorrowLifetimeExtension" below weighs the
     // destination against those borrows rather than refusing
     // the move on sight.
-    ValidateSymbolMemory(
+    mem_utils::ValidateSymbolMemory(
       *rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
 
     // For an attribute-based left-hand-side, we ensure that
     // the object is valid and mark it as being written in
     // place, to fine tune the memory error system. Resolve
     // the partial move.
-    if (IsAttr(lhs_expr, sm)) {
-      ValidateSymbolMemory(
+    if (regions::IsAttr(lhs_expr, sm)) {
+      mem_utils::ValidateSymbolMemory(
         *lhs_expr, *TokAssign, *sm, true, true, false, false, meta, true, true);
       lhs_sym->MemInfo->RemovePartialMoves(*lhs_expr, sm->CurrentScope);
     }
@@ -242,16 +235,14 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // Ensure a borrow is not increasing its lifetime.
     const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).first;
     const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).first;
-    PreventBorrowLifetimeExtension(
+    borrows::PreventBorrowLifetimeExtension(
       *rhs_expr, lhs_outermost, rhs_outermost, this, *sm);
   }
 }
 
 auto AssignmentStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::assignment_utils::IsAttr;
-  using analyse::utils::assignment_utils::IsIdentifier;
-  using analyse::utils::cmp_utils::SetCompTimeAttrValue;
+  IMPORT_UTILS;
 
   // Wrap the rhs value and move it into the value of the
   // variable symbol.
@@ -260,20 +251,20 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
     const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).first;
 
     // Assign to a full identifier.
-    if (IsIdentifier(Lhs[i].get())) {
+    if (regions::IsIdentifier(Lhs[i].get())) {
       lhs_sym->CompTimeValue = std::move(meta->CmpResult);
     }
 
     // Assign to an attribute.
-    else if (IsAttr(Lhs[i].get(), sm)) {
-      SetCompTimeAttrValue(
+    else if (regions::IsAttr(Lhs[i].get(), sm)) {
+      comptime_intrinsics::SetCompTimeAttrValue(
         lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
         Lhs[i].get(), std::move(meta->CmpResult), sm);
     }
 
     // Otherwise, unsupported in the comptime context.
     else {
-      Raise<analyse::errors::SppInvalidComptimeOperationError>(
+      Raise<SppInvalidComptimeOperationError>(
         {sm->CurrentScope}, ERR_ARGS(*Lhs[i]));
     }
   }
@@ -281,8 +272,7 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
 
 auto AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::assignment_utils::IsDeref;
-  using analyse::utils::assignment_utils::IsIdentifier;
+  IMPORT_UTILS_AND_UID;
 
   // Use a 2-pass system to ensure that "a, b = b, a" is supported
   // and doesn't clobber the values being reused. Firstly generate
@@ -294,7 +284,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
       meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-      if (IsIdentifier(Lhs[i].get())) {
+      if (regions::IsIdentifier(Lhs[i].get())) {
         meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(
           Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
       }
@@ -314,7 +304,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
         value = codegen::CoerceToVariant(
           value, TypeRef::Of(*target_type, *sm->CurrentScope),
           Rhs[i]->InferTypeRef(sm, meta), *sm->CurrentScope,
-          "assign.variant." + spp::utils::Uid(), ctx);
+          "assign.variant." + Uid(), ctx);
       }
 
       return value;
@@ -331,14 +321,14 @@ auto AssignmentStatementAst::Stage11_CodeGen(
 
     // The statement "x@ = v" writes through a borrow: the target is
     // the borrow pointer itself.
-    if (IsDeref(Lhs[i].get())) {
+    if (regions::IsDeref(Lhs[i].get())) {
       const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
       llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
     }
 
     // The statement "a = v" targets the variable's allocation directly
     // (loading it would yield the rvalue).
-    else if (IsIdentifier(Lhs[i].get())) {
+    else if (regions::IsIdentifier(Lhs[i].get())) {
       const auto var_sym = sm->CurrentScope->GetVarSymbol(
         Lhs[i]->To<IdentifierAst>());
       SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
