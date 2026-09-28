@@ -76,7 +76,24 @@ auto CharLiteralAst::Stage7_AnalyseSemantics(
   // A byte-prefixed literal ("b'...'") must decode to a single
   // to prevent truncation by the codegen mask, instead of being
   // rejected here.
-  using analyse::errors::SppCharLiteralOutOfBoundsError;
+  IMPORT_UTILS;
+
+  // Exactly one character: an escape ("\n", or "\x0b"), or
+  // one UTF-8 scalar, whose length its lead byte gives.
+  auto const &data = Val->TokenData;
+  const auto content = data.size() >= 2 ? StrView(data).substr(1, data.size() - 2) : StrView();
+  const auto lead = content.empty() ? 0u : static_cast<unsigned char>(content[0]);
+  const auto expected_len = content.empty() ? 1uz
+    : lead == '\\' ? (content.size() >= 2 and content[1] == 'x' ? 4uz : 2uz)
+    : lead < 0x80u ? 1uz
+    : (lead >> 5) == 0x6u ? 2uz
+    : (lead >> 4) == 0xEu ? 3uz
+    : (lead >> 3) == 0x1Eu ? 4uz
+    : 1uz;
+  RaiseIf<SppCharLiteralLengthError>(
+    content.size() != expected_len,
+    {sm->CurrentScope}, ERR_ARGS(*this));
+
   if (BytePrefix != nullptr) {
     const auto code_point = spp::utils::strings::DecodeCharLiteral(Val->TokenData);
     RaiseIf<SppCharLiteralOutOfBoundsError>(
