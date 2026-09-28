@@ -111,10 +111,13 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     IsTypeVariant(*base_cls_sym, *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
 
-  // Prepare the object initializer arguments.
+  // Prepare the object initializer arguments. The type is passed
+  // as written, generics and all: the class is found without
+  // them, but an argument that is an overloaded call reads the
+  // attribute's type through them ("MyType[T=Str](a=g())").
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->ObjectInitType = Type->WithoutGenerics();
+    meta->ObjectInitType = Type;
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
@@ -126,15 +129,18 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     })
     | genex::to<Vec>();
 
-  auto generic_infer_target = not base_cls_sym->IsTypeGeneric()
-    ? base_cls_sym->Type->Impl->Members
-    | genex::views::ptr
-    | genex::views::cast_dynamic<ClassAttributeAst*>()
-    | genex::views::transform([&](auto const &x) {
-      return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.get())->FqName());
-    })
-    | genex::to<Vec>()
-    : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
+  // Generic inference target map creation for the targets
+  // which are the class attributes.
+  auto generic_infer_target = spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
+  if (not base_cls_sym->IsTypeGeneric()) {
+    for (const auto attr : base_cls_sym->Type->Impl->Members
+         | genex::views::ptr
+         | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+      const auto attr_sym = base_cls_sym->LinkedScope->GetTypeSymbol(attr->Type.get());
+      if (attr_sym == nullptr) { continue; }
+      generic_infer_target.EmplaceBack(attr->Name, attr_sym->FqName());
+    }
+  }
 
   {
     const auto _meta_guard = MetaGuard(meta);
