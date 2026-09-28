@@ -133,7 +133,7 @@ auto spp::analyse::utils::type_resolution::RecursiveAliasSearch(
     const auto passes_generics_through = old_sym->Alias != nullptr and old_sym->Alias->FromUseStmt;
 
     if (not passes_generics_through) {
-      const auto is_tuple = type_predicates::IsTupSymbol(*old_sym);
+      const auto is_tuple = type_predicates::IsTypeTup(*old_sym, *sm->CurrentScope);
       NameGnArgs(*old_type->LastTypePart()->GnArgGroup, *extract_params(*old_sym), *old_type, *sm, *meta, is_tuple);
       if (old_sym->Alias) {
         final_generic_params = filter_params(*old_sym->Alias->Params, *old_type->LastTypePart()->GnArgGroup);
@@ -168,7 +168,7 @@ auto spp::analyse::utils::type_resolution::RecursiveAliasSearch(
 
   auto &temp = *old_type->LastTypePart()->GnArgGroup;
   NameGnArgs(
-    temp, *extract_params(*old_sym), *old_type, *sm, *meta, type_predicates::IsTupSymbol(*old_sym));
+    temp, *extract_params(*old_sym), *old_type, *sm, *meta, type_predicates::IsTypeTup(*old_sym, *sm->CurrentScope));
   // Not again once bound: the last arguments bound are this type's own, and substituting a type's arguments into itself
   // re-binds the ones naming a parameter spelled like its target's ("Single[Arr[T, n], A]" became
   // "Single[Arr[Arr[T, n], n], A]").
