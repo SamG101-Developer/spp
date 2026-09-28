@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.is_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -7,8 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.case_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.operator_desugaring;
 import spp.asts.case_expression_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.identifier_ast;
@@ -17,6 +19,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -71,15 +74,13 @@ auto IsExpressionAst::ToString() const -> Str {
 
 auto IsExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.Len();
-  _MappedFunc = ConvertIsExprToFuncCall(*this, sm, meta);
+  _MappedFunc = case_utils::ConvertIsExprToFuncCall(*this, sm, meta);
   _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 
   // Add the destructure symbols to the current scope.
@@ -88,6 +89,7 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->AllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
       sm->CurrentScope->AddVarSymbol(x->SharedFromThis<VariableSymbol>());
+      if (x->Kind == VariableKind::Local) { meta->IsBindingsAdded.EmplaceBack(x); }
     }
   }
 }

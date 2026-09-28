@@ -460,153 +460,43 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   return {cast_master_branch_type_info, cast_branches_type_info};
 }
 
-auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
-  Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-  VariableSymbol *const subject, ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Define a simple alias for a list of symbols and their
-  // memory.
-  using SymbolMemoryList = Vec<Pair<CaseExpressionBranchAst*, mem_info_utils::MemoryInfoSnapshot>>;
-  using SymbolMemoryMap = Map<VariableSymbol*, mem_info_utils::MemoryInfoSnapshot>;
+auto spp::analyse::utils::case_utils::ConvertIsExprToFuncCall(
+  IsExpressionAst &is_expr, ScopeManager *, CompilerMetaData *)
+  -> Unique<CaseExpressionAst> {
+  // Construct the expression-pattern based on the
+  // right-hand-side of the "x is Type".
+  auto pattern = std::move(is_expr.Rhs);
+  auto patterns = Vec<Unique<CasePatternVariantAst>>();
+  patterns.EmplaceBack(std::move(pattern));
 
-  // Create a map of the symbols' memory  information before
-  // any branches are analysed.
-  auto sym_mem_info = Map<VariableSymbol*, SymbolMemoryList>();
+  // Construct the case expression branch that contains the
+  // pattern, yielding "true", and an "else" branch yielding
+  // "false".
+  const auto pos = is_expr.PosStart();
+  auto match_members = Vec<Unique<StatementAst>>();
+  match_members.EmplaceBack(BooleanLiteralAst::True(pos));
+  auto match_body = MakeUnique<InnerScopeExpressionAst>(
+    nullptr, std::move(match_members), nullptr);
 
-  // The lookup walks ancestors and super scopes, which can
-  // reach one symbol by more than one route, and every list
-  // below is built with one entry per branch per occurrence.
-  // Deduplicate.
-  auto vs = Vec<VariableSymbol*>();
-  auto seen_syms = Set<VariableSymbol*>();
-  for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
-    if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
-  }
+  auto no_match_members = Vec<Unique<StatementAst>>();
+  no_match_members.EmplaceBack(BooleanLiteralAst::False(pos));
+  auto no_match_body = MakeUnique<InnerScopeExpressionAst>(
+    nullptr, std::move(no_match_members), nullptr);
 
-  // The states before any branch has run. Each branch is restored
-  // to these before the next one is analysed, and they stand in
-  // as a final pseudo-branch for the consistency comparison below
-  // - the same snapshot serving both, since nothing between the
-  // two uses moves them apart.
-  auto pre_analysis_mem_info = vs
-    | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
-    | genex::to<Vec>();
+  auto else_patterns = Vec<Unique<CasePatternVariantAst>>();
+  else_patterns.EmplaceBack(MakeUnique<CasePatternVariantElseAst>(nullptr));
 
-  for (auto &&branch : branches) {
-    // Analyse the memory and then recheck the symbols' memory
-    // status.
-    branch->Stage8_CheckMemory(sm, meta);
+  auto branch = MakeUnique<CaseExpressionBranchAst>(
+    std::move(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
+  auto else_branch = MakeUnique<CaseExpressionBranchAst>(
+    nullptr, std::move(else_patterns), nullptr, std::move(no_match_body));
+  auto branches = Vec<Unique<CaseExpressionBranchAst>>();
+  branches.EmplaceBack(std::move(branch));
+  branches.EmplaceBack(std::move(else_branch));
 
-    // A branch binding parts off the subject takes the whole
-    // of it - the "case" marks the subject moved once every
-    // branch has run - so a part this branch left unbound is
-    // a part nothing holds. Check all movable fields have been
-    // bound, so dropping can take place.
-    const auto branch_binds = subject != nullptr and genex::any_of(
-      branch->Patterns, [](auto const &pattern) { return pattern->BindsByMove(); });
-    if (branch_binds) {
-      if (const auto skipped = linear_utils::FirstUnaccountedPart(
-        *subject, Vec<IdentifierAst*>{subject->Name.get()}, *sm); not skipped.empty()) {
-        auto const *const blamed = branch->Patterns.IsEmpty()
-          ? static_cast<Ast const*>(branch)
-          : static_cast<Ast const*>(branch->Patterns[0].get());
-
-        Raise<errors::SppDestructureSkipsOwnedPartError>(
-          {sm->CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
-      }
-    }
-
-    auto new_symbol_mem_info = vs
-      | genex::views::transform([](auto const &x) { return MakePair(x, x->MemInfo->Snapshot()); })
-      | genex::to<Vec>();
-
-    // Reset the memory status of the symbols for the next branch
-    // to analyse with the same original memory states.
-    // Todo: Scopes need restoring properly too. (And rename to AstInit + Reformat).
-    // Built once per branch rather than once per symbol: it is the same map every time round, and rebuilding it
-    // inside the loop made recording one branch's states quadratic in the number of symbols in scope.
-    auto new_symbol_mem_info_map = SymbolMemoryMap(new_symbol_mem_info.begin(), new_symbol_mem_info.end());
-
-    for (auto &&[sym, old_mem_status] : pre_analysis_mem_info) {
-      sym->MemInfo->FillFromSnapshot(old_mem_status);
-
-      // Save this memory status for subsequent inter-branch
-      // status comparisons.
-      sym_mem_info[sym].EmplaceBack(branch, new_symbol_mem_info_map[sym]);
-    }
-  }
-
-  // Add the pre-analysis memory states as a "final" branch
-  // (just for comparison purposes).
-  for (auto &&[sym, mem_info_list] : pre_analysis_mem_info) {
-    sym_mem_info[sym].EmplaceBack(nullptr, std::move(mem_info_list));
-  }
-
-  // Get the first "non-terminating" branch, and update the
-  // symbols to reflect its memory state.
-  const auto non_terminating_branch = genex::find_if(
-    branches, [](auto const &x) { return not x->Body->Terminates(); });
-  const auto first_branch = non_terminating_branch == branches.end() ? parent : *non_terminating_branch;
-  const auto first_branch_index = non_terminating_branch != branches.end()
-    ? genex::iterators::distance(branches.begin(), non_terminating_branch)
-    : -1;
-  const auto first_branch_mem_info_getter = [&](auto const &branch_mem_info) {
-    return first_branch_index != -1
-      ? branch_mem_info.At(static_cast<std::size_t>(first_branch_index)).second
-      : branch_mem_info.Back().second;
-  };
-
-  const auto has_else_branch = not branches.IsEmpty()
-    ? branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>()
-    : nullptr;
-  const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
-
-  // Check for consistency among the branches' symbols' memory
-  // states.
-  for (auto const &[sym, branches_memory_info_lists] : sym_mem_info) {
-    auto first_branch_mem_info = first_branch_mem_info_getter(branches_memory_info_lists);
-
-    // Assuming all new memory states are consistent across
-    // branches, update to the first "new" state list.
-    sym->MemInfo->FillFromSnapshot(first_branch_mem_info);
-
-    // Check the new memory status for each symbol is
-    // consistent across all branches that don't terminate.
-    auto applicable_branch_memory_info_lists = branches_memory_info_lists
-      | genex::views::remove_if([&](auto const &x) {
-        return x.first == nullptr or x.first->Body->Terminates()
-          or (skip_else and not branches.IsEmpty() and x.first == branches.Back());
-      })
-      | genex::to<Vec>();
-
-    for (auto const &[branch, branch_memory_info_list] : applicable_branch_memory_info_lists) {
-      // Check for consistent initialization.
-      if ((spp::get<0>(first_branch_mem_info.AstInitialization) == nullptr)
-        != (spp::get<0>(branch_memory_info_list.AstInitialization) == nullptr)) {
-        sym->MemInfo->IsInconsistentlyInitialized = {first_branch, branch};
-      }
-
-      // Check for consistent moved state.
-      if ((spp::get<0>(first_branch_mem_info.AstMoved) == nullptr)
-        != (spp::get<0>(branch_memory_info_list.AstMoved) == nullptr)) {
-        sym->MemInfo->IsInconsistentlyMoved = {first_branch, branch};
-      }
-
-      // Check for consistent partial moves.
-      if (first_branch_mem_info.AstPartialMoves != branch_memory_info_list.AstPartialMoves) {
-        sym->MemInfo->IsInconsistentlyPartiallyMoved = {first_branch, branch};
-      }
-
-      // Check for consistent escaping borrows, from both ends
-      // of the link: a symbol can be the coroutine handle that
-      // holds the borrows, or the owner of the memory they
-      // borrow, and only the second is what a later use of that
-      // memory (eg moving it) is checked against.
-      if (first_branch_mem_info.AstContainedEscapingBorrows != branch_memory_info_list.AstContainedEscapingBorrows
-        or EscapingBorrowContainersDiffer(
-          first_branch_mem_info.AstContainersOfEscapingBorrows,
-          branch_memory_info_list.AstContainersOfEscapingBorrows)) {
-        sym->MemInfo->IsInconsistentlyBorrowEscaping = {first_branch, branch};
-      }
-    }
-  }
+  // Construct and return the case expression AST.
+  auto case_expr = MakeUnique<CaseExpressionAst>(
+    nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
+  case_expr->LoweredFromIsExpr = true;
+  return case_expr;
 }

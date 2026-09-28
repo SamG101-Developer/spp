@@ -1,38 +1,28 @@
-module spp.analyse.utils.bin_utils;
+module spp.analyse.utils.operator_desugaring;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
-import spp.asts.boolean_literal_ast;
-import spp.asts.case_expression_ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.is_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.statement_ast;
 import spp.asts.token_ast;
-import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 import genex;
 
-namespace spp::analyse::utils::bin_utils {
+namespace spp::analyse::utils::operator_desugaring {
   namespace {
     auto CombineCompOpsImpl(
       BinaryExpressionAst &bin_expr, ScopeManager *sm, CompilerMetaData *meta,
@@ -89,7 +79,7 @@ namespace spp::analyse::utils::bin_utils {
   }
 }
 
-auto spp::analyse::utils::bin_utils::CombineComparisonChain(
+auto spp::analyse::utils::operator_desugaring::CombineComparisonChain(
   BinaryExpressionAst &bin_expr, ScopeManager *const sm,
   CompilerMetaData *const meta, Vec<Unique<LetStatementInitializedAst>> &temps)
   -> Unique<BinaryExpressionAst> {
@@ -97,7 +87,7 @@ auto spp::analyse::utils::bin_utils::CombineComparisonChain(
   return CombineCompOpsImpl(bin_expr, sm, meta, &temps);
 }
 
-auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
+auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFuncCall(
   BinaryExpressionAst &bin_expr, ScopeManager *sm,
   CompilerMetaData *meta) -> Unique<PostfixExpressionAst> {
   // Before converting into a function check if we can chain
@@ -138,45 +128,4 @@ auto spp::analyse::utils::bin_utils::ConvertBinExprToFuncCall(
   auto new_ast = MakeUnique<PostfixExpressionAst>(
     std::move(field_access), std::move(fn_call));
   return new_ast;
-}
-
-auto spp::analyse::utils::bin_utils::ConvertIsExprToFuncCall(
-  IsExpressionAst &is_expr, ScopeManager *, CompilerMetaData *)
-  -> Unique<CaseExpressionAst> {
-  // Construct the expression-pattern based on the
-  // right-hand-side of the "x is Type".
-  auto pattern = std::move(is_expr.Rhs);
-  auto patterns = Vec<Unique<CasePatternVariantAst>>();
-  patterns.EmplaceBack(std::move(pattern));
-
-  // Construct the case expression branch that contains the
-  // pattern, yielding "true", and an "else" branch yielding
-  // "false".
-  const auto pos = is_expr.PosStart();
-  auto match_members = Vec<Unique<StatementAst>>();
-  match_members.EmplaceBack(BooleanLiteralAst::True(pos));
-  auto match_body = MakeUnique<InnerScopeExpressionAst>(
-    nullptr, std::move(match_members), nullptr);
-
-  auto no_match_members = Vec<Unique<StatementAst>>();
-  no_match_members.EmplaceBack(BooleanLiteralAst::False(pos));
-  auto no_match_body = MakeUnique<InnerScopeExpressionAst>(
-    nullptr, std::move(no_match_members), nullptr);
-
-  auto else_patterns = Vec<Unique<CasePatternVariantAst>>();
-  else_patterns.EmplaceBack(MakeUnique<CasePatternVariantElseAst>(nullptr));
-
-  auto branch = MakeUnique<CaseExpressionBranchAst>(
-    std::move(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
-  auto else_branch = MakeUnique<CaseExpressionBranchAst>(
-    nullptr, std::move(else_patterns), nullptr, std::move(no_match_body));
-  auto branches = Vec<Unique<CaseExpressionBranchAst>>();
-  branches.EmplaceBack(std::move(branch));
-  branches.EmplaceBack(std::move(else_branch));
-
-  // Construct and return the case expression AST.
-  auto case_expr = MakeUnique<CaseExpressionAst>(
-    nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
-  case_expr->LoweredFromIsExpr = true;
-  return case_expr;
 }

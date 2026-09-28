@@ -1,21 +1,18 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.analyse.utils.bin_utils;
+export module spp.analyse.utils.operator_desugaring;
 import spp.lex.tokens;
 import spp.utils.types;
 import std;
 
+use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct BinaryExpressionAst);
-use(spp::asts, struct CaseExpressionAst);
-use(spp::asts, struct IsExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts::meta, struct CompilerMetaData);
-use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeSymbol);
 
-namespace spp::analyse::utils::bin_utils {
+namespace spp::analyse::utils::operator_desugaring {
   /// A mapping of the binary operators to the appropriate
   /// method names from the operator overloading classes.
   SPP_EXP_CLS const auto kBinMethods = Map<lex::SppTokenType, Str>{
@@ -73,13 +70,4 @@ namespace spp::analyse::utils::bin_utils {
     CompilerMetaData *meta)
     -> Unique<PostfixExpressionAst>;
 
-  /// Convert the is expression to the equivalent function
-  /// call, based on the above mapping. For example, "a is
-  /// S32" becomes a case-pattern destructure check.
-  /// Provides a uniform variant decomposition mechanism.
-  SPP_EXP_FUN auto ConvertIsExprToFuncCall(
-    IsExpressionAst &is_expr,
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Unique<CaseExpressionAst>;
 }
