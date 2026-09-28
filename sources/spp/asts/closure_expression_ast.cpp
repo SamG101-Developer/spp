@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_utils;
@@ -190,6 +191,13 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // the point that restriction applies to.
     meta->WithinDeferTok = nullptr;
 
+    // A closure that is defined inside of a loop cannot touch
+    // the loop with "exit"/"skip" as it's not actually running
+    // in the loop. Prevent this by clearing loop info.
+    meta->LoopCurrentDepth = 0;
+    meta->LoopCurrentAst = nullptr;
+    meta->LoopReturnTypes = MakeShared<decltype(meta->LoopReturnTypes)::element_type>();
+
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
     _TrueRetType = not meta->EnclosingFunctionRetType.IsEmpty()
@@ -244,7 +252,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 
     // A body that falls off its end discharges its parameters there,
     // as a function's does.
-    if (not Body->Terminates()) {
+    if (not analyse::utils::expr_utils::Diverges(*Body, sm, meta)) {
       analyse::utils::linear_utils::CheckScopeExit(
         *outer_scope, *Body, "Closure end", *sm, meta);
     }
