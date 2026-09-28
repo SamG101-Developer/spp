@@ -201,3 +201,40 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> S32 { ret 1_s32 }
     fun f(a: Fut[S32] = async g()) -> Void { std::mem::ops::drop(a) }
 )");
+
+// A default is analysed in the callee's scope but copied into each call, so a default naming another parameter is
+// resolved in the caller: "g(1)" below passed the caller's "a" (99) as "b".
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionParameterOptionalAst,
+    test_invalid_default_naming_another_parameter,
+    SppDefaultValueNamesParameterError, R"(
+    fun g(a: S32, b: S32 = a) -> S32 { ret b }
+
+    fun f() -> S32 {
+        let a = 99
+        ret g(1)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionParameterOptionalAst,
+    test_invalid_default_naming_another_parameter_unknown_at_the_call,
+    SppDefaultValueNamesParameterError, R"(
+    fun g(a: S32, b: S32 = a) -> S32 { ret b }
+
+    fun f() -> S32 {
+        ret g(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FunctionParameterOptionalAst,
+    test_valid_default_naming_a_comp_generic_parameter, R"(
+    fun g[cmp n: S32](b: S32 = n) -> S32 { ret b }
+
+    fun f() -> S32 {
+        ret g[5]()
+    }
+)");

@@ -106,3 +106,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+// A plain alias of "Vec" links the template's scope, where the attribute "RawBuf[T, A]" has no symbol.
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstObjectInitializerAst,
+    test_valid_object_initializer_through_an_alias_of_a_vector, R"(
+    type VecAlias = Vec[S32]
+
+    fun f() -> Void {
+        let v = VecAlias()
+        std::mem::ops::drop(v)
+    }
+)");

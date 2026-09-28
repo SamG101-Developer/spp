@@ -181,11 +181,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - "Vec[Box[T]]" aliased inside Box's own generic sup nests without end: minting "Vec[T=Box[T]]" substitutes
-// its member types, and "Box[T]" is re-read at each level through the binding it is part of, so it grows a level each
-// time. It now stops with E109 (generic instantiation depth) instead of overflowing the stack. The alias itself is
-// finite ("Vec[Box[S32]]" in "Box[S32]"'s sup); an open instance minted in a template should not have its members
-// substituted eagerly. The "Self" form in TestSelfTypePositionsGeneric is the same bug.
+// "Vec[Box[T]]" in Box's own generic sup once nested without end (E109); since that was fixed, what remained was the
+// template's open instance being judged abstract (its superimpositions depend on "T"), so the abstract check now
+// waits for a fully concrete type. The "Self" form in TestSelfTypePositionsGeneric is the same.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   SupTypeStatementAstGenericSelfClass,
   test_valid_alias_of_a_type_holding_the_sups_own_generic_class, R"(

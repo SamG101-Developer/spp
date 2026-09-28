@@ -410,3 +410,210 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         h(case b { 1 } else { 2 })
     }
 )");
+
+// A pattern guard runs before its branch is chosen, so a move it makes also happens on the path into the next
+// branch when it answers false. Guards may not move.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_move_in_pattern_guard_then_use,
+  SppPatternGuardMovesValueError, R"(
+    cls GuardL { }
+    cls GuardP { !public a: S32 }
+
+    sup GuardP ext std::copy::Copy { }
+
+    fun eat(l: GuardL) -> Bool {
+        let GuardL() = l
+        ret true
+    }
+
+    fun f(p: GuardP) -> Void {
+        let l = GuardL()
+        case p of {
+            is GuardP(a) and eat(l) { }
+            else { }
+        }
+        let GuardL() = l
+    }
+)");
+
+// Re-binding the subject's own name in a nested pattern segfaulted in codegen (the inner "val" shadows the subject).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_nested_case_rebinding_the_subject_name, R"(
+    fun f(x: Opt[Opt[S32]]) -> S32 {
+        ret case x of {
+            is Some[Opt[S32]](val) {
+                case val of {
+                    is Some[S32](val) { val }
+                    else { 0 }
+                }
+            }
+            else { 0 }
+        }
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_every_branch_returns_as_last_statement, R"(
+    fun f(c: Bool) -> S32 {
+        case c { ret 1 } else { ret 2 }
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_every_of_branch_returns_as_last_statement, R"(
+    fun f(x: S32) -> S32 {
+        case x of {
+            == 1 { ret 1 }
+            else { ret 2 }
+        }
+    }
+)");
+
+// The condition of the non-"of" form was never checked to be a "Bool", and reached codegen as a non-"i1" branch.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_non_boolean_condition_without_branches,
+  SppExpressionNotBooleanError, R"(
+    fun f(x: S32) -> Void {
+        case x { }
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_non_boolean_condition_with_else,
+  SppExpressionNotBooleanError, R"(
+    fun f(x: S32) -> S32 {
+        ret case x { 1 } else { 2 }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_short_pattern_form_yielding_a_non_boolean, R"(
+    fun f(o: Opt[S32]) -> S32 {
+        ret case o is Some[S32](..) { 1 } else { 0 }
+    }
+)");
+
+// The short "case x is P(..)" form binds by move without taking the subject, unlike the "of" form - so the subject
+// could be consumed again after its payload was moved out.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_short_pattern_form_payload_moved_then_subject_used,
+  SppUninitializedMemoryUseError, R"(
+    fun f(o: Opt[Str]) -> Void {
+        case o is Some[Str](val) { std::mem::ops::drop(val) }
+        std::mem::ops::drop(o)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_pattern_binds_the_same_name_twice,
+  SppIdentifierDuplicateError, R"(
+    cls DupP {
+        !public x: S32
+        !public y: S32
+    }
+
+    sup DupP ext std::copy::Copy { }
+
+    fun f(p: DupP) -> Void {
+        case p of {
+            is DupP(x, y as x) { }
+            else { }
+        }
+    }
+)");
+
+// A "case" with an "else", written as a statement in a loop body, was checked against the loop's own type (left in
+// "AssignmentTargetType" for "exit" values) - a bogus E1, which crashed while being formatted.
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_statement_with_else_in_an_infinite_loop, R"(
+    fun f(c: Bool) -> Void {
+        loop true {
+            case c { } else { }
+        }
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_statement_with_else_in_a_returned_loop, R"(
+    fun f(c: Bool) -> S32 {
+        ret loop true {
+            case c { } else { }
+            exit 5
+        }
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_case_statement_with_else_before_a_blocks_value, R"(
+    fun f(c: Bool) -> S32 {
+        let x = {
+            case c { } else { }
+            5
+        }
+        ret x
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_move_in_pattern_guard_then_use_in_the_else_branch,
+  SppPatternGuardMovesValueError, R"(
+    cls GuardL2 { }
+    cls GuardP2 { !public a: S32 }
+
+    sup GuardP2 ext std::copy::Copy { }
+
+    fun eat(l: GuardL2) -> Bool {
+        let GuardL2() = l
+        ret true
+    }
+
+    fun f(p: GuardP2) -> Void {
+        let l = GuardL2()
+        case p of {
+            is GuardP2(a) and eat(l) { }
+            else { let GuardL2() = l }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_pattern_guard_borrowing_a_value, R"(
+    cls GuardL3 { }
+    cls GuardP3 { !public a: S32 }
+
+    sup GuardP3 ext std::copy::Copy { }
+
+    fun peek(l: &GuardL3) -> Bool { ret true }
+
+    fun f(p: GuardP3) -> Void {
+        let l = GuardL3()
+        case p of {
+            is GuardP3(a) and peek(&l) { }
+            else { }
+        }
+        let GuardL3() = l
+    }
+)");

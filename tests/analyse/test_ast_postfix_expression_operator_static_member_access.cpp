@@ -339,6 +339,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 // Overloads written in two "sup" blocks get a mock each, and each mock is given the other's overloads, so naming
 // "Counter::$Make" reaches both - through a function type, and through a generic parameter (called via the owner).
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_overloaded_across_sup_blocks, R"(
@@ -361,6 +362,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_overloaded_across_sup_blocks_through_a_generic_parameter, R"(
@@ -438,5 +440,84 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         A::f()
+    }
+)");
+
+// A method called in the static form takes its receiver as an ordinary argument, but the "self" argument was never
+// type checked - "the receiver chose the overload" only holds for "x.m()".
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_invalid_static_method_call_with_a_receiver_of_another_class,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls RecvA { !public v: S64 }
+    cls RecvB { !public w: U8 }
+
+    sup RecvA ext std::copy::Copy { }
+    sup RecvB ext std::copy::Copy { }
+
+    sup RecvA {
+        !public fun m(&self) -> S64 { ret self.v }
+    }
+
+    fun f() -> S64 {
+        let b = RecvB(w=1_u8)
+        ret RecvA::m(&b)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_invalid_static_method_call_with_a_primitive_receiver,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls RecvC { !public v: S64 }
+
+    sup RecvC ext std::copy::Copy { }
+
+    sup RecvC {
+        !public fun m(&self) -> S64 { ret self.v }
+    }
+
+    fun f() -> S64 {
+        let x = true
+        ret RecvC::m(&x)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_invalid_static_method_call_with_an_owned_receiver_of_another_class,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls RecvD { !public v: S64 }
+    cls RecvE { !public w: U8 }
+
+    sup RecvD ext std::copy::Copy { }
+    sup RecvE ext std::copy::Copy { }
+
+    sup RecvD {
+        !public fun m(self) -> S64 { ret self.v }
+    }
+
+    fun f() -> S64 {
+        ret RecvD::m(RecvE(w=1_u8))
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorStaticMemberAccessAst,
+    test_valid_static_method_call_with_its_own_receiver, R"(
+    cls RecvF { !public v: S64 }
+
+    sup RecvF ext std::copy::Copy { }
+
+    sup RecvF {
+        !public fun m(&self) -> S64 { ret self.v }
+    }
+
+    fun f() -> S64 {
+        let a = RecvF(v=1_s64)
+        ret RecvF::m(&a)
     }
 )");

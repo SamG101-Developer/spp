@@ -108,3 +108,44 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(p)
     }
 )");
+
+// "Copy" is accepted over a type whose attributes are not all copyable, so the owned attribute is duplicated and
+// ends up consumed twice. A concrete class is refused; an instance of a generic one ("P[Str]" under
+// "sup [T] P[T] ext Copy") is simply not "Copy", so it is moved rather than copied.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryCopy,
+    test_invalid_copy_over_a_type_holding_a_str,
+    SppGenericConstraintError, R"(
+    cls CopyStrHolder { !public l: Str }
+
+    sup CopyStrHolder ext Copy { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryCopy,
+    test_invalid_copy_over_a_type_holding_a_linear_class,
+    SppGenericConstraintError, R"(
+    cls CopyLinearInner { }
+    cls CopyLinearHolder { !public l: CopyLinearInner }
+
+    sup CopyLinearHolder ext Copy { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryCopy,
+    test_invalid_copy_generic_instantiated_with_a_str,
+    SppUninitializedMemoryUseError, R"(
+    cls CopyGenHolder[T] { !public x: T }
+
+    sup [T] CopyGenHolder[T] ext Copy { }
+
+    fun g() -> Void {
+        let p = CopyGenHolder[Str](x=Str::from("x"))
+        let a = p
+        let b = p
+        let CopyGenHolder[Str](x) = a
+        let CopyGenHolder[Str](x as y) = b
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+    }
+)");

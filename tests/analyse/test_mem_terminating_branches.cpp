@@ -77,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryTerminatingBranches,
     test_invalid_non_terminating_branch_leaks_its_moves,
-    SppUninitializedMemoryUseError, R"(
+    SppInconsistentlyInitializedMemoryUseError, R"(
     cls T { }
 
     fun consume(t: T) -> Void {

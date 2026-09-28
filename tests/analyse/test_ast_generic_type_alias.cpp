@@ -1,5 +1,8 @@
 #include "../test_macros.hpp"
 
+// A generic parameter constrained by an alias of a function type is callable as that function type, and a
+// module-private alias is visible to the constraint check at a call site.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_as_a_generic_constraint, R"(
@@ -14,13 +17,50 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself wrote "(S32)", which is a parenthesised "S32", not a one-element tuple)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   GenericTypeAliasAst,
   test_valid_generic_alias_with_a_non_empty_argument_tuple, R"(
     type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
 
+    fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
+        ret f(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  GenericTypeAliasAst,
+  test_valid_generic_alias_constraint_called_through_an_instantiation, R"(
+    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+
+    fun g[F: ZzClosure[(S32,), S32]](f: F) -> S32 {
+        ret f(1)
+    }
+
+    fun h() -> Void {
+        let x = g((a: S32) -> S32 { ret a })
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  GenericTypeAliasAst,
+  test_invalid_generic_alias_constraint_argument_violates_the_alias_constraint,
+  SppGenericConstraintError, R"(
+    type ZzClosure[Ts: std::tuple::TupLike, R] = std::function::FunMov[Ts, R]
+
     fun g[F: ZzClosure[(S32), S32]](f: F) -> S32 {
         ret f(1)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  GenericTypeAliasAst,
+  test_invalid_class_constraint_argument_violates_the_class_constraint,
+  SppGenericConstraintError, R"(
+    cls ZzK[Ts: std::tuple::TupLike] { }
+
+    fun g[F: ZzK[S32]](f: F) -> Void {
+        std::mem::ops::drop(f)
     }
 )");
 

@@ -467,6 +467,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 // Todo: a call returning "!" and a "loop true" without an "exit" both diverge, but neither answers "Terminates", so
 //  the statements after them are not reported. Expected red until they do.
 
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestNeverType,
   test_invalid_statement_after_never_call,
@@ -478,6 +479,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestNeverType,
   test_invalid_statement_after_infinite_loop,
@@ -485,5 +487,37 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         loop true { }
         let x = 1
+    }
+)");
+
+// A "let" bound to a "!" value ("let y = loop true { .. }" whose only exits leave an outer loop) stored a null value
+// in codegen and segfaulted; it also read as a linear value left unconsumed.
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestNeverType,
+    test_valid_let_bound_to_a_diverging_loop, R"(
+    fun f() -> S32 {
+        let x = loop true {
+            let y = loop true {
+                exit exit 4
+            }
+        }
+        ret x
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestNeverType,
+    test_invalid_statement_after_a_let_bound_to_a_diverging_loop,
+    SppUnreachableCodeError, R"(
+    fun f() -> S32 {
+        let x = loop true {
+            let y = loop true {
+                exit exit 4
+            }
+            exit 5
+        }
+        ret x
     }
 )");

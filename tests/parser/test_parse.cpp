@@ -1069,6 +1069,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     }
 )");
 
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(
+    parse_closure_body_not_on_the_parameters_line, R"(
+    fun f() -> Void {
+        let c = (x: S32)
+            x
+    }
+)");
+
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_with_params, R"(
     fun my_function() -> Void {

@@ -163,9 +163,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - "Vec[Self]" aliased inside Box's own generic sup ("Self" is "Box[T]" there) nests without end, the same
-// polymorphic recursion as SupTypeStatementAstGenericSelfClass.test_valid_alias_of_a_type_holding_the_sups_own_generic_
-// class: it now stops with E109 (generic instantiation depth) instead of overflowing the stack.
+// "Vec[Self]" aliased inside Box's own generic sup ("Self" is "Box[T]" there): the open instance "Vec[Box[T]]" was
+// judged abstract in the template; the abstract check now waits for a fully concrete type.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestSelfTypePositionsGeneric,
   test_valid_self_in_a_type_alias_generic_argument, R"(
@@ -573,6 +573,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// The conflict's "S32" candidate, inferred off the literal "1", pointed at generated code; it now points at the "1".
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestSelfTypePositionsGeneric,
   test_invalid_self_class_attribute_generic_argument_other_instantiation,

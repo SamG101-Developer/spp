@@ -74,6 +74,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let v = MyVec[S32]::from(&[1, 2, 3, 4, 5])
         let mut len = v.test()
         len = 0_uz
+        std::mem::ops::drop(v)
 
         let v = Vec[Bool]::from(&[true, false])
         let mut len = v.test()
@@ -131,6 +132,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let s = Str::from("1,2,3")
         let mut v = MyVec[S32]::from(s)
         v = Vec[S32]::new()
+        std::mem::ops::drop(v)
 
         let s = Str::from("1,2,3")
         let mut v = Vec[S32]::from(s)

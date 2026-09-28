@@ -40,9 +40,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   LoopControlFlowStatementAst,
   test_invalid_exit_types_2,
   SppTypeMismatchError, R"(
-    fun f() -> std::void::Void {
+    fun f(b: std::boolean::Bool) -> std::void::Void {
         loop true {
-            loop true {
+            loop b {
                 exit exit 1
             }
             exit true
@@ -68,9 +68,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   LoopControlFlowStatementAst,
   test_valid_exit_skip, R"(
-    fun f() -> std::void::Void {
+    fun f(b: std::boolean::Bool) -> std::void::Void {
         loop true {
-            loop true {
+            loop b {
                 exit skip
             }
             skip
@@ -81,9 +81,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   LoopControlFlowStatementAst,
   test_valid_exit_types_nested, R"(
-    fun f() -> std::void::Void {
+    fun f(b: std::boolean::Bool) -> std::void::Void {
         let looped = loop true {
-            loop true {
+            loop b {
                 exit exit 1
             }
             exit 1
@@ -113,5 +113,62 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             i += 1
             case i == 3 { exit i * 10 }
         })
+    }
+)");
+
+// "exit" and "skip" outside any loop dereferenced the (null) current loop when building the error.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopControlFlowStatementAst,
+    test_invalid_exit_outside_a_loop,
+    SppLoopTooManyControlFlowStatementsError, R"(
+    fun f() -> Void {
+        exit
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopControlFlowStatementAst,
+    test_invalid_skip_outside_a_loop,
+    SppLoopTooManyControlFlowStatementsError, R"(
+    fun f() -> Void {
+        skip
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopControlFlowStatementAst,
+    test_invalid_exit_with_value_outside_a_loop,
+    SppLoopTooManyControlFlowStatementsError, R"(
+    fun f() -> S32 {
+        exit 5
+    }
+)");
+
+// A closure body is a function of its own, so a loop around the closure is not one its "exit" can leave. It used to
+// be accepted, and branched into the enclosing function's loop-end block.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopControlFlowStatementAst,
+    test_invalid_exit_in_closure_targeting_the_outer_loop,
+    SppLoopTooManyControlFlowStatementsError, R"(
+    fun f() -> Void {
+        loop true {
+            let c = () { exit }
+            exit
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopControlFlowStatementAst,
+    test_valid_exit_in_closure_targeting_its_own_loop, R"(
+    fun f() -> Void {
+        let c = () {
+            loop true { exit }
+        }
+        c()
     }
 )");

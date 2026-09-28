@@ -267,3 +267,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         drop(p)
     }
 )");
+
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorRuntimeMemberAccessAst,
+    test_valid_tuple_element_through_a_borrow, R"(
+    fun f(t: &Tup[S32, S32]) -> S32 {
+        ret t.0
+    }
+)");

@@ -160,3 +160,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         gen std::option::None()
     }
 )");
+
+// A yielded borrow that already had the yield type was forwarded anyway ("&Str" became "&StrView"), and then
+// mismatched.
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenExpressionAst,
+    test_valid_gen_borrow_of_a_str_as_a_str_borrow, R"(
+    cor f() -> Gen[&Str] {
+        let elem = Str::from("x")
+        gen &elem
+        std::mem::ops::drop(elem)
+    }
+)");

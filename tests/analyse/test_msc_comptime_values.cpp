@@ -318,6 +318,9 @@ SPP_TEST_CMP_VALUES(
   }
 )", {"a", "10_s32"});
 
+// A variadic parameter's elements are read off the pack in the template (typed as its element) and off the tuple in
+// each instantiation.
+// FIXED
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_variadic_parameter_elements, R"(
@@ -569,3 +572,22 @@ SPP_TEST_CMP_VALUES(
   cmp b: S32 = 1 << 31_u32
   cmp c: S32 = 256 >> 4_u32
 )", {"a", "16_s32"}, {"b", "-2147483648_s32"}, {"c", "16_s32"});
+
+// Unbounded recursion in a "cmp fun" overflows the compiler's own stack.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_unbounded_recursion,
+  SppInvalidComptimeOperationError, R"(
+  cmp fun rec(x: S32) -> S32 { ret rec(x) }
+  cmp a: S32 = rec(1)
+)");
+
+// Comparing byte literals at compile time crashed with "std::bad_cast" (a runtime comparison is fine).
+// FIXED
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_byte_literal_comparison, R"(
+  cmp a: Bool = b'a' == 97_u8
+  cmp b: Bool = b'a' == b'b'
+)", {"a", "true"}, {"b", "false"});

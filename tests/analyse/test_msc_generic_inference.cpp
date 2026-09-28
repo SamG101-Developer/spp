@@ -88,10 +88,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself wrote "n + 1" for a USize "n" - an unsuffixed literal is an S32 - and had no body)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Nested,
   test_valid_infer_comp_from_array_size, R"(
-    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1] { }
+    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::unreachable() }
 
     fun g() -> Void {
         let mut x = f([1, 2, 3])
@@ -351,10 +352,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 //     }
 // )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_from_optional_argument, R"(
-    fun f[T](a: Opt[T]) -> T { ret T() }
+    fun f[T](a: Opt[T]) -> T {
+        std::mem::ops::drop(a)
+        ret T()
+    }
 
     fun g() -> Void {
         let opt: Opt[S32] = Some(val=123)
@@ -493,5 +498,59 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(a)
         let b = 1_u32 + 2_u32
         let c = 3_uz + 4_uz
+    }
+)");
+
+// Todo: Polymorphic recursion never terminates - each instantiation asks for a bigger one, and there is no limit on
+//  function instantiation (E109 only guards type nesting). Disabled because it exhausts memory rather than failing,
+//  which would take the parallel suite down with it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Recursion,
+  DISABLED_test_invalid_polymorphic_recursion_through_a_tuple,
+  SppGenericInstantiationDepthError, R"(
+    fun f[T: std::copy::Copy](x: T) -> Void {
+        f[(T, T)]((x, x))
+    }
+
+    fun g() -> Void { f(1) }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Recursion,
+  DISABLED_test_invalid_polymorphic_recursion_through_a_vector,
+  SppGenericInstantiationDepthError, R"(
+    fun f[T]() -> Void {
+        f[Vec[T]]()
+    }
+
+    fun g() -> Void { f[S32]() }
+)");
+
+// A closure's return type is readable off the closure, but a parameter written as "FunMov[(..), U]" does not infer
+// "U" from it. The "F: FunRef[(..), R]" constraint form does.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_infer_closure_return_through_a_function_type_parameter, R"(
+    fun h[U](f: FunMov[(S32,), U]) -> U { ret f(1) }
+
+    fun g() -> Void { let b = h((x: S32) x == 1) }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_infer_closure_return_through_a_generic_method, R"(
+    cls MapBox[T] { !public v: T }
+
+    sup [T] MapBox[T] {
+        !public fun map[U](self, f: FunMov[(T,), U]) -> MapBox[U] {
+            let MapBox[T](v) = self
+            ret MapBox(v=f(v))
+        }
+    }
+
+    fun g() -> Void {
+        let a = MapBox(v=1)
+        let b = a.map((x: S32) x == 1)
+        std::mem::ops::drop(b)
     }
 )");
