@@ -3,19 +3,16 @@ module;
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
-module spp.analyse.utils.cmp_utils;
+module spp.analyse.utils.comptime_intrinsics;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
-import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.object_initializer_argument_ast;
@@ -23,23 +20,19 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.object_initializer_ast;
-import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
-import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
-import spp.utils.strings;
 import genex;
 import numex.big_dec;
 import numex.big_int;
 
-namespace spp::analyse::utils::cmp_utils {
+namespace spp::analyse::utils::comptime_intrinsics {
   namespace {
     auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {
       // The width and signedness are the sized type's own bindings of "w" and "signed", read from the instantiation as
@@ -109,7 +102,7 @@ namespace spp::analyse::utils::cmp_utils {
   }
 }
 
-auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
+auto spp::analyse::utils::comptime_intrinsics::SetCompTimeAttrValue(
   ObjectInitializerAst const *object, Ast const *attribute,
   Unique<ExpressionAst> &&value, ScopeManager const *sm) -> void {
   // Firstly, we need to split the "attribute" as it may be
@@ -176,7 +169,7 @@ auto spp::analyse::utils::cmp_utils::SetCompTimeAttrValue(
   }
 }
 
-auto spp::analyse::utils::cmp_utils::GetCompTimeAttrValue(
+auto spp::analyse::utils::comptime_intrinsics::GetCompTimeAttrValue(
   ObjectInitializerAst const *object,
   IdentifierAst const *attribute)
   -> Unique<ExpressionAst> {
@@ -193,173 +186,7 @@ auto spp::analyse::utils::cmp_utils::GetCompTimeAttrValue(
   return nullptr;
 }
 
-auto spp::analyse::utils::cmp_utils::FoldCompExpr(
-  ExpressionAst const &expr,
-  Scope const &scope)
-  -> Unique<ExpressionAst> {
-  using lex::SppTokenType;
-
-  // A literal is its own value, spelled canonically:
-  // "0x10_uz" and "16_uz" are one value.
-  if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
-    return IntegerLiteralAst::FromBigVal(lit->BigVal(), lit->Type);
-  }
-  if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
-    return BooleanLiteralAst::FromCppVal(lit->CppVal());
-  }
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    return FoldCompExpr(*paren->Expr, scope);
-  }
-
-  // A comp generic is the value it is bound to. An unbound
-  // one, or one bound to another generic, is not closed.
-  if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
-    const auto var = scope.GetVarSymbol(id);
-    if (var == nullptr or not var->IsCompGeneric()) { return nullptr; }
-    const auto bound = var->BoundCompValue();
-    if (bound == nullptr or bound->To<IdentifierAst>() != nullptr) { return nullptr; }
-    return FoldCompExpr(*bound, scope);
-  }
-
-  // A binary operation over two folded values, by the
-  // comp-time intrinsic its operator maps to.
-  const auto bin = expr.To<BinaryExpressionAst>();
-  if (bin == nullptr) { return nullptr; }
-  const auto lhs = FoldCompExpr(*bin->Lhs, scope);
-  const auto rhs = lhs != nullptr ? FoldCompExpr(*bin->Rhs, scope) : nullptr;
-  if (lhs == nullptr or rhs == nullptr) { return nullptr; }
-  const auto op = bin->TokOp->TokenType;
-
-  const auto lhs_bool = lhs->To<BooleanLiteralAst>();
-  const auto rhs_bool = rhs->To<BooleanLiteralAst>();
-  if (lhs_bool != nullptr and rhs_bool != nullptr) {
-    if (op == SppTokenType::TK_EQ) { return BooleanLiteralAst::FromCppVal(lhs_bool->CppVal() == rhs_bool->CppVal()); }
-    if (op == SppTokenType::TK_NE) { return BooleanLiteralAst::FromCppVal(lhs_bool->CppVal() != rhs_bool->CppVal()); }
-    return nullptr;
-  }
-
-  // An unsuffixed literal takes the other side's type,
-  // as it does in an expression ("n + 1" with "n: USize");
-  // two different types do not mix.
-  const auto lhs_int = lhs->To<IntegerLiteralAst>();
-  const auto rhs_int = rhs->To<IntegerLiteralAst>();
-  if (lhs_int == nullptr or rhs_int == nullptr) { return nullptr; }
-  if (not lhs_int->Type.empty() and not rhs_int->Type.empty() and lhs_int->Type != rhs_int->Type) { return nullptr; }
-  const auto type = not lhs_int->Type.empty() ? lhs_int->Type : rhs_int->Type;
-  const auto l = IntegerLiteralAst::FromBigVal(lhs_int->BigVal(), type);
-  const auto r = IntegerLiteralAst::FromBigVal(rhs_int->BigVal(), type);
-  const auto by_zero = r->Val->TokenData == "0";
-
-  switch (op) {
-    case SppTokenType::TK_ADD: return std_intrinsics_add(*l, *r);
-    case SppTokenType::TK_SUB: return std_intrinsics_sub(*l, *r);
-    case SppTokenType::TK_MUL: return std_intrinsics_mul(*l, *r);
-    case SppTokenType::TK_DIV: return by_zero ? nullptr : std_intrinsics_div(*l, *r);
-    case SppTokenType::TK_REM: return by_zero ? nullptr : std_intrinsics_rem(*l, *r);
-    case SppTokenType::TK_BIT_IOR: return std_intrinsics_bit_ior(*l, *r);
-    case SppTokenType::TK_BIT_AND: return std_intrinsics_bit_and(*l, *r);
-    case SppTokenType::TK_BIT_XOR: return std_intrinsics_bit_xor(*l, *r);
-    case SppTokenType::TK_BIT_SHL: return std_intrinsics_bit_shl(*l, *r);
-    case SppTokenType::TK_BIT_SHR: return std_intrinsics_bit_shr(*l, *r);
-    case SppTokenType::TK_EQ: return std_intrinsics_eq(*l, *r);
-    case SppTokenType::TK_NE: return std_intrinsics_ne(*l, *r);
-    case SppTokenType::TK_LT: return std_intrinsics_lt(*l, *r);
-    case SppTokenType::TK_LE: return std_intrinsics_le(*l, *r);
-    case SppTokenType::TK_GT: return std_intrinsics_gt(*l, *r);
-    case SppTokenType::TK_GE: return std_intrinsics_ge(*l, *r);
-    default: return nullptr;
-  }
-}
-
-auto spp::analyse::utils::cmp_utils::StampCompGenerics(
-  ExpressionAst const &expr,
-  Scope const &scope)
-  -> void {
-  // Move inside a comptime parenthesis expression.
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    StampCompGenerics(*paren->Expr, scope);
-    return;
-  }
-
-  // Handle binary expressions using the nodes.
-  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
-    if (bin->Lhs != nullptr) { StampCompGenerics(*bin->Lhs, scope); }
-    if (bin->Rhs != nullptr) { StampCompGenerics(*bin->Rhs, scope); }
-    return;
-  }
-
-  // Handle identifiers using their symbols.
-  const auto id = expr.To<IdentifierAst>();
-  if (id == nullptr or id->Stamp() != nullptr) { return; }
-  if (auto *const sym = scope.GetVarSymbol(id); sym != nullptr
-    and sym->Kind == VariableKind::GenericCompParam and sym->ParamId != 0) {
-    id->SetStamp(sym);
-  }
-}
-
-auto spp::analyse::utils::cmp_utils::CompExprIdentity(
-  ExpressionAst const &expr, Scope const &scope, Str &out) -> void {
-  // A closed value is what it folds to: "1_uz + 1_uz", "n + 1_uz"
-  // with "n" bound to "1_uz", and "2_uz" are one value.
-  if (const auto folded = FoldCompExpr(expr, scope); folded != nullptr) {
-    out += 'V';
-    out += folded->ToString();
-    return;
-  }
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    CompExprIdentity(*paren->Expr, scope, out);
-    return;
-  }
-
-  // A comp generic is the parameter at the end of its chain of
-  // bindings to other generics - an inherited "w" bound to the
-  // block's own "w" is that "w" - however it is spelled here.
-  // A binding to a value that does not fold is that value.
-  if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
-    auto const *var = scope.GetVarSymbol(id);
-    if (var == nullptr or not var->IsCompGeneric()) {
-      out += 'V';
-      out += expr.ToString();
-      return;
-    }
-    for (auto depth = 0; depth < 16; ++depth) {
-      const auto bound = var->BoundCompValue();
-      if (bound == nullptr) { break; }
-      const auto bound_id = bound->To<IdentifierAst>();
-      if (bound_id == nullptr) {
-        out += 'V';
-        out += bound->ToString();
-        return;
-      }
-      const auto next = scope.GetVarSymbol(bound_id);
-      if (next == nullptr or next == var or not next->IsCompGeneric()) { break; }
-      var = next;
-    }
-    const auto param_id = var->ParamId != 0 ? var->ParamId : var->BindsParamId;
-    auto digits = std::array<char, 20>();
-    const auto written = std::to_chars(digits.data(), digits.data() + digits.size(), param_id);
-    out += 'C';
-    out.append(digits.data(), written.ptr);
-    return;
-  }
-
-  // An operation is its operands' identities under its operator, bracketed so precedence is explicit.
-  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr and bin->Lhs != nullptr and bin->Rhs !=
-    nullptr) {
-    out += '(';
-    CompExprIdentity(*bin->Lhs, scope, out);
-    out += ' ';
-    out += bin->TokOp->TokenData;
-    out += ' ';
-    CompExprIdentity(*bin->Rhs, scope, out);
-    out += ')';
-    return;
-  }
-  out += 'V';
-  out += expr.ToString();
-}
-
-auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_add(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -367,7 +194,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_add(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_sub(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -375,7 +202,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_sub(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_mul(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -383,7 +210,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_mul(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_div(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_div(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -391,7 +218,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_div(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_rem(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_rem(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -399,14 +226,14 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_rem(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_sneg(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_sneg(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform signed negation on an integer literal.
   return IntegerLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shl(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -415,7 +242,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shl(
     lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shr(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -423,7 +250,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_shr(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() >> rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_ior(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -431,7 +258,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_ior(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() | rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_and(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -439,7 +266,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_and(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() & rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_xor(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -447,14 +274,14 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_xor(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() ^ rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_not(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform bitwise NOT on an integer literal.
   return IntegerLiteralAst::FromBigVal(~val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not_assign(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_not_assign(
   IntegerLiteralAst &lhs)
   -> void {
   // Perform bitwise NOT assignment on an integer literal. Written out rather than generated below because it is the
@@ -462,14 +289,14 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_bit_not_assign(
   AssignInPlace(lhs, std_intrinsics_bit_not(lhs));
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_abs(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_abs(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform absolute value on an integer literal.
   return IntegerLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_eq(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -477,7 +304,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_eq(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_oeq(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oeq(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -485,7 +312,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_oeq(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ne(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ne(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -493,7 +320,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ne(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_one(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_one(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -501,7 +328,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_one(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_lt(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_lt(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -509,7 +336,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_lt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() < rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_olt(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_olt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -517,7 +344,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_olt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() < rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_le(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_le(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -525,7 +352,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_le(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() <= rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ole(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ole(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -533,7 +360,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ole(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() <= rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_gt(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_gt(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -541,7 +368,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_gt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() > rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ogt(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ogt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -549,7 +376,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ogt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() > rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ge(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ge(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -557,7 +384,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_ge(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() >= rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_oge(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oge(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -565,7 +392,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_oge(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() >= rhs.BigVal());
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_max_val(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max_val(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -575,7 +402,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_max_val(
     IntegerLiteralAst::kBounds.at(name).second, name);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_min_val(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min_val(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -585,7 +412,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_min_val(
     IntegerLiteralAst::kBounds.at(name).first, name);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_max(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -593,7 +420,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_max(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_min(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -601,7 +428,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_min(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_cmp(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_cmp(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -611,7 +438,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_cmp(
   return IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fadd(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -620,7 +447,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fadd(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fsub(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -629,7 +456,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fsub(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmul(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -638,7 +465,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmul(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fdiv(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -646,7 +473,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fdiv(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_frem(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -654,21 +481,21 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_frem(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Fmod(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fneg(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fneg(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform negation on a float literal, exactly.
   return FloatLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fabs(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fabs(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform absolute value on a float literal, exactly.
   return FloatLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax_val(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
@@ -677,7 +504,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax_val(
   return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).second, name);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin_val(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin_val(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
@@ -686,7 +513,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin_val(
   return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).first, name);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -694,7 +521,7 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmax(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -702,35 +529,35 @@ auto spp::analyse::utils::cmp_utils::std_intrinsics_fmin(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ffloor(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ffloor(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform floor operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Floor(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fceil(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fceil(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform ceiling operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Ceil(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_ftrunc(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ftrunc(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform truncation operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_intrinsics_fround(
+auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fround(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform round operation on a float literal: half away from zero, as "llvm.round" does at runtime.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Round(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_float_neg_one()
+auto spp::analyse::utils::comptime_intrinsics::std_num_float_neg_one()
   -> Unique<FloatLiteralAst> {
   // Get "-1.0" as a constant.
   constexpr auto value = "-1.0";
@@ -738,7 +565,7 @@ auto spp::analyse::utils::cmp_utils::std_num_float_neg_one()
   return flt;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_float_zero()
+auto spp::analyse::utils::comptime_intrinsics::std_num_float_zero()
   -> Unique<FloatLiteralAst> {
   // Get "0.0" as a constant.
   constexpr auto value = "0.0";
@@ -746,7 +573,7 @@ auto spp::analyse::utils::cmp_utils::std_num_float_zero()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_float_one()
+auto spp::analyse::utils::comptime_intrinsics::std_num_float_one()
   -> Unique<FloatLiteralAst> {
   // Get "1.0" as a constant.
   constexpr auto value = "1.0";
@@ -754,7 +581,7 @@ auto spp::analyse::utils::cmp_utils::std_num_float_one()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_int_neg_one()
+auto spp::analyse::utils::comptime_intrinsics::std_num_int_neg_one()
   -> Unique<IntegerLiteralAst> {
   // Get "-1" as a constant.
   constexpr auto value = "-1";
@@ -762,7 +589,7 @@ auto spp::analyse::utils::cmp_utils::std_num_int_neg_one()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_int_zero()
+auto spp::analyse::utils::comptime_intrinsics::std_num_int_zero()
   -> Unique<IntegerLiteralAst> {
   // Get "0" as a constant.
   constexpr auto value = "0";
@@ -770,7 +597,7 @@ auto spp::analyse::utils::cmp_utils::std_num_int_zero()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_int_one()
+auto spp::analyse::utils::comptime_intrinsics::std_num_int_one()
   -> Unique<IntegerLiteralAst> {
   // Get "1" as a constant.
   constexpr auto value = "1";
@@ -778,7 +605,7 @@ auto spp::analyse::utils::cmp_utils::std_num_int_one()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_num_int_two()
+auto spp::analyse::utils::comptime_intrinsics::std_num_int_two()
   -> Unique<IntegerLiteralAst> {
   // Get "2" as a constant.
   constexpr auto value = "2";
@@ -786,7 +613,7 @@ auto spp::analyse::utils::cmp_utils::std_num_int_two()
   return num;
 }
 
-auto spp::analyse::utils::cmp_utils::std_mem_ops_size_of(
+auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_size_of(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -796,7 +623,7 @@ auto spp::analyse::utils::cmp_utils::std_mem_ops_size_of(
   return MakeUnique<IntegerLiteralAst>(nullptr, std::move(tok), "uz");
 }
 
-auto spp::analyse::utils::cmp_utils::std_mem_ops_align_of(
+auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_align_of(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -811,7 +638,7 @@ auto spp::analyse::utils::cmp_utils::std_mem_ops_align_of(
 // rather than copied eighteen times. The declarations stay written out in the interface, so each name is still
 // searchable there and at its registration in "builtins.cpp".
 #define SPP_CMP_ASSIGN_OP(name, lit_ty)                                \
-  auto spp::analyse::utils::cmp_utils::std_intrinsics_##name##_assign( \
+  auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_##name##_assign( \
     asts::lit_ty &lhs,                                                 \
     asts::lit_ty const &rhs)                                           \
     -> void {                                                          \
