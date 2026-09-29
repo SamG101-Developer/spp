@@ -8,14 +8,16 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.resolution_index;
+import spp.analyse.utils.function_values;
+import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.class_attribute_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
@@ -30,6 +32,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.algorithms;
 import genex;
 
@@ -85,21 +88,17 @@ auto ObjectInitializerArgumentGroupAst::ToString() const -> Str {
 auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppArgumentNameInvalidError;
-  using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError;
-  using analyse::utils::type_members::GetAllAttrs;
-  using namespace analyse::utils;
+  IMPORT_UTILS;
 
-  const auto all_attrs = GetAllAttrs(
-    *sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get()));
+  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType->WithoutGenerics().get());
+  const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
 
   // Use the hook to record information for the resolution and
   // completion plugin.
-  resolution_index::RecordObjectInitializerArguments(
+  lsp::resolution_index::RecordObjectInitializerArguments(
     GetKeywordArgs(), all_attrs, *sm, *meta);
 
   // Check there is at most 1 autofill argument.
@@ -165,23 +164,14 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
 auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_members::GetAllAttrs;
-  using analyse::utils::type_members::GetAllAttrAsts;
-  using analyse::utils::type_predicates::IsTypeVariant;
-  using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
-  using analyse::errors::SemanticError;
-  using analyse::errors::SppAmbiguousMemberAccessError;
-  using analyse::errors::SppGeneratedCodeError;
-  using analyse::errors::SppObjectInitializerVariantError;
-  using analyse::errors::SppTypeMismatchError;
+  IMPORT_UTILS;
 
   // Remove any compiler generated args for re-analysis (generically).
   Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
   // Get the attributes on the type and supertypes.
   const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get());
-  const auto all_attrs = GetAllAttrs(*cls_sym);
+  const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
 
   // Type check the non-autofill arguments against the class attributes.
   for (auto const &arg : GetNonAutoFillArgs()) {
@@ -199,7 +189,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     {
       const auto scope = cls_sym->LinkedScope->NonGenericScope;
       const auto sym = scope->GetVarSymbol(arg->Name.get(), true);
-      CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
+      visibility_utils::CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
     }
 
     const auto attr_type = attr_type_sym->FqName();
@@ -211,12 +201,12 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     }();
 
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*attr_type, *arg_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::Assignable(*attr_type, *arg_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
 
     // A function named as the value stands for the overload the
     // attribute's type asks for.
-    analyse::utils::func_utils::InstantiateFunctionValue(
+    function_values::InstantiateFunctionValue(
       TypeRef::Of(*arg_type, *sm->CurrentScope),
       TypeRef::Of(*attr_type, *sm->CurrentScope), sm, meta);
   }
@@ -224,7 +214,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   // Type check the default argument (if it exists).
   const auto af_arg = GetAutoFillArg();
   if (af_arg != nullptr) {
-    if (not TypeEq(
+    if (not type_compare::Assignable(
       af_arg->Val->InferTypeRef(sm, meta), TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope),
       *sm->CurrentScope, *sm->CurrentScope)) {
       // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
@@ -235,7 +225,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 
   // Generate an argument for every attribute the user didn't pass.
-  const auto all_attr_asts = GetAllAttrAsts(*cls_sym);
+  const auto all_attr_asts = type_members::GetAllAttrAsts(*cls_sym);
   const auto given_names = GetNonAutoFillArgs()
     | genex::views::transform([](auto const &x) { return x->Name; })
     | genex::to<Vec>();
