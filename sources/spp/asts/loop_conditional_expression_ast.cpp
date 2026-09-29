@@ -9,8 +9,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.identifier_ast;
@@ -26,6 +28,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
+import genex;
 
 SPP_MOD_BEGIN
 LoopConditionalExpressionAst::LoopConditionalExpressionAst(
@@ -59,6 +62,7 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(ElseBlock));
   if (_IterDesugar) { cloned->MarkAsIterDesugar(); }
   cloned->m_loop_exit_type_info = m_loop_exit_type_info;
+  cloned->_Scope = _Scope;
   return cloned;
 }
 
@@ -74,10 +78,7 @@ auto LoopConditionalExpressionAst::ToString() const -> Str {
 auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeBool;
+  IMPORT_UTILS;
 
   // Create the loop scope.
   auto scope_name = ScopeBlockName::FromParts(
@@ -88,11 +89,11 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   // Analyse the condition expression.
   Cond->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Cond, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Cond));
 
   // Check the loop condition is boolean.
-  if (not IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+  if (not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
     const auto cond_ty = Cond->InferType(sm, meta);
     Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "loop"));
   }
@@ -119,7 +120,9 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 
 auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
+  using memory_state::MemoryInfoSnapshot;
+  using memory_state::ScopeSnapshot;
 
   // Move into the loop scope.
   sm->MoveToNextScope();
@@ -148,7 +151,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
 
 auto LoopConditionalExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::type_predicates::IsTypeVoid;
+  IMPORT_UTILS_AND_UID;
 
   // Move into the loop scope.
   sm->MoveToNextScope();
@@ -161,9 +164,9 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // that is produced must be used, and "f(loop .. { exit 5 })"
   // passes it straight to a call - which, without the phi,
   // left the "exit" nothing to feed and crashed the compiler.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto ret_type = InferType(sm, meta);
-  const auto is_expr = not IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
+  const auto is_expr = not type_predicates::IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
     and not ret_type->IsNeverType();
 
   // Create the key required blocks: the condition entry

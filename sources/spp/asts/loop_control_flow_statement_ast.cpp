@@ -132,6 +132,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory state of the expression if it is present.
   // Expression is being moved into outer context, so strict
