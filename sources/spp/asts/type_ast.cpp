@@ -11,9 +11,6 @@ import spp.asts.utils.ast_utils;
 SPP_MOD_BEGIN
 TypeAst::TypeAst() :
   _CachedWithoutGenerics(nullptr),
-  _LookupScope(nullptr),
-  _LookupSym(nullptr),
-  _LookupGen(0),
   _CachedStringification("") {
 }
 
@@ -66,10 +63,10 @@ auto TypeAst::WithGenerics(
   if (arg_group == nullptr) { arg_group = GenericArgumentGroupAst::NewEmpty(); }
   type_clone->LastTypePart()->GnArgGroup = std::move(arg_group);
 
-  // Different arguments make a different type, so the clone keeps no stamp: the one copied from this node (a cached
-  // qualified name is stamped with its symbol) would still name the old type, and a lookup would follow it there.
-  type_clone->SetStamp(nullptr);
-  type_clone->LastTypePart()->SetStamp(nullptr);
+  // Different arguments make a different type, so the clone keeps no written identity: the one copied from this node (a
+  // cached qualified name records its symbol's) would still name the old type, and a lookup would follow it there.
+  type_clone->SetWritten(nullptr);
+  type_clone->LastTypePart()->SetWritten(nullptr);
   return type_clone;
 }
 

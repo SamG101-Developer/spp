@@ -127,10 +127,14 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   //
   IMPORT_UTILS;
 
-  // Memory analysis used the transformed AST to not repeat lhs as self.
+  // A method call is checked in its function form, where the receiver is the "self" argument, so the lhs is not also
+  // checked as a use of its own.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  if (func != nullptr and func->GetTransformedAst() != nullptr) {
-    func->GetTransformedAst()->Stage8_CheckMemory(sm, meta);
+  if (const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr; fn_lhs != nullptr) {
+    fn_lhs->Stage8_CheckMemory(sm, meta);
+    const auto _meta_guard = MetaGuard(meta);
+    meta->PostfixExpressionLhs = fn_lhs;
+    Op->Stage8_CheckMemory(sm, meta);
     return;
   }
 
@@ -182,17 +186,13 @@ auto PostfixExpressionAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // Memory analysis used the transformed AST to not
-  // repeat lhs as self.
+  // A method call is generated in its function form ("Type::m(obj)").
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  if (func != nullptr and func->GetTransformedAst() != nullptr) {
-    const auto ret_val = func->GetTransformedAst()->Stage11_CodeGen(sm, meta, ctx);
-    return ret_val;
-  }
+  const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr;
 
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  meta->PostfixExpressionLhs = fn_lhs != nullptr ? static_cast<ExpressionAst*>(fn_lhs) : Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
 }

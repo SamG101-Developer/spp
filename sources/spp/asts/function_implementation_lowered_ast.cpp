@@ -136,6 +136,18 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
     extracted_args.EmplaceBack(std::move(arg));
   }
 
+  // A byte literal is a "U8", but it arrives as the char
+  // literal it was written as, and every comp-time builtin
+  // over "U8" takes integer literals - the cast to one threw
+  // "std::bad_cast". It is read as the integer it stands for.
+  for (auto &arg : extracted_args) {
+    if (auto const *chr = arg->To<CharLiteralAst>(); chr != nullptr and chr->BytePrefix != nullptr) {
+      const auto byte = spp::utils::strings::DecodeCharLiteral(chr->Val->TokenData) & 0xFFu;
+      arg = MakeUnique<IntegerLiteralAst>(
+        nullptr, MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::to_string(byte)), Str("u8"));
+    }
+  }
+
   // A zero divisor has to be caught before the operation
   // runs. As this is the one place every comp-time builtin
   // is invoked from, all operand analysis must be fired

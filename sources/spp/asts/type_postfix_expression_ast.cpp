@@ -78,7 +78,7 @@ auto TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp));
-  t->_Stamp = _Stamp;
+  t->_Written = _Written;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -202,7 +202,7 @@ auto TypePostfixExpressionAst::WithConvention(
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
-  wrapped->SetStamp(_Stamp);
+  wrapped->SetWritten(_Written);
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written once it is borrowed.

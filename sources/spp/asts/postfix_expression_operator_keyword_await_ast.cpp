@@ -121,7 +121,12 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Release what the future was keeping pinned, freeing up
-  // any escaping borrows. Todo: Maybe move into mem_utils?
+  // any escaping borrows. A generator that comes out of the
+  // future still holds them, so they pass to its new owner
+  // instead. Todo: Maybe move into mem_utils?
+  const auto handle = meta->AssignmentTarget;
+  const auto handle_sym = handle != nullptr and type_predicates::IsTypeGen(InferTypeRef(sm, meta), *sm->CurrentScope)
+    ? sm->CurrentScope->GetVarSymbolOutermost(*handle).first : nullptr;
   if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
     if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*lhs).first; sym != nullptr) {
       const auto contained = sym->MemInfo->AstContainedEscapingBorrows;
@@ -134,6 +139,10 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
             const auto container = spp::get<0>(info)->template To<IdentifierAst>();
             return container != nullptr and *container == *sym->Name;
           });
+        if (handle_sym != nullptr) {
+          handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack(ceb);
+          borrowed->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), spp::get<0>(ceb)});
+        }
       }
     }
   }

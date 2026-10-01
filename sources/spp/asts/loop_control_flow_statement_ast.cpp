@@ -117,7 +117,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       }
       else if (not expr_type->IsNeverType()) {
         RaiseIf<SppTypeMismatchError>(
-          not type_compare::TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
+          not type_compare::Assignable(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
           {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
       }
     }
@@ -131,8 +131,15 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
   IMPORT_UTILS;
+  if (TokSkip != nullptr) {
+    ++meta->LoopSkipsSeen;
+    if (TokSeqExit.IsEmpty() and meta->LoopSkipMoves != nullptr) {
+      for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
+        if (spp::get<0>(sym->MemInfo->AstMoved) != nullptr) { meta->LoopSkipMoves->EmplaceBack(sym, this); }
+      }
+    }
+  }
 
   // Check the memory state of the expression if it is present.
   // Expression is being moved into outer context, so strict
@@ -141,6 +148,15 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
     Expr->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(
       *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
+  }
+
+  // An "exit" (with no "skip") is a path out of the loop it
+  // targets, and what memory looks like here is what that loop
+  // leaves behind on it. "exit exit" targets the loop two back.
+  if (TokSkip == nullptr and not TokSeqExit.IsEmpty() and TokSeqExit.Len() <= meta->LoopExitStates.Len()) {
+    auto state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+    meta->LoopExitStates[meta->LoopExitStates.Len() - TokSeqExit.Len()]->EmplaceBack(
+      TokSeqExit.Back().get(), std::move(state));
   }
 
   // Like a "ret", this leaves several scopes at once, so their

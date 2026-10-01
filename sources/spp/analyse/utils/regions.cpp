@@ -37,6 +37,7 @@ namespace spp::analyse::utils::regions {
       return {nullptr, nullptr};
     }
 
+    /// Todo: Inline with the single caller.
     auto SameRegionSection(
       IdentifierAst const &step,
       IdentifierAst const *other)
@@ -47,19 +48,19 @@ namespace spp::analyse::utils::regions {
   }
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::regions::RegionPath(
   Ast const &ast)
   -> Vec<IdentifierAst*> {
   // Get the expression parts from the ast, provided it casts
   // validly to the expression ast variant.
-  auto const *const expr = ast.To<ExpressionAst>();
+  const auto expr = ast.To<ExpressionAst>();
   return expr != nullptr ? expr->ExprParts() : Vec<IdentifierAst*>();
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::regions::MemRegionRelate(
-  Vec<IdentifierAst*> const &r1,
-  Vec<IdentifierAst*> const &r2)
-  -> MemRegionRelation {
+  Vec<IdentifierAst*> const &r1, Vec<IdentifierAst*> const &r2) -> MemRegionRelation {
   // Failsafe - nothing to name is nothing to share: a
   // temporary owns a region no other expression has a
   // spelling for. This should never happen.
@@ -81,9 +82,7 @@ auto spp::analyse::utils::regions::MemRegionRelate(
 }
 
 auto spp::analyse::utils::regions::MemRegionOverlap(
-  Ast const &ast_1,
-  Ast const &ast_2)
-  -> bool {
+  Ast const &ast_1, Ast const &ast_2) -> bool {
   // Either holding the other is an overlap, so anything
   // but "no relation" is one.
   return MemRegionRelate(RegionPath(ast_1), RegionPath(ast_2)) !=

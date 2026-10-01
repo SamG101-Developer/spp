@@ -76,7 +76,7 @@ namespace spp::asts {
       using type_compare::GenericInferenceMap;
       for (auto *const sc : scopes) {
         const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-        if (ext == nullptr or not type_compare::TypeEq(*ext->SuperClass, super_class, *sc, check_scope, false)) { continue; }
+        if (ext == nullptr or not type_compare::TypeEq(*ext->SuperClass, super_class, *sc, check_scope)) { continue; }
         auto fwd = GenericInferenceMap();
         auto rev = GenericInferenceMap();
         if (type_compare::RelaxedTypeEq(*ext->Name, name, *sc, check_scope, fwd, false, check_constraints)
@@ -225,7 +225,7 @@ auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
 auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  IMPORT_UTILS;
+  IMPORT_UTILS; // Todo: Also prevent FwdRef/FwdMut? and prevent these 3 on generic ext too.
   using generate::common_types_precompiled::COPY;
   using generate::common_types_precompiled::DROP;
 
@@ -279,7 +279,6 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*SuperClass, *sm),
     {sm->CurrentScope}, ERR_ARGS(*this, *SuperClass, "superimposition supertype"));
-  SuperClass = sm->CurrentScope->GetTypeSymbol(SuperClass.get())->FqName()->WithSourceSpanOf(*SuperClass);
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
@@ -457,8 +456,22 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     SuperClass->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->GetTypeSymbol(SuperClass.get());
-      analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
       generic_inference::EnforceGenericConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
+
+      // Copying a value copies every attribute, so "Copy" only
+      // holds over a type whose attributes are all copyable -
+      // otherwise the copy duplicates something owned (a "Str"
+      // buffer), which is then destroyed twice. An attribute of
+      // a generic parameter's type is left to the instantiation.
+      using generate::common_types_precompiled::COPY;
+      if (type_compare::IsTemplate(*sup_sym, *COPY, *sm->CurrentScope) and cls_sym->LinkedScope != nullptr) {
+        for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
+          const auto attr_sym = cls_sym->LinkedScope->GetTypeSymbol(attr->Type.get());
+          RaiseIf<SppGenericConstraintError>(
+            attr_sym != nullptr and not attr_sym->IsTypeGeneric() and not attr_sym->IsCopyable(),
+            {sm->CurrentScope}, ERR_ARGS(*SuperClass, *attr->Type));
+        }
+      }
     }
   }
 

@@ -10,8 +10,10 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
+import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -102,7 +104,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   }
 
   // Analyse the inferred tuple type to generate the generic implementation.
-  InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
+  _InferredType = _BuildType(sm, meta);
 }
 
 auto TupleLiteralAst::Stage8_CheckMemory(
@@ -203,6 +205,19 @@ auto TupleLiteralAst::Stage11_CodeGen(
 
 auto TupleLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  // The type stage 7 settled on; a tuple not analysed yet has its
+  // type built as it is.
+  return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
+}
+
+auto TupleLiteralAst::_BuildType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  return TypeOfElements(Elems | genex::views::ptr | genex::to<Vec>(), PosStart(), sm, meta);
+}
+
+auto TupleLiteralAst::TypeOfElements(
+  Vec<ExpressionAst*> const &elems, const std::size_t pos, ScopeManager *sm, CompilerMetaData *meta)
+  -> Shared<TypeAst> {
   //
   using generate::common_types::TupleType;
 
@@ -210,8 +225,8 @@ auto TupleLiteralAst::InferType(
   // its parameter's name ("T"), so each element is taken as what it
   // is bound to - or an instantiation's "(T(), U())" is the generic
   // tuple "(T, U)", which has no layout to generate. Todo: TIDY
-  auto types_gen = Elems
-    | genex::views::transform([sm, meta](auto const &elem) {
+  auto types_gen = elems
+    | genex::views::transform([sm, meta](auto *elem) {
       auto type = elem->InferType(sm, meta);
       const auto sym = sm->CurrentScope->GetTypeSymbol(type->WithoutConvention().get());
       if (sym != nullptr and sym->IsTypeGeneric() and sym->AsBoundSymbol() != sym) {
@@ -222,7 +237,7 @@ auto TupleLiteralAst::InferType(
     | genex::to<Vec>();
 
   // Create a tuple type with the inferred element types.
-  auto tuple_type = TupleType(PosStart(), std::move(types_gen));
+  auto tuple_type = TupleType(pos, std::move(types_gen));
   tuple_type->Stage7_AnalyseSemantics(sm, meta);
   return tuple_type;
 }
@@ -231,9 +246,19 @@ auto TupleLiteralAst::SubstituteGenericsExpr(
   Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
   // Each element is an expression so substitute them
   // all too.
+  // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
+  // into the elements of the tuple it is bound to, as a type pack does in "Tup[S32, Ts]".
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
-  for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
+  for (auto const &elem : Elems) {
+    auto sub = elem->SubstituteGenericsExpr(args);
+    auto const *const id = elem->To<IdentifierAst>();
+    if (id != nullptr and analyse::utils::packs::IsPackParam(id->WrittenParam()) and sub->To<TupleLiteralAst>() != nullptr) {
+      for (auto const *inner : analyse::utils::packs::PackElementValues(*sub)) { elems.EmplaceBack(AstClone(inner)); }
+      continue;
+    }
+    elems.EmplaceBack(AstClone(sub));
+  }
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 

@@ -40,7 +40,8 @@ namespace spp::analyse::utils::regions {
   /// accounted for, and would otherwise silently drop. Copyable
   /// parts are ignored, following usual memory rules, and a
   /// value who has all fields copyable will never provide a
-  /// response here.
+  /// response here. Todo: region->ast (and all calls using it),
+  /// to normalize with other functions in this module.
   SPP_EXP_FUN auto FirstUnaccountedPart(
     VariableSymbol const &sym,
     Vec<IdentifierAst*> const &region,

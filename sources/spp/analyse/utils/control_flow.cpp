@@ -20,6 +20,7 @@ import spp.asts.meta.compiler_meta_data;
 import genex;
 import std;
 
+/// [CHECKED]
 auto spp::analyse::utils::control_flow::Diverges(
   StatementAst &stmt, ScopeManager *sm, CompilerMetaData *meta) -> bool {
   // The written forms first: they need no analysis, and "ret"
@@ -57,6 +58,7 @@ auto spp::analyse::utils::control_flow::Diverges(
 auto spp::analyse::utils::control_flow::ValidateNoUnreachableCode(
   StatementAst &member, StatementAst const *next, ScopeManager *sm, CompilerMetaData *meta) -> void {
   using errors::SppUnreachableCodeError;
+  // Check for code after a diverging member.
   RaiseIf<SppUnreachableCodeError>(
     next != nullptr and Diverges(member, sm, meta),
     {sm->CurrentScope}, ERR_ARGS(member, *next));

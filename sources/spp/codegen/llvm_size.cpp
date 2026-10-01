@@ -189,7 +189,7 @@ namespace spp::codegen {
     if (IsTypeVariant(sym, scope)) {
       auto max_size = 0uz;
       auto max_align = 1uz;
-      const auto self_ref = analyse::scopes::TypeRef{.Sym = const_cast<analyse::scopes::TypeSymbol*>(&cls)};
+      const auto self_ref = analyse::scopes::TypeRef::OfResolved(const_cast<analyse::scopes::TypeSymbol&>(cls), scope);
       for (auto const &member : VariantMembers(self_ref, scope)) {
         const auto inner_layout = LayoutOf(sm, member);
         max_size = std::max(max_size, inner_layout.Size);
@@ -218,7 +218,7 @@ namespace spp::codegen {
     // between them.
     auto attr_layouts = Vec<Layout>();
     for (auto const &attr : analyse::utils::type_members::GetAllAttrs(sym)) {
-      attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr)));
+      attr_layouts.EmplaceBack(LayoutOf(sm, *spp::get<1>(attr).Sym));
     }
     attr_layouts |= genex::actions::stable_sort([](auto const &a, auto const &b) {
       return a.Align != b.Align ? a.Align > b.Align : a.Size > b.Size;

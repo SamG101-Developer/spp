@@ -8,21 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.regions;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
-import spp.asts.local_variable_destructure_array_ast;
-import spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.local_variable_destructure_object_ast;
-import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.local_variable_destructure_tuple_ast;
-import spp.asts.local_variable_single_identifier_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -47,21 +39,6 @@ auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
   const std::size_t pos) -> Shared<IdentifierAst> {
   // No single identifier represents a binding destructuring.
   return MakeShared<IdentifierAst>(pos, kUnmatchableTag);
-}
-
-auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
-  ExpressionAst const &expr) -> bool {
-  // Strip the member accesses off the expression: "a.b.c"
-  // becomes "a". Any other postfix operator (a function call,
-  // an early return etc) means the expression produces a new
-  // value rather than naming existing storage.
-  auto cur = static_cast<Ast const*>(&expr);
-  while (auto const *postfix = cur->To<PostfixExpressionAst>()) {
-    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
-    cur = postfix->Lhs.get();
-  }
-
-  return cur->To<IdentifierAst>() != nullptr;
 }
 
 auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
@@ -101,7 +78,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   // (not a case pattern), then there must be a value, and it
   // must name existing storage.
   const auto val = meta->LetStatementValue;
-  if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
+  if (val == nullptr or not regions::IsDestructurePlaceExpression(*val)) { return; }
 
   // Get the outermost (root) symbol for the value being
   // destructured.
@@ -113,6 +90,12 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
   if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
 
+  // The value has to still be there to be taken apart. Each
+  // bound part is checked as it is read, but a destructure
+  // binding nothing ("let L() = l") reads no part, so a value
+  // already moved away was consumed a second time unnoticed.
+  if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
+
   // A destructure takes the value apart, so what it does
   // not bind is left with nothing holding it. This creates
   // leaks because there is then no way to drop those values,
@@ -121,9 +104,9 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = mem_utils::RegionPath(*val);
+    const auto region = regions::RegionPath(*val);
 
-    if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
+    if (const auto skipped = regions::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
         {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
     }
@@ -135,7 +118,6 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   if (val->To<IdentifierAst>() != nullptr) {
     if (from_case_pattern) { return; }
     sym->MemInfo->MovedBy(owner, sm.CurrentScope);
-    sym->MemInfo->AstPartialMoves.Clear();
   }
   else {
     sym->MemInfo->AstPartialMoves.EmplaceBack(val);
@@ -149,7 +131,6 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
   const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
   if (sym == nullptr) { return; }
   sym->MemInfo->MovedBy(tmp_name, sm.CurrentScope);
-  sym->MemInfo->AstPartialMoves.Clear();
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage8(

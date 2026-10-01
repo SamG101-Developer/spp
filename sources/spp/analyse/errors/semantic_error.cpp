@@ -1485,6 +1485,16 @@ SppCharLiteralLengthError::SppCharLiteralLengthError(
     "Use a string literal for more than one character.");
 }
 
+SppDefaultValueNamesParameterError::SppDefaultValueNamesParameterError(
+  Ast const &identifier) {
+  AddHeader(113, "Default Value Names Parameter Error");
+  AddErr(&identifier, "Parameter named in a default value here");
+  AddFooter(
+    "A default value is copied into every call that leaves it out, where a name means whatever the caller has under "
+    "it, so a default cannot name another parameter of the same function.",
+    "Make the parameter required, or overload the function without it.");
+}
+
 SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
   Ast const &guard,
   Ast const &symbol_definition) {
@@ -1603,7 +1613,7 @@ SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   AddFooter(
     "A deferred expression is not conditional - it is emitted at every exit,\n\t"
     "with nothing at runtime to record that one path already consumed the\n\t"
-    "value - so this one would consume it a second time.",
+    "value - so this one would use it after it is gone.",
     "Discharge " + INLINE_HELP(symbol_name) + " in each branch that does\n\t"
     "not already consume it, rather than deferring it for all of them.");
 }

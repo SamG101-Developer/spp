@@ -74,7 +74,7 @@ auto LoopExpressionAst::InferType(
       : *sm->CurrentScope;
 
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
+      not type_compare::Assignable(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
   }
 

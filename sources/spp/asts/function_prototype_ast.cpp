@@ -656,7 +656,7 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
 
   // Handle generic substitutions of a function.
   for (auto const &sub : _GenericSubstitutions) {
-    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    if (not sub.Required or not sub.IsConcrete) { continue; }
     sub.Proto->_OwnerCtx = ctx;
     auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
     sub.Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
@@ -679,7 +679,7 @@ auto FunctionPrototypeAst::_CodeGenGenericSubstitutions(
   // inside another generic body would otherwise be discovered here,
   // after the module owning its template had already been walked past.
   for (auto const &sub : _GenericSubstitutions) {
-    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    if (not sub.Required or not sub.IsConcrete) { continue; }
     auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
     tm.Reset(tm.CurrentScope);
     GnParamGroup->Stage11_CodeGen(&tm, meta, ctx);
@@ -698,13 +698,9 @@ auto FunctionPrototypeAst::AnalysePendingGenericSubstitutions(
   // picked up by this same loop rather than waiting for the
   // template to come back around the queue.
   for (auto &sub : _GenericSubstitutions) {
-    if (sub.BodyAnalysed) { continue; }
-
-    // An overload candidate that failed after its scope was
-    // reserved leaves the slot empty. It is never filled in
-    // later, so it is left alone rather than marked - there is
-    // no prototype to mark anything about.
-    if (sub.Proto == nullptr) { continue; }
+    // Left unmarked when no call has chosen it yet: one may still
+    // (see "GenericSubstitution::Required").
+    if (sub.BodyAnalysed or not sub.Required) { continue; }
     sub.BodyAnalysed = true;
     auto tm = ScopeManager(
       sm->GlobalScope, sub.WalkScope());
@@ -774,12 +770,13 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   const auto name_arg = sub_proto.BuiltinAnnotation->FnArgGroup->At("name");
   if (name_arg == nullptr) { return; }
   const auto name = name_arg->Val->ToUnchecked<StringLiteralAst>()->CppVal();
-  if (name != "std.mem.ops.drop" and name != "std.mem.ops.drop_in_place") { return; }
+  const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
+  if (builtin == codegen::builtins::kBuiltinFuncs.end() or builtin->second.drops_generic.empty()) { return; }
 
-  // "T" is what the instantiation bound, and the scope manager
-  // is sitting inside the instantiation's own scope, which is
-  // where that binding lives.
-  const auto t_ast = TypeIdentifierAst::FromString("T");
+  // The generic is what the instantiation bound, and the scope
+  // manager is sitting inside the instantiation's own scope,
+  // which is where that binding lives.
+  const auto t_ast = TypeIdentifierAst::FromString(builtin->second.drops_generic);
   const auto t_sym = tm.CurrentScope->GetTypeSymbol(t_ast.get());
   if (t_sym == nullptr) { return; }
   drop_utils::EnsureDropInstantiated(*t_sym, tm, meta);
@@ -834,50 +831,38 @@ auto FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
   return OwnedScope->Children[0].get();
 }
 
-auto FunctionPrototypeAst::RegisterGenericSubstitution(
-  Unique<Scope> &&scope, Unique<FunctionPrototypeAst> &&new_ast, Unique<GenericArgumentGroupAst> &&gn_args) -> void {
-  IMPORT_UTILS;
+auto FunctionPrototypeAst::AddGenericSubstitution(
+  GenericSubstitution &&sub) -> GenericSubstitution& {
   // Store the scope for object persistence (and codegen), keyed
   // by the arguments that produced it.
-  _GenericSubstitutions.emplace_back(
-    GenericSubstitution{
-      .OwnedScope = std::move(scope),
-      .Proto = std::move(new_ast),
-      .GnArgs = std::move(gn_args),
-      .IdentityKey = {}
-    });
+  return _GenericSubstitutions.emplace_back(std::move(sub));
+}
 
-  // The instantiation's body has not been analysed yet, and
-  // nothing walks the ast to find it - a substitution is
-  // registered against the template, wherever the template
-  // happens to live, from wherever the call that produced it was
-  // written. Record the template so the monomorphisation stage
-  // comes back for it.
-  monomorphization::EnqueueInstantiation(this);
+auto FunctionPrototypeAst::RequireGenericSubstitution(
+  FunctionPrototypeAst const *instance) -> void {
+  IMPORT_UTILS;
+  for (auto &sub : _GenericSubstitutions) {
+    if (sub.Proto.get() != instance or sub.Required) { continue; }
+    sub.Required = true;
+
+    // The instantiation's body has not been analysed yet, and
+    // nothing walks the ast to find it - a substitution is
+    // registered against the template, wherever the template
+    // happens to live, from wherever the call that produced it was
+    // written. Record the template so the monomorphisation stage
+    // comes back for it.
+    monomorphization::EnqueueInstantiation(this);
+    return;
+  }
 }
 
 auto FunctionPrototypeAst::FindGenericSubstitution(
-  analyse::scopes::InstanceKey const &identity_key) const -> Pair<Scope*, FunctionPrototypeAst*> {
+  analyse::scopes::TypeId const identity_key) -> GenericSubstitution* {
   // Get the generic implementation for arguments of this identity.
-  for (auto const &sub : _GenericSubstitutions) {
-    if (sub.Proto == nullptr or sub.GnArgs == nullptr) { continue; }
-    if (sub.IdentityKey == identity_key) { return {sub.WalkScope(), sub.Proto.get()}; }
+  for (auto &sub : _GenericSubstitutions) {
+    if (sub.IdentityKey == identity_key) { return &sub; }
   }
-
-  // If no matches were found then return a pair of nullptr
-  // values. This is impossible to reach (I think) but is a
-  // failsafe. Todo: std::unreachable()?
-  return {nullptr, nullptr};
-}
-
-auto FunctionPrototypeAst::RegisteredGenericSubstitutions() const -> std::list<Pair<Scope*, FunctionPrototypeAst*>> {
-  return _GenericSubstitutions
-    | genex::views::transform([](auto const &x) { return MakePair(x.WalkScope(), x.Proto.get()); })
-    | genex::to<std::list>();
-}
-
-auto FunctionPrototypeAst::RegisteredGenericSubstitutions() -> std::list<GenericSubstitution>& {
-  return _GenericSubstitutions;
+  return nullptr;
 }
 
 auto FunctionPrototypeAst::SetNonGenericImpl(
@@ -1008,7 +993,11 @@ auto FunctionPrototypeAst::_IsPureGeneric(
   const auto all_types_converted = llvm_ret_type != nullptr
     and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
 
-  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted;
+  // A variadic parameter with no pack bound yet makes the function
+  // generic over its pack, as a generic parameter would: only the
+  // instantiation for each argument count has code to generate.
+  const auto unbound_pack = variadic_param != nullptr and VariadicPackType == nullptr and FfiAnnotation == nullptr;
+  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted or unbound_pack;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 

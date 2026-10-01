@@ -57,12 +57,6 @@ namespace spp::analyse::scopes {
   /// (like the scope linkage generation), or if the sup scopes
   /// change (attached during monomorphization)
   SPP_EXP_FUN auto BumpTypeStructureGeneration() -> void;
-
-  /// A counter that changes whenever a type lookup could resolve
-  /// differently; a symbol added or removed, a scope re-parented,
-  /// or a super scope attached. Bumped by the other two bump
-  /// functions.
-  SPP_EXP_FUN SPP_ATTR_HOT auto TypeLookupGeneration() -> std::uint64_t;
 }
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
@@ -144,12 +138,11 @@ public:
   /// reads a half-built graph.
   inline static std::function<void(Scope const &)> OnSupScopesRead;
 
-  /// Called by "Canon" with an open instantiation and the scope
-  /// asking, when re-keying it through that scope's bindings
-  /// names one not made yet: it makes it, as a name written
-  /// there would, or returns null. Set while the analysis stages
-  /// run ("CompilerBoot"), as only they can make one; a lookup
-  /// cannot make it alone.
+  /// Called by "ResolveTypeSymbol" with an open instantiation and
+  /// the scope asking, when re-keying it through that scope's
+  /// bindings names one not made yet: it makes it, as a name
+  /// written there would, or returns null. Set while the analysis
+  /// stages run ("CompilerBoot"), as only they can make one.
   inline static std::function<TypeSymbol*(TypeSymbol &, Scope const &)> OnInstantiationMissing;
 
   Scope(
@@ -270,13 +263,103 @@ public:
   /// resolved by name instead.
   SPP_ATTR_NODISCARD auto Canon(TypeSymbol &sym) const -> TypeSymbol*;
 
+  /// Resolve a type to its symbol, making the instantiation it
+  /// names here if that is not made yet. "GetTypeSymbol" only
+  /// looks, and answers null for one not made; this is what the
+  /// resolved type ("TypeRef::Of") reads through.
+  SPP_ATTR_NODISCARD auto ResolveTypeSymbol(TypeAst const *type) const -> TypeSymbol*;
+
   /// The identity of a list of generic arguments, read from this
   /// scope: each argument's name and what it resolves to - a
   /// parameter's "ParamId", a symbol, a bound or literal value -
-  /// rather than how it is spelled. Instantiations are filed under
-  /// it in their template's "TypeSymbol::Instances".
+  /// rather than how it is spelled. A function's instantiations
+  /// are filed under it; a type's under "InstanceTypeId".
   SPP_ATTR_NODISCARD auto InstanceIdentityKey(
-    Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> InstanceKey;
+    Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
+
+  /// The identity ("TypeId") of the instantiation of "tmpl" that
+  /// "args" ask for, read from this scope: its template and the
+  /// identity of its arguments, or for a variant the set of its
+  /// members. Instantiations are filed under it in their template's
+  /// "TypeSymbol::Instances", so one identity is one symbol however
+  /// it is spelled. Keyed even with a part that does not resolve.
+  SPP_ATTR_NODISCARD auto InstanceTypeId(
+    TypeSymbol const &tmpl, Vec<GenericArgumentAst*> const &args,
+    GenericParameterGroupAst const *params = nullptr) const -> TypeId;
+
+  /// What a type resolves to here, as a key: equal for two types
+  /// exactly when they are one type. An instantiation is its
+  /// template and the key of its arguments, read here - also one
+  /// that is not made yet, which is keyed as it would be without
+  /// making it. A variant is the set of its members.
+  SPP_ATTR_NODISCARD auto TypeKey(TypeAst const &type) const -> InstanceKey;
+
+  /// "TypeKey", interned: equal for two types exactly when they
+  /// are one type, or null when any part of the type does not
+  /// resolve.
+  SPP_ATTR_NODISCARD auto TypeIdOf(TypeAst const &type) const -> TypeId;
+
+  /// The "TypeId" of a type already resolved to "sym", held under
+  /// the convention tag "conv" (0 for none) - what a "TypeRef" is
+  /// one type with.
+  SPP_ATTR_NODISCARD auto TypeIdOfSym(TypeSymbol const &sym, std::uint64_t conv) const -> TypeId;
+
+  /// The symbol a "TypeId" names, its convention aside: a closed
+  /// class, a parameter, an instantiation or variant already made
+  /// (found in its template's "Instances" by that identity), or
+  /// "Self" as this scope reads it. Null for anything not made yet.
+  /// A lookup: it makes nothing.
+  SPP_ATTR_NODISCARD auto SymbolOf(TypeId id) const -> TypeSymbol*;
+
+  /// File an instantiation or variant under its identity, in the
+  /// template that heads it, where "SymbolOf" finds it.
+  static auto FileInstance(TypeId id, TypeSymbol &instance) -> void;
+
+  /// The value a comp identity stands for ("NoteCompValue"): recorded
+  /// whole, or a pack's built from its elements'. Null when unknown.
+  static auto CompValueOf(std::uint64_t identity) -> Unique<ExpressionAst>;
+
+  /// What an alias stands for, by identity, in its own parameters' terms: its target as recorded when its statement
+  /// was resolved, or before then (an alias instantiated by an earlier declaration's stage 4) its target keyed where the
+  /// statement was written. Null for no alias, or a target that does not resolve.
+  static auto AliasTargetId(TypeSymbol const &alias) -> TypeId;
+
+  /// An identity as written, read here: each type parameter it
+  /// names replaced by what this scope binds it to (found by the
+  /// parameter's identity, "Canon"), each comp parameter by its
+  /// bound value's identity. What this scope leaves unbound stays.
+  SPP_ATTR_NODISCARD auto ReadIn(TypeId written) const -> TypeId;
+
+
+  /// The identity "sym" stands for wherever it is named, as a type
+  /// written naming it means it: a parameter (or a binding of one)
+  /// is that parameter, to be read through the reader's bindings
+  /// ("ReadIn"); anything else is its own identity.
+  SPP_ATTR_NODISCARD static auto WrittenIdOf(TypeSymbol const &sym) -> TypeId;
+
+  /// The written identity of a comp parameter's name: its identity
+  /// ("C<ParamId>") as a comp value, where a type parameter's is its
+  /// "Param" ("WrittenIdOf").
+  SPP_ATTR_NODISCARD static auto WrittenIdOfCompParam(std::uint64_t param_id) -> TypeId;
+
+  /// What a written identity ("WrittenIdOf") names read here: a
+  /// parameter's binding here ("Canon"), an instantiation made
+  /// under this scope's bindings ("ReadIn", "SymbolOf"), or the
+  /// class, template or alias itself. Null for an instantiation
+  /// not made yet: a lookup makes nothing.
+  SPP_ATTR_NODISCARD auto ResolveWritten(TypeId written) const -> TypeSymbol*;
+
+  /// The type an identity names, as a written type: the qualified
+  /// name of the symbol filed under it where one is made, else one
+  /// built from the identity - its template and arguments, a
+  /// variant's members, a parameter, "Self" - so an instantiation
+  /// nothing has made yet can be named, and made by reading it.
+  /// Null when a part cannot be named (a comp value whose identity
+  /// was never recorded).
+  SPP_ATTR_NODISCARD auto TypeAstOf(TypeId id) const -> Shared<TypeAst>;
+
+  /// Record the value a comp identity text ("comp_generics::CompExprIdentity") stands for, so "TypeAstOf" can name it.
+  static auto NoteCompValue(StrView identity, ExpressionAst const &value) -> void;
 
   /// Query the internal namespace symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super

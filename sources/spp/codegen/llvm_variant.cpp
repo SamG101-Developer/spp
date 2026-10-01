@@ -99,15 +99,15 @@ namespace spp::codegen {
 
         // The attribute's own type, resolved from the scope the
         // two are being compared in.
-        const auto target_attr_type = TypeRef::Of(*spp::get<1>(target_attrs[i])->FqName(), scope);
-        const auto source_attr_type = TypeRef::Of(*spp::get<1>(source_attrs[i])->FqName(), scope);
+        const auto target_attr_type = spp::get<1>(target_attrs[i]);
+        const auto source_attr_type = spp::get<1>(source_attrs[i]);
 
         auto *field_val = static_cast<llvm::Value*>(ctx->Builder.CreateLoad(
           source_llvm_type->getElementType(source_index),
           ctx->Builder.CreateStructGEP(source_llvm_type, source_slot, source_index, field_uid + ".from.ptr"),
           field_uid + ".from"));
 
-        if (not TypeEq(target_attr_type, source_attr_type, scope, scope, false)) {
+        if (not TypeEq(target_attr_type, source_attr_type, scope, scope)) {
           field_val = CoerceToVariant(field_val, target_attr_type, source_attr_type, scope, field_uid, ctx);
         }
 
@@ -148,7 +148,7 @@ auto spp::codegen::GetVariantIndexOfMember(
   // Index the type in the list of member types of the variant.
   const auto members = VariantMembers(variant, scope);
   for (auto i = 0uz; i < members.Len(); ++i) {
-    if (TypeEq(members[i], member, scope, scope, false)) { return static_cast<std::uint64_t>(i); }
+    if (analyse::utils::type_compare::Assignable(members[i], member, scope, scope)) { return static_cast<std::uint64_t>(i); }
   }
   return std::nullopt;
 }
@@ -260,7 +260,7 @@ auto spp::codegen::CoerceToVariant(
   // Only a variant target ever needs a coercion, and a value
   // already of the target type is one.
   if (not IsTypeVariant(target, scope)) { return llvm_val; }
-  if (TypeEq(target, source, scope, scope, false)) { return llvm_val; }
+  if (TypeEq(target, source, scope, scope)) { return llvm_val; }
 
   // Asked for rather than read, as a type is only lowered when
   // something first needs it.

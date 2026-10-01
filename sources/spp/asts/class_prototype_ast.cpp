@@ -471,7 +471,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
   // Class attributes are read from the attribute types.
   else {
     types = type_members::GetAllAttrs(*type_sym)
-      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair); })
+      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair).Sym; })
       | genex::views::transform([&](auto const &type) { return lower_field(type); })
       | genex::to<Vec>();
   }

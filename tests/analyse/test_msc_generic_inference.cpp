@@ -554,3 +554,85 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(b)
     }
 )");
+
+// A parameter's default naming the callee's generics is made once they are solved, from the arguments given: made
+// before inference, "Vec[T]::new()" still named the callee's own "T" and inferred it as itself, a conflict.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Optional,
+  test_valid_default_naming_a_generic_inferred_from_an_argument, R"(
+    fun f[T: Copy](x: T, y: Vec[T] = Vec[T]::new()) -> Vec[T] {
+        ret y
+    }
+
+    fun g() -> Void {
+        let v = f(1_s32)
+        let w: Vec[S32] = v
+        std::mem::ops::drop(w)
+    }
+)");
+
+// So a default infers nothing about a generic it only restates.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Optional,
+  test_invalid_generic_named_only_by_a_default,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun h[T](x: S32, y: Vec[T] = Vec[T]::new()) -> Vec[T] {
+        ret y
+    }
+
+    fun g() -> Void {
+        let v = h(1_s32)
+        std::mem::ops::drop(v)
+    }
+)");
+
+// A pack is bound by the match that reaches it: to the tuple an instance records it as, forwarded as it is.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_bound_through_a_parameter_type, R"(
+    cls P[..Ts] { }
+
+    fun take[..Ts](p: P[Ts]) -> Void {
+        std::mem::ops::drop(p)
+    }
+
+    fun fwd[..Us](p: P[Us]) -> Void {
+        take(p)
+    }
+
+    fun g() -> Void {
+        take(P[S32, Bool]())
+        fwd(P[S32, Bool]())
+    }
+)");
+
+// And to the arguments past a fixed head, which a positional list spreads back into ("Tup[F, R]" is "Tup[S32, Bool,
+// U8]", and with an empty pack "Tup[S32]").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_after_a_fixed_head_spreads_back, R"(
+    fun head[F: Copy, ..R: Copy](t: Tup[F, R]) -> F {
+        ret t.0
+    }
+
+    fun g() -> Void {
+        let a: S32 = head((1_s32, true, 2_u8))
+        let b: S32 = head((1_s32,))
+    }
+)");
+
+// A class other than a tuple records its pack as one argument ("P[Ts=Tup[S32, Bool, U8]]"), which a pattern spreading
+// it positionally ("P[F, R]") matches element by element.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_after_a_fixed_head_of_a_recorded_pack, R"(
+    cls P[..Ts] { }
+
+    fun head[F, ..R](p: P[F, R]) -> Void {
+        std::mem::ops::drop(p)
+    }
+
+    fun g() -> Void {
+        head(P[S32, Bool, U8]())
+    }
+)");

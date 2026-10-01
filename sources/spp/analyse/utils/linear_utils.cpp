@@ -80,7 +80,7 @@ namespace spp::analyse::utils::linear_utils {
 
       // Copying leaves the original in place, so a copyable value
       // is never owed to anyone.
-      const auto type_sym = sm.CurrentScope->GetTypeSymbol(sym.Type.get());
+      const auto type_sym = scopes::TypeRef::Of(*sym.Type, *sm.CurrentScope).Sym;
       if (type_sym == nullptr or type_sym->IsCopyable()) { return false; }
 
       // Taking every non-copyable part off a value leaves nothing

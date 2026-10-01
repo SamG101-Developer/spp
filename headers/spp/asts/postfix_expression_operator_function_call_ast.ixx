@@ -74,9 +74,14 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   auto SetClosureDummyProto(Unique<FunctionPrototypeAst> &&proto) -> void;
 
-  auto SetTransformedAst(Unique<PostfixExpressionAst> &&ast) -> void;
+  SPP_ATTR_NODISCARD auto TakeClosureDummyProto() -> Unique<FunctionPrototypeAst>;
 
-  SPP_ATTR_NODISCARD auto GetTransformedAst() const -> PostfixExpressionAst*;
+  /// A method call ("obj.m(a)") is resolved as its function form
+  /// ("Type::m(obj, a)"): this call, with "self" injected into
+  /// its arguments, under the "Type::m" left-hand side kept here.
+  auto SetTransformedLhs(Unique<PostfixExpressionAst> &&lhs) -> void;
+
+  SPP_ATTR_NODISCARD auto GetTransformedLhs() const -> PostfixExpressionAst*;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
@@ -84,14 +89,19 @@ private:
   struct _OInfo {
     Scope const *OverloadScope;
     FunctionPrototypeAst *Proto;
+
+    /// What "Self" stands for at this call, decided with the
+    /// overload ("PassedOverload::SelfType").
+    Shared<TypeAst> SelfType;
   };
 
   std::optional<_OInfo> _OverloadInfo;
-  Unique<PostfixExpressionAst> _TransformedAst;
+  Unique<PostfixExpressionAst> _TransformedLhs;
   Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
   Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;
   Unique<FunctionPrototypeAst> _ClosureDummyProto;
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
+
   Ast *_IsAsync;
   bool _IsCoroAndAutoResume;
 

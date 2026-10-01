@@ -73,15 +73,26 @@ private:
   /// so it reads the same from a module that never imports it.
   /// A "Self" outside a function body is kept, for the caller
   /// to decide per use; a value naming a generic keeps its own
-  /// node and stamp, and is resolved on read instead.
+  /// node and written identity, and is resolved on read instead.
   auto AnalyseTypeVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Analyse a comp value: one that folds is checked against its
   /// type's bounds and not analysed further, anything else is
   /// analysed (an operator expression on a copy), and every comp
-  /// generic it names is stamped with the parameter it means
+  /// generic it names records the parameter it means
   /// here.
   auto AnalyseCompVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Whether the comp value itself is what stage 7 analysed
+  /// ("AnalyseCompVal"): not one that folds (never analysed), nor
+  /// an operator expression (analysed on a copy, as analysing it
+  /// desugars it). Only that is checked again after.
+  SPP_ATTR_NODISCARD auto IsCompValAnalysedInPlace(Scope const &scope) const -> bool;
+
+  /// Whether the comp value is an expression, rather than a literal
+  /// or a name, and whether it is an operator expression.
+  SPP_ATTR_NODISCARD auto IsCompExpression() const -> bool;
+  SPP_ATTR_NODISCARD auto IsCompOperator() const -> bool;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

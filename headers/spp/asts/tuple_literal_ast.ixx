@@ -53,6 +53,26 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
     -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+  /// The type a tuple literal of these elements has, analysed:
+  /// what a call's variadic arguments are typed as before any
+  /// literal holding them is built.
+  static auto TypeOfElements(
+    Vec<ExpressionAst*> const &elems,
+    std::size_t pos,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> Shared<TypeAst>;
+
+private:
+  /// The type, built and analysed once in stage 7. Rebuilding it
+  /// for every "InferType" analysed it again each time, codegen
+  /// included, and re-decided it in whatever context the caller
+  /// happened to be in.
+  Shared<TypeAst> _InferredType;
+
+  /// Build and analyse the type from the elements.
+  auto _BuildType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TupleLiteralAst)

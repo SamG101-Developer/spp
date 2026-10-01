@@ -31,10 +31,36 @@ namespace spp::analyse::utils::memory_state {
   SPP_EXP_CLS using ScopeSnapshot = Vec<Pair<Shared<VariableSymbol>, MemoryInfoSnapshot>>;
 }
 
+/// How a symbol's memory state came out of the paths that met
+/// at a "case" or a loop: each field records the pair of paths
+/// that disagreed about one aspect of it such as the
+/// initialisation state, and is empty when they all agreed. It
+/// is part of the state a path saves and restores, as a path's
+/// own disagreements are part of what that path left behind.
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryConsistency {
+  /// When a symbol is uninitialised before the "case" expression
+  /// is analysed, and one of the branches initialises it and
+  /// another doesn't.
+  std::optional<InconsistentCondMemState> IsInconsistentlyInitialized;
+
+  /// When a symbol is initialised before the "case" expression
+  /// is analysed, and one of the branches moves it and another
+  /// doesn't.
+  std::optional<InconsistentCondMemState> IsInconsistentlyMoved;
+
+  /// When the vector of partial moves disagree at the end of
+  /// the branch's analysis.
+  std::optional<InconsistentCondMemState> IsInconsistentlyPartiallyMoved;
+
+  /// When the vector of escaping borrows disagree at the end
+  /// of the branch's analysis (either of the borrow vectors).
+  std::optional<InconsistentCondMemState> IsInconsistentlyBorrowEscaping;
+};
+
 /// The part of a symbol's memory information that branch
 /// analysis saves and restores - what initialized/moved it,
-/// partial moves, borrows etc.
-SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
+/// partial moves, borrows etc, and where paths disagreed.
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState : MemoryConsistency {
   /// The ast that initialized this value, and the scope the
   /// initialized occurred in. Moving a value will set these
   /// to nullptr, so the initialization and moved state are
@@ -75,36 +101,12 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   std::size_t InitializationCounter = 0;
 };
 
-/// How a symbol's memory state came out of the branches of
-/// a "case" expression: each field records the pair of branches
-/// that disagreed about one aspect of it such as the
-/// initialisation state, and is empty when they all agreed.
-SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryConsistency {
-  /// When a symbol is uninitialised before the "case" expression
-  /// is analysed, and one of the branches initialises it and
-  /// another doesn't.
-  std::optional<InconsistentCondMemState> IsInconsistentlyInitialized;
-
-  /// When a symbol is initialised before the "case" expression
-  /// is analysed, and one of the branches moves it and another
-  /// doesn't.
-  std::optional<InconsistentCondMemState> IsInconsistentlyMoved;
-
-  /// When the vector of partial moves disagree at the end of
-  /// the branch's analysis.
-  std::optional<InconsistentCondMemState> IsInconsistentlyPartiallyMoved;
-
-  /// When the vector of escaping borrows disagree at the end
-  /// of the branch's analysis (either of the borrow vectors).
-  std::optional<InconsistentCondMemState> IsInconsistentlyBorrowEscaping;
-};
-
 /// The MemoryInfo struct is used to track the memory state
 /// of a symbol in the scope. It contains all the state and
 /// consistency information, as-well as some additional
 /// fields such as if this is a borrow (say a function param)
 /// and a comptime field.
-SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryInfo : MemoryState, MemoryConsistency {
+SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryInfo : MemoryState {
   /// This is the same as the initialisation marker, but
   /// doesn't get set to nullptr on move. This is used to
   /// effectively track the origin of the symbol when it
@@ -117,7 +119,6 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryInfo : MemoryState, 
   /// scope is important here as it is used for lifetime
   /// checks. Nullptr => owned type onm the symbol.
   Tup<Ast const*, Scope*> AstBorrowed = {nullptr, nullptr};
-
 
   /// Set the initialisation marker, reset the moved marker,
   /// clear the partial move list, and increment the

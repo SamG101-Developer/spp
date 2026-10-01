@@ -118,6 +118,7 @@ use(spp::analyse::errors, struct SppHigherOrderGenericsNotSupportedError);
 use(spp::analyse::errors, struct SppGeneratedCodeError);
 use(spp::analyse::errors, struct SppCharLiteralOutOfBoundsError);
 use(spp::analyse::errors, struct SppCharLiteralLengthError);
+use(spp::analyse::errors, struct SppDefaultValueNamesParameterError);
 use(spp::analyse::errors, struct SppPatternGuardMovesValueError);
 use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
@@ -690,6 +691,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralOutOfBoundsError final : 
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCharLiteralLengthError final : SemanticError {
   explicit SppCharLiteralLengthError(Ast const &literal);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppDefaultValueNamesParameterError final : SemanticError {
+  explicit SppDefaultValueNamesParameterError(Ast const &identifier);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppPatternGuardMovesValueError final : SemanticError {

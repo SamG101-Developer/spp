@@ -16,6 +16,7 @@ namespace spp::analyse::utils::control_flow {
   /// every path of which does), or its analysed type is "!" (a
   /// call to "abort", a loop with no way out). A "let" diverges
   /// when its value does. The statement must be analysed.
+  /// Todo: This will be the only function left, so move file?
   SPP_EXP_FUN auto Diverges(
     StatementAst &stmt,
     ScopeManager *sm,
@@ -24,13 +25,12 @@ namespace spp::analyse::utils::control_flow {
 
   /// Check that nothing follows a statement that diverges: the
   /// "next" statement would be dead code. Called per statement,
-  /// after it is analysed and before "next" is. Todo: Replace
-  /// usages with "Diverges" and delete this function?
+  /// after it is analysed and before "next" is.
+  /// Todo: Remove this function and inline its 1 usage.
   SPP_EXP_FUN auto ValidateNoUnreachableCode(
     StatementAst &member,
     StatementAst const *next,
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void;
-
 }

@@ -150,8 +150,6 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
   const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not Type->IsSelfType()) {
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->
-               WithSourceSpanOf(*Type);
     RaiseIf<SppSecondClassBorrowViolationError>(
       type_predicates::IsTypeBorrowed(*Type, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
@@ -163,7 +161,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     // Make sure the default's inferred type matches the
     // attribute's type; it is only spelled out for the error.
-    if (not type_compare::TypeEq(
+    if (not type_compare::Assignable(
       TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
       *sm->CurrentScope, *sm->CurrentScope)) {
       const auto default_type = DefaultVal->InferType(sm, meta);

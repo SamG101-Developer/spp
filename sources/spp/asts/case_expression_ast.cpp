@@ -147,18 +147,41 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
     not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Cond));
 
+  // Without "of", the condition is what the first branch
+  // tests directly (against "true", with no operator), so it
+  // has to be a boolean. "TokOf" is filled in either way, so
+  // the form is told apart by that first branch.
+  const auto tests_condition_directly = not Branches.IsEmpty()
+    and Branches[0]->Op == nullptr
+    and not Branches[0]->Patterns.IsEmpty()
+    and Branches[0]->Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+  if (tests_condition_directly and not LoweredFromIsExpr
+    and not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    const auto cond_ty = Cond->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "case"));
+  }
+
   // Every branch is analysed from the memory state the case
   // was entered with. A branch is one alternative, not a
   // continuation of the one before it, so initializing an
   // immutable "let" in one branch must not read as a second
   // initialization in the next.
-  const auto pre_branch_state = sm->CurrentScope->AllVarSymbols()
-    | genex::views::transform([](auto *x) { return MakePair(x, x->MemInfo->Snapshot()); })
-    | genex::to<Vec>();
-  auto post_first_branch_state = decltype(pre_branch_state)();
+  const auto pre_branch_state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+  auto post_first_branch_state = ScopeSnapshot();
+
+  // What an "is" in the condition binds only holds in the branch
+  // taken when it matched - the first, for the form without "of".
+  auto cond_bindings = Vec<VariableSymbol*>();
+  if (tests_condition_directly) {
+    for (auto i = cond_bindings_before; i < meta->IsBindingsAdded.Len(); ++i) {
+      cond_bindings.EmplaceBack(meta->IsBindingsAdded[i]);
+    }
+  }
 
   // Analyse eac branch of the case expression.
   for (auto const &branch : Branches) {
+    const auto expired_before = meta->ExpiredIsBindings.Len();
+    if (branch != Branches[0]) { meta->ExpiredIsBindings.AppendRange(cond_bindings); }
     // Check the "else" branch is the last branch (also checks
     // there is only 1 "else" branch).
     RaiseIf<SppCaseBranchElseNotLastError>(
@@ -166,29 +189,26 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*branch, *Branches.Back()));
 
     // Analyse the branch.
-    for (auto const &[sym, snapshot] : pre_branch_state) {
-      sym->MemInfo->FillFromSnapshot(snapshot);
-    }
+    memory_state::RestoreSnapshot(pre_branch_state);
 
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->CaseCondition = Cond.get();
       branch->Stage7_AnalyseSemantics(sm, meta);
     }
+    meta->ExpiredIsBindings.Resize(expired_before);
 
     // Keep the first branch's resulting state as the one the
     // code after the case continues from, matching how stage 8
     // resolves the post-case state.
     if (post_first_branch_state.IsEmpty()) {
-      post_first_branch_state = pre_branch_state
-        | genex::views::transform([](auto const &x) { return MakePair(x.first, x.first->MemInfo->Snapshot()); })
-        | genex::to<Vec>();
+      post_first_branch_state = memory_state::SnapshotSymbols(pre_branch_state
+        | genex::views::transform([](auto const &x) { return x.first.get(); })
+        | genex::to<Vec>());
     }
   }
 
-  for (auto const &[sym, snapshot] : post_first_branch_state) {
-    sym->MemInfo->FillFromSnapshot(snapshot);
-  }
+  memory_state::RestoreSnapshot(post_first_branch_state);
 
   // Enforce consistent branch type return values; either the
   // values are being propagated up to an identifier, or they
@@ -230,6 +250,10 @@ auto CaseExpressionAst::Stage8_CheckMemory(
   // guard is the one "ValidateSymbolMemory" applies through
   // "moves_value", repeated here because marking the move
   // directly is what skips it.
+  //
+  // Todo: A lowered "is" ("case o is Some[Str](val) { .. }") binds "val" by move but never takes "o", so "o" can be
+  //  consumed again afterwards (CaseExpressionAst.test_invalid_short_pattern_form_payload_moved_then_subject_used).
+  //  Dropping "not LoweredFromIsExpr" here is not enough on its own.
   const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
     Branches, [](auto const &branch) {
       return genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });

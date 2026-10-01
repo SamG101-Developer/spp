@@ -50,12 +50,13 @@ namespace spp::analyse::utils::type_members {
     -> Vec<TypePart>;
 
   /// Get all the fields on a type, and all of it's super types,
-  /// tracking the field, symbol, and scope. The scope is so
+  /// tracking the field, its type, and scope. The scope is so
   /// we know which super class it came from if it's not on the
-  /// actual type itself.
+  /// actual type itself. The type is read there, so it names
+  /// what this instance's bindings make it.
   SPP_EXP_FUN auto GetAllAttrs(
     TypeSymbol const &cls_sym)
-    -> Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>>;
+    -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>;
 
   /// Similar to the "GetAllAttrs", but in ast form, so that
   /// the default values can be extracted for object initializers,

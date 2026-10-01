@@ -21,36 +21,28 @@ import std;
 
 namespace spp::analyse::utils::borrows {
   namespace {
-    /**
-     * Raise if any borrow a value carries would out-live what it borrows from, once that value is held by @p lhs .
-     *
-     * @n
-     * A coroutine handle keeps the borrows its call was given alive for as long as the handle lives, so putting one
-     * into a symbol declared further out moves those borrows past the frame that owns what they point at. Each is
-     * checked on its own: one borrow out-living its source is enough, however many the handle carries.
-     *
-     * @param escaping_borrows The borrows the value carries.
-     * @param lhs The symbol the value is being put into.
-     * @param owner The ast to report the error against.
-     * @param sm The scope manager, for resolving each borrow's source.
-     */
+    /// [CHECKED]
+    /// Raise if any escaping borrow contained by a value would
+    /// out-live what it borrows from. This prevents closures
+    /// and generators from lifting escaping borrows out of
+    /// their genuine lifetime.
     auto EnforceEscapingBorrowsOutlive(
-      Vec<Tup<Ast const*, bool, Scope*>> const &escaping_borrows,
-      VariableSymbol const &lhs,
-      Ast *owner,
-      ScopeManager const &sm)
-      -> void {
-      //
+      Vec<Tup<Ast const*, bool, Scope*>> const &escaping_borrows, VariableSymbol const &lhs,
+      Ast *owner, ScopeManager const &sm) -> void {
+      // Get the initialisation scope for the left hand side.
+      // This must be an ancestor of every escaping borrows'
+      // symbol's definition scope.
       using errors::SppBorrowLifetimeIncreaseError;
       const auto lhs_init_scope = lhs.ScopeDefinedIn;
       if (lhs_init_scope == nullptr) { return; }
 
+      // Check for every escaping borrow in the list.
       for (auto const &[e, _, _] : escaping_borrows) {
         const auto source_sym = sm.CurrentScope->GetVarSymbolOutermost(*e).first;
         if (source_sym == nullptr or source_sym->ScopeDefinedIn == nullptr) { continue; }
 
-        // The source out-lives the destination exactly when its scope is one the destination sits inside of, which is
-        // what finding it among the destination's ancestors says.
+        // Raise an error if the source symbol's definition
+        // scope it outliving the lhs initialisation scope.
         const auto found_at = genex::position(
           lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
         spp::RaiseIf<SppBorrowLifetimeIncreaseError>(
@@ -60,30 +52,25 @@ namespace spp::analyse::utils::borrows {
   }
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
-  FunctionCallArgumentAst const &arg,
-  VariableSymbol const *const sym,
-  Vec<Ast const*> &borrows_ref,
-  Vec<Ast const*> &borrows_mut,
-  ScopeManager &sm,
-  meta::CompilerMetaData *const meta)
-  -> void {
-  //
+  FunctionCallArgumentAst const &arg, VariableSymbol const *const sym,
+  Vec<Ast const*> &borrows_ref, Vec<Ast const*> &borrows_mut,
+  ScopeManager &sm, meta::CompilerMetaData *const meta) -> void {
+  // Failsafe for symbolic borrows, which are already handled;
+  // this handles unnamed borrow creators, like vec[mut 5] etc.
   using errors::SppMemoryOverlapUsageError;
-
-  // A borrow with a name is one the caller's own branches
-  // take, or one being passed along rather than taken here.
-  // Only the nameless case is this one's.
   if (sym != nullptr) { return; }
 
-  // The convention as written, or, where nothing is written,
-  // the one the argument's type carries - which is where a
-  // subscript keeps it.
-  const auto conv = arg.Conv != nullptr ? arg.Conv->Tag() : arg.Val->InferTypeRef(&sm, meta).Conv;
+  // Get the convention from the inference. For owned symbols,
+  // return too.
+  const auto conv = arg.Conv != nullptr
+    ? arg.Conv->Tag()
+    : arg.Val->InferTypeRef(&sm, meta).Conv;
   if (conv == ConventionTag::MOV) { return; }
 
-  // A mutable borrow meets every other borrow of the region;
-  // an immutable one meets only a mutable.
+  // Do the cross check here with the existing borrows, raising
+  // an error on conflict.
   const auto is_mut = conv == ConventionTag::MUT;
   auto candidates = is_mut
     ? genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
@@ -97,35 +84,43 @@ auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
     not overlaps.IsEmpty(), {sm.CurrentScope},
     ERR_ARGS(*overlaps[0], *arg.Val));
 
+  // Append the arg val into the borrow list, so that following
+  // borrows get conflict checked with this unnamed one.
   (is_mut ? borrows_mut : borrows_ref).EmplaceBack(arg.Val.get());
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::borrows::PreventBorrowLifetimeExtension(
-  Ast const &rhs_expr,
-  VariableSymbol const *lhs_outermost,
-  VariableSymbol const *rhs_outermost,
-  Ast *owner,
-  ScopeManager const &sm,
-  const bool override_borrow)
-  -> void {
-  // Todo: A similar version of this function will be needed for "return" statements as-well as the currently used "="
-  //  statements.
+  Ast const &rhs_expr, VariableSymbol const *lhs_outermost, VariableSymbol const *rhs_outermost,
+  Ast *owner, ScopeManager const &sm, const bool override_borrow) -> void {
+  // Todo: A similar version of this function will be needed for
+  // "return" statements as-well as the currently used "=" stms?
 
-  // Prevent a borrow being placed into a value with a longer
-  // lifetime.
+  // The right-hand-side is a borrow if the memory info struct
+  // contains a borrow location (grab it). Allow for enforced
+  // override.
   const auto is_rhs_borrow = override_borrow or (
     rhs_outermost and spp::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr);
+
+  // Enter the lifetime checker, requiring valid lhs/rhs, and a
+  // checked rhs borrow test.
   if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
+    // Get the borrow scope for the rhs, from the memory info.
+    // Falls back to the current scope. Todo: is this needed?
     const auto has_borrow_scope = spp::get<1>(rhs_outermost->MemInfo->AstBorrowed);
     const auto rhs_borrow_scope = has_borrow_scope ? has_borrow_scope : sm.CurrentScope;
     const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
+
+    // Provided the lhs init scope is not nullptr, we can test
+    // its depth against the borrow scope.
+    // Todo: nullptr check needed?
     if (lhs_init_scope != nullptr) {
       const auto scope_depth_difference = genex::position(
         lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
-      const auto has_borrow_ast = spp::get<0>(rhs_outermost->MemInfo->AstBorrowed);
+      const auto ast = spp::get<0>(rhs_outermost->MemInfo->AstBorrowed);
       RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
         scope_depth_difference < 0, {sm.CurrentScope},
-        ERR_ARGS(*owner, *lhs_outermost->Name, *(has_borrow_ast ? has_borrow_ast : &rhs_expr)));
+        ERR_ARGS(*owner, *lhs_outermost->Name, *(ast ? ast : &rhs_expr)));
     }
   }
 
@@ -136,20 +131,15 @@ auto spp::analyse::utils::borrows::PreventBorrowLifetimeExtension(
       rhs_outermost->MemInfo->AstContainedEscapingBorrows, *lhs_outermost, owner, sm);
   }
 
-  // The same, for a right-hand side that names no symbol of
-  // its own. A call written straight into the destination
-  // ("x = c(&s)") has nowhere to record what it carries but
-  // the destination itself, so the borrows are read back off
-  // there rather than off a handle the source never bound.
+  // The same, for a non-symbolic right-hand-side expr,
+  // typically for member access or function calls.
   else if (lhs_outermost != nullptr and rhs_expr.To<PostfixExpressionAst>() != nullptr) {
     EnforceEscapingBorrowsOutlive(
       lhs_outermost->MemInfo->AstContainedEscapingBorrows, *lhs_outermost, owner, sm);
   }
 
-  // Ensure a value that contains escaping borrows isn't
-  // increasing the escaping borrows' lifetimes for "gen.res()"
-  // As the borrow is a temporary (no scope), the topmost
-  // branch uses "current scope".
+  // Handle the special case for the "gen.res()" generator
+  // resumption method. Todo: util method for the ast check.
   else if (const auto pf = rhs_expr.To<PostfixExpressionAst>(); pf and pf->Op->To<
     PostfixExpressionOperatorKeywordResAst>()) {
     const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).first;

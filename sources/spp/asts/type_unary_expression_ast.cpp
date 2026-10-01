@@ -71,7 +71,7 @@ auto TypeUnaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypeUnaryExpressionAst>(
     Op, AstCloneShared(Rhs));
-  t->_Stamp = _Stamp;
+  t->_Written = _Written;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -196,14 +196,14 @@ auto TypeUnaryExpressionAst::WithConvention(
       return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
     auto inner = MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
-    inner->SetStamp(_Stamp);
+    inner->SetWritten(_Written);
     return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
                                               std::move(inner));
   }();
 
-  // A node rebuilt in place of this one names the same symbol, so it keeps the stamp; a lookup reads the outermost
+  // A node rebuilt in place of this one names the same symbol, so it keeps the written identity; a lookup reads the outermost
   // node's first. "Rhs" handed back as it is carries its own.
-  if (result != Rhs) { result->SetStamp(_Stamp); }
+  if (result != Rhs) { result->SetWritten(_Written); }
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written, whatever convention it is given. "Rhs" is

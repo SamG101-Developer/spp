@@ -9,6 +9,13 @@ import spp.asts.type_ast;
 SPP_MOD_BEGIN
 CompilerMetaData::CompilerMetaData() {
   CurrentStage = CompilerStage::kNone;
+  ResetContext();
+  CmpResult = nullptr;
+  LlvmGenerator = nullptr;
+  LlvmGeneratorState = nullptr;
+}
+
+auto CompilerMetaData::ResetContext() -> void {
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
@@ -32,8 +39,6 @@ CompilerMetaData::CompilerMetaData() {
   LoopCurrentAst = nullptr;
   LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
   ObjectInitType = nullptr;
-  InferSource = MakeShared<GenericInferenceBindings>();
-  InferTarget = MakeShared<GenericInferenceBindings>();
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGenericChecks = false;
@@ -45,12 +50,11 @@ CompilerMetaData::CompilerMetaData() {
   LlvmCaseCondition = nullptr;
   LlvmPhi = nullptr;
   LlvmLoopStack = {};
-  CmpResult = nullptr;
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  LlvmGenerator = nullptr;
-  LlvmGeneratorState = nullptr;
+  CmpCallSite = nullptr;
+  CmpCallSiteScope = nullptr;
 }
 
 auto CompilerMetaData::Save() -> void {
@@ -86,8 +90,6 @@ auto CompilerMetaData::Save() -> void {
   s.LoopCurrentAst = LoopCurrentAst;
   s.LoopReturnTypes = LoopReturnTypes;
   s.ObjectInitType = ObjectInitType;
-  s.InferSource = InferSource;
-  s.InferTarget = InferTarget;
   s.PostfixExpressionLhs = PostfixExpressionLhs;
   s.UnaryExpressionRhs = UnaryExpressionRhs;
   s.SkipTypeAnalysisGenericChecks = SkipTypeAnalysisGenericChecks;
@@ -151,8 +153,6 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LoopCurrentAst = state.LoopCurrentAst;
   LoopReturnTypes = std::move(state.LoopReturnTypes);
   ObjectInitType = std::move(state.ObjectInitType);
-  InferSource = std::move(state.InferSource);
-  InferTarget = std::move(state.InferTarget);
   PostfixExpressionLhs = state.PostfixExpressionLhs;
   UnaryExpressionRhs = state.UnaryExpressionRhs;
   SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;

@@ -56,7 +56,8 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
   if (var_sym == nullptr) { return; }
   const auto copies = var_sym->TypeRefIn(*var_scope).Sym->IsCopyable();
-  const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta).get())->IsCopyable();
+  auto const *const value_sym = value_ast.InferTypeRef(&sm, meta).Sym;
+  const auto partial_copies = value_sym != nullptr and value_sym->IsCopyable();
 
   // A move only actually occurs when the accessed value is non-copyable.
   const auto moves_value = value_ast.To<IdentifierAst>() != nullptr ? not copies : not partial_copies;
@@ -78,7 +79,15 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
       {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.first, *pair.second));
   }
 
-  // Check the symbol hasn't already been moved.
+  // Check the symbol hasn't already been moved. A deferred
+  // expression being checked at an exit it runs from says so,
+  // naming the exit.
+  if (const auto where_moved = spp::get<0>(var_sym->MemInfo->AstMoved); where_moved != nullptr and meta->DeferExit) {
+    Raise<errors::SppDeferConsumesMovedValueError>(
+      {sm.CurrentScope}, ERR_ARGS(
+        *meta->DeferExit->Stmt, *where_moved, *meta->DeferExit->ExitPoint, var_sym->Name->Val,
+        meta->DeferExit->ExitWhat));
+  }
   RaiseIfMoved(*var_sym, value_ast, sm.CurrentScope);
 
   // Check we aren't trying to move an escaping borrow

@@ -88,7 +88,9 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
 
   // Standard ast shape check on what's valid as a primary
   // expression.
+  meta->ParameterDefaultScope = sm->CurrentScope;
   DefaultVal->Stage7_AnalyseSemantics(sm, meta);
+  meta->ParameterDefaultScope = nullptr;
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*DefaultVal, *sm),
     {sm->CurrentScope}, ERR_ARGS(*DefaultVal));
@@ -96,7 +98,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
   // Do a type check on the default value's type vs the type
   // given; the default's type is only spelled out for the
   // error.
-  if (not type_compare::TypeEq(
+  if (not type_compare::Assignable(
     TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto default_type = DefaultVal->InferType(sm, meta);

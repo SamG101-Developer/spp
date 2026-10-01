@@ -207,7 +207,12 @@ auto ScopeManager::AttachAllSuperScopes(
   // The recursive analysis technique. This avoids the double
   // sweep of attach all (ignoring constraints), and then
   // check the deferred constraints and prune.
+  // A read can come from the middle of any analysis (keying a type, a lookup inside a qualified name), and the attach
+  // is not part of it: it starts from a clean context, not the reader's ("TypeAnalysisTypeScope" pointing elsewhere).
   Scope::OnSupScopesRead = [this, meta](Scope const &read) {
+    if (read.SupsAttached or read.TySym == nullptr) { return; }
+    const auto _meta_guard = asts::meta::MetaGuard(meta, true);
+    meta->ResetContext();
     static_cast<void>(AttachSpecificSuperScopes(const_cast<Scope&>(read), meta));
   };
 
@@ -337,6 +342,14 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
     if (not own_mock_block and not SupPatternApplies(
       *scope.TySym, *fq_type, *scope.TySym->ScopeDefinedIn, *AstName(sup_scope->AstNode), *sup_scope,
       scope_generics_map, false)) { continue; }
+
+    // A block over a pack ("sup [..Items] Tup[Items]") is attached with its pack unbound, whatever the match bound it
+    // to: the block stands for every element set at once.
+    if (auto const *const params = GetSupGenericParamsFromScope(*sup_scope); params != nullptr) {
+      if (auto const *const pack = params->GetVariadicParams(); pack != nullptr) {
+        scope_generics_map.erase(std::dynamic_pointer_cast<TypeIdentifierAst>(pack->Name));
+      }
+    }
     auto scope_generics = GenericArgumentGroupAst::FromMap(std::move(scope_generics_map));
 
     // Create a generic version of the super scope if needed.
@@ -465,6 +478,10 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
   // A "$" mock owns nothing that can conflict. It provides
   // overload-coalescing mock types.
   if (cls_sym.IsMock()) { return; }
+
+  // Every block attached before this one was checked against the others as it was attached, so only a pair involving
+  // this block is new: one declaring neither a "type" nor a "cmp" cannot conflict.
+  if (auto const &mine = SupStatementsOf(&sup_scope); mine.Types.IsEmpty() and mine.Cmps.IsEmpty()) { return; }
 
   // Get the scopes to check for conflicts in.
   auto dummy = utils::type_compare::GenericInferenceMap();

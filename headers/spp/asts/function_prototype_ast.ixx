@@ -202,7 +202,15 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// The identity of the arguments ("Scope::InstanceIdentityKey"),
     /// which is what finds this instantiation again: "f[T=T]" called
     /// from two generic contexts is two instantiations, one per "T".
-    analyse::scopes::InstanceKey IdentityKey;
+    TypeId IdentityKey;
+
+    /// Whether a call has been resolved to it. A substitution is
+    /// built to check a call against one overload before it is
+    /// known which overload the call makes; one no call chose is
+    /// kept (it is found again for the same arguments, and what
+    /// its analysis registered may point into its scope) but is
+    /// never analysed, declared or emitted.
+    bool Required = false;
 
     /// The scope to position a scope manager on before running
     /// any stage over "Proto", and the scope every symbol this
@@ -216,25 +224,28 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     SPP_ATTR_NODISCARD auto ProtoScope() const -> Scope*;
   };
 
-  auto RegisterGenericSubstitution(
-    Unique<Scope> &&scope,
-    Unique<FunctionPrototypeAst> &&new_ast,
-    Unique<GenericArgumentGroupAst> &&gn_args)
+  /// File a built substitution against this prototype, not yet
+  /// required ("GenericSubstitution::Required").
+  auto AddGenericSubstitution(
+    GenericSubstitution &&sub)
+    -> GenericSubstitution&;
+
+  /// Mark the substitution whose prototype is "instance" as
+  /// required, and queue it for the monomorphisation stage the
+  /// first time. Nothing if "instance" is not one of this
+  /// prototype's substitutions.
+  auto RequireGenericSubstitution(
+    FunctionPrototypeAst const *instance)
     -> void;
 
-  /// Find the instantiation of this prototype whose arguments have
-  /// this identity ("GenericSubstitution::IdentityKey"), or
-  /// "{nullptr, nullptr}" if there is not one yet. Reusing the
-  /// match keeps a call site and the Stage10 declaration walk
-  /// pointing at a single prototype object for a given
-  /// instantiation.
+  /// Find the substitution of this prototype whose arguments have
+  /// this identity ("GenericSubstitution::IdentityKey"), required
+  /// or not, or nullptr if there is not one yet. Reusing the match
+  /// keeps a call site and the Stage10 declaration walk pointing at
+  /// a single prototype object for a given instantiation.
   SPP_ATTR_NODISCARD auto FindGenericSubstitution(
-    analyse::scopes::InstanceKey const &identity_key) const
-    -> Pair<Scope*, FunctionPrototypeAst*>;
-
-  SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() const -> std::list<Pair<Scope*, FunctionPrototypeAst*>>;
-
-  SPP_ATTR_NODISCARD auto RegisteredGenericSubstitutions() -> std::list<GenericSubstitution>&;
+    TypeId identity_key)
+    -> GenericSubstitution*;
 
   /// Analyse the bodies of every instantiation registered
   /// against this prototype that has not been analysed yet.
@@ -295,14 +306,15 @@ protected:
   /// on this prototype's own scope.
   auto _InstallLoweredImpl(ScopeManager *sm) -> void;
 
-  /// Mint the destructors an instantiation of a drop intrinsic
-  /// will call, if "sub_proto" (the instantiation just
-  /// analysed) is one. Nothing else needs this: an ordinary
-  /// body names what it calls, and analysing it instantiates
-  /// those, but the drop intrinsics have no S++ body at all -
-  /// see "drop_utils::EnsureDropInstantiated". "tm" must be
-  /// positioned inside the instantiation's own scope, where
-  /// its "T" is bound.
+  /// Mint the destructor an instantiation of a builtin will call,
+  /// if "sub_proto" (the instantiation just analysed) is a builtin
+  /// whose lowering destroys one of its generics (its table entry's
+  /// "drops_generic"). Nothing else needs this: an ordinary body
+  /// names what it calls, and analysing it instantiates those, but
+  /// a builtin has no S++ body at all - see
+  /// "drop_utils::EnsureDropInstantiated". "tm" must be positioned
+  /// inside the instantiation's own scope, where its generics are
+  /// bound.
   static auto _EnsureDropsForBuiltin(
     FunctionPrototypeAst const &sub_proto,
     ScopeManager &tm,

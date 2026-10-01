@@ -119,39 +119,26 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
-  // Determine the generic inference source and target
-  // values.
-  auto generic_infer_source = ArgGroup->Args
-    | genex::views::transform([sm, meta](auto const &x) {
-      // Pointed at the argument, so a conflict names where it came
-      // from rather than "<generated code>".
-      return MakePair(x->Name, x->Val->InferType(sm, meta)->WithSourceSpanAt(*x->Val));
-    })
-    | genex::to<Vec>();
-
-  // Generic inference target map creation for the targets
-  // which are the class attributes.
-  auto generic_infer_target = spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
+  // The attributes' types are what the type's arguments are inferred from: each argument's type (pointed at the
+  // argument, so a conflict names where it came from rather than "<generated code>") against the declared type of the
+  // attribute it initialises.
+  auto equations = Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>>();
   if (not base_cls_sym->IsTypeGeneric()) {
     for (const auto attr : base_cls_sym->Type->Impl->Members
          | genex::views::ptr
          | genex::views::cast_dynamic<ClassAttributeAst*>()) {
       const auto attr_sym = base_cls_sym->LinkedScope->GetTypeSymbol(attr->Type.get());
       if (attr_sym == nullptr) { continue; }
-      generic_infer_target.EmplaceBack(attr->Name, attr_sym->FqName());
+      for (auto const &arg : ArgGroup->Args) {
+        if (arg->Name == nullptr or *arg->Name != *attr->Name) { continue; }
+        equations.EmplaceBack(attr->Name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_sym->FqName());
+      }
     }
   }
 
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->InferSource = MakeShared<GenericInferenceBindings>(
-      generic_infer_source.begin(), generic_infer_source.end());
-    meta->InferTarget = MakeShared<GenericInferenceBindings>(
-      generic_infer_target.begin(), generic_infer_target.end());
-    Type = self_type::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
-    Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithSourceSpanOf(*Type);
-  }
+  Type = self_type::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
+  Type->LastTypePart()->InferFromAttributes(std::move(equations));
+  Type->Stage7_AnalyseSemantics(sm, meta);
 
   // A generator cannot be initialized either.
   const auto [gen_sym, _, _] = marker_sups::GetGenAndYieldTypes(
@@ -264,12 +251,12 @@ auto ObjectInitializerAst::Stage11_CodeGen(
       // widened on the way in - the same coercion a by-value
       // argument gets at a function call.
       const auto attr_index = spp_attr_index_of(*arg->Name);
-      if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
+      if (auto const &attr_ref = spp::get<1>(attrs[attr_index]); attr_ref.Sym != nullptr) {
         val = codegen::CoerceToFunctionValue(
-          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+          val, attr_ref,
           arg->Val->InferTypeRef(sm, meta), *sm, ctx);
         val = codegen::CoerceToVariant(
-          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+          val, attr_ref,
           arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
       }
 
@@ -340,13 +327,12 @@ auto ObjectInitializerAst::Stage11_CodeGen(
 }
 
 auto ObjectInitializerAst::InferType(
-  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
-  // The type of the object initializer is the type being
-  // initialized. The conventions are added for dummy types
-  // being created into values during other ast's analysis.
-  // Types cannot be instantiated as borrows in user code.
-  // Todo: tidy this by splitting into lines.
-  return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  // The type being initialized, named by its identity ("InferTypeRef"). The convention is for dummy types made into
+  // values during other asts' analysis: types cannot be instantiated as borrows in user code.
+  const auto ref = InferTypeRef(sm, meta);
+  auto const type = sm->CurrentScope->TypeAstOf(ref.Id);
+  return (type != nullptr ? type : ref.Sym->FqName())->WithConvention(AstClone(Type->GetConvention()));
 }
 
 auto ObjectInitializerAst::InferTypeRef(

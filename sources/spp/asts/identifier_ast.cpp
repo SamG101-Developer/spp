@@ -5,6 +5,7 @@ module;
 module spp.asts.identifier_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -129,7 +130,7 @@ auto IdentifierAst::Clone() const -> Unique<Ast> {
   // name mapped from a token keeps that token's length.
   auto id = Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
   id->_ForTok = _ForTok;
-  id->_Stamp = _Stamp;
+  id->_WrittenParam = _WrittenParam;
   return id;
 }
 
@@ -159,18 +160,33 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   // a custom error for "self" in a non-method context).
   const auto sym = sm->CurrentScope->GetVarSymbol(this);
 
-  // A comp parameter named here is stamped with it, as a
-  // type parameter's name is: wherever the name is read from
-  // then, it means this parameter ("Scope::CanonVar"), not
-  // whatever its spelling finds there.
-  if (sym != nullptr and Stamp() == nullptr
+  // A comp parameter named here is recorded, as a type
+  // parameter's name is: wherever the name is read from then,
+  // it means this parameter ("Scope::CanonVar"), not whatever
+  // its spelling finds there.
+  if (sym != nullptr and WrittenParam() == 0
     and sym->Kind == VariableKind::GenericCompParam
-    and sym->ParamId != 0) { SetStamp(sym); }
+    and sym->ParamId != 0) { SetWrittenParam(sym->ParamId); }
 
   if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->AllVarSymbols(), {}, *sm);
   }
+
+  // A binding from an "is" read where the match is not known to
+  // have succeeded (after the statement, in an "else", on the
+  // right of an "or") names nothing there.
+  if (sym != nullptr and genex::contains(meta->ExpiredIsBindings, sym)) {
+    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {}, *sm);
+  }
+
+  // A parameter's default is analysed where the parameters are
+  // in scope, but it is copied into the calls, where this name
+  // would mean whatever the caller has under it.
+  RaiseIf<SppDefaultValueNamesParameterError>(
+    meta->ParameterDefaultScope != nullptr and sym != nullptr and sym->Kind == VariableKind::Local
+    and meta->ParameterDefaultScope->HasVarSymbol(this, true),
+    {sm->CurrentScope}, ERR_ARGS(*this));
 
   // Enforce module-level visibility on the accessed symbol.
   if (sym != nullptr and sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->TySym == nullptr) {
@@ -332,9 +348,13 @@ auto IdentifierAst::SubstituteGenericsExpr(
   // parameter list and read as an identifier in an
   // expression, so the two spellings have to be brought
   // together before they can be compared.
+  // Matched as a type parameter is ("TypeIdentifierAst::SubstituteGenerics"): by the parameter's identity where both
+  // record the same one, else by spelling.
   for (auto const *arg : args) {
     if (arg->Name == nullptr or arg->CompVal == nullptr) { continue; }
-    if (*FromType(*arg->Name) != *this) { continue; }
+    const auto arg_param = analyse::scopes::CompParamIdOf(arg->Name->LastTypePart()->Written());
+    const auto matched = (WrittenParam() != 0 and arg_param == WrittenParam()) or *FromType(*arg->Name) == *this;
+    if (not matched) { continue; }
     return AstCloneShared(arg->CompVal.get());
   }
 

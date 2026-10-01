@@ -65,6 +65,11 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
   /// argument is not provided.
   Unique<ExpressionAst> CompDefault;
 
+  /// The comp default as written, before analysis desugars its
+  /// operators ("n + 1_uz" analysed is the call "n.add(1_uz)"):
+  /// what a use translates the default from, in its own terms.
+  Shared<ExpressionAst> WrittenCompDefault;
+
   /// Whether the parameter was copied onto a method from its enclosing
   /// "sup" block. The method binds it per instantiation like its own, but
   /// it names the block's symbol, so it declares no symbol of its own.
@@ -99,10 +104,21 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
 
   static auto ClearDummyScopes() -> void;
 
+  /// Make this a copy of "that" declaration, which it shares its
+  /// identity with ("_ParamId"), where it was built rather than cloned.
+  auto ShareParamIdentity(GenericParameterAst const &that) -> void;
+
 private:
   inline static Vec<Unique<Ast>> _DummyScopeAsts = {};
 
   Vec<Scope*> _DummyScopes;
+
+  /// The parameter's identity ("ParamId"), given the first time it is
+  /// declared and shared by every copy of this declaration: a
+  /// function's parameters are declared on the "sup" block it is
+  /// lowered into and again on the function itself, as copies, and are
+  /// one parameter.
+  Shared<std::uint64_t> _ParamId = MakeShared<std::uint64_t>(0);
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericParameterAst)

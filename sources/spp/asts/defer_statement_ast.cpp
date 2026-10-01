@@ -106,21 +106,32 @@ auto DeferStatementAst::Stage8_CheckMemory(
     sm->CurrentScope->Deferred.EmplaceBack(this);
   }
 
-  Expr->Stage8_CheckMemory(sm, meta);
+  // Each exit replays the walk from here (see "CheckAtExit").
+  _DeferScope = sm->CurrentScope;
+  _DeferPosition = sm->CurrentIterator();
 
-  // Whatever the walk moved is what running the expression
-  // at a scope exit will move, so that is what gets recorded.
-  // Todo: Only whole moves are carried over. A deferred
-  //  expression that partially moves a value - taking one
-  //  attribute off it rather than the whole thing - is not
-  //  accounted for, and the value will still read as owed.
-  Consumed.Clear();
-  for (auto const &[sym, snapshot] : saved) {
-    const auto was_moved = spp::get<0>(snapshot.AstMoved) != nullptr;
-    const auto now_moved = spp::get<0>(sym->MemInfo->AstMoved) != nullptr;
-    if (not was_moved and now_moved) { Consumed.EmplaceBack(sym->Name); }
-    sym->MemInfo->FillFromSnapshot(snapshot);
-  }
+  Expr->Stage8_CheckMemory(sm, meta);
+  memory_state::RestoreSnapshot(saved);
+}
+
+auto DeferStatementAst::CheckAtExit(
+  Ast const &exit_point, const StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Running the expression at this exit is checked as running it
+  // there would be: the whole of its memory check - what it
+  // consumes, and what it only reads or borrows - against the
+  // state the exit is reached with. Its names mean what they do
+  // where it is written, so the walk is replayed from there.
+  if (_DeferScope == nullptr) { return; }
+  auto tm = ScopeManager(sm.GlobalScope, _DeferScope);
+  tm.Reset(_DeferScope, *_DeferPosition);
+
+  struct DeferExitGuard {
+    CompilerMetaData *Meta;
+    std::optional<CompilerMetaData::DeferExitInfo> Outer;
+    ~DeferExitGuard() { Meta->DeferExit = Outer; }
+  } const guard{meta, meta->DeferExit};
+  meta->DeferExit = CompilerMetaData::DeferExitInfo{this, &exit_point, exit_what};
+  Expr->Stage8_CheckMemory(&tm, meta);
 }
 
 auto DeferStatementAst::Stage9_CompTimeResolve(

@@ -15,11 +15,13 @@ import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.token_ast;
+import spp.asts.tuple_literal_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
+import genex;
 import std;
 import numex.big_dec;
 import numex.big_int;
@@ -40,6 +42,17 @@ auto spp::analyse::utils::comp_generics::FoldCompExpr(
   }
   if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
     return FoldCompExpr(*paren->Expr, scope);
+  }
+
+  // A pack ("cmp ..ns") is a tuple of values, closed when every element is, as a type pack's tuple is.
+  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
+    auto elems = Vec<Unique<ExpressionAst>>();
+    for (auto const &elem : tup->Elems) {
+      auto folded = FoldCompExpr(*elem, scope);
+      if (folded == nullptr) { return nullptr; }
+      elems.EmplaceBack(std::move(folded));
+    }
+    return MakeUnique<TupleLiteralAst>(nullptr, std::move(elems), nullptr);
   }
 
   // A comp generic is the value it is bound to. An unbound
@@ -102,37 +115,72 @@ auto spp::analyse::utils::comp_generics::FoldCompExpr(
   }
 }
 
-auto spp::analyse::utils::comp_generics::StampCompGenerics(
+auto spp::analyse::utils::comp_generics::AnyCompName(
+  ExpressionAst const &expr, std::function<bool(IdentifierAst const &)> const &pred) -> bool {
+  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
+    return AnyCompName(*paren->Expr, pred);
+  }
+  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
+    return (bin->Lhs != nullptr and AnyCompName(*bin->Lhs, pred)) or (bin->Rhs != nullptr and AnyCompName(*bin->Rhs, pred));
+  }
+  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
+    return genex::any_of(tup->Elems, [&](auto const &elem) { return AnyCompName(*elem, pred); });
+  }
+  const auto id = expr.To<IdentifierAst>();
+  return id != nullptr and pred(*id);
+}
+
+auto spp::analyse::utils::comp_generics::NamesCompParam(
+  ExpressionAst const &expr,
+  Scope const &scope)
+  -> bool {
+  return AnyCompName(expr, [&scope](IdentifierAst const &id) {
+    auto const *const sym = scope.GetVarSymbol(&id);
+    return sym != nullptr and sym->Kind == VariableKind::GenericCompParam;
+  });
+}
+
+auto spp::analyse::utils::comp_generics::RecordCompGenerics(
   ExpressionAst const &expr,
   Scope const &scope)
   -> void {
-  // Move inside a comptime parenthesis expression.
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    StampCompGenerics(*paren->Expr, scope);
-    return;
-  }
-
-  // Handle binary expressions using the nodes.
-  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
-    if (bin->Lhs != nullptr) { StampCompGenerics(*bin->Lhs, scope); }
-    if (bin->Rhs != nullptr) { StampCompGenerics(*bin->Rhs, scope); }
-    return;
-  }
-
-  // Handle identifiers using their symbols.
-  const auto id = expr.To<IdentifierAst>();
-  if (id == nullptr or id->Stamp() != nullptr) { return; }
-  if (auto *const sym = scope.GetVarSymbol(id); sym != nullptr
-    and sym->Kind == VariableKind::GenericCompParam and sym->ParamId != 0) {
-    id->SetStamp(sym);
-  }
+  // Every name, nested ones too. A parameter records itself, and a binding the parameter it binds, as a type argument
+  // naming either does ("GenericArgumentAst::AnalyseTypeVal").
+  static_cast<void>(AnyCompName(expr, [&scope](IdentifierAst const &id) {
+    if (id.WrittenParam() != 0) { return false; }
+    if (auto *const sym = scope.GetVarSymbol(&id); sym != nullptr) {
+      if (sym->Kind == VariableKind::GenericCompParam and sym->ParamId != 0) { id.SetWrittenParam(sym->ParamId); }
+      else if (sym->Kind == VariableKind::GenericCompArg and sym->BindsParamId != 0) {
+        id.SetWrittenParam(sym->BindsParamId);
+      }
+    }
+    return false;
+  }));
 }
 
 auto spp::analyse::utils::comp_generics::CompExprIdentity(
   ExpressionAst const &expr, Scope const &scope, Str &out) -> void {
+  // A pack is its elements' identities, each on its own, so a parameter among them is named by identity (and read, and
+  // substituted, as an element) however the pack is spelled or bound: "(n, 1_uz)" with "n" bound to "1_uz" is
+  // "P(V1_uz, V1_uz)", as "(1_uz, 1_uz)" is ("scopes::CompPackElements" reads it back).
+  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
+    out += "P(";
+    for (auto i = 0uz; i < tup->Elems.Len(); ++i) {
+      if (i != 0) { out += ", "; }
+      CompExprIdentity(*tup->Elems[i], scope, out);
+    }
+    out += ')';
+    return;
+  }
+
   // A closed value is what it folds to: "1_uz + 1_uz", "n + 1_uz"
   // with "n" bound to "1_uz", and "2_uz" are one value.
   if (const auto folded = FoldCompExpr(expr, scope); folded != nullptr) {
+    // A pack folds to a pack, which is named by its elements.
+    if (folded->To<TupleLiteralAst>() != nullptr) {
+      CompExprIdentity(*folded, scope, out);
+      return;
+    }
     out += 'V';
     out += folded->ToString();
     return;
@@ -157,6 +205,10 @@ auto spp::analyse::utils::comp_generics::CompExprIdentity(
       const auto bound = var->BoundCompValue();
       if (bound == nullptr) { break; }
       const auto bound_id = bound->To<IdentifierAst>();
+      if (bound_id == nullptr and bound->To<TupleLiteralAst>() != nullptr) {
+        CompExprIdentity(*bound, scope, out);
+        return;
+      }
       if (bound_id == nullptr) {
         out += 'V';
         out += bound->ToString();
@@ -188,6 +240,16 @@ auto spp::analyse::utils::comp_generics::CompExprIdentity(
   }
   out += 'V';
   out += expr.ToString();
+}
+
+auto spp::analyse::utils::comp_generics::CompIdentityOfSym(
+  VariableSymbol const &sym, Scope const &scope, Str &out) -> void {
+  if (auto const *const bound = sym.BoundCompValue(); bound != nullptr) {
+    CompExprIdentity(*bound, scope, out);
+    return;
+  }
+  out += 'C';
+  out += std::to_string(sym.ParamIdentity());
 }
 
 auto spp::analyse::utils::comp_generics::ResolveCompArg(

@@ -31,9 +31,62 @@ namespace spp::analyse::scopes {
   }
 }
 
+namespace spp::analyse::scopes {
+  namespace {
+    /// The parameter a symbol is or binds, for tables of symbols that can be one; 0 for anything else.
+    template <typename S>
+    auto ParamIdentityOf(S const &sym) -> std::uint64_t {
+      if constexpr (requires { sym.ParamIdentity(); }) { return sym.ParamIdentity(); }
+      else { return 0; }
+    }
+
+    template <typename S>
+    auto IsBinding(S const &sym) -> bool {
+      if constexpr (requires { sym.BindsParamId; }) { return sym.BindsParamId != 0; }
+      else { return false; }
+    }
+  }
+}
+
 template <typename I, typename S>
 IndividualSymbolTable<I, S>::IndividualSymbolTable() :
   _Table() {
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::IndexParam(
+  S *sym) -> void {
+  // A binding outranks the parameter it binds, which a cloned table may also hold.
+  const auto id = ParamIdentityOf(*sym);
+  if (id == 0) { return; }
+  auto &slot = _ByParam[id];
+  if (slot == nullptr or IsBinding(*sym) or not IsBinding(*slot)) { slot = sym; }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::UnindexParam(
+  S const *sym) -> void {
+  const auto id = ParamIdentityOf(*sym);
+  if (id == 0) { return; }
+  const auto it = _ByParam.find(id);
+  if (it == _ByParam.end() or it->second != sym) { return; }
+  _ByParam.erase(it);
+  for (auto const &[_, other] : _Table) {
+    if (other.get() != sym and ParamIdentityOf(*other) == id) { IndexParam(other.get()); }
+  }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::ReindexParams() -> void {
+  _ByParam.clear();
+  for (auto const &[_, sym] : _Table) { IndexParam(sym.get()); }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::GetByParam(
+  const std::uint64_t id) const -> S* {
+  const auto it = _ByParam.find(id);
+  return it != _ByParam.end() ? it->second : nullptr;
 }
 
 template <typename I, typename S>
@@ -45,6 +98,7 @@ auto IndividualSymbolTable<I, S>::ShallowCopyFrom(
   // Copying the map copies the shared pointers, so both
   // tables name the same symbol objects.
   _Table = that._Table;
+  _ByParam = that._ByParam;
 }
 
 template <typename I, typename S>
@@ -59,6 +113,7 @@ auto IndividualSymbolTable<I, S>::DeepCopyFrom(
   for (auto const &[k, v] : that._Table) {
     _Table.emplace(k, v->NeedsDeepCopy() ? MakeShared<S>(*v) : v);
   }
+  ReindexParams();
 }
 
 template <typename I, typename S>
@@ -69,11 +124,13 @@ auto IndividualSymbolTable<I, S>::Add(
   const auto key = SymbolKey(sym_name);
   auto it = _Table.find(key);
   if (it != _Table.end()) {
+    UnindexParam(it->second.get());
     it->second = sym;
   }
   else {
     _Table.emplace(key, sym);
   }
+  IndexParam(sym.get());
 }
 
 template <typename I, typename S>
@@ -84,6 +141,7 @@ auto IndividualSymbolTable<I, S>::Rem(
   if (it != _Table.end()) {
     auto sym = it->second;
     _Table.erase(it);
+    UnindexParam(sym.get());
     return sym;
   }
   return nullptr;

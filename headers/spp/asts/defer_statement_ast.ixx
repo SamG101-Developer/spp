@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.defer_statement_ast;
+import spp.analyse.scopes.scope_iterator;
 import spp.asts.ast_kind;
 import spp.asts.statement_ast;
 import spp.codegen.llvm_ctx;
@@ -10,6 +11,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(DeferStatementAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
@@ -40,9 +42,20 @@ SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  Vec<Shared<IdentifierAst>> Consumed;
+  /// Check running the expression at an exit of its scope: its
+  /// memory check, against the state the exit is reached with,
+  /// walking the expression where it is written. Whatever it
+  /// consumes is consumed there.
+  auto CheckAtExit(Ast const &exit_point, StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void;
 
   auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+private:
+  /// Where stage 8 walked the expression: its scope, and the walk
+  /// just before the expression's own scopes. Each exit replays
+  /// the walk from here.
+  analyse::scopes::Scope *_DeferScope = nullptr;
+  std::optional<analyse::scopes::ScopeIterator> _DeferPosition;
 };

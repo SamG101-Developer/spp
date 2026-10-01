@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.type_resolution;
 import spp.asts.generic_parameter_ast;
@@ -118,9 +119,11 @@ auto GenericParameterGroupAst::OptToReq() const -> Unique<GenericParameterGroupA
   auto new_params = Vec<Unique<GenericParameterAst>>();
   for (auto const &p : Params) {
     if (p->TypeDefault != nullptr or p->CompDefault != nullptr) {
-      new_params.EmplaceBack(MakeUnique<GenericParameterAst>(
+      auto required = MakeUnique<GenericParameterAst>(
         nullptr, nullptr, AstClone(p->Name), AstClone(p->Constraints),
-        nullptr, AstClone(p->CompType), nullptr, nullptr, nullptr));
+        nullptr, AstClone(p->CompType), nullptr, nullptr, nullptr);
+      required->ShareParamIdentity(*p);
+      new_params.EmplaceBack(std::move(required));
     }
     else {
       new_params.EmplaceBack(AstClone(p));
@@ -233,9 +236,12 @@ auto GenericParameterGroupAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Fold each comp default, to prove it is a constant even if
   // nothing ever uses it. The result is thrown away - a use
-  // site folds its own copy.
+  // site folds its own copy. One naming another parameter
+  // ("m = n + 1_uz") is no constant until instantiated, where
+  // it is folded as bound.
   for (auto const &p : Params) {
     if (p->CompDefault == nullptr) { continue; }
+    if (analyse::utils::comp_generics::NamesCompParam(*p->WrittenCompDefault, *sm->CurrentScope)) { continue; }
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope);
     p->CompDefault->Stage9_CompTimeResolve(&tm, meta);

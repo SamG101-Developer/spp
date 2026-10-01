@@ -196,7 +196,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // Subroutine return type check.
   if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(
+      not type_compare::Assignable(
         *meta->EnclosingFunctionRetType.Back(), *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
       {meta->EnclosingFunctionScope, sm->CurrentScope},
       ERR_ARGS(
@@ -212,7 +212,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
       [&] { return ret_type; }, "early return");
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
+      not type_compare::Assignable(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
       {meta->EnclosingFunctionScope, sm->CurrentScope},
       ERR_ARGS(*meta->EnclosingFunctionSourceRetType.Back(), *yield_type, *analysed_lhs, *residual_type));
   }

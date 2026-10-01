@@ -414,7 +414,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
       return x.first == master_branch_type_info.first;
     })
     | genex::views::remove_if([&](auto const &x) {
-      return type_compare::TypeEq(*master_branch_type_info.second, *x.second, *sm.CurrentScope, *sm.CurrentScope);
+      return type_compare::Assignable(*master_branch_type_info.second, *x.second, *sm.CurrentScope, *sm.CurrentScope);
     })
     | genex::to<Vec>();
 

@@ -48,6 +48,10 @@ namespace spp::analyse::utils::type_predicates {
   /// use / unbound.
   SPP_EXP_FUN auto IsTypeFullyConcrete(TypeAst const &type, Scope const &scope) -> bool;
 
+  /// "IsTypeFullyConcrete" on a resolved type: its identity names no
+  /// type or comp parameter, no binding to nothing, and no "Self".
+  SPP_EXP_FUN auto IsTypeFullyConcrete(TypeRef const &ref) -> bool;
+
   /// A type is borrowed if it has a convention, or its a by-move
   /// variant that itself can contain a borrow, like "Str or &S32".
   SPP_EXP_FUN auto IsTypeBorrowed(TypeAst const &type, ScopeManager const &sm, bool deep = true) -> bool;

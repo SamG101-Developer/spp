@@ -61,8 +61,8 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto is_view =
-    type_compare::TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
-    type_compare::TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
+    type_compare::TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope) or
+    type_compare::TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the right-hand-side expression is a borrowable
   // type.

@@ -87,6 +87,16 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
   /// if all of the elements are allowed to be used in a
   /// runtime default context.
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+private:
+  /// The type, built and analysed once in stage 7. Rebuilding it
+  /// for every "InferType" analysed it again each time, codegen
+  /// included, and re-decided it in whatever context the caller
+  /// happened to be in.
+  Shared<TypeAst> _InferredType;
+
+  /// Build and analyse the type from the elements.
+  auto _BuildType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)

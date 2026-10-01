@@ -108,10 +108,59 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
 }
 
+namespace {
+  /// Whether a value of this type is a "&mut" borrow, directly
+  /// or as a member of a variant.
+  auto HoldsMutBorrow(TypeAst const &type, Scope const &scope) -> bool {
+    IMPORT_UTILS;
+    const auto ref = TypeRef::Of(type, scope);
+    if (ref.Conv == ConventionTag::MUT) { return true; }
+    return genex::any_of(type_compare::VariantMembers(ref, scope), [](auto const &member) {
+      return member.Conv == ConventionTag::MUT;
+    });
+  }
+}
+
 auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // The generator, when it is a named one. A borrow yielded by an
+  // unnamed one cannot be resumed past, as nothing names it again.
+  auto const *const lhs_name = meta->PostfixExpressionLhs->To<IdentifierAst>();
+  auto *const gen_sym = lhs_name != nullptr ? sm->CurrentScope->GetVarSymbolOutermost(*lhs_name).first : nullptr;
+
+  // Resuming the generator ends every "&mut" borrow it yielded
+  // before: the next yield may be the same element, and two
+  // live "&mut" borrows of one element would alias. Using one
+  // afterwards reads as using memory moved by this resume.
+  if (gen_sym != nullptr) {
+    for (auto const *holder : gen_sym->MemInfo->AstYieldedMutBorrowHolders) {
+      auto const *const holder_name = holder->To<IdentifierAst>();
+      if (holder_name == nullptr) { continue; }
+      // A name rebound since ("let x = 5") no longer holds the
+      // borrow, so only one still typed as a "&mut" (or as the
+      // "&mut T or GenDone" a resume produces) is ended.
+      auto *const holder_sym = sm->CurrentScope->GetVarSymbolOutermost(*holder_name).first;
+      if (holder_sym != nullptr and holder_sym->Type != nullptr and HoldsMutBorrow(*holder_sym->Type, *sm->CurrentScope)) {
+        holder_sym->MemInfo->MovedBy(*this, sm->CurrentScope);
+      }
+    }
+    gen_sym->MemInfo->AstYieldedMutBorrowHolders.Clear();
+  }
+
   // Forward the memory check to the mapped function, which will check the arguments, and the function call.
   _MappedFunc->Stage8_CheckMemory(sm, meta);
+
+  // A "&mut" borrow this resume yields, bound to a name, lasts
+  // until the next resume.
+  if (gen_sym != nullptr and meta->AssignmentTarget != nullptr) {
+    const auto [_, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
+      meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
+      [&] { return meta->PostfixExpressionLhs->InferType(sm, meta); }, "resume expression", false);
+    if (yield_type != nullptr and TypeRef::Of(*yield_type, *sm->CurrentScope).Conv == ConventionTag::MUT) {
+      gen_sym->MemInfo->AstYieldedMutBorrowHolders.EmplaceBack(meta->AssignmentTarget.get());
+    }
+  }
 }
 
 auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
@@ -134,20 +183,38 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // resumes something this function never called. Its handle is not lost though - it is the first field of the
   // generator value itself, which is exactly what the call site extracts before registering - so rebuild the
   // environment from the value in storage, the same way and with the same field.
+  //
+  // The registered handle is the call's own SSA value, which only
+  // dominates uses in the block it was made in: a generator that
+  // was assigned in a "case" branch is resumed after the merge,
+  // so anywhere else the handle is reloaded from storage instead.
+  const auto registered_is_local = [&] {
+    if (llvm_generator_it == ctx->LlvmGenerators.end()) { return false; }
+    const auto inst = llvm::dyn_cast<llvm::Instruction>(llvm_generator_it->second->Handle);
+    return inst == nullptr or inst->getParent() == ctx->Builder.GetInsertBlock();
+  }();
+
   auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
-  if (llvm_generator_it == ctx->LlvmGenerators.end()) {
+  if (not registered_is_local) {
     const auto lhs_type_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym;
 
     const auto no_env_msg = Str(
       "No generator environment was registered for this resumption, and none could be rebuilt from the value. The "
       "resumed value is generator-typed but carries no coroutine handle, so there is nothing to resume");
-    RaiseIf<analyse::errors::SppInternalCompilerError>(
+    RaiseIf<SppInternalCompilerError>(
       lhs_type_sym == nullptr or lhs_type_sym->LlvmInfo->LlvmType == nullptr,
       {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
 
-    const auto handle_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
-    const auto llvm_handle_ptr = ctx->Builder.CreateStructGEP(
-      lhs_type_sym->LlvmInfo->LlvmType, llvm_generator_addr, handle_idx, "gen.handle.slot");
+    // A generator whose only field is the handle lowers to the
+    // handle itself, a plain pointer, so there is no struct to
+    // index into - the storage holds the handle directly. That
+    // is the shape a "Gen" returned by an ordinary function has.
+    const auto llvm_gen_type = lhs_type_sym->LlvmInfo->LlvmType;
+    const auto llvm_handle_ptr = llvm_gen_type->isPointerTy()
+      ? llvm_generator_addr
+      : ctx->Builder.CreateStructGEP(
+        llvm_gen_type, llvm_generator_addr, codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0),
+        "gen.handle.slot");
     const auto llvm_handle = ctx->Builder.CreateLoad(
       llvm::PointerType::get(*ctx->Context, 0), llvm_handle_ptr, "gen.handle");
 
@@ -163,9 +230,9 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // The yielded value is read with the yield type's own layout, because that is what the "gen" expression stored
   // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
   // and storing those into a narrower binding writes past it.
-  const auto uid = spp::utils::Uid();
+  const auto uid = Uid();
   const auto lhs = meta->PostfixExpressionLhs;
-  auto [generator_sym, yield_type, is_once] = analyse::utils::type_utils::GetGenAndYieldTypes(
+  auto [generator_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
   const auto llvm_yield_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*yield_type, *sm->CurrentScope), ctx);

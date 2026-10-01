@@ -91,11 +91,23 @@ public:
   /// Get all the symbols in the table unrolled into a vector.
   SPP_ATTR_NODISCARD auto All() const -> Vec<S*>;
 
+  /// The symbol filed for a generic parameter, by its identity
+  /// ("ParamIdentity") rather than its spelling: a binding of it
+  /// where there is one, else the parameter (or a copy of it).
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetByParam(std::uint64_t id) const -> S*;
+
 private:
   using Key = typename SymbolTableKeyOf<I>::Type;
 
   /// The actual symbol table.
   Map<Key, Shared<S>, typename SymbolTableKeyOf<I>::Hasher, typename SymbolTableKeyOf<I>::Eq> _Table;
+
+  /// The parameters and bindings in "_Table", by parameter identity ("GetByParam").
+  Map<std::uint64_t, S*> _ByParam;
+
+  auto IndexParam(S *sym) -> void;
+  auto UnindexParam(S const *sym) -> void;
+  auto ReindexParams() -> void;
 };
 
 /// The combined symbol table holder, that holds all three

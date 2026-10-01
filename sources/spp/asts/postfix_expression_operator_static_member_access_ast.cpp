@@ -263,6 +263,19 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
       Stage9_CompTimeResolve(sm, meta);
       const auto folded = std::move(meta->CmpResult);
       SPP_ASSERT(folded != nullptr);
+
+      // The value is the template's, written in terms of its own
+      // parameters ("Unit[T]()", "Self()"), which name nothing
+      // here; the instance and its arguments are what they stand
+      // for.
+      auto const &gn_args = _LhsTypeSym->Name->GnArgGroup;
+      if (gn_args != nullptr and not gn_args->Args.IsEmpty()) {
+        auto args = gn_args->GetAllArgs();
+        const auto self_arg = GenericArgumentAst::NewType(
+          generate::common_types::SelfType(PosStart()), _LhsTypeSym->FqName());
+        args.EmplaceBack(self_arg.get());
+        return folded->SubstituteGenericsExpr(args)->Stage11_CodeGen(sm, meta, ctx);
+      }
       return folded->Stage11_CodeGen(sm, meta, ctx);
     }
     const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(

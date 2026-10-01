@@ -200,3 +200,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(v)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    SupTypeStatementAst,
+    test_valid_sup_type_statement_argument_spelled_like_a_parameter_of_the_target, R"(
+    cls A { }
+    sup A {
+        type Mine = Vec[A]
+        !public fun m(&self) -> Void {
+            let x: Mine = Vec[A]()
+            std::mem::ops::drop(x)
+        }
+    }
+)");

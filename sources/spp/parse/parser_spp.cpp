@@ -1491,6 +1491,8 @@ auto spp::parse::ParserSpp::parse_closure_expression_without_return_type()
   -> Unique<asts::ClosureExpressionAst> {
   PARSE_OPTIONAL(p1, parse_keyword_cor);
   PARSE_ONCE(p2, parse_closure_expression_parameter_and_capture_group);
+  // Prevent "()" tuple on one line combining with stmt on next.
+  if (_LineFeedAhead()) { return nullptr; }
   PARSE_ONCE(p3, parse_expression);
   return CREATE_AST(asts::ClosureExpressionAst, p1, p2, nullptr, nullptr, p3);
 }

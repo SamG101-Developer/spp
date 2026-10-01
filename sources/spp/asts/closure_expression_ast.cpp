@@ -9,10 +9,11 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -108,17 +109,14 @@ auto ClosureExpressionAst::HasBorrowedCaptures() const -> bool {
 
 auto ClosureExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppFeatureNotYetSupportedError;
+  IMPORT_UTILS;
 
   // Todo: coroutine closures need the generator state that
   //  "CoroutinePrototypeAst" sets up; until then they are refused.
   RaiseIf<SppFeatureNotYetSupportedError>(
     Tok != nullptr and Tok->TokenType == lex::SppTokenType::KW_COR,
     {sm->CurrentScope},
-    ERR_ARGS(analyse::errors::NotYetSupportedFeature::CoroutineClosure, *this, *Tok));
+    ERR_ARGS(NotYetSupportedFeature::CoroutineClosure, *this, *Tok));
 
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
@@ -148,6 +146,19 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // the "ret" to match the closure's inferred return type.
     meta->Save();
     meta->EnclosingFunctionScope = sm->CurrentScope; // this will be the closure-outer scope
+
+    // Everything the closure inherits goes in before anything is analysed against it. The scope is re-parented to the
+    // module above, so a name only reaches the closure if it is put here: the outer scope, where the return type is
+    // read again ("RetStatementAst"), as well as the body inside it.
+    if (inherited_self != nullptr) {
+      sm->CurrentScope->AddTypeSymbol(inherited_self->SharedFromThis<TypeSymbol>());
+    }
+    for (auto const &type_generic_sym : inherited_type_generics) {
+      sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<TypeSymbol>());
+    }
+    for (auto const &comp_generic_sym : inherited_comp_generics) {
+      sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<VariableSymbol>());
+    }
     sm->CurrentScope->Parent = sm->CurrentScope->ParentModule();
     BumpScopeLinkageGeneration();
 
@@ -158,28 +169,11 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     meta->EnclosingFunctionRetType = {};
     meta->EnclosingFunctionSourceRetType = {};
 
-    // Everything the closure inherits goes in before anything
-    // is analysed against it. The scope is re-parented to the
-    // module above, so a name only reaches the closure if it
-    // is put here.
-    if (inherited_self != nullptr) {
-      sm->CurrentScope->AddTypeSymbol(inherited_self->SharedFromThis<TypeSymbol>());
-    }
-    for (auto const &type_generic_sym : inherited_type_generics) {
-      sm->CurrentScope->AddTypeSymbol(type_generic_sym->SharedFromThis<TypeSymbol>());
-    }
-    for (auto const &comp_generic_sym : inherited_comp_generics) {
-      sm->CurrentScope->AddVarSymbol(comp_generic_sym->SharedFromThis<VariableSymbol>());
-    }
-
     // A declared return type is seeded here, so that a "ret"
     // in the body is checked against it and coerced into it -
     // the same path a subroutine's body takes.
     if (ReturnType != nullptr) {
-      // Todo: in a generic sup, a type naming the sup's "T" here is not "TypeEq" to the same type from the body
-      //  ("Box[T=T]" vs "Box[T=T]") - ClosureInGenericSup.test_valid_closure_reading_a_generic_field,
-      //  TestSelfTypePositionsGeneric.test_valid_self_as_a_closure_{return,parameter}_type.
-      ReturnType = ResolveWrittenType(*ReturnType, *sm, *meta);
+      ReturnType = type_resolution::ResolveWrittenType(*ReturnType, *sm, *meta);
 
       meta->EnclosingFunctionRetType.EmplaceBack(ReturnType);
       meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
@@ -210,7 +204,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // never passes through the function prototype's return type
     // borrow check.
     RaiseIf<SppSecondClassBorrowViolationError>(
-      Tok->TokenType == lex::SppTokenType::KW_FUN and IsTypeBorrowed(*_TrueRetType, *sm),
+      Tok->TokenType == lex::SppTokenType::KW_FUN and type_predicates::IsTypeBorrowed(*_TrueRetType, *sm),
       {sm->CurrentScope}, ERR_ARGS(*this, *_TrueRetType, "function return type"));
   }
   meta->Restore();
@@ -225,6 +219,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
 
 auto ClosureExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
   {
@@ -252,8 +247,8 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 
     // A body that falls off its end discharges its parameters there,
     // as a function's does.
-    if (not analyse::utils::expr_utils::Diverges(*Body, sm, meta)) {
-      analyse::utils::linear_utils::CheckScopeExit(
+    if (not control_flow::Diverges(*Body, sm, meta)) {
+      linear_utils::CheckScopeExit(
         *outer_scope, *Body, "Closure end", *sm, meta);
     }
 
@@ -264,11 +259,12 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 
 auto ClosureExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Strategy: build an "environment" struct for the closure,
   // with fields for captures. The safety is already guaranteed
   // by semantic analysis.
   // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   const auto closure_env_ty = llvm::StructType::create(
     *ctx->Context, "closure.env_type." + uid);
   auto closure_env_field_tys = Vec<llvm::Type*>{};
@@ -522,6 +518,7 @@ auto ClosureExpressionAst::_FunctionalType(
 
 auto ClosureExpressionAst::_MakeMockType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  IMPORT_UTILS_AND_UID;
   using analyse::scopes::BumpTypeStructureGeneration;
   using analyse::scopes::Scope;
   using analyse::scopes::ScopeBlockName;
@@ -538,7 +535,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // generic is resolved again inside that generic's own scope.
   const auto mod_scope = sm->GlobalScope.get();
   auto mock_name = MakeShared<TypeIdentifierAst>(
-    PosStart(), Str("$closure") + spp::utils::Uid(), nullptr);
+    PosStart(), Str("$closure") + Uid(), nullptr);
   auto mock_ast = MakeUnique<ClassPrototypeAst>(
     SPP_NO_ANNOTATIONS, nullptr, mock_name, nullptr, nullptr);
   auto mock_scope = MakeUnique<Scope>(

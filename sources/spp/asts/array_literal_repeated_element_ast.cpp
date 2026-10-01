@@ -6,15 +6,18 @@ module spp.asts.array_literal_repeated_element_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.mem_info_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
@@ -92,21 +95,24 @@ auto ArrayLiteralRepeatedElementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+auto ArrayLiteralRepeatedElementAst::SkipSizeScope(
+  ScopeManager *sm) const -> void {
+  if (_SizeScope == nullptr) { return; }
+  sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _SizeScope);
+  sm->ExhaustScope();
+  sm->MoveOutOfCurrentScope();
+}
+
 auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppCompileTimeConstantError;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppNonCopyableTypeError;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
+  using generate::common_types::ArrayType;
 
   // Analyse the repeated element.
   Elem->Stage7_AnalyseSemantics(sm, meta);
-  Size->Stage7_AnalyseSemantics(sm, meta);
-
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Elem, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Elem));
   const auto elem_type = Elem->InferType(sm, meta);
   const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type.get());
@@ -117,41 +123,83 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     not elem_type_sym->IsCopyable(),
     {sm->CurrentScope}, ERR_ARGS(*this, *Elem, *elem_type));
 
-  // Check the size argument is a valid AST.
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Size, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Size));
-
   // Ensure the element's type is not a borrow type, as array
   // elements cannot be borrows.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*elem_type, *sm),
+    type_predicates::IsTypeBorrowed(*elem_type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
-  // Ensure the size is a constant expression (if symbolic).
-  auto tm = ScopeManager(
-    sm->GlobalScope, sm->CurrentScope);
-  Size->Stage9_CompTimeResolve(&tm, meta);
+  // A literal size is the array's size as it is.
+  if (Size->To<LiteralAst>() != nullptr) {
+    Size->Stage7_AnalyseSemantics(sm, meta);
+    _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
+    _ArrayType->Stage7_AnalyseSemantics(sm, meta);
+    return;
+  }
 
+  // Anything else is analysed on a copy, in a scope of its own
+  // (see "_SizeScope"), leaving "Size" as written.
+  auto scope_name = analyse::scopes::ScopeBlockName::FromParts("array-size", {}, Size->PosStart());
+  sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+  _SizeScope = sm->CurrentScope;
+  _AnalysedSize = AstClone(Size);
+  _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
+  RaiseIf<SppInvalidPrimaryExpressionError>(
+    not expr_utils::IsPrimaryExprTypeValid(*_AnalysedSize, *sm),
+    {sm->CurrentScope}, ERR_ARGS(*_AnalysedSize));
+
+  // In a template, the size may depend on a generic that has no
+  // value yet ("n + 1_uz", or a "case" reading "n"), so it is not
+  // evaluated: it is kept as written, as a comp generic argument
+  // is, and each instantiation folds its own clone. The type is
+  // analysed here, in the size's scope, with the written size as
+  // its argument.
+  if (monomorphization::IsInTemplate(*sm->CurrentScope)) {
+    _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
+    _ArrayType->Stage7_AnalyseSemantics(sm, meta);
+    sm->MoveOutOfCurrentScope();
+    return;
+  }
+  sm->MoveOutOfCurrentScope();
+
+  // Otherwise, the size must be a constant: it is folded with its
+  // own walk over the size's scope, as a "cmp" statement's value
+  // is, and becomes the literal it folds to.
+  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+  tm.Reset(_SizeScope);
+  _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
   RaiseIf<SppCompileTimeConstantError>(
     meta->CmpResult == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*Size));
+    {sm->CurrentScope}, ERR_ARGS(*_AnalysedSize));
   Size = AstClone(meta->CmpResult);
 
-  // Make sure the generic array type is analysed for generic
-  // generation.
-  InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
+  _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
+  _ArrayType->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of the repeated element (is it initialized
   // etc).
   Elem->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
+  mem_utils::ValidateSymbolMemory(
     *Elem, *TokSemicolon, *sm, true, true, true, false, meta);
+
+  // The analysed size is checked in its own scope, like any
+  // analysed expression; it is a comp-time value, so it is only
+  // read, never moved. Whatever else is in that scope (a
+  // template's type analysis) is then skipped.
+  if (_SizeScope != nullptr) {
+    sm->MoveToNextScope();
+    SPP_ASSERT(sm->CurrentScope == _SizeScope);
+    _AnalysedSize->Stage8_CheckMemory(sm, meta);
+    mem_utils::ValidateSymbolMemory(
+      *_AnalysedSize, *TokSemicolon, *sm, true, true, true, false, meta);
+    sm->ExhaustScope();
+    sm->MoveOutOfCurrentScope();
+  }
 }
 
 auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
@@ -159,6 +207,7 @@ auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
   // Convert the inner element to a compile-time value.
   Elem->Stage9_CompTimeResolve(sm, meta);
   Elem = AstClone(meta->CmpResult);
+  SkipSizeScope(sm);
 
   // Wrap the compile-time array value.
   meta->CmpResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
@@ -167,7 +216,7 @@ auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
 
 auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using spp::utils::Uid;
+  IMPORT_UTILS_AND_UID;
 
   // Get the length that the array will be created for,
   // from the generic comp arg (always resolved by now).
@@ -183,6 +232,7 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     // array below.
     const auto llvm_rt_elem = Elem->Stage11_CodeGen(sm, meta, ctx);
     SPP_ASSERT(llvm_rt_elem != nullptr);
+    SkipSizeScope(sm);
 
     // Create the array type. The array type wraps
     // the llvm determined element type, and the length
@@ -241,6 +291,7 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
       Elem->Stage11_CodeGen(sm, meta, ctx));
     SPP_ASSERT(llvm_ct_elem != nullptr);
+    SkipSizeScope(sm);
 
     // Create the array type. The array type wraps
     // the llvm determined element type, and the length
@@ -267,11 +318,10 @@ auto ArrayLiteralRepeatedElementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::ArrayType;
 
-  // Create the standard "std::array::Arr[T, n]" type,
-  // with generic arguments.
-  auto elem_type = Elem->InferType(sm, meta);
-  auto array_type = ArrayType(
-    TokL->PosStart(), std::move(elem_type), AstClone(Size));
+  // The type built in stage 7 (see "_ArrayType"). Only a literal
+  // not yet analysed has none, and one is built for it as it is.
+  if (_ArrayType != nullptr) { return _ArrayType; }
+  auto array_type = ArrayType(TokL->PosStart(), Elem->InferType(sm, meta), AstClone(Size));
   array_type->Stage7_AnalyseSemantics(sm, meta);
   return array_type;
 }

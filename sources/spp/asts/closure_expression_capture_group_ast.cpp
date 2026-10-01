@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.closure_expression_capture_group_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -143,7 +145,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
       const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Sym;
       if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
-        cap_sym->MemInfo->AstMoved = {cap.get(), sm->CurrentScope};
+        cap_sym->MemInfo->MovedBy(*cap, sm->CurrentScope);
       }
     }
   }
@@ -151,10 +153,11 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 
 auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Build the variable bindings from the environment object.
   // This allows the body to remain unchanged as the variables
   // get loaded from the environment struct.
-  const auto uid = "." + spp::utils::Uid();
+  const auto uid = "." + Uid();
   for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
     const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
     const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);

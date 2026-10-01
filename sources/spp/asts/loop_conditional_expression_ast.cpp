@@ -103,6 +103,12 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
+
+    // The body never yields the loop's value ("exit" does), so
+    // it is not what the loop is being assigned to - as its
+    // code generation already treats it.
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
     Body->Stage7_AnalyseSemantics(sm, meta);
     if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
       m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
@@ -134,15 +140,104 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
     sm->GlobalScope, sm->CurrentScope);
   tm.Reset(sm->CurrentScope, sm->CurrentIterator());
 
-  ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
-  for (auto &m : {sm, &tm}) {
-    Cond->Stage8_CheckMemory(m, meta);
-    Body->Stage8_CheckMemory(m, meta);
+  mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
+
+  // The state the loop was entered with, for the path that
+  // never runs the body.
+  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+
+  // The second pass is the next iteration seeing what the first
+  // left behind. A body that never reaches its end (it always
+  // leaves by "exit"/"ret", or is "!") has no next iteration
+  // unless a "skip" starts one.
+  const auto skips_before = meta->LoopSkipsSeen;
+  auto exit_states = Vec<Pair<Ast const*, ScopeSnapshot>>();
+  meta->LoopExitStates.EmplaceBack(&exit_states);
+  auto skip_moves = Vec<Pair<VariableSymbol*, Ast const*>>();
+  auto *const outer_skip_moves = meta->LoopSkipMoves;
+  meta->LoopSkipMoves = &skip_moves;
+  Cond->Stage8_CheckMemory(sm, meta);
+  Body->Stage8_CheckMemory(sm, meta);
+  meta->LoopSkipMoves = outer_skip_moves;
+
+  // What a "skip" left moved is how the next iteration can begin
+  // too, even if the body's end puts it back. Only for what lives
+  // outside the loop: a "let" in the body is declared afresh.
+  for (auto const &[sym, skip] : skip_moves) {
+    const auto outer = genex::any_of(pre_loop_state, [sym](auto const &entry) { return entry.first.get() == sym; });
+    if (outer and spp::get<0>(sym->MemInfo->AstMoved) == nullptr) {
+      sym->MemInfo->IsInconsistentlyMoved = {const_cast<Ast*>(skip), this};
+    }
   }
+  const auto body_diverges = control_flow::Diverges(*Body, sm, meta);
+  if (not body_diverges or meta->LoopSkipsSeen != skips_before) {
+    meta->LoopSkipMoves = &skip_moves;
+    Cond->Stage8_CheckMemory(&tm, meta);
+    Body->Stage8_CheckMemory(&tm, meta);
+    meta->LoopSkipMoves = outer_skip_moves;
+  }
+
+  meta->LoopExitStates.PopBack();
 
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
     ElseBlock->Stage8_CheckMemory(sm, meta);
+  }
+
+  // The state after the loop is the merge of every path out of
+  // it, as for the branches of a "case". A condition other than
+  // "true" can end the loop: before the first iteration (the
+  // state it was entered with), or after one that reached the
+  // body's end (the state now). An "else" block is where both
+  // of those go, so its end stands for them. Every "exit" is a
+  // path out too, with the state it was reached in.
+  const auto cond_bool = Cond->To<BooleanLiteralAst>();
+  const auto cond_can_end = cond_bool == nullptr or not cond_bool->IsTrue();
+  const auto body_end_reached = not body_diverges or meta->LoopSkipsSeen != skips_before;
+
+  // Each path's state for one symbol: "nullptr" is the state it
+  // is in now, which needs no restoring.
+  auto paths = Vec<Pair<Ast const*, ScopeSnapshot const*>>();
+  if (cond_can_end and ElseBlock != nullptr) { paths.EmplaceBack(ElseBlock.get(), nullptr); }
+  if (cond_can_end and ElseBlock == nullptr) {
+    if (body_end_reached) { paths.EmplaceBack(Body.get(), nullptr); }
+    paths.EmplaceBack(TokLoop.get(), &pre_loop_state);
+  }
+  for (auto const &[exit_tok, state] : exit_states) { paths.EmplaceBack(exit_tok, &state); }
+
+  // A loop nothing leaves ("loop true { }") has no state after it.
+  if (paths.IsEmpty()) {
+    sm->MoveOutOfCurrentScope();
+    return;
+  }
+  for (auto const &[sym, _] : pre_loop_state) {
+    const auto state_on = [&](auto const &path) -> MemoryInfoSnapshot {
+      if (path.second == nullptr) { return sym->MemInfo->Snapshot(); }
+      for (auto const &[s, snapshot] : *path.second) { if (s == sym) { return snapshot; } }
+      return sym->MemInfo->Snapshot();
+    };
+
+    // The first path's state is the one carried on; the rest have
+    // to agree with it about what is initialized and moved. An
+    // "exit" leaves the body's scopes without reaching their ends,
+    // which is where a symbol declared in them releases the borrows
+    // it holds, so those are released here: nothing inside the loop
+    // outlives it.
+    const auto released = [&](MemoryInfoSnapshot state) {
+      state.AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto const &entry) {
+        auto const *const container = spp::get<0>(entry)->template To<IdentifierAst>();
+        return container != nullptr and not genex::any_of(pre_loop_state, [&](auto const &outer) {
+          return *outer.first->Name == *container;
+        });
+      });
+      return state;
+    };
+    const auto first = released(state_on(paths[0]));
+    sym->MemInfo->FillFromSnapshot(first);
+    for (auto const &path : paths | genex::views::drop(1)) {
+      memory_state::MarkInconsistentPaths(
+        *sym, first, released(state_on(path)), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
+    }
   }
 
   // Exit the loop scope.

@@ -38,17 +38,19 @@ namespace spp::analyse::utils::marker_sups {
      * superimposed as often as they are the type written. The type itself is judged as it is held (a borrow is no
      * marker), its super classes as the classes they are.
      * @param ref The type, as it is held.
+     * @param scope The scope the type and its super classes are read in.
      * @param is_marker Whether a type is the marker being searched for.
      * @return Every match, the type itself first.
      */
     auto FindMarkerSups(
       TypeRef const &ref,
+      Scope const &scope,
       std::function<bool(TypeRef const&)> const &is_marker)
       -> Vec<TypeSymbol*> {
       auto found = Vec<TypeSymbol*>();
       if (is_marker(ref)) { found.EmplaceBack(ref.Sym); }
       for (auto *sup : type_members::SuperClassTypes(*ref.Sym)) {
-        if (is_marker(TypeRef{.Sym = sup})) { found.EmplaceBack(sup); }
+        if (is_marker(TypeRef::OfResolved(*sup, scope))) { found.EmplaceBack(sup); }
       }
       return found;
     }
@@ -116,7 +118,7 @@ auto spp::analyse::utils::marker_sups::GetGenAndYieldTypes(
 
   // Search the type itself, then its super classes by symbol, for a direct generator type.
   const auto generator_candidates = FindMarkerSups(
-    ref, [&](TypeRef const &t) { return type_predicates::IsTypeGen(t, scope); });
+    ref, scope, [&](TypeRef const &t) { return type_predicates::IsTypeGen(t, scope); });
 
   // If there are no Gen or GenOnce super types, then the
   // generator and yield type cannot be obtained, so either
@@ -172,7 +174,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
   if (members.IsEmpty()) { members.EmplaceBack(yield_ref); }
 
   const auto holds_done = genex::any_of(
-    members, [&](auto const &m) { return m.Sym != nullptr and TypeEq(m, done_ref, scope, scope, false); });
+    members, [&](auto const &m) { return m.Sym != nullptr and TypeEq(m, done_ref, scope, scope); });
   if (holds_done) {
     Raise<errors::SppYieldTypeContainsGenDoneError>({&scope}, ERR_ARGS(expr, *yield_type, what));
   }
@@ -194,7 +196,7 @@ auto spp::analyse::utils::marker_sups::GetTryType(
 
   // Search the type itself, then its super classes by symbol, for a direct try type.
   const auto try_type_candidates = FindMarkerSups(
-    ref, [&](TypeRef const &t) { return type_predicates::IsTypeTry(t, *sm.CurrentScope); });
+    ref, *sm.CurrentScope, [&](TypeRef const &t) { return type_predicates::IsTypeTry(t, *sm.CurrentScope); });
 
   // If there are no Try super types, then the try type cannot
   // be obtained, so either throw an error or return nullptr.
@@ -233,9 +235,9 @@ auto spp::analyse::utils::marker_sups::GetFwdTypes(
   if (sym.IsTypeGeneric() or sym.LinkedScope == nullptr) { return {nullptr, nullptr}; }
 
   // The first FwdRef and the first FwdMut, searching the type and then its super classes.
-  const auto self = TypeRef{.Sym = const_cast<TypeSymbol*>(&sym)};
+  const auto self = TypeRef::OfResolved(const_cast<TypeSymbol&>(sym), scope);
   const auto first = [&](TypeAst const &marker) -> TypeSymbol* {
-    const auto found = FindMarkerSups(self, [&](TypeRef const &t) {
+    const auto found = FindMarkerSups(self, scope, [&](TypeRef const &t) {
       return type_compare::IsTemplate(*t.Sym, marker, scope);
     });
     return found.IsEmpty() ? nullptr : found[0];
@@ -249,10 +251,21 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> Unique<PostfixExpressionAst> {
+  // The receiver is analysed a second time in the built call (it is a clone of an already analysed expression), which
+  // is what the other operators that map themselves onto a method call do too.
+  if (not CanForward(receiver_ref, *sm->CurrentScope)) { return nullptr; }
+  return BuildFwdCall(AstClone(&receiver), receiver_ref, sm, meta);
+}
+
+auto spp::analyse::utils::marker_sups::BuildFwdCall(
+  Unique<ExpressionAst> &&receiver,
+  TypeRef const &receiver_ref,
+  ScopeManager *sm,
+  meta::CompilerMetaData *meta)
+  -> Unique<PostfixExpressionAst> {
   // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".
-  if (receiver_ref.Sym == nullptr) { return nullptr; }
+  if (not CanForward(receiver_ref, *sm->CurrentScope)) { return nullptr; }
   const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(*receiver_ref.Sym, *sm->CurrentScope);
-  if (fwd_ref_type == nullptr and fwd_mut_type == nullptr) { return nullptr; }
 
   // Which of the two is taken follows the receiver's own convention: a value borrowed mutably forwards to a mutable
   // borrow of what it points at. Preferring the immutable one unconditionally turned a "&mut" receiver into a "&"
@@ -263,15 +276,22 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   // Build "<receiver>.fwd_ref()". The forwarding coroutines return a "GenOnce", so the call resumes itself and the
   // expression evaluates to the borrow of the forwarded-to value.
   auto field_name = MakeUnique<IdentifierAst>(
-    receiver.PosStart(), wants_mut or fwd_ref_type == nullptr ? "fwd_mut" : "fwd_ref");
+    receiver->PosStart(), wants_mut or fwd_ref_type == nullptr ? "fwd_mut" : "fwd_ref");
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(&receiver), std::move(field));
+  auto member_access = MakeUnique<PostfixExpressionAst>(std::move(receiver), std::move(field));
   auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
   auto fwd_call = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
 
-  // Analyse the built call, so that it can be inferred from and generated like any other analysed expression. The
-  // receiver is analysed a second time here (it is a clone of an already analysed expression), which is what the
-  // other operators that map themselves onto a method call do too.
+  // Analyse the built call, so that it can be inferred from and generated like any other analysed expression.
   fwd_call->Stage7_AnalyseSemantics(sm, meta);
   return fwd_call;
+}
+
+auto spp::analyse::utils::marker_sups::CanForward(
+  TypeRef const &receiver_ref,
+  Scope const &scope)
+  -> bool {
+  if (receiver_ref.Sym == nullptr) { return false; }
+  const auto [fwd_ref_type, fwd_mut_type] = GetFwdTypes(*receiver_ref.Sym, scope);
+  return fwd_ref_type != nullptr or fwd_mut_type != nullptr;
 }

@@ -121,25 +121,26 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+namespace {
+  /// The left-hand side's symbol, when it names a pack not bound
+  /// to its tuple yet ("xs" in a template's "..xs: S32").
+  auto UnboundPack(
+    spp::asts::ExpressionAst const &lhs,
+    spp::analyse::scopes::ScopeManager const &sm)
+    -> spp::analyse::scopes::VariableSymbol const* {
+    IMPORT_UTILS;
+    auto const *const name = lhs.To<spp::asts::IdentifierAst>();
+    if (name == nullptr) { return nullptr; }
+    auto const *const sym = sm.CurrentScope->GetVarSymbol(name);
+    return sym != nullptr and packs::IsUnboundPack(*sym, *sm.CurrentScope) ? sym : nullptr;
+  }
+}
+
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppExpressionNotTryError;
-  using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::errors::SppMemberAccessOutOfBoundsError;
-  using analyse::errors::SppMemberAccessStaticOperatorExpectedError;
-  using analyse::utils::expr_utils::ClosestScopes;
-  using analyse::utils::expr_utils::MemberAccessForm;
-  using analyse::utils::expr_utils::MembersReachableBy;
-  using analyse::utils::expr_utils::RaiseIfAmbiguous;
-  using analyse::utils::expr_utils::RaiseMissingIdentifierAndClosestOptions;
-  using analyse::utils::expr_utils::ScopesDeclaringVar;
-  using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
-  using analyse::utils::type_predicates::IsIndexWithinBound;
-  using analyse::utils::type_utils::BuildFwdCall;
-  using analyse::utils::visibility_utils::CheckTypeMemberVisibility;
-  using analyse::utils::visibility_utils::IsTypeMemberVisible;
-  using namespace analyse::utils;
+  IMPORT_UTILS;
+  using member_lookup::MemberAccessForm;
 
   // Already rewritten against a forwarded-to value by an
   // earlier pass, which analysed the rewrite as it built
@@ -152,8 +153,12 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     meta->PostfixExpressionLhs->To<TypeAst>() != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
 
-  // Numeric index access (for tuples).
+  // Numeric index access (for tuples). An unbound pack's length
+  // is only known per instantiation, where it is a tuple and is
+  // checked as one; here it only has an element type.
   if (std::isdigit(Name->Val[0])) {
+    if (UnboundPack(*meta->PostfixExpressionLhs, *sm) != nullptr) { return; }
+
     // The lhs's type is only spelled out for the errors.
     const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention();
 
@@ -466,18 +471,20 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   // Get the type of the left-hand-side expression.
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
 
-  // Numeric index access (for tuples).
+  // Numeric index access (for tuples), or an element of a pack
+  // not yet bound to its tuple, which is typed as its element.
   if (std::isdigit(Name->Val[0])) {
-    return GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
+    if (auto const *const pack = UnboundPack(*meta->PostfixExpressionLhs, *sm); pack != nullptr) {
+      return sm->CurrentScope->GetTypeSymbol(pack->Type.get())->FqName();
+    }
+    return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
   }
 
   // Get the field symbol and return its type. Resolved by
   // access form, so that an attribute is what this reads on
   // a type that also declares a constant of that name.
-  const auto lhs_sym = lhs_ref.Sym;
-  const auto var_sym = RuntimeMemberOf(*lhs_sym->LinkedScope, *Name);
-  const auto field_type = var_sym->Type;
-  return lhs_sym->LinkedScope->GetTypeSymbol(field_type.get())->FqName();
+  // Named from its identity, which means the same in any scope; the field's written type names the owner's parameters.
+  return sm->CurrentScope->TypeAstOf(InferTypeRef(sm, meta).Id);
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
@@ -486,10 +493,10 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // side's arguments; a named field is its type's symbol, where the field's type resolves.
   if (_MappedFwd != nullptr) { return _MappedFwd->InferTypeRef(sm, meta); }
   if (std::isdigit(Name->Val[0])) { return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope); }
+  // Read where the field is declared for this instance: its owner's scope, which binds the parameters its type names.
   const auto lhs_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym;
   const auto var_sym = RuntimeMemberOf(*lhs_sym->LinkedScope, *Name);
-  return TypeRef::OfSym(
-    *var_sym->TypeRefIn(*lhs_sym->LinkedScope).Sym, *sm->CurrentScope);
+  return var_sym->TypeRefIn(*lhs_sym->LinkedScope);
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {

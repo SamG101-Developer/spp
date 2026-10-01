@@ -89,17 +89,19 @@ public:
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   /// The comp generic parameter this name resolved to where it was
-  /// written, if it was stamped with one. A lookup of a stamped name
-  /// asks "Scope::CanonVar" what that parameter means from the scope
-  /// asking, instead of resolving the spelling again there - which
-  /// would read a caller's "w" as a callee's parameter of that name.
-  SPP_ATTR_NODISCARD auto Stamp() const noexcept -> spp::analyse::scopes::VariableSymbol* {
-    return _Stamp;
+  /// written, by its identity ("ParamId"); 0 for none. A lookup of
+  /// it asks "Scope::CanonVar" what that parameter means from the
+  /// scope asking, instead of resolving the spelling again there -
+  /// which would read a caller's "w" as a callee's parameter of that
+  /// name.
+  SPP_ATTR_NODISCARD auto WrittenParam() const noexcept -> std::uint64_t {
+    return _WrittenParam;
   }
 
-  /// Stamp this name with the comp parameter it resolved to.
-  auto SetStamp(spp::analyse::scopes::VariableSymbol *const sym) const noexcept -> void {
-    _Stamp = sym;
+  /// Record the comp parameter this name resolved to; see
+  /// "WrittenParam".
+  auto SetWrittenParam(const std::uint64_t param_id) const noexcept -> void {
+    _WrittenParam = param_id;
   }
 
 private:
@@ -112,7 +114,7 @@ private:
 
   utils::InternedId _NameId;
 
-  mutable spp::analyse::scopes::VariableSymbol *_Stamp = nullptr;
+  mutable std::uint64_t _WrittenParam = 0;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

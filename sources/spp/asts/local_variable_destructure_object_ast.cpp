@@ -144,11 +144,13 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // check the shape ("IsTypeTup" / "IsTypeArr"). Manually
   // apply the same semantics here.
   const auto conv_only_mismatch = _FromCasePattern
-    and type_compare::TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope, false);
+    and type_compare::TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
-    not type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern) and not conv_only_mismatch,
+    not (_FromCasePattern
+      ? type_compare::Assignable(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)
+      : type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) and not conv_only_mismatch,
     {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
@@ -185,7 +187,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // elements index, so it is layered on top of the temporary rather than on the value.
   if (_FromCasePattern
     and not conv_only_mismatch
-    and not type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
+    and not type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) {
     const auto uid = Uid();
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);

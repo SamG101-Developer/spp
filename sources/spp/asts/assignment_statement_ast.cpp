@@ -167,16 +167,17 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
     }
 
     // Ensure the lhs and rhs have the same type.
-    auto rhs_type = rhs_expr->InferType(sm, meta);
+    // Compared as resolved, each where it was inferred; the written forms are only for the message.
+    const auto lhs_ref = lhs_expr->InferTypeRef(sm, meta);
+    const auto rhs_ref = rhs_expr->InferTypeRef(sm, meta);
+    const auto rhs_type = rhs_expr->InferType(sm, meta);
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(*lhs_type, *rhs_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::Assignable(lhs_ref, rhs_ref, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
 
     // A function named as the value stands for the overload the
     // target's type asks for.
-    function_values::InstantiateFunctionValue(
-      TypeRef::Of(*rhs_type, *sm->CurrentScope),
-      TypeRef::Of(*lhs_type, *sm->CurrentScope), sm, meta);
+    function_values::InstantiateFunctionValue(rhs_ref, lhs_ref, sm, meta);
   }
 }
 
@@ -216,6 +217,16 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     mem_utils::ValidateSymbolMemory(
       *rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
 
+    // Writing over a value that a live coroutine, future or
+    // iterator borrows changes what that borrow points at, just
+    // as moving it out would, and is refused the same way.
+    if ((regions::IsAttr(lhs_expr, sm) or regions::IsIdentifier(lhs_expr))
+      and not lhs_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
+      const auto [where_contained, _] = lhs_sym->MemInfo->AstContainersOfEscapingBorrows[0];
+      Raise<SppMovingEscapingBorrowedMemoryError>(
+        {sm->CurrentScope}, ERR_ARGS(*where_contained, *lhs_expr));
+    }
+
     // For an attribute-based left-hand-side, we ensure that
     // the object is valid and mark it as being written in
     // place, to fine tune the memory error system. Resolve
@@ -228,7 +239,23 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
 
     // Otherwise, resolve the moved identifier's memory status
     // to the "initialised" state.
-    else if (IsIdentifier(lhs_expr)) {
+    // Todo: The value it held is discarded here without being
+    //  consumed, so a live non-Copy value leaks
+    //  (TestLinearScopeExit.test_invalid_assign_over_live_*).
+    //  "linear_utils::CheckOverwrite(*lhs_sym, *this,
+    //  "Assignment", *sm)" here catches it, but ~40 existing
+    //  tests overwrite a live value on purpose ("let mut x =
+    //  f(1); x = 2" to check a type, and "S32 or Bool" is not
+    //  "Copy"), and so do the async overwrite tests.
+    else if (regions::IsIdentifier(lhs_expr)) {
+      // An immutable may be given its value once. Stage 7 counts
+      // the assignments it sees, but a loop body is only checked
+      // for its second time round here, which is when an
+      // assignment inside it finds the value already there.
+      RaiseIf<SppInvalidMutationError>(
+        not lhs_sym->IsMutable and spp::get<0>(lhs_sym->MemInfo->AstInitialization) != nullptr,
+        {sm->CurrentScope},
+        ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
       lhs_sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     }
 

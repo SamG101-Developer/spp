@@ -24,16 +24,6 @@ namespace spp::analyse::utils::monomorphization {
     meta::CompilerMetaData *meta)
     -> void;
 
-  /// Rewrite each argument that names a bound generic as what it
-  /// is bound to, read from "scope": a type argument as the bound
-  /// type's qualified name, a comp argument as its value (or what
-  /// it folds to). A function instantiation's arguments are
-  /// recorded this way.
-  auto CanonicaliseGenericArgs(
-    GenericArgumentGroupAst &args,
-    Scope const &scope)
-    -> void;
-
   /// Create the generic substitution for a class, and register
   /// it against the base class. This adds information into the
   /// module symbol tables / scope tree etc.
@@ -45,14 +35,15 @@ namespace spp::analyse::utils::monomorphization {
     meta::CompilerMetaData *meta)
     -> Scope*;
 
-  /// Create generic substitution for a function, and register
-  /// it against the base function.
+  /// Create the scope of a generic substitution of a function,
+  /// its bindings registered; the caller files it against the
+  /// base function.
   auto CreateGenericFunScope(
     Scope const &old_fun_scope,
     GenericArgumentGroupAst const &generic_args,
     ScopeManager *sm,
     meta::CompilerMetaData *meta)
-    -> Scope*;
+    -> Unique<Scope>;
 
   /// Create generic substitution for a superimposition, and
   /// register it against the internal superimposition cache.
@@ -78,9 +69,12 @@ namespace spp::analyse::utils::monomorphization {
 
   /// The prototype a call to "fn_proto" with "combined_generics"
   /// resolves to: the template itself when the arguments pin
-  /// nothing, otherwise its substitution, created and queued for
-  /// analysis the first time it is reached. "variadic_pack_type"
-  /// is the tuple a variadic parameter's arguments form.
+  /// nothing, otherwise its substitution, built the first time it
+  /// is reached. A call is checked against it before the call
+  /// knows which overload it makes, so it is not required
+  /// ("RequireSubstitution") - nothing analyses or emits it until
+  /// a call chooses it. "variadic_pack_type" is the tuple a
+  /// variadic parameter's arguments form.
   SPP_EXP_FUN auto PotentiallyGenerateGenericSubstitutedPrototype(
     FunctionPrototypeAst *fn_proto,
     Scope const *fn_scope,
@@ -96,9 +90,15 @@ namespace spp::analyse::utils::monomorphization {
   /// on one has a value yet; an instantiation's scopes bind them.
   SPP_EXP_FUN auto IsInTemplate(Scope const &scope) -> bool;
 
+  /// Mark the prototype a call was resolved to as required: when
+  /// it is a substitution of a generic function, it is queued for
+  /// analysis and will be emitted. Nothing for a prototype that
+  /// is not a substitution.
+  SPP_EXP_FUN auto RequireSubstitution(FunctionPrototypeAst const &proto) -> void;
+
   /// Instantiate a generic substitution of a function, creating
-  /// the new body etc for analysis. Typically called from the
-  /// function_values wrapper.
+  /// the new body etc for analysis, and require it. Typically
+  /// called from the function_values wrapper.
   SPP_EXP_FUN auto InstantiateOverload(
     FunctionPrototypeAst *fn_proto,
     Scope const *fn_scope,

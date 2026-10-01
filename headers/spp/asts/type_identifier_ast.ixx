@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_identifier_ast;
+import spp.analyse.scopes.instance_key;
 import spp.asts.ast_kind;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
@@ -87,8 +88,8 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto WithoutGenerics() const -> Shared<TypeAst> override;
 
-  /// Stamp this name's head with the template (or alias) it names wherever it is read; see "_TemplateStamp".
-  auto SetTemplateStamp(TypeSymbol *const sym) const noexcept -> void { _TemplateStamp = sym; }
+  /// Record the template (or alias) this name's head names wherever it is read; see "_TemplateWritten".
+  auto SetTemplateWritten(const analyse::scopes::TypeId id) const noexcept -> void { _TemplateWritten = id; }
 
   SPP_ATTR_NODISCARD auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> override;
 
@@ -123,7 +124,19 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   /// qualified reference built from those names carries it.
   auto MarkNeverType() -> void;
 
+  /// Infer this type's arguments, at its next analysis, from what
+  /// an object initializer gives each attribute (named first)
+  /// against the attribute's declared type (last): "Box(val=1)"
+  /// is a "Box[S32]". Handed to this name alone, so no other type
+  /// analysed on the way infers from them.
+  auto InferFromAttributes(
+    Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> &&equations)
+    -> void;
+
 private:
+  /// What "InferFromAttributes" was given, consumed by the next analysis.
+  Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> _AttributeEquations;
+
   std::size_t _Pos;
 
   bool _IsNeverType;
@@ -148,10 +161,10 @@ private:
 
   bool _IsSourceWritten;
 
-  /// The template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc" of "Alloc[T]").
-  /// Kept through "Clone", "SubstituteGenerics" and "WithGenerics", and handed to "WithoutGenerics", so the stripped
-  /// name resolves to that declaration from anywhere ("Scope::Canon") rather than by its spelling.
-  mutable TypeSymbol *_TemplateStamp = nullptr;
+  /// The identity of the template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc"
+  /// of "Alloc[T]"). Kept through "Clone", "SubstituteGenerics" and "WithGenerics", and handed to "WithoutGenerics", so
+  /// the stripped name resolves to that declaration from anywhere ("Scope::ResolveWritten") rather than by its spelling.
+  mutable analyse::scopes::TypeId _TemplateWritten = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

@@ -33,6 +33,15 @@ namespace spp::analyse::utils::self_type {
     bool *substituted = nullptr)
     -> Shared<TypeAst>;
 
+  /// As above, with "Self" already decided ("self_type", or nothing
+  /// to substitute when null) rather than read off a scope.
+  SPP_EXP_FUN auto SubstituteSelfTypeAndAnalyse(
+    TypeAst const &type,
+    TypeAst const *self_type,
+    ScopeManager &sm,
+    meta::CompilerMetaData &meta)
+    -> Shared<TypeAst>;
+
   /// Replace every "Self" part of a written type with a type given
   /// outright, for the callers that decide what "Self" stands for
   /// themselves rather than reading it off the scope - overload

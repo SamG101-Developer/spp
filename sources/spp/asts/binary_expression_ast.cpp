@@ -229,7 +229,16 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     // in, like "not", for short-circuiting. Both operands must
     // be "Bool", again like "not".
     if (IsLogicalOperator()) {
+      // What an "is" on the left binds holds on the right of an
+      // "and" (the match succeeded), but not of an "or" - the right
+      // only runs when it failed.
+      const auto bound_before = meta->IsBindingsAdded.Len();
       Lhs->Stage7_AnalyseSemantics(sm, meta);
+      if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
+        for (auto i = bound_before; i < meta->IsBindingsAdded.Len(); ++i) {
+          meta->ExpiredIsBindings.EmplaceBack(meta->IsBindingsAdded[i]);
+        }
+      }
       Rhs->Stage7_AnalyseSemantics(sm, meta);
 
       const auto what = Str("\"") + TokOp->TokenData + "\" expression";

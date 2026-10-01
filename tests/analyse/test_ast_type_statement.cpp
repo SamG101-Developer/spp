@@ -160,7 +160,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type RecAlias = Vec[RecAlias]
 )");
 
-// A function-local alias runs stages 2-4 from inside stage 7, with the stage still reading as 7, so "NameGnArgs"
+// A function-local alias runs stages 2-4 from inside stage 7, with the stage still reading as 7, so "NamedGnArgs"
 // analyses the alias chain's own comp argument ("w" of "SizedIntegerSigned[w]") in the function's scope.
 // FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
@@ -208,4 +208,20 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type TupPairOf[T] = (T, T)
 
     fun f(x: TupPairOf[S32, Bool]) -> Void { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_alias_of_a_class_with_a_defaulted_generic, R"(
+    type MyString = Str
+
+    fun f(a: MyString) -> Void {
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeStatementAst,
+    test_valid_type_statement_qualified_generic_parameter_type, R"(
+    fun f(o: std::option::Opt[std::boolean::Bool]) -> std::void::Void { }
 )");

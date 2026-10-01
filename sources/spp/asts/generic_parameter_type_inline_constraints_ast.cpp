@@ -84,8 +84,8 @@ auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
 
     // Stamp it with what it means here, as it is read from wherever
     // the parameter is bound. A constraint imported by a "use" is
-    // an alias here, which "type_resolution::StampWrittenParts" follows.
-    type_resolution::StampWrittenParts(*constraint, *sm->CurrentScope);
+    // an alias here, which "type_resolution::RecordWrittenParts" follows.
+    type_resolution::RecordWrittenParts(*constraint, *sm->CurrentScope);
   }
 }
 

@@ -89,4 +89,20 @@ namespace spp::analyse::utils::marker_sups {
     meta::CompilerMetaData *meta)
     -> Unique<PostfixExpressionAst>;
 
+  /// As above, taking the receiver itself rather than a copy, for
+  /// an argument whose analysed value becomes the forwarding call's.
+  SPP_EXP_FUN auto BuildFwdCall(
+    Unique<ExpressionAst> &&receiver,
+    TypeRef const &receiver_ref,
+    ScopeManager *sm,
+    meta::CompilerMetaData *meta)
+    -> Unique<PostfixExpressionAst>;
+
+  /// Whether a value of this type forwards at all ("FwdRef" or
+  /// "FwdMut"), which is when "BuildFwdCall" builds a call.
+  SPP_EXP_FUN auto CanForward(
+    TypeRef const &receiver_ref,
+    Scope const &scope)
+    -> bool;
+
 }

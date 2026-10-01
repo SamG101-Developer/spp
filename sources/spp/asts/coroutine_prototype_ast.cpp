@@ -141,7 +141,7 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Check the return type superimposes the generator type.
     auto [generator_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
-      TypeRef::Of(*ret_type_sym->FqName(), *sm->CurrentScope), *sm->CurrentScope,
+      TypeRef::OfSym(*ret_type_sym, *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
     marker_sups::EnforceYieldTypeWithoutGenDone(
       yield_type.get(), is_once, *sm->CurrentScope, *ReturnType, "coroutine return type");
@@ -183,7 +183,7 @@ auto CoroutinePrototypeAst::Stage10_PreCodeGen(
   // are registered against their template, never visited as
   // prototypes in their own right.
   for (auto const &sub : _GenericSubstitutions) {
-    if (sub.Proto == nullptr or not sub.IsConcrete) { continue; }
+    if (not sub.Required or not sub.IsConcrete) { continue; }
     auto sub_target = sub.Proto.get();
     if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>(); sub_coro != nullptr) {
       sub_coro->_OwnerCtx = ctx;

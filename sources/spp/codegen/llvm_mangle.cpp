@@ -1,4 +1,5 @@
 module spp.codegen.llvm_mangle;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
@@ -15,6 +16,7 @@ import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.utils.interner;
 import genex;
 
 namespace spp::codegen::mangle {
@@ -108,15 +110,12 @@ namespace spp::codegen::mangle {
     auto MangleTypeNameResolvingSelf(
       analyse::scopes::TypeSymbol const &type_sym)
       -> Str {
-      const auto name = mangle_type_name(type_sym);
-      if (name != "Self" or type_sym.LinkedScope == nullptr or type_sym.LinkedScope->TySym == nullptr) {
-        return name;
+      // "Self" is mangled as the type it stands for: the class its linked scope belongs to, unless that is itself.
+      if (not type_sym.IsSelf() or type_sym.LinkedScope == nullptr or type_sym.LinkedScope->TySym == nullptr
+        or type_sym.LinkedScope->TySym.get() == &type_sym or type_sym.LinkedScope->TySym->IsSelf()) {
+        return mangle_type_name(type_sym);
       }
-
-      // Guard against a "Self" that resolves to itself,
-      // which would otherwise recurse forever.
-      const auto resolved = mangle_type_name(*type_sym.LinkedScope->TySym);
-      return resolved == "Self" ? name : resolved;
+      return mangle_type_name(*type_sym.LinkedScope->TySym);
     }
   }
 }
@@ -124,6 +123,35 @@ namespace spp::codegen::mangle {
 auto spp::codegen::mangle::mangle_type_name(
   analyse::scopes::TypeSymbol const &type_sym)
   -> Str {
+  // An instantiation is printed off its identity: its template's qualified name, then each argument as the symbol filed
+  // under it (else its identity's name). Its spelled arguments, read in its own scope, would be read through its own
+  // bindings, which can name the parameters they bind ("Args" bound to "Tup[FunMov[Args, Out], Args]") and grow.
+  using analyse::scopes::InstanceKey;
+  if (type_sym.Id != nullptr and type_sym.LinkedScope != nullptr
+    and analyse::scopes::HeadOf(type_sym.Id).Kind == InstanceKey::Tag::Inst) {
+    auto const &scope = *type_sym.LinkedScope;
+    auto const *const tmpl = static_cast<analyse::scopes::TypeSymbol const*>(analyse::scopes::HeadOf(type_sym.Id).Ptr);
+    auto out = tmpl->FqName()->WithoutGenerics()->ToString() + "[";
+    auto first = true;
+    for (auto const &arg : analyse::scopes::ArgsOf(analyse::scopes::HeadOf(type_sym.Id).Args)) {
+      if (not first) { out += ", "; }
+      first = false;
+      if (arg.Named) { out += Str(utils::InternedText(static_cast<utils::InternedId>(arg.Name))) + "="; }
+      if (arg.Type == nullptr) {
+        const auto value = analyse::scopes::Scope::CompValueOf(arg.Comp);
+        out += value != nullptr ? value->ToString() : Str(utils::InternedText(static_cast<utils::InternedId>(arg.Comp)));
+        continue;
+      }
+      const auto named = scope.TypeAstOf(arg.Type);
+      if (named != nullptr and named->GetConvention() != nullptr) { out += named->GetConvention()->ToString(); }
+      auto const *const sym = scope.SymbolOf(analyse::scopes::BareTypeId(arg.Type));
+      out += sym != nullptr and sym != &type_sym ? mangle_type_name(*sym)
+        : named != nullptr ? named->WithoutConvention()->ToString()
+        : Str("?");
+    }
+    return out + "]";
+  }
+
   // The qualified head is built from the scope tree, so
   // it reads the same however the type was written; the
   // arguments are printed by what they resolve to

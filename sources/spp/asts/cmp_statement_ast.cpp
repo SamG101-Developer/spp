@@ -214,7 +214,7 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
 
   // Check the value's type is the same as the given type;
   // it is only spelled out for the error.
-  if (not IsFromUseStatement() and not type_compare::TypeEq(
+  if (not IsFromUseStatement() and not type_compare::Assignable(
     TypeRef::Of(*Type, *sm->CurrentScope), Value->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto inferred_type = Value->InferType(sm, meta);
@@ -290,8 +290,12 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     TypeRef::Of(*Type, *sm->CurrentScope), ctx);
 
   // A type with no layout ("T" in an uninstantiated "sup"
-  // template) has no constant to emit.
-  if (llvm_type == nullptr) {
+  // template) has no constant to emit, and neither has one only
+  // written in terms of such a parameter ("Unit[T]"): its llvm
+  // struct is an unsized placeholder, not the instance's. The
+  // use site folds the value instead.
+  if (llvm_type == nullptr
+    or not type_predicates::IsTypeFullyConcrete(*Type, *sm->CurrentScope)) {
     if (owns_scope) {
       sm->ExhaustScope();
       sm->MoveOutOfCurrentScope();

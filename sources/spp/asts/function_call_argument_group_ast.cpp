@@ -8,8 +8,10 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.borrows;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.order_utils;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
 import spp.asts.convention_ast;
@@ -24,6 +26,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -113,11 +116,7 @@ auto FunctionCallArgumentGroupAst::GetPositionalArgs() const -> Vec<FunctionCall
 auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppExpansionOfNonTupleError;
-  using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppOrderInvalidError;
-  using analyse::utils::order_utils::DoOrderArgs;
-  using analyse::utils::type_predicates::IsTypeTup;
+  IMPORT_UTILS;
 
   // Check there are no duplicate argument names.
   const auto arg_names = GetKeywordArgs()
@@ -131,7 +130,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
   // Check the arguments are in the correct order.
-  const auto unordered_args = DoOrderArgs(Args
+  const auto unordered_args = order_utils::DoOrderArgs(Args
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());
@@ -150,7 +149,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Check the argument value is a tuple expression.
     const auto arg_ref = arg->InferTypeRef(sm, meta);
-    if (not IsTypeTup(arg_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTup(arg_ref, *sm->CurrentScope)) {
       const auto arg_type = arg->InferType(sm, meta);
       Raise<SppExpansionOfNonTupleError>({sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
     }
@@ -173,18 +172,18 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // checks are deferred to Stage8, because the "self" argument's
   // convention (for method calls) is only applied after overload
   // resolution.
-  for (auto const &arg : Args) {
+  for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate) {
+    const auto _meta_guard = MetaGuard(meta);
+    SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
+      meta->ReturnTypeOverloadResolverType = i < ExpectedTypes.Len() ? ExpectedTypes[i] : nullptr;
+    }
     arg->Stage7_AnalyseSemantics(sm, meta);
   }
 }
 
 auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppMemoryOverlapUsageError;
-  using analyse::errors::SppInvalidMutationError;
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
-  using analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow;
-  using analyse::utils::mem_utils::MemRegionOverlap;
+  IMPORT_UTILS;
 
   // If the target is a coroutine, or the target is called
   // as "async", then pins are required.
@@ -207,6 +206,16 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   // Get potential handle to bind escaping borrows to.
   const auto handle = meta->AssignmentTarget;
   const auto handle_sym = handle ? sm->CurrentScope->GetVarSymbolOutermost(*handle).first : nullptr;
+
+  // A coroutine or future created straight into a "ret" leaves
+  // the function with every borrow it was given, and nothing
+  // outside the function knows it holds them.
+  const auto into_return = handle != nullptr and handle->Val == "$ret";
+  const auto raise_if_returned = [&](FunctionCallArgumentAst const &arg) {
+    RaiseIf<SppSecondClassBorrowViolationError>(
+      into_return and pins_required, {sm->CurrentScope},
+      ERR_ARGS(*arg.Val, *arg.Val->InferType(sm, meta), "returned coroutine argument"));
+  };
 
   for (auto const &arg : Args) {
     // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
@@ -264,7 +273,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         auto const *where_borrow = sym != nullptr and spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr
           ? spp::get<0>(sym->MemInfo->AstBorrowed)
           : static_cast<Ast const*>(arg->Val.get());
-        Raise<analyse::errors::SppMoveFromBorrowedMemoryError>(
+        Raise<SppMoveFromBorrowedMemoryError>(
           {sm->CurrentScope}, ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
       }
     }
@@ -272,34 +281,45 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
     // outermost symbol, and so is invisible to all three branches below. "v[mut i]" is the shape; see the note on
     // "ValidateUnnamedArgumentBorrow" for why it arrives that way and why nothing else catches it.
-    ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
+    borrows::ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
 
     // An argument with no outermost symbol is a temporary, so
     // the borrow bookkeeping below has nothing to key on. But
     // in the special case that the unnamed argument is a tuple
     // or array, we need to check the elements inside it.
     if (sym == nullptr) {
-      if (arg->Conv == nullptr) { ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta); }
+      if (arg->Conv == nullptr) { mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta); }
       continue;
     }
 
     // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
     // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
     // for moving from borrowed context right here.
-    ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, meta);
 
     if (arg->Conv == nullptr) {
       // Ensure that attributes aren't being moved off of a borrowed value. Mark the move or partial move of the
       // argument. Function calls can only imply an inner scope, so it is guaranteed that lifetimes aren't being
       // extended.
-      ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta);
+
+      // A borrow passed on as it is - a borrow parameter - is held
+      // by a coroutine or future just as one written "&x" is.
+      if (const auto arg_ref = arg->Val->InferTypeRef(sm, meta); pins_required and arg_ref.IsBorrowed()) {
+        raise_if_returned(*arg);
+        if (handle_sym != nullptr) {
+          handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
+            {arg->Val.get(), arg_ref.Conv == ConventionTag::MUT, sm->CurrentScope});
+          sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
+        }
+      }
 
       // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
       // because the first argument requires the owned object to outlive the function call, and moving it as the
       // second argument breaks this. Doesn't apply to copyable types.
       if (not arg->Val->InferTypeRef(sm, meta).Sym->IsCopyable()) {
         auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
-          | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+          | genex::views::filter([&arg](auto const &x) { return regions::MemRegionOverlap(*x, *arg->Val); })
           | genex::to<Vec>();
 
         RaiseIf<SppMemoryOverlapUsageError>(
@@ -311,7 +331,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     else if (arg->Conv and *arg->Conv == ConventionTag::REF) {
       // Generate the list of overlapping borrows for immutable borrows.
       auto overlaps = borrows_mut
-        | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg->Val); })
+        | genex::views::filter([&arg](auto const &x) { return regions::MemRegionOverlap(*x, *arg->Val); })
         | genex::to<Vec>();
 
       // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
@@ -320,7 +340,8 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         ERR_ARGS(*overlaps[0], *arg->Val));
 
       // Save any escaping borrows into the handle's memory info.
-      if (handle and pins_required) {
+      raise_if_returned(*arg);
+      if (handle_sym != nullptr and pins_required) {
         // TODO: Test suite needs to take handle/lack of handle into account
         handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), false, sm->CurrentScope});
         sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
@@ -347,7 +368,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
       // Generate the list of overlapping borrows for mutable borrows.
       auto overlaps = genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
-        | genex::views::filter([&arg](auto &&x) { return MemRegionOverlap(*x, *arg->Val); })
+        | genex::views::filter([&arg](auto &&x) { return regions::MemRegionOverlap(*x, *arg->Val); })
         | genex::to<Vec>();
 
       // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
@@ -356,7 +377,8 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         ERR_ARGS(*overlaps[0], *arg->Val));
 
       // Save any escaping borrows into the handle's memory info.
-      if (handle and pins_required) {
+      raise_if_returned(*arg);
+      if (handle_sym != nullptr and pins_required) {
         // TODO: Test suite needs to take handle/lack of handle into account
         handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), true, sm->CurrentScope});
         sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});

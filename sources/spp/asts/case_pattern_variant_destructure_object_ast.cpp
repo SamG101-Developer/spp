@@ -76,7 +76,7 @@ namespace spp::asts {
         // Check that a variant is being considered, and that
         // we don't have a direct (non-narrowing) match.
         if (not type_predicates::IsTypeVariant(TypeRef::OfHead(*a, scope), scope)) { continue; }
-        if (type_compare::TypeEq(*a, *p, scope, scope, false)) { continue; }
+        if (type_compare::TypeEq(*a, *p, scope, scope)) { continue; }
         if (codegen::GetVariantIndexOfMember(
           TypeRef::Of(*a, scope), TypeRef::Of(*p, scope), scope).has_value()) {
           return {p, a};
@@ -181,7 +181,7 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   if (_CondSym != nullptr
     and type_predicates::IsTypeVariant(_CondSym->TypeRefIn(*sm->CurrentScope), *sm->CurrentScope)) {
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(
+      not type_compare::Assignable(
         _CondSym->TypeRefIn(*sm->CurrentScope),
         TypeRef::Of(*Type, *sm->CurrentScope),
         *sm->CurrentScope, *sm->CurrentScope),
@@ -340,7 +340,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       current_ptr = codegen::GetVariantPayloadPtr(
         current_ptr, llvm_subject_ty, "case.pattern.payload" + level_uid, ctx);
 
-      const auto alts = type_compare::VariantMemberTypes(
+      const auto alts = type_compare::VariantMember(
         *subject_type->WithoutConvention(), *sm->CurrentScope);
       if (*tag >= alts.Len()) { break; }
 

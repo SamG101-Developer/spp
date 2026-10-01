@@ -35,15 +35,22 @@ auto spp::analyse::utils::self_type::SubstituteSelfTypeAndAnalyse(
   meta::CompilerMetaData &meta,
   bool *const substituted)
   -> Shared<TypeAst> {
-  auto replaced = false;
-  auto t = SubstituteSelfType(type, scope, meta, &replaced);
-  if (substituted != nullptr) { *substituted = replaced; }
+  const auto self_type = scope.GetEnclosingSelfType(meta);
+  if (substituted != nullptr) { *substituted = self_type != nullptr and type_predicates::NamesSelfType(type); }
+  return SubstituteSelfTypeAndAnalyse(type, self_type.get(), sm, meta);
+}
 
-  // Only a type that actually had a "Self" replaced is analysed here. One that did not is handed back as the plain
-  // clone it is, so that this does not analyse a written type at a point its owner has not chosen to - and so that a
-  // "Self" left standing for want of an enclosing type is reported by whoever does analyse it.
-  if (not replaced) { return t; }
-
+auto spp::analyse::utils::self_type::SubstituteSelfTypeAndAnalyse(
+  TypeAst const &type,
+  TypeAst const *const self_type,
+  ScopeManager &sm,
+  meta::CompilerMetaData &meta)
+  -> Shared<TypeAst> {
+  // Only a type that actually had a "Self" replaced is analysed here. One that did not is handed back as a plain clone,
+  // so that this does not analyse a written type at a point its owner has not chosen to - and so that a "Self" left
+  // standing for want of an enclosing type is reported by whoever does analyse it.
+  if (self_type == nullptr or not type_predicates::NamesSelfType(type)) { return AstClone(&type); }
+  auto t = SubstituteSelfTypeWith(type, *self_type);
   const auto _meta_guard = meta::MetaGuard(&meta);
   meta.AllowAbstractType = true;
   t->Stage7_AnalyseSemantics(&sm, &meta);

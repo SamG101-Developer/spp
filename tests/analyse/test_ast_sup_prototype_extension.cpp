@@ -383,3 +383,22 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstSupPrototypeExtensionAst,
+    test_valid_extending_two_instantiations_of_one_generic_class, R"(
+    cls Base[B] { }
+    sup [B] Base[B] {
+        !public fun f1(&self, a: B) -> B { ret a }
+    }
+    cls D { }
+    sup D ext Base[Str] { }
+    sup D ext Base[Bool] { }
+
+    fun t() -> Void {
+        let d = D()
+        let mut x = d.f1(false)
+        x = false
+        let D(..) = d
+    }
+)");

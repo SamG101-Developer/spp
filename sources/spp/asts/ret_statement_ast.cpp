@@ -134,7 +134,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 
   // Type check the expression type against the return type of the enclosing subroutine.
   if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
-    const auto direct_match = type_compare::TypeEq(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+    const auto direct_match = type_compare::Assignable(*_RetType, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
     const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
     RaiseIf<SppTypeMismatchError>(
       not direct_match, {meta->EnclosingFunctionScope, sm->CurrentScope},
@@ -157,8 +157,17 @@ auto RetStatementAst::Stage8_CheckMemory(
 
   // Ensure the argument isn't moved or partially moved (for all conventions)
   if (Expr != nullptr) {
-    Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
+    // Named as the target, as code generation names it, so that a
+    // coroutine created straight into the return is known to be
+    // leaving the function with whatever it borrows.
+    {
+      const auto _meta_guard = MetaGuard(meta);
+      if (meta->AssignmentTarget == nullptr) {
+        meta->AssignmentTarget = MakeShared<IdentifierAst>(TokRet->PosStart(), "$ret");
+      }
+      Expr->Stage8_CheckMemory(sm, meta);
+    }
+    mem_utils::ValidateSymbolMemory(*Expr, *TokRet, *sm, true, true, true, true, meta);
   }
 
   // A "ret" leaves every scope up to the function at once, so no

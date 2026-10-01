@@ -155,10 +155,12 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   // When we are yielding a value that *forwards* to the return
   // type, we need to call the forwarding function and inject
   // it into the expression field of this ast.
-  if (Expr != nullptr and TypeFwdEq(
+  const auto matches_as_is = Expr != nullptr
+    and type_compare::TypeEq(*yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+  if (Expr != nullptr and not matches_as_is and type_compare::TypeFwdEq(
     *expr_type, *yield_type, *sm->CurrentScope, *meta->EnclosingFunctionScope)) {
     const auto expr_ref = TypeRef::Of(*expr_type, *sm->CurrentScope);
-    if (auto fwd_call = BuildFwdCall(*Expr, expr_ref, sm, meta); fwd_call != nullptr) {
+    if (auto fwd_call = marker_sups::BuildFwdCall(*Expr, expr_ref, sm, meta); fwd_call != nullptr) {
       Expr = std::move(fwd_call);
       Expr->Stage7_AnalyseSemantics(sm, meta);
       expr_type = Expr->InferType(sm, meta);
@@ -166,7 +168,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     }
   }
 
-  const auto direct_match = type_compare::TypeEq(
+  const auto direct_match = type_compare::Assignable(
     *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
 
   // The enclosing return type, unless it only reaches a generator
@@ -174,8 +176,12 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   if (gen_sym != gen_ref.Sym) { _GenType = gen_sym->FqName(); }
   _IsOnce = is_once;
 
-  // Todo: Known issue with the "yield_type" ast position being
-  //  wrong.
+  // The yield type is read off the generator's identity, shared by every spelling of it, so the error points at the
+  // return type this coroutine wrote.
+  if (not direct_match and not meta->EnclosingFunctionSourceRetType.IsEmpty()
+    and meta->EnclosingFunctionSourceRetType.Back() != nullptr) {
+    yield_type = yield_type->WithSourceSpanOf(*meta->EnclosingFunctionSourceRetType.Back());
+  }
   RaiseIf<SppYieldedTypeMismatchError>(
     not direct_match, {sm->CurrentScope},
     ERR_ARGS(*yield_type, *yield_type, Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));

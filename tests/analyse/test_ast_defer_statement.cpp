@@ -228,3 +228,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+// A deferred expression only borrowing the value still runs at the exit, so the value has to still be there then.
+// Only what a "defer" consumed used to be checked at the exit.
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  DeferStatementAst,
+  test_invalid_value_borrowed_by_defer_consumed_before_exit,
+  SppDeferConsumesMovedValueError, "}", R"(
+    fun g(x: &Str) -> Void { }
+
+    fun f(x: Str) -> Void {
+        defer g(&x)
+        drop(x)
+    }
+)");

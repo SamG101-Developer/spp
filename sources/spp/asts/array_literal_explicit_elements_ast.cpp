@@ -48,22 +48,15 @@ ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   ArrayLiteralExplicitElementsAst const &other) const -> Ordering {
   // If two explicit array asts don't have the same size, they
-  // cannot be equal. Early guard to prevent wasting time on
-  // elements.
+  // cannot be equal.
   if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
-  auto eq = [](auto const &pair) {
-    return *genex::get<0>(pair) == *genex::get<1>(pair);
-  };
 
   // Ensure each element of the two array literals are equal.
   // The length checks prevents trailing elements.
-  const auto temp = genex::views::zip(
-    Elems | genex::views::ptr,
-    other.Elems | genex::views::ptr) | genex::to<Vec>();
-  if (genex::all_of(temp, eq)) {
-    return Ordering::equal;
+  for (auto i = 0uz; i < Elems.Len(); ++i) {
+    if (*Elems[i] != *other.Elems[i]) { return Ordering::less; }
   }
-  return Ordering::less;
+  return Ordering::equal;
 }
 
 auto ArrayLiteralExplicitElementsAst::Equals(
@@ -98,13 +91,14 @@ auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+/// [CHECKED]
 auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
   // Analyse the element inside the array. Also enforce that
   // the element is an acceptable primary expression, ie not
-  // a TypeAst or a TokenAst.
+  // a non-zero-TypeAst, or a TokenAst.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -137,14 +131,14 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     auto c_type = c_elem->InferType(sm, meta);
 
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::TypeEq(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::Assignable(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
   // Analyse the inferred array type to generate the generic
   // implementation for future analysis; the first occurrence of
   // Vec[S32] will not exist in the symbol table, so add it now.
-  InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
+  _InferredType = _BuildType(sm, meta);
 }
 
 auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
@@ -282,6 +276,13 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 }
 
 auto ArrayLiteralExplicitElementsAst::InferType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  // The type stage 7 settled on; an array not analysed yet has its
+  // type built as it is.
+  return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
+}
+
+auto ArrayLiteralExplicitElementsAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
 

@@ -7,8 +7,7 @@ import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.instantiation_queue;
-import spp.analyse.utils.resolution_index;
+import spp.analyse.utils.monomorphization;
 import spp.asts.ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.identifier_ast;
@@ -20,6 +19,7 @@ import spp.asts.utils.ast_utils;
 import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.progress;
 import genex;
 import std;
@@ -97,7 +97,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
     // Whatever a previous compile in this process recovered
     // from, or resolved, is not this compile's.
     analyse::errors::diagnostic_sink::Clear();
-    analyse::utils::resolution_index::Clear();
+    lsp::resolution_index::Clear();
 
     m_boot->Lex(next_bar(), *m_modules);
     m_boot->Parse(next_bar(), *m_modules);
@@ -204,7 +204,7 @@ auto spp::compiler::Compiler::CompTimeConstants() const
 auto spp::compiler::Compiler::Cleanup() -> void {
   asts::generate::common_types_precompiled::ClearTypes();
   analyse::scopes::ScopeManager::Cleanup();
-  analyse::utils::instantiation_queue::Clear();
+  analyse::utils::monomorphization::ClearInstantiations();
 }
 
 SPP_MOD_END

@@ -57,7 +57,8 @@ namespace spp::analyse::utils::type_members {
       for (auto const &part : type_members::GetAllParts(*sym, scope, true)) {
         if (part.Sym == nullptr) { continue; }
         if (auto const *found = FindHeldByValueImpl(
-          TypeRef{.Sym = part.Sym}, part.Where != nullptr ? *part.Where : scope, matches, seen); found != nullptr) {
+          TypeRef::OfResolved(*part.Sym, part.Where != nullptr ? *part.Where : scope), part.Where != nullptr ? *part.Where : scope,
+          matches, seen); found != nullptr) {
           return found;
         }
       }
@@ -86,12 +87,16 @@ namespace spp::analyse::utils::type_members {
       return sym.TypeArgTypes()[type_predicates::IsTypeArr(sym, scope) ? 0uz : index];
     }
 
-    auto _UnimplementedAbstractMethodsCache() -> Map<
-      Scope const*,
-      Pair<std::uint64_t, Vec<FunctionPrototypeAst const*>>>& {
-      static auto cache = Map<
-        Scope const*,
-        Pair<std::uint64_t, Vec<FunctionPrototypeAst const*>>>();
+    /// A type's unimplemented abstract methods, with what the answer was read off: the generation it was last known
+    /// current at, and the super scopes it was gathered from.
+    struct UnimplementedAbstractMethods {
+      std::uint64_t Generation = 0;
+      Vec<Scope*> Sups;
+      Vec<FunctionPrototypeAst const*> Methods;
+    };
+
+    auto _UnimplementedAbstractMethodsCache() -> Map<Scope const*, UnimplementedAbstractMethods>& {
+      static auto cache = Map<Scope const*, UnimplementedAbstractMethods>();
       return cache;
     }
 
@@ -162,18 +167,21 @@ auto spp::analyse::utils::type_members::GetAllParts(
   // Everything else is its attributes, which carry the scope
   // each one's type resolves in with them.
   auto index = 0uz;
-  for (auto const &[name, attr_sym, attr_scope] : GetAllAttrs(sym)) {
-    parts.EmplaceBack(name, index++, attr_sym->FqName(), attr_sym, attr_scope);
+  // Named by the symbol it resolved to where one did, else from its identity: an identity naming "Self" is keyed by the
+  // spelling, which would mean another type wherever the part is read.
+  for (auto const &[name, attr_ref, attr_scope] : GetAllAttrs(sym)) {
+    auto type = attr_ref.Sym != nullptr ? attr_ref.Sym->FqName() : attr_scope->TypeAstOf(attr_ref.Id);
+    parts.EmplaceBack(name, index++, std::move(type), attr_ref.Sym, attr_scope);
   }
   return parts;
 }
 
 auto spp::analyse::utils::type_members::GetAllAttrs(
   TypeSymbol const &cls_sym)
-  -> Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>> {
-  auto extended_syms = Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>>{};
+  -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> {
+  auto extended_syms = Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>{};
   for (auto const &[sup_scope, sym] : CollectAttrSyms(cls_sym)) {
-    extended_syms.PushBack({sym->Name, sym->TypeRefIn(*sup_scope).Sym, sup_scope});
+    extended_syms.PushBack({sym->Name, sym->TypeRefIn(*sup_scope), sup_scope});
   }
 
   return extended_syms;
@@ -209,7 +217,7 @@ auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
     RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
       not type_compare::TypeEq(
         sym->TypeRefIn(*declared.Where), TypeRef::Of(*cmp_member.Type, own_scope),
-        *declared.Where, own_scope, false),
+        *declared.Where, own_scope),
       {declared.Where, sm.CurrentScope}, ERR_ARGS(cmp_member, *sym->Name));
   }
 }
@@ -230,20 +238,25 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   // is a signature comparison of every abstract method against every concrete one, so recomputing it per mention is
   // what makes it one of the most expensive things in analysis.
   //
-  // Keyed on the scope, and retired whenever the shape of the scope tree changes - which covers both a scope being
-  // re-parented and a type gaining or losing the super scopes its inherited methods come from, since both bump the
-  // linkage generation.
+  // Keyed on the scope. The methods are the scope's own and its super scopes', which are fixed once each is made, so
+  // the answer stands for as long as the super scopes do. The structure generation moves whenever any type anywhere
+  // gains a super scope (every instantiation does), so when it has moved, the super scopes are compared rather than the
+  // answer thrown away.
   auto &cache = _UnimplementedAbstractMethodsCache();
   const auto generation = TypeStructureGeneration();
-  if (const auto hit = cache.find(&type_scope); hit != cache.end() and hit->second.first == generation) {
-    return hit->second.second;
+  const auto hit = cache.find(&type_scope);
+  if (hit != cache.end() and hit->second.Generation == generation) { return hit->second.Methods; }
+  const auto sups = type_scope.SupScopes();
+  if (hit != cache.end() and hit->second.Sups == sups) {
+    hit->second.Generation = generation;
+    return hit->second.Methods;
   }
 
   // Skip on functional types because of the awkward difference with the base method having "args: Args" tuple of
   // args, and implementations having their own individual args.
   // Todo: Autopack and check?
   const auto remember = [&](Vec<FunctionPrototypeAst const*> answer) {
-    cache[&type_scope] = {generation, answer};
+    cache[&type_scope] = {generation, sups, answer};
     return answer;
   };
 
@@ -255,7 +268,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   // Gather every method visible on the type, from the type's own scope and from all of its super scopes, each tagged
   // with the scope that resolves the types in its signature.
   auto all_scopes = Vec<Scope const*>{&type_scope};
-  all_scopes.AppendRange(type_scope.SupScopes());
+  all_scopes.AppendRange(sups);
 
   auto methods = Vec<Pair<Scope const*, FunctionPrototypeAst const*>>();
   for (auto const *scope : all_scopes) {

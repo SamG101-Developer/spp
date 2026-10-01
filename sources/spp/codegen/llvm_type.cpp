@@ -243,7 +243,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto member_sm = analyse::scopes::ScopeManager(
       sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
 
-    const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym->FqName(), *scope);
+    const auto variant_ref = analyse::scopes::TypeRef::OfSym(*cls_sym, *scope);
     for (auto const &member : analyse::utils::type_compare::VariantMembers(variant_ref, *scope)) {
       const auto member_sym = member.Sym;
       if (member_sym == nullptr) { continue; }
@@ -325,17 +325,8 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // of its own, but it is the target that has the layout, and
   // both mangle to the same name: lowering the alias as itself
   // would register an empty struct under the target's name.
-  // Todo: Remove last 2 nullptr checks?
-  if (type_sym.LlvmInfo->LlvmType == nullptr
-    and type_sym.Kind == TypeKind::Alias
-    and type_sym.Alias != nullptr
-    and type_sym.Alias->Resolved != nullptr) {
-    const auto lookup = type_sym.LinkedScope != nullptr
-      ? type_sym.LinkedScope
-      : type_sym.Alias->DeclScope;
-
-    if (const auto target = lookup != nullptr ? lookup->GetTypeSymbol(type_sym.Alias->Resolved.get()) : nullptr;
-      target != nullptr) {
+  if (type_sym.LlvmInfo->LlvmType == nullptr and type_sym.Alias != nullptr) {
+    if (const auto target = type_sym.AliasTarget(*sm.CurrentScope); target != &type_sym) {
       linked_sym = target;
     }
   }

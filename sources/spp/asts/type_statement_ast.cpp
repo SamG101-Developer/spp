@@ -180,16 +180,18 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   }
 
   // Recursively discover the actual type being mapped to.
-  auto [mapped_old_type, attach_generics, tracking_scope] = type_resolution::RecursiveAliasSearch(
+  auto [mapped_old_type, attach_generics, tracking_scope, final_sym] = type_resolution::AliasStatementTarget(
     *this, _FromUseStatement, sm->CurrentScope->Parent, sm, meta);
-
-  const auto final_sym = sm->CurrentScope->GetTypeSymbol(mapped_old_type->WithoutGenerics().get());
   _AliasSym->Type = final_sym->Type;
   _AliasSym->LinkedScope = final_sym->LinkedScope;
   _AliasSym->InvalidateFqNameCache();
   _AliasSym->DerivesFromSym = final_sym->SharedFromThis<TypeSymbol>();
   _AliasSym->Alias->Resolved = mapped_old_type;
   _AliasSym->Alias->TrackingScope = tracking_scope;
+
+  // Its names record what they mean here now, so the target reads the same from wherever it is read before this
+  // statement's own resolution flattens it (an earlier declaration's stage 4 can instantiate the alias first).
+  type_resolution::RecordWrittenParts(*mapped_old_type, *sm->CurrentScope);
 
   // An alias of "!" is "!" too, so its own name carries the
   // never flag, as the class's does.
@@ -225,16 +227,26 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
     auto tm = ScopeManager(
       sm->GlobalScope, alias.TrackingScope);
     GnParamGroup->Stage4_ResolveDeclarations(alias.ParamsFromTarget ? &tm : sm, meta);
-    // Stamped from the scope of the lowest level alias, where its names mean what they were written to.
-    type_resolution::StampWrittenParts(*alias.Resolved, *alias.TrackingScope);
-    alias.Resolved->Stage7_AnalyseSemantics(sm, meta); // Analyse in this scope (generics are in this scope)
+    // Recorded and analysed where its names were written - this statement's scope, not where the target class was
+    // found, whose own parameters its spelling could name ("type Mine = Vec[A]" read in "Vec").
+    type_resolution::RecordWrittenParts(*alias.Resolved, *sm->CurrentScope);
+    alias.Resolved->Stage7_AnalyseSemantics(sm, meta);
+
+    // Then flattened by identity: an alias of an alias ("B[X]") keys as the class it ends at ("Vec[T=X]"), which is
+    // what every reader of the target expects - the class's own arguments, by its own parameters' names.
+    if (const auto target = sm->CurrentScope->TypeIdOf(*alias.Resolved); target != nullptr) {
+      if (auto flat = sm->CurrentScope->TypeAstOf(target); flat != nullptr) {
+        _AliasSym->Alias->Resolved = flat->WithSourceSpanOf(*alias.Resolved);
+        alias.Resolved->Stage7_AnalyseSemantics(sm, meta);
+      }
+    }
 
     const auto old_sym = sm->CurrentScope->GetTypeSymbol(alias.Resolved.get());
 
     // The target means what it resolved to here from wherever the alias is read, as a class's own name does
     // ("TypeSymbol::FqName"), rather than whatever its spelling names there.
-    if (alias.Resolved->Stamp() == nullptr and old_sym->Kind == TypeKind::Class
-      and old_sym->Alias == nullptr) { alias.Resolved->SetStamp(old_sym); }
+    if (alias.Resolved->Written() == nullptr and old_sym->Kind == TypeKind::Class
+      and old_sym->Alias == nullptr) { alias.Resolved->SetWritten(Scope::WrittenIdOf(*old_sym)); }
     _AliasSym->Type = old_sym->Type;
     _AliasSym->LinkedScope = old_sym->LinkedScope;
     _AliasSym->InvalidateFqNameCache();

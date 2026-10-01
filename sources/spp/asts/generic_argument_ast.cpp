@@ -154,7 +154,7 @@ auto GenericArgumentAst::Stage8_CheckMemory(
 
   // Ensure a comp value isn't moved or partially moved
   // (for all conventions). A type value holds no memory.
-  if (CompVal == nullptr) { return; }
+  if (CompVal == nullptr or not IsCompValAnalysedInPlace(*sm->CurrentScope)) { return; }
   CompVal->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
     *CompVal, *CompVal, *sm, true, true, true, true, meta);
@@ -171,30 +171,44 @@ auto GenericArgumentAst::AnalyseTypeVal(
   TypeVal->Stage7_AnalyseSemantics(sm, meta);
   auto const &scope = *sm->CurrentScope;
 
-  // An argument naming a generic keeps its own node and stamp:
+  // An argument naming a generic keeps its own node and written identity:
   // rewriting it to a binding's value would re-bind it with an
   // instantiation's own parameters ("Single[Arr[T]]" written
   // inside "Single" never ends). Anything else keeps its written
-  // node, stamped with the symbol it names here, so it is read
+  // node, recording the symbol it names here, so it is read
   // by identity rather than by spelling.
   const auto val_sym = scope.GetTypeSymbol(TypeVal.get());
 
-  // An argument naming a binding is stamped with it, and so
+  // An argument naming a binding records it, and so
   // reads as that binding's parameter wherever it is read
   // ("Scope::Canon"), not as whatever its spelling finds there.
   if (val_sym != nullptr and val_sym->Kind == TypeKind::GenericArg
     and val_sym->BindsParamId != 0
-    and TypeVal->Stamp() == nullptr) {
-    TypeVal->SetStamp(val_sym);
+    and TypeVal->Written() == nullptr) {
+    TypeVal->SetWritten(Scope::WrittenIdOf(*val_sym));
     return;
   }
   if (val_sym == nullptr or val_sym->IsTypeGeneric()) { return; }
 
-  // An alias is stamped as itself, not as its target: one
+  // An alias is recorded as itself, not as its target: one
   // analysed before its target resolves (Stage 4) would reach
   // only the target's template, and "Limits[U8]" and
   // "Limits[U16]" would name one type.
-  if (TypeVal->Stamp() == nullptr) { TypeVal->SetStamp(val_sym); }
+  if (TypeVal->Written() == nullptr) { TypeVal->SetWritten(Scope::WrittenIdOf(*val_sym)); }
+}
+
+auto GenericArgumentAst::IsCompExpression() const -> bool {
+  return CompVal->To<LiteralAst>() == nullptr and CompVal->To<IdentifierAst>() == nullptr;
+}
+
+auto GenericArgumentAst::IsCompOperator() const -> bool {
+  return CompVal->To<BinaryExpressionAst>() != nullptr or CompVal->To<ParenthesisedExpressionAst>() != nullptr;
+}
+
+auto GenericArgumentAst::IsCompValAnalysedInPlace(
+  Scope const &scope) const -> bool {
+  if (IsCompOperator()) { return false; }
+  return not IsCompExpression() or analyse::utils::comp_generics::FoldCompExpr(*CompVal, scope) == nullptr;
 }
 
 auto GenericArgumentAst::AnalyseCompVal(
@@ -205,7 +219,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   // the sup scopes of its operand's type, which are only
   // attached once stage 5 ends, so it waits until then; a
   // literal or a name needs no sup scope.
-  const auto is_expression = CompVal->To<LiteralAst>() == nullptr and CompVal->To<IdentifierAst>() == nullptr;
+  const auto is_expression = IsCompExpression();
   if (is_expression and meta->CurrentStage<CompilerStage::kPreAnalyseSemantics) { return; }
 
   // A comp expression that folds has been evaluated by the
@@ -217,7 +231,7 @@ auto GenericArgumentAst::AnalyseCompVal(
       if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) {
         lit->ValidateBounds(*CompVal, *sm->CurrentScope);
       }
-      comp_generics::StampCompGenerics(*CompVal, *sm->CurrentScope);
+      comp_generics::RecordCompGenerics(*CompVal, *sm->CurrentScope);
       return;
     }
   }
@@ -228,19 +242,14 @@ auto GenericArgumentAst::AnalyseCompVal(
   // is folded, keyed and substituted. A comp argument is also
   // an expression of its own: nothing the enclosing one set up
   // - the return type a "ret" resolves overloads against, an
-  // assignment target, object-initializer inference - applies to
-  // that call.
-  const auto is_operator = CompVal->To<BinaryExpressionAst>() != nullptr
-    or CompVal->To<ParenthesisedExpressionAst>() != nullptr;
-  const auto checked = is_operator ? AstClone(CompVal) : nullptr;
+  // assignment target - applies to that call.
+  const auto checked = IsCompOperator() ? AstClone(CompVal) : nullptr;
   auto &target = checked != nullptr ? *checked : *CompVal;
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
-    meta->InferSource = MakeShared<GenericInferenceBindings>();
-    meta->InferTarget = MakeShared<GenericInferenceBindings>();
     target.Stage7_AnalyseSemantics(sm, meta);
   }
   RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -251,7 +260,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   // ("n + 1") - with that parameter, so a copy of this argument
   // carried into another scope keeps naming it there, where the
   // same spelling may name another.
-  comp_generics::StampCompGenerics(*CompVal, *sm->CurrentScope);
+  comp_generics::RecordCompGenerics(*CompVal, *sm->CurrentScope);
 }
 
 SPP_MOD_END

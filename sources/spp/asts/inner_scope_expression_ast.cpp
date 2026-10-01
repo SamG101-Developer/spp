@@ -96,12 +96,36 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _Scope = sm->CurrentScope;
 
-  // Check for unreachable code.
-  ValidateNoUnreachableCode(
-    this->Members | genex::views::ptr | genex::to<Vec>(), *sm);
+  // Analyse the members of the inner scope. Only the final one
+  // is the block's value, so only it sees what the block is
+  // being assigned to; a "case" statement before it would be
+  // checked against that type otherwise.
+  for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
+    // What an "is" in this statement bound does not outlive the
+    // statement ("let b = o is Some(val)" leaves no "val").
+    const auto bound_before = meta->IsBindingsAdded.Len();
+    const auto expire_is_bindings = [&] {
+      for (auto j = bound_before; j < meta->IsBindingsAdded.Len(); ++j) {
+        meta->ExpiredIsBindings.EmplaceBack(meta->IsBindingsAdded[j]);
+      }
+    };
 
-  // Analyse the members of the inner scope.
-  for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
+    if (i + 1 == Members.Len()) {
+      x->Stage7_AnalyseSemantics(sm, meta);
+      expire_is_bindings();
+      continue;
+    }
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
+    x->Stage7_AnalyseSemantics(sm, meta);
+    expire_is_bindings();
+
+    // Nothing may follow a statement that never finishes. Checked
+    // before the next statement is analysed, so the dead code is
+    // reported rather than whatever else is wrong with it.
+    control_flow::ValidateNoUnreachableCode(*x, Members[i + 1].get(), sm, meta);
+  }
 
   // Every statement but the last has its value discarded; the last
   // one is what this scope hands out, so whether it is discarded is
@@ -169,7 +193,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   if (not control_flow::Diverges(*this, sm, meta)) {
     linear_utils::CheckDeferredForScope(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
-      "Scope end", *sm);
+      "Scope end", *sm, meta);
     linear_utils::CheckScopeExit(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm, meta);
@@ -226,8 +250,19 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
   // is either moved on or taken apart, because stage 8 rejects
   // anything else. So a scope leaves nothing behind to destroy,
   // and none is emitted here.
+  // Only the final member is the scope's value, so only it is
+  // generated towards what the scope is assigned to (as in
+  // stage 7).
   auto ret_val = static_cast<llvm::Value*>(nullptr);
-  for (auto const &m : this->Members) {
+  for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
+    if (i + 1 == Members.Len()) {
+      ret_val = m->Stage11_CodeGen(sm, meta, ctx);
+      continue;
+    }
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
+    meta->LlvmAssignmentTarget = nullptr;
     ret_val = m->Stage11_CodeGen(sm, meta, ctx);
   }
 

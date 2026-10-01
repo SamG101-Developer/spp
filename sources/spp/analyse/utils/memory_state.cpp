@@ -120,7 +120,6 @@ auto MemoryInfo::Clone() const
   -> Unique<MemoryInfo> {
   auto out = MakeUnique<MemoryInfo>();
   static_cast<MemoryState&>(*out) = *this;
-  static_cast<MemoryConsistency&>(*out) = *this;
   out->AstInitializationOrigin = AstInitializationOrigin;
   out->AstBorrowed = AstBorrowed;
   return out;
@@ -218,10 +217,13 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
   }
 
   // A branch that never finishes leaves no state behind to
-  // agree with.
-  const auto diverges = [&](CaseExpressionBranchAst const *branch) {
-    return control_flow::Diverges(*branch->Body, sm, meta);
-  };
+  // agree with. Worked out once per branch, not per symbol:
+  // it infers the body's type.
+  auto diverging = Set<CaseExpressionBranchAst const*>();
+  for (auto const *branch : branches) {
+    if (control_flow::Diverges(*branch->Body, sm, meta)) { diverging.insert(branch); }
+  }
+  const auto diverges = [&](CaseExpressionBranchAst const *branch) { return diverging.contains(branch); };
 
   // Get the first "non-terminating" branch, and update the
   // symbols to reflect its memory state.
@@ -303,6 +305,18 @@ auto spp::analyse::utils::memory_state::MarkInconsistentPaths(
   Ast *const first_path,
   Ast *const other_path)
   -> void {
+  // A path that already disagreed within itself (a "case" nested
+  // in it) still disagrees once it meets the others.
+  auto &info = *sym.MemInfo;
+  if (not info.IsInconsistentlyInitialized) { info.IsInconsistentlyInitialized = other.IsInconsistentlyInitialized; }
+  if (not info.IsInconsistentlyMoved) { info.IsInconsistentlyMoved = other.IsInconsistentlyMoved; }
+  if (not info.IsInconsistentlyPartiallyMoved) {
+    info.IsInconsistentlyPartiallyMoved = other.IsInconsistentlyPartiallyMoved;
+  }
+  if (not info.IsInconsistentlyBorrowEscaping) {
+    info.IsInconsistentlyBorrowEscaping = other.IsInconsistentlyBorrowEscaping;
+  }
+
   if ((spp::get<0>(first.AstInitialization) == nullptr) != (spp::get<0>(other.AstInitialization) == nullptr)) {
     sym.MemInfo->IsInconsistentlyInitialized = {first_path, other_path};
   }
