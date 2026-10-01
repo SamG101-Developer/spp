@@ -9,8 +9,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
-import spp.asts.meta.compiler_meta_data;
 import spp.asts.type_identifier_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
 import genex;
 

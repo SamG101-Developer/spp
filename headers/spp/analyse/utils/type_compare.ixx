@@ -52,7 +52,7 @@ namespace spp::analyse::utils::type_compare {
   SPP_EXP_FUN auto Assignable(
     TypeAst const &target_type, TypeAst const &value_type, Scope const &target_scope, Scope const &value_scope) -> bool;
 
-  /// The identical rules to above, byt for type reference types, which
+  /// The identical rules to above, but for type reference types, which
   /// are used as much as possible.
   SPP_EXP_FUN auto Assignable(
     TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool;
