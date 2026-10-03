@@ -11,7 +11,6 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
-use(spp::asts, struct IdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {
@@ -37,6 +36,17 @@ namespace spp::analyse::utils::visibility_utils {
     -> void;
 
   /// Check if a type's nested type is accessible from where it
+  /// is being named. The non-throwing core, for a caller listing
+  /// what can be reached rather than checking one name that was
+  /// written.
+  SPP_EXP_FUN auto IsTypeTypeVisible(
+    TypeSymbol const &sym,
+    Scope const &type_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
+
+  /// Check if a type's nested type is accessible from where it
   /// is being named. Throws an error on bad visibility, uses
   /// the (internal) type member core.
   SPP_EXP_FUN auto CheckTypeTypeVisibility(
@@ -47,6 +57,16 @@ namespace spp::analyse::utils::visibility_utils {
     CompilerMetaData const &meta)
     -> void;
 
+  /// Check if a module member is accessible from where it is
+  /// being named. The non-throwing core of module member
+  /// visibility, for a caller listing what can be reached
+  /// rather than checking one name that was written.
+  SPP_EXP_FUN auto IsModuleMemberVisible(
+    VariableSymbol const &sym,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
 
   /// Check if a module member is accessible from where it is
   /// being named. Throws an error on bad visibility, uses the
@@ -58,6 +78,17 @@ namespace spp::analyse::utils::visibility_utils {
     ScopeManager const &sm,
     CompilerMetaData const &meta)
     -> void;
+
+  /// Check if a module type member is accessible from where it
+  /// is being named. The non-throwing core, for a caller listing
+  /// what can be reached rather than checking one name that was
+  /// written.
+  SPP_EXP_FUN auto IsModuleTypeVisible(
+    TypeSymbol const &sym,
+    Scope const &definition_scope,
+    ScopeManager const &sm,
+    CompilerMetaData const &meta)
+    -> bool;
 
   /// Check if a module type member is accessible from where it
   /// is being named. Throws an error on bad visibility, uses

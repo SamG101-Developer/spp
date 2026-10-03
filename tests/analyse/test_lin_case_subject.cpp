@@ -140,3 +140,30 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         consume(x)
     }
 )");
+
+// The consumed subject is exempt by symbol, not by name: a closure parameter spelled like the subject is its own
+// value, and still owed.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearCaseSubject,
+    test_invalid_closure_parameter_named_like_the_subject_is_still_owed,
+    SppLinearValueNotConsumedError, R"(
+    cls T { }
+    cls A { !public v: T }
+    cls B { }
+    type AB = A or B
+
+    fun consume(t: T) -> Void {
+        let T() = t
+    }
+
+    fun f(x: AB) -> Void {
+        case x of {
+            is A(v) {
+                consume(v)
+                let c = (x: T) -> Void { }
+                c(T())
+            }
+            else { }
+        }
+    }
+)");

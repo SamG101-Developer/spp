@@ -347,3 +347,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         cor f(&self, a: Bool) -> Gen[Bool] { }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverloads_FreeFuncs,
+  test_valid_overload_by_value_and_by_borrow, R"(
+    fun f[T](a: T) -> Void { std::mem::ops::drop(a) }
+    fun f[T](a: &T) -> Void { }
+)");

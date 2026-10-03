@@ -10,6 +10,7 @@ SPP_AST_COMMON_FWD_DECL(ArrayLiteralAst);
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);

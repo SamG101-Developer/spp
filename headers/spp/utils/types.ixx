@@ -37,11 +37,17 @@ namespace spp {
   SPP_EXP_CLS template <typename T, typename Enable = void>
   using Hash = ankerl::unordered_dense::hash<T, Enable>;
 
-  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>>
-  using Map = ankerl::unordered_dense::map<K, V, H, Eq>;
+  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>, typename A=std::allocator<std::pair<K, V>>>
+  using Map = ankerl::unordered_dense::map<K, V, H, Eq, A>;
 
-  SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>>
-  using Set = ankerl::unordered_dense::set<T, H, Eq>;
+  SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>, typename A=std::allocator<T>>
+  using Set = ankerl::unordered_dense::set<T, H, Eq, A>;
+
+  SPP_EXP_CLS template <typename K, typename V, typename H=Hash<K>, typename Eq=std::equal_to<K>, typename A=std::allocator<std::pair<K, V>>>
+  using StableMap = ankerl::unordered_dense::segmented_map<K, V, H, Eq, A>;
+
+  SPP_EXP_CLS template <typename T, typename H=Hash<T>, typename Eq=std::equal_to<T>, typename A=std::allocator<T>>
+  using StableSet = ankerl::unordered_dense::segmented_set<T, H, Eq, A>;
 
   SPP_EXP_CLS template <typename K, typename V>
   using OrderedMap = std::map<K, V>;

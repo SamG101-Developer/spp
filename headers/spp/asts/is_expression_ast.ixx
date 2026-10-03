@@ -54,7 +54,7 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  Shared<CaseExpressionAst> _MappedFunc;
+  Shared<CaseExpressionAst> _MappedFn;
 
   Shared<IdentifierAst> _LhsAsId;
 };

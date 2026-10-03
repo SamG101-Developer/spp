@@ -15,7 +15,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.utils.strings;
@@ -71,7 +71,7 @@ auto StringLiteralAst::ToString() const -> Str {
 auto StringLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto StringLiteralAst::Stage11_CodeGen(
@@ -92,7 +92,7 @@ auto StringLiteralAst::Stage11_CodeGen(
   // rather than a bare pointer. Everything in it is a compile
   // time constant, so the view is emitted as its own constant
   // global instead of being rebuilt on the stack at every use.
-  const auto view_type_sym = InferTypeRef(sm, meta).Sym;
+  const auto view_type_sym = InferTypeRef(sm, meta).Symbol;
   const auto llvm_view_type = view_type_sym != nullptr
     ? llvm::dyn_cast_or_null<llvm::StructType>(codegen::GetLlvmType(*view_type_sym, ctx))
     : nullptr;

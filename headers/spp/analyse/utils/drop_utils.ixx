@@ -5,9 +5,11 @@ export module spp.analyse.utils.drop_utils;
 import spp.utils.types;
 import std;
 
-use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::asts, struct Ast);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
@@ -28,7 +30,7 @@ namespace spp::analyse::utils::drop_utils {
   /// them - destroy to nothing, so have no drop code. Borrows
   /// are not dropped through either, only owned values.
   SPP_EXP_FUN auto NeedsDrop(
-    TypeSymbol const &type_sym,
+    TypeRef const &type,
     ScopeManager &sm,
     CompilerMetaData *meta)
     -> bool;
@@ -40,8 +42,19 @@ namespace spp::analyse::utils::drop_utils {
   /// semantic analysis means we will never get a cycle here
   /// either.
   SPP_EXP_FUN auto EnsureDropInstantiated(
-    TypeSymbol const &type_sym,
+    TypeRef const &type,
     ScopeManager &sm,
     CompilerMetaData *meta)
     -> void;
+
+  /// Raise if a partial move out of "sym" stranded a value with
+  /// a destructor of its own: taking something from inside a
+  /// value leaves that value unable to be destroyed.
+  SPP_EXP_FUN auto CheckDestructorStillReachable(
+    VariableSymbol const &sym,
+    Ast const &exit_point,
+    ScopeManager &sm,
+    meta::CompilerMetaData *meta)
+    -> void;
+
 }

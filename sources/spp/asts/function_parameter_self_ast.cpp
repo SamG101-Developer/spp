@@ -5,7 +5,7 @@ module spp.asts.function_parameter_self_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
@@ -65,7 +65,7 @@ auto FunctionParameterSelfAst::Stage7_AnalyseSemantics(
   FunctionParameterAst::Stage7_AnalyseSemantics(sm, meta);
 
   // Special mutability rules for the "self" parameter.
-  const auto sym = sm->CurrentScope->GetVarSymbol(Var->ExtractName().get());
+  const auto sym = sm->CurrentScope->FindVarSymbol(Var->ExtractName().get());
   sym->IsMutable = Var->To<LocalVariableSingleIdentifierAst>()->TokMut != nullptr
     or (Conv and *Conv == ConventionTag::MUT);
 

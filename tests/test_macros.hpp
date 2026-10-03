@@ -1,39 +1,4 @@
 #pragma once
-#define GTEST_BUILD_WITH_IMPORT_STD
-
-import pthread;
-import sys;
-using pthread::pthread_create;
-using pthread::pthread_equal;
-using pthread::pthread_getspecific;
-using pthread::pthread_join;
-using pthread::pthread_key_create;
-using pthread::pthread_key_delete;
-using pthread::pthread_self;
-using pthread::pthread_mutex_destroy;
-using pthread::pthread_mutex_init;
-using pthread::pthread_mutex_lock;
-using pthread::pthread_mutex_unlock;
-using pthread::pthread_setspecific;
-using pthread::pthread_t;
-using pthread::pthread_key_t;
-using pthread::pthread_mutex_t;
-using sys::chdir;
-using sys::close;
-using sys::errno;
-using sys::fileno;
-using sys::fdopen;
-using sys::isatty;
-using sys::read;
-using sys::rmdir;
-using sys::strcasecmp;
-using sys::stderr;
-using sys::stdin;
-using sys::stdout;
-using sys::write;
-using sys::stat;
-using sys::S_ISDIR;
-
 #include <gtest/gtest.h>
 #include <spp/macros.hpp>
 #include "test_boot.hpp"
@@ -136,7 +101,7 @@ namespace spp_test {
       build_temp_project(std::move(code), add_main);
     }
     catch (E const &e) {
-      CheckErrorLocations(e.messages, underline);
+      CheckErrorLocations(e.Messages, underline);
       return;
     }
     catch (std::exception const &e) {

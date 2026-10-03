@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.parse.errors.parser_error;
+import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.types;
 import std;
@@ -15,7 +16,16 @@ use(spp::parse::errors, struct SppSyntaxError);
 SPP_EXP_CLS struct spp::parse::errors::SyntacticError :
   utils::errors::AbstractError {
   /// Header text.
-  Str header;
+  Str Header;
+
+  /// The message with the expected token set spliced in, kept
+  /// unformatted so a consumer reading the error as data is not
+  /// left unpicking the rendered block.
+  Str Message;
+
+  /// Where the parser stopped. Filled in as the error is
+  /// raised - see "spp.lsp.diagnostic".
+  utils::errors::SourceSpan Span;
 
   explicit SyntacticError(Str &&header);
   SyntacticError(SyntacticError const &) = default;

@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(IdentifierAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
@@ -67,14 +68,14 @@ public:
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto ToFuncIdentifier() const -> Unique<IdentifierAst>;
+  SPP_ATTR_NODISCARD auto ToFnIdentifier() const -> Unique<IdentifierAst>;
 
   SPP_ATTR_NODISCARD auto AnkerlHash() const -> std::size_t override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto ToView() const noexcept -> StrView;
@@ -83,23 +84,25 @@ public:
   /// changes once the node is built, so the id is assigned in
   /// the constructor and stands for the node's lifetime.
   /// Symbol tables key on this rather than on the string.
-  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT auto NameId() const noexcept
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE auto NameId() const noexcept
     -> utils::InternedId { return _NameId; }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   /// The comp generic parameter this name resolved to where it was
-  /// written, if it was stamped with one. A lookup of a stamped name
-  /// asks "Scope::CanonVar" what that parameter means from the scope
-  /// asking, instead of resolving the spelling again there - which
-  /// would read a caller's "w" as a callee's parameter of that name.
-  SPP_ATTR_NODISCARD auto Stamp() const noexcept -> spp::analyse::scopes::VariableSymbol* {
-    return _Stamp;
+  /// written, by its identity ("ParamId"); 0 for none. A lookup of
+  /// it asks "Scope::FindWrittenTypeSymbol" what that parameter means from the
+  /// scope asking, instead of resolving the spelling again there -
+  /// which would read a caller's "w" as a callee's parameter of that
+  /// name.
+  SPP_ATTR_NODISCARD auto WrittenCompParamId() const noexcept -> std::uint64_t {
+    return _WrittenCompParamId;
   }
 
-  /// Stamp this name with the comp parameter it resolved to.
-  auto SetStamp(spp::analyse::scopes::VariableSymbol *const sym) const noexcept -> void {
-    _Stamp = sym;
+  /// Record the comp parameter this name resolved to; see
+  /// "WrittenCompParamId".
+  auto SetWrittenCompParamId(const std::uint64_t param_id) const noexcept -> void {
+    _WrittenCompParamId = param_id;
   }
 
 private:
@@ -112,7 +115,7 @@ private:
 
   utils::InternedId _NameId;
 
-  mutable spp::analyse::scopes::VariableSymbol *_Stamp = nullptr;
+  mutable std::uint64_t _WrittenCompParamId = 0;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

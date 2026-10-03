@@ -18,16 +18,16 @@ import std;
  * process lock below is what keeps the workers off each other. Running SppBootstrap.Fixture on its own first, as
  * run-tests.sh does, keeps the [vcs] clone out of the parallel phase entirely.
  */
-auto ensure_temp_project() -> void {
+auto EnsureTempProject() -> void {
   const auto cwd = std::filesystem::current_path();
   constexpr auto fp = "../../tests/test_outputs";
 
   // Ensure the output directory exists before locking it.
   std::filesystem::create_directories(cwd / fp);
 
-  // Serialize initialization (handle_init + handle_vcs) across
+  // Serialize initialization (HandleInit + HandleVcs) across
   // parallel test workers. The lock lives in the temp directory
-  // rather than inside the fixture, because handle_init refuses
+  // rather than inside the fixture, because HandleInit refuses
   // to run in a directory that is not empty -- and it is a file
   // rather than the fixture directory itself, because Windows
   // cannot lock a directory at all. Workers of one run share a
@@ -43,8 +43,8 @@ auto ensure_temp_project() -> void {
     return not std::filesystem::exists(vcs) or std::filesystem::is_empty(vcs);
   };
   std::filesystem::current_path(cwd / fp);
-  if (not std::filesystem::exists("spp.toml")) { spp::cli::handle_init(); }
-  if (vcs_empty()) { spp::cli::handle_vcs(); }
+  if (not std::filesystem::exists("spp.toml")) { spp::cli::HandleInit(); }
+  if (vcs_empty()) { spp::cli::HandleVcs(); }
   std::filesystem::current_path(cwd);
 
   init_lock.Unlock();
@@ -65,7 +65,7 @@ auto ensure_temp_project() -> void {
  * the same answer, and an unrecognised value is a typo worth failing on rather than silently compiling the other mode.
  */
 namespace {
-  auto test_build_mode() -> spp::Str const& {
+  auto TestBuildMode() -> spp::Str const& {
     static const auto mode = [] {
       const auto *env = std::getenv("SPP_TEST_MODE");
       auto value = spp::Str(env != nullptr ? env : "rel");
@@ -94,13 +94,13 @@ auto build_temp_project(std::string code, const bool add_main) -> spp::Map<spp::
     code = "fun main() -> Void { }\n" + code;
   }
 
-  ensure_temp_project();
+  EnsureTempProject();
 
   // Build the project.
   std::filesystem::current_path(cwd / fp);
   auto comp_time_constants = spp::Map<spp::Str, spp::Str>();
   try {
-    comp_time_constants = spp::cli::run_cpp_google_test(test_build_mode(), std::move(code));
+    comp_time_constants = spp::cli::RunCppGoogleTest(TestBuildMode(), std::move(code));
   }
   catch (const spp::analyse::errors::SemanticError &e) {
     std::cout << e.what() << std::endl;

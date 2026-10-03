@@ -11,7 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -98,53 +98,45 @@ auto ClassAttributeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
-  const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
+  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 }
 
 auto ClassAttributeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::utils::type_utils::SelfPolicy;
+  IMPORT_UTILS;
+  using type_resolution::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
   // Sync the variable symbol's visibility from the AST
   // (annotations set Visibility in Stage5).
-  const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
+  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 
   // What a default may hold is limited, because it is
   // copied into every object initializer that leaves
   // the attribute out. Checked before the analysis below
-  // rewrites it. Todo: Coalesce to single condition in
-  // the "raise_if".
-  if (DefaultVal != nullptr) {
-    RaiseIf<analyse::errors::SppInvalidDefaultValueError>(
-      not DefaultVal->IsAllowedInDefault(),
-      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
-  }
+  // rewrites it.
+  RaiseIf<SppInvalidDefaultValueError>(
+    DefaultVal != nullptr and not DefaultVal->IsAllowedInDefault(),
+    {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
 
   // Check the type is valid before scopes are attached.
-  Type = ResolveWrittenType(
+  Type = type_resolution::AnalyseWrittenType(
     *Type, *sm, *meta, Type->IsSelfType() ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
-  sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
+  sm->CurrentScope->FindVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*Type, *sm),
+    type_predicates::IsTypeBorrowed(*Type, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 }
 
 auto ClassAttributeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // This can be reached via stage 4 generic substitution,
   // so prevent that.
@@ -152,13 +144,11 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   }
 
-  const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
+  const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not Type->IsSelfType()) {
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()))->
-               WithSourceSpanOf(*Type);
     RaiseIf<SppSecondClassBorrowViolationError>(
-      IsTypeBorrowed(*Type, *sm),
+      type_predicates::IsTypeBorrowed(*Type, *sm),
       {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
   }
   var_sym->Type = Type;
@@ -168,7 +158,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
     // Make sure the default's inferred type matches the
     // attribute's type; it is only spelled out for the error.
-    if (not TypeEq(
+    if (not type_compare::Assignable(
       TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
       *sm->CurrentScope, *sm->CurrentScope)) {
       const auto default_type = DefaultVal->InferType(sm, meta);
@@ -181,11 +171,11 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
 auto ClassAttributeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // If there is a default value, check it for memory errors.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   if (DefaultVal == nullptr) { return; }
   DefaultVal->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(
-    *DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(
+    *DefaultVal, *DefaultVal, *sm, meta);
 }
 
 auto ClassAttributeAst::Stage9_CompTimeResolve(

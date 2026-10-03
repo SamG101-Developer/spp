@@ -4,9 +4,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestShadowing,
   test_shadow_create_inner_doesnt_use_outer,
   SppUninitializedMemoryUseError, R"(
-    fun f() -> Void {
+    fun f(b: Bool) -> Void {
         let x: Bool
-        loop true {
+        loop b {
             let x = false
         }
         let y = x
@@ -20,6 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: Bool
         loop true {
             x = false
+            exit
         }
         let y = x
     }

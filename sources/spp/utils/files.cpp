@@ -90,7 +90,7 @@ auto spp::utils::files::FileLock::Acquire(
     return false;
   }
 
-  m_handle = reinterpret_cast<std::intptr_t>(handle);
+  _Handle = reinterpret_cast<std::intptr_t>(handle);
   return true;
 #else
   auto const fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
@@ -101,7 +101,7 @@ auto spp::utils::files::FileLock::Acquire(
     return false;
   }
 
-  m_handle = fd;
+  _Handle = fd;
   return true;
 #endif
 }
@@ -120,20 +120,20 @@ auto spp::utils::files::FileLock::LockExclusive(
 
 auto spp::utils::files::FileLock::Unlock()
   -> void {
-  if (m_handle == -1) { return; }
+  if (_Handle == -1) { return; }
 
 #if SPP_PLATFORM_WINDOWS
-  auto const handle = reinterpret_cast<HANDLE>(m_handle);
+  auto const handle = reinterpret_cast<HANDLE>(_Handle);
   auto overlapped = OVERLAPPED{};
   ::UnlockFileEx(handle, 0, MAXDWORD, MAXDWORD, &overlapped);
   ::CloseHandle(handle);
 #else
-  auto const fd = static_cast<int>(m_handle);
+  auto const fd = static_cast<int>(_Handle);
   ::flock(fd, LOCK_UN);
   ::close(fd);
 #endif
 
-  m_handle = -1;
+  _Handle = -1;
 }
 SPP_MOD_END
 

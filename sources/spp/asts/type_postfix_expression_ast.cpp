@@ -9,7 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -77,7 +78,7 @@ auto TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp));
-  t->_Stamp = _Stamp;
+  t->_WrittenTypeId = _WrittenTypeId;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -92,15 +93,13 @@ auto TypePostfixExpressionAst::ToString() const -> Str {
 auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::ClosestScopes;
-  using analyse::utils::expr_utils::RaiseIfAmbiguous;
-  using analyse::utils::expr_utils::ScopesDeclaringType;
+  IMPORT_UTILS;
 
   // Move through the left-hand-side type.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
   const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
   const auto lhs_type = Lhs->InferType(sm, meta);
-  const auto lhs_type_sym = scope->GetTypeSymbol(lhs_type.get());
+  const auto lhs_type_sym = scope->FindTypeSymbol(lhs_type.get());
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
   // Check there is only 1 target field on the lhs at the
@@ -109,8 +108,8 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   // is given all the overloads, so any one of them will do.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
   if (not op_nested->Name->IsCompilerGeneratedType()) {
-    RaiseIfAmbiguous(
-      ClosestScopes(ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name, false)),
+    member_lookup::RaiseIfAmbiguous(
+      member_lookup::ClosestScopes(member_lookup::ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name)),
       *op_nested->Name, *sm);
   }
 
@@ -129,20 +128,15 @@ auto TypePostfixExpressionAst::Stage11_CodeGen(
 
 auto TypePostfixExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  IMPORT_UTILS;
   // Infer the type of the left-hand-side.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
-  const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Sym;
+  const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
   // Infer the type of the postfix operation.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  return analyse::utils::type_utils::GetTypeSymOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
-}
-
-auto TypePostfixExpressionAst::AnyPart(
-  std::function<bool(TypeIdentifierAst const&)> const &pred) const -> bool {
-  // Walk from the left-hand-side.
-  return Lhs->AnyPart(pred);
+  return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
 }
 
 auto TypePostfixExpressionAst::IsNeverType() const noexcept -> bool {
@@ -202,7 +196,7 @@ auto TypePostfixExpressionAst::WithConvention(
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
-  wrapped->SetStamp(_Stamp);
+  wrapped->SetWrittenTypeId(_WrittenTypeId);
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written once it is borrowed.
@@ -210,31 +204,25 @@ auto TypePostfixExpressionAst::WithConvention(
   return wrapped;
 }
 
-auto TypePostfixExpressionAst::WithoutGenerics() const -> Shared<TypeAst> {
+auto TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   // Use cache if available.
-  if (not _CachedWithoutGenerics) {
+  if (not _CachedWithoutGns) {
     const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
-      nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGenerics()));
-    _CachedWithoutGenerics = MakeShared<TypePostfixExpressionAst>(AstClone(Lhs), std::move(new_rhs));
+      nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGns()));
+    _CachedWithoutGns = MakeShared<TypePostfixExpressionAst>(AstClone(Lhs), std::move(new_rhs));
   }
-  return _CachedWithoutGenerics;
+  return _CachedWithoutGns;
 }
 
-auto TypePostfixExpressionAst::SubstituteGenerics(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> {
+auto TypePostfixExpressionAst::SubstituteSelf(
+  TypeAst const &with) const -> Shared<TypeAst> {
   const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  auto new_lhs = Lhs->SubstituteGenerics(args);
   auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
-    nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->SubstituteGenerics(args)));
-  return MakeShared<TypePostfixExpressionAst>(std::move(new_lhs), std::move(new_rhs));
+    nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->SubstituteSelf(with)));
+  return MakeShared<TypePostfixExpressionAst>(Lhs->SubstituteSelf(with), std::move(new_rhs));
 }
 
-auto TypePostfixExpressionAst::ContainsGenerics(
-  GenericParameterAst const &generic) const -> bool {
-  const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  return rhs->Name->ContainsGenerics(generic);
-}
 auto TypePostfixExpressionAst::IsCompilerGeneratedType() const -> bool {
   // A method's "$" mock is named through its owner
   // ("main::A::$Method"), so check the nested part.

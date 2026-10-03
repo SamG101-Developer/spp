@@ -133,6 +133,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// "let t = ()" followed by a statement on the next line parsed as one closure, "() t.f()"; a closure's expression
+// body now has to start on its parameters' line.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTupleSuperimpositions,
     test_tuple_superimposition_variadic_empty_tuple, R"(

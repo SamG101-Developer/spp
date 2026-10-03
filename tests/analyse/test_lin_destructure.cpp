@@ -143,3 +143,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         drop(p)
     }
 )");
+
+// A destructure binding nothing reads no part, and the parts are all the old check looked at, so a value that had
+// already been moved was consumed again.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearDestructure,
+    test_invalid_empty_destructure_of_a_moved_value,
+    SppUninitializedMemoryUseError, R"(
+    cls DsEmpty { }
+
+    fun eat(l: DsEmpty) -> Void { let DsEmpty() = l }
+
+    fun f() -> Void {
+        let l = DsEmpty()
+        eat(l)
+        let DsEmpty() = l
+    }
+)");

@@ -65,7 +65,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct GenericArgumentGroupAst;
   SPP_EXP_CLS struct GenericParameterAst;
   SPP_EXP_CLS struct GenericParameterGroupAst;
-  SPP_EXP_CLS struct GenericParameterTypeInlineConstraintsAst;
+  SPP_EXP_CLS struct GenericParameterTypeConstraintsAst;
   SPP_EXP_CLS struct IdentifierAst;
   SPP_EXP_CLS struct InnerScopeExpressionAst;
   SPP_EXP_CLS struct IntegerLiteralAst;
@@ -553,10 +553,10 @@ namespace spp::asts {
   };
 
   template <>
-  struct AstKindRange<GenericParameterTypeInlineConstraintsAst> {
+  struct AstKindRange<GenericParameterTypeConstraintsAst> {
     static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kGenericParameterTypeInlineConstraintsAst;
-    static constexpr auto Last = AstKind::kGenericParameterTypeInlineConstraintsAst;
+    static constexpr auto First = AstKind::kGenericParameterTypeConstraintsAst;
+    static constexpr auto Last = AstKind::kGenericParameterTypeConstraintsAst;
   };
 
   template <>

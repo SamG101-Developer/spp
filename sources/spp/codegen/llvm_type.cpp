@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_type;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_compare;
@@ -49,8 +50,8 @@ constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
 namespace spp::codegen {
   namespace {
     auto AdoptLlvmTypeInfo(
-      LlvmTypeSymInfo &target,
-      LlvmTypeSymInfo const &source)
+      LlvmTypeSymbolInfo &target,
+      LlvmTypeSymbolInfo const &source)
       -> void {
       target.LlvmType = source.LlvmType;
       target.FieldIndexMap = source.FieldIndexMap;
@@ -67,25 +68,26 @@ namespace spp::codegen {
       }
       std::unreachable();
     }
+
+    /**
+     * The fat pointer fields of a type: "FunXXX" closures are represented by a { fn_ptr, env_ptr } pair. The total
+     * field count (for example a stateful type superimposing a FunXXX type) is mirrored in
+     * "type_members::GetSuperimposedFatPointerFieldCount"; this only adds the LLVM-specific type materialization on top.
+     * @return The pair in a 1-item vector (for future expansion), or nothing for a type that is not a function type.
+     */
+    auto GetFatPointerFields(
+      analyse::scopes::TypeSymbol const &sym,
+      analyse::scopes::Scope const &scope,
+      LlvmCtx const *ctx)
+      -> std::optional<Vec<llvm::Type*>> {
+      using analyse::utils::type_predicates::IsTypeFunction;
+      const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+      if (IsTypeFunction(analyse::scopes::TypeRef::OfKind(sym, scope), scope)) {
+        return Vec<llvm::Type*>{ptr_ty, ptr_ty};
+      }
+      return std::nullopt;
+    }
   }
-}
-
-auto spp::codegen::GetFatPointerFields(
-  analyse::scopes::TypeSymbol const &sym,
-  analyse::scopes::Scope const &scope,
-  LlvmCtx const *ctx)
-  -> std::optional<Vec<llvm::Type*>> {
-  //
-  using analyse::utils::type_predicates::IsTypeFunc;
-
-  // "FunXXX" closures are represented by a { fn_ptr, env_ptr }
-  // pair. The total field count (for example a stateful type
-  // superimposing a FunXXX type, is mirrored in the function
-  // "GetSuperimposedFatPointerFieldCount"; this function only
-  // adds the LLVM-specific type materialization on top.
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  if (IsTypeFunc(sym, scope)) { return Vec<llvm::Type*>{ptr_ty, ptr_ty}; }
-  return std::nullopt;
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
@@ -98,7 +100,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // used as a value is one of these mocks, so it lowers to the
   // same { fn_ptr, env_ptr } pair as the function type it extends.
   if (cls_proto->Name->IsCompilerGeneratedType()) {
-    const auto mock_sym = cls_proto->GetClsSym();
+    const auto mock_sym = cls_proto->GetClsSymbol();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     mock_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
     return;
@@ -116,7 +118,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   -> void {
   // Get the class symbol from the scope that owns it. This
   // pulls the correct generic instantiation for struct types.
-  const auto cls_sym = scope->TySym;
+  const auto cls_sym = scope->LinkedTypeSymbol;
 
   // A "$" mock reached through its scope rather than its
   // prototype - the shape a closure's own type has - lowers
@@ -130,9 +132,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   }
 
   // For compiler known types, specialize the llvm type symbols.
-  const auto parts = scope->Ancestors()
+  const auto parts = scope->GetAncestors()
     | genex::views::drop_last(1)
-    | genex::views::transform([](auto *x) { return x->NonGenericScope->NameAsString(); })
+    | genex::views::transform([](auto *x) { return x->NonGnScope->NameAsString(); })
     | genex::views::reverse
     | genex::to<Vec>();
 
@@ -156,7 +158,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
   if (parts == kSizedIntegerParts) {
-    const auto *const bit_width_val = scope->TySym->BoundCompArg("w");
+    const auto bit_width_val = scope->LinkedTypeSymbol->CompArg("w");
     const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
     if (bit_width_ast == nullptr) { return; }
     const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
@@ -166,7 +168,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
   if (parts == kSizedFloatParts) {
-    const auto *const bit_width_val = scope->TySym->BoundCompArg("w");
+    const auto bit_width_val = scope->LinkedTypeSymbol->CompArg("w");
     const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
     if (bit_width_ast == nullptr) { return; }
     const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
@@ -178,14 +180,15 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   if (parts == kArrParts) {
     // The template ("Arr", named as written) has no layout; only an instantiation carries its element type and length.
     if (not cls_sym->IsConcrete or cls_sym->InstanceOf == nullptr) { return; }
-    const auto *const length_val = cls_sym->BoundCompArg("n");
+    const auto length_val = cls_sym->CompArg("n");
     const auto length_ast = length_val != nullptr ? length_val->To<asts::IntegerLiteralAst>() : nullptr;
-    const auto elem_sym = cls_sym->BoundTypeArg("T");
+    const auto elem_ref = cls_sym->TypeArgRef("T");
+    auto const *const elem_sym = elem_ref.Symbol;
     if (length_ast != nullptr and elem_sym != nullptr) {
       if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
         RegisterLlvmTypeInfo(elem_sym->Type, sm, ctx);
       }
-      if (const auto elem_llvm_type = GetLlvmType(*elem_sym, ctx); elem_llvm_type != nullptr) {
+      if (const auto elem_llvm_type = GetLlvmTypeOf(elem_ref, ctx); elem_llvm_type != nullptr) {
         cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
       }
     }
@@ -218,7 +221,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   }
 
   // If the type already exists in LLVM, skip.
-  if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::mangle_type_name(*cls_sym));
+  if (const auto llvm_type = llvm::StructType::getTypeByName(*ctx->Context, mangle::MangleTypeName(*cls_sym));
     llvm_type != nullptr) {
     cls_sym->LlvmInfo->LlvmType = llvm_type;
     return;
@@ -228,7 +231,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // { tag, payload } pair. This includes all sorts of
   // internal processing for tag setup.
   if (parts == kVarParts) {
-    const auto struct_type = llvm::StructType::create(*ctx->Context, mangle::mangle_type_name(*cls_sym));
+    const auto struct_type = llvm::StructType::create(*ctx->Context, mangle::MangleTypeName(*cls_sym));
     cls_sym->LlvmInfo->LlvmType = struct_type;
 
     auto const &dl = ctx->Module->getDataLayout();
@@ -242,9 +245,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     const auto member_sm = analyse::scopes::ScopeManager(
       sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
 
-    const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym->FqName(), *scope);
-    for (auto const &member : analyse::utils::type_compare::VariantMembers(variant_ref, *scope)) {
-      const auto member_sym = member.Sym;
+    const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym, *scope);
+    for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(variant_ref, *scope)) {
+      const auto member_sym = member.Symbol;
       if (member_sym == nullptr) { continue; }
 
       // A variant can be registered before its members
@@ -278,7 +281,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // Empty struct, will fill in stage_10 when all attributes'
   // types have been generated.
   cls_sym->LlvmInfo->LlvmType = llvm::StructType::create(
-    *ctx->Context, mangle::mangle_type_name(*cls_sym));
+    *ctx->Context, mangle::MangleTypeName(*cls_sym));
 }
 
 auto spp::codegen::GetLlvmType(
@@ -304,7 +307,7 @@ auto spp::codegen::GetLlvmTypeOf(
   LlvmCtx const *ctx)
   -> llvm::Type* {
   if (ref.IsBorrowed()) { return llvm::PointerType::get(*ctx->Context, 0); }
-  return ref.Sym != nullptr ? GetLlvmType(*ref.Sym, ctx) : nullptr;
+  return ref.Symbol != nullptr ? GetLlvmType(*ref.Symbol, ctx) : nullptr;
 }
 
 auto spp::codegen::EnsureLlvmTypeComplete(
@@ -314,11 +317,22 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   -> void {
   // A symbol that names another type without carrying its
   // prototype - "Self", which links to the class it stands
-  // for (see "AddSelfTypeSym") - is completed as that class
+  // for (see "MakeSelfTypeSymbol") - is completed as that class
   // and then adopts the result. It cannot be completed as
   // itself: there is no prototype on it to read a layout
   // from, and the guard below would turn it away.
-  const auto linked_sym = type_sym.AsClassSymbol();
+  auto linked_sym = type_sym.AsBound();
+
+  // An alias ("type Opt[T] = Some[T] or None") has a prototype
+  // of its own, but it is the target that has the layout, and
+  // both mangle to the same name: lowering the alias as itself
+  // would register an empty struct under the target's name.
+  if (type_sym.LlvmInfo->LlvmType == nullptr and type_sym.Alias != nullptr) {
+    if (const auto target = type_sym.AliasTarget(*sm.CurrentScope); target != &type_sym) {
+      linked_sym = target;
+    }
+  }
+
   if (linked_sym != &type_sym) {
     // Stand-ins can name each other - the "Self" of a scope
     // whose class scope carries another "Self" - and following
@@ -347,14 +361,9 @@ auto spp::codegen::EnsureLlvmTypeComplete(
     // bound to one, "T" inside an instantiation - is not the
     // symbol the registration above writes to; that writes to the
     // one owned by the linked scope. Adopt the result, or this
-    // symbol stays un-lowered however many times it is asked for,
-    // which is what "AttachLlvmTypeInfo" does eagerly for the
-    // aliases it can see at the end of Stage8. It cannot see these:
-    // a binding minted while monomorphising did not exist yet.
-    if (type_sym.LlvmInfo->LlvmType == nullptr
-      and type_sym.LinkedScope != nullptr
-      and type_sym.LinkedScope->TySym != nullptr) {
-      AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *type_sym.LinkedScope->TySym->LlvmInfo);
+    // symbol stays un-lowered however many times it is asked for.
+    if (type_sym.LlvmInfo->LlvmType == nullptr and type_sym.LinkedSymbol() != &type_sym) {
+      AdoptLlvmTypeInfo(*type_sym.LlvmInfo, *type_sym.LinkedSymbol()->LlvmInfo);
     }
   }
 

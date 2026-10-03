@@ -9,10 +9,12 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.func_utils;
-import spp.analyse.utils.generic_bindings;
+import spp.analyse.utils.fn_values;
+import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
@@ -92,8 +94,7 @@ auto SupPrototypeFunctionsAst::Stage1_PreProcess(
 auto SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppSuperimpositionOptionalGenericParameterError;
-  using analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError;
+  IMPORT_UTILS;
 
   // Create a new scope for the superimposition extension.
   auto scope_name = ScopeBlockName::FromParts(
@@ -101,41 +102,20 @@ auto SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
-  // Check there are optional generic parameters.
-  const auto optional = GnParamGroup->GetOptionalParams();
-  RaiseIf<SppSuperimpositionOptionalGenericParameterError>(
-    not optional.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*optional[0]));
-
-  // Check every generic parameter is constrained by the
-  // type.
-  const auto unconstrained = GnParamGroup->GetAllParams()
-    | genex::views::filter([this](auto const &x) { return not Name->ContainsGenerics(*x); })
-    | genex::to<Vec>();
-  RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
-    not unconstrained.IsEmpty(), {sm->CurrentScope}, ERR_ARGS(*unconstrained[0]));
-
-  // Generate symbols for the generic parameter group, and
-  // the self type.
+  // The generic parameters' symbols first: whether each is named in the type is read by identity.
   GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
+  sup_blocks::CheckGnParams(*GnParamGroup, {Name.get()}, *sm);
+
   Impl->Stage2_GenTopLvlScopes(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
 auto SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Register "Self" before any alias in the block is resolved,
-  // so that one naming it has something to resolve to. The name
-  // is not qualified yet, so the base symbol is what answers
-  // here; Stage 5 replaces this with the precise one.
+  IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  if (not Name->IsCompilerGeneratedType()) {
-    // The name need not resolve to anything here: a superimposition over a type that does not exist is reported by
-    // the stage that qualifies it, not this one, so this asks for the symbol rather than assuming it.
-    if (const auto base_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get())) {
-      sm->AddSelfTypeSymbol(base_sym->LinkedScope, Name->PosStart());
-    }
-  }
+  sup_blocks::RegisterProvisionalSelf(*Name, *sm);
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -153,47 +133,14 @@ auto SupPrototypeFunctionsAst::Stage4_ResolveDeclarations(
 auto SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
+  IMPORT_UTILS;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Analyse the type being superimposed over. An abstract
-  // type is allowed here, because this is where its abstract
-  // methods are declared.
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->AllowAbstractType = true;
-    Name->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*Name, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Name, "superimposition type"));
-
-  // A "$Func" mock keeps its bare name here - see the
-  // matching note in "SupPrototypeExtensionAst".
-  Name = sm->CurrentScope->GetTypeSymbol(Name.get())->FqName(true)->WithSourceSpanOf(*Name);
-
-  // Register the superimposition against the base symbol.
-  const auto base_cls_sym = sm->CurrentScope->GetTypeSymbol(Name->WithoutGenerics().get());
-  if (sm->CurrentScope->Parent == sm->CurrentScope->ParentModule()) {
-    if (not base_cls_sym->IsTypeGeneric()) {
-      ScopeManager::normal_sup_blocks[base_cls_sym].EmplaceBack(sm->CurrentScope);
-    }
-    else {
-      ScopeManager::generic_sup_blocks.EmplaceBack(sm->CurrentScope);
-    }
-  }
-
-  // Re-register "Self" against the fully-resolved name,
-  // replacing the provisional one from Stage 3.
-  if (not Name->IsCompilerGeneratedType()) {
-    sm->AddSelfTypeSymbol(
-      sm->CurrentScope->GetTypeSymbol(Name.get())->LinkedScope, Name->PosStart());
-  }
+  // The type superimposed over: analysed, qualified, the block filed against it, and "Self" made precise.
+  sup_blocks::LoadTarget(*this, Name, false, *sm, meta);
 
   // Load the implementation and move out of the scope.
   Impl->Stage5_LoadSupScopes(sm, meta);
@@ -203,22 +150,21 @@ auto SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
 auto SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::type_members::CheckShadowedCmpAgreesInType;
+  IMPORT_UTILS;
 
   // Move to the next scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
   for (auto const &member : Impl->Members) {
     if (const auto cmp_member = member->To<CmpStatementAst>()) {
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
-      CheckShadowedCmpAgreesInType(*cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
+      type_members::CheckShadowedCmpAgreesInType(*cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
     }
   }
 
-  // Name->Stage7_AnalyseSemantics(sm, meta);
   Impl->Stage6_PreAnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -226,7 +172,7 @@ auto SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
 auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::generic_bindings::EnforceGenericConstraintsOfParams;
+  IMPORT_UTILS;
 
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -244,9 +190,9 @@ auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   // Re-map "Self" to the true type.
   sm->SyncSelfTypeSymbol(*Name);
 
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(Name.get());
+  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
   if (cls_sym->Type)
-    EnforceGenericConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
+    generic_inference::EnforceGnConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }

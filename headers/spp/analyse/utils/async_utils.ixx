@@ -5,6 +5,7 @@ export module spp.analyse.utils.async_utils;
 import spp.utils.types;
 import std;
 
+use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ClosureExpressionCaptureAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
@@ -12,7 +13,6 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct StatementAst);
-use(spp::analyse::scopes, class Scope);
 
 namespace spp::analyse::utils::async_utils {
   /// Add a capture to the closure lowered from the async call
@@ -22,9 +22,9 @@ namespace spp::analyse::utils::async_utils {
   /// satisfies memory rules. Internal convention ranking handles
   /// different capture conventions.
   SPP_EXP_FUN auto CaptureOnce(
-    Vec<Unique<asts::ClosureExpressionCaptureAst>> &captures,
-    Unique<asts::IdentifierAst> &&name,
-    Unique<asts::ConventionAst> &&conv)
+    Vec<Unique<ClosureExpressionCaptureAst>> &captures,
+    Unique<IdentifierAst> &&name,
+    Unique<ConventionAst> &&conv)
     -> void;
 
   /// Determine what is being borrowed, and therefore what needs
@@ -32,11 +32,11 @@ namespace spp::analyse::utils::async_utils {
   /// being in the outermost symbol, borrowing a temporary needs
   /// to materialize it etc.
   SPP_EXP_FUN auto CaptureBorrow(
-    Unique<asts::ExpressionAst> &place,
-    asts::ConventionAst const &conv,
-    scopes::Scope const &scope,
-    Vec<Unique<asts::StatementAst>> &prelude,
-    Vec<Unique<asts::ClosureExpressionCaptureAst>> &captures,
+    Unique<ExpressionAst> &place,
+    ConventionAst const &conv,
+    Scope const &scope,
+    Vec<Unique<StatementAst>> &prelude,
+    Vec<Unique<ClosureExpressionCaptureAst>> &captures,
     std::size_t pos)
     -> void;
 
@@ -46,11 +46,11 @@ namespace spp::analyse::utils::async_utils {
   /// as "self" - temporaries are materialized by binding to a
   /// closure-owned local.
   SPP_EXP_FUN auto CaptureReceiver(
-    asts::PostfixExpressionAst &path,
-    asts::FunctionPrototypeAst const *target,
-    scopes::Scope const &scope,
-    Vec<Unique<asts::StatementAst>> &prelude,
-    Vec<Unique<asts::ClosureExpressionCaptureAst>> &captures,
+    PostfixExpressionAst &path,
+    FunctionPrototypeAst const *target,
+    Scope const &scope,
+    Vec<Unique<StatementAst>> &prelude,
+    Vec<Unique<ClosureExpressionCaptureAst>> &captures,
     std::size_t pos)
     -> void;
 }

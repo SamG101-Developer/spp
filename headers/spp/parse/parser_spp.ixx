@@ -38,7 +38,7 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
-use(spp::asts, struct GenericParameterTypeInlineConstraintsAst);
+use(spp::asts, struct GenericParameterTypeConstraintsAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, template <typename T> struct InnerScopeAst);
 use(spp::asts, struct InnerScopeExpressionAst);
@@ -152,399 +152,399 @@ public:
   using ParserBase::ParserBase;
   ~ParserSpp() override = default;
 
-  auto parse() -> Unique<ModulePrototypeAst>;
-  auto parse_root() -> Unique<ModulePrototypeAst>;
-  auto parse_eof() -> Unique<TokenAst>;
+  auto Parse() -> Unique<ModulePrototypeAst>;
+  auto ParseRoot() -> Unique<ModulePrototypeAst>;
+  auto ParseEof() -> Unique<TokenAst>;
 
-  auto parse_module_prototype() -> Unique<ModulePrototypeAst>;
-  auto parse_module_implementation() -> Unique<ModuleImplementationAst>;
-  auto parse_module_member() -> Unique<Ast>;
+  auto ParseModulePrototype() -> Unique<ModulePrototypeAst>;
+  auto ParseModuleImplementation() -> Unique<ModuleImplementationAst>;
+  auto ParseModuleMember() -> Unique<Ast>;
 
-  auto parse_class_prototype() -> Unique<ClassPrototypeAst>;
-  auto parse_class_implementation() -> Unique<ClassImplementationAst>;
-  auto parse_class_member() -> Unique<Ast>;
-  auto parse_class_attribute() -> Unique<ClassAttributeAst>;
-  auto parse_class_attribute_default_value() -> Unique<ExpressionAst>;
+  auto ParseClassPrototype() -> Unique<ClassPrototypeAst>;
+  auto ParseClassImplementation() -> Unique<ClassImplementationAst>;
+  auto ParseClassMember() -> Unique<Ast>;
+  auto ParseClassAttribute() -> Unique<ClassAttributeAst>;
+  auto ParseClassAttributeDefaultValue() -> Unique<ExpressionAst>;
 
-  auto parse_sup_prototype_functions() -> Unique<SupPrototypeFunctionsAst>;
-  auto parse_sup_prototype_extension() -> Unique<SupPrototypeExtensionAst>;
-  auto parse_sup_implementation() -> Unique<SupImplementationAst>;
-  auto parse_sup_member() -> Unique<Ast>;
-  auto parse_sup_type_statement() -> Unique<TypeStatementAst>;
-  auto parse_sup_cmp_statement() -> Unique<CmpStatementAst>;
+  auto ParseSupPrototypeFunctions() -> Unique<SupPrototypeFunctionsAst>;
+  auto ParseSupPrototypeExtension() -> Unique<SupPrototypeExtensionAst>;
+  auto ParseSupImplementation() -> Unique<SupImplementationAst>;
+  auto ParseSupMember() -> Unique<Ast>;
+  auto ParseSupTypeStatement() -> Unique<TypeStatementAst>;
+  auto ParseSupCmpStatement() -> Unique<CmpStatementAst>;
 
-  auto parse_function_prototype() -> Unique<FunctionPrototypeAst>;
-  auto parse_subroutine_prototype() -> Unique<SubroutinePrototypeAst>;
-  auto parse_coroutine_prototype() -> Unique<CoroutinePrototypeAst>;
-  auto parse_function_implementation() -> Unique<FunctionImplementationAst>;
-  auto parse_function_member() -> Unique<StatementAst>;
-  auto parse_function_parameter_group() -> Unique<FunctionParameterGroupAst>;
-  auto parse_function_parameter() -> Unique<FunctionParameterAst>;
-  auto parse_function_parameter_self() -> Unique<FunctionParameterSelfAst>;
-  auto parse_function_parameter_self_with_convention() -> Unique<FunctionParameterSelfAst>;
-  auto parse_function_parameter_self_without_convention() -> Unique<FunctionParameterSelfAst>;
-  auto parse_function_parameter_required() -> Unique<FunctionParameterRequiredAst>;
-  auto parse_function_parameter_optional() -> Unique<FunctionParameterOptionalAst>;
-  auto parse_function_parameter_variadic() -> Unique<FunctionParameterVariadicAst>;
+  auto ParseFunctionPrototype() -> Unique<FunctionPrototypeAst>;
+  auto ParseSubroutinePrototype() -> Unique<SubroutinePrototypeAst>;
+  auto ParseCoroutinePrototype() -> Unique<CoroutinePrototypeAst>;
+  auto ParseFunctionImplementation() -> Unique<FunctionImplementationAst>;
+  auto ParseFunctionMember() -> Unique<StatementAst>;
+  auto ParseFunctionParameterGroup() -> Unique<FunctionParameterGroupAst>;
+  auto ParseFunctionParameter() -> Unique<FunctionParameterAst>;
+  auto ParseFunctionParameterSelf() -> Unique<FunctionParameterSelfAst>;
+  auto ParseFunctionParameterSelfWithConvention() -> Unique<FunctionParameterSelfAst>;
+  auto ParseFunctionParameterSelfWithoutConvention() -> Unique<FunctionParameterSelfAst>;
+  auto ParseFunctionParameterRequired() -> Unique<FunctionParameterRequiredAst>;
+  auto ParseFunctionParameterOptional() -> Unique<FunctionParameterOptionalAst>;
+  auto ParseFunctionParameterVariadic() -> Unique<FunctionParameterVariadicAst>;
 
-  auto parse_function_call_argument_group() -> Unique<FunctionCallArgumentGroupAst>;
-  auto parse_function_call_argument() -> Unique<FunctionCallArgumentAst>;
-  auto parse_function_call_argument_keyword() -> Unique<FunctionCallArgumentKeywordAst>;
-  auto parse_function_call_argument_positional() -> Unique<FunctionCallArgumentPositionalAst>;
+  auto ParseFunctionCallArgumentGroup() -> Unique<FunctionCallArgumentGroupAst>;
+  auto ParseFunctionCallArgument() -> Unique<FunctionCallArgumentAst>;
+  auto ParseFunctionCallArgumentKeyword() -> Unique<FunctionCallArgumentKeywordAst>;
+  auto ParseFunctionCallArgumentPositional() -> Unique<FunctionCallArgumentPositionalAst>;
 
-  auto parse_generic_parameter_group() -> Unique<GenericParameterGroupAst>;
-  auto parse_generic_parameter() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_comp() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_comp_required() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_comp_optional() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_comp_variadic() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_type() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_type_required() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_type_optional() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_type_variadic() -> Unique<GenericParameterAst>;
-  auto parse_generic_parameter_type_inline_constraints() -> Unique<GenericParameterTypeInlineConstraintsAst>;
+  auto ParseGenericParameterGroup() -> Unique<GenericParameterGroupAst>;
+  auto ParseGenericParameter() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterComp() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterCompRequired() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterCompOptional() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterCompVariadic() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterType() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterTypeRequired() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterTypeOptional() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterTypeVariadic() -> Unique<GenericParameterAst>;
+  auto ParseGenericParameterTypeConstraints() -> Unique<GenericParameterTypeConstraintsAst>;
 
-  auto parse_generic_argument_group() -> Unique<GenericArgumentGroupAst>;
-  auto parse_generic_argument() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_comp() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_comp_positional() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_comp_keyword() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_type() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_type_positional() -> Unique<GenericArgumentAst>;
-  auto parse_generic_argument_type_keyword() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentGroup() -> Unique<GenericArgumentGroupAst>;
+  auto ParseGenericArgument() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentComp() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentCompPositional() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentCompKeyword() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentType() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentTypePositional() -> Unique<GenericArgumentAst>;
+  auto ParseGenericArgumentTypeKeyword() -> Unique<GenericArgumentAst>;
 
-  auto parse_annotation() -> Unique<AnnotationAst>;
-  auto parse_annotation_no_call() -> Unique<AnnotationAst>;
-  auto parse_annotation_call() -> Unique<AnnotationAst>;
+  auto ParseAnnotation() -> Unique<AnnotationAst>;
+  auto ParseAnnotationNoCall() -> Unique<AnnotationAst>;
+  auto ParseAnnotationCall() -> Unique<AnnotationAst>;
 
-  auto parse_expression() -> Unique<ExpressionAst>;
+  auto ParseExpression() -> Unique<ExpressionAst>;
 
-  auto parse_binary_expression(std::uint8_t min_prec = 0) -> Unique<ExpressionAst>;
+  auto ParseBinaryExpression(std::uint8_t min_prec = 0) -> Unique<ExpressionAst>;
 
-  auto parse_unary_expression() -> Unique<ExpressionAst>;
-  auto parse_unary_expression_op() -> Unique<UnaryExpressionOperatorAst>;
-  auto parse_unary_expression_op_async() -> Unique<UnaryExpressionOperatorAsyncAst>;
+  auto ParseUnaryExpression() -> Unique<ExpressionAst>;
+  auto ParseUnaryExpressionOp() -> Unique<UnaryExpressionOperatorAst>;
+  auto ParseUnaryExpressionOpAsync() -> Unique<UnaryExpressionOperatorAsyncAst>;
 
-  auto parse_postfix_expression() -> Unique<ExpressionAst>;
-  auto parse_postfix_expression_op() -> Unique<PostfixExpressionOperatorAst>;
-  auto parse_postfix_expression_op_deref() -> Unique<PostfixExpressionOperatorDerefAst>;
-  auto parse_postfix_expression_op_early_return() -> Unique<PostfixExpressionOperatorEarlyReturnAst>;
-  auto parse_postfix_expression_op_function_call() -> Unique<PostfixExpressionOperatorFunctionCallAst>;
-  auto parse_postfix_expression_op_runtime_member_access()
+  auto ParsePostfixExpression() -> Unique<ExpressionAst>;
+  auto ParsePostfixExpressionOp() -> Unique<PostfixExpressionOperatorAst>;
+  auto ParsePostfixExpressionOpDeref() -> Unique<PostfixExpressionOperatorDerefAst>;
+  auto ParsePostfixExpressionOpEarlyReturn() -> Unique<PostfixExpressionOperatorEarlyReturnAst>;
+  auto ParsePostfixExpressionOpFunctionCall() -> Unique<PostfixExpressionOperatorFunctionCallAst>;
+  auto ParsePostfixExpressionOpRuntimeMemberAccess()
     -> Unique<PostfixExpressionOperatorRuntimeMemberAccessAst>;
-  auto parse_postfix_expression_op_static_member_access()
+  auto ParsePostfixExpressionOpStaticMemberAccess()
     -> Unique<PostfixExpressionOperatorStaticMemberAccessAst>;
-  auto parse_postfix_expression_op_keyword_not() -> Unique<PostfixExpressionOperatorKeywordNotAst>;
-  auto parse_postfix_expression_op_keyword_await() -> Unique<PostfixExpressionOperatorKeywordAwaitAst>;
+  auto ParsePostfixExpressionOpKeywordNot() -> Unique<PostfixExpressionOperatorKeywordNotAst>;
+  auto ParsePostfixExpressionOpKeywordAwait() -> Unique<PostfixExpressionOperatorKeywordAwaitAst>;
 
-  auto parse_postfix_expression_op_keyword_res() -> Unique<PostfixExpressionOperatorKeywordResAst>;
-  auto parse_postfix_expression_op_index() -> Unique<PostfixExpressionOperatorIndexAst>;
-  auto parse_postfix_expression_op_slice() -> Unique<PostfixExpressionOperatorSliceAst>;
-  auto parse_postfix_expression_strictly_static_access_zero() -> Unique<ExpressionAst>;
-  auto parse_postfix_expression_strictly_static_access_one() -> Unique<ExpressionAst>;
+  auto ParsePostfixExpressionOpKeywordRes() -> Unique<PostfixExpressionOperatorKeywordResAst>;
+  auto ParsePostfixExpressionOpIndex() -> Unique<PostfixExpressionOperatorIndexAst>;
+  auto ParsePostfixExpressionOpSlice() -> Unique<PostfixExpressionOperatorSliceAst>;
+  auto ParsePostfixExpressionStrictlyStaticAccessZero() -> Unique<ExpressionAst>;
+  auto ParsePostfixExpressionStrictlyStaticAccessOne() -> Unique<ExpressionAst>;
 
-  auto parse_primary_expression() -> Unique<ExpressionAst>;
+  auto ParsePrimaryExpression() -> Unique<ExpressionAst>;
 
-  auto parse_parenthesised_expression() -> Unique<ParenthesisedExpressionAst>;
+  auto ParseParenthesisedExpression() -> Unique<ParenthesisedExpressionAst>;
 
-  auto parse_fold_expression() -> Unique<FoldExpressionAst>;
+  auto ParseFoldExpression() -> Unique<FoldExpressionAst>;
 
-  auto parse_case_expression() -> Unique<CaseExpressionAst>;
-  auto parse_case_expression_branch() -> Unique<CaseExpressionBranchAst>;
-  auto parse_case_expression_branch_else() -> Unique<CaseExpressionBranchAst>;
-  auto parse_case_expression_branch_else_case() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseExpression() -> Unique<CaseExpressionAst>;
+  auto ParseCaseExpressionBranch() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseExpressionBranchElse() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseExpressionBranchElseCase() -> Unique<CaseExpressionBranchAst>;
 
-  auto parse_case_of_expression() -> Unique<CaseExpressionAst>;
-  auto parse_case_of_expression_branch() -> Unique<CaseExpressionBranchAst>;
-  auto parse_case_of_expression_branch_destructuring() -> Unique<CaseExpressionBranchAst>;
-  auto parse_case_of_expression_branch_comparing() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseOfExpression() -> Unique<CaseExpressionAst>;
+  auto ParseCaseOfExpressionBranch() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseOfExpressionBranchDestructuring() -> Unique<CaseExpressionBranchAst>;
+  auto ParseCaseOfExpressionBranchComparing() -> Unique<CaseExpressionBranchAst>;
 
-  auto parse_case_expression_pattern_variant_destructure() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_array() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_object() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_tuple() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_skip_single_argument() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_skip_multiple_arguments()
+  auto ParseCaseExpressionPatternVariantDestructure() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantDestructureArray() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantDestructureObject() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantDestructureTuple() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantDestructureSkipSingleArgument() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantDestructureSkipMultipleArguments()
     -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_destructure_attribute_binding() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_single_identifier() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_single_identifier_aliasable() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_single_identifier_with_convention() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_single_identifier_without_convention()
+  auto ParseCaseExpressionPatternVariantDestructureAttributeBinding() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantSingleIdentifier() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantSingleIdentifierAliasable() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantSingleIdentifierWithConvention() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantSingleIdentifierWithoutConvention()
     -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_literal() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_expression() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_else() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_variant_else_case() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_nested_for_destructure_array() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_nested_for_destructure_object() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_nested_for_destructure_tuple() -> Unique<CasePatternVariantAst>;
-  auto parse_case_expression_pattern_nested_for_destructure_attribute_binding() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantLiteral() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantExpression() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantElse() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternVariantElseCase() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternNestedForDestructureArray() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternNestedForDestructureObject() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternNestedForDestructureTuple() -> Unique<CasePatternVariantAst>;
+  auto ParseCaseExpressionPatternNestedForDestructureAttributeBinding() -> Unique<CasePatternVariantAst>;
 
-  auto parse_pattern_guard() -> Unique<PatternGuardAst>;
-  auto parse_boolean_comparison_op() -> Unique<TokenAst>;
+  auto ParsePatternGuard() -> Unique<PatternGuardAst>;
+  auto ParseBooleanComparisonOp() -> Unique<TokenAst>;
 
-  auto parse_loop_expression() -> Unique<LoopExpressionAst>;
-  auto parse_loop_conditional_expression() -> Unique<LoopConditionalExpressionAst>;
-  auto parse_loop_iterable_expression() -> Unique<LoopIterableExpressionAst>;
-  auto parse_loop_else_statement() -> Unique<LoopElseStatementAst>;
+  auto ParseLoopExpression() -> Unique<LoopExpressionAst>;
+  auto ParseLoopConditionalExpression() -> Unique<LoopConditionalExpressionAst>;
+  auto ParseLoopIterableExpression() -> Unique<LoopIterableExpressionAst>;
+  auto ParseLoopElseStatement() -> Unique<LoopElseStatementAst>;
 
-  auto parse_gen_expression() -> Unique<GenExpressionAst>;
-  auto parse_gen_expression_with_expression() -> Unique<GenExpressionAst>;
-  auto parse_gen_expression_without_expression() -> Unique<GenExpressionAst>;
-  auto parse_gen_unroll_expression() -> Unique<GenWithExpressionAst>;
+  auto ParseGenExpression() -> Unique<GenExpressionAst>;
+  auto ParseGenExpressionWithExpression() -> Unique<GenExpressionAst>;
+  auto ParseGenExpressionWithoutExpression() -> Unique<GenExpressionAst>;
+  auto ParseGenUnrollExpression() -> Unique<GenWithExpressionAst>;
 
-  auto parse_inner_scope_expression(auto &&parser) -> Unique<InnerScopeExpressionAst>;
-  auto parse_inner_scope(auto &&parser) -> Unique<InnerScopeAst<decltype(parser())>>;
+  auto ParseInnerScopeExpression(auto &&parser) -> Unique<InnerScopeExpressionAst>;
+  auto ParseInnerScope(auto &&parser) -> Unique<InnerScopeAst<decltype(parser())>>;
 
-  auto parse_statement() -> Unique<StatementAst>;
-  auto parse_assignment_statement() -> Unique<AssignmentStatementAst>;
-  auto parse_assignment_target() -> Unique<ExpressionAst>;
-  auto parse_assignment_target_postfix_expression() -> Unique<ExpressionAst>;
-  auto parse_assignment_target_postfix_expression_op() -> Unique<PostfixExpressionOperatorAst>;
-  auto parse_assignment_target_primary_expression() -> Unique<ExpressionAst>;
+  auto ParseStatement() -> Unique<StatementAst>;
+  auto ParseAssignmentStatement() -> Unique<AssignmentStatementAst>;
+  auto ParseAssignmentTarget() -> Unique<ExpressionAst>;
+  auto ParseAssignmentTargetPostfixExpression() -> Unique<ExpressionAst>;
+  auto ParseAssignmentTargetPostfixExpressionOp() -> Unique<PostfixExpressionOperatorAst>;
+  auto ParseAssignmentTargetPrimaryExpression() -> Unique<ExpressionAst>;
 
-  auto parse_ret_statement() -> Unique<RetStatementAst>;
-  auto parse_defer_statement() -> Unique<DeferStatementAst>;
-  auto parse_exit_statement() -> Unique<LoopControlFlowStatementAst>;
-  auto parse_exit_statement_with_value() -> Unique<LoopControlFlowStatementAst>;
-  auto parse_skip_statement() -> Unique<LoopControlFlowStatementAst>;
-  auto parse_use_statement() -> Unique<UseStatementAst>;
-  auto parse_use_var_statement() -> Unique<UseStatementVariableAst>;
-  auto parse_type_statement() -> Unique<TypeStatementAst>;
-  auto parse_cmp_statement() -> Unique<CmpStatementAst>;
-  auto parse_let_statement() -> Unique<LetStatementAst>;
-  auto parse_let_statement_initialized() -> Unique<LetStatementAst>;
-  auto parse_let_statement_initialized_explicit_type() -> Unique<TypeAst>;
-  auto parse_let_statement_uninitialized() -> Unique<LetStatementAst>;
+  auto ParseRetStatement() -> Unique<RetStatementAst>;
+  auto ParseDeferStatement() -> Unique<DeferStatementAst>;
+  auto ParseExitStatement() -> Unique<LoopControlFlowStatementAst>;
+  auto ParseExitStatementWithValue() -> Unique<LoopControlFlowStatementAst>;
+  auto ParseSkipStatement() -> Unique<LoopControlFlowStatementAst>;
+  auto ParseUseStatement() -> Unique<UseStatementAst>;
+  auto ParseUseVarStatement() -> Unique<UseStatementVariableAst>;
+  auto ParseTypeStatement() -> Unique<TypeStatementAst>;
+  auto ParseCmpStatement() -> Unique<CmpStatementAst>;
+  auto ParseLetStatement() -> Unique<LetStatementAst>;
+  auto ParseLetStatementInitialized() -> Unique<LetStatementAst>;
+  auto ParseLetStatementInitializedExplicitType() -> Unique<TypeAst>;
+  auto ParseLetStatementUninitialized() -> Unique<LetStatementAst>;
 
-  auto parse_global_use_statement() -> Unique<UseStatementAst>;
-  auto parse_global_use_var_statement() -> Unique<UseStatementVariableAst>;
-  auto parse_global_type_statement() -> Unique<TypeStatementAst>;
-  auto parse_global_cmp_statement() -> Unique<CmpStatementAst>;
+  auto ParseGlobalUseStatement() -> Unique<UseStatementAst>;
+  auto ParseGlobalUseVarStatement() -> Unique<UseStatementVariableAst>;
+  auto ParseGlobalTypeStatement() -> Unique<TypeStatementAst>;
+  auto ParseGlobalCmpStatement() -> Unique<CmpStatementAst>;
 
-  auto parse_local_variable() -> Unique<LocalVariableAst>;
-  auto parse_local_variable_destructure_array() -> Unique<LocalVariableDestructureArrayAst>;
-  auto parse_local_variable_destructure_object() -> Unique<LocalVariableDestructureObjectAst>;
-  auto parse_local_variable_destructure_tuple() -> Unique<LocalVariableDestructureTupleAst>;
-  auto parse_local_variable_destructure_skip_single_argument()
+  auto ParseLocalVariable() -> Unique<LocalVariableAst>;
+  auto ParseLocalVariableDestructureArray() -> Unique<LocalVariableDestructureArrayAst>;
+  auto ParseLocalVariableDestructureObject() -> Unique<LocalVariableDestructureObjectAst>;
+  auto ParseLocalVariableDestructureTuple() -> Unique<LocalVariableDestructureTupleAst>;
+  auto ParseLocalVariableDestructureSkipSingleArgument()
     -> Unique<LocalVariableDestructureSkipSingleArgumentAst>;
-  auto parse_local_variable_destructure_skip_multiple_arguments()
+  auto ParseLocalVariableDestructureSkipMultipleArguments()
     -> Unique<LocalVariableDestructureSkipMultipleArgumentsAst>;
-  auto parse_local_variable_destructure_attribute_binding()
+  auto ParseLocalVariableDestructureAttributeBinding()
     -> Unique<LocalVariableDestructureAttributeBindingAst>;
-  auto parse_local_variable_single_identifier() -> Unique<LocalVariableSingleIdentifierAst>;
-  auto parse_local_variable_single_identifier_aliasable() -> Unique<LocalVariableSingleIdentifierAst>;
-  auto parse_local_variable_single_identifier_alias() -> Unique<LocalVariableSingleIdentifierAliasAst>;
-  auto parse_local_variable_nested_for_destructure_array() -> Unique<LocalVariableAst>;
-  auto parse_local_variable_nested_for_destructure_object() -> Unique<LocalVariableAst>;
-  auto parse_local_variable_nested_for_destructure_tuple() -> Unique<LocalVariableAst>;
-  auto parse_local_variable_nested_for_destructure_attribute_binding() -> Unique<LocalVariableAst>;
+  auto ParseLocalVariableSingleIdentifier() -> Unique<LocalVariableSingleIdentifierAst>;
+  auto ParseLocalVariableSingleIdentifierAliasable() -> Unique<LocalVariableSingleIdentifierAst>;
+  auto ParseLocalVariableSingleIdentifierAlias() -> Unique<LocalVariableSingleIdentifierAliasAst>;
+  auto ParseLocalVariableNestedForDestructureArray() -> Unique<LocalVariableAst>;
+  auto ParseLocalVariableNestedForDestructureObject() -> Unique<LocalVariableAst>;
+  auto ParseLocalVariableNestedForDestructureTuple() -> Unique<LocalVariableAst>;
+  auto ParseLocalVariableNestedForDestructureAttributeBinding() -> Unique<LocalVariableAst>;
 
-  auto parse_convention() -> Unique<ConventionAst>;
-  auto parse_convention_ref() -> Unique<ConventionRefAst>;
-  auto parse_convention_mut() -> Unique<ConventionMutAst>;
+  auto ParseConvention() -> Unique<ConventionAst>;
+  auto ParseConventionRef() -> Unique<ConventionRefAst>;
+  auto ParseConventionMut() -> Unique<ConventionMutAst>;
 
-  auto parse_object_initializer() -> Unique<ObjectInitializerAst>;
-  auto parse_object_initializer_argument_group() -> Unique<ObjectInitializerArgumentGroupAst>;
-  auto parse_object_initializer_argument() -> Unique<ObjectInitializerArgumentAst>;
-  auto parse_object_initializer_argument_keyword() -> Unique<ObjectInitializerArgumentKeywordAst>;
-  auto parse_object_initializer_argument_shorthand() -> Unique<ObjectInitializerArgumentShorthandAst>;
+  auto ParseObjectInitializer() -> Unique<ObjectInitializerAst>;
+  auto ParseObjectInitializerArgumentGroup() -> Unique<ObjectInitializerArgumentGroupAst>;
+  auto ParseObjectInitializerArgument() -> Unique<ObjectInitializerArgumentAst>;
+  auto ParseObjectInitializerArgumentKeyword() -> Unique<ObjectInitializerArgumentKeywordAst>;
+  auto ParseObjectInitializerArgumentShorthand() -> Unique<ObjectInitializerArgumentShorthandAst>;
 
-  auto parse_closure_expression() -> Unique<ClosureExpressionAst>;
+  auto ParseClosureExpression() -> Unique<ClosureExpressionAst>;
 
-  auto parse_closure_expression_with_return_type() -> Unique<ClosureExpressionAst>;
+  auto ParseClosureExpressionWithReturnType() -> Unique<ClosureExpressionAst>;
 
-  auto parse_closure_expression_without_return_type() -> Unique<ClosureExpressionAst>;
-  auto parse_closure_expression_capture_group() -> Unique<ClosureExpressionCaptureGroupAst>;
-  auto parse_closure_expression_capture() -> Unique<ClosureExpressionCaptureAst>;
-  auto parse_closure_expression_parameter_and_capture_group()
+  auto ParseClosureExpressionWithoutReturnType() -> Unique<ClosureExpressionAst>;
+  auto ParseClosureExpressionCaptureGroup() -> Unique<ClosureExpressionCaptureGroupAst>;
+  auto ParseClosureExpressionCapture() -> Unique<ClosureExpressionCaptureAst>;
+  auto ParseClosureExpressionParameterAndCaptureGroup()
     -> Unique<ClosureExpressionParameterAndCaptureGroupAst>;
-  auto parse_closure_expression_parameter_group() -> Unique<ClosureExpressionParameterGroupAst>;
-  auto parse_closure_expression_parameter() -> Unique<ClosureExpressionParameterAst>;
+  auto ParseClosureExpressionParameterGroup() -> Unique<ClosureExpressionParameterGroupAst>;
+  auto ParseClosureExpressionParameter() -> Unique<ClosureExpressionParameterAst>;
 
-  auto parse_type_expression() -> Unique<TypeAst>;
+  auto ParseTypeExpression() -> Unique<TypeAst>;
 
-  auto parse_binary_type_expression(std::uint8_t min_prec = 0) -> Unique<TypeAst>;
+  auto ParseBinaryTypeExpression(std::uint8_t min_prec = 0) -> Unique<TypeAst>;
 
-  auto parse_unary_type_expression() -> Unique<TypeAst>;
-  auto parse_unary_type_expression_op() -> Unique<TypeUnaryExpressionOperatorAst>;
-  auto parse_unary_type_expression_op_borrow() -> Unique<TypeUnaryExpressionOperatorBorrowAst>;
-  auto parse_unary_type_expression_op_namespace() -> Unique<TypeUnaryExpressionOperatorNamespaceAst>;
+  auto ParseUnaryTypeExpression() -> Unique<TypeAst>;
+  auto ParseUnaryTypeExpressionOp() -> Unique<TypeUnaryExpressionOperatorAst>;
+  auto ParseUnaryTypeExpressionOpBorrow() -> Unique<TypeUnaryExpressionOperatorBorrowAst>;
+  auto ParseUnaryTypeExpressionOpNamespace() -> Unique<TypeUnaryExpressionOperatorNamespaceAst>;
 
-  auto parse_postfix_type_expression() -> Unique<TypeAst>;
-  auto parse_postfix_type_expression_op() -> Unique<TypePostfixExpressionOperatorAst>;
-  auto parse_postfix_type_expression_op_nested() -> Unique<TypePostfixExpressionOperatorNestedTypeAst>;
+  auto ParsePostfixTypeExpression() -> Unique<TypeAst>;
+  auto ParsePostfixTypeExpressionOp() -> Unique<TypePostfixExpressionOperatorAst>;
+  auto ParsePostfixTypeExpressionOpNested() -> Unique<TypePostfixExpressionOperatorNestedTypeAst>;
 
-  auto parse_type_parenthesised_expression() -> Unique<TypeAst>;
-  auto parse_type_never() -> Unique<TypeAst>;
+  auto ParseTypeParenthesisedExpression() -> Unique<TypeAst>;
+  auto ParseTypeNever() -> Unique<TypeAst>;
 
-  auto parse_type_expression_simple() -> Unique<TypeAst>;
-  auto parse_postfix_type_expression_simple() -> Unique<TypeAst>;
-  auto parse_unary_type_expression_simple() -> Unique<TypeAst>;
+  auto ParseTypeExpressionSimple() -> Unique<TypeAst>;
+  auto ParsePostfixTypeExpressionSimple() -> Unique<TypeAst>;
+  auto ParseUnaryTypeExpressionSimple() -> Unique<TypeAst>;
 
-  auto parse_type_identifier() -> Unique<TypeIdentifierAst>;
+  auto ParseTypeIdentifier() -> Unique<TypeIdentifierAst>;
 
-  auto parse_type_array() -> Unique<TypeAst>;
-  auto parse_type_tuple() -> Unique<TypeAst>;
-  auto parse_type_tuple_0_types() -> Unique<TypeAst>;
-  auto parse_type_tuple_1_types() -> Unique<TypeAst>;
-  auto parse_type_tuple_n_types() -> Unique<TypeAst>;
+  auto ParseTypeArray() -> Unique<TypeAst>;
+  auto ParseTypeTuple() -> Unique<TypeAst>;
+  auto ParseTypeTuple0Types() -> Unique<TypeAst>;
+  auto ParseTypeTuple1Types() -> Unique<TypeAst>;
+  auto ParseTypeTupleNTypes() -> Unique<TypeAst>;
 
-  auto parse_identifier() -> Unique<IdentifierAst>;
-  auto parse_numeric_identifier() -> Unique<IdentifierAst>;
-  auto parse_self_identifier() -> Unique<IdentifierAst>;
-  auto parse_upper_identifier() -> Unique<IdentifierAst>;
-  auto parse_identifier_as_expression() -> Unique<ExpressionAst>;
+  auto ParseIdentifier() -> Unique<IdentifierAst>;
+  auto ParseNumericIdentifier() -> Unique<IdentifierAst>;
+  auto ParseSelfIdentifier() -> Unique<IdentifierAst>;
+  auto ParseUpperIdentifier() -> Unique<IdentifierAst>;
+  auto ParseIdentifierAsExpression() -> Unique<ExpressionAst>;
 
-  auto parse_literal() -> Unique<LiteralAst>;
-  auto parse_literal_char() -> Unique<CharLiteralAst>;
-  auto parse_literal_string() -> Unique<StringLiteralAst>;
-  auto parse_literal_float() -> Unique<FloatLiteralAst>;
-  auto parse_literal_integer() -> Unique<IntegerLiteralAst>;
-  auto parse_literal_boolean() -> Unique<BooleanLiteralAst>;
-  auto parse_literal_tuple(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
-  auto parse_literal_array(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
+  auto ParseLiteral() -> Unique<LiteralAst>;
+  auto ParseLiteralChar() -> Unique<CharLiteralAst>;
+  auto ParseLiteralString() -> Unique<StringLiteralAst>;
+  auto ParseLiteralFloat() -> Unique<FloatLiteralAst>;
+  auto ParseLiteralInteger() -> Unique<IntegerLiteralAst>;
+  auto ParseLiteralBoolean() -> Unique<BooleanLiteralAst>;
+  auto ParseLiteralTuple(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+  auto ParseLiteralArray(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
 
-  auto parse_literal_float_b10() -> Unique<FloatLiteralAst>;
-  auto parse_literal_integer_b10() -> Unique<IntegerLiteralAst>;
-  auto parse_literal_integer_b02() -> Unique<IntegerLiteralAst>;
-  auto parse_literal_integer_b08() -> Unique<IntegerLiteralAst>;
-  auto parse_literal_integer_b16() -> Unique<IntegerLiteralAst>;
-  auto parse_numeric_prefix_op() -> Unique<TokenAst>;
-  auto parse_float_suffix_type() -> Unique<TokenAst>;
-  auto parse_integer_suffix_type() -> Unique<TokenAst>;
-  auto parse_byte_prefix_type() -> Unique<TokenAst>;
+  auto ParseLiteralFloatB10() -> Unique<FloatLiteralAst>;
+  auto ParseLiteralIntegerB10() -> Unique<IntegerLiteralAst>;
+  auto ParseLiteralIntegerB02() -> Unique<IntegerLiteralAst>;
+  auto ParseLiteralIntegerB08() -> Unique<IntegerLiteralAst>;
+  auto ParseLiteralIntegerB16() -> Unique<IntegerLiteralAst>;
+  auto ParseNumericPrefixOp() -> Unique<TokenAst>;
+  auto ParseFloatSuffixType() -> Unique<TokenAst>;
+  auto ParseIntegerSuffixType() -> Unique<TokenAst>;
+  auto ParseBytePrefixType() -> Unique<TokenAst>;
 
-  auto parse_literal_tuple_1_element(
+  auto ParseLiteralTuple1Element(
     std::function<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<TupleLiteralAst>;
 
-  auto parse_literal_tuple_n_elements(
+  auto ParseLiteralTupleNElements(
     std::function<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<TupleLiteralAst>;
 
-  auto parse_literal_array_repeated_element(
+  auto ParseLiteralArrayRepeatedElement(
     std::function<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<ArrayLiteralRepeatedElementAst>;
 
-  auto parse_literal_array_explicit_elements(
+  auto ParseLiteralArrayExplicitElements(
     std::function<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<ArrayLiteralExplicitElementsAst>;
 
-  auto parse_specific_characters(
+  auto ParseSpecificCharacters(
     Str &&s)
     -> Unique<TokenAst>;
 
-  auto parse_specific_character(
+  auto ParseSpecificCharacter(
     char16_t c)
     -> Unique<TokenAst>;
 
-  auto parse_lexeme_character() -> Unique<TokenAst>;
-  auto parse_lexeme_digit() -> Unique<TokenAst>;
-  auto parse_lexeme_character_or_digit() -> Unique<TokenAst>;
-  auto parse_lexeme_character_or_digit_or_underscore() -> Unique<TokenAst>;
-  auto parse_lexeme_bin_integer() -> Unique<TokenAst>;
-  auto parse_lexeme_oct_integer() -> Unique<TokenAst>;
-  auto parse_lexeme_dec_integer() -> Unique<TokenAst>;
-  auto parse_lexeme_hex_integer() -> Unique<TokenAst>;
-  auto parse_lexeme_single_quote_char() -> Unique<TokenAst>;
-  auto parse_lexeme_double_quote_string() -> Unique<TokenAst>;
-  auto parse_lexeme_identifier() -> Unique<TokenAst>;
-  auto parse_lexeme_upper_identifier() -> Unique<TokenAst>;
+  auto ParseLexemeCharacter() -> Unique<TokenAst>;
+  auto ParseLexemeDigit() -> Unique<TokenAst>;
+  auto ParseLexemeCharacterOrDigit() -> Unique<TokenAst>;
+  auto ParseLexemeCharacterOrDigitOrUnderscore() -> Unique<TokenAst>;
+  auto ParseLexemeBinInteger() -> Unique<TokenAst>;
+  auto ParseLexemeOctInteger() -> Unique<TokenAst>;
+  auto ParseLexemeDecInteger() -> Unique<TokenAst>;
+  auto ParseLexemeHexInteger() -> Unique<TokenAst>;
+  auto ParseLexemeSingleQuoteChar() -> Unique<TokenAst>;
+  auto ParseLexemeDoubleQuoteString() -> Unique<TokenAst>;
+  auto ParseLexemeIdentifier() -> Unique<TokenAst>;
+  auto ParseLexemeUpperIdentifier() -> Unique<TokenAst>;
 
-  auto parse_nothing() -> Unique<TokenAst>;
-  auto parse_newline() -> Unique<TokenAst>;
-  auto parse_space() -> Unique<TokenAst>;
+  auto ParseNothing() -> Unique<TokenAst>;
+  auto ParseNewline() -> Unique<TokenAst>;
+  auto ParseSpace() -> Unique<TokenAst>;
 
-  auto parse_token_left_curly_brace() -> Unique<TokenAst>;
-  auto parse_token_right_curly_brace() -> Unique<TokenAst>;
-  auto parse_token_left_parenthesis() -> Unique<TokenAst>;
-  auto parse_token_right_parenthesis() -> Unique<TokenAst>;
-  auto parse_token_left_square_bracket() -> Unique<TokenAst>;
-  auto parse_token_right_square_bracket() -> Unique<TokenAst>;
-  auto parse_token_colon() -> Unique<TokenAst>;
-  auto parse_token_comma() -> Unique<TokenAst>;
-  auto parse_token_assign() -> Unique<TokenAst>;
-  auto parse_token_underscore() -> Unique<TokenAst>;
-  auto parse_token_less_than() -> Unique<TokenAst>;
-  auto parse_token_greater_than() -> Unique<TokenAst>;
-  auto parse_token_add() -> Unique<TokenAst>;
-  auto parse_token_sub() -> Unique<TokenAst>;
-  auto parse_token_mul() -> Unique<TokenAst>;
-  auto parse_token_div() -> Unique<TokenAst>;
-  auto parse_token_rem() -> Unique<TokenAst>;
-  auto parse_token_bit_ior() -> Unique<TokenAst>;
-  auto parse_token_bit_xor() -> Unique<TokenAst>;
-  auto parse_token_bit_and() -> Unique<TokenAst>;
-  auto parse_token_dot() -> Unique<TokenAst>;
-  auto parse_token_question_mark() -> Unique<TokenAst>;
-  auto parse_token_exclamation_mark() -> Unique<TokenAst>;
-  auto parse_token_deref() -> Unique<TokenAst>;
-  auto parse_token_borrow() -> Unique<TokenAst>;
-  auto parse_token_semicolon() -> Unique<TokenAst>;
-  auto parse_token_single_quote() -> Unique<TokenAst>;
-  auto parse_token_double_quote() -> Unique<TokenAst>;
-  auto parse_token_dollar() -> Unique<TokenAst>;
-  auto parse_token_arrow_right() -> Unique<TokenAst>;
-  auto parse_token_double_dot() -> Unique<TokenAst>;
-  auto parse_token_double_colon() -> Unique<TokenAst>;
-  auto parse_token_equals() -> Unique<TokenAst>;
-  auto parse_token_not_equals() -> Unique<TokenAst>;
-  auto parse_token_less_than_equals() -> Unique<TokenAst>;
-  auto parse_token_greater_than_equals() -> Unique<TokenAst>;
-  auto parse_token_add_assign() -> Unique<TokenAst>;
-  auto parse_token_sub_assign() -> Unique<TokenAst>;
-  auto parse_token_mul_assign() -> Unique<TokenAst>;
-  auto parse_token_div_assign() -> Unique<TokenAst>;
-  auto parse_token_rem_assign() -> Unique<TokenAst>;
-  auto parse_token_pow() -> Unique<TokenAst>;
-  auto parse_token_bit_shl() -> Unique<TokenAst>;
-  auto parse_token_bit_shr() -> Unique<TokenAst>;
-  auto parse_token_bit_ior_assign() -> Unique<TokenAst>;
-  auto parse_token_bit_xor_assign() -> Unique<TokenAst>;
-  auto parse_token_bit_and_assign() -> Unique<TokenAst>;
-  auto parse_token_pow_assign() -> Unique<TokenAst>;
-  auto parse_token_bit_shl_assign() -> Unique<TokenAst>;
-  auto parse_token_bit_shr_assign() -> Unique<TokenAst>;
+  auto ParseTokenLeftCurlyBrace() -> Unique<TokenAst>;
+  auto ParseTokenRightCurlyBrace() -> Unique<TokenAst>;
+  auto ParseTokenLeftParenthesis() -> Unique<TokenAst>;
+  auto ParseTokenRightParenthesis() -> Unique<TokenAst>;
+  auto ParseTokenLeftSquareBracket() -> Unique<TokenAst>;
+  auto ParseTokenRightSquareBracket() -> Unique<TokenAst>;
+  auto ParseTokenColon() -> Unique<TokenAst>;
+  auto ParseTokenComma() -> Unique<TokenAst>;
+  auto ParseTokenAssign() -> Unique<TokenAst>;
+  auto ParseTokenUnderscore() -> Unique<TokenAst>;
+  auto ParseTokenLessThan() -> Unique<TokenAst>;
+  auto ParseTokenGreaterThan() -> Unique<TokenAst>;
+  auto ParseTokenAdd() -> Unique<TokenAst>;
+  auto ParseTokenSub() -> Unique<TokenAst>;
+  auto ParseTokenMul() -> Unique<TokenAst>;
+  auto ParseTokenDiv() -> Unique<TokenAst>;
+  auto ParseTokenRem() -> Unique<TokenAst>;
+  auto ParseTokenBitIor() -> Unique<TokenAst>;
+  auto ParseTokenBitXor() -> Unique<TokenAst>;
+  auto ParseTokenBitAnd() -> Unique<TokenAst>;
+  auto ParseTokenDot() -> Unique<TokenAst>;
+  auto ParseTokenQuestionMark() -> Unique<TokenAst>;
+  auto ParseTokenExclamationMark() -> Unique<TokenAst>;
+  auto ParseTokenDeref() -> Unique<TokenAst>;
+  auto ParseTokenBorrow() -> Unique<TokenAst>;
+  auto ParseTokenSemicolon() -> Unique<TokenAst>;
+  auto ParseTokenSingleQuote() -> Unique<TokenAst>;
+  auto ParseTokenDoubleQuote() -> Unique<TokenAst>;
+  auto ParseTokenDollar() -> Unique<TokenAst>;
+  auto ParseTokenArrowRight() -> Unique<TokenAst>;
+  auto ParseTokenDoubleDot() -> Unique<TokenAst>;
+  auto ParseTokenDoubleColon() -> Unique<TokenAst>;
+  auto ParseTokenEquals() -> Unique<TokenAst>;
+  auto ParseTokenNotEquals() -> Unique<TokenAst>;
+  auto ParseTokenLessThanEquals() -> Unique<TokenAst>;
+  auto ParseTokenGreaterThanEquals() -> Unique<TokenAst>;
+  auto ParseTokenAddAssign() -> Unique<TokenAst>;
+  auto ParseTokenSubAssign() -> Unique<TokenAst>;
+  auto ParseTokenMulAssign() -> Unique<TokenAst>;
+  auto ParseTokenDivAssign() -> Unique<TokenAst>;
+  auto ParseTokenRemAssign() -> Unique<TokenAst>;
+  auto ParseTokenPow() -> Unique<TokenAst>;
+  auto ParseTokenBitShl() -> Unique<TokenAst>;
+  auto ParseTokenBitShr() -> Unique<TokenAst>;
+  auto ParseTokenBitIorAssign() -> Unique<TokenAst>;
+  auto ParseTokenBitXorAssign() -> Unique<TokenAst>;
+  auto ParseTokenBitAndAssign() -> Unique<TokenAst>;
+  auto ParseTokenPowAssign() -> Unique<TokenAst>;
+  auto ParseTokenBitShlAssign() -> Unique<TokenAst>;
+  auto ParseTokenBitShrAssign() -> Unique<TokenAst>;
 
-  auto parse_keyword_cls() -> Unique<TokenAst>;
-  auto parse_keyword_fun() -> Unique<TokenAst>;
-  auto parse_keyword_cor() -> Unique<TokenAst>;
-  auto parse_keyword_sup() -> Unique<TokenAst>;
-  auto parse_keyword_ext() -> Unique<TokenAst>;
-  auto parse_keyword_mut() -> Unique<TokenAst>;
-  auto parse_keyword_use() -> Unique<TokenAst>;
-  auto parse_keyword_cmp() -> Unique<TokenAst>;
-  auto parse_keyword_let() -> Unique<TokenAst>;
-  auto parse_keyword_type() -> Unique<TokenAst>;
-  auto parse_keyword_self() -> Unique<TokenAst>;
-  auto parse_keyword_case() -> Unique<TokenAst>;
-  auto parse_keyword_of() -> Unique<TokenAst>;
-  auto parse_keyword_loop() -> Unique<TokenAst>;
-  auto parse_keyword_in() -> Unique<TokenAst>;
-  auto parse_keyword_to() -> Unique<TokenAst>;
-  auto parse_keyword_else() -> Unique<TokenAst>;
-  auto parse_keyword_gen() -> Unique<TokenAst>;
-  auto parse_keyword_with() -> Unique<TokenAst>;
-  auto parse_keyword_ret() -> Unique<TokenAst>;
-  auto parse_keyword_exit() -> Unique<TokenAst>;
-  auto parse_keyword_skip() -> Unique<TokenAst>;
-  auto parse_keyword_defer() -> Unique<TokenAst>;
-  auto parse_keyword_is() -> Unique<TokenAst>;
-  auto parse_keyword_as() -> Unique<TokenAst>;
-  auto parse_keyword_or() -> Unique<TokenAst>;
-  auto parse_keyword_and() -> Unique<TokenAst>;
-  auto parse_keyword_not() -> Unique<TokenAst>;
-  auto parse_keyword_async() -> Unique<TokenAst>;
-  auto parse_keyword_true() -> Unique<TokenAst>;
-  auto parse_keyword_false() -> Unique<TokenAst>;
-  auto parse_keyword_await() -> Unique<TokenAst>;
+  auto ParseKeywordCls() -> Unique<TokenAst>;
+  auto ParseKeywordFun() -> Unique<TokenAst>;
+  auto ParseKeywordCor() -> Unique<TokenAst>;
+  auto ParseKeywordSup() -> Unique<TokenAst>;
+  auto ParseKeywordExt() -> Unique<TokenAst>;
+  auto ParseKeywordMut() -> Unique<TokenAst>;
+  auto ParseKeywordUse() -> Unique<TokenAst>;
+  auto ParseKeywordCmp() -> Unique<TokenAst>;
+  auto ParseKeywordLet() -> Unique<TokenAst>;
+  auto ParseKeywordType() -> Unique<TokenAst>;
+  auto ParseKeywordSelf() -> Unique<TokenAst>;
+  auto ParseKeywordCase() -> Unique<TokenAst>;
+  auto ParseKeywordOf() -> Unique<TokenAst>;
+  auto ParseKeywordLoop() -> Unique<TokenAst>;
+  auto ParseKeywordIn() -> Unique<TokenAst>;
+  auto ParseKeywordTo() -> Unique<TokenAst>;
+  auto ParseKeywordElse() -> Unique<TokenAst>;
+  auto ParseKeywordGen() -> Unique<TokenAst>;
+  auto ParseKeywordWith() -> Unique<TokenAst>;
+  auto ParseKeywordRet() -> Unique<TokenAst>;
+  auto ParseKeywordExit() -> Unique<TokenAst>;
+  auto ParseKeywordSkip() -> Unique<TokenAst>;
+  auto ParseKeywordDefer() -> Unique<TokenAst>;
+  auto ParseKeywordIs() -> Unique<TokenAst>;
+  auto ParseKeywordAs() -> Unique<TokenAst>;
+  auto ParseKeywordOr() -> Unique<TokenAst>;
+  auto ParseKeywordAnd() -> Unique<TokenAst>;
+  auto ParseKeywordNot() -> Unique<TokenAst>;
+  auto ParseKeywordAsync() -> Unique<TokenAst>;
+  auto ParseKeywordTrue() -> Unique<TokenAst>;
+  auto ParseKeywordFalse() -> Unique<TokenAst>;
+  auto ParseKeywordAwait() -> Unique<TokenAst>;
 
-  auto parse_keyword_res() -> Unique<TokenAst>;
-  auto parse_keyword_caps() -> Unique<TokenAst>;
+  auto ParseKeywordRes() -> Unique<TokenAst>;
+  auto ParseKeywordCaps() -> Unique<TokenAst>;
 
-  auto parse_token_raw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> Unique<TokenAst>;
+  auto ParseTokenRaw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> Unique<TokenAst>;
 
 private:
   /// Store error information about a discovered failure in

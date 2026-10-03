@@ -9,8 +9,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.identifier_ast;
@@ -26,6 +28,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
+import genex;
 
 SPP_MOD_BEGIN
 LoopConditionalExpressionAst::LoopConditionalExpressionAst(
@@ -58,6 +61,8 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body),
     AstClone(ElseBlock));
   if (_IterDesugar) { cloned->MarkAsIterDesugar(); }
+  cloned->_LoopExitTypeInfo = _LoopExitTypeInfo;
+  cloned->_Scope = _Scope;
   return cloned;
 }
 
@@ -73,10 +78,7 @@ auto LoopConditionalExpressionAst::ToString() const -> Str {
 auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeBool;
+  IMPORT_UTILS;
 
   // Create the loop scope.
   auto scope_name = ScopeBlockName::FromParts(
@@ -87,12 +89,13 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   // Analyse the condition expression.
   Cond->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Cond, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Cond));
 
   // Check the loop condition is boolean.
-  if (not IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *Cond->InferType(sm, meta), "loop"));
+  if (not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    const auto cond_ty = Cond->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "loop"));
   }
 
   // Set the loop level information into the "meta" object.
@@ -100,9 +103,15 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
+
+    // The body never yields the loop's value ("exit" does), so
+    // it is not what the loop is being assigned to - as its
+    // code generation already treats it.
+    meta->AssignmentTarget = nullptr;
+    meta->AssignmentTargetType = nullptr;
     Body->Stage7_AnalyseSemantics(sm, meta);
     if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-      m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
     }
   }
 
@@ -117,7 +126,9 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 
 auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
+  using memory_state::MemoryInfoSnapshot;
+  using memory_state::ScopeSnapshot;
 
   // Move into the loop scope.
   sm->MoveToNextScope();
@@ -127,17 +138,106 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // Todo: use the "reset" on "sm" like in TypeStatementAst?
   auto tm = ScopeManager(
     sm->GlobalScope, sm->CurrentScope);
-  tm.Reset(sm->CurrentScope, sm->CurrentIterator());
+  tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
 
-  ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
-  for (auto &m : {sm, &tm}) {
-    Cond->Stage8_CheckMemory(m, meta);
-    Body->Stage8_CheckMemory(m, meta);
+  mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, meta);
+
+  // The state the loop was entered with, for the path that
+  // never runs the body.
+  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
+
+  // The second pass is the next iteration seeing what the first
+  // left behind. A body that never reaches its end (it always
+  // leaves by "exit"/"ret", or is "!") has no next iteration
+  // unless a "skip" starts one.
+  const auto skips_before = meta->LoopSkipsSeen;
+  auto exit_states = Vec<Pair<Ast const*, ScopeSnapshot>>();
+  meta->LoopExitStates.EmplaceBack(&exit_states);
+  auto skip_moves = Vec<Pair<VariableSymbol*, Ast const*>>();
+  auto *const outer_skip_moves = meta->LoopSkipMoves;
+  meta->LoopSkipMoves = &skip_moves;
+  Cond->Stage8_CheckMemory(sm, meta);
+  Body->Stage8_CheckMemory(sm, meta);
+  meta->LoopSkipMoves = outer_skip_moves;
+
+  // What a "skip" left moved is how the next iteration can begin
+  // too, even if the body's end puts it back. Only for what lives
+  // outside the loop: a "let" in the body is declared afresh.
+  for (auto const &[sym, skip] : skip_moves) {
+    const auto outer = genex::any_of(pre_loop_state, [sym](auto const &entry) { return entry.first.get() == sym; });
+    if (outer and spp::get<0>(sym->MemInfo->AstMoved) == nullptr) {
+      sym->MemInfo->IsInconsistentlyMoved = {const_cast<Ast*>(skip), this};
+    }
   }
+  const auto body_diverges = control_flow::Diverges(*Body, sm, meta);
+  if (not body_diverges or meta->LoopSkipsSeen != skips_before) {
+    meta->LoopSkipMoves = &skip_moves;
+    Cond->Stage8_CheckMemory(&tm, meta);
+    Body->Stage8_CheckMemory(&tm, meta);
+    meta->LoopSkipMoves = outer_skip_moves;
+  }
+
+  meta->LoopExitStates.PopBack();
 
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
     ElseBlock->Stage8_CheckMemory(sm, meta);
+  }
+
+  // The state after the loop is the merge of every path out of
+  // it, as for the branches of a "case". A condition other than
+  // "true" can end the loop: before the first iteration (the
+  // state it was entered with), or after one that reached the
+  // body's end (the state now). An "else" block is where both
+  // of those go, so its end stands for them. Every "exit" is a
+  // path out too, with the state it was reached in.
+  const auto cond_bool = Cond->To<BooleanLiteralAst>();
+  const auto cond_can_end = cond_bool == nullptr or not cond_bool->IsTrue();
+  const auto body_end_reached = not body_diverges or meta->LoopSkipsSeen != skips_before;
+
+  // Each path's state for one symbol: "nullptr" is the state it
+  // is in now, which needs no restoring.
+  auto paths = Vec<Pair<Ast const*, ScopeSnapshot const*>>();
+  if (cond_can_end and ElseBlock != nullptr) { paths.EmplaceBack(ElseBlock.get(), nullptr); }
+  if (cond_can_end and ElseBlock == nullptr) {
+    if (body_end_reached) { paths.EmplaceBack(Body.get(), nullptr); }
+    paths.EmplaceBack(TokLoop.get(), &pre_loop_state);
+  }
+  for (auto const &[exit_tok, state] : exit_states) { paths.EmplaceBack(exit_tok, &state); }
+
+  // A loop nothing leaves ("loop true { }") has no state after it.
+  if (paths.IsEmpty()) {
+    sm->MoveOutOfCurrentScope();
+    return;
+  }
+  for (auto const &[sym, _] : pre_loop_state) {
+    const auto state_on = [&](auto const &path) -> MemoryInfoSnapshot {
+      if (path.second == nullptr) { return sym->MemInfo->Snapshot(); }
+      for (auto const &[s, snapshot] : *path.second) { if (s == sym) { return snapshot; } }
+      return sym->MemInfo->Snapshot();
+    };
+
+    // The first path's state is the one carried on; the rest have
+    // to agree with it about what is initialized and moved. An
+    // "exit" leaves the body's scopes without reaching their ends,
+    // which is where a symbol declared in them releases the borrows
+    // it holds, so those are released here: nothing inside the loop
+    // outlives it.
+    const auto released = [&](MemoryInfoSnapshot state) {
+      state.AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto const &entry) {
+        auto const *const container = spp::get<0>(entry)->template To<IdentifierAst>();
+        return container != nullptr and not genex::any_of(pre_loop_state, [&](auto const &outer) {
+          return *outer.first->Name == *container;
+        });
+      });
+      return state;
+    };
+    const auto first = released(state_on(paths[0]));
+    sym->MemInfo->FillFromSnapshot(first);
+    for (auto const &path : paths | genex::views::drop(1)) {
+      memory_state::MarkInconsistentPaths(
+        *sym, first, released(state_on(path)), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
+    }
   }
 
   // Exit the loop scope.
@@ -146,7 +246,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
 
 auto LoopConditionalExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::type_predicates::IsTypeVoid;
+  IMPORT_UTILS_AND_UID;
 
   // Move into the loop scope.
   sm->MoveToNextScope();
@@ -154,11 +254,14 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // Determine if this loop will be yielding an expression.
   // A "Void" loop (used as a statement) and a "Never" loop
   // ("loop true" with no "exit"s) have no value to merge,
-  // so no phi node.
-  const auto uid = "." + spp::utils::Uid(this);
+  // so no phi node. Any other loop yields its value wherever
+  // it stands, not only under an assignment target: a value
+  // that is produced must be used, and "f(loop .. { exit 5 })"
+  // passes it straight to a call - which, without the phi,
+  // left the "exit" nothing to feed and crashed the compiler.
+  const auto uid = "." + Uid();
   const auto ret_type = InferType(sm, meta);
-  const auto is_expr = meta->AssignmentTarget != nullptr
-    and not IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
+  const auto is_expr = not type_predicates::IsTypeVoid(*ret_type, *sm->CurrentScope)
     and not ret_type->IsNeverType();
 
   // Create the key required blocks: the condition entry
@@ -272,23 +375,12 @@ auto LoopConditionalExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::NeverType;
 
-  // If the condition is a boolean literal "true" and no flow control statements exist, return the never type.
-  // if (const auto cond_bool_lit = cond->To<BooleanLiteralAst>()) {
-  //     if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
-  //         if (m_loop_exit_type_info.has_value()) {
-  //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
-  //             if (exit_expr == nullptr) {
-  //                 return generate::common_types::never_type(PosStart());
-  //             }
-  //         }
-  //     }
-  // }
 
   // A "loop true" with no exit statements returns "Never".
   const auto cond_lit = Cond->To<BooleanLiteralAst>();
   if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE) {
     // Check the internal flow controls.
-    if (not m_loop_exit_type_info.has_value()) {
+    if (not _LoopExitTypeInfo.has_value()) {
       return NeverType(PosStart());
     }
   }

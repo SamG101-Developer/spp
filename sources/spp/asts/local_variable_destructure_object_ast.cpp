@@ -9,9 +9,10 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_member_ast;
@@ -48,8 +49,8 @@ LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
   TokR(std::move(tok_r)),
-  _CondSym(nullptr),
-  _FlowSym(nullptr),
+  _CondSymbol(nullptr),
+  _FlowSymbol(nullptr),
   _CondLet(nullptr),
   _TmpName(nullptr) {
   //
@@ -98,22 +99,16 @@ auto LocalVariableDestructureObjectAst::BindsByMove() const -> bool {
 
 auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppArgumentMissingError;
-  using analyse::errors::SppMultipleRestPatternsError;
-  using analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::destructure_utils::BindDestructureTemporary;
-  using analyse::utils::destructure_utils::IsDestructurePlaceExpression;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS_AND_UID;
 
   // Get the value and analyse it and the type.
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
   // Todo: in a generic sup, "let Box[T](v) = self" (or "Self(v)") raises E105 though "v" is bound -
   //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
-  Type = analyse::utils::type_utils::ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
 
-  const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type.get())->Type;
+  const auto cls_proto = sm->CurrentScope->FindTypeSymbol(Type.get())->Type;
   const auto cls_attrs = cls_proto != nullptr
     ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>()
     : Vec<Ast*>{};
@@ -146,14 +141,16 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // naming the bare type: "case p is Point(&x, ..)" where
   // "p" is a "&Point". The tuple and array destructures
   // already read past the convention here, because they
-  // check the shape ("IsTypeTup" / "IsTypeArr"). Manually
+  // check the shape ("IsTypeTuple" / "IsTypeArray"). Manually
   // apply the same semantics here.
   const auto conv_only_mismatch = _FromCasePattern
-    and TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope, false);
+    and type_compare::TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
-    not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, _FromCasePattern) and not conv_only_mismatch,
+    not (_FromCasePattern
+      ? type_compare::Assignable(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)
+      : type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) and not conv_only_mismatch,
     {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
@@ -177,9 +174,9 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // and index on it.
   Shared<IdentifierAst> uid_name = nullptr;
   const ExpressionAst *effective_val = val;
-  if (not IsDestructurePlaceExpression(*val)
+  if (not regions::IsDestructurePlaceExpression(*val)
     and not meta->LetStatementFromUninitialized) {
-    _TmpName = BindDestructureTemporary(*this, val, val_type, *sm);
+    _TmpName = destructure_utils::BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();
   }
   else {
@@ -190,24 +187,24 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // elements index, so it is layered on top of the temporary rather than on the value.
   if (_FromCasePattern
     and not conv_only_mismatch
-    and not TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope, false)) {
-    const auto uid = spp::utils::Uid(this);
+    and not type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) {
+    const auto uid = Uid();
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
     _CondLet = MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(uid_var), nullptr, nullptr, AstClone(effective_val));
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
-    _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
-    _FlowSym = MakeShared<VariableSymbol>(*_CondSym);
-    _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
-    _FlowSym->Type = Type;
+    _CondSymbol = sm->CurrentScope->FindVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
+    _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
+    _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
+    _FlowSymbol->Type = Type;
 
     if (Type->GetConvention() != nullptr) {
-      const auto has_borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed);
-      const auto borrow_scope = has_borrow_scope ? has_borrow_scope : _CondSym->ScopeDefinedIn;
-      _FlowSym->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
+      const auto has_borrow_scope = spp::get<1>(_CondSymbol->MemInfo->AstBorrowed);
+      const auto borrow_scope = has_borrow_scope ? has_borrow_scope : _CondSymbol->ScopeDefinedIn;
+      _FlowSymbol->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
     }
-    sm->CurrentScope->AddVarSymbol(_FlowSym);
+    sm->CurrentScope->AddVarSymbol(_FlowSymbol);
     effective_val = uid_name.get();
   }
 
@@ -229,10 +226,6 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
       _NewAsts.EmplaceBack(std::move(new_ast));
     }
 
-    // Skip any conversion for single argument skipping.
-    else if (elem->To<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
-    }
-
     // Handle and other nested destructure or single identifier.
     else if (const auto cast_elem_2 = elem->To<LocalVariableDestructureAttributeBindingAst>(); cast_elem_2 != nullptr) {
       auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, AstClone(cast_elem_2->Name));
@@ -248,33 +241,35 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 
 auto LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  analyse::utils::destructure_utils::DestructureStage8(
+  IMPORT_UTILS;
+  destructure_utils::DestructureStage8(
     *this, Elems, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
 }
 
 auto LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  analyse::utils::destructure_utils::DestructureStage9(_NewAsts, _TmpName, _CondLet.get(), *sm, meta);
+  IMPORT_UTILS;
+  destructure_utils::DestructureStage9(_NewAsts, _TmpName, _CondLet.get(), *sm, meta);
 }
 
 auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once, before
   // anything indexes it.
-  using analyse::utils::destructure_utils::DestructureTempStage11;
+  IMPORT_UTILS_AND_UID;
 
   const auto _meta_guard = MetaGuard(meta);
   const auto llvm_subject = meta->LetStatementPrecomputedValue;
   meta->LetStatementPrecomputedValue = nullptr;
 
   if (_TmpName != nullptr) {
-    DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
+    destructure_utils::DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
   }
 
-  // If flow typing introduced a temp variable, generate it. _FlowSym
-  // replaced _CondSym in the symbol table (same scope, same string
+  // If flow typing introduced a temp variable, generate it. _FlowSymbol
+  // replaced _CondSymbol in the symbol table (same scope, same string
   // key), so LocalVariableSingleIdentifierAst::Stage11 inside _CondLet
-  // already sets _FlowSym->LlvmInfo->Alloca, so no copy needed.
+  // already sets _FlowSymbol->LlvmInfo->Alloca, so no copy needed.
   if (_CondLet) {
     _CondLet->Stage11_CodeGen(sm, meta, ctx);
 
@@ -284,24 +279,23 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
     // way - an element of a tuple pattern, most of all - arrives here instead, and was binding the tag as its first
     // field. The flow symbol is given its own llvm info to write into, because it shares the condition's up to here
     // and narrowing through that would move the condition itself onto the payload.
-    using analyse::utils::type_predicates::IsTypeVariant;
-    if (_FlowSym != nullptr and _CondSym != nullptr and _CondSym->LlvmInfo->Alloca != nullptr) {
-      const auto bare_cond_type = _CondSym->Type->WithoutConvention();
-      if (IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
-        const auto uid = "." + spp::utils::Uid(this);
-        const auto variant_ty = sm->CurrentScope->GetTypeSymbol(
+    if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->LlvmInfo->Alloca != nullptr) {
+      const auto bare_cond_type = _CondSymbol->Type->WithoutConvention();
+      if (type_predicates::IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
+        const auto uid = "." + Uid();
+        const auto variant_ty = sm->CurrentScope->FindTypeSymbol(
           bare_cond_type.get())->LlvmInfo->LlvmType;
 
         // A borrowed condition holds the address of the variant rather than the variant, so it is stepped through
         // first - the payload of the pointer itself is not a thing.
-        auto variant_ptr = _CondSym->LlvmInfo->Alloca;
-        if (_CondSym->Type->GetConvention() != nullptr) {
+        auto variant_ptr = _CondSymbol->LlvmInfo->Alloca;
+        if (_CondSymbol->Type->GetConvention() != nullptr) {
           variant_ptr = ctx->Builder.CreateLoad(
             llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "destructure.subject" + uid);
         }
 
-        _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
-        _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
+        _FlowSymbol->LlvmInfo = MakeShared<codegen::LlvmVarSymbolInfo>();
+        _FlowSymbol->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
           variant_ptr, variant_ty, "destructure.payload" + uid, ctx);
       }
     }
@@ -314,14 +308,14 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
 
 auto LocalVariableDestructureObjectAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Walk the nested bindings for variable names.
-  using analyse::utils::destructure_utils::GetNestedBindingIdentifiers;
-  return GetNestedBindingIdentifiers(Elems);
+  IMPORT_UTILS;
+  return destructure_utils::GetNestedBindingIdentifiers(Elems);
 }
 
 auto LocalVariableDestructureObjectAst::ExtractName() const -> Shared<IdentifierAst> {
   // No single identifier for destructured bindings.
-  using analyse::utils::destructure_utils::UnmatchableSingleIdentifier;
-  return UnmatchableSingleIdentifier(PosStart());
+  IMPORT_UTILS;
+  return destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

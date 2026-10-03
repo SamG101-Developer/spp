@@ -3,7 +3,9 @@ module;
 
 export module spp.asts.case_pattern_variant_ast;
 import spp.asts.ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst);
@@ -49,5 +51,12 @@ protected:
     -> void;
 
   /// Stage 9 for a destructuring pattern: resolve its "let", and match exactly when every element does.
-  auto ResolveDestructure(Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta) const -> void;
+  auto CompTimeResolveDestructure(
+    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta) const -> void;
+
+  /// Stage 11 for a destructuring pattern: run its "let" over the case condition, introducing the bindings, and answer
+  /// whether every element matches (true for none).
+  auto CodeGenDestructure(
+    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx)
+    -> llvm::Value*;
 };

@@ -11,6 +11,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionAst);
 use(spp::asts, struct ConventionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
@@ -48,8 +49,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto AnyPart(std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool override;
-
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept -> bool override;
 
   SPP_ATTR_NODISCARD auto IsSelfType() const noexcept -> bool override;
@@ -76,11 +75,10 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto WithConvention(Unique<ConventionAst> &&conv) const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto WithoutGenerics() const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto SubstituteSelf(TypeAst const &with) const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto ContainsGenerics(GenericParameterAst const &generic) const -> bool override;
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
   auto ResetCache() -> void override;

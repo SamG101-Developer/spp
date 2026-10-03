@@ -2,16 +2,18 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_members;
-import spp.asts.meta.compiler_meta_data;
+import spp.analyse.scopes.symbols;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::type_members, struct TypePart);
 use(spp::asts, struct ClassAttributeAst);
+use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
@@ -31,8 +33,8 @@ SPP_EXP_CLS struct spp::analyse::utils::type_members::TypePart {
   /// The part's own type.
   Shared<TypeAst> Type;
 
-  /// The symbol of the part's own type.
-  TypeSymbol *Sym;
+  /// The part's own type, as "Where" reads it.
+  TypeRef Ref;
 
   /// The scope that the part's type resolves in.
   Scope const *Where;
@@ -41,20 +43,23 @@ SPP_EXP_CLS struct spp::analyse::utils::type_members::TypePart {
 namespace spp::analyse::utils::type_members {
   /// Get all the parts of a type, either the fields for a type
   /// (and its super types' fields), or the indexes for a tuple
-  /// or array. Use the new type part struct.
+  /// or array, of a type as a value of it holds them (a borrow's
+  /// parts are those of the type borrowed). Use the new type part
+  /// struct.
   SPP_EXP_FUN auto GetAllParts(
-    TypeSymbol const &sym,
+    TypeRef const &ref,
     Scope const &scope,
     bool collapse_arrays = false)
     -> Vec<TypePart>;
 
   /// Get all the fields on a type, and all of it's super types,
-  /// tracking the field, symbol, and scope. The scope is so
+  /// tracking the field, its type, and scope. The scope is so
   /// we know which super class it came from if it's not on the
-  /// actual type itself.
+  /// actual type itself. The type is read there, so it names
+  /// what this instance's bindings make it.
   SPP_EXP_FUN auto GetAllAttrs(
     TypeSymbol const &cls_sym)
-    -> Vec<Tup<Shared<IdentifierAst>, TypeSymbol*, Scope*>>;
+    -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>;
 
   /// Similar to the "GetAllAttrs", but in ast form, so that
   /// the default values can be extracted for object initializers,
@@ -97,4 +102,56 @@ namespace spp::analyse::utils::type_members {
     TypeSymbol const &type_sym,
     IdentifierAst const &field_name)
     -> std::size_t;
+
+  /// The classes "ref" is superimposed as ("sup Foo ext Bar"),
+  /// in the order its sup scopes list them, each read where
+  /// "scope" reads it. Empty for a type with no scope of its own
+  /// (a generic parameter).
+  SPP_EXP_FUN auto SuperClsRefs(TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
+
+  /// The classes among "sup_scopes", each named where its own sup
+  /// scope reads it: a sup type's name can hold a "Self" (as in
+  /// "S32 ext Ord[Rhs=Self]") only that scope has a symbol for.
+  SPP_EXP_FUN auto SuperClsNames(Vec<Scope*> const &sup_scopes) -> Vec<Pair<Shared<TypeAst>, Scope const*>>;
+
+  /// Get the number of synthetic fat-pointer fields on this
+  /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
+  /// fields prepended ahead of a type's own declared fields.
+  /// The fat pointer fields are always at the start of the
+  /// types for simplicity.
+  SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(TypeSymbol const &type_sym) -> std::size_t;
+
+  /// The first type a value of @p ref holds by value (itself
+  /// included) that @p matches: as a tuple or array element, a
+  /// variant member, or an attribute, at any depth. A borrow or
+  /// a pointer holds nothing by value ("Vec[T]" keeps its "T"s
+  /// behind "RawBuf"'s pointer). No type when nothing matches.
+  SPP_EXP_FUN auto FindHeldByValue(
+    TypeRef const &ref,
+    Scope const &scope,
+    std::function<bool(TypeRef const &)> const &matches)
+    -> TypeRef;
+
+  /// Detect if a type is recursive by checking all the fields
+  /// of the type recursively, and making sure a look in the
+  /// type graph is never reached.
+  SPP_EXP_FUN auto IsTypeRecursive(ClassPrototypeAst const &type, ScopeManager const &sm) -> Shared<TypeAst>;
+
+  /// Check if an index is within the bounds of an array or tuple,
+  /// ie at compile-time check if the element requested is
+  /// genuinely reachable.
+  SPP_EXP_FUN auto IsIndexWithinBound(
+    std::size_t index,
+    TypeRef const &ref,
+    Scope const &scope)
+    -> Pair<bool, std::size_t>;
+
+  /// Get the nth type of a tuple, or for an array, all the types
+  /// are the same.
+  SPP_EXP_FUN auto GetNthTypeOfIndexableType(
+    std::size_t index,
+    TypeRef const &ref,
+    Scope const &scope)
+    -> Shared<TypeAst>;
+
 }

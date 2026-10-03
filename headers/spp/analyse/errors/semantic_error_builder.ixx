@@ -54,13 +54,6 @@ namespace spp {
   auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
     if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
-
-  /// The opposite to the "RaiseIf" - this only raises an error
-  /// if the condition is false.
-  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseUnless(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (not condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
-  }
 }
 
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
@@ -92,13 +85,16 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     // swap the two scopes of every two-scope error.
     auto messages = Vec<Str>();
     auto next = 0uz;
-    for (auto const &info : cast_error->ErrorInfo) {
+    for (auto &info : cast_error->ErrorInfo) {
       if (this->_ErrFormatters.IsEmpty()) { break; }
       auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.Len()];
-      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) { ++next; }
+      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
+        info.Span = formatter->SpanOfAst(info.Ast);
+        ++next;
+      }
       messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
     }
-    cast_error->messages = std::move(messages);
+    cast_error->Messages = std::move(messages);
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.
@@ -106,7 +102,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     for (auto const &msg : _SubErrors) {
       auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
-      cast_error->messages.EmplaceBack(header + msg);
+      cast_error->Messages.EmplaceBack(header + msg);
       ++i;
     }
 
@@ -115,7 +111,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   }
 
 private:
-  /// List of sub-errors. Todo: are these even used anymore?
+  /// List of sub-errors (the failed overloads of a call).
   Vec<Str> _SubErrors;
 
   static auto _StringifyErrorInformation(
@@ -124,22 +120,26 @@ private:
     -> Str {
     using namespace std::string_literals;
 
-    switch (auto [ast, kind, tag, msg] = info; kind) {
+    // A copy, because the rendering moves the strings out of it,
+    // and the error keeps its own for the consumers that read
+    // the information rather than the message.
+    auto parts = info;
+    switch (parts.Kind) {
       case ErrorInformationKind::ERROR: {
-        return formatter->ErrorAst(ast, std::move(msg), std::move(tag));
+        return formatter->ErrorAst(parts.Ast, std::move(parts.Msg), std::move(parts.Tag));
       }
       case ErrorInformationKind::CONTEXT: {
-        return formatter->ErrorAstMinimal(ast, std::move(tag));
+        return formatter->ErrorAstMinimal(parts.Ast, std::move(parts.Tag));
       }
       case ErrorInformationKind::HEADER: {
-        return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + ": "s + std::move(tag) + "\n"s;
+        return (colex::fg_bright_white & colex::st_bold) + std::move(parts.Msg) + ": "s + std::move(parts.Tag) + "\n"s;
       }
       case ErrorInformationKind::FOOTER: {
-        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(tag) + "\n"s +
-          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(msg) + "\n"s;
+        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(parts.Tag) + "\n"s +
+          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(parts.Msg) + "\n"s;
       }
       case ErrorInformationKind::WRAPPED: {
-        return std::move(tag);
+        return std::move(parts.Tag);
       }
       default:
         std::unreachable();

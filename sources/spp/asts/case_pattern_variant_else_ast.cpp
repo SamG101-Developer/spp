@@ -44,7 +44,7 @@ auto CasePatternVariantElseAst::ToString() const -> Str {
 auto CasePatternVariantElseAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // The "else" pattern always matches, so return "true".
-  meta->CmpResult = BooleanLiteralAst::True(TokElse->PosStart());
+  meta->CompTimeResult = BooleanLiteralAst::True(TokElse->PosStart());
 }
 
 auto CasePatternVariantElseAst::Stage11_CodeGen(

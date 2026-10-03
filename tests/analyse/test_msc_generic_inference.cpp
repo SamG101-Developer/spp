@@ -88,10 +88,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself wrote "n + 1" for a USize "n" - an unsuffixed literal is an S32 - and had no body)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Nested,
   test_valid_infer_comp_from_array_size, R"(
-    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1] { }
+    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::unreachable() }
 
     fun g() -> Void {
         let mut x = f([1, 2, 3])
@@ -351,10 +352,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 //     }
 // )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_from_optional_argument, R"(
-    fun f[T](a: Opt[T]) -> T { ret T() }
+    fun f[T](a: Opt[T]) -> T {
+        std::mem::ops::drop(a)
+        ret T()
+    }
 
     fun g() -> Void {
         let opt: Opt[S32] = Some(val=123)
@@ -462,7 +467,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // The same sweep carries comp generics in, and they are stranded on a shared instantiation the same way. They do
-// less damage, because "Scope::GetGenerics" skips a comp symbol that is still an unbound parameter, so a stranded
+// less damage, because "Scope::GetGns" skips a comp symbol that is still an unbound parameter, so a stranded
 // one is never offered as an argument. That skip has no counterpart on the type branch, which is why the type case
 // above had to be stopped at the point the symbol is carried in instead. A comp parameter named like one of the
 // standard library's own is the shape that would expose it if that ever stopped holding.
@@ -493,5 +498,141 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(a)
         let b = 1_u32 + 2_u32
         let c = 3_uz + 4_uz
+    }
+)");
+
+// Todo: Polymorphic recursion never terminates - each instantiation asks for a bigger one, and there is no limit on
+//  function instantiation (E109 only guards type nesting). Disabled because it exhausts memory rather than failing,
+//  which would take the parallel suite down with it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Recursion,
+  DISABLED_test_invalid_polymorphic_recursion_through_a_tuple,
+  SppGenericInstantiationDepthError, R"(
+    fun f[T: std::copy::Copy](x: T) -> Void {
+        f[(T, T)]((x, x))
+    }
+
+    fun g() -> Void { f(1) }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Recursion,
+  DISABLED_test_invalid_polymorphic_recursion_through_a_vector,
+  SppGenericInstantiationDepthError, R"(
+    fun f[T]() -> Void {
+        f[Vec[T]]()
+    }
+
+    fun g() -> Void { f[S32]() }
+)");
+
+// A closure's return type is readable off the closure, but a parameter written as "FunMov[(..), U]" does not infer
+// "U" from it. The "F: FunRef[(..), R]" constraint form does.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_infer_closure_return_through_a_function_type_parameter, R"(
+    fun h[U](f: FunMov[(S32,), U]) -> U { ret f(1) }
+
+    fun g() -> Void { let b = h((x: S32) x == 1) }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_infer_closure_return_through_a_generic_method, R"(
+    cls MapBox[T] { !public v: T }
+
+    sup [T] MapBox[T] {
+        !public fun map[U](self, f: FunMov[(T,), U]) -> MapBox[U] {
+            let MapBox[T](v) = self
+            ret MapBox(v=f(v))
+        }
+    }
+
+    fun g() -> Void {
+        let a = MapBox(v=1)
+        let b = a.map((x: S32) x == 1)
+        std::mem::ops::drop(b)
+    }
+)");
+
+// A parameter's default naming the callee's generics is made once they are solved, from the arguments given: made
+// before inference, "Vec[T]::new()" still named the callee's own "T" and inferred it as itself, a conflict.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Optional,
+  test_valid_default_naming_a_generic_inferred_from_an_argument, R"(
+    fun f[T: Copy](x: T, y: Vec[T] = Vec[T]::new()) -> Vec[T] {
+        ret y
+    }
+
+    fun g() -> Void {
+        let v = f(1_s32)
+        let w: Vec[S32] = v
+        std::mem::ops::drop(w)
+    }
+)");
+
+// So a default infers nothing about a generic it only restates.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Optional,
+  test_invalid_generic_named_only_by_a_default,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun h[T](x: S32, y: Vec[T] = Vec[T]::new()) -> Vec[T] {
+        ret y
+    }
+
+    fun g() -> Void {
+        let v = h(1_s32)
+        std::mem::ops::drop(v)
+    }
+)");
+
+// A pack is bound by the match that reaches it: to the tuple an instance records it as, forwarded as it is.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_bound_through_a_parameter_type, R"(
+    cls P[..Ts] { }
+
+    fun take[..Ts](p: P[Ts]) -> Void {
+        std::mem::ops::drop(p)
+    }
+
+    fun fwd[..Us](p: P[Us]) -> Void {
+        take(p)
+    }
+
+    fun g() -> Void {
+        take(P[S32, Bool]())
+        fwd(P[S32, Bool]())
+    }
+)");
+
+// And to the arguments past a fixed head, which a positional list spreads back into ("Tup[F, R]" is "Tup[S32, Bool,
+// U8]", and with an empty pack "Tup[S32]").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_after_a_fixed_head_spreads_back, R"(
+    fun head[F: Copy, ..R: Copy](t: Tup[F, R]) -> F {
+        ret t.0
+    }
+
+    fun g() -> Void {
+        let a: S32 = head((1_s32, true, 2_u8))
+        let b: S32 = head((1_s32,))
+    }
+)");
+
+// A class other than a tuple records its pack as one argument ("P[Ts=Tup[S32, Bool, U8]]"), which a pattern spreading
+// it positionally ("P[F, R]") matches element by element.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variadic,
+  test_valid_pack_after_a_fixed_head_of_a_recorded_pack, R"(
+    cls P[..Ts] { }
+
+    fun head[F, ..R](p: P[F, R]) -> Void {
+        std::mem::ops::drop(p)
+    }
+
+    fun g() -> Void {
+        head(P[S32, Bool, U8]())
     }
 )");

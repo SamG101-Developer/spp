@@ -15,11 +15,11 @@ spp::compiler::Module::Module(
   Vec<lex::RawToken> tokens,
   Unique<asts::ModulePrototypeAst> module_ast,
   Shared<utils::errors::ErrorFormatter> error_formatter) :
-  path(std::move(path)),
-  code(std::move(code)),
-  tokens(std::move(tokens)),
-  module_ast(std::move(module_ast)),
-  error_formatter(std::move(error_formatter)) {}
+  Path(std::move(path)),
+  Code(std::move(code)),
+  Tokens(std::move(tokens)),
+  ModuleAst(std::move(module_ast)),
+  Formatter(std::move(error_formatter)) {}
 
 auto spp::compiler::Module::FromPath(std::filesystem::path const &path) {
   return MakeUnique<Module>(path, "", Vec<lex::RawToken>{}, nullptr, nullptr);
@@ -29,7 +29,7 @@ auto spp::compiler::Module::TestHarness(
   std::filesystem::path const &tst_root)
   -> Unique<Module> {
   auto mod = MakeUnique<Module>(tst_root / "main.spp", "", Vec<lex::RawToken>{}, nullptr, nullptr);
-  mod->is_test_harness = true;
+  mod->IsTestHarness = true;
   return mod;
 }
 
@@ -38,50 +38,50 @@ spp::compiler::ModuleTree::ModuleTree(
   Str mode,
   TestScope const &tests) {
   // Get all the spp module files from the src path.
-  m_root = std::move(path);
+  _Root = std::move(path);
 
   // The target is a property of the whole build, set by the cli
   // before anything is compiled, so it is asked for here rather
   // than threaded through every constructor between the two.
-  m_out = OutLayout{
-    .Root = m_root, .Target = codegen::TargetFolderName(), .Mode = std::move(mode)};
-  m_src_path = m_root / "src";
-  m_vcs_path = m_root / "vcs";
-  m_ffi_path = m_root / "ffi";
-  m_tst_path = m_root / "tst";
+  _Out = OutLayout{
+    .Root = _Root, .Target = codegen::TargetFolderName(), .Mode = std::move(mode)};
+  _SrcPath = _Root / "src";
+  _VcsPath = _Root / "vcs";
+  _FfiPath = _Root / "ffi";
+  _TstPath = _Root / "tst";
 
   // The libraries under "vcs", by folder name, and the source roots every module is measured against.
   auto vcs_libs = Vec<Pair<Str, std::filesystem::path>>();
-  if (std::filesystem::exists(m_vcs_path)) {
-    for (auto const &entry : std::filesystem::directory_iterator(m_vcs_path)) {
+  if (std::filesystem::exists(_VcsPath)) {
+    for (auto const &entry : std::filesystem::directory_iterator(_VcsPath)) {
       if (not entry.is_directory()) { continue; }
       vcs_libs.EmplaceBack(spp::utils::files::NativeString(entry.path().filename()), entry.path());
     }
   }
 
-  m_source_roots = Vec{m_src_path, m_tst_path};
+  _SourceRoots = Vec{_SrcPath, _TstPath};
   for (auto const &[_, lib_path] : vcs_libs) {
-    m_source_roots.EmplaceBack(lib_path / "src");
-    m_source_roots.EmplaceBack(lib_path / "tst");
+    _SourceRoots.EmplaceBack(lib_path / "src");
+    _SourceRoots.EmplaceBack(lib_path / "tst");
   }
 
   // Get all the modules from the src and vcs path.
-  auto src_modules = spp::utils::files::GlobSpp(m_src_path)
+  auto src_modules = spp::utils::files::GlobSpp(_SrcPath)
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>();
 
-  auto vcs_modules = spp::utils::files::GlobSpp(m_vcs_path)
+  auto vcs_modules = spp::utils::files::GlobSpp(_VcsPath)
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>();
 
-  auto ffi_modules = spp::utils::files::GlobSpp(m_ffi_path)
+  auto ffi_modules = spp::utils::files::GlobSpp(_FfiPath)
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>();
 
   // The project's own tests, and only when they were asked for - see "TestScope".
-  auto tst_modules = tests.project
-    ? spp::utils::files::GlobSpp(m_tst_path)
-    | genex::views::filter([this](auto const &p) { return p != m_tst_path / "main.spp"; })
+  auto tst_modules = tests.Project
+    ? spp::utils::files::GlobSpp(_TstPath)
+    | genex::views::filter([this](auto const &p) { return p != _TstPath / "main.spp"; })
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>()
     : decltype(ffi_modules)();
@@ -89,7 +89,7 @@ spp::compiler::ModuleTree::ModuleTree(
   // Remove the "main.spp" files from the vcs modules.
   auto filtered_vcs_modules = decltype(vcs_modules)();
   for (auto &&m : vcs_modules) {
-    auto relative_path = std::filesystem::relative(m->path, m_vcs_path);
+    auto relative_path = std::filesystem::relative(m->Path, _VcsPath);
     const auto lib_name = spp::utils::files::NativeString(*relative_path.begin());
     auto inner_path = std::filesystem::path();
 
@@ -117,8 +117,8 @@ spp::compiler::ModuleTree::ModuleTree(
   // namespace would be a duplicate definition.
   if (tests.Any()) {
     src_modules |= genex::actions::remove_if(
-      [this](auto const &m) { return m->path == m_src_path / "main.spp"; });
-    tst_modules.EmplaceBack(Module::TestHarness(m_tst_path));
+      [this](auto const &m) { return m->Path == _SrcPath / "main.spp"; });
+    tst_modules.EmplaceBack(Module::TestHarness(_TstPath));
   }
 
   // Merge the src, vcs and ffi modules together.
@@ -126,18 +126,18 @@ spp::compiler::ModuleTree::ModuleTree(
   all_modules.AppendRange(std::move(vcs_modules));
   all_modules.AppendRange(std::move(ffi_modules));
   all_modules.AppendRange(std::move(tst_modules));
-  m_modules = std::move(all_modules);
+  _Modules = std::move(all_modules);
 
   // Measure every module's namespace now that all the roots
   // are known.
-  for (auto const &m : m_modules) {
-    m->ns_parts = m->is_test_harness ? Vec{Str("main")} : NamespaceOf(m->path);
+  for (auto const &m : _Modules) {
+    m->NsParts = m->IsTestHarness ? Vec{Str("main")} : NamespaceOf(m->Path);
   }
 
   Lock();
-  for (auto &&m : m_modules) {
-    if (m->is_test_harness) { continue; }
-    m->code = utils::files::ReadFile(std::filesystem::current_path() / m->path);
+  for (auto &&m : _Modules) {
+    if (m->IsTestHarness) { continue; }
+    m->Code = utils::files::ReadFile(std::filesystem::current_path() / m->Path);
   }
   Unlock();
 }
@@ -152,7 +152,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
   auto best_rel = std::filesystem::path();
   auto best_len = 0uz;
   auto best_is_tst = false;
-  for (auto const &root : m_source_roots) {
+  for (auto const &root : _SourceRoots) {
     const auto rel = module_path.lexically_relative(root);
     if (rel.empty() or *rel.begin() == "..") { continue; }
     const auto len = spp::utils::files::NativeString(root).length();
@@ -183,55 +183,55 @@ auto spp::compiler::ModuleTree::ForCppGoogleTest(
   // Create a new ModuleTree with a single module containing the
   // main_code.
   auto c = MakeUnique<ModuleTree>(std::move(path), std::move(mode));
-  c->m_modules[0]->code = std::move(main_code);
+  c->_Modules[0]->Code = std::move(main_code);
   return c;
 }
 
 auto spp::compiler::ModuleTree::Lock() -> void {
-  m_lock.LockShared(".lock");
+  _Lock.LockShared(".lock");
 }
 
 auto spp::compiler::ModuleTree::Unlock() -> void {
-  m_lock.Unlock();
+  _Lock.Unlock();
 }
 
 auto spp::compiler::ModuleTree::begin()
   -> Vec<Unique<Module>>::iterator {
-  return m_modules.begin();
+  return _Modules.begin();
 }
 
 auto spp::compiler::ModuleTree::end()
   -> Vec<Unique<Module>>::iterator {
-  return m_modules.end();
+  return _Modules.end();
 }
 
 auto spp::compiler::ModuleTree::GetModules()
   -> Vec<Module*> {
-  return m_modules | genex::views::ptr | genex::to<Vec>();
+  return _Modules | genex::views::ptr | genex::to<Vec>();
 }
 
 auto spp::compiler::ModuleTree::RootPath() const
   -> std::filesystem::path {
-  return m_root;
+  return _Root;
 }
 
 auto spp::compiler::ModuleTree::Out() const
   -> OutLayout const& {
-  return m_out;
+  return _Out;
 }
 
 auto spp::compiler::ModuleTree::LlvmOutPathFor(
   std::filesystem::path const &module_path) const
   -> std::filesystem::path {
-  const auto out_root = m_out.LlvmRoot();
+  const auto out_root = _Out.LlvmRoot();
 
   // The project's own sources lose their "src" prefix, so
   // "<root>/src/a/b.spp" mirrors to "<root>/out/<mode>/llvm/a/b.ll".
   const auto roots = Vec<Pair<std::filesystem::path, std::filesystem::path>>{
-    {m_src_path, std::filesystem::path()},
-    {m_vcs_path, std::filesystem::path("vcs")},
-    {m_ffi_path, std::filesystem::path("ffi")},
-    {m_tst_path, std::filesystem::path("tst")}
+    {_SrcPath, std::filesystem::path()},
+    {_VcsPath, std::filesystem::path("vcs")},
+    {_FfiPath, std::filesystem::path("ffi")},
+    {_TstPath, std::filesystem::path("tst")}
   };
 
   for (auto const &[root, prefix] : roots) {

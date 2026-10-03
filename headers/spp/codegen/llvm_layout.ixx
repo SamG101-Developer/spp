@@ -38,7 +38,7 @@ namespace spp::codegen {
   /// so the two differ; layouts that keep declaration order
   /// leave "FieldIndexMap" empty, which is the identity map.
   SPP_EXP_FUN auto GetPhysicalFieldIndex(
-    LlvmTypeSymInfo const &sym_info,
+    LlvmTypeSymbolInfo const &sym_info,
     std::size_t decl_index)
     -> std::uint32_t;
 }

@@ -5,7 +5,7 @@ export module spp.asts.closure_expression_ast;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.utils.types;
 import llvm;
 import std;
@@ -70,7 +70,7 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
+  SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
 
   /// Release the class prototypes minted for closure types. They
   /// are held for the run because the scopes and symbols built
@@ -85,10 +85,10 @@ private:
   /// parameters, return type and captures decide. This is what
   /// the closure's own type superimposes, rather than what it
   /// is.
-  SPP_ATTR_NODISCARD auto _FunctionalType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
+  SPP_ATTR_NODISCARD auto _FnType(ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
 
   /// Mint the closure's own nominal type - a "$closure..." class
-  /// superimposing "_FunctionalType" - and register it where the
+  /// superimposing "_FnType" - and register it where the
   /// closure was written. Thread safety is decided by what a
   /// closure captured, and two closures of the same signature
   /// capture different things, so there is nowhere on the
@@ -114,5 +114,5 @@ private:
 
   /// The LLVM function representing the closure. Generated in
   /// stage 11, and used to call the closure when it is invoked.
-  Shared<codegen::LlvmFuncWrapper> _LlvmFunc;
+  Shared<codegen::LlvmFnWrapper> _LlvmFn;
 };

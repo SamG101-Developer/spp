@@ -25,13 +25,9 @@ use(spp::analyse::scopes, struct TypeSymbol);
 /// given with a postfix type annotation, such as "_f32" or
 /// "_f64"; no postfix defaults the type to "std::BigDec".
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
-  inline static const auto kBounds = utils::numbers::FloatLimitMap{
-    {Str("f8"), MakePair(numex::BigDec("-448"), numex::BigDec("448"))},
-    {Str("f16"), LIMIT_F(11, 16)},
-    {Str("f32"), LIMIT_F(24, 128)},
-    {Str("f64"), LIMIT_F(53, 1024)},
-    {Str("f128"), LIMIT_F(113, 16384)}
-  };
+  /// The lowest and highest value of each float type, by suffix: one table, kept with the integer one
+  /// ("utils::numbers::FloatBounds").
+  inline static utils::numbers::FloatLimitMap const &kBounds = utils::numbers::FloatBounds();
 
   /// How many fractional digits it takes to write any value of
   /// each type exactly, which is the exponent of its smallest
@@ -112,8 +108,8 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
 
 private:
-  /// The precompiled type this literal's suffix names, resolved where "sm" is.
-  auto _PrecompiledTypeSym(ScopeManager *sm) const -> TypeSymbol*;
+  /// The precompiled type this literal's suffix names ("S32" for "1", "U8" for "1_u8").
+  auto _PrecompiledType(ScopeManager *sm) const -> TypeAst const&;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

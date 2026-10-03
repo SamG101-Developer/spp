@@ -95,7 +95,7 @@ auto BooleanLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the boolean literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto BooleanLiteralAst::Stage11_CodeGen(
@@ -109,7 +109,7 @@ auto BooleanLiteralAst::Stage11_CodeGen(
   // Bool type and then use the uniform LLVM type mapping
   // function to evaluate what the LLVM type is, should Bool
   // ever be changed from "i1".
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // Create the "constant int" (this literal represents a known

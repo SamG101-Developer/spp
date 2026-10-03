@@ -8,8 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.builtins;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.self_type;
+import spp.analyse.utils.type_resolution;
+import spp.asts.char_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.function_prototype_ast;
@@ -17,8 +18,11 @@ import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_func_impls;
+import spp.codegen.builtins;
+import spp.codegen.llvm_fn_impls;
 import spp.codegen.llvm_type;
+import spp.lex.tokens;
+import spp.utils.strings;
 import spp.utils.traits;
 import genex;
 import std;
@@ -52,7 +56,7 @@ auto FunctionImplementationLoweredAst::SetProtoPtr(
 
 auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
-  using analyse::errors::SppDivisionByZeroError;
+  IMPORT_UTILS;
 
   // The dividing builtins all take the divisor second. Their
   // "_assign" forms divide just the same.
@@ -78,9 +82,9 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   // Folded from a call, the division is the call the user
   // wrote; neither this builtin nor its folded divisor is
   // written there.
-  if (meta->CmpCallSite != nullptr) {
+  if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppDivisionByZeroError>(
-      is_zero, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite));
+      is_zero, {meta->CompTimeCallSiteScope}, ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite));
   }
   RaiseIf<SppDivisionByZeroError>(
     is_zero, {sm->CurrentScope}, ERR_ARGS(*this, divisor));
@@ -88,7 +92,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
 
 auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
-  using analyse::errors::SppShiftAmountOutOfBoundsError;
+  IMPORT_UTILS;
 
   // The shifting builtins take the amount second,
   // and shift the first operand's type.
@@ -111,9 +115,10 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   const auto width = digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
 
   const auto too_wide = amount->BigVal() >= numex::BigInt(width);
-  if (meta->CmpCallSite != nullptr) {
+  if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppShiftAmountOutOfBoundsError>(
-      too_wide, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite, value->Type, width));
+      too_wide, {meta->CompTimeCallSiteScope},
+      ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite, value->Type, width));
   }
   RaiseIf<SppShiftAmountOutOfBoundsError>(
     too_wide, {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
@@ -122,14 +127,26 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
 auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  if (analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
+  if (codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl == nullptr) {
     return;
   }
 
-  auto &lowered_cmp_code = *analyse::utils::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
+  auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
-  for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
+  for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
     extracted_args.EmplaceBack(std::move(arg));
+  }
+
+  // A byte literal is a "U8", but it arrives as the char
+  // literal it was written as, and every comp-time builtin
+  // over "U8" takes integer literals - the cast to one threw
+  // "std::bad_cast". It is read as the integer it stands for.
+  for (auto &arg : extracted_args) {
+    if (auto const *chr = arg->To<CharLiteralAst>(); chr != nullptr and chr->BytePrefix != nullptr) {
+      const auto byte = spp::utils::strings::DecodeCharLiteral(chr->Val->TokenData) & 0xFFu;
+      arg = MakeUnique<IntegerLiteralAst>(
+        nullptr, MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::to_string(byte)), Str("u8"));
+    }
   }
 
   // A zero divisor has to be caught before the operation
@@ -138,30 +155,31 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   // off from here.
   _ValidateZeroDivision(extracted_args, sm, meta);
   _ValidateShiftAmount(extracted_args, sm, meta);
-  meta->CmpResult = lowered_cmp_code
-                    .preload_generics(sm, meta->CmpGnTypeArgs, meta->CmpGnCompArgs)
-                    .invoke(std::move(extracted_args));
+  meta->CompTimeResult = lowered_cmp_code
+                    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
+                    .Invoke(std::move(extracted_args));
 
-  // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
+  // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()
   //     .with_args(*this)
   //     .raises_from(sm->CurrentScope);
 }
 
 auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS;
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
-  const auto ret_type = analyse::utils::type_utils::SubstituteSelfTypeAndAnalyse(
-    *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
+  const auto ret_type = self_type::SubstituteSelf(
+        *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
 
-  analyse::utils::builtins::kBuiltinFuncs
+  codegen::builtins::kBuiltinFuncs
     .at(_ScopePtr)
-    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
+    .LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
 
   // Skip scopes to get back to the parent scope (skipping inner
   // scopes on the lowered function - `!intrinsic` etc).
-  const auto final_scope = sm->CurrentScope->FinalChildScope();
+  const auto final_scope = sm->CurrentScope->GetFinalChildScope();
   while (sm->CurrentScope != final_scope) {
     sm->MoveToNextScope(false);
   }

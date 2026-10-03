@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.local_variable_destructure_skip_single_argument_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.utils.destructure_utils;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -43,8 +45,9 @@ auto LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const -> Vec<
 }
 
 auto LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const -> Shared<IdentifierAst> {
+  IMPORT_UTILS;
   // There is no single name for this "_" single skip.
-  return analyse::utils::destructure_utils::UnmatchableSingleIdentifier(PosStart());
+  return destructure_utils::UnmatchableSingleIdentifier(PosStart());
 }
 
 SPP_MOD_END

@@ -12,7 +12,9 @@ import std;
 SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LocalVariableSingleIdentifierAliasAst);
+use(spp::asts, struct TypeAst);
 use(spp::asts, struct TokenAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 
@@ -69,6 +71,13 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 
+  /// The type of the value being bound, read with this binding's
+  /// name meaning what it did before the binding - as the value
+  /// itself is generated. "let val = val.val" otherwise reads the
+  /// new "val" on the right.
+  SPP_ATTR_NODISCARD auto InferValueType(
+    ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst>;
+
 private:
   /// The symbol this binding's Stage 7 created, and the one its
   /// name held in the same scope just before. A scope holds one
@@ -78,8 +87,8 @@ private:
   /// would find the shadower. Only a binding that shadows one
   /// in its own scope uses these; every other binding is found
   /// by its name, as before. Neither is carried by "Clone".
-  Shared<VariableSymbol> _Sym;
-  Shared<VariableSymbol> _PrevSym;
+  Shared<VariableSymbol> _Symbol;
+  Shared<VariableSymbol> _PrevSymbol;
 
   /// Whether this binding is one of a same-scope shadowing
   /// pair, on either side: it shadows a binding in its own

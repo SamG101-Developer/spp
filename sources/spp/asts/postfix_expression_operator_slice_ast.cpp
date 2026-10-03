@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.operator_desugaring;
 import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -43,7 +44,7 @@ PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
   TokTo(std::move(tok_to)),
   ExprRBound(std::move(expr_r_bound)),
   TokR(std::move(tok_r)),
-  _MappedFunc(nullptr) {
+  _MappedFn(nullptr) {
 }
 
 PostfixExpressionOperatorSliceAst::~PostfixExpressionOperatorSliceAst() = default;
@@ -67,14 +68,14 @@ auto PostfixExpressionOperatorSliceAst::Clone() const -> Unique<Ast> {
     AstClone(TokTo),
     AstClone(ExprRBound),
     AstClone(TokR));
-  ast->_MappedFunc = _MappedFunc;
+  ast->_MappedFn = _MappedFn;
   return ast;
 }
 
 auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (_MappedFunc != nullptr) {
-    SPP_STRING_APPEND(_MappedFunc->Op);
+  if (_MappedFn != nullptr) {
+    SPP_STRING_APPEND(_MappedFn->Op);
     SPP_STRING_END;
   }
   SPP_STRING_APPEND_RAW("[");
@@ -89,28 +90,10 @@ auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
 auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppMemberAccessNonIndexableError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
-  using generate::common_types_precompiled::SLICE_MUT;
-  using generate::common_types_precompiled::SLICE_REF;
-  if (_MappedFunc != nullptr) { return; }
+  IMPORT_UTILS;
+  if (_MappedFn != nullptr) { return; }
 
-  // Determine the left-hand-side type.
-  const auto lhs_type = const_shared_cast(
-    meta->PostfixExpressionLhs->InferType(sm, meta));
-
-  // Check the lhs is actually a typed variable, (issues
-  // with ambiguities for parsing generics vs indexing etc).
-  // A function value (a "$" mock) is never sliceable.
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-  RaiseIf<SppMemberAccessNonIndexableError>(
-    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
-    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
-
-  auto sup_types = Vec{lhs_type};
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
+  operator_desugaring::CheckIndexable(*this, sm, meta);
 
   // Decide the function variation based upon if the lhs/rhs are nullptr or not.
   const auto prefix = ExprLBound == nullptr and ExprRBound == nullptr
@@ -124,63 +107,51 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   const auto mut = TokMut != nullptr ? "mut" : "ref";
   const auto func_name = Str("slice_") + mut + (std::strlen(prefix) == 0 ? "" : "_") + prefix;
 
-  // Create the mapped function for the index operator; create the index argument.
-  Unique<FunctionCallArgumentAst> arg1 = MakeUnique<FunctionCallArgumentPositionalAst>(
-    nullptr, nullptr, std::move(ExprLBound));
-  Unique<FunctionCallArgumentAst> arg2 = MakeUnique<FunctionCallArgumentPositionalAst>(
-    nullptr, nullptr, std::move(ExprRBound));
-  auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<Unique<FunctionCallArgumentAst>>{}, nullptr);
-  if (arg1->Val) { arg_group->Args.EmplaceBack(std::move(arg1)); }
-  if (arg2->Val) { arg_group->Args.EmplaceBack(std::move(arg2)); }
-
-  // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
-  auto field_name = MakeUnique<IdentifierAst>(PosStart(), func_name);
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
-  func_call->Source.OriginalExpr = this;
-  _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
-  _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+  // The bounds written, in order, are the method's arguments.
+  auto args = Vec<Unique<ExpressionAst>>();
+  if (ExprLBound != nullptr) { args.EmplaceBack(std::move(ExprLBound)); }
+  if (ExprRBound != nullptr) { args.EmplaceBack(std::move(ExprRBound)); }
+  _MappedFn = operator_desugaring::MapToMethodCall(*this, PosStart(), func_name, std::move(args), sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  _MappedFunc->Stage8_CheckMemory(sm, meta);
+  _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the mapped function.
-  _MappedFunc->Stage9_CompTimeResolve(sm, meta);
+  _MappedFn->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
-  return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
+  return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto PostfixExpressionOperatorSliceAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
-  return _MappedFunc->InferType(sm, meta);
+  return _MappedFn->InferType(sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  return _MappedFunc->InferTypeRef(sm, meta);
+  return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorSliceAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens.
   return MakeUnique<PostfixExpressionOperatorSliceAst>(
     AstClone(TokL),
     AstClone(TokMut),
-    AstClone(ExprLBound->SubstituteGenericsExpr(args)),
+    AstClone(ExprLBound->ReadExpr(sub)),
     AstClone(TokTo),
-    AstClone(ExprRBound->SubstituteGenericsExpr(args)),
+    AstClone(ExprRBound->ReadExpr(sub)),
     AstClone(TokR));
 }
 

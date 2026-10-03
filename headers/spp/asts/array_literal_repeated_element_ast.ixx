@@ -10,6 +10,8 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ArrayLiteralRepeatedElementAst);
+use(spp::analyse::scopes, struct ExprSubst);
+use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
@@ -85,14 +87,41 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// Move through the element and size to substitute
   /// generics in as they might contain postfix ops that
   /// need to be checked.
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   /// Arrays can be used ina runtime default context, only
   /// if all the element and size are allowed to be used in
   /// a runtime default context.
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+private:
+  /// The scope a size that was not already a literal was
+  /// analysed in. "Size" itself is never analysed: it is either
+  /// folded to a literal in stage 7, or, in a template, kept as
+  /// written for each instantiation's clone to fold. So whatever
+  /// scopes its analysis opened ("case", a block) are only here:
+  /// stage 8 checks "_AnalysedSize" in this scope, and the later
+  /// stages skip it as one. In a template, the array's type is
+  /// analysed here too, as its size argument may open scopes of
+  /// its own. Null when the size was a literal to begin with.
+  Scope *_SizeScope = nullptr;
+
+  /// The analysed copy of a size that was not a literal, kept so
+  /// that stage 8 can memory check it like any other analysed
+  /// expression.
+  Unique<ExpressionAst> _AnalysedSize;
+
+  /// The "Arr[T, n]" type, built and analysed once in stage 7.
+  /// Rebuilding it for every "InferType" would analyse its size
+  /// argument again each time, and a "case" there opens its scopes
+  /// again each time.
+  Shared<TypeAst> _ArrayType;
+
+  /// Step the walk past "_SizeScope", after the element's own
+  /// scopes (it was created after them).
+  auto SkipSizeScope(ScopeManager *sm) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralRepeatedElementAst)

@@ -5,13 +5,14 @@ module;
 module spp.asts.generic_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_parameter_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -73,19 +74,16 @@ auto GenericParameterGroupAst::ToString() const -> Str {
 }
 
 auto GenericParameterGroupAst::GetOptionalParams() const -> Vec<GenericParameterAst*> {
-  // Filter by the order tag.
-  using utils::OrderableTag::kOptionalParam;
   return Params
-    | genex::views::filter([](auto const &param) { return param->GetOrderTag() == kOptionalParam; })
+    | genex::views::filter([](auto const &param) { return param->IsOptional(); })
     | genex::views::transform([](auto const &param) { return param.get(); })
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::GetVariadicParams() const -> GenericParameterAst* {
-  // The first (and only valid) variadic parameter, by the
-  // order tag.
+auto GenericParameterGroupAst::GetVariadicParam() const -> GenericParameterAst* {
+  // The first (and only valid) variadic parameter.
   for (auto const &p : Params) {
-    if (p->GetOrderTag() == utils::OrderableTag::kVariadicParam) { return p.get(); }
+    if (p->IsVariadic()) { return p.get(); }
   }
   return nullptr;
 }
@@ -93,7 +91,7 @@ auto GenericParameterGroupAst::GetVariadicParams() const -> GenericParameterAst*
 auto GenericParameterGroupAst::GetCompParams() const -> Vec<GenericParameterAst*> {
   // Filter by the kind of parameter.
   return Params
-    | genex::views::filter([](auto const &param) { return param->CompType != nullptr; })
+    | genex::views::filter([](auto const &param) { return param->IsCompParam(); })
     | genex::views::transform([](auto const &param) { return param.get(); })
     | genex::to<Vec>();
 }
@@ -101,7 +99,7 @@ auto GenericParameterGroupAst::GetCompParams() const -> Vec<GenericParameterAst*
 auto GenericParameterGroupAst::GetTypeParams() const -> Vec<GenericParameterAst*> {
   // Filter by the kind of parameter.
   return Params
-    | genex::views::filter([](auto const &param) { return param->CompType == nullptr; })
+    | genex::views::filter([](auto const &param) { return param->IsTypeParam(); })
     | genex::views::transform([](auto const &param) { return param.get(); })
     | genex::to<Vec>();
 }
@@ -113,14 +111,16 @@ auto GenericParameterGroupAst::GetAllParams() const -> Vec<GenericParameterAst*>
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::OptToReq() const -> Unique<GenericParameterGroupAst> {
+auto GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParameterGroupAst> {
   // Convert all optional parameters to required parameters.
   auto new_params = Vec<Unique<GenericParameterAst>>();
   for (auto const &p : Params) {
-    if (p->TypeDefault != nullptr or p->CompDefault != nullptr) {
-      new_params.EmplaceBack(MakeUnique<GenericParameterAst>(
-        nullptr, nullptr, AstClone(p->Name), AstClone(p->Constraints),
-        nullptr, AstClone(p->CompType), nullptr, nullptr, nullptr));
+    if (p->IsOptional()) {
+      auto required = MakeUnique<GenericParameterAst>(
+        nullptr, nullptr, AstClone(p->Name), AstClone(p->TypeConstraints),
+        nullptr, AstClone(p->CompType), nullptr, nullptr, nullptr);
+      required->ShareParamId(*p);
+      new_params.EmplaceBack(std::move(required));
     }
     else {
       new_params.EmplaceBack(AstClone(p));
@@ -133,7 +133,7 @@ auto GenericParameterGroupAst::OptToReq() const -> Unique<GenericParameterGroupA
 
 auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppIdentifierDuplicateError;
+  IMPORT_UTILS;
 
   // Checked here rather than at stage 7, where the rest of
   // this group's validation lives, because the parameters
@@ -169,12 +169,12 @@ auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
   // block before they were qualified there, so they are qualified
   // here too; it declares no symbol, so has nothing to attach to.
   for (auto const &p : GetTypeParams()) {
-    p->Constraints->Stage4_ResolveDeclarations(sm, meta);
+    p->TypeConstraints->Stage4_ResolveDeclarations(sm, meta);
     if (p->IsInherited) { continue; }
 
     // Attach the scopes of the constraint types as sup-scopes to the generic scope.
-    for (auto const &constraint : p->Constraints->Constraints) {
-      const auto constraint_sym = sm->CurrentScope->GetTypeSymbol(constraint.get());
+    for (auto const &constraint : p->TypeConstraints->Constraints) {
+      const auto constraint_sym = sm->CurrentScope->FindTypeSymbol(constraint.get());
       for (auto const &dummy_scope : p->GetDummyScopes()) {
         BumpTypeStructureGeneration();
         dummy_scope->DirectSupScopes.EmplaceBack(constraint_sym->LinkedScope);
@@ -182,18 +182,18 @@ auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
     }
 
     const auto dummy_scopes = p->GetDummyScopes();
-    dummy_scopes[0]->TySym->GenericConstraints = AstCloneVecShared(
-      p->Constraints->Constraints);
+    dummy_scopes[0]->LinkedTypeSymbol->TypeConstraints = AstCloneVecShared(
+      p->TypeConstraints->Constraints);
   }
 }
 
 auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppOrderInvalidError;
+  IMPORT_UTILS;
 
   // Duplicate parameter names are caught at stage 2, before
   // the symbols are registered.
-  const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
+  const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());
@@ -203,10 +203,10 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   // to the bound argument's, which is not this group's to mark.
   for (auto const &p : GetTypeParams()) {
     if (p->IsInherited) { continue; }
-    for (auto const &constraint : p->Constraints->Constraints) {
-      const auto constraint_sym = sm->CurrentScope->GetTypeSymbol(constraint.get());
+    for (auto const &constraint : p->TypeConstraints->Constraints) {
+      const auto constraint_sym = sm->CurrentScope->FindTypeSymbol(constraint.get());
       if (constraint_sym->IsCopyable()) {
-        const auto generic_sym = sm->CurrentScope->GetTypeSymbol(p->Name.get());
+        const auto generic_sym = sm->CurrentScope->FindTypeSymbol(p->Name.get());
         generic_sym->IsDirectlyCopyable = true;
       }
     }
@@ -233,13 +233,16 @@ auto GenericParameterGroupAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Fold each comp default, to prove it is a constant even if
   // nothing ever uses it. The result is thrown away - a use
-  // site folds its own copy.
+  // site folds its own copy. One naming another parameter
+  // ("m = n + 1_uz") is no constant until instantiated, where
+  // it is folded as bound.
   for (auto const &p : Params) {
-    if (p->CompDefault == nullptr) { continue; }
+    if (not p->IsCompParam() or not p->IsOptional()) { continue; }
+    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*p->WrittenCompDefault))) { continue; }
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope);
     p->CompDefault->Stage9_CompTimeResolve(&tm, meta);
-    meta->CmpResult = nullptr;
+    meta->CompTimeResult = nullptr;
   }
 }
 

@@ -28,5 +28,5 @@ Cpy = "Cpy"       # Part of "MemCpy"
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,CreateMemCpy,olt,compex"
+ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn"
 skip = "./.vale,./tests/gtest-parallel,*.svg"

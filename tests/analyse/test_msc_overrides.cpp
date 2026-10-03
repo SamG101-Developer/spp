@@ -212,3 +212,97 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun g(&self) -> Void { }
     }
 )");
+
+// An override may narrow what the method it overrides returns: whatever it returns is still what the base promises.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverrides,
+  test_valid_override_narrows_the_return_type, R"(
+    cls A { }
+    cls B { }
+
+    sup A {
+        !virtual_method
+        !public
+        fun f(&self) -> S32 or Bool { ret true }
+    }
+
+    sup B ext A {
+        fun f(&self) -> S32 { ret 1_s32 }
+    }
+)");
+
+// An override may not widen it: a caller of the base's method would be handed what the base never returns.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_widens_the_return_type,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls A { }
+    cls B { }
+
+    sup A {
+        !virtual_method
+        !public
+        fun f(&self) -> S32 { ret 1_s32 }
+    }
+
+    sup B ext A {
+        fun f(&self) -> S32 or Bool { ret 1_s32 }
+    }
+)");
+
+// Nor widen it inside an argument ("Indexed[&T or None]" for "Indexed[&T]"), which the old check accepted by reading
+// the two return types the wrong way round.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_widens_a_return_type_argument,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls A { }
+    cls B { }
+
+    sup A {
+        !virtual_method
+        !public
+        fun f(&self) -> Opt[S32] { ret None }
+    }
+
+    sup B ext A {
+        fun f(&self) -> Opt[S32 or Bool] { ret None }
+    }
+)");
+
+// A signature is the same up to renaming its own generics: the override's are the base's, by position.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverrides,
+  test_valid_override_renames_its_generics, R"(
+    cls A { }
+    cls B { }
+
+    sup A {
+        !virtual_method
+        !public
+        fun f[G: Copy](&self, g: G) -> G { ret g }
+    }
+
+    sup B ext A {
+        fun f[H: Copy](&self, g: H) -> H { ret g }
+    }
+)");
+
+// By position, so swapping what two generics stand for is another signature.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_swaps_its_generics,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls A { }
+    cls B { }
+
+    sup A {
+        !virtual_method
+        !public
+        fun f[G: Copy, K: Copy](&self, g: G, k: K) -> G { ret g }
+    }
+
+    sup B ext A {
+        fun f[G: Copy, K: Copy](&self, g: K, k: G) -> G { ret k }
+    }
+)");

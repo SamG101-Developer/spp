@@ -218,7 +218,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A ext B { }
     sup A ext C { }
     sup A {
-        cmp x: std::number::U64 = 789_u64
+        !public cmp x: std::number::U64 = 789_u64
     }
 
     fun f() -> std::void::Void {

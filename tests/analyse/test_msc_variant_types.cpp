@@ -245,3 +245,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = A(x=b)
     }
 )");
+
+// A variant is the set of its members: two spellings in different orders are one type, so a generic bound through both
+// does not conflict.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_valid_member_order_is_not_part_of_the_type, R"(
+    fun f[T](a: T, b: T) -> Void {
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+    }
+
+    fun g(x: S32 or Bool, y: Bool or S32) -> Void {
+        f(x, y)
+    }
+)");
+
+// And one layout: returned as the other spelling, the value needs no reordering of its tags.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_valid_return_as_the_other_member_order, R"(
+    fun g(x: S32 or Bool) -> Bool or S32 {
+        ret x
+    }
+)");

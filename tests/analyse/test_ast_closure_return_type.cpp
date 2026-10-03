@@ -54,3 +54,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = c()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_valid_body_value_member_of_a_variant_return_type, R"(
+    fun f() -> Void {
+        let c = (x: S32) -> std::option::Opt[S32] { std::option::Some[S32](val=x) }
+        let o = c(1)
+    }
+)");

@@ -194,12 +194,6 @@ auto SemanticError::AddWrapped(
   });
 }
 
-auto SemanticError::Clone() const
-  -> Unique<SemanticError> {
-  // Use the copy constructor to clone the error.
-  return MakeUnique<SemanticError>(*this);
-}
-
 SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
   Ast const &expr) {
   AddHeader(0, "Invalid Primary Expression Error");
@@ -235,7 +229,7 @@ SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     "Use a first-class type ensuring ownership in this context.");
 }
 
-SppCompileTimeConstantError::SppCompileTimeConstantError(
+SppCompTimeConstantError::SppCompTimeConstantError(
   Ast const &expr) {
   AddHeader(3, "SPP Compile-Time Constant Error");
   AddErr(&expr, "Non compile-time expression defined here");
@@ -708,6 +702,18 @@ SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
     "Change the expression/type to a generator or a type that superimposes it.");
 }
 
+SppYieldTypeContainsGenDoneError::SppYieldTypeContainsGenDoneError(
+  Ast const &expr,
+  Ast const &yield_type,
+  const StrView what) {
+  AddHeader(110, "Yield Type Contains GenDone Error");
+  AddErr(&expr, "Generator yields " + INLINE_INFO(TypeForMessage(yield_type)));
+  AddFooter(
+    "Resuming a generator answers " + INLINE_NOTE("GenDone") + " once it has finished, so a yielded " +
+    INLINE_NOTE("GenDone") + " could not be told apart from that in a " + INLINE_NOTE(what) + " context.",
+    "Remove " + INLINE_HELP("GenDone") + " from the generator's yield type.");
+}
+
 SppExpressionNotTryError::SppExpressionNotTryError(
   Ast const &expr,
   Ast const &type) {
@@ -746,11 +752,16 @@ SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsErr
   const std::size_t num_controls,
   const std::size_t loop_depth) {
   AddHeader(40, "Loop Too Many Control Flow Statements Error");
-  AddCtxForErr(
-    &tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
-  AddErr(&stmt,
-         "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) +
-         " control flow statements");
+  if (loop_depth == 0) {
+    AddErr(&stmt, "Control flow statement defined here, outside of any loop");
+  }
+  else {
+    AddCtxForErr(
+      &tok_loop, "Loop introduced here with at a depth of " + INLINE_INFO(std::to_string(loop_depth)) + " loops");
+    AddErr(&stmt,
+           "Control flow statement defined here with " + INLINE_INFO(std::to_string(num_controls)) +
+           " control flow statements");
+  }
   AddFooter(
     "This loop contains too many control flow statements (exit/skip) for its depth.",
     "Reduce the number of control flow statements or increase the loop depth");
@@ -839,7 +850,6 @@ SppArgumentMissingError::SppArgumentMissingError(
 SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
   Ast const &proto,
   Ast const &call) {
-  // TODO: This will be changing with the abstract types ticket.
   AddHeader(49, "SPP Function Call Abstract Function Error");
   AddCtxForErr(&proto, "Abstract function prototype defined here");
   AddErr(&call, "Function call defined here");
@@ -1027,6 +1037,18 @@ SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
   AddFooter(
     "A type cannot extend itself in superimposition.",
     "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
+}
+
+SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarkerExtensionError(
+  Ast const &type,
+  Ast const &marker) {
+  AddHeader(111, "Superimposition External Marker Extension Error");
+  AddCtxForErr(&type, "Type superimposed over here");
+  AddErr(&marker, "Marker superimposed from outside its package here");
+  AddFooter(
+    "A marker decides how every value of a type is handled, so only the package declaring the type may superimpose "
+    "one over it.",
+    "Superimpose the marker where the type is declared, or wrap the type in one this package owns.");
 }
 
 SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
@@ -1221,7 +1243,7 @@ SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
     "Ensure the borrow lifetime does not exceed the initialization lifetime.");
 }
 
-SppInvalidComptimeOperationError::SppInvalidComptimeOperationError(
+SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
   Ast const &ast) {
   AddHeader(77, "Invalid Comptime Operation Error");
   AddErr(&ast, "Expression introduced here");
@@ -1402,7 +1424,7 @@ SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
     "Remove the move operation, make the type copyable, or restructure your borrows");
 }
 
-SppMovingComptimeConstantMemoryError::SppMovingComptimeConstantMemoryError(
+SppMovingCompTimeConstantMemoryError::SppMovingCompTimeConstantMemoryError(
   Ast const &ast,
   Ast const &move_location) {
   AddHeader(86, "Moving Compile-Time Constant Memory Error");
@@ -1445,6 +1467,37 @@ SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
     "A byte-prefixed char literal (" + INLINE_NOTE("b'...'") + ") must decode to a single byte, but this one decodes "
     "to a Unicode code point outside " + INLINE_NOTE("0..255") + ".",
     "Remove the " + INLINE_HELP("b") + " byte-prefix, or use a character whose code point fits in a single byte.");
+}
+
+SppCharLiteralLengthError::SppCharLiteralLengthError(
+  Ast const &literal) {
+  AddHeader(112, "Char Literal Length Error");
+  AddErr(&literal, "Char literal introduced here");
+  AddFooter(
+    "A char literal holds exactly one character: one escape sequence or one Unicode scalar value.",
+    "Use a string literal for more than one character.");
+}
+
+SppDefaultValueNamesParameterError::SppDefaultValueNamesParameterError(
+  Ast const &identifier) {
+  AddHeader(113, "Default Value Names Parameter Error");
+  AddErr(&identifier, "Parameter named in a default value here");
+  AddFooter(
+    "A default value is copied into every call that leaves it out, where a name means whatever the caller has under "
+    "it, so a default cannot name another parameter of the same function.",
+    "Make the parameter required, or overload the function without it.");
+}
+
+SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
+  Ast const &guard,
+  Ast const &symbol_definition) {
+  AddHeader(114, "Pattern Guard Moves Value Error");
+  AddCtxForErr(&symbol_definition, "Value introduced here");
+  AddErr(&guard, "Value moved by this pattern guard");
+  AddFooter(
+    "A pattern guard runs before its branch is chosen, so when it answers false the next branch runs with whatever "
+    "the guard moved already gone.",
+    "Borrow the value in the guard, or move it inside the branch body instead.");
 }
 
 SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
@@ -1542,21 +1595,23 @@ SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
 SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   Ast const &deferred,
   Ast const &consumed_at,
+  Ast const &exit_point,
   const StrView symbol_name,
   const StrView exit_what) {
   AddHeader(99, "Defer Consumes Moved Value Error");
+  AddCtxForErr(&consumed_at, INLINE_INFO(symbol_name) + " consumed here");
   AddCtxForErr(&deferred, "Deferred here, so it runs at every exit of this scope");
   AddErrExact(
-    &consumed_at, Str(exit_what) + " reached with " + INLINE_INFO(symbol_name) + " already consumed here");
+    &exit_point, Str(exit_what) + " reached here with " + INLINE_INFO(symbol_name) + " already consumed");
   AddFooter(
     "A deferred expression is not conditional - it is emitted at every exit,\n\t"
     "with nothing at runtime to record that one path already consumed the\n\t"
-    "value - so this one would consume it a second time.",
+    "value - so this one would use it after it is gone.",
     "Discharge " + INLINE_HELP(symbol_name) + " in each branch that does\n\t"
     "not already consume it, rather than deferring it for all of them.");
 }
 
-SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeFunctionError(
+SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
   Ast const &tok_defer) {
   AddHeader(98, "Defer In Compile-Time Function Error");
   AddErr(&tok_defer, "Deferred here, inside a function evaluated at compile time");

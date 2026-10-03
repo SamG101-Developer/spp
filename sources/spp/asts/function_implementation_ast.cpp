@@ -43,7 +43,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   // locals unassigned, which is what entering a call should do.
   auto caller_values = Vec<Pair<VariableSymbol*, Unique<Ast>>>();
   const auto take_values = [&caller_values](auto const &self, Scope const &scope) -> void {
-    for (auto *sym : scope.AllVarSymbols(true)) {
+    for (auto *sym : scope.GetAllVarSymbols(true)) {
       caller_values.EmplaceBack(sym, std::move(sym->CompTimeValue));
     }
     for (auto const &child : scope.Children) { self(self, *child); }
@@ -52,21 +52,21 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
 
   // Inject the argument values. Todo: && & std::move?
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
-  for (auto const &[arg_name, arg_comp] : meta->CmpArgs) {
-    const auto arg_sym = sm->CurrentScope->GetVarSymbol(arg_name.get());
+  for (auto const &[arg_name, arg_comp] : meta->CompTimeArgs) {
+    const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
     caller_values.EmplaceBack(arg_sym, std::move(arg_sym->CompTimeValue));
     arg_sym->CompTimeValue = AstClone(arg_comp);
   }
 
   // Comptime resolve each member of the inner scope. The call is its own frame: the caller is mid-statement, so its
   // "returned" state has to survive this one rather than be inherited by it.
-  const auto caller_returned = meta->CmpReturned;
-  meta->CmpReturned = false;
+  const auto caller_returned = meta->CompTimeReturned;
+  meta->CompTimeReturned = false;
   for (auto const &member : this->Members) {
     member->Stage9_CompTimeResolve(sm, meta);
-    if (meta->CmpReturned) { break; }
+    if (meta->CompTimeReturned) { break; }
   }
-  meta->CmpReturned = caller_returned;
+  meta->CompTimeReturned = caller_returned;
 
   // Hand the scope back to the caller as it was. A semantic error thrown out of the body skips this, which is fine:
   // nothing catches a comp-time error, so the compile is over either way.

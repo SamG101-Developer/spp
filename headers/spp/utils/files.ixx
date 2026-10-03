@@ -56,7 +56,7 @@ namespace spp::utils::files {
   SPP_EXP_CLS class FileLock {
     /// The open file the lock is held on: a file descriptor on
     /// POSIX, a HANDLE on Windows, and -1 when no lock is held.
-    std::intptr_t m_handle = -1;
+    std::intptr_t _Handle = -1;
 
     /// Open "path", creating it if it is not there, and lock
     /// it, waiting for as long as another holder has it. An
@@ -72,15 +72,15 @@ namespace spp::utils::files {
     auto operator=(FileLock const &) -> FileLock & = delete;
 
     FileLock(FileLock &&other) noexcept :
-      m_handle(other.m_handle) {
-      other.m_handle = -1;
+      _Handle(other._Handle) {
+      other._Handle = -1;
     }
 
     auto operator=(FileLock &&other) noexcept -> FileLock & {
       if (this != &other) {
         Unlock();
-        m_handle = other.m_handle;
-        other.m_handle = -1;
+        _Handle = other._Handle;
+        other._Handle = -1;
       }
       return *this;
     }

@@ -52,7 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_visibility_access_private_module_member,
   SppAccessViolationError, R"(
     fun f() -> Void {
-        let x = std::generator::Generated[S32]()
+        let x = std::random::rotl64(1_u64, 2_u32)
         std::mem::ops::drop(x)
     }
 )");

@@ -1,11 +1,11 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.codegen.llvm_materialize;
+module spp.codegen.LlvmMaterialize;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.assignment_utils;
+import spp.analyse.utils.regions;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -16,13 +16,13 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.utils.types;
 import spp.utils.uid;
 import llvm;
 import std;
 
-auto spp::codegen::llvm_materialize(
+auto spp::codegen::LlvmMaterialize(
   asts::ExpressionAst &ast,
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
@@ -30,7 +30,7 @@ auto spp::codegen::llvm_materialize(
   -> asts::IdentifierAst* {
   // Materialise an expression by assigning it to a temporary
   // variable.
-  const auto uid = "." + spp::utils::Uid(&ast);
+  const auto uid = "." + spp::utils::Uid();
   auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + uid);
   const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
 
@@ -51,14 +51,14 @@ auto spp::codegen::llvm_materialize(
   return materialized_val;
 }
 
-auto spp::codegen::llvm_addr_of(
+auto spp::codegen::LlvmAddrOf(
   asts::ExpressionAst &ast,
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
   LlvmCtx *ctx)
   -> llvm::Value* {
   //
-  using analyse::utils::assignment_utils::IsDeref;
+  using analyse::utils::regions::IsDeref;
 
   // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
   // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we
@@ -87,8 +87,11 @@ auto spp::codegen::llvm_addr_of(
     return field_ptr;
   }
 
-  // A symbolic expression (a variable, or a static member of a type or namespace) is already allocated somewhere.
-  if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(ast).first; sym != nullptr) {
+  // A symbolic expression (a variable, or a static member of a type or namespace) is already allocated somewhere. A
+  // constant folded where it is used ("cmp n: USize = k + 1_uz" in a generic "sup") has no storage, and is materialised
+  // below like any other value.
+  if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(ast).first;
+    sym != nullptr and sym->LlvmInfo != nullptr and sym->LlvmInfo->Alloca != nullptr) {
     const auto llvm_alloca = sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca != nullptr and llvm_alloca->getType()->isPointerTy());
 
@@ -101,8 +104,8 @@ auto spp::codegen::llvm_addr_of(
   }
 
   // Anything else has no storage of its own, so give it some by binding it to a temporary.
-  const auto materialized_val = llvm_materialize(ast, sm, meta, ctx);
-  const auto materialized_sym = sm->CurrentScope->GetVarSymbol(materialized_val);
+  const auto materialized_val = LlvmMaterialize(ast, sm, meta, ctx);
+  const auto materialized_sym = sm->CurrentScope->FindVarSymbol(materialized_val);
   SPP_ASSERT(materialized_sym->LlvmInfo->Alloca->getType()->isPointerTy());
   return materialized_sym->LlvmInfo->Alloca;
 }

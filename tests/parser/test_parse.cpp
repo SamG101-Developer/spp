@@ -8,12 +8,12 @@ SPP_TEST_SHOULD_FAIL_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_class_prototype, R"(
+    ParseClassPrototype, R"(
     cls MyClass { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_class_attribute, R"(
+    ParseClassAttribute, R"(
     cls MyClass {
         my_attr_1: S32
         my_attr_2: S32
@@ -21,41 +21,41 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_sup_prototype_extension, R"(
+    ParseSupPrototypeExtension, R"(
     sup MyClass ext Copy { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_sup_prototype_functions, R"(
+    ParseSupPrototypeFunctions, R"(
     sup MyClass { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_sup_type_statement, R"(
+    ParseSupTypeStatement, R"(
     sup MyClass {
         type NewType = OldType
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_subroutine_prototype, R"(
+    ParseSubroutinePrototype, R"(
     fun my_function() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_coroutine_prototype, R"(
+    ParseCoroutinePrototype, R"(
     cor my_coroutine() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_function_call_argument_keyword, R"(
+    ParseFunctionCallArgumentKeyword, R"(
     fun my_function() -> Void {
         other_function(arg1=other_thing, arg2=2)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_function_call_argument_positional, R"(
+    ParseFunctionCallArgumentPositional, R"(
     fun my_function() -> Void {
         other_function(1, 2)
     }
@@ -159,42 +159,42 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_type_required, R"(
+    ParseGenericParameterTypeRequired, R"(
     fun my_function[T, U]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_type_optional, R"(
+    ParseGenericParameterTypeOptional, R"(
     fun my_function[T=S32, U=Str]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_type_variadic, R"(
+    ParseGenericParameterTypeVariadic, R"(
     fun my_function[T, ..U]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_type, R"(
+    ParseGenericParameterType, R"(
     fun my_function[T, U=S32, ..V]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_comp_required, R"(
+    ParseGenericParameterCompRequired, R"(
     fun my_function[cmp n: S32, cmp m: S32]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_comp_optional, R"(
+    ParseGenericParameterCompOptional, R"(
     fun my_function[cmp n: S32=1, cmp m: S32=2]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_comp_variadic, R"(
+    ParseGenericParameterCompVariadic, R"(
     fun my_function[cmp ..m: S32]() -> Void { }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_generic_parameter_comp, R"(
+    ParseGenericParameterComp, R"(
     fun my_function[cmp n: S32, cmp m: S32=1, cmp ..o: S32]() -> Void { }
 )");
 
@@ -508,7 +508,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_self_identifier, R"(
+    ParseSelfIdentifier, R"(
     fun my_function() -> Void {
         self
     }
@@ -660,7 +660,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_skip_statement, R"(
+    ParseSkipStatement, R"(
     fun my_function() -> Void {
         loop true {
             loop true {
@@ -671,7 +671,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_inner_scope, R"(
+    ParseInnerScope, R"(
     fun my_function() -> Void {
         {
             inner_function()
@@ -680,7 +680,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_global_type_statement, R"(
+    ParseGlobalTypeStatement, R"(
     type MyString = Str
 
 )");
@@ -697,14 +697,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_let_statement_initialized, R"(
+    ParseLetStatementInitialized, R"(
     fun my_function() -> Void {
         let a = 1
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_let_statement_uninitialized, R"(
+    ParseLetStatementUninitialized, R"(
     fun my_function() -> Void {
         let a: S32
     }
@@ -732,28 +732,28 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_local_variable_single_identifier, R"(
+    ParseLocalVariableSingleIdentifier, R"(
     fun my_function() -> Void {
         let a = 1
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_local_variable_destructure_array, R"(
+    ParseLocalVariableDestructureArray, R"(
     fun my_function() -> Void {
         let [a, b, c] = array
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_local_variable_destructure_tuple, R"(
+    ParseLocalVariableDestructureTuple, R"(
     fun my_function() -> Void {
         let (a, b, c) = tuple
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_local_variable_destructure_object, R"(
+    ParseLocalVariableDestructureObject, R"(
     fun my_function() -> Void {
         let MyType(a, b, c) = object
     }
@@ -767,7 +767,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_assignment_statement, R"(
+    ParseAssignmentStatement, R"(
     fun my_function() -> Void {
         variable = 1
     }
@@ -860,7 +860,7 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_pattern_guard, R"(
+    ParsePatternGuard, R"(
     fun my_function() -> Void {
         case value of {
             == 1 and some_condition { }
@@ -910,14 +910,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_type_tuple, R"(
+    ParseTypeTuple, R"(
     fun my_function() -> Void {
         let a: (S32, S32)
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_type_array, R"(
+    ParseTypeArray, R"(
     fun my_function() -> Void {
         let a: [S32; 5]
     }
@@ -966,14 +966,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_literal_float, R"(
+    ParseLiteralFloat, R"(
     fun my_function() -> Void {
         let a = 1.0
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_literal_integer, R"(
+    ParseLiteralInteger, R"(
     fun my_function() -> Void {
         let a = 1
     }
@@ -1008,14 +1008,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_literal_string, R"(
+    ParseLiteralString, R"(
     fun my_function() -> Void {
         let a = "string"
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SYNTACTIC(
-    parse_literal_boolean, R"(
+    ParseLiteralBoolean, R"(
     fun my_function() -> Void {
         let a = true
     }
@@ -1066,6 +1066,14 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
     parse_closure_no_params, R"(
     fun my_function() -> Void {
         let my_closure = () { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(
+    parse_closure_body_not_on_the_parameters_line, R"(
+    fun f() -> Void {
+        let c = (x: S32)
+            x
     }
 )");
 

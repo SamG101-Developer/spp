@@ -1,13 +1,58 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.module_implementation_ast;
+import spp.analyse.errors.diagnostic_sink;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_manager;
+import spp.asts.ast;
 import spp.asts.module_member_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.lsp.resolution_index;
 import genex;
 
+use_ns(spp::analyse::utils);
+
 SPP_MOD_BEGIN
+namespace {
+  /// For the normal caller, once we get an error, we raise it
+  /// and stop the compiler execution. If the sink is enabled
+  /// however, this is for the IDEA plugin's indexing, so we
+  /// store the error in the sink, shift past the member's scope,
+  /// and move onto the next member, allowing multiple errors,
+  /// from different functions, to show at once.
+  template <typename F>
+  auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
+    IMPORT_UTILS;
+    namespace sink = diagnostic_sink;
+    // Normal behaviour: run the member, an error stops execution,
+    // displays the error and terminates the compiler.
+    if (not sink::IsEnabled()) { return stage(member); }
+
+    // If we have "poisoned" the sink for this member (via the
+    // "report" method), then skip the scopes and we move to the
+    // next member.
+    if (sink::IsPoisoned(member)) {
+      sm->SkipPastScope(member->GetAstScope());
+      return;
+    }
+
+    // Otherwise, try to run the stage for the member, and if it
+    // raises an error, then report it to the sink, skip the member's
+    // scopes, and move to the next member.
+    try {
+      stage(member);
+    }
+    catch (SemanticError const &e) {
+      sink::Report(e, member);
+      sm->SkipPastScope(member->GetAstScope());
+    }
+  }
+}
+
 ModuleImplementationAst::ModuleImplementationAst(
   decltype(Members) &&members) :
   Members(std::move(members)) {
@@ -78,19 +123,31 @@ auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
 auto ModuleImplementationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
-  for (auto const &member : Members) { member->Stage7_AnalyseSemantics(sm, meta); }
+  for (auto const &member : Members) {
+    RunMember(member.get(), sm, [&](auto *m) { m->Stage7_AnalyseSemantics(sm, meta); });
+  }
+
+  // What the module itself holds - its own declarations, and everything imported into it - which can be named
+  // anywhere in the file.
+  if (lsp::resolution_index::IsEnabled()) {
+    lsp::resolution_index::RecordScopeOf(*this, *sm, true);
+  }
 }
 
 auto ModuleImplementationAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
-  for (auto const &member : Members) { member->Stage8_CheckMemory(sm, meta); }
+  for (auto const &member : Members) {
+    RunMember(member.get(), sm, [&](auto *m) { m->Stage8_CheckMemory(sm, meta); });
+  }
 }
 
 auto ModuleImplementationAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members, and return nullptr as this value is never used.
-  for (auto const &member : Members) { member->Stage9_CompTimeResolve(sm, meta); }
+  for (auto const &member : Members) {
+    RunMember(member.get(), sm, [&](auto *m) { m->Stage9_CompTimeResolve(sm, meta); });
+  }
 }
 
 auto ModuleImplementationAst::Stage10_PreCodeGen(

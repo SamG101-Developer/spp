@@ -59,3 +59,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(a)
     }
 )");
+
+// The two instances are one type to the analysis (variant members are unordered), but two structs to codegen.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenericArgumentTypeAst,
+    test_valid_variant_generic_arguments_in_another_order, R"(
+    cls VarArgHolder[T] { }
+
+    fun f(x: VarArgHolder[S32 or Bool]) -> VarArgHolder[Bool or S32] { ret x }
+)");

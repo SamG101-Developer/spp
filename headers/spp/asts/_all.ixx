@@ -58,7 +58,7 @@ export import spp.asts.generic_argument_ast;
 export import spp.asts.generic_argument_group_ast;
 export import spp.asts.generic_parameter_ast;
 export import spp.asts.generic_parameter_group_ast;
-export import spp.asts.generic_parameter_type_inline_constraints_ast;
+export import spp.asts.generic_parameter_type_constraints_ast;
 export import spp.asts.identifier_ast;
 export import spp.asts.inner_scope_ast;
 export import spp.asts.inner_scope_expression_ast;

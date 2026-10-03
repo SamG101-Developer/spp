@@ -53,23 +53,22 @@ auto ParenthesisedExpressionAst::ToString() const -> Str {
 
 auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   // Forward analysis into the expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Expr, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
 }
 
 auto ParenthesisedExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of the expression.
   Expr->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, meta);
+  mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.MarkMoves = false});
 }
 
 auto ParenthesisedExpressionAst::Stage9_CompTimeResolve(
@@ -95,12 +94,12 @@ auto ParenthesisedExpressionAst::InferTypeRef(
   return Expr->InferTypeRef(sm, meta);
 }
 
-auto ParenthesisedExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ParenthesisedExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Substitute into the inner expression.
   return MakeShared<ParenthesisedExpressionAst>(
     AstClone(TokL),
-    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(Expr->ReadExpr(sub)),
     AstClone(TokR));
 }
 

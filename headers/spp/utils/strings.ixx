@@ -25,7 +25,7 @@ namespace spp::utils::strings {
 
   /// Find the closest match to "query" among "choices", or
   /// "std::nullopt" if nothing matches.
-  SPP_EXP_FUN auto ClosestMatch(StrView query, Vec<Str> const &choices) -> std::optional<Str>;
+  SPP_EXP_FUN SPP_ATTR_COLD auto ClosestMatch(StrView query, Vec<Str> const &choices) -> std::optional<Str>;
 
   auto Levenshtein(StrView s1, StrView s2) -> std::size_t;
 
