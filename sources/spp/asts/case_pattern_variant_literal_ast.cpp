@@ -75,14 +75,14 @@ auto CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
     {this}, sm, meta);
 
   // Return the single result (only one literal will be here).
-  meta->CmpResult = std::move(comptime_transforms[0]);
+  meta->CompTimeResult = std::move(comptime_transforms[0]);
 }
 
 auto CasePatternVariantLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   IMPORT_UTILS;
-  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
+  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFnsLlvm(
     {this}, sm, meta, ctx);
   return llvm_master_transform[0];
 }

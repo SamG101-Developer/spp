@@ -103,7 +103,7 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 private:
   bool _Generated;
   bool _FromUseStatement;
-  Shared<TypeSymbol> _AliasSym;
+  Shared<TypeSymbol> _AliasSymbol;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeStatementAst)

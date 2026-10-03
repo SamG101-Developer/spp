@@ -67,7 +67,7 @@ namespace spp::lsp {
 
   /// Render what a "cmp" declaration computed as one line
   /// of json.
-  SPP_EXP_FUN auto ToJson(lsp::resolution_index::ComptimeValue const &value) -> Str;
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::CompTimeValue const &value) -> Str;
 
   /// Render what one part of a file can name as one line of
   /// json.

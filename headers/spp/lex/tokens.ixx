@@ -10,7 +10,7 @@ use(spp::lex, enum class SppTokenType : std::uint8_t);
 use(spp::lex, class RawToken);
 
 namespace spp::lex {
-  SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> Str;
+  SPP_EXP_FUN auto TokToString(SppTokenType token) noexcept -> Str;
 }
 
 // TODO: Rename all constants to kConstant format.
@@ -193,13 +193,13 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
 
 SPP_EXP_CLS class spp::lex::RawToken {
 public:
-  RawTokenType type;
-  Str data;
+  RawTokenType Type;
+  Str Data;
 
   RawToken(RawTokenType type, Str data);
 };
 
-SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> Str {
+SPP_EXP_FUN auto spp::lex::TokToString(const SppTokenType token) noexcept -> Str {
   switch (token) {
     case SppTokenType::LX_CHARACTER: return "";
     case SppTokenType::LX_DIGIT: return "";

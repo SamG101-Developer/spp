@@ -19,7 +19,7 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.builtins;
-import spp.codegen.llvm_func_impls;
+import spp.codegen.llvm_fn_impls;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.strings;
@@ -82,9 +82,9 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   // Folded from a call, the division is the call the user
   // wrote; neither this builtin nor its folded divisor is
   // written there.
-  if (meta->CmpCallSite != nullptr) {
+  if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppDivisionByZeroError>(
-      is_zero, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite));
+      is_zero, {meta->CompTimeCallSiteScope}, ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite));
   }
   RaiseIf<SppDivisionByZeroError>(
     is_zero, {sm->CurrentScope}, ERR_ARGS(*this, divisor));
@@ -115,9 +115,10 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   const auto width = digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
 
   const auto too_wide = amount->BigVal() >= numex::BigInt(width);
-  if (meta->CmpCallSite != nullptr) {
+  if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppShiftAmountOutOfBoundsError>(
-      too_wide, {meta->CmpCallSiteScope}, ERR_ARGS(*meta->CmpCallSite, *meta->CmpCallSite, value->Type, width));
+      too_wide, {meta->CompTimeCallSiteScope},
+      ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite, value->Type, width));
   }
   RaiseIf<SppShiftAmountOutOfBoundsError>(
     too_wide, {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
@@ -126,13 +127,13 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
 auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  if (codegen::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn == nullptr) {
+  if (codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl == nullptr) {
     return;
   }
 
-  auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).cmp_fn;
+  auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
-  for (auto &&[_, arg] : std::move(meta->CmpArgs)) {
+  for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
     extracted_args.EmplaceBack(std::move(arg));
   }
 
@@ -154,11 +155,11 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   // off from here.
   _ValidateZeroDivision(extracted_args, sm, meta);
   _ValidateShiftAmount(extracted_args, sm, meta);
-  meta->CmpResult = lowered_cmp_code
-                    .preload_generics(sm, meta->CmpGnTypeArgs, meta->CmpGnCompArgs)
-                    .invoke(std::move(extracted_args));
+  meta->CompTimeResult = lowered_cmp_code
+                    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
+                    .Invoke(std::move(extracted_args));
 
-  // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidComptimeOperationError>()
+  // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()
   //     .with_args(*this)
   //     .raises_from(sm->CurrentScope);
 }
@@ -169,16 +170,16 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   // Use the builtin to build the llvm custom lowered code. The
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
-  const auto ret_type = self_type::SubstituteSelfTypeAndAnalyse(
-    *_ProtoPtr->ReturnType, *sm->CurrentScope, *sm, *meta);
+  const auto ret_type = self_type::SubstituteSelf(
+        *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
 
   codegen::builtins::kBuiltinFuncs
     .at(_ScopePtr)
-    .llvm_fn(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
+    .LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
 
   // Skip scopes to get back to the parent scope (skipping inner
   // scopes on the lowered function - `!intrinsic` etc).
-  const auto final_scope = sm->CurrentScope->FinalChildScope();
+  const auto final_scope = sm->CurrentScope->GetFinalChildScope();
   while (sm->CurrentScope != final_scope) {
     sm->MoveToNextScope(false);
   }

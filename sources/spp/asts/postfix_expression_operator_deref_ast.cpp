@@ -16,7 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_sym_info;
+import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -73,7 +73,7 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
   const auto lhs_type_no_conv = lhs_type->WithoutConvention();
   RaiseIf<SppNonCopyableTypeError>(
-    not sm->CurrentScope->GetTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
+    not sm->CurrentScope->FindTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
     {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
 }
 
@@ -95,7 +95,8 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   // value's type: under opaque pointers the latter is just
   // "ptr", so the pointee is unrecoverable from it and has
   // to come from the symbol table instead.
-  const auto llvm_type = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // Dereference the borrow to get the underlying value.

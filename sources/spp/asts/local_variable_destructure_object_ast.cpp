@@ -49,8 +49,8 @@ LocalVariableDestructureObjectAst::LocalVariableDestructureObjectAst(
   TokL(std::move(tok_l)),
   Elems(std::move(elems)),
   TokR(std::move(tok_r)),
-  _CondSym(nullptr),
-  _FlowSym(nullptr),
+  _CondSymbol(nullptr),
+  _FlowSymbol(nullptr),
   _CondLet(nullptr),
   _TmpName(nullptr) {
   //
@@ -106,9 +106,9 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   const auto val_type = val->InferType(sm, meta);
   // Todo: in a generic sup, "let Box[T](v) = self" (or "Self(v)") raises E105 though "v" is bound -
   //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
-  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
 
-  const auto cls_proto = sm->CurrentScope->GetTypeSymbol(Type.get())->Type;
+  const auto cls_proto = sm->CurrentScope->FindTypeSymbol(Type.get())->Type;
   const auto cls_attrs = cls_proto != nullptr
     ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>()
     : Vec<Ast*>{};
@@ -141,7 +141,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // naming the bare type: "case p is Point(&x, ..)" where
   // "p" is a "&Point". The tuple and array destructures
   // already read past the convention here, because they
-  // check the shape ("IsTypeTup" / "IsTypeArr"). Manually
+  // check the shape ("IsTypeTuple" / "IsTypeArray"). Manually
   // apply the same semantics here.
   const auto conv_only_mismatch = _FromCasePattern
     and type_compare::TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope);
@@ -194,17 +194,17 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _CondLet = MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(uid_var), nullptr, nullptr, AstClone(effective_val));
     _CondLet->Stage7_AnalyseSemantics(sm, meta);
-    _CondSym = sm->CurrentScope->GetVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
-    _FlowSym = MakeShared<VariableSymbol>(*_CondSym);
-    _FlowSym->LlvmInfo = _CondSym->LlvmInfo;
-    _FlowSym->Type = Type;
+    _CondSymbol = sm->CurrentScope->FindVarSymbol(uid_name.get())->SharedFromThis<VariableSymbol>();
+    _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
+    _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
+    _FlowSymbol->Type = Type;
 
     if (Type->GetConvention() != nullptr) {
-      const auto has_borrow_scope = spp::get<1>(_CondSym->MemInfo->AstBorrowed);
-      const auto borrow_scope = has_borrow_scope ? has_borrow_scope : _CondSym->ScopeDefinedIn;
-      _FlowSym->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
+      const auto has_borrow_scope = spp::get<1>(_CondSymbol->MemInfo->AstBorrowed);
+      const auto borrow_scope = has_borrow_scope ? has_borrow_scope : _CondSymbol->ScopeDefinedIn;
+      _FlowSymbol->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
     }
-    sm->CurrentScope->AddVarSymbol(_FlowSym);
+    sm->CurrentScope->AddVarSymbol(_FlowSymbol);
     effective_val = uid_name.get();
   }
 
@@ -224,10 +224,6 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
       if (_FromCasePattern) { new_ast->Var->MarkFromCasePattern(); }
       new_ast->Stage7_AnalyseSemantics(sm, meta);
       _NewAsts.EmplaceBack(std::move(new_ast));
-    }
-
-    // Skip any conversion for single argument skipping.
-    else if (elem->To<LocalVariableDestructureSkipSingleArgumentAst>() != nullptr) {
     }
 
     // Handle and other nested destructure or single identifier.
@@ -270,10 +266,10 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
     destructure_utils::DestructureTempStage11(_TmpName, llvm_subject, *sm, meta, ctx);
   }
 
-  // If flow typing introduced a temp variable, generate it. _FlowSym
-  // replaced _CondSym in the symbol table (same scope, same string
+  // If flow typing introduced a temp variable, generate it. _FlowSymbol
+  // replaced _CondSymbol in the symbol table (same scope, same string
   // key), so LocalVariableSingleIdentifierAst::Stage11 inside _CondLet
-  // already sets _FlowSym->LlvmInfo->Alloca, so no copy needed.
+  // already sets _FlowSymbol->LlvmInfo->Alloca, so no copy needed.
   if (_CondLet) {
     _CondLet->Stage11_CodeGen(sm, meta, ctx);
 
@@ -283,23 +279,23 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
     // way - an element of a tuple pattern, most of all - arrives here instead, and was binding the tag as its first
     // field. The flow symbol is given its own llvm info to write into, because it shares the condition's up to here
     // and narrowing through that would move the condition itself onto the payload.
-    if (_FlowSym != nullptr and _CondSym != nullptr and _CondSym->LlvmInfo->Alloca != nullptr) {
-      const auto bare_cond_type = _CondSym->Type->WithoutConvention();
-      if (type_predicates::IsTypeVariant(TypeRef::OfHead(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
+    if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->LlvmInfo->Alloca != nullptr) {
+      const auto bare_cond_type = _CondSymbol->Type->WithoutConvention();
+      if (type_predicates::IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
         const auto uid = "." + Uid();
-        const auto variant_ty = sm->CurrentScope->GetTypeSymbol(
+        const auto variant_ty = sm->CurrentScope->FindTypeSymbol(
           bare_cond_type.get())->LlvmInfo->LlvmType;
 
         // A borrowed condition holds the address of the variant rather than the variant, so it is stepped through
         // first - the payload of the pointer itself is not a thing.
-        auto variant_ptr = _CondSym->LlvmInfo->Alloca;
-        if (_CondSym->Type->GetConvention() != nullptr) {
+        auto variant_ptr = _CondSymbol->LlvmInfo->Alloca;
+        if (_CondSymbol->Type->GetConvention() != nullptr) {
           variant_ptr = ctx->Builder.CreateLoad(
             llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "destructure.subject" + uid);
         }
 
-        _FlowSym->LlvmInfo = MakeShared<codegen::LlvmVarSymInfo>();
-        _FlowSym->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
+        _FlowSymbol->LlvmInfo = MakeShared<codegen::LlvmVarSymbolInfo>();
+        _FlowSymbol->LlvmInfo->Alloca = codegen::GetVariantPayloadPtr(
           variant_ptr, variant_ty, "destructure.payload" + uid, ctx);
       }
     }

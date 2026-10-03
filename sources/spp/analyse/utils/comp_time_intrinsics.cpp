@@ -3,7 +3,7 @@ module;
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
-module spp.analyse.utils.comptime_intrinsics;
+module spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
@@ -32,19 +32,19 @@ import genex;
 import numex.big_dec;
 import numex.big_int;
 
-namespace spp::analyse::utils::comptime_intrinsics {
+namespace spp::analyse::utils::comp_time_intrinsics {
   namespace {
     auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {
       // The width and signedness are the sized type's own bindings of "w" and "signed", read from the instantiation as
       // its type arguments would be - not parsed out of how its name happens to be written.
       if (sym == nullptr) { return Str(); }
-      const auto width_val = sym->BoundCompArg("w");
+      const auto width_val = sym->CompArg("w");
       const auto width_lit = width_val != nullptr ? width_val->To<IntegerLiteralAst>() : nullptr;
       if (width_lit == nullptr) { return Str(); }
       const auto width = width_lit->Val->ToString();
 
       // A floating-point type has a width and nothing else; an integer one also says whether it is signed.
-      const auto signed_val = sym->BoundCompArg("signed");
+      const auto signed_val = sym->CompArg("signed");
       if (signed_val == nullptr) { return "f" + width; }
       const auto signed_lit = signed_val->To<BooleanLiteralAst>();
       const auto is_signed = signed_lit != nullptr and signed_lit->CppVal();
@@ -56,15 +56,15 @@ namespace spp::analyse::utils::comptime_intrinsics {
       // Get the type suffix for this integer or float
       // type, and check that it is known.
       SPP_ASSERT(not types.IsEmpty());
-      const auto name = SizedNumericLiteralTypeName(types[0]->Sym);
+      const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
       const auto known = is_float
         ? FloatLiteralAst::kBounds.contains(name)
         : IntegerLiteralAst::kBounds.contains(name);
 
       // ICE failsafe to prevent worse downstream errors.
       if (not known) {
-        SPP_ASSERT(types[0]->Sym != nullptr);
-        const auto type = types[0]->Sym->FqName();
+        SPP_ASSERT(types[0]->Symbol != nullptr);
+        const auto type = types[0]->Symbol->FqName();
         Raise<errors::SppInternalCompilerError>({sm.CurrentScope}, ERR_ARGS(*type, "no numeric bounds for this type"));
       }
       return name;
@@ -102,7 +102,7 @@ namespace spp::analyse::utils::comptime_intrinsics {
   }
 }
 
-auto spp::analyse::utils::comptime_intrinsics::SetCompTimeAttrValue(
+auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
   ObjectInitializerAst const *object, Ast const *attribute,
   Unique<ExpressionAst> &&value, ScopeManager const *sm) -> void {
   // Firstly, we need to split the "attribute" as it may be
@@ -134,7 +134,7 @@ auto spp::analyse::utils::comptime_intrinsics::SetCompTimeAttrValue(
   // ("..old") so the rest of it is kept. The last attribute's
   // value is replaced, or added if it is missing.
   auto const *current = object;
-  auto current_sym = sm->CurrentScope->GetTypeSymbol(object->Type.get());
+  auto current_sym = sm->CurrentScope->FindTypeSymbol(object->Type.get());
   for (auto i = 0uz; i < attr_path.Len(); ++i) {
     auto const &attr_name = attr_path[i];
     auto *const arg = FindNamedArg(*current, *attr_name);
@@ -147,8 +147,8 @@ auto spp::analyse::utils::comptime_intrinsics::SetCompTimeAttrValue(
       return;
     }
 
-    const auto attr_type = current_sym->LinkedScope->GetVarSymbol(attr_name.get())->Type;
-    current_sym = current_sym->LinkedScope->GetTypeSymbol(attr_type.get());
+    const auto attr_type = current_sym->LinkedScope->FindVarSymbol(attr_name.get())->Type;
+    current_sym = current_sym->LinkedScope->FindTypeSymbol(attr_type.get());
     if (const auto inner = arg != nullptr ? arg->Val->To<ObjectInitializerAst>() : nullptr; inner != nullptr) {
       current = inner;
       continue;
@@ -169,7 +169,7 @@ auto spp::analyse::utils::comptime_intrinsics::SetCompTimeAttrValue(
   }
 }
 
-auto spp::analyse::utils::comptime_intrinsics::GetCompTimeAttrValue(
+auto spp::analyse::utils::comp_time_intrinsics::GetCompTimeAttrValue(
   ObjectInitializerAst const *object,
   IdentifierAst const *attribute)
   -> Unique<ExpressionAst> {
@@ -186,7 +186,7 @@ auto spp::analyse::utils::comptime_intrinsics::GetCompTimeAttrValue(
   return nullptr;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_add(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsAdd(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -194,7 +194,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_add(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_sub(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsSub(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -202,7 +202,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_sub(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_mul(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMul(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -210,7 +210,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_mul(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_div(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsDiv(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -218,7 +218,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_div(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_rem(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsRem(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -226,14 +226,14 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_rem(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() % rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_sneg(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsSneg(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform signed negation on an integer literal.
   return IntegerLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shl(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShl(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -242,7 +242,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shl(
     lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shr(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShr(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -250,7 +250,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_shr(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() >> rhs.CppVal<std::uint32_t>(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_ior(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitIor(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -258,7 +258,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_ior(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() | rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_and(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitAnd(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -266,7 +266,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_and(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() & rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_xor(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitXor(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -274,29 +274,29 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_xor(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal() ^ rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_not(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNot(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform bitwise NOT on an integer literal.
   return IntegerLiteralAst::FromBigVal(~val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_bit_not_assign(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNotAssign(
   IntegerLiteralAst &lhs)
   -> void {
   // Perform bitwise NOT assignment on an integer literal. Written out rather than generated below because it is the
   // one unary assignment; it used to hand-roll the field copy that "AssignInPlace" does, and had drifted from it.
-  AssignInPlace(lhs, std_intrinsics_bit_not(lhs));
+  AssignInPlace(lhs, StdIntrinsicsBitNot(lhs));
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_abs(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsAbs(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
   // Perform absolute value on an integer literal.
   return IntegerLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_eq(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsEq(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -304,7 +304,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_eq(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oeq(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOeq(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -312,7 +312,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oeq(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ne(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsNe(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -320,7 +320,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ne(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_one(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOne(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -328,7 +328,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_one(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_lt(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsLt(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -336,7 +336,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_lt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() < rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_olt(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOlt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -344,7 +344,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_olt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() < rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_le(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsLe(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -352,7 +352,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_le(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() <= rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ole(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOle(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -360,7 +360,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ole(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() <= rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_gt(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsGt(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -368,7 +368,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_gt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() > rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ogt(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOgt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -376,7 +376,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ogt(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() > rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ge(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsGe(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -384,7 +384,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ge(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() >= rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oge(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOge(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
@@ -392,7 +392,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_oge(
   return BooleanLiteralAst::FromCppVal(lhs.BigVal() >= rhs.BigVal());
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max_val(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMaxVal(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -402,7 +402,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max_val(
     IntegerLiteralAst::kBounds.at(name).second, name);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min_val(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMinVal(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -412,7 +412,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min_val(
     IntegerLiteralAst::kBounds.at(name).first, name);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMax(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -420,7 +420,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_max(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMin(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -428,7 +428,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_min(
   return IntegerLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_cmp(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsCmp(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
@@ -438,7 +438,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_cmp(
   return IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fadd(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFadd(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -447,7 +447,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fadd(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fsub(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFsub(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -456,7 +456,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fsub(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmul(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmul(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -465,7 +465,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmul(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fdiv(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFdiv(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -473,7 +473,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fdiv(
   return FloatLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_frem(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFrem(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -481,21 +481,21 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_frem(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Fmod(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fneg(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFneg(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform negation on a float literal, exactly.
   return FloatLiteralAst::FromBigVal(-val.BigVal(), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fabs(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFabs(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform absolute value on a float literal, exactly.
   return FloatLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax_val(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmaxVal(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
@@ -504,7 +504,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax_val(
   return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).second, name);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin_val(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFminVal(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
@@ -513,7 +513,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin_val(
   return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).first, name);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmax(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -521,7 +521,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmax(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmin(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
@@ -529,91 +529,91 @@ auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fmin(
   return FloatLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ffloor(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFfloor(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform floor operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Floor(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fceil(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFceil(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform ceiling operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Ceil(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_ftrunc(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFtrunc(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform truncation operation on a float literal.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_fround(
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFround(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
   // Perform round operation on a float literal: half away from zero, as "llvm.round" does at runtime.
   return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Round(), numex::BigInt(1)), val.Type);
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_float_neg_one()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatNegOne()
   -> Unique<FloatLiteralAst> {
   // Get "-1.0" as a constant.
   constexpr auto value = "-1.0";
-  auto flt = INJECT_CODE(value, parse_literal_float);
+  auto flt = INJECT_CODE(value, ParseLiteralFloat);
   return flt;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_float_zero()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatZero()
   -> Unique<FloatLiteralAst> {
   // Get "0.0" as a constant.
   constexpr auto value = "0.0";
-  auto num = INJECT_CODE(value, parse_literal_float);
+  auto num = INJECT_CODE(value, ParseLiteralFloat);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_float_one()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatOne()
   -> Unique<FloatLiteralAst> {
   // Get "1.0" as a constant.
   constexpr auto value = "1.0";
-  auto num = INJECT_CODE(value, parse_literal_float);
+  auto num = INJECT_CODE(value, ParseLiteralFloat);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_int_neg_one()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntNegOne()
   -> Unique<IntegerLiteralAst> {
   // Get "-1" as a constant.
   constexpr auto value = "-1";
-  auto num = INJECT_CODE(value, parse_literal_integer);
+  auto num = INJECT_CODE(value, ParseLiteralInteger);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_int_zero()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntZero()
   -> Unique<IntegerLiteralAst> {
   // Get "0" as a constant.
   constexpr auto value = "0";
-  auto num = INJECT_CODE(value, parse_literal_integer);
+  auto num = INJECT_CODE(value, ParseLiteralInteger);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_int_one()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntOne()
   -> Unique<IntegerLiteralAst> {
   // Get "1" as a constant.
   constexpr auto value = "1";
-  auto num = INJECT_CODE(value, parse_literal_integer);
+  auto num = INJECT_CODE(value, ParseLiteralInteger);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_num_int_two()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntTwo()
   -> Unique<IntegerLiteralAst> {
   // Get "2" as a constant.
   constexpr auto value = "2";
-  auto num = INJECT_CODE(value, parse_literal_integer);
+  auto num = INJECT_CODE(value, ParseLiteralInteger);
   return num;
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_size_of(
+auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsSizeOf(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -623,7 +623,7 @@ auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_size_of(
   return MakeUnique<IntegerLiteralAst>(nullptr, std::move(tok), "uz");
 }
 
-auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_align_of(
+auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsAlignOf(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
@@ -638,27 +638,27 @@ auto spp::analyse::utils::comptime_intrinsics::std_mem_ops_align_of(
 // rather than copied eighteen times. The declarations stay written out in the interface, so each name is still
 // searchable there and at its registration in "builtins.cpp".
 #define SPP_CMP_ASSIGN_OP(name, lit_ty)                                \
-  auto spp::analyse::utils::comptime_intrinsics::std_intrinsics_##name##_assign( \
+  auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsics##name##Assign(  \
     asts::lit_ty &lhs,                                                 \
     asts::lit_ty const &rhs)                                           \
     -> void {                                                          \
-    AssignInPlace(lhs, std_intrinsics_##name(lhs, rhs));               \
+    AssignInPlace(lhs, StdIntrinsics##name(lhs, rhs));                 \
   }
 
-SPP_CMP_ASSIGN_OP(add, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(sub, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(mul, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(div, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(rem, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(bit_shl, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(bit_shr, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(bit_ior, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(bit_and, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(bit_xor, IntegerLiteralAst)
-SPP_CMP_ASSIGN_OP(fadd, FloatLiteralAst)
-SPP_CMP_ASSIGN_OP(fsub, FloatLiteralAst)
-SPP_CMP_ASSIGN_OP(fmul, FloatLiteralAst)
-SPP_CMP_ASSIGN_OP(fdiv, FloatLiteralAst)
-SPP_CMP_ASSIGN_OP(frem, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(Add, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(Sub, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(Mul, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(Div, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(Rem, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitShl, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitShr, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitIor, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitAnd, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitXor, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(Fadd, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(Fsub, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(Fmul, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(Fdiv, FloatLiteralAst)
+SPP_CMP_ASSIGN_OP(Frem, FloatLiteralAst)
 
 #undef SPP_CMP_ASSIGN_OP

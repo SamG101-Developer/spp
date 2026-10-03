@@ -80,8 +80,8 @@ namespace spp::analyse::utils::linear_utils {
 
       // Copying leaves the original in place, so a copyable value
       // is never owed to anyone.
-      const auto type_sym = scopes::TypeRef::Of(*sym.Type, *sm.CurrentScope).Sym;
-      if (type_sym == nullptr or type_sym->IsCopyable()) { return false; }
+      const auto type = scopes::TypeRef::Of(*sym.Type, *sm.CurrentScope);
+      if (type.Symbol == nullptr or type.Symbol->IsCopyable()) { return false; }
 
       // Taking every non-copyable part off a value leaves nothing
       // left to consume. A destructure is the usual way that happens,
@@ -90,7 +90,7 @@ namespace spp::analyse::utils::linear_utils {
       // is to go on.
       if (sym.MemInfo->AstPartialMoves.IsEmpty() or owned_on_some_path) { return true; }
       return not regions::RegionConsumed(
-        Vec<IdentifierAst*>{sym.Name.get()}, *type_sym, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
+        Vec<IdentifierAst*>{sym.Name.get()}, type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
     }
   }
 }
@@ -119,7 +119,7 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
   //
   using errors::SppLinearValueNotConsumedError;
 
-  for (auto const *sym : scope.AllVarSymbols(true)) {
+  for (auto const *sym : scope.GetAllVarSymbols(true)) {
     // The subject of a surrounding "case ... of" that takes it has already been given up by the time a branch runs,
     // even though the mark itself is not made until the branches are done. Leaving a branch early is not what
     // abandoned it.
@@ -129,7 +129,7 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // the subject is the subject too. Matched by symbol, not name: anything else spelled the same (a closure's
     // parameter) is a different value that is still owed.
     const auto is_subject = [&](VariableSymbol const *subject) {
-      for (auto const *s = sym; s != nullptr; s = s->NarrowsSym.get()) { if (s == subject) { return true; } }
+      for (auto const *s = sym; s != nullptr; s = s->NarrowsSymbol.get()) { if (s == subject) { return true; } }
       return false;
     };
     if (meta != nullptr and genex::any_of(meta->CaseConsumedSubjects, is_subject)) { continue; }
@@ -157,13 +157,13 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
 
     // Held in locals so the views handed to the error outlive it.
     const auto sym_name = sym->Name->ToString();
-    const auto type_name = sym->Type->WithoutGenerics()->ToString();
+    const auto type_name = sym->Type->WithoutGns()->ToString();
     Raise<SppLinearValueNotConsumedError>(
       {sm.CurrentScope}, ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
   }
 }
 
-auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
+auto spp::analyse::utils::linear_utils::CheckLiveUpToFn(
   Ast const &exit_point,
   const StrView exit_what,
   ScopeManager &sm,
@@ -171,17 +171,17 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFunction(
   -> void {
   // Outside a function there is no linear obligation to discharge:
   // a module-level constant outlives every scope that reads it.
-  if (meta->EnclosingFunctionScope == nullptr) { return; }
+  if (meta->EnclosingFnScope == nullptr) { return; }
 
   // Running a scope's deferred statements marks what they take, which is right for the path being left but wrong for
   // everything after it: stage 8 walks statements in order rather than following branches, so the state is put back
   // once the exit is checked, or the code after the branch a "ret" sits in would read as though the deferred releases
   // had already happened.
-  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFunctionScope);
+  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFnScope);
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
     CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
-    if (scope == meta->EnclosingFunctionScope) { break; }
+    if (scope == meta->EnclosingFnScope) { break; }
   }
   memory_state::RestoreSnapshot(saved);
 }
@@ -196,7 +196,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
   -> void {
   //
   auto loops_seen = 0uz;
-  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFunctionScope);
+  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFnScope);
 
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
     // An iterable loop is rewritten into a conditional one before
@@ -214,7 +214,7 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
     CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
     if (is_loop and loops_seen == num_exits and not has_skip) { break; }
-    if (scope == meta->EnclosingFunctionScope) { break; }
+    if (scope == meta->EnclosingFnScope) { break; }
   }
 
   memory_state::RestoreSnapshot(saved);
@@ -232,7 +232,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwrite(
 
   // Held in locals so the views handed to the error outlive it.
   const auto sym_name = sym.Name->ToString();
-  const auto type_name = sym.Type->WithoutGenerics()->ToString();
+  const auto type_name = sym.Type->WithoutGns()->ToString();
   Raise<SppLinearValueNotConsumedError>(
     {sm.CurrentScope}, ERR_ARGS(*sym.Name, site, StrView(sym_name), StrView(type_name), site_what));
 }

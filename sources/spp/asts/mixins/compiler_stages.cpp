@@ -78,7 +78,7 @@ auto CompilerStages::Stage9_CompTimeResolve(
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.
   IMPORT_UTILS;
-  Raise<SppInvalidComptimeOperationError>(
+  Raise<SppInvalidCompTimeOperationError>(
     {sm->CurrentScope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
 }
 

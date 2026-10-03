@@ -16,15 +16,15 @@ namespace spp::analyse::scopes {
 }
 
 namespace spp::codegen::mangle {
-  SPP_EXP_FUN auto mangle_type_name(
+  SPP_EXP_FUN auto MangleTypeName(
     analyse::scopes::TypeSymbol const &type_sym)
     -> Str;
 
-  SPP_EXP_FUN auto mangle_mod_name(
+  SPP_EXP_FUN auto MangleModName(
     analyse::scopes::Scope const &mod_scope)
     -> Str;
 
-  SPP_EXP_FUN auto mangle_cmp_name(
+  SPP_EXP_FUN auto MangleCmpName(
     analyse::scopes::Scope const &owner_scope,
     asts::CmpStatementAst const &cmp_stmt)
     -> Str;
@@ -34,7 +34,7 @@ namespace spp::codegen::mangle {
   /// hash of its full signature, which is what keeps overloads
   /// (return type included) apart. Backtraces print it without
   /// the hash.
-  SPP_EXP_FUN auto mangle_fun_name(
+  SPP_EXP_FUN auto MangleFnName(
     analyse::scopes::Scope const &owner_scope,
     asts::FunctionPrototypeAst const &fun_proto)
     -> Str;
@@ -43,7 +43,7 @@ namespace spp::codegen::mangle {
   /// function whose symbol is "enclosing": the enclosing
   /// function's readable name, then "::{closure#index}",
   /// then the enclosing function's hash.
-  SPP_EXP_FUN auto mangle_closure_name(
+  SPP_EXP_FUN auto MangleClosureName(
     Str const &enclosing,
     std::size_t index)
     -> Str;

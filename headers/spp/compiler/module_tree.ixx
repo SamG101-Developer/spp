@@ -24,41 +24,41 @@ namespace spp::compiler {
  * Which "tst" folders a build picks up. Empty means an ordinary build, which compiles none of them.
  */
 SPP_EXP_CLS struct spp::compiler::TestScope {
-  /** Include the project's own "tst" folder. */
-  bool project = false;
+  /** Include the Project's own "tst" folder. */
+  bool Project = false;
 
   /** Include the "tst" folder of every library under "vcs". */
-  bool all_libs = false;
+  bool AllLibs = false;
 
   /** Include the "tst" folder of these libraries, named as their folder under "vcs". */
-  Vec<Str> libs;
+  Vec<Str> Libs;
 
-  SPP_ATTR_NODISCARD auto Any() const -> bool { return project or all_libs or not libs.IsEmpty(); }
+  SPP_ATTR_NODISCARD auto Any() const -> bool { return Project or AllLibs or not Libs.IsEmpty(); }
 
   SPP_ATTR_NODISCARD auto WantsLib(Str const &lib) const -> bool {
-    return all_libs or genex::contains(libs, lib);
+    return AllLibs or genex::contains(Libs, lib);
   }
 };
 
 SPP_EXP_CLS struct spp::compiler::Module {
-  std::filesystem::path path = "";
-  Str code;
-  Vec<lex::RawToken> tokens = {};
-  Unique<asts::ModulePrototypeAst> module_ast;
-  Shared<utils::errors::ErrorFormatter> error_formatter;
+  std::filesystem::path Path = "";
+  Str Code;
+  Vec<lex::RawToken> Tokens = {};
+  Unique<asts::ModulePrototypeAst> ModuleAst;
+  Shared<utils::errors::ErrorFormatter> Formatter;
 
   /**
    * Whether this is the entry point the test build generates. Its source is not read from disk: it is written once the
    * other modules have been parsed and the unit tests among them are known, which is why it is parsed after the rest.
    */
-  bool is_test_harness = false;
+  bool IsTestHarness = false;
 
   /**
    * The namespace this module's contents live in, as the parts of a "::" chain. Worked out once, by the tree, which is
    * the only thing that knows where the real source roots are - the path alone cannot say, because a module is free to
    * have directories of its own named "src" or "tst".
    */
-  Vec<Str> ns_parts;
+  Vec<Str> NsParts;
 
   Module(
     std::filesystem::path path,
@@ -81,14 +81,14 @@ SPP_EXP_CLS struct spp::compiler::Module {
 
 SPP_EXP_CLS struct spp::compiler::ModuleTree {
 private:
-  std::filesystem::path m_root;
-  OutLayout m_out;
-  std::filesystem::path m_src_path;
-  std::filesystem::path m_vcs_path;
-  std::filesystem::path m_ffi_path;
-  std::filesystem::path m_tst_path;
-  Vec<Unique<Module>> m_modules;
-  utils::files::FileLock m_lock;
+  std::filesystem::path _Root;
+  OutLayout _Out;
+  std::filesystem::path _SrcPath;
+  std::filesystem::path _VcsPath;
+  std::filesystem::path _FfiPath;
+  std::filesystem::path _TstPath;
+  Vec<Unique<Module>> _Modules;
+  utils::files::FileLock _Lock;
 
   auto Lock()
     -> void;
@@ -149,7 +149,7 @@ private:
    * Every directory a module's namespace can be measured from: the project's "src" and "tst", and the same pair for
    * each library under "vcs". Built in the constructor and used only by @c NamespaceOf .
    */
-  Vec<std::filesystem::path> m_source_roots;
+  Vec<std::filesystem::path> _SourceRoots;
 
   /**
    * The namespace a module's path puts it in. Anchored on the source root that actually produced the module - the

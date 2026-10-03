@@ -4,24 +4,27 @@ module;
 module spp.asts.type_ast;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_resolution;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 TypeAst::TypeAst() :
-  _CachedWithoutGenerics(nullptr),
+  _CachedWithoutGns(nullptr),
   _CachedStringification("") {
 }
 
 TypeAst::~TypeAst() = default;
 
-auto TypeAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
-  // The type-level walk already handles "Self", nested arguments
-  // and everything else, so the expression walk hands the whole
-  // job to it rather than repeating any of it.
-  return SubstituteGenerics(args);
+auto TypeAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  return ReadExprType(sub);
+}
+
+auto TypeAst::ReadExprType(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<TypeAst> {
+  return analyse::utils::type_resolution::ReadType(*this, sub);
 }
 
 auto TypeAst::IsAllowedInDefault() const -> bool {
@@ -56,7 +59,7 @@ auto TypeAst::WithSourceSpanAt(
   return copy;
 }
 
-auto TypeAst::WithGenerics(
+auto TypeAst::WithGns(
   Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> {
   // Clone this type and put the arguments on its right-most part.
   auto type_clone = AstClone(this);
@@ -65,8 +68,8 @@ auto TypeAst::WithGenerics(
 
   // Different arguments make a different type, so the clone keeps no written identity: the one copied from this node (a
   // cached qualified name records its symbol's) would still name the old type, and a lookup would follow it there.
-  type_clone->SetWritten(nullptr);
-  type_clone->LastTypePart()->SetWritten(nullptr);
+  type_clone->SetWrittenTypeId(nullptr);
+  type_clone->LastTypePart()->SetWrittenTypeId(nullptr);
   return type_clone;
 }
 

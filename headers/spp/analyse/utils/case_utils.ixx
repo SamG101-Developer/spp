@@ -23,7 +23,7 @@ namespace spp::analyse::utils::case_utils {
   /// analyser. It uses the same core function, but injects
   /// codegen steps into the analyser, producing IR, which
   /// is propagated out of the function.
-  SPP_EXP_FUN auto CreateAndAnalysePatternEqFuncsLlvm(
+  SPP_EXP_FUN auto CreateAndAnalysePatternEqFnsLlvm(
     Vec<CasePatternVariantAst*> const &elems,
     ScopeManager *sm,
     CompilerMetaData *meta,
@@ -44,7 +44,7 @@ namespace spp::analyse::utils::case_utils {
   /// internal shared pattern analyser. It handles literal/expr
   /// equality, destructure decomposition, comparison function
   /// call generation, etc.
-  SPP_EXP_FUN auto CreateAndAnalysePatternEqFuncsDummyCore(
+  SPP_EXP_FUN auto CreateAndAnalysePatternEqFnsDummyCore(
     Vec<CasePatternVariantAst*> const &elems,
     ScopeManager *sm,
     CompilerMetaData *meta)
@@ -63,7 +63,7 @@ namespace spp::analyse::utils::case_utils {
   /// call, based on the above mapping. For example, "a is
   /// S32" becomes a case-pattern destructure check.
   /// Provides a uniform variant decomposition mechanism.
-  SPP_EXP_FUN auto ConvertIsExprToFuncCall(
+  SPP_EXP_FUN auto ConvertIsExprToFnCall(
     IsExpressionAst &is_expr,
     ScopeManager *sm,
     CompilerMetaData *meta)

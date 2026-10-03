@@ -101,7 +101,7 @@ namespace spp_test {
       build_temp_project(std::move(code), add_main);
     }
     catch (E const &e) {
-      CheckErrorLocations(e.messages, underline);
+      CheckErrorLocations(e.Messages, underline);
       return;
     }
     catch (std::exception const &e) {

@@ -82,11 +82,11 @@ auto PatternGuardAst::Stage8_CheckMemory(
   // borrow, but not move: it runs before its branch is chosen,
   // so a move it makes would also have happened on the path
   // into the next branch when it answers false.
-  const auto before = sm->CurrentScope->AllVarSymbols()
+  const auto before = sm->CurrentScope->GetAllVarSymbols()
     | genex::views::transform([](auto *sym) { return MakePair(sym, spp::get<0>(sym->MemInfo->AstMoved)); })
     | genex::to<Vec>();
   Expr->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, true, true, false, false, meta);
+  mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   for (auto const &[sym, moved_before] : before) {
     RaiseIf<SppPatternGuardMovesValueError>(
       moved_before == nullptr and spp::get<0>(sym->MemInfo->AstMoved) != nullptr and sym->Name != nullptr,

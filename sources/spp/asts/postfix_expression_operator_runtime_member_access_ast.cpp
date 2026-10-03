@@ -8,9 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.comptime_intrinsics;
+import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.memory_state;
@@ -38,7 +38,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
@@ -48,31 +48,6 @@ import spp.utils.algorithms;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
-
-namespace {
-  auto RuntimeMemberOf(
-    Scope &type_scope,
-    IdentifierAst const &name)
-    -> VariableSymbol* {
-    //
-    IMPORT_UTILS;
-    using member_lookup::MemberAccessForm;
-
-    // If the scope symbol exists (nullptr check for type
-    // forwarding), and the member can be runtime-accessed,
-    // then return the found symbol.
-    const auto found = type_scope.GetVarSymbol(&name);
-    if (found == nullptr or member_lookup::MemberReachableBy(
-      *found, MemberAccessForm::Runtime)) { return found; }
-
-    // If the cheap check gave a static symbol, then search
-    // more deeply through the super scopes to find the
-    // member in a runtime context.
-    const auto member = member_lookup::LookupMemberForAccess(
-      type_scope, name, MemberAccessForm::Runtime);
-    return member != nullptr ? member : found;
-  }
-}
 
 SPP_MOD_BEGIN
 PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
@@ -122,17 +97,21 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
 }
 
 namespace {
-  /// The left-hand side's symbol, when it names a pack not bound
-  /// to its tuple yet ("xs" in a template's "..xs: S32").
+  /// The left-hand side's symbol, when it names a pack not bound to its tuple yet: a template's variadic comp parameter
+  /// ("cmp ..ns"), or variadic function parameter ("..xs: S32") whose pack type parameter is not declared here. There
+  /// its type is one element's, and "xs.0" reads an element; in an instantiation it is the tuple, read like any other.
   auto UnboundPack(
     spp::asts::ExpressionAst const &lhs,
     spp::analyse::scopes::ScopeManager const &sm)
     -> spp::analyse::scopes::VariableSymbol const* {
     IMPORT_UTILS;
+    using spp::analyse::scopes::VariableKind;
     auto const *const name = lhs.To<spp::asts::IdentifierAst>();
-    if (name == nullptr) { return nullptr; }
-    auto const *const sym = sm.CurrentScope->GetVarSymbol(name);
-    return sym != nullptr and packs::IsUnboundPack(*sym, *sm.CurrentScope) ? sym : nullptr;
+    auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
+    if (sym == nullptr or not sym->IsVariadic or sym->Kind == VariableKind::GnCompArg) { return nullptr; }
+    if (sym->Kind == VariableKind::GnCompParam) { return sym; }
+    const auto pack_type = spp::MakeUnique<spp::asts::TypeIdentifierAst>(0, packs::PackTypeParamName(*sym->Name), nullptr);
+    return sm.CurrentScope->FindTypeSymbol(pack_type.get()) == nullptr ? sym : nullptr;
   }
 }
 
@@ -185,10 +164,10 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     const auto lhs_as_ident = lhs_as_ident_raw
       ? MakeShared<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val)
       : nullptr;
-    const auto lhs_ns_sym = sm->CurrentScope->GetNsSymbol(lhs_as_ident.get());
-    const auto lhs_var_sym = sm->CurrentScope->GetVarSymbol(lhs_as_ident.get());
+    const auto lhs_ns_sym = sm->CurrentScope->FindNsSymbol(lhs_as_ident.get());
+    const auto lhs_var_sym = sm->CurrentScope->FindVarSymbol(lhs_as_ident.get());
     const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
-    const auto lhs_type_sym = lhs_ref.Sym;
+    const auto lhs_type_sym = lhs_ref.Symbol;
 
     // Check the lhs is a variable and not a namespace.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
@@ -222,18 +201,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       // Type field was not found on this type, or the
       // forwarding type (includes nested forwarding checks).
       member_lookup::RaiseMissingIdentifierAndClosestOptions(
-        *Name, lhs_type_sym->LinkedScope->AllVarSymbols(true, true), {}, *sm);
+        *Name, lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true), {}, *sm);
     }
 
-    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(
-      *lhs_type_sym->LinkedScope, *Name, false);
+    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(*lhs_type_sym->LinkedScope, *Name);
 
     // Enforce visibility on functional (method) members.
     // Their mock ("$"-typed) symbols are excluded from the
     // attribute handling below, so without this the
     // visibility check never runs for method accesses.
     auto fn_scopes_and_syms = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::Function; })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind == VariableKind::FnMock; })
       | genex::to<Vec>();
 
     // Use the hook to record information for the resolution and
@@ -244,7 +222,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     }
 
     if (not fn_scopes_and_syms.IsEmpty()) {
-      const auto cls_scope = lhs_type_sym->LinkedScope->NonGenericScope;
+      const auto cls_scope = lhs_type_sym->LinkedScope->NonGnScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
         return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
       });
@@ -254,7 +232,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     }
 
     const auto members = all_scopes_and_syms
-      | genex::views::filter([](auto const &x) { return x.Symbol->Kind != VariableKind::Function; })
+      | genex::views::filter([](auto const &x) { return x.Symbol->Kind != VariableKind::FnMock; })
       | genex::to<Vec>();
 
     const auto runtime_members = member_lookup::MembersReachableBy(
@@ -275,8 +253,8 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Enforce visibility on the accessed member.
     if (not closest.IsEmpty()) {
-      const auto scope = closest[0].Where->NonGenericScope;
-      const auto member_sym = scope->GetVarSymbol(Name.get(), true);
+      const auto scope = closest[0].Where->NonGnScope;
+      const auto member_sym = scope->FindVarSymbol(Name.get(), true);
       visibility_utils::CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);
 
       // Use the hook to record information for the resolution and
@@ -304,26 +282,26 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
 
   // Handle numeric index access (for tuples).
-  if (std::isdigit(Name->Val[0]) and meta->CmpResult->To<TupleLiteralAst>()) {
-    const auto cmp_tup = meta->CmpResult->To<TupleLiteralAst>();
+  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<TupleLiteralAst>()) {
+    const auto cmp_tup = meta->CompTimeResult->To<TupleLiteralAst>();
     const auto index = std::stoul(Name->Val);
     auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CmpResult = std::move(cmp_field);
+    meta->CompTimeResult = std::move(cmp_field);
     return;
   }
 
   // Handle numeric index access (for arrays).
-  if (std::isdigit(Name->Val[0]) and meta->CmpResult->To<ArrayLiteralExplicitElementsAst>()) {
-    const auto cmp_tup = meta->CmpResult->To<ArrayLiteralExplicitElementsAst>();
+  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>()) {
+    const auto cmp_tup = meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>();
     const auto index = std::stoul(Name->Val);
     auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CmpResult = std::move(cmp_field);
+    meta->CompTimeResult = std::move(cmp_field);
     return;
   }
 
   // Handle normal attribute access (for objects).
-  const auto cmp_obj = meta->CmpResult->To<ObjectInitializerAst>();
-  meta->CmpResult = comptime_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
+  const auto cmp_obj = meta->CompTimeResult->To<ObjectInitializerAst>();
+  meta->CompTimeResult = comp_time_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
@@ -346,7 +324,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // Get the type of the left-hand-side expression.
   const auto uid = "." + Uid();
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
-  const auto lhs_type_sym = lhs_ref.Sym;
+  const auto lhs_type_sym = lhs_ref.Symbol;
 
   // Index through the object's own type, not a borrow's pointer
   // type.
@@ -373,7 +351,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // If the lhs is symbolic, get the address of the outermost
   // part. The symbol's alloca is already the address of the
   // object (the base pointer). Load borrows to get value.
-  else if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*meta->PostfixExpressionLhs).first;
+  else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*meta->PostfixExpressionLhs).first;
     sym != nullptr) {
     SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
 
@@ -412,7 +390,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // nothing to index to and nothing to read: llvm has no value
   // of that type, no member for it in the struct, and "load
   // void" is not valid ir.
-  const auto field_llvm_type = InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
+  const auto field_llvm_type = codegen::GetLlvmTypeOf(InferTypeRef(sm, meta).WithoutConvention(), ctx);
   if (codegen::IsValuelessType(field_llvm_type)) { return nullptr; }
 
   // Resolve the address of the member. A numeric name indexes
@@ -427,7 +405,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
     // so it is indexed through the array itself: the leading
     // zero index steps over the pointer to the array, and the
     // second one selects the element.
-    if (type_predicates::IsTypeArr(*lhs_type_sym, *sm->CurrentScope)) {
+    if (type_predicates::IsTypeArray(TypeRef::OfKind(*lhs_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
       const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
       field_ptr = ctx->Builder.CreateGEP(
         llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -475,7 +453,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   // not yet bound to its tuple, which is typed as its element.
   if (std::isdigit(Name->Val[0])) {
     if (auto const *const pack = UnboundPack(*meta->PostfixExpressionLhs, *sm); pack != nullptr) {
-      return sm->CurrentScope->GetTypeSymbol(pack->Type.get())->FqName();
+      return sm->CurrentScope->FindTypeSymbol(pack->Type.get())->FqName();
     }
     return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
   }
@@ -484,7 +462,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   // access form, so that an attribute is what this reads on
   // a type that also declares a constant of that name.
   // Named from its identity, which means the same in any scope; the field's written type names the owner's parameters.
-  return sm->CurrentScope->TypeAstOf(InferTypeRef(sm, meta).Id);
+  return InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
@@ -494,8 +472,9 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   if (_MappedFwd != nullptr) { return _MappedFwd->InferTypeRef(sm, meta); }
   if (std::isdigit(Name->Val[0])) { return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope); }
   // Read where the field is declared for this instance: its owner's scope, which binds the parameters its type names.
-  const auto lhs_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym;
-  const auto var_sym = RuntimeMemberOf(*lhs_sym->LinkedScope, *Name);
+  const auto lhs_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Symbol;
+  const auto var_sym = analyse::utils::member_lookup::MemberOf(
+    *lhs_sym->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Runtime);
   return var_sym->TypeRefIn(*lhs_sym->LinkedScope);
 }
 

@@ -149,14 +149,14 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Check the argument value is a tuple expression.
     const auto arg_ref = arg->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTup(arg_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTuple(arg_ref, *sm->CurrentScope)) {
       const auto arg_type = arg->InferType(sm, meta);
       Raise<SppExpansionOfNonTupleError>({sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
     }
 
     // Replace the tuple-expansion argument with the expanded
     // arguments.
-    const auto max = static_cast<sys::ssize_t>(arg_ref.Sym->TypeArgTypes().Len());
+    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgs().Len());
     for (auto j = max - 1; j > -1z; --j) {
       auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
       auto new_ast = MakeUnique<PostfixExpressionAst>(
@@ -187,16 +187,16 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
   // If the target is a coroutine, or the target is called
   // as "async", then pins are required.
-  const auto is_target_coro = meta->TargetCallFunctionPrototype and
-    meta->TargetCallFunctionPrototype->To<CoroutinePrototypeAst>() != nullptr;
-  const auto pins_required = meta->TargetCallWasFunctionAsync or is_target_coro;
+  const auto is_target_coro = meta->TargetCallFnPrototype and
+    meta->TargetCallFnPrototype->To<CoroutinePrototypeAst>() != nullptr;
+  const auto pins_required = meta->TargetCallWasFnAsync or is_target_coro;
 
   // Define the borrow sets to maintain the law of exclusivity.
   auto borrows_ref = Vec<Ast const*>();
   auto borrows_mut = Vec<Ast const*>();
 
   // Load pre-existing escaping borrows into the vectors.
-  const auto all_syms = sm->CurrentScope->AllVarSymbols();
+  const auto all_syms = sm->CurrentScope->GetAllVarSymbols();
   for (auto const &sym : all_syms) {
     for (auto const &[borrow, is_mut, _] : sym->MemInfo->AstContainedEscapingBorrows) {
       (is_mut ? borrows_mut : borrows_ref).EmplaceBack(borrow);
@@ -205,7 +205,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
   // Get potential handle to bind escaping borrows to.
   const auto handle = meta->AssignmentTarget;
-  const auto handle_sym = handle ? sm->CurrentScope->GetVarSymbolOutermost(*handle).first : nullptr;
+  const auto handle_sym = handle ? sm->CurrentScope->FindVarSymbolOutermost(*handle).first : nullptr;
 
   // A coroutine or future created straight into a "ret" leaves
   // the function with every borrow it was given, and nothing
@@ -257,7 +257,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     arg->Stage8_CheckMemory(sm, meta);
     meta->AssignmentTarget = saved_assignment_target;
 
-    auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*arg->Val);
+    auto [sym, _] = sm->CurrentScope->FindVarSymbolOutermost(*arg->Val);
 
     // A method taking "self" by value consumes its receiver, so it
     // cannot be reached through a borrow ("a.take()" with "a: &mut
@@ -265,11 +265,11 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // would be moved out while its owner still owns it, and freed
     // twice. The checks below miss it - moving a borrow variable is
     // fine, and a chained receiver is a temporary with no symbol.
-    if (arg->GetSelfType() != nullptr and arg->Conv == nullptr and meta->TargetCallFunctionPrototype != nullptr) {
-      const auto self_param = meta->TargetCallFunctionPrototype->FnParamGroup->GetSelfParam();
+    if (arg->GetSelfType() != nullptr and arg->Conv == nullptr and meta->TargetCallFnPrototype != nullptr) {
+      const auto self_param = meta->TargetCallFnPrototype->FnParamGroup->GetSelfParam();
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
-        and receiver.Sym != nullptr and not receiver.Sym->IsCopyable()) {
+        and receiver.Symbol != nullptr and not receiver.Symbol->IsCopyable()) {
         auto const *where_borrow = sym != nullptr and spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr
           ? spp::get<0>(sym->MemInfo->AstBorrowed)
           : static_cast<Ast const*>(arg->Val.get());
@@ -288,20 +288,22 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // in the special case that the unnamed argument is a tuple
     // or array, we need to check the elements inside it.
     if (sym == nullptr) {
-      if (arg->Conv == nullptr) { mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta); }
+      if (arg->Conv == nullptr) { mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, meta); }
       continue;
     }
 
     // Ensure the argument isn't moved or partially moved (applies to all conventions). For non-symbolic arguments,
     // nested checking is done via the argument itself (tuples, arrays, etc). Can borrow attributes so don't check
     // for moving from borrowed context right here.
-    mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, false, false, false, false, meta);
+    mem_utils::ValidateSymbolMemory(
+      *arg->Val, *arg, *sm, meta,
+      {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
     if (arg->Conv == nullptr) {
       // Ensure that attributes aren't being moved off of a borrowed value. Mark the move or partial move of the
       // argument. Function calls can only imply an inner scope, so it is guaranteed that lifetimes aren't being
       // extended.
-      mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*arg->Val, *arg, *sm, meta);
 
       // A borrow passed on as it is - a borrow parameter - is held
       // by a coroutine or future just as one written "&x" is.
@@ -317,7 +319,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Check the move doesn't overlap with any borrows. This is to ensure that "f(&x, x)" can never happen,
       // because the first argument requires the owned object to outlive the function call, and moving it as the
       // second argument breaks this. Doesn't apply to copyable types.
-      if (not arg->Val->InferTypeRef(sm, meta).Sym->IsCopyable()) {
+      if (not arg->Val->InferTypeRef(sm, meta).Symbol->IsCopyable()) {
         auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
           | genex::views::filter([&arg](auto const &x) { return regions::MemRegionOverlap(*x, *arg->Val); })
           | genex::to<Vec>();

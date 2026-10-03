@@ -14,7 +14,6 @@ use(spp::asts::meta, struct CompilerMetaData);
 namespace spp::analyse::utils::expr_utils {
   SPP_EXP_CLS struct PrimaryExpressionOptions {
     bool AllowTypeAst = false;
-    bool AllowTokenAst = false;
   };
 
   /// Validate whether the use of a certain "primary expression"

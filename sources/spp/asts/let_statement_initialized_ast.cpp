@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_resolution;
 import spp.asts.identifier_ast;
@@ -119,8 +119,9 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
 
   // Analyse the type if it has been given.
+  const auto written_type = Type;
   if (Type != nullptr) {
-    Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
+    Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
   }
 
   // Add the type into the return type overload resolver.
@@ -142,13 +143,16 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   if (Type != nullptr) {
     meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
-    RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Val, *val_type));
+    if (not type_compare::Assignable(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope)) {
+      // Shown as written, with the type it resolved to beside it where they differ ("S32 (aka ...)").
+      const auto resolved = TypeRef::Of(*Type, *sm->CurrentScope).AstIn(*sm->CurrentScope);
+      const auto shown = resolved != nullptr ? resolved->WithSourceSpanOf(*written_type) : Type;
+      Raise<SppTypeMismatchError>({sm->CurrentScope}, ERR_ARGS(*written_type, *shown, *Val, *val_type));
+    }
 
     // A function named as the value stands for the overload
     // the declared type asks for.
-    function_values::InstantiateFunctionValue(
+    fn_values::InstantiateFnValue(
       TypeRef::Of(*val_type, *sm->CurrentScope),
       TypeRef::Of(*Type, *sm->CurrentScope), sm, meta);
   }

@@ -96,7 +96,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
   // the rest of the scope, which is the entire point of
   // deferring it. So the walk happens, and the memory state
   // it produced is rolled back.
-  const auto saved = memory_state::SnapshotScopes(sm->CurrentScope, meta->EnclosingFunctionScope);
+  const auto saved = memory_state::SnapshotScopes(sm->CurrentScope, meta->EnclosingFnScope);
 
   // Registered where it is reached, so an exit written above
   // this statement does not run it - which is what a "defer"
@@ -108,7 +108,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
   // Each exit replays the walk from here (see "CheckAtExit").
   _DeferScope = sm->CurrentScope;
-  _DeferPosition = sm->CurrentIterator();
+  _DeferPosition = sm->GetCurrentIterator();
 
   Expr->Stage8_CheckMemory(sm, meta);
   memory_state::RestoreSnapshot(saved);
@@ -144,7 +144,7 @@ auto DeferStatementAst::Stage9_CompTimeResolve(
   // notion of a scope exit to run the expression at, so rather
   // than silently skipping it, say so.
   // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompileTimeFunctionError>(
+  Raise<SppDeferInCompTimeFunctionError>(
     {sm->CurrentScope}, ERR_ARGS(*TokDefer));
 }
 

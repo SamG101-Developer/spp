@@ -48,7 +48,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
   /// The superclass this type is being extended from. Its
   /// attributes and methods become available on the
   /// superimposed type.
-  Shared<TypeAst> SuperClass;
+  Shared<TypeAst> SuperCls;
 
   /// The body of the superimposition: the methods (each a
   /// FunctionPrototypeAst) being added to the type.
@@ -59,7 +59,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     decltype(GnParamGroup) &&generic_param_group,
     decltype(Name) name,
     decltype(TokExt) &&tok_ext,
-    decltype(SuperClass) super_class,
+    decltype(SuperCls) super_class,
     decltype(Impl) &&impl);
 
   ~SupPrototypeExtensionAst() override;

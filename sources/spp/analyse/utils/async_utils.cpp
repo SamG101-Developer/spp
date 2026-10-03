@@ -47,7 +47,7 @@ auto spp::analyse::utils::async_utils::CaptureBorrow(
   Vec<Unique<ClosureExpressionCaptureAst>> &captures, const std::size_t pos) -> void {
   // A temporary has no variable, so the closure owns it and
   // borrows that.
-  const auto sym = scope.GetVarSymbolOutermost(*place).first;
+  const auto sym = scope.FindVarSymbolOutermost(*place).first;
   if (sym == nullptr) {
     CaptureOnce(captures, BindLocal(place, prelude, pos), nullptr);
     return;
@@ -55,7 +55,7 @@ auto spp::analyse::utils::async_utils::CaptureBorrow(
 
   // A static member resolves on its own. Otherwise, capture
   // the outermost variable under the borrow's convention.
-  if (scope.GetVarSymbol(sym->Name.get()) != sym) { return; }
+  if (scope.FindVarSymbol(sym->Name.get()) != sym) { return; }
   CaptureOnce(
     captures, MakeUnique<IdentifierAst>(
       place->PosStart(), Str(sym->Name->Val)), AstClone(&conv));
@@ -78,8 +78,8 @@ auto spp::analyse::utils::async_utils::CaptureReceiver(
 
   // "self" moves it. A static member needs nothing, a bare
   // name is captured, and anything else is bound.
-  const auto sym = scope.GetVarSymbolOutermost(*path.Lhs).first;
-  if (sym != nullptr and scope.GetVarSymbol(sym->Name.get()) != sym) { return; }
+  const auto sym = scope.FindVarSymbolOutermost(*path.Lhs).first;
+  if (sym != nullptr and scope.FindVarSymbol(sym->Name.get()) != sym) { return; }
   if (const auto ident = path.Lhs->To<IdentifierAst>(); ident != nullptr) {
     CaptureOnce(captures, AstClone(ident), nullptr);
     return;

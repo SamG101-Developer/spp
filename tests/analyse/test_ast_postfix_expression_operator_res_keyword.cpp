@@ -131,12 +131,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_result_is_yield_type, R"(
     cor g() -> Gen[Yield=S32, Send=Bool] {
-        gen 1
+        let sent = gen 1
     }
 
-    fun f() -> Opt[Void] {
+    fun f() -> Void {
         let mut a = g()
-        let b: S32 = a.res(false)?
+        let b: S32 or std::generator::GenDone = a.res(false)
+        std::mem::ops::drop(a)
     }
 )");
 

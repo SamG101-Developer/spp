@@ -9,6 +9,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
@@ -40,9 +42,9 @@ namespace spp::analyse::utils::visibility_utils {
      * @param meta Associated metadata.
      * @return Whether the symbol can be named from where @p sm is positioned.
      */
-    template <typename Sym>
+    template <typename Symbol>
     auto IsModuleMemberVisibleImpl(
-      Sym const &sym,
+      Symbol const &sym,
       Scope const &definition_scope,
       ScopeManager const &sm,
       CompilerMetaData const &meta)
@@ -51,19 +53,20 @@ namespace spp::analyse::utils::visibility_utils {
       if (meta.IgnoreAccessModifierViolations) { return true; }
       if (sym.Visibility == V::kPublic) { return true; }
 
-      const auto accessing_module = sm.CurrentScope->ParentModule();
-      const auto definition_module = definition_scope.ParentModule();
+      const auto accessing_module = sm.CurrentScope->GetParentModule();
+      const auto definition_module = definition_scope.GetParentModule();
 
       // Private: the defining module only.
       const auto good_private = accessing_module == definition_module;
       if (sym.Visibility == V::kPrivate) { return good_private; }
 
       // Protected: and its descendant modules.
-      const auto good_protected = good_private or genex::contains(accessing_module->Ancestors(), definition_module);
+      const auto good_protected = good_private or genex::contains(accessing_module->GetAncestors(), definition_module);
       if (sym.Visibility == V::kProtected) { return good_protected; }
 
       // Package: and anything sharing a top-level module with it.
-      return good_protected or accessing_module->TopLevelParentModule() == definition_module->TopLevelParentModule();
+      return good_protected
+        or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
     }
 
     /**
@@ -75,10 +78,10 @@ namespace spp::analyse::utils::visibility_utils {
      * @param sm The scope manager, positioned at the accessing scope.
      * @param what The noun the error names the symbol by.
      */
-    template <typename Sym>
+    template <typename Symbol>
     auto RaiseIfNotVisible(
       const bool visible,
-      Sym const &sym,
+      Symbol const &sym,
       Ast const &access_ast,
       Scope const &owner_scope,
       ScopeManager const &sm,
@@ -86,7 +89,7 @@ namespace spp::analyse::utils::visibility_utils {
       -> void {
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
-        not visible, {owner_scope.ParentModule(), sm.CurrentScope},
+        not visible, {owner_scope.GetParentModule(), sm.CurrentScope},
         ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
     }
 
@@ -100,9 +103,9 @@ namespace spp::analyse::utils::visibility_utils {
      * @param meta Associated metadata.
      * @return Whether the member can be named from where @p sm is positioned.
      */
-    template <typename Sym>
+    template <typename Symbol>
     auto IsTypeMemberVisibleImpl(
-      Sym const &sym,
+      Symbol const &sym,
       Scope const &type_scope,
       ScopeManager const &sm,
       CompilerMetaData const &meta)
@@ -111,23 +114,32 @@ namespace spp::analyse::utils::visibility_utils {
       if (meta.IgnoreAccessModifierViolations) { return true; }
       if (sym.Visibility == V::kPublic) { return true; }
 
-      const auto accessing_module = sm.CurrentScope->ParentModule();
-      const auto definition_module = type_scope.ParentModule();
-      auto enclosing_scope = sm.CurrentScope->GetEnclosingTypeScope(meta);
-      enclosing_scope = enclosing_scope ? enclosing_scope->NonGenericScope : nullptr;
+      // A member declared in a "sup" block belongs to the type the block is over ("Self").
+      auto const *owner_scope = &type_scope;
+      if (AstAs<SupPrototypeFunctionsAst>(type_scope.AstNode) != nullptr
+        or AstAs<SupPrototypeExtensionAst>(type_scope.AstNode) != nullptr) {
+        if (auto const *const self_sym = type_scope.FindSelfSymbol(true);
+          self_sym != nullptr and self_sym->LinkedScope != nullptr) { owner_scope = self_sym->LinkedScope->NonGnScope; }
+      }
+
+      const auto accessing_module = sm.CurrentScope->GetParentModule();
+      const auto definition_module = type_scope.GetParentModule();
+      auto enclosing_scope = sm.CurrentScope->FindEnclosingTypeScope(meta);
+      enclosing_scope = enclosing_scope ? enclosing_scope->NonGnScope : nullptr;
 
       // Private: only from the same type, in the same module.
-      const auto good_private = enclosing_scope == &type_scope and accessing_module == definition_module;
+      const auto good_private = enclosing_scope == owner_scope and accessing_module == definition_module;
       if (sym.Visibility == V::kPrivate) { return good_private; }
 
       // Protected: and from its subtypes, in the module each was defined in.
       const auto good_protected = good_private or (enclosing_scope and
-        genex::contains(enclosing_scope->SupScopes(), &type_scope) and accessing_module == enclosing_scope->
-        ParentModule());
+        genex::contains(enclosing_scope->GetSupScopes(), owner_scope) and accessing_module == enclosing_scope->
+        GetParentModule());
       if (sym.Visibility == V::kProtected) { return good_protected; }
 
       // Package: and from any module in the same package.
-      return good_protected or accessing_module->TopLevelParentModule() == definition_module->TopLevelParentModule();
+      return good_protected
+        or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
     }
   }
 }

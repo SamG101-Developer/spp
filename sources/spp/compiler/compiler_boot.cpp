@@ -8,10 +8,12 @@ module;
 module spp.compiler.compiler_boot;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.monomorphization;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
@@ -41,43 +43,26 @@ import genex;
 import llvm;
 
 #define PREP_SCOPE_MANAGER \
-  auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+  auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->ModuleAst.get() == mod; })
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                  \
   PREP_SCOPE_MANAGER;                                                   \
   spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
   auto meta = spp::asts::meta::CompilerMetaData();                      \
-  meta.IsTestHarness = mod_in_tree->is_test_harness;                    \
+  meta.IsTestHarness = mod_in_tree->IsTestHarness;                    \
   meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
-namespace {
-  /// Lets a lookup make an instantiation not made yet ("Scope::OnInstantiationMissing") while an analysis stage runs,
-  /// analysed as that stage would analyse it.
-  auto InstallInstantiateOnLookup(
-    spp::analyse::scopes::ScopeManager *sm,
-    const spp::asts::meta::CompilerStage stage)
-    -> void {
-    spp::analyse::scopes::Scope::OnInstantiationMissing = [sm, stage](
-      spp::analyse::scopes::TypeSymbol &open_instance, spp::analyse::scopes::Scope const &scope) {
-      auto meta = spp::asts::meta::CompilerMetaData();
-      meta.CurrentStage = stage;
-      return spp::analyse::utils::monomorphization::InstantiateForScope(
-        open_instance, scope, sm->GlobalScope, &meta);
-    };
-  }
-}
-
 auto spp::compiler::CompilerBoot::Lex(
   utils::ProgressBar &bar,
   ModuleTree &tree)
   -> void {
   // Lexing stage.
   for (auto const &mod : tree) {
-    auto lexer = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/"));
-    mod->tokens = lexer.Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
+    auto lexer = lex::Lexer(mod->Code, not utils::files::NativeString(mod->Path).contains("/src/std/"));
+    mod->Tokens = lexer.Lex();
+    mod->Formatter = MakeUnique<utils::errors::ErrorFormatter>(
+      mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
     bar.Next();
   }
   bar.Finish();
@@ -91,21 +76,21 @@ auto spp::compiler::CompilerBoot::Parse(
   // modules, depending on the how the compiler has been
   // invoked.
   for (auto const &mod : tree) {
-    if (mod->is_test_harness) { continue; }
-    mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
-    _Modules.EmplaceBack(mod->module_ast.get());
+    if (mod->IsTestHarness) { continue; }
+    mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+    _Modules.EmplaceBack(mod->ModuleAst.get());
     bar.Next();
   }
 
   for (auto const &mod : tree) {
-    if (not mod->is_test_harness) { continue; }
-    mod->code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
-    auto lexer = lex::Lexer(mod->code, true);
-    mod->tokens = lexer.Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
-    mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
-    _Modules.EmplaceBack(mod->module_ast.get());
+    if (not mod->IsTestHarness) { continue; }
+    mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
+    auto lexer = lex::Lexer(mod->Code, true);
+    mod->Tokens = lexer.Lex();
+    mod->Formatter = MakeUnique<utils::errors::ErrorFormatter>(
+      mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
+    mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+    _Modules.EmplaceBack(mod->ModuleAst.get());
     bar.Next();
   }
   bar.Finish();
@@ -116,10 +101,13 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
   ModuleTree &tree,
   asts::Ast *ctx)
   -> void {
+  // The identity layer reads a constant named through a type through the analysis that can look it up.
+  analyse::scopes::CompMembers::Find = &analyse::utils::comp_generics::FindCompMemberId;
+
   // Pre-processing stage.
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER;
-    mod->FilePath = mod_in_tree->path;
+    mod->FilePath = mod_in_tree->Path;
     mod->Stage1_PreProcess(ctx);
     bar.Next();
   }
@@ -196,7 +184,8 @@ auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
   // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAttachSupScopes);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kAttachSupScopes);
   sm->AttachAllSuperScopes(&meta);
   bar.Finish();
 }
@@ -207,7 +196,8 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kPreAnalyseSemantics);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
@@ -226,7 +216,8 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Analyse semantics stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAnalyseSemantics);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kAnalyseSemantics);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
@@ -245,7 +236,8 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Check memory stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCheckMemory);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kCheckMemory);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
@@ -268,7 +260,8 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Comptime resolution stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCompTimeResolve);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kCompTimeResolve);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
@@ -284,15 +277,16 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   analyse::scopes::ScopeManager *sm)
   -> void {
   //
-  using analyse::utils::monomorphization::MonomorphiseToFixedPoint;
+  using namespace analyse::utils;
 
   // Monomorphisation stage. Not a walk over the modules -
   // see "MonomorphiseToFixedPoint" - so there is no per-module
   // progress to report, only the whole thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kMonomorphise);
-  MonomorphiseToFixedPoint(sm, &meta);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->GlobalScope, asts::meta::CompilerStage::kMonomorphise);
+  monomorphization::MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
 
@@ -302,7 +296,7 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // An instantiation made from here on would never be generated, so lookups stop making them.
-  analyse::scopes::Scope::OnInstantiationMissing = nullptr;
+  analyse::utils::monomorphization::StopInstantiatingOnRead();
 
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
@@ -395,7 +389,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
   -> Str {
   if (_EntryPoint == nullptr) { return {}; }
-  const auto llvm_func = _EntryPoint->GetLlvmFunc();
+  const auto llvm_func = _EntryPoint->GetLlvmFn();
   if (llvm_func == nullptr or llvm_func->Target == nullptr) { return {}; }
   return llvm_func->Target->getName().str();
 }
@@ -576,7 +570,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
   -> void {
   // Check whether the "main" function exists with the correct
   // signature: `fun main()`.
-  const auto main_call = INJECT_CODE("main()", parse_expression);
+  const auto main_call = INJECT_CODE("main()", ParseExpression);
   auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
   for (auto const &top_level_child : sm->GlobalScope->Children) {
     const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
@@ -650,14 +644,14 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
   auto count = 0uz;
   TestNames.Clear();
   for (auto const &mod : tree) {
-    if (mod->is_test_harness or mod->module_ast == nullptr) { continue; }
+    if (mod->IsTestHarness or mod->ModuleAst == nullptr) { continue; }
 
-    auto const &ns_parts = mod->ns_parts;
+    auto const &ns_parts = mod->NsParts;
     auto ns = Str();
     for (auto const &part : ns_parts) { ns += part + "::"; }
     const auto module_group = ns_parts.IsEmpty() ? Str() : ns_parts.Back();
 
-    for (auto *member : asts::AstBody(mod->module_ast.get())) {
+    for (auto *member : asts::AstBody(mod->ModuleAst.get())) {
       const auto fun = member->To<asts::FunctionPrototypeAst>();
       if (fun == nullptr) { continue; }
       const auto annotation = test_annotation_of(fun);
@@ -693,7 +687,7 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
   Module const &mod)
   -> void {
   //
-  auto const &mod_ns = mod.ns_parts;
+  auto const &mod_ns = mod.NsParts;
 
   // Iterate over the parts of the module namespace.
   for (auto const &part : mod_ns) {
@@ -701,7 +695,8 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     auto identifier_part = MakeShared<asts::IdentifierAst>(0uz, Str(part));
 
     // If the part exists in the current scope (starting from the global scope), then move into it.
-    if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part.get(), true); quick_ns_sym != nullptr) {
+    if (const auto quick_ns_sym = sm->CurrentScope->FindNsSymbol(identifier_part.get(), true);
+      quick_ns_sym != nullptr) {
       const auto ns_scope = quick_ns_sym->LinkedScope;
       sm->Reset(ns_scope);
     }
@@ -711,10 +706,10 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
       const auto ns_sym = MakeShared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
       sm->CurrentScope->AddNsSymbol(ns_sym);
       const auto ns_scope_name = analyse::scopes::ScopeIdentifierName(identifier_part);
-      const auto ns_scope = sm->CreateAndMoveIntoNewScope(ns_scope_name, nullptr, mod.error_formatter.get());
+      const auto ns_scope = sm->CreateAndMoveIntoNewScope(ns_scope_name, nullptr, mod.Formatter.get());
       ns_sym->LinkedScope = ns_scope;
-      ns_sym->LinkedScope->NsSym = ns_sym;
-      ns_sym->LinkedScope->AstNode = mod.module_ast.get();
+      ns_sym->LinkedScope->LinkedNamespaceSymbol = ns_sym;
+      ns_sym->LinkedScope->AstNode = mod.ModuleAst.get();
     }
   }
 }

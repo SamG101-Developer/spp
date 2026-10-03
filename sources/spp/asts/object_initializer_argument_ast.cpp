@@ -42,7 +42,7 @@ auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
   // Check the memory of the value expression.
   IMPORT_UTILS;
   Val->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*Val, *this, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*Val, *this, *sm, meta);
 }
 
 auto ObjectInitializerArgumentAst::Stage9_CompTimeResolve(

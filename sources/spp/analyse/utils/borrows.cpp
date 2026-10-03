@@ -38,13 +38,13 @@ namespace spp::analyse::utils::borrows {
 
       // Check for every escaping borrow in the list.
       for (auto const &[e, _, _] : escaping_borrows) {
-        const auto source_sym = sm.CurrentScope->GetVarSymbolOutermost(*e).first;
+        const auto source_sym = sm.CurrentScope->FindVarSymbolOutermost(*e).first;
         if (source_sym == nullptr or source_sym->ScopeDefinedIn == nullptr) { continue; }
 
         // Raise an error if the source symbol's definition
         // scope it outliving the lhs initialisation scope.
         const auto found_at = genex::position(
-          lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
+          lhs_init_scope->GetAncestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
         spp::RaiseIf<SppBorrowLifetimeIncreaseError>(
           found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
       }
@@ -116,7 +116,7 @@ auto spp::analyse::utils::borrows::PreventBorrowLifetimeExtension(
     // Todo: nullptr check needed?
     if (lhs_init_scope != nullptr) {
       const auto scope_depth_difference = genex::position(
-        lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
+        lhs_init_scope->GetAncestors(), genex::operations::eq_fixed{rhs_borrow_scope});
       const auto ast = spp::get<0>(rhs_outermost->MemInfo->AstBorrowed);
       RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
         scope_depth_difference < 0, {sm.CurrentScope},
@@ -142,7 +142,7 @@ auto spp::analyse::utils::borrows::PreventBorrowLifetimeExtension(
   // resumption method. Todo: util method for the ast check.
   else if (const auto pf = rhs_expr.To<PostfixExpressionAst>(); pf and pf->Op->To<
     PostfixExpressionOperatorKeywordResAst>()) {
-    const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).first;
+    const auto new_rhs_sym = sm.CurrentScope->FindVarSymbolOutermost(*pf->Lhs).first;
     PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, true);
   }
 }

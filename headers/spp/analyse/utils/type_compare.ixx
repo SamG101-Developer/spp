@@ -40,6 +40,10 @@ namespace spp::analyse::utils::type_compare {
   SPP_EXP_FUN auto TypeEq(
     TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
 
+  /// "TypeEq" for comp values: the same value by identity, each read where it is written ("1_uz + 1_uz" is "2_uz").
+  SPP_EXP_FUN auto CompEq(
+    ExpressionAst const &lhs, ExpressionAst const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
+
   /// Whether we can use "value_type" where "target_type" is expected,
   /// according to the following rules:
   ///   - they are the same type OR
@@ -57,13 +61,6 @@ namespace spp::analyse::utils::type_compare {
   SPP_EXP_FUN auto Assignable(
     TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool;
 
-  /// The overload called when generic comp arguments get compared
-  /// to each other, which just reuses the expression ast normal
-  /// equality methods. Provides uniformity over generic equality
-  /// checking with respect to type generics.
-  SPP_EXP_FUN auto TypeEq(
-    ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr, Scope const &lhs_scope,
-    Scope const &rhs_scope) -> bool;
 
   /// Check if two types are equal with respect to type forwarding.
   /// For example, Str forwards to &StrView, to has to be able to
@@ -91,19 +88,29 @@ namespace spp::analyse::utils::type_compare {
   /// argument does not satisfy, or null: "T: Copy" with "T=Str"
   /// asks whether "Str" is superimposed with "Copy". A type
   /// written "Self" ("is_self") also answers for its own class,
-  /// where "Self" is not generic.
+  /// where "Self" is not generic. None for no type (a "$" closure type can resolve to nothing).
   SPP_EXP_FUN auto UnmetConstraint(
     Vec<Shared<TypeAst>> const &constraints,
-    TypeSymbol const &concrete_sym,
+    TypeRef const &concrete,
     bool is_self,
     Scope const &constraints_owner_scope,
     Scope const &concrete_scope)
     -> TypeAst const*;
 
+  /// A variant's members in their one canonical order ("Bool or S32"
+  /// is "S32 or Bool"): by the qualified name of what each names (the
+  /// symbol given with it), else by its spelling, ties kept in order.
+  /// The analysed variant ("TypeIdentifierAst::Stage7") and the one
+  /// built from an identity ("Scope::TypeAstOf") are both put in it,
+  /// so their members' tags agree.
+  SPP_EXP_FUN auto OrderVariantMembers(
+    Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
+    -> Vec<Shared<TypeAst>>;
+
   /// A variant's members as types, flattened through nested
   /// variants and without duplicates: "Str or Str or S32" is
   /// "Str, S32". Members written directly keep their spelling.
-  SPP_EXP_FUN auto VariantMember(
+  SPP_EXP_FUN auto VariantMembers(
     TypeAst const &type,
     Scope const &scope)
     -> Vec<Shared<TypeAst>>;
@@ -111,17 +118,8 @@ namespace spp::analyse::utils::type_compare {
   /// A variant's members as resolved types: flattened through nested
   /// variants and without duplicates, none for a non-variant. What a
   /// reader that needs the members' symbols, not their names, asks.
-  SPP_EXP_FUN auto VariantMembers(
+  SPP_EXP_FUN auto VariantMemberRefs(
     TypeRef const &ref,
     Scope const &scope)
     -> Vec<TypeRef>;
-
-  /// The template a symbol stands for where "scope" reads it ("Vec" for "Vec[Str]"), by the path its "FqName" takes:
-  /// a parameter is what the scope binds it to ("Scope::Canon"), a binding or "Self" the type it names, an alias its
-  /// target. A template, or a plain class, is its own.
-  SPP_EXP_FUN auto TemplateOf(TypeSymbol const &sym, Scope const &scope) -> TypeSymbol*;
-
-  /// Whether a symbol stands for the template a written type names ("Copy", or "Vec" for "Vec[Str]"), both taken to
-  /// the template they stand for, rather than comparing names.
-  SPP_EXP_FUN auto IsTemplate(TypeSymbol const &sym, TypeAst const &tmpl, Scope const &scope) -> bool;
 }

@@ -14,6 +14,7 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 namespace spp::analyse::utils::member_lookup {
@@ -55,22 +56,20 @@ namespace spp::analyse::utils::member_lookup {
     ScopeManager const &sm)
     -> void;
 
-  /// Get the type symbol specified by "type_part" in the type
-  /// scope "scope". If it cannot be found, raise an error.
-  /// Standard type analysis.
-  SPP_EXP_FUN auto GetTypeSymOrError(
+  /// "Scope::FindTypeSymbol" for "type" in "scope", raising an unknown-identifier error (with the closest names) for
+  /// its last part when there is none.
+  SPP_EXP_FUN auto FindTypeSymbolOrError(
     Scope const &scope,
-    TypeIdentifierAst const &type_part,
+    TypeAst const &type,
     ScopeManager const &sm)
     -> TypeSymbol*;
 
-  /// Get the scope specified by "ns" in the scope "scope". If
-  /// it cannot be found, raise an error. Standard type analysis.
-  SPP_EXP_FUN auto GetNsScopeOrError(
+  /// "FindTypeSymbolOrError" for a namespace: the symbol "ns" names in "scope".
+  SPP_EXP_FUN auto FindNsSymbolOrError(
     Scope const &scope,
     IdentifierAst const &ns,
     ScopeManager const &sm)
-    -> Scope*;
+    -> NamespaceSymbol*;
 
   /// Whether a member can be reached using a given form. This
   /// is used to determine if the type "A" can reach "a" using
@@ -89,37 +88,36 @@ namespace spp::analyse::utils::member_lookup {
     MemberAccessForm form)
     -> Vec<DeclaringVarScope>;
 
-  /// Lookup a member in a scope, using a specific accessing
-  /// method. Given there is the possibility that multiple scopes
-  /// contain this (like a constant being overridden), we just
-  /// use the closest scope, as it will have been guaranteed to
-  /// be unique by prior analysis.
-  SPP_EXP_FUN auto LookupMemberForAccess(
+  /// The member "name" of the type whose scope is "type_scope", as "form" reaches it: the type's own or its super
+  /// scopes', never a lexical parent's (the lookup is exclusive). The nearest declaration "form" can reach; else, where
+  /// only one it cannot reach exists, that one (for the caller to report as the wrong form). Null for no such member.
+  /// Prior analysis has made the nearest one unique ("RaiseIfAmbiguous").
+  SPP_EXP_FUN auto MemberOf(
     Scope &type_scope,
     IdentifierAst const &name,
     MemberAccessForm form)
     -> VariableSymbol*;
 
-  /// Starting from a given scope, search the scope, and its
-  /// sup-scopes, for a given symbol, and measure how far away
-  /// the containing scope is from the starting one. This
-  /// allows us to check if s super-scope contains a constant
-  /// that we are overriding etc.
-  SPP_EXP_FUN auto ScopesDeclaringVar(
+  /// The nearest declarations of the member "name" that "form" can reach ("ScopesDeclaringVar", "MembersReachableBy",
+  /// "ClosestScopes"): one, or several at the same depth, which is an ambiguity.
+  SPP_EXP_FUN auto ClosestMembers(
     Scope &type_scope,
     IdentifierAst const &name,
-    bool sup_scope_search)
+    MemberAccessForm form)
     -> Vec<DeclaringVarScope>;
 
-  /// Starting from a given scope, search the scope, and its
-  /// sup-scopes, for a given symbol, and measure how far away
-  /// the containing scope is from the starting one. This
-  /// allows us to check if s super-scope contains a type
-  /// that we are overriding etc.
+  /// Every scope that declares the variable "name" itself: the type's scope and each of its super scopes (of any
+  /// level), each asked on its own, with how far it is from the type's scope. Each entry's "Where" is the scope that
+  /// declares the symbol, so a super scope's member is listed once, against that super scope.
+  SPP_EXP_FUN auto ScopesDeclaringVar(
+    Scope &type_scope,
+    IdentifierAst const &name)
+    -> Vec<DeclaringVarScope>;
+
+  /// "ScopesDeclaringVar" for a type "name".
   SPP_EXP_FUN auto ScopesDeclaringType(
     Scope &type_scope,
-    TypeIdentifierAst const &name,
-    bool sup_scope_search)
+    TypeIdentifierAst const &name)
     -> Vec<DeclaringTypeScope>;
 
   /// Given a search producing a vector of scope information,

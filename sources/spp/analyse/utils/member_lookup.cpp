@@ -28,7 +28,7 @@ namespace spp::analyse::utils::member_lookup {
       // Build a vector of the type scope and all of its super scopes
       // (of any level).
       auto scopes = Vec{&type_scope};
-      scopes.AppendRange(type_scope.SupScopes());
+      scopes.AppendRange(type_scope.GetSupScopes());
 
       // If we discover the symbol within the scope, keep it, otherwise
       // discard. We are left only with the scopes that found contain
@@ -119,40 +119,26 @@ auto spp::analyse::utils::member_lookup::RaiseMissingTypeIdentifierAndClosestOpt
     {sm.CurrentScope}, ERR_ARGS(identifier, "type identifier", closest_match));
 }
 
-auto spp::analyse::utils::member_lookup::GetTypeSymOrError(
+auto spp::analyse::utils::member_lookup::FindTypeSymbolOrError(
   Scope const &scope,
-  TypeIdentifierAst const &type_part,
+  TypeAst const &type,
   ScopeManager const &sm)
   -> TypeSymbol* {
-  //
-  using member_lookup::RaiseMissingTypeIdentifierAndClosestOptions;
-
-  // Get the type part's symbol, and raise an error if it doesn't exist.
-  const auto type_sym = scope.GetTypeSymbol(&type_part, false);
-  if (type_sym == nullptr) {
-    RaiseMissingTypeIdentifierAndClosestOptions(type_part, scope.AllTypeSymbols(), sm);
+  const auto sym = scope.FindTypeSymbol(&type);
+  if (sym == nullptr) {
+    RaiseMissingTypeIdentifierAndClosestOptions(*type.LastTypePart(), scope.GetAllTypeSymbols(), sm);
   }
-
-  // Return the found type symbol.
-  return type_sym;
+  return sym;
 }
 
-auto spp::analyse::utils::member_lookup::GetNsScopeOrError(
+auto spp::analyse::utils::member_lookup::FindNsSymbolOrError(
   Scope const &scope,
   IdentifierAst const &ns,
   ScopeManager const &sm)
-  -> Scope* {
-  //
-  using member_lookup::RaiseMissingIdentifierAndClosestOptions;
-
-  // If the namespace does not exist, raise an error.
-  const auto ns_sym = scope.GetNsSymbol(&ns);
-  if (ns_sym == nullptr) {
-    RaiseMissingIdentifierAndClosestOptions(ns, {}, scope.AllNsSymbols(), sm);
-  }
-
-  // Return the found namespace scope.
-  return ns_sym->LinkedScope;
+  -> NamespaceSymbol* {
+  auto *const sym = scope.FindNsSymbol(&ns);
+  if (sym == nullptr) { RaiseMissingIdentifierAndClosestOptions(ns, {}, scope.GetAllNsSymbols(), sm); }
+  return sym;
 }
 
 auto spp::analyse::utils::member_lookup::MemberReachableBy(
@@ -161,7 +147,7 @@ auto spp::analyse::utils::member_lookup::MemberReachableBy(
   // or runtime) is what decides whether it errors. Anything
   // with no runtime storage of its own is reached statically,
   // and the rest - attributes - at runtime.
-  if (sym.Kind == VariableKind::Function) { return true; }
+  if (sym.Kind == VariableKind::FnMock) { return true; }
   return sym.IsCompTime() == (form == MemberAccessForm::Static);
 }
 
@@ -175,38 +161,37 @@ auto spp::analyse::utils::member_lookup::MembersReachableBy(
   return out;
 }
 
-auto spp::analyse::utils::member_lookup::LookupMemberForAccess(
+auto spp::analyse::utils::member_lookup::MemberOf(
   Scope &type_scope, IdentifierAst const &name,
   const MemberAccessForm form) -> VariableSymbol* {
-  // Get all the scopes that declare this variable (as a field),
-  // keep the ones this form can reach, and take the nearest.
-  const auto closest = ClosestScopes(
-    MembersReachableBy(ScopesDeclaringVar(type_scope, name, false), form));
-  return closest.IsEmpty() ? nullptr : closest[0].Symbol;
+  // The cheap lookup first, which answers most accesses; only a declaration of the other form there means walking the
+  // super scopes for one this form reaches.
+  const auto found = type_scope.FindVarSymbol(&name, true);
+  if (found == nullptr or MemberReachableBy(*found, form)) { return found; }
+  const auto closest = ClosestMembers(type_scope, name, form);
+  return closest.IsEmpty() ? found : closest[0].Symbol;
+}
+
+auto spp::analyse::utils::member_lookup::ClosestMembers(
+  Scope &type_scope, IdentifierAst const &name,
+  const MemberAccessForm form) -> Vec<DeclaringVarScope> {
+  return ClosestScopes(MembersReachableBy(ScopesDeclaringVar(type_scope, name), form));
 }
 
 auto spp::analyse::utils::member_lookup::ScopesDeclaringVar(
-  Scope &type_scope, IdentifierAst const &name,
-  const bool sup_scope_search) -> Vec<DeclaringVarScope> {
-  // So a super scope search filtered to the scopes
-  // that contain the variable symbol specified by
-  // the identifier.
-  return ScopesDeclaring<DeclaringVarScope>(
-    type_scope, name, [sup_scope_search](Scope const &scope, IdentifierAst const &n) {
-      return scope.GetVarSymbol(&n, true, sup_scope_search);
-    });
+  Scope &type_scope, IdentifierAst const &name) -> Vec<DeclaringVarScope> {
+  // Each scope asked for its own symbols only: the walk already visits every super scope, so a lookup that searched
+  // them too would list a super scope's member again, against the scope that asked.
+  return ScopesDeclaring<DeclaringVarScope>(type_scope, name, [](Scope const &scope, IdentifierAst const &n) {
+    return scope.FindVarSymbol(&n, true, false);
+  });
 }
 
 auto spp::analyse::utils::member_lookup::ScopesDeclaringType(
-  Scope &type_scope, TypeIdentifierAst const &name,
-  const bool sup_scope_search) -> Vec<DeclaringTypeScope> {
-  // So a super scope search filtered to the scopes
-  // that contain the type symbol specified by the
-  // type identifier.
-  return ScopesDeclaring<DeclaringTypeScope>(
-    type_scope, name, [sup_scope_search](Scope const &scope, TypeIdentifierAst const &n) {
-      return scope.GetTypeSymbol(&n, true, sup_scope_search);
-    });
+  Scope &type_scope, TypeIdentifierAst const &name) -> Vec<DeclaringTypeScope> {
+  return ScopesDeclaring<DeclaringTypeScope>(type_scope, name, [](Scope const &scope, TypeIdentifierAst const &n) {
+    return scope.FindTypeSymbol(&n, true, false);
+  });
 }
 
 auto spp::analyse::utils::member_lookup::ClosestScopes(

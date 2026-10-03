@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ArrayLiteralRepeatedElementAst,
   test_invalid_non_constant_size,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     fun f() -> Void {
         let b = 100_u32
         let a = [1_u32; b]

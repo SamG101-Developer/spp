@@ -164,8 +164,8 @@ auto spp::lsp::DiagnosticFrom(
   diagnostic.Code = "E0";
   diagnostic.Title = "Syntax Error";
   diagnostic.Labels.EmplaceBack(DiagnosticLabel{
-    .Span = error.span,
-    .Message = error.message.empty() ? StripAnsi(error.header) : StripAnsi(error.message),
+    .Span = error.Span,
+    .Message = error.Message.empty() ? StripAnsi(error.Header) : StripAnsi(error.Message),
     .Primary = true
   });
   return diagnostic;
@@ -220,7 +220,7 @@ auto spp::lsp::ToJson(lsp::resolution_index::NamesInScope const &scope) -> Str {
   return out + ",\"members\":" + JsonMembers(scope.Names) + "}";
 }
 
-auto spp::lsp::ToJson(lsp::resolution_index::ComptimeValue const &value) -> Str {
+auto spp::lsp::ToJson(lsp::resolution_index::CompTimeValue const &value) -> Str {
   auto out = Str("{\"kind\":\"comptime\",\"name\":") + JsonString(value.Name);
   out += ",\"value\":" + JsonString(value.Value);
   return out + ",\"where\":{" + JsonSpan(value.Where) + "}}";

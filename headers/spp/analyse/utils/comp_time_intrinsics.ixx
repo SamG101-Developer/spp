@@ -11,7 +11,7 @@ module;
     return v;                                                                                         \
   }
 
-export module spp.analyse.utils.comptime_intrinsics;
+export module spp.analyse.utils.comp_time_intrinsics;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import std;
@@ -28,62 +28,62 @@ use(spp::asts, struct ObjectInitializerAst);
 
 namespace spp {
   template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
-  struct DetermineCmpFuncSig_ {
+  struct DetermineCompTimeFnSig_ {
     using Type = void;
   };
 
   template <typename Ret, typename... Args>
-  struct DetermineCmpFuncSig_<true, false, Ret, Args...> {
+  struct DetermineCompTimeFnSig_<true, false, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
   template <typename Ret, typename... Args>
-  struct DetermineCmpFuncSig_<false, true, Ret, Args...> {
+  struct DetermineCompTimeFnSig_<false, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnCompArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
   template <typename Ret, typename... Args>
-  struct DetermineCmpFuncSig_<true, true, Ret, Args...> {
+  struct DetermineCompTimeFnSig_<true, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnTypeArgs) const &,
-      decltype(meta::CompilerMetaData::CmpGnCompArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
   template <typename Ret, typename... Args>
-  struct DetermineCmpFuncSig_<false, false, Ret, Args...> {
+  struct DetermineCompTimeFnSig_<false, false, Ret, Args...> {
     using Type = Ret(*)(
       std::remove_reference_t<Args> &...);
   };
 
   template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
-  using DetermineCmpFuncSig = DetermineCmpFuncSig_<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>::Type;
+  using DetermineCompTimeFnSig = DetermineCompTimeFnSig_<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>::Type;
 }
 
-namespace spp::analyse::utils::comptime_intrinsics {
-  SPP_EXP_CLS struct CmpFn {
-    decltype(meta::CompilerMetaData::CmpGnTypeArgs) GnTypeArgs;
-    decltype(meta::CompilerMetaData::CmpGnCompArgs) GnCompArgs;
+namespace spp::analyse::utils::comp_time_intrinsics {
+  SPP_EXP_CLS struct CompTimeFn {
+    decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) GnTypeArgs;
+    decltype(meta::CompilerMetaData::CompTimeGnCompArgs) GnCompArgs;
     ScopeManager *Sm;
 
-    virtual ~CmpFn() = default;
+    virtual ~CompTimeFn() = default;
 
-    virtual auto invoke(
+    virtual auto Invoke(
       Vec<Unique<ExpressionAst>> const &args)
       -> Unique<ExpressionAst> = 0;
 
-    auto preload_generics(
+    auto PreloadGns(
       ScopeManager *sm,
-      decltype(meta::CompilerMetaData::CmpGnTypeArgs) gn_type_args,
-      decltype(meta::CompilerMetaData::CmpGnCompArgs) gn_comp_args)
-      -> CmpFn& {
+      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) gn_type_args,
+      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) gn_comp_args)
+      -> CompTimeFn& {
       Sm = sm;
       GnTypeArgs = std::move(gn_type_args);
       GnCompArgs = std::move(gn_comp_args);
@@ -92,14 +92,14 @@ namespace spp::analyse::utils::comptime_intrinsics {
   };
 
   SPP_EXP_CLS template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
-  struct CmpFnImpl final : CmpFn {
-    using FnPtr = DetermineCmpFuncSig<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>;
+  struct CompTimeFnImpl final : CompTimeFn {
+    using FnPtr = DetermineCompTimeFnSig<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>;
     FnPtr fn;
 
-    explicit CmpFnImpl(FnPtr f) : fn(std::move(f)) {
+    explicit CompTimeFnImpl(FnPtr f) : fn(std::move(f)) {
     }
 
-    auto invoke(
+    auto Invoke(
       Vec<Unique<ExpressionAst>> const &args)
       -> Unique<ExpressionAst> override {
       return _InvokeImpl(args, std::index_sequence_for<Args...>{});
@@ -135,366 +135,366 @@ namespace spp::analyse::utils::comptime_intrinsics {
 
   SPP_EXP_FUN template <bool HasGnTypeArgs = false, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (not HasGnTypeArgs and not HasGnCompArgs)
-  auto make_cmp_fn(Ret (*fn)(Args...)) -> Unique<CmpFn> {
-    return MakeUnique<CmpFnImpl<false, false, Ret, Args...>>(fn);
+  auto MakeCompTimeFn(Ret (*fn)(Args...)) -> Unique<CompTimeFn> {
+    return MakeUnique<CompTimeFnImpl<false, false, Ret, Args...>>(fn);
   }
 
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and not HasGnCompArgs)
-  auto make_cmp_fn(
+  auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnTypeArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
       Args...))
-    -> Unique<CmpFn> {
-    return MakeUnique<CmpFnImpl<true, false, Ret, Args...>>(fn);
+    -> Unique<CompTimeFn> {
+    return MakeUnique<CompTimeFnImpl<true, false, Ret, Args...>>(fn);
   }
 
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (not HasGnTypeArgs and HasGnCompArgs)
-  auto make_cmp_fn(
+  auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnCompArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
       Args...))
-    -> Unique<CmpFn> {
-    return MakeUnique<CmpFnImpl<false, true, Ret, Args...>>(fn);
+    -> Unique<CompTimeFn> {
+    return MakeUnique<CompTimeFnImpl<false, true, Ret, Args...>>(fn);
   }
 
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and HasGnCompArgs)
-  auto make_cmp_fn(
+  auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CmpGnTypeArgs) const &,
-      decltype(meta::CompilerMetaData::CmpGnCompArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
+      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
       Args...))
-    -> Unique<CmpFn> {
-    return MakeUnique<CmpFnImpl<true, true, Ret, Args...>>(fn);
+    -> Unique<CompTimeFn> {
+    return MakeUnique<CompTimeFnImpl<true, true, Ret, Args...>>(fn);
   }
 
-  SPP_EXP_FUN auto std_intrinsics_add(
+  SPP_EXP_FUN auto StdIntrinsicsAdd(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_add_assign(
+  SPP_EXP_FUN auto StdIntrinsicsAddAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_sub(
+  SPP_EXP_FUN auto StdIntrinsicsSub(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_sub_assign(
+  SPP_EXP_FUN auto StdIntrinsicsSubAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_mul(
+  SPP_EXP_FUN auto StdIntrinsicsMul(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_mul_assign(
+  SPP_EXP_FUN auto StdIntrinsicsMulAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_div(
+  SPP_EXP_FUN auto StdIntrinsicsDiv(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_div_assign(
+  SPP_EXP_FUN auto StdIntrinsicsDivAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_rem(
+  SPP_EXP_FUN auto StdIntrinsicsRem(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_rem_assign(
+  SPP_EXP_FUN auto StdIntrinsicsRemAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_sneg(
+  SPP_EXP_FUN auto StdIntrinsicsSneg(
     IntegerLiteralAst const &val)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_shl(
+  SPP_EXP_FUN auto StdIntrinsicsBitShl(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_shl_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitShlAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_shr(
+  SPP_EXP_FUN auto StdIntrinsicsBitShr(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_shr_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitShrAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_ior(
+  SPP_EXP_FUN auto StdIntrinsicsBitIor(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_ior_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitIorAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_and(
+  SPP_EXP_FUN auto StdIntrinsicsBitAnd(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_and_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitAndAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_xor(
+  SPP_EXP_FUN auto StdIntrinsicsBitXor(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_xor_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitXorAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_not(
+  SPP_EXP_FUN auto StdIntrinsicsBitNot(
     IntegerLiteralAst const &val)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_bit_not_assign(
+  SPP_EXP_FUN auto StdIntrinsicsBitNotAssign(
     IntegerLiteralAst &lhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_abs(
+  SPP_EXP_FUN auto StdIntrinsicsAbs(
     IntegerLiteralAst const &val)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_eq(
+  SPP_EXP_FUN auto StdIntrinsicsEq(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_oeq(
+  SPP_EXP_FUN auto StdIntrinsicsOeq(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ne(
+  SPP_EXP_FUN auto StdIntrinsicsNe(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_one(
+  SPP_EXP_FUN auto StdIntrinsicsOne(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_lt(
+  SPP_EXP_FUN auto StdIntrinsicsLt(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_olt(
+  SPP_EXP_FUN auto StdIntrinsicsOlt(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_le(
+  SPP_EXP_FUN auto StdIntrinsicsLe(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ole(
+  SPP_EXP_FUN auto StdIntrinsicsOle(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_gt(
+  SPP_EXP_FUN auto StdIntrinsicsGt(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ogt(
+  SPP_EXP_FUN auto StdIntrinsicsOgt(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ge(
+  SPP_EXP_FUN auto StdIntrinsicsGe(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_oge(
+  SPP_EXP_FUN auto StdIntrinsicsOge(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_max_val(
+  SPP_EXP_FUN auto StdIntrinsicsMaxVal(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_min_val(
+  SPP_EXP_FUN auto StdIntrinsicsMinVal(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_max(
+  SPP_EXP_FUN auto StdIntrinsicsMax(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_min(
+  SPP_EXP_FUN auto StdIntrinsicsMin(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_cmp(
+  SPP_EXP_FUN auto StdIntrinsicsCmp(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fadd(
+  SPP_EXP_FUN auto StdIntrinsicsFadd(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fadd_assign(
+  SPP_EXP_FUN auto StdIntrinsicsFaddAssign(
     FloatLiteralAst &lhs,
     FloatLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_fsub(
+  SPP_EXP_FUN auto StdIntrinsicsFsub(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fsub_assign(
+  SPP_EXP_FUN auto StdIntrinsicsFsubAssign(
     FloatLiteralAst &lhs,
     FloatLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_fmul(
+  SPP_EXP_FUN auto StdIntrinsicsFmul(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fmul_assign(
+  SPP_EXP_FUN auto StdIntrinsicsFmulAssign(
     FloatLiteralAst &lhs,
     FloatLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_fdiv(
+  SPP_EXP_FUN auto StdIntrinsicsFdiv(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fdiv_assign(
+  SPP_EXP_FUN auto StdIntrinsicsFdivAssign(
     FloatLiteralAst &lhs,
     FloatLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_frem(
+  SPP_EXP_FUN auto StdIntrinsicsFrem(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_frem_assign(
+  SPP_EXP_FUN auto StdIntrinsicsFremAssign(
     FloatLiteralAst &lhs,
     FloatLiteralAst const &rhs)
     -> void;
 
-  SPP_EXP_FUN auto std_intrinsics_fneg(
+  SPP_EXP_FUN auto StdIntrinsicsFneg(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fabs(
+  SPP_EXP_FUN auto StdIntrinsicsFabs(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fmax_val(
+  SPP_EXP_FUN auto StdIntrinsicsFmaxVal(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fmin_val(
+  SPP_EXP_FUN auto StdIntrinsicsFminVal(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fmax(
+  SPP_EXP_FUN auto StdIntrinsicsFmax(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fmin(
+  SPP_EXP_FUN auto StdIntrinsicsFmin(
     FloatLiteralAst const &lhs,
     FloatLiteralAst const &rhs)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ffloor(
+  SPP_EXP_FUN auto StdIntrinsicsFfloor(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fceil(
+  SPP_EXP_FUN auto StdIntrinsicsFceil(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_ftrunc(
+  SPP_EXP_FUN auto StdIntrinsicsFtrunc(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_intrinsics_fround(
+  SPP_EXP_FUN auto StdIntrinsicsFround(
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_float_neg_one()
+  SPP_EXP_FUN auto StdNumFloatNegOne()
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_float_zero()
+  SPP_EXP_FUN auto StdNumFloatZero()
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_float_one()
+  SPP_EXP_FUN auto StdNumFloatOne()
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_int_neg_one()
+  SPP_EXP_FUN auto StdNumIntNegOne()
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_int_zero()
+  SPP_EXP_FUN auto StdNumIntZero()
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_int_one()
+  SPP_EXP_FUN auto StdNumIntOne()
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_num_int_two()
+  SPP_EXP_FUN auto StdNumIntTwo()
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_mem_ops_size_of(
+  SPP_EXP_FUN auto StdMemOpsSizeOf(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto std_mem_ops_align_of(
+  SPP_EXP_FUN auto StdMemOpsAlignOf(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;

@@ -6,6 +6,7 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
@@ -29,7 +30,7 @@ namespace spp::analyse::utils::drop_utils {
   /// them - destroy to nothing, so have no drop code. Borrows
   /// are not dropped through either, only owned values.
   SPP_EXP_FUN auto NeedsDrop(
-    TypeSymbol const &type_sym,
+    TypeRef const &type,
     ScopeManager &sm,
     CompilerMetaData *meta)
     -> bool;
@@ -41,7 +42,7 @@ namespace spp::analyse::utils::drop_utils {
   /// semantic analysis means we will never get a cycle here
   /// either.
   SPP_EXP_FUN auto EnsureDropInstantiated(
-    TypeSymbol const &type_sym,
+    TypeRef const &type,
     ScopeManager &sm,
     CompilerMetaData *meta)
     -> void;

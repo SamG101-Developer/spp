@@ -65,11 +65,11 @@ namespace spp::analyse::utils::case_utils {
       llvm::Value *const llvm_base, ScopeManager const &sm,
       LlvmCtx *const ctx) -> llvm::Value* {
       using type_members::GetFieldIndexInType;
-      using type_predicates::IsTypeArr;
+      using type_predicates::IsTypeArray;
 
       const auto uid = "." + spp::utils::Uid();
       const auto bare_type = base_type.WithoutConvention();
-      const auto base_type_sym = sm.CurrentScope->GetTypeSymbol(bare_type.get());
+      const auto base_type_sym = sm.CurrentScope->FindTypeSymbol(bare_type.get());
       if (base_type_sym == nullptr or base_type_sym->LlvmInfo->LlvmType == nullptr) { return nullptr; }
       const auto llvm_base_ty = base_type_sym->LlvmInfo->LlvmType;
 
@@ -94,7 +94,7 @@ namespace spp::analyse::utils::case_utils {
 
         // An array lowers to "[n x T]" rather than to a struct,
         // so it is indexed through the array itself.
-        if (IsTypeArr(*base_type_sym, *sm.CurrentScope)) {
+        if (IsTypeArray(TypeRef::OfKind(*base_type_sym, *sm.CurrentScope), *sm.CurrentScope)) {
           const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
           field_ptr = ctx->Builder.CreateGEP(
             llvm_base_ty, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -151,14 +151,14 @@ namespace spp::analyse::utils::case_utils {
 
       // Analyse and walk back the scope.
       const auto current_scope = sm->CurrentScope;
-      const auto current_scope_iter = sm->CurrentIterator();
+      const auto current_scope_iter = sm->GetCurrentIterator();
       eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
       sm->Reset(current_scope, current_scope_iter);
       return mapper(eq_call_expr.get());
     }
 
     template <typename T>
-    auto CreateAndAnalysePatternEqFuncsCore(
+    auto CreateAndAnalysePatternEqFnsCore(
       Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
       CompilerMetaData *meta, Function<T(Ast *)> &&mapper,
       Function<void(ExpressionAst *)> &&on_nested_subject = {})
@@ -196,8 +196,7 @@ namespace spp::analyse::utils::case_utils {
         if (not num_rhs_elems.has_value()) {
           const auto cond_type = meta->CaseCondition->InferType(sm, meta);
           const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
-          const auto cond_ref = TypeRef::OfHead(*cond_type, *sm->CurrentScope);
-          num_rhs_elems = type_predicates::IsTypeArr(cond_ref, *sm->CurrentScope)
+          num_rhs_elems = type_predicates::IsTypeArray(*cond_type, *sm->CurrentScope)
             ? std::stoull(
               gn_arg_group->Args[1]->CompVal->ToUnchecked<IntegerLiteralAst>()->Val->TokenData)
             : gn_arg_group->Args.Len();
@@ -253,7 +252,7 @@ namespace spp::analyse::utils::case_utils {
   }
 }
 
-auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
+auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsLlvm(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta, LlvmCtx *ctx) -> Vec<llvm::Value*> {
   // Get the expression and map then to LLVM values.
@@ -270,7 +269,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
     // Analyse the subject, and then walk back the scope iterator,
     // as the value itself might have introduced new scopes.
     const auto current_scope = sm->CurrentScope;
-    const auto current_scope_iter = sm->CurrentIterator();
+    const auto current_scope_iter = sm->GetCurrentIterator();
     subject->Stage7_AnalyseSemantics(sm, meta);
     sm->Reset(current_scope, current_scope_iter);
 
@@ -301,7 +300,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
 
     // A field carrying no value is not laid out, so there is
     // nothing to read and "load void" is not valid ir.
-    const auto field_llvm_ty = subject->InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
+    const auto field_llvm_ty = GetLlvmTypeOf(subject->InferTypeRef(sm, meta).WithoutConvention(), ctx);
     meta->LlvmCaseCondition = IsValuelessType(field_llvm_ty)
       ? nullptr
       : ctx->Builder.CreateLoad(field_llvm_ty, field_ptr, "case.pattern.subject.value");
@@ -309,7 +308,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm(
 
   // Forward the nested analysis lambda into the core checker
   // to propagate the nested checks properly.
-  auto asts = CreateAndAnalysePatternEqFuncsCore(
+  auto asts = CreateAndAnalysePatternEqFnsCore(
     elems, sm, meta, std::move(map), std::move(on_nested_subject));
   return asts;
 }
@@ -320,19 +319,19 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
   // Get the expression and map then to Comptime values.
   Function<Unique<ExpressionAst>(Ast *)> map = [&](Ast *x) {
     x->Stage9_CompTimeResolve(sm, meta);
-    return std::move(meta->CmpResult);
+    return std::move(meta->CompTimeResult);
   };
 
-  auto asts = CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(map));
+  auto asts = CreateAndAnalysePatternEqFnsCore(elems, sm, meta, std::move(map));
   return asts;
 }
 
-auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
+auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsDummyCore(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta) -> void {
   //
   Function<std::monostate(Ast *)> noop = [](Ast *) { return std::monostate{}; };
-  CreateAndAnalysePatternEqFuncsCore(elems, sm, meta, std::move(noop));
+  CreateAndAnalysePatternEqFnsCore(elems, sm, meta, std::move(noop));
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
@@ -369,7 +368,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // analysis.
   auto variant_branches_type_info = valued_branches_type_info
     | genex::views::filter([&sm](auto &&x) {
-      return type_predicates::IsTypeVariant(TypeRef::OfHead(*x.second, *sm.CurrentScope), *sm.CurrentScope);
+      return type_predicates::IsTypeVariant(*x.second, *sm.CurrentScope);
     })
     | genex::to<Vec>();
 
@@ -397,7 +396,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   else if (not variant_branches_type_info.IsEmpty()) {
     auto most_inner_types = 0uz;
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-      const auto variant_size = type_compare::VariantMembers(
+      const auto variant_size = type_compare::VariantMemberRefs(
         TypeRef::Of(*variant_type, *sm.CurrentScope), *sm.CurrentScope).Len();
       if (variant_size > most_inner_types) {
         master_branch_type_info = {variant_branch, variant_type};
@@ -446,7 +445,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   return {cast_master_branch_type_info, cast_branches_type_info};
 }
 
-auto spp::analyse::utils::case_utils::ConvertIsExprToFuncCall(
+auto spp::analyse::utils::case_utils::ConvertIsExprToFnCall(
   IsExpressionAst &is_expr, ScopeManager *, CompilerMetaData *)
   -> Unique<CaseExpressionAst> {
   // Construct the expression-pattern based on the

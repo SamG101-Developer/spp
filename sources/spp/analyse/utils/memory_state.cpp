@@ -153,7 +153,7 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
   // Deduplicate.
   auto vs = Vec<VariableSymbol*>();
   auto seen_syms = Set<VariableSymbol*>();
-  for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
+  for (auto *sym : sm->CurrentScope->GetAllVarSymbols()) {
     if (seen_syms.insert(sym).second) { vs.EmplaceBack(sym); }
   }
 
@@ -286,7 +286,7 @@ auto spp::analyse::utils::memory_state::SnapshotScopes(
   -> ScopeSnapshot {
   auto out = ScopeSnapshot();
   for (auto const *scope = from; scope != nullptr; scope = scope->Parent) {
-    out.AppendRange(SnapshotSymbols(scope->AllVarSymbols(true)));
+    out.AppendRange(SnapshotSymbols(scope->GetAllVarSymbols(true)));
     if (scope == boundary) { break; }
   }
   return out;

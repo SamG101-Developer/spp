@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct BooleanLiteralAst);
@@ -64,10 +65,10 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
 
   /// Rewrite every generic name written inside this expression
   /// against a set of arguments, answering with a new tree rather
-  /// than writing into this one. The expression counterpart of
-  /// "TypeAst::SubstituteGenerics", one level up: the nodes that
-  /// do real work are the ones holding a type, and they delegate
-  /// to the type version.
+  /// than writing into this one. The nodes that do real work are
+  /// the types an expression holds, each substituting into itself
+  /// ("TypeAst::ReadExprType" for one wanted back as
+  /// a type).
   ///
   /// Needed wherever an expression is carried out of the scope
   /// that wrote it - a generic parameter's default, a function
@@ -79,7 +80,7 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
   /// An empty set answers with a plain clone. The clone is
   /// shared rather than unique, because a reader downstream
   /// takes a "shared_from_this" of whatever it is given.
-  SPP_ATTR_NODISCARD virtual auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD virtual auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst>;
 };

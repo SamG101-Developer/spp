@@ -84,7 +84,7 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   // Check the enclosing function is a coroutine and not a
   // subroutine (kept explicit so the error points at this
   // "gen with", rather than at the synthetic inner "gen").
-  const auto function_flavour = meta->EnclosingFunctionFlavour;
+  const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
     function_flavour->TokenType != lex::SppTokenType::KW_COR,
     {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));

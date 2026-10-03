@@ -194,12 +194,6 @@ auto SemanticError::AddWrapped(
   });
 }
 
-auto SemanticError::Clone() const
-  -> Unique<SemanticError> {
-  // Use the copy constructor to clone the error.
-  return MakeUnique<SemanticError>(*this);
-}
-
 SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
   Ast const &expr) {
   AddHeader(0, "Invalid Primary Expression Error");
@@ -235,7 +229,7 @@ SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     "Use a first-class type ensuring ownership in this context.");
 }
 
-SppCompileTimeConstantError::SppCompileTimeConstantError(
+SppCompTimeConstantError::SppCompTimeConstantError(
   Ast const &expr) {
   AddHeader(3, "SPP Compile-Time Constant Error");
   AddErr(&expr, "Non compile-time expression defined here");
@@ -856,7 +850,6 @@ SppArgumentMissingError::SppArgumentMissingError(
 SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
   Ast const &proto,
   Ast const &call) {
-  // TODO: This will be changing with the abstract types ticket.
   AddHeader(49, "SPP Function Call Abstract Function Error");
   AddCtxForErr(&proto, "Abstract function prototype defined here");
   AddErr(&call, "Function call defined here");
@@ -1250,7 +1243,7 @@ SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
     "Ensure the borrow lifetime does not exceed the initialization lifetime.");
 }
 
-SppInvalidComptimeOperationError::SppInvalidComptimeOperationError(
+SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
   Ast const &ast) {
   AddHeader(77, "Invalid Comptime Operation Error");
   AddErr(&ast, "Expression introduced here");
@@ -1431,7 +1424,7 @@ SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
     "Remove the move operation, make the type copyable, or restructure your borrows");
 }
 
-SppMovingComptimeConstantMemoryError::SppMovingComptimeConstantMemoryError(
+SppMovingCompTimeConstantMemoryError::SppMovingCompTimeConstantMemoryError(
   Ast const &ast,
   Ast const &move_location) {
   AddHeader(86, "Moving Compile-Time Constant Memory Error");
@@ -1618,7 +1611,7 @@ SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
     "not already consume it, rather than deferring it for all of them.");
 }
 
-SppDeferInCompileTimeFunctionError::SppDeferInCompileTimeFunctionError(
+SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
   Ast const &tok_defer) {
   AddHeader(98, "Defer In Compile-Time Function Error");
   AddErr(&tok_defer, "Deferred here, inside a function evaluated at compile time");

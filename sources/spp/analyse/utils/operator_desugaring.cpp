@@ -1,11 +1,18 @@
+module;
+#include <spp/analyse/macros.hpp>
+
 module spp.analyse.utils.operator_desugaring;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.convention_ref_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_group_ast;
@@ -17,6 +24,7 @@ import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
@@ -43,7 +51,7 @@ namespace spp::analyse::utils::operator_desugaring {
 
       // Non-symbolic value being reused -> put it into a variable
       // first. Todo: Standardise materialization?
-      if (sm->CurrentScope->GetVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
+      if (sm->CurrentScope->FindVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
         const auto temp_var_name = [&] {
           const auto uid = spp::utils::Uid();
           return MakeShared<IdentifierAst>(
@@ -87,7 +95,7 @@ auto spp::analyse::utils::operator_desugaring::CombineComparisonChain(
   return CombineCompOpsImpl(bin_expr, sm, meta, &temps);
 }
 
-auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFuncCall(
+auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFnCall(
   BinaryExpressionAst &bin_expr, ScopeManager *sm,
   CompilerMetaData *meta) -> Unique<PostfixExpressionAst> {
   // Before converting into a function check if we can chain
@@ -128,4 +136,39 @@ auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFuncCall(
   auto new_ast = MakeUnique<PostfixExpressionAst>(
     std::move(field_access), std::move(fn_call));
   return new_ast;
+}
+
+auto spp::analyse::utils::operator_desugaring::CheckIndexable(
+  Ast const &op,
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  // Checked here, not left to the method lookup: the parse of "a[..]" is ambiguous with generic arguments.
+  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  const auto type_sym = sm->CurrentScope->FindTypeSymbol(lhs_type.get());
+  RaiseIf<errors::SppMemberAccessNonIndexableError>(
+    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
+    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, op));
+}
+
+auto spp::analyse::utils::operator_desugaring::MapToMethodCall(
+  Ast &op,
+  const std::size_t pos,
+  const StrView method,
+  Vec<Unique<ExpressionAst>> &&args,
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> Shared<PostfixExpressionAst> {
+  auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<Unique<FunctionCallArgumentAst>>{}, nullptr);
+  for (auto &&arg : args) {
+    arg_group->Args.EmplaceBack(MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(arg)));
+  }
+  auto field_name = MakeUnique<IdentifierAst>(pos, Str(method));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
+  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
+  auto fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
+  fn_call->Source.OriginalExpr = &op;
+  auto mapped = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(fn_call));
+  mapped->Stage7_AnalyseSemantics(sm, meta);
+  return mapped;
 }

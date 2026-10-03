@@ -2,8 +2,10 @@ module;
 #include <spp/macros.hpp>
 
 module spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.comp_key;
 import spp.utils.interner;
 import spp.utils.types;
+import genex;
 import std;
 
 namespace spp::analyse::scopes {
@@ -19,8 +21,12 @@ namespace spp::analyse::scopes {
       return word & ((std::uint64_t{1} << 56) - 1);
     }
 
-    auto AsId(const std::uint64_t word) -> TypeId {
-      return reinterpret_cast<TypeId>(static_cast<std::uintptr_t>(word));
+    /// Whether a constant named through the type "type" (a "TypeId"'s word) cannot be read yet: its type did not
+    /// resolve, or is closed and its constant cannot be reached yet ("CompMemberIdOf"). An open type's constant is read
+    /// once a substitution closes it.
+    auto MemberUnresolved(const std::uint64_t type, const StrView name) -> bool {
+      auto const *const owner = TypeIdOfWord(type);
+      return owner->HasUnresolved or (IsClosedTypeId(owner) and CompMemberIdOf(owner, name) == 0);
     }
 
     auto WordsOf(TypeId id) -> Words {
@@ -29,26 +35,21 @@ namespace spp::analyse::scopes {
 
     /// Whether raw key words hold a "Self": a pointer word's top byte is never a tag's.
     auto HasSelfWord(Words words) -> bool {
-      return std::ranges::any_of(words, [](const std::uint64_t w) { return TagOf(w) == Tag::Self; });
-    }
-
-    /// Intern a key whatever it holds: an unresolved part is still one part of another key.
-    auto InternPart(InstanceKey &&key) -> TypeId {
-      return InternTypeKey(std::move(key));
+      return genex::any_of(words, [](const std::uint64_t w) { return TagOf(w) == Tag::Self; });
     }
 
     /// One type part at the front of "words" - by id, or inline after its length - as a "TypeId", and how many
     /// words it took.
-    auto ReadPart(Words words, std::size_t &taken) -> TypeId {
-      if (TagOf(words[0]) == Tag::Id) {
+    auto DecodePart(Words words, std::size_t &taken) -> TypeId {
+      if (TagOf(words[0]) == Tag::TypeId) {
         taken = 2;
-        return AsId(words[1]);
+        return TypeIdOfWord(words[1]);
       }
       const auto len = PayloadOf(words[0]);
       taken = 1 + len;
       auto key = InstanceKey();
       key.AppendWords(words.subspan(1, len), true, HasSelfWord(words.subspan(1, len)));
-      return InternPart(std::move(key));
+      return InternTypeKey(std::move(key));
     }
 
     struct MemoHash {
@@ -57,38 +58,40 @@ namespace spp::analyse::scopes {
       }
     };
 
-    auto Memo() -> std::unordered_map<Pair<TypeId, TypeId>, TypeId, MemoHash>& {
-      static auto memo = std::unordered_map<Pair<TypeId, TypeId>, TypeId, MemoHash>();
+    auto Memo() -> Map<Pair<TypeId, TypeId>, TypeId, MemoHash>& {
+      static auto memo = Map<Pair<TypeId, TypeId>, TypeId, MemoHash>();
       return memo;
+    }
+
+    /// What "subst" binds type parameter "param" to, and comp parameter "param" to; none (null, zero) when it does not
+    /// bind it.
+    auto BoundTypeOf(GenericSubst const &subst, const std::uint64_t param) -> TypeId {
+      const auto it = genex::find(subst.TypeParams, param, &std::pair<std::uint64_t, TypeId>::first);
+      return it != subst.TypeParams.end() ? it->second : nullptr;
+    }
+
+    auto BoundCompOf(GenericSubst const &subst, const std::uint64_t param) -> CompId {
+      const auto it = genex::find(subst.CompParams, param, &std::pair<std::uint64_t, CompId>::first);
+      return it != subst.CompParams.end() ? it->second : 0;
     }
 
     class Rewriter {
     public:
-      Rewriter(TypeSubst const &subst, TypeId subst_id) : _Subst(subst), _SubstId(subst_id) {
-        for (auto const &[param, _] : subst.Comps) {
-          _CompNames.emplace_back(utils::InternedText(static_cast<utils::InternedId>(param)));
-        }
-      }
+      Rewriter(GenericSubst const &subst, TypeId subst_id) : _Subst(subst), _SubstId(subst_id) {}
 
       /// "id" rewritten, interned whatever it holds; null when it cannot be.
       auto Part(TypeId id) -> TypeId {
         auto &memo = Memo();
         if (const auto hit = memo.find({id, _SubstId}); hit != memo.end()) { return hit->second; }
         auto out = InstanceKey();
-        const auto result = Type(WordsOf(id), out) ? InternPart(std::move(out)) : nullptr;
+        const auto result = RewriteType(WordsOf(id), out) ? InternTypeKey(std::move(out)) : nullptr;
         memo.emplace(Pair<TypeId, TypeId>{id, _SubstId}, result);
         return result;
       }
 
     private:
-      TypeSubst const &_Subst;
+      GenericSubst const &_Subst;
       TypeId _SubstId;
-      std::vector<StrView> _CompNames;
-
-      auto BoundType(const std::uint64_t param) const -> TypeId {
-        for (auto const &[p, t] : _Subst.Types) { if (p == param) { return t; } }
-        return nullptr;
-      }
 
       /// A bound type in place of a parameter, under the parameter's convention where it has one.
       static auto Splice(TypeId bound, const std::uint64_t conv, InstanceKey &out) -> void {
@@ -101,7 +104,7 @@ namespace spp::analyse::scopes {
       }
 
       /// One whole type ("words" is exactly it) rewritten into "out".
-      auto Type(Words words, InstanceKey &out) -> bool {
+      auto RewriteType(Words words, InstanceKey &out) -> bool {
         if (words.empty()) { return false; }
         auto conv = std::uint64_t{0};
         if (TagOf(words[0]) == Tag::Conv) {
@@ -112,10 +115,10 @@ namespace spp::analyse::scopes {
 
         switch (TagOf(words[0])) {
         case Tag::Self:
-        case Tag::Param:
-        case Tag::Bound: {
+        case Tag::TypeParam:
+        case Tag::TypeBound: {
           const auto param = TagOf(words[0]) == Tag::Self ? 0 : PayloadOf(words[0]);
-          if (const auto bound = BoundType(param); bound != nullptr) {
+          if (const auto bound = BoundTypeOf(_Subst, param); bound != nullptr) {
             Splice(bound, conv, out);
             return true;
           }
@@ -124,16 +127,16 @@ namespace spp::analyse::scopes {
           return true;
         }
         case Tag::Unresolved:
-        case Tag::Sym: {
+        case Tag::Symbol: {
           if (conv != 0) { out.Push(Tag::Conv, conv); }
           out.AppendWords(words, TagOf(words[0]) == Tag::Unresolved);
           return true;
         }
         case Tag::Inst: {
           // "Inst", the template, then the arguments' key under its length.
-          if (words.size() < 4 or TagOf(words[1]) != Tag::Sym or TagOf(words[3]) != Tag::Len) { return false; }
+          if (words.size() < 4 or TagOf(words[1]) != Tag::Symbol or TagOf(words[3]) != Tag::Len) { return false; }
           auto args = InstanceKey();
-          if (not Args(words.subspan(4, PayloadOf(words[3])), args)) { return false; }
+          if (not RewriteArgs(words.subspan(4, PayloadOf(words[3])), args)) { return false; }
           if (conv != 0) { out.Push(Tag::Conv, conv); }
           out.Push(Tag::Inst);
           out.PushPtr(reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2])));
@@ -141,21 +144,21 @@ namespace spp::analyse::scopes {
           return true;
         }
         case Tag::Variant: {
-          // "Variant", the template, then its members: flattened, deduplicated and ordered as "variant_key" does.
-          if (words.size() < 3 or TagOf(words[1]) != Tag::Sym) { return false; }
+          // "Variant", the template, then its members: flattened, deduplicated and ordered as "VariantKey" does.
+          if (words.size() < 3 or TagOf(words[1]) != Tag::Symbol) { return false; }
           auto members = std::vector<TypeId>();
           for (auto rest = words.subspan(3); not rest.empty();) {
             auto taken = std::size_t{0};
-            const auto member = Part(ReadPart(rest, taken));
+            const auto member = Part(DecodePart(rest, taken));
             rest = rest.subspan(taken);
             if (member == nullptr) { return false; }
             auto const &head = HeadOf(member);
             auto flat = head.Kind == Tag::Variant and head.Conv == 0 ? head.Members : std::vector{member};
             for (const auto m : flat) {
-              if (std::ranges::find(members, m) == members.end()) { members.push_back(m); }
+              if (not genex::contains(members, m)) { members.push_back(m); }
             }
           }
-          std::ranges::sort(members, [](TypeId a, TypeId b) { return *a < *b; });
+          members |= genex::actions::sort([](TypeId a, TypeId b) { return *a < *b; });
           if (conv != 0) { out.Push(Tag::Conv, conv); }
           out.Push(Tag::Variant);
           out.PushPtr(reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2])));
@@ -167,9 +170,9 @@ namespace spp::analyse::scopes {
         }
       }
 
-      /// An instantiation's arguments ("Scope::InstanceIdentityKey"): each a name or position, then a type part or a
+      /// An instantiation's arguments ("Scope::ArgsIdOf"): each a name or position, then a type part or a
       /// comp identity.
-      auto Args(Words words, InstanceKey &out) -> bool {
+      auto RewriteArgs(Words words, InstanceKey &out) -> bool {
         // Positions after a spread pack move along by the elements it added.
         auto shift = std::uint64_t{0};
         while (not words.empty()) {
@@ -180,17 +183,17 @@ namespace spp::analyse::scopes {
           words = words.subspan(1);
           if (words.empty()) { return false; }
 
-          if (TagOf(words[0]) == Tag::Comp) {
+          if (TagOf(words[0]) == Tag::CompId) {
             out.Push(tag, tag == Tag::Pos ? pos : name);
-            if (not Comp(PayloadOf(words[0]), out)) { return false; }
+            if (not RewriteComp(PayloadOf(words[0]), out)) { return false; }
             words = words.subspan(1);
             continue;
           }
           auto taken = std::size_t{0};
-          const auto written = ReadPart(words, taken);
+          const auto written = DecodePart(words, taken);
           words = words.subspan(taken);
           if (tag == Tag::Pos) {
-            if (const auto elems = SpreadPack(written); elems.has_value()) {
+            if (const auto elems = SpreadTypePack(written); elems.has_value()) {
               for (auto i = 0uz; i < elems->size(); ++i) {
                 out.Push(Tag::Pos, pos + i);
                 PushTypePart(out, InstanceKey(*(*elems)[i]));
@@ -208,150 +211,99 @@ namespace spp::analyse::scopes {
       }
 
       /// The elements a type pack standing as one element is spread into: the arguments of the tuple it is bound to.
-      auto SpreadPack(TypeId written) const -> std::optional<std::vector<TypeId>> {
+      auto SpreadTypePack(TypeId written) const -> std::optional<std::vector<TypeId>> {
         auto const &head = HeadOf(written);
-        if (head.Kind != Tag::Param or head.Conv != 0 or not std::ranges::contains(_Subst.TypePacks, head.ParamId)) {
+        if (head.Kind != Tag::TypeParam or head.Conv != 0
+          or not genex::contains(_Subst.TypePackParams, head.TypeParamId)) {
           return std::nullopt;
         }
         // A pack is bound to a tuple: the bare template when it is empty.
-        const auto bound = BoundType(head.ParamId);
+        const auto bound = BoundTypeOf(_Subst, head.TypeParamId);
         if (bound == nullptr) { return std::nullopt; }
         auto elems = std::vector<TypeId>();
-        if (HeadOf(bound).Kind == Tag::Sym) { return elems; }
+        if (HeadOf(bound).Kind == Tag::Symbol) { return elems; }
         if (HeadOf(bound).Kind != Tag::Inst) { return std::nullopt; }
         for (auto const &arg : ArgsOf(HeadOf(bound).Args)) {
-          if (arg.Named or arg.Type == nullptr) { return std::nullopt; }
-          elems.push_back(arg.Type);
+          if (arg.Named or arg.TypeVal == nullptr) { return std::nullopt; }
+          elems.push_back(arg.TypeVal);
         }
         return elems;
       }
 
-      /// A comp argument's identity: a parameter bound here is its value's; an operation naming one cannot be
-      /// rewritten without folding it. A pack's elements are each rewritten as a whole value would be.
-      auto Comp(const std::uint64_t text, InstanceKey &out) -> bool {
-        auto rewritten = std::uint64_t{0};
-        if (not CompText(text, rewritten)) { return false; }
-        out.Push(Tag::Comp, rewritten);
-        return true;
-      }
-
-      auto CompText(const std::uint64_t text, std::uint64_t &out) -> bool {
-        for (auto const &[param, value] : _Subst.Comps) {
-          if (param == text) {
-            out = value;
-            return true;
-          }
-        }
-        const auto spelled = utils::InternedText(static_cast<utils::InternedId>(text));
-        if (const auto elems = CompPackElements(spelled); elems.has_value()) {
-          auto pack = Str("P(");
-          auto first = true;
-          for (auto const written : *elems) {
-            const auto written_id = static_cast<std::uint64_t>(utils::Intern(written));
-            auto elem = std::uint64_t{0};
-            if (not CompText(written_id, elem)) { return false; }
-            // A comp pack standing as one element is spread into the elements it is bound to, as a type pack is.
-            const auto elem_text = utils::InternedText(static_cast<utils::InternedId>(elem));
-            const auto spread = std::ranges::contains(_Subst.CompPacks, written_id) ? CompPackElements(elem_text) : std::nullopt;
-            for (auto const part : spread.has_value() ? *spread : std::vector{elem_text}) {
-              if (not first) { pack += ", "; }
-              pack += part;
-              first = false;
-            }
-          }
-          pack += ')';
-          out = static_cast<std::uint64_t>(utils::Intern(pack));
-          return true;
-        }
-        for (auto const &name : _CompNames) {
-          for (auto at = spelled.find(name); at != StrView::npos; at = spelled.find(name, at + 1)) {
-            if (at != 0 and std::isalnum(static_cast<unsigned char>(spelled[at - 1]))) { continue; }
-            const auto end = at + name.size();
-            if (end == spelled.size() or not std::isdigit(static_cast<unsigned char>(spelled[end]))) { return false; }
-          }
-        }
-        out = text;
+      /// One comp argument's identity rewritten into "out" ("SubstituteCompId"): each substituted parameter at any
+      /// depth its value, a pack parameter among a pack's elements spread, and an operation folded once its operands
+      /// are values.
+      auto RewriteComp(const CompId value, InstanceKey &out) -> bool {
+        const auto rewritten = SubstituteCompId(value, _Subst);
+        if (rewritten == 0) { return false; }
+        PushCompPart(out, rewritten);
         return true;
       }
     };
 
     /// "subst" as one interned key, so a memo entry is a pair of pointers.
-    auto SubstId(TypeSubst const &subst) -> TypeId {
-      auto types = subst.Types;
-      auto comps = subst.Comps;
-      std::ranges::sort(types);
-      std::ranges::sort(comps);
+    auto SubstId(GenericSubst const &subst) -> TypeId {
+      auto types = subst.TypeParams;
+      auto comps = subst.CompParams;
+      types |= genex::actions::sort;
+      comps |= genex::actions::sort;
       auto key = InstanceKey();
       for (auto const &[param, type] : types) {
-        key.Push(Tag::Param, param);
+        key.Push(Tag::TypeParam, param);
         key.PushId(type);
       }
       for (auto const &[param, value] : comps) {
-        key.Push(Tag::Comp, param);
-        key.Push(Tag::Comp, value);
+        key.Push(Tag::CompParam, param);
+        key.Push(Tag::CompId, value);
       }
-      for (const auto pack : subst.TypePacks) { key.Push(Tag::Pos, pack); }
-      for (const auto pack : subst.CompPacks) { key.Push(Tag::Len, pack); }
+      for (const auto pack : subst.TypePackParams) { key.Push(Tag::TypePack, pack); }
+      for (const auto pack : subst.CompPackParams) { key.Push(Tag::CompPack, pack); }
       return InternTypeKey(std::move(key));
     }
   }
 
-  auto ParamIdOf(
-    const TypeId id)
-    -> std::uint64_t {
-    if (id == nullptr) { return 0; }
-    auto const &head = HeadOf(id);
-    return head.Kind == Tag::Param ? head.ParamId : 0;
-  }
-
-  auto CompParamIdOf(
-    const TypeId id)
-    -> std::uint64_t {
-    if (id == nullptr or id->Words.size() != 1 or TagOf(id->Words[0]) != Tag::Comp) { return 0; }
-    return CompParamIdOfText(PayloadOf(id->Words[0]));
-  }
-
-  auto CompParamText(
-    const std::uint64_t param_id)
-    -> std::uint64_t {
-    return static_cast<std::uint64_t>(utils::Intern("C" + std::to_string(param_id)));
-  }
-
-  auto CompParamIdOfText(
-    const std::uint64_t interned)
-    -> std::uint64_t {
-    const auto text = utils::InternedText(static_cast<utils::InternedId>(interned));
-    if (text.size() < 2 or text[0] != 'C') { return 0; }
-    auto param_id = std::uint64_t{0};
-    const auto [end, ec] = std::from_chars(text.data() + 1, text.data() + text.size(), param_id);
-    return ec == std::errc() and end == text.data() + text.size() ? param_id : 0;
-  }
-
-  auto CompPackElements(
-    const StrView identity)
-    -> std::optional<std::vector<StrView>> {
-    if (not identity.starts_with("P(") or not identity.ends_with(')')) { return std::nullopt; }
-    const auto inner = identity.substr(2, identity.size() - 3);
-    auto out = std::vector<StrView>();
-    if (inner.empty()) { return out; }
-    auto depth = 0;
-    auto start = 0uz;
-    for (auto i = 0uz; i < inner.size(); ++i) {
-      if (inner[i] == '(') { ++depth; }
-      else if (inner[i] == ')') { --depth; }
-      else if (depth == 0 and inner[i] == ',' and i + 1 < inner.size() and inner[i + 1] == ' ') {
-        out.push_back(inner.substr(start, i - start));
-        start = i + 2;
-        ++i;
+  auto SubstituteCompId(
+    const CompId id,
+    GenericSubst const &subst)
+    -> CompId {
+    auto const *const node = CompNodeOf(id);
+    if (node == nullptr) { return 0; }
+    const auto bound = [&subst](const std::uint64_t param_id) -> std::optional<CompNode> {
+      auto const *const value = CompNodeOf(BoundCompOf(subst, param_id));
+      return value != nullptr ? std::optional(*value) : std::nullopt;
+    };
+    const auto is_pack = [&subst](const std::uint64_t param_id) {
+      return genex::contains(subst.CompPackParams, param_id);
+    };
+    // A constant named through a type: the type rewritten, and read once it is closed ("CompMembers::Find").
+    const auto member = [&subst](const std::uint64_t word, const StrView name) -> std::optional<CompNode> {
+      const auto owner = SubstituteTypeId(TypeIdOfWord(word), subst);
+      if (owner == nullptr) { return std::nullopt; }
+      if (IsClosedTypeId(owner)) {
+        if (auto const *const read = CompNodeOf(CompMemberIdOf(owner, name)); read != nullptr) { return *read; }
       }
+      return CompNode::OfMember(TypeIdWord(owner), name);
+    };
+    const auto rewritten = RewriteCompKey(*node, bound, is_pack, member);
+    return rewritten.has_value() ? InternCompKey(*rewritten) : 0;
+  }
+
+  auto PushCompPart(
+    InstanceKey &key,
+    const CompId id)
+    -> void {
+    key.Push(Tag::CompId, id);
+    auto const *const node = CompNodeOf(id);
+    if (node == nullptr) { return; }
+    for (auto const &[type, name] : CompKeyMembers(*node)) {
+      key.HasSelf = key.HasSelf or TypeIdOfWord(type)->HasSelf;
+      key.HasUnresolved = key.HasUnresolved or MemberUnresolved(type, name);
     }
-    out.push_back(inner.substr(start));
-    return out;
   }
 
   auto SubstituteTypeId(
     const TypeId id,
-    TypeSubst const &subst)
+    GenericSubst const &subst)
     -> TypeId {
     if (id == nullptr) { return nullptr; }
     if (subst.IsEmpty()) { return id->HasUnresolved ? nullptr : id; }
@@ -364,7 +316,7 @@ namespace spp::analyse::scopes {
     const TypeId id)
     -> TypeIdHead const& {
     // Keys and their parts are interned for the whole process, so the answer is kept for as long, and on the key.
-    static auto memo = std::unordered_map<TypeId, TypeIdHead>();
+    static auto memo = StableMap<TypeId, TypeIdHead>();
     if (id != nullptr and id->CachedHead != nullptr) { return *id->CachedHead; }
     const auto remember = [id](TypeIdHead &&answer) -> TypeIdHead const& {
       auto const &kept = memo.emplace(id, std::move(answer)).first->second;
@@ -381,11 +333,11 @@ namespace spp::analyse::scopes {
 
     head.Kind = TagOf(words[0]);
     switch (head.Kind) {
-    case Tag::Param:
-    case Tag::Bound:
-      head.ParamId = PayloadOf(words[0]);
+    case Tag::TypeParam:
+    case Tag::TypeBound:
+      head.TypeParamId = PayloadOf(words[0]);
       break;
-    case Tag::Sym:
+    case Tag::Symbol:
       if (words.size() >= 2) { head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[1])); }
       break;
     case Tag::Inst:
@@ -401,7 +353,7 @@ namespace spp::analyse::scopes {
         head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2]));
         for (auto rest = words.subspan(3); not rest.empty();) {
           auto taken = std::size_t{0};
-          head.Members.push_back(ReadPart(rest, taken));
+          head.Members.push_back(DecodePart(rest, taken));
           rest = rest.subspan(taken);
         }
       }
@@ -428,42 +380,43 @@ namespace spp::analyse::scopes {
     const TypeId id)
     -> TypeIdParams const& {
     // Keys and their parts are interned for the whole process, so the answer is kept for as long, and on the key.
-    static auto memo = std::unordered_map<TypeId, TypeIdParams>();
+    static auto memo = StableMap<TypeId, TypeIdParams>();
     if (id != nullptr and id->CachedParams != nullptr) { return *id->CachedParams; }
     if (const auto hit = memo.find(id); hit != memo.end()) { return hit->second; }
     auto out = TypeIdParams();
     const auto add = [](std::vector<std::uint64_t> &into, const std::uint64_t x) {
-      if (std::ranges::find(into, x) == into.end()) { into.push_back(x); }
+      if (not genex::contains(into, x)) { into.push_back(x); }
     };
     const auto words = WordsOf(id);
     for (auto i = 0uz; i < words.size(); ++i) {
       switch (TagOf(words[i])) {
-      case Tag::Param:
-        add(out.Types, PayloadOf(words[i]));
+      case Tag::TypeParam:
+        add(out.TypeParams, PayloadOf(words[i]));
         break;
-      case Tag::Bound:
-        add(out.Types, PayloadOf(words[i]));
+      case Tag::TypeBound:
+        add(out.TypeParams, PayloadOf(words[i]));
         ++i;
         break;
-      case Tag::Sym:
+      case Tag::Symbol:
         ++i;
         break;
-      case Tag::Id: {
-        auto const &inner = ParamsOf(AsId(words[i + 1]));
-        for (const auto t : inner.Types) { add(out.Types, t); }
-        for (const auto c : inner.Comps) { add(out.Comps, c); }
+      case Tag::TypeId: {
+        auto const &inner = ParamsOf(TypeIdOfWord(words[i + 1]));
+        for (const auto t : inner.TypeParams) { add(out.TypeParams, t); }
+        for (const auto c : inner.CompParams) { add(out.CompParams, c); }
         ++i;
         break;
       }
-      case Tag::Comp: {
-        // A comp identity names its parameters as "C<ParamId>" ("comp_generics::CompExprIdentity").
-        const auto text = utils::InternedText(static_cast<utils::InternedId>(PayloadOf(words[i])));
-        for (auto at = text.find('C'); at != StrView::npos; at = text.find('C', at + 1)) {
-          auto end = at + 1;
-          while (end < text.size() and std::isdigit(static_cast<unsigned char>(text[end]))) { ++end; }
-          if (end > at + 1 and (at == 0 or not std::isalnum(static_cast<unsigned char>(text[at - 1])))) {
-            add(out.Comps, static_cast<std::uint64_t>(utils::Intern(text.substr(at, end - at))));
-          }
+      case Tag::CompId: {
+        // A comp identity names its parameters as "C<ParamId>" parts ("scopes::CompKeyParams"), and the types it
+        // names constants through by their ids, whose parameters are its own too.
+        auto const *const node = CompNodeOf(PayloadOf(words[i]));
+        if (node == nullptr) { break; }
+        for (const auto param_id : CompKeyParams(*node)) { add(out.CompParams, param_id); }
+        for (auto const &[type, _] : CompKeyMembers(*node)) {
+          auto const &inner = ParamsOf(TypeIdOfWord(type));
+          for (const auto t : inner.TypeParams) { add(out.TypeParams, t); }
+          for (const auto comp : inner.CompParams) { add(out.CompParams, comp); }
         }
         break;
       }
@@ -474,6 +427,103 @@ namespace spp::analyse::scopes {
     auto const &kept = memo.emplace(id, std::move(out)).first->second;
     if (id != nullptr) { id->CachedParams = &kept; }
     return kept;
+  }
+
+  auto DoesTypeIdNameParams(
+    const TypeId id)
+    -> bool {
+    auto const &params = ParamsOf(id);
+    return not params.TypeParams.empty() or not params.CompParams.empty();
+  }
+
+  auto DoesCompIdNameParams(
+    const CompId id)
+    -> bool {
+    auto const *const node = CompNodeOf(id);
+    return node != nullptr and node->Any([](CompNode const &part) {
+      return part.Kind == CompNode::Part::Param
+        or (part.Kind == CompNode::Part::Member and not IsClosedTypeId(TypeIdOfWord(part.Type)));
+    });
+  }
+
+  auto CompMemberIdOf(
+    const TypeId owner,
+    const StrView name)
+    -> CompId {
+    return CompMembers::Find != nullptr ? CompMembers::Find(owner, name) : 0;
+  }
+
+  namespace {
+    auto CompNodes() -> StableMap<CompId, std::optional<CompNode>>& {
+      static auto memo = StableMap<CompId, std::optional<CompNode>>();
+      return memo;
+    }
+  }
+
+  auto CompNodeOf(
+    const CompId id)
+    -> CompNode const* {
+    if (id == 0) { return nullptr; }
+    auto &memo = CompNodes();
+    auto hit = memo.find(id);
+    if (hit == memo.end()) { hit = memo.emplace(id, ParseCompKey(CompIdText(id))).first; }
+    return hit->second.has_value() ? &*hit->second : nullptr;
+  }
+
+  auto InternCompKey(
+    CompNode const &node)
+    -> CompId {
+    const auto id = CompIdOfText(PrintCompKey(node));
+    CompNodes().try_emplace(id, node);
+    return id;
+  }
+
+  auto ParamTypeId(
+    const std::uint64_t param_id)
+    -> TypeId {
+    auto key = InstanceKey();
+    key.Push(Tag::TypeParam, param_id);
+    return InternTypeKey(std::move(key));
+  }
+
+  auto ParamCompId(
+    const std::uint64_t param_id)
+    -> CompId {
+    return InternCompKey(CompNode::OfParam(param_id));
+  }
+
+  auto IsConcreteTypeId(
+    const TypeId id)
+    -> bool {
+    return id != nullptr and not id->HasSelf and not DoesTypeIdNameParams(id);
+  }
+
+  auto IsConcreteCompId(
+    const CompId id)
+    -> bool {
+    return CompNodeOf(id) != nullptr and not DoesCompIdNameParams(id);
+  }
+
+  auto IsClosedTypeId(
+    const TypeId id)
+    -> bool {
+    return IsConcreteTypeId(id) and not id->HasUnresolved;
+  }
+
+  auto IsClosedCompId(
+    const CompId id)
+    -> bool {
+    if (not IsConcreteCompId(id)) { return false; }
+    auto const *const node = CompNodeOf(id);
+    return not node->Any([](CompNode const &part) {
+      return part.Kind == CompNode::Part::Member and MemberUnresolved(part.Type, part.Text);
+    });
+  }
+
+  auto IsStampableTypeId(
+    const TypeId id)
+    -> bool {
+    return id != nullptr and not id->HasSelf and not id->HasUnresolved;
   }
 
   auto ArgsOf(
@@ -488,13 +538,13 @@ namespace spp::analyse::scopes {
       arg.Name = PayloadOf(words[0]);
       words = words.subspan(1);
       if (words.empty()) { break; }
-      if (TagOf(words[0]) == Tag::Comp) {
-        arg.Comp = PayloadOf(words[0]);
+      if (TagOf(words[0]) == Tag::CompId) {
+        arg.CompVal = PayloadOf(words[0]);
         words = words.subspan(1);
       }
       else {
         auto taken = std::size_t{0};
-        arg.Type = ReadPart(words, taken);
+        arg.TypeVal = DecodePart(words, taken);
         words = words.subspan(taken);
       }
       out.push_back(arg);
@@ -502,3 +552,24 @@ namespace spp::analyse::scopes {
     return out;
   }
 }
+
+SPP_MOD_BEGIN
+auto spp::analyse::scopes::TypeIdHead::Symbol() const -> TypeSymbol* {
+  const auto names_sym = Kind == InstanceKey::Tag::Symbol or IsInstance();
+  return names_sym ? const_cast<TypeSymbol*>(static_cast<TypeSymbol const*>(Ptr)) : nullptr;
+}
+
+auto spp::analyse::scopes::TypeIdHead::IsInstance() const -> bool {
+  return Kind == InstanceKey::Tag::Inst or Kind == InstanceKey::Tag::Variant;
+}
+
+auto spp::analyse::scopes::ExprSubst::In(
+  Scope const &scope, GenericSubst bindings) -> ExprSubst {
+  return {std::move(bindings), &scope, &scope};
+}
+
+auto spp::analyse::scopes::ExprSubst::Across(
+  Scope const &written, GenericSubst bindings, Scope const &reading) -> ExprSubst {
+  return {std::move(bindings), &written, &reading};
+}
+SPP_MOD_END

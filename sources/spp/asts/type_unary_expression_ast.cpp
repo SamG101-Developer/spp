@@ -71,7 +71,7 @@ auto TypeUnaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypeUnaryExpressionAst>(
     Op, AstCloneShared(Rhs));
-  t->_Written = _Written;
+  t->_WrittenTypeId = _WrittenTypeId;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -91,7 +91,7 @@ auto TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
     const auto tm = ScopeManager(
       sm->GlobalScope,
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-    const auto type_scope = member_lookup::GetNsScopeOrError(*tm.CurrentScope, *op_ns->Ns, *sm);
+    const auto type_scope = member_lookup::FindNsSymbolOrError(*tm.CurrentScope, *op_ns->Ns, *sm)->LinkedScope;
     const auto _meta_guard = MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);
@@ -112,14 +112,8 @@ auto TypeUnaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the RHS type.
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-  const auto type_sym = type_scope->GetTypeSymbol(this);
+  const auto type_sym = type_scope->FindTypeSymbol(this);
   return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
-}
-
-auto TypeUnaryExpressionAst::AnyPart(
-  std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool {
-  // Walk from the right-hand-side.
-  return Rhs->AnyPart(pred);
 }
 
 auto TypeUnaryExpressionAst::IsNeverType() const noexcept -> bool {
@@ -196,14 +190,14 @@ auto TypeUnaryExpressionAst::WithConvention(
       return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
     }
     auto inner = MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
-    inner->SetWritten(_Written);
+    inner->SetWrittenTypeId(_WrittenTypeId);
     return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
                                               std::move(inner));
   }();
 
   // A node rebuilt in place of this one names the same symbol, so it keeps the written identity; a lookup reads the outermost
   // node's first. "Rhs" handed back as it is carries its own.
-  if (result != Rhs) { result->SetWritten(_Written); }
+  if (result != Rhs) { result->SetWrittenTypeId(_WrittenTypeId); }
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written, whatever convention it is given. "Rhs" is
@@ -214,22 +208,18 @@ auto TypeUnaryExpressionAst::WithConvention(
   return result;
 }
 
-auto TypeUnaryExpressionAst::WithoutGenerics() const -> Shared<TypeAst> {
-  if (not _CachedWithoutGenerics) {
-    _CachedWithoutGenerics = MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGenerics());
+auto TypeUnaryExpressionAst::WithoutGns() const -> Shared<TypeAst> {
+  if (not _CachedWithoutGns) {
+    _CachedWithoutGns = MakeShared<TypeUnaryExpressionAst>(Op, Rhs->WithoutGns());
   }
-  return _CachedWithoutGenerics;
+  return _CachedWithoutGns;
 }
 
-auto TypeUnaryExpressionAst::SubstituteGenerics(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> {
-  return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->SubstituteGenerics(args));
+auto TypeUnaryExpressionAst::SubstituteSelf(
+  TypeAst const &with) const -> Shared<TypeAst> {
+  return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->SubstituteSelf(with));
 }
 
-auto TypeUnaryExpressionAst::ContainsGenerics(
-  GenericParameterAst const &generic) const -> bool {
-  return Rhs->ContainsGenerics(generic);
-}
 auto TypeUnaryExpressionAst::IsCompilerGeneratedType() const -> bool {
   // Move into the rhs, ie for the type
   // "std::annotations::$Public", it moves to

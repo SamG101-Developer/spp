@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.destructure_utils;
+import spp.utils.ptr;
 import spp.utils.types;
 import llvm;
 import std;
@@ -41,6 +42,33 @@ namespace spp::analyse::utils::destructure_utils {
     Shared<TypeAst> const &val_type,
     ScopeManager &sm)
     -> Shared<IdentifierAst>;
+
+  /// What an array or tuple destructure ("let [a, b] = x", "let (a, ..r) = t") supplies to
+  /// "DestructureSequenceStage7": the only parts the two kinds do differently.
+  SPP_EXP_CLS struct SequenceShape {
+    /// Check the value is of the kind (raising the kind's own error), and answer its element count.
+    std::function<std::size_t(ExpressionAst const &val, Shared<TypeAst> const &val_type)> CheckAndCount;
+
+    /// Raise the kind's size-mismatch error: "lhs" elements written against a value of "rhs".
+    std::function<void(std::size_t lhs, ExpressionAst const &val, std::size_t rhs)> RaiseSizeMismatch;
+
+    /// The literal a bound ".." collects its elements into.
+    std::function<Unique<ExpressionAst>(Vec<Unique<ExpressionAst>> &&elems)> MakeRest;
+  };
+
+  /// Stage 7 of an array or tuple destructure: at most one "..", the value of the destructure's kind and size, bound
+  /// to a hidden temporary unless it names a place ("tmp_name"), then one "let" per element over its index of it (a
+  /// bound ".." taking the elements it skips, a skip taking none), analysed and kept in "new_asts".
+  SPP_EXP_FUN auto DestructureSequenceStage7(
+    LocalVariableAst const &self,
+    Vec<Unique<LocalVariableAst>> const &elems,
+    SequenceShape const &shape,
+    Shared<IdentifierAst> &tmp_name,
+    Vec<Unique<LetStatementInitializedAst>> &new_asts,
+    bool from_case_pattern,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void;
 
   /// When we have a pattern like "let Self(fd) = self", we
   /// mark "self" as moved, because all non-copyable fields

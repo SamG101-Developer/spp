@@ -45,7 +45,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  TypeSymbol *_LhsTypeSym;
+  TypeSymbol *_LhsTypeSymbol;
 
   /// The namespace a namespace left-hand-side resolved to, kept so a
   /// copy of this access analysed elsewhere (a parameter default at

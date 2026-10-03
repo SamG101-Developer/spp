@@ -1,19 +1,19 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.codegen.llvm_func;
+export module spp.codegen.llvm_fn;
 import spp.codegen.llvm_ctx;
 import llvm;
 
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
-use(spp::codegen, struct LlvmFuncWrapper);
+use(spp::codegen, struct LlvmFnWrapper);
 
 /// This is used as a shared pointer, wrapping the internal
 /// LLVM function, allowing it to be shared between cloned
 /// functions, and a one-place update mechanism too.
-SPP_EXP_CLS struct spp::codegen::LlvmFuncWrapper {
+SPP_EXP_CLS struct spp::codegen::LlvmFnWrapper {
   llvm::Function *Target;
 };
 
@@ -55,12 +55,12 @@ namespace spp::codegen {
   /// call through the pair passes the environment first, and
   /// a plain function doesn't have a parameter for it. The
   /// thunk is emitted once per module, and reused after that.
-  SPP_EXP_FUN auto BuildFunctionValue(llvm::Function const &target, LlvmCtx *ctx) -> llvm::Constant*;
+  SPP_EXP_FUN auto BuildFnValue(llvm::Function const &target, LlvmCtx *ctx) -> llvm::Constant*;
 
   /// Like the variant coercion function, a value naming a
   /// function that going into a function type, is replaced by
   /// the pair for the overload, that analysis chose there.
-  SPP_EXP_FUN auto CoerceToFunctionValue(
+  SPP_EXP_FUN auto CoerceToFnValue(
     llvm::Value *llvm_val,
     TypeRef const &target,
     TypeRef const &source,

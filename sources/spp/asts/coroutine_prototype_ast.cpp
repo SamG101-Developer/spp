@@ -94,7 +94,7 @@ auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
   IMPORT_UTILS;
   auto ast = MakeUnique<CoroutinePrototypeAst>(
     AstCloneVec(Annotations),
-    nullptr, // "cmp cor" not syntactically allowed. Todo: Raise semantic error instead?
+    nullptr, // "cmp cor" is not syntactically allowed.
     AstClone(TokFun),
     AstClone(Name),
     AstClone(GnParamGroup),
@@ -102,23 +102,7 @@ auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(TokArrow),
     AstClone(ReturnType),
     AstClone(Impl));
-  ast->_AnnotationInfo = _AnnotationInfo
-    ? MakeUnique<annotation_utils::AnnotationInfo>(*_AnnotationInfo)
-    : nullptr;
-  ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->_Ctx = _Ctx;
-  ast->_Scope = _Scope;
-  ast->AbstractAnnotation = AbstractAnnotation;
-  ast->VirtualAnnotation = VirtualAnnotation;
-  ast->TemperatureAnnotation = TemperatureAnnotation;
-  ast->FfiAnnotation = FfiAnnotation;
-  ast->BuiltinAnnotation = BuiltinAnnotation;
-  ast->TestAnnotation = TestAnnotation;
-  ast->InlineAnnotation = InlineAnnotation;
-  ast->Visibility = Visibility;
-  ast->VariadicPackType = VariadicPackType;
-  ast->_LlvmFunc = _LlvmFunc;
-  for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+  _CloneStateInto(*ast);
   return ast;
 }
 
@@ -128,27 +112,29 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+  const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
 
   // Update the meta information for enclosing function information.
   {
     const auto _meta_guard = MetaGuard(meta, true);
-    meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-    meta->EnclosingFunctionScope = sm->CurrentScope;
+    meta->EnclosingFnFlavour = TokFun.get();
+    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
+    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
     // Check the return type superimposes the generator type.
-    auto [generator_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
-      TypeRef::OfSym(*ret_type_sym, *sm->CurrentScope), *sm->CurrentScope,
+    const auto gen = marker_sups::FindGenSup(
+      TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
     marker_sups::EnforceYieldTypeWithoutGenDone(
-      yield_type.get(), is_once, *sm->CurrentScope, *ReturnType, "coroutine return type");
+      gen, *sm->CurrentScope, *ReturnType, "coroutine return type");
+    const auto yield_type = marker_sups::GenYieldOf(gen);
+    const auto is_once = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
     _YieldType = yield_type;
     _SendType = is_once
       ? generate::common_types_precompiled::VOID
-      : generator_sym->TypeArgType("Send");
+      : gen.Symbol->TypeArg("Send");
     _IsOnce = is_once;
 
     // Analyse the semantics of the function body, and move
@@ -170,7 +156,7 @@ auto CoroutinePrototypeAst::Stage10_PreCodeGen(
 
   // The lowering is what a call now targets, so it is the lowering
   // that is declared. The stamp still belongs on this prototype,
-  // because the lowering reaches it through "SetNonGenericImpl",
+  // because the lowering reaches it through "SetNonGnImpl",
   // and because a non-lowered reader (an instantiation of this
   // template, below) asks this one for it.
   _OwnerCtx = ctx;
@@ -182,8 +168,8 @@ auto CoroutinePrototypeAst::Stage10_PreCodeGen(
   // its own. This is the only walk that reaches one: instantiations
   // are registered against their template, never visited as
   // prototypes in their own right.
-  for (auto const &sub : _GenericSubstitutions) {
-    if (not sub.Required or not sub.IsConcrete) { continue; }
+  for (auto const &sub : _GnSubstitutions) {
+    if (not sub.IsRequired or not sub.IsConcrete) { continue; }
     auto sub_target = sub.Proto.get();
     if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>(); sub_coro != nullptr) {
       sub_coro->_OwnerCtx = ctx;
@@ -211,7 +197,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   if (_GenOnceLowered != nullptr) {
     _GenOnceLowered->Stage11_CodeGen(sm, meta, ctx);
     _DeclareBorrowedYieldStorage(*_GenOnceLowered);
-    _CodeGenGenericSubstitutions(sm, meta, ctx);
+    _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;
   }
 
@@ -222,14 +208,14 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // Create the entry block for this function. The first
   // instructions contained in this function will be the
   // coroutine boot intrinsics.
-  const auto llvm_func = GetLlvmFunc();
+  const auto llvm_func = GetLlvmFn();
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
   if (llvm_func_target == nullptr) {
-    const auto final_scope = sm->CurrentScope->FinalChildScope();
+    const auto final_scope = sm->CurrentScope->GetFinalChildScope();
     while (sm->CurrentScope != final_scope) { sm->MoveToNextScope(false); }
     sm->MoveOutOfCurrentScope();
-    _CodeGenGenericSubstitutions(sm, meta, ctx);
+    _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;
   }
   llvm_func_target->setPresplitCoroutine();
@@ -311,7 +297,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // Load the return type type symbol and the other meta
   // information values that the children asts in the
   // coroutine body might need to use.
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
+  const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(
     ReturnType.get());
 
   // Create the two blocks that every suspend point branches
@@ -344,10 +330,10 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     meta->LlvmGenerator->SuspendBlock = suspend_bb;
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
-    meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-    meta->EnclosingFunctionScope = sm->CurrentScope;
+    meta->EnclosingFnFlavour = TokFun.get();
+    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
+    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code. Generic
     // bases have already returned above. There are no ffi
@@ -436,7 +422,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
       ctx->Builder.CreateRet(coro_handle);
     }
     else {
-      const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+      const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
       const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
       const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
       ctx->Builder.CreateRet(
@@ -447,7 +433,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     VALIDATE_LLVM;
   }
   sm->MoveOutOfCurrentScope();
-  _CodeGenGenericSubstitutions(sm, meta, ctx);
+  _CodeGenGnSubstitutions(sm, meta, ctx);
   return nullptr;
 }
 
@@ -486,7 +472,7 @@ auto CoroutinePrototypeAst::_LowerGenOnce() -> void {
   // The lowering is written in no module of its own, so point it
   // at the coroutine it came from: that is where Stage10 stamps
   // the owning context "OwnerCtx" reads back.
-  _GenOnceLowered->SetNonGenericImpl(this);
+  _GenOnceLowered->SetNonGnImpl(this);
 }
 
 auto CoroutinePrototypeAst::_ForceInlineBorrowedYield(
@@ -502,7 +488,7 @@ auto CoroutinePrototypeAst::_ForceInlineBorrowedYield(
   // calls through a struct. Left out of line, the stores into the view are deleted as writes to a dying frame, and
   // what remains is an empty function returning a dangling pointer.
   if (_YieldType == nullptr or _YieldType->GetConvention() == nullptr) { return; }
-  const auto llvm_func = lowered.GetLlvmFunc();
+  const auto llvm_func = lowered.GetLlvmFn();
   if (llvm_func == nullptr or llvm_func->Target == nullptr) { return; }
   llvm_func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
 }
@@ -521,7 +507,7 @@ auto CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
   // redundant, less accurate markers"), which is what stops it narrowing them again. The cost is that these slots
   // cannot be reused for anything else in the caller: a few bytes of frame against a miscompile.
   if (_YieldType == nullptr or _YieldType->GetConvention() == nullptr) { return; }
-  const auto llvm_func = lowered.GetLlvmFunc();
+  const auto llvm_func = lowered.GetLlvmFn();
   if (llvm_func == nullptr or llvm_func->Target == nullptr or llvm_func->Target->isDeclaration()) { return; }
 
   auto &entry = llvm_func->Target->getEntryBlock();

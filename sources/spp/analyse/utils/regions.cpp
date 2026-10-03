@@ -17,26 +17,6 @@ import std;
 
 namespace spp::analyse::utils::regions {
   namespace {
-    /**
-     * The type symbol of one part of a type, and the scope it resolves in: an attribute by name, or an element of a
-     * tuple or an array by index. Nothing when the type has no such part.
-     */
-    auto IndividualPart(
-      TypeSymbol const &sym,
-      Scope const &scope,
-      IdentifierAst const &step)
-      -> Pair<TypeSymbol*, Scope const*> {
-      // Find the part the step names, which is an attribute's own
-      // name for a struct and an element's index for a tuple or
-      // an array.
-      for (auto const &[part_step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(sym, scope)) {
-        if (part_step->NameId() == step.NameId()) { return {part_sym, part_scope}; }
-      }
-
-      // Failsafe, should never be reached.
-      return {nullptr, nullptr};
-    }
-
     /// Todo: Inline with the single caller.
     auto SameRegionSection(
       IdentifierAst const &step,
@@ -100,16 +80,16 @@ auto spp::analyse::utils::regions::FirstUnaccountedPart(
 
   // Walk the whole region, so that "a.b.c" lands on the type of
   // "c" and the scope that type resolves in.
-  const auto [region_sym, region_scope] = DescendToPart(
-    sm.CurrentScope->GetTypeSymbol(sym.Type.get()), *sm.CurrentScope, region, region.Len() - 1);
-  if (region_sym == nullptr or region_scope == nullptr) { return Str(); }
+  const auto [region_ref, region_scope] = DescendToPart(
+    TypeRef::Of(*sym.Type, *sm.CurrentScope), *sm.CurrentScope, region, region.Len() - 1);
+  if (region_ref.Symbol == nullptr or region_scope == nullptr) { return Str(); }
 
   // The caller has established that the pattern took this place
   // apart, so its parts are walked whether or not any of them
   // recorded a move.
   auto unaccounted = Str();
   auto _ = RegionConsumed(
-    region, *region_sym, *region_scope, sym.MemInfo->AstPartialMoves, &unaccounted, true);
+    region, region_ref, *region_scope, sym.MemInfo->AstPartialMoves, &unaccounted, true);
   return unaccounted;
 }
 
@@ -128,7 +108,7 @@ auto spp::analyse::utils::regions::IsAttr(
   if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
 
   // Perform validation on the actual attribute too.
-  auto const var_symbol_outermost = sm->CurrentScope->GetVarSymbolOutermost(*expr);
+  auto const var_symbol_outermost = sm->CurrentScope->FindVarSymbolOutermost(*expr);
   return var_symbol_outermost.first != nullptr;
 }
 
@@ -160,25 +140,30 @@ auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
 }
 
 /**
- * The type symbol of the place @p steps names after @p count of its steps, and the scope it resolves in. Step zero
- * is the symbol itself, so a @p count of zero is the symbol's own type and a count of @c {steps.Len() - 1} is the
- * place the whole path names. Nothing when any step along the way has no such part.
+ * The type of the place @p steps names after @p count of its steps, and the scope it resolves in. Step zero is the
+ * root itself, so a @p count of zero is the root's own type and a count of @c {steps.Len() - 1} is the place the whole
+ * path names. Each step is a part ("type_members::GetAllParts"): an attribute's own name for a struct, an element's
+ * index for a tuple or an array. Nothing when any step along the way has no such part.
  */
 auto spp::analyse::utils::regions::DescendToPart(
-  TypeSymbol *root_sym,
+  TypeRef const &root,
   Scope const &root_scope,
   Vec<IdentifierAst*> const &steps,
   const std::size_t count)
-  -> Pair<TypeSymbol*, Scope const*> {
-  auto *part_sym = root_sym;
-  auto const *part_scope = &root_scope;
+  -> Pair<TypeRef, Scope const*> {
+  auto part = Pair<TypeRef, Scope const*>{root, &root_scope};
   for (auto i = std::size_t{1}; i <= count and i < steps.Len(); ++i) {
-    if (part_sym == nullptr or part_scope == nullptr) { break; }
-    const auto [next_sym, next_scope] = IndividualPart(*part_sym, *part_scope, *steps[i]);
-    part_sym = next_sym;
-    part_scope = next_scope;
+    if (part.first.Symbol == nullptr or part.second == nullptr) { break; }
+    auto next = Pair<TypeRef, Scope const*>{};
+    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(part.first, *part.second)) {
+      if (step->NameId() == steps[i]->NameId()) {
+        next = {ref, where};
+        break;
+      }
+    }
+    part = next;
   }
-  return {part_sym, part_scope};
+  return part;
 }
 
 /**
@@ -189,14 +174,14 @@ auto spp::analyse::utils::regions::DescendToPart(
  * only covered by finding that both of its own parts were taken. The parts of a class are its attributes; the
  * parts of a tuple or an array are its elements, which a destructure records by index.
  * @param region The names of the steps of the place being accounted for, outermost first.
- * @param sym The symbol of that place's type.
- * @param scope The scope @p sym resolves in.
+ * @param type That place's type.
+ * @param scope The scope @p type resolves in.
  * @param moves Every partial move recorded against the owning symbol.
  * @return Whether the place has nothing left to consume.
  */
 auto spp::analyse::utils::regions::RegionConsumed(
   Vec<IdentifierAst*> const &region,
-  TypeSymbol const &sym,
+  TypeRef const &type,
   Scope const &scope,
   Vec<Ast const*> const &moves,
   Str *const unaccounted,
@@ -228,10 +213,10 @@ auto spp::analyse::utils::regions::RegionConsumed(
   // Each part is checked on its own, under the name a destructure would have recorded it by - an attribute's own
   // name, or an element's index. A copyable part was never owed to anyone, so it never has to be accounted for.
   // If any part is unaccounted for, then nor is the value holding it.
-  for (auto const &[step, _, part_type, part_sym, part_scope] : type_members::GetAllParts(sym, scope)) {
-    if (part_sym == nullptr or part_sym->IsCopyable()) { continue; }
+  for (auto const &[step, _, part_type, part_ref, part_scope] : type_members::GetAllParts(type, scope)) {
+    if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { continue; }
     part.Back() = step.get();
-    if (not RegionConsumed(part, *part_sym, *part_scope, moves, unaccounted)) { return false; }
+    if (not RegionConsumed(part, part_ref, *part_scope, moves, unaccounted)) { return false; }
   }
 
   // Nothing left behind, so at this point we know the value

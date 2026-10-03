@@ -248,7 +248,7 @@ SPP_TEST_CMP_VALUES(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_loop_in_comptime_function,
-  SppInvalidComptimeOperationError, R"(
+  SppInvalidCompTimeOperationError, R"(
   cmp fun f(n: S32) -> S32 {
     let mut acc = 0
     let mut i = 0
@@ -267,7 +267,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_array_index_in_comptime,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
   cmp arr: Arr[S32, 3_uz] = [10, 20, 30]
   cmp a: S32 = arr[1_uz]@
 )");
@@ -578,7 +578,7 @@ SPP_TEST_CMP_VALUES(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_unbounded_recursion,
-  SppInvalidComptimeOperationError, R"(
+  SppInvalidCompTimeOperationError, R"(
   cmp fun rec(x: S32) -> S32 { ret rec(x) }
   cmp a: S32 = rec(1)
 )");

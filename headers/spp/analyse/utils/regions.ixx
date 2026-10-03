@@ -7,7 +7,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::regions, enum class MemRegionRelation);
 use(spp::asts, struct Ast);
@@ -70,15 +70,16 @@ namespace spp::analyse::utils::regions {
     ExpressionAst const &expr)
     -> bool;
 
-  /// The type symbol of the place "steps" names after "count"
-  /// of its steps, and the scope it resolves in. Step zero is
-  /// the symbol itself. Null when a step has no such part.
+  /// The type of the place "steps" names after "count" of its
+  /// steps ("type_members::GetAllParts"), and the scope it
+  /// resolves in. Step zero is the root itself. No type when a
+  /// step has no such part.
   SPP_EXP_FUN auto DescendToPart(
-    TypeSymbol *root_sym,
+    TypeRef const &root,
     Scope const &root_scope,
     Vec<IdentifierAst*> const &steps,
     const std::size_t count)
-    -> Pair<TypeSymbol*, Scope const*>;
+    -> Pair<TypeRef, Scope const*>;
 
   /// Whether everything the place "region" owns has been
   /// consumed, given every partial move recorded against its
@@ -86,7 +87,7 @@ namespace spp::analyse::utils::regions {
   /// The first part left over is written to "unaccounted".
   SPP_EXP_FUN auto RegionConsumed(
     Vec<IdentifierAst*> const &region,
-    TypeSymbol const &sym,
+    TypeRef const &type,
     Scope const &scope,
     Vec<Ast const*> const &moves,
     Str *const unaccounted = nullptr,

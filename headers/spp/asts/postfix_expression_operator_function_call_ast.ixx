@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorFunctionCallAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct FunctionCallArgumentAst);
@@ -64,8 +65,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Unique<PostfixExpressionOperatorAst> override;
 
   auto MarkAsAsync(Ast *async_token) -> void;
@@ -105,7 +106,7 @@ private:
   Ast *_IsAsync;
   bool _IsCoroAndAutoResume;
 
-  auto _HandleFunctionFolding(
+  auto _HandleFnFolding(
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;

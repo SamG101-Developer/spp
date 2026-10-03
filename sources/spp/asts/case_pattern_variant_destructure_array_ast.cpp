@@ -100,34 +100,13 @@ auto CasePatternVariantDestructureArrayAst::Stage8_CheckMemory(
 auto CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward comptime checking to the shared helper.
-  ResolveDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  CompTimeResolveDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
 auto CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  IMPORT_UTILS;
-
-  // Run the codegen on the transformed "let" ast to introduce
-  // symbols into the llvm function.
-  if (_MappedLet != nullptr) {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
-    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
-  }
-
-  // Combine all the generated transforms into a single "AND"ed
-  // expression.
-  auto llvm_transforms = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
-
-  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
-  const auto llvm_master_transform = llvm_transforms.IsEmpty()
-    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(AND));
-
-  // Return the combined expression back to the branch who owns
-  // this pattern.
-  return llvm_master_transform;
+  // Run the mapped "let", and match when every element does.
+  return CodeGenDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
 }
 
 auto CasePatternVariantDestructureArrayAst::ConvToVar(

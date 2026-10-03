@@ -175,7 +175,7 @@ auto spp::utils::errors::ErrorFormatter::SpanOfWholeFile() const
   // them is not part of the file anyone is looking at.
   auto lines = 0uz;
   for (auto i = 0uz; i < _Tokens.Len() and not IsPastUserSource(i); ++i) {
-    if (_Tokens[i].type == RawTokenType::TK_LINE_FEED) { ++lines; }
+    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++lines; }
   }
   return SourceSpan{.File = _FilePath, .EndLine = lines, .Generated = false};
 }
@@ -208,7 +208,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // after the last newline before this one.
   auto error_line_start_pos = 1uz;
   for (auto i = ast_start_pos; i-- > 0;) {
-    if (_Tokens[i].type == RawTokenType::TK_LINE_FEED) {
+    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) {
       error_line_start_pos = i + 1uz;
       break;
     }
@@ -218,7 +218,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // of the file
   auto error_line_end_pos = _Tokens.Len();
   for (auto i = ast_start_pos; i < _Tokens.Len(); ++i) {
-    if (_Tokens[i].type == RawTokenType::TK_LINE_FEED) {
+    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) {
       error_line_end_pos = i;
       break;
     }
@@ -231,7 +231,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
     _Tokens.begin() + static_cast<sys::ssize_t>(error_line_end_pos));
   auto error_line_as_string = genex::fold_left(
     error_line_tokens, Str(),
-    [](Str const &acc, const lex::RawToken &token) { return acc + token.data; });
+    [](Str const &acc, const lex::RawToken &token) { return acc + token.Data; });
   while (!error_line_as_string.empty() and error_line_as_string.back() == ' ') {
     error_line_as_string.pop_back();
   }
@@ -239,7 +239,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // Count line feeds before this token to get the 1-based line number.
   auto error_line_number = 0uz;
   for (auto i = 0uz; i < ast_start_pos; ++i) {
-    if (_Tokens[i].type == RawTokenType::TK_LINE_FEED) { ++error_line_number; }
+    if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++error_line_number; }
   }
 
   // Compute the character offset within the line by summing the data lengths of all raw tokens
@@ -247,7 +247,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // raw token) and multi-character identifiers (one single-char raw token per letter).
   auto char_offset = 0uz;
   for (auto i = error_line_start_pos; i < ast_start_pos && i < _Tokens.Len(); ++i) {
-    char_offset += _Tokens[i].data.length();
+    char_offset += _Tokens[i].Data.length();
   }
 
   // Compute the character span to underline. Iterate the raw tokens covered by this AST
@@ -256,7 +256,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   auto char_span = 0uz;
   const auto span_end = std::min(ast_start_pos + ast_size, error_line_end_pos);
   for (auto i = ast_start_pos; i < span_end && i < _Tokens.Len(); ++i) {
-    char_span += _Tokens[i].data.length();
+    char_span += _Tokens[i].Data.length();
   }
   if (char_span < 1) char_span = 1;
 

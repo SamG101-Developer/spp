@@ -42,47 +42,49 @@ public:
   SPP_ATTR_NODISCARD static auto ModeName(Mode mode) -> Str;
 
 private:
-  std::filesystem::path m_path;
+  std::filesystem::path _Path;
 
-  Unique<ModuleTree> m_modules;
+  Unique<ModuleTree> _Modules;
 
-  Mode m_mode = Mode::DEV;
+  Mode _Mode = Mode::DEV;
 
-  BuildType m_build_type = BuildType::EXE;
+  BuildType _BuildType = BuildType::EXE;
 
-  Unique<CompilerBoot> m_boot;
+  Unique<CompilerBoot> _Boot;
 
-  Unique<analyse::scopes::ScopeManager> m_scope_manager;
+  Unique<analyse::scopes::ScopeManager> _ScopeManager;
 
-  bool m_for_cpp_google_test = false;
+  bool _ForCppGoogleTest = false;
 
   /// Stop once the analysis is done, leaving monomorphisation, pre-codegen and codegen unrun. What an editor asks for
   /// is decided by stage 9 - types, errors, what a name resolved to, what a "cmp" evaluated to - and the stages after
   /// it cost more than every stage before them put together.
-  bool m_analyse_only = false;
+  bool _AnalyseOnly = false;
 
   /// How many unit tests the generated harness runs. Read off the boot once parsing has written the harness.
-  std::size_t m_test_count = 0;
+  std::size_t _TestCount = 0;
 
   /// The names of those tests, kept past @c Cleanup so the driver can re-run them one at a time.
-  Vec<Str> m_test_names;
+  Vec<Str> _TestNames;
 
   /**
    * The compile-time constants the main module declared, and the values they resolved to, rendered as the source text
    * of the literal each one became. Filled once comp-time resolution has finished and kept past @c Cleanup , which
    * destroys the scopes the values were read off.
    */
-  Map<Str, Str> m_comp_time_constants;
+  Map<Str, Str> _CompTimeConstants;
 
   /**
    * Read the resolved value of every @c cmp the main module declares off its scope, into
-   * @c m_comp_time_constants . Compiler-generated names (the @c "$" mocks a @c cmp function produces) are left out,
+   * @c _CompTimeConstants . Compiler-generated names (the @c "$" mocks a @c cmp function produces) are left out,
    * because they name machinery rather than anything that was written.
    */
   auto CollectCompTimeConstants() -> void;
 
+  /// An empty compiler, filled in by "ForCppGoogleTest".
+  Compiler() = default;
+
 public:
-  Compiler() = default; // TODO: Private
 
   /**
    * @param[in] mode Whether to build for development or release.

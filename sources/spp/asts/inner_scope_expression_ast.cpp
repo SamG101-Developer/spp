@@ -103,10 +103,10 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
     // What an "is" in this statement bound does not outlive the
     // statement ("let b = o is Some(val)" leaves no "val").
-    const auto bound_before = meta->IsBindingsAdded.Len();
+    const auto bound_before = meta->AddedIsBindings.Len();
     const auto expire_is_bindings = [&] {
-      for (auto j = bound_before; j < meta->IsBindingsAdded.Len(); ++j) {
-        meta->ExpiredIsBindings.EmplaceBack(meta->IsBindingsAdded[j]);
+      for (auto j = bound_before; j < meta->AddedIsBindings.Len(); ++j) {
+        meta->ExpiredIsBindings.EmplaceBack(meta->AddedIsBindings[j]);
       }
     };
 
@@ -124,7 +124,8 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
     // reported rather than whatever else is wrong with it.
-    control_flow::ValidateNoUnreachableCode(*x, Members[i + 1].get(), sm, meta);
+    RaiseIf<SppUnreachableCodeError>(
+      control_flow::Diverges(*x, sm, meta), {sm->CurrentScope}, ERR_ARGS(*x, *Members[i + 1]));
   }
 
   // Every statement but the last has its value discarded; the last
@@ -179,7 +180,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
       const auto move = meta->AssignmentTarget != nullptr
         ? static_cast<Ast const*>(meta->AssignmentTarget.get())
         : static_cast<Ast const*>(TokR.get());
-      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, meta);
     }
   }
 
@@ -203,13 +204,13 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // At the end of a scope, every symbol declared *in* this scope dies, so the escaping borrows it holds are released
   // with it. What matters is where the container was declared, not where the borrow was established: a handle
   // declared further out ("let h: Gen[..]" and then "{ h = c(&p) }") carries the borrow on past this point.
-  for (auto const &sym : sm->CurrentScope->AllVarSymbols(true)) {
+  for (auto const &sym : sm->CurrentScope->GetAllVarSymbols(true)) {
     auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows;
 
     for (auto const &ceb : contained_escaping_borrows) {
       sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
       const auto borrow = spp::get<0>(ceb);
-      const auto borrowed_sym = sm->CurrentScope->GetVarSymbolOutermost(*borrow).first;
+      const auto borrowed_sym = sm->CurrentScope->FindVarSymbolOutermost(*borrow).first;
       if (borrowed_sym == nullptr) { continue; }
       borrowed_sym->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
         [&](auto info) {
@@ -227,7 +228,7 @@ auto InnerScopeExpressionAst::Stage9_CompTimeResolve(
   sm->MoveToNextScope();
   for (auto const &m : this->Members) {
     m->Stage9_CompTimeResolve(sm, meta);
-    if (meta->CmpReturned) { break; }
+    if (meta->CompTimeReturned) { break; }
   }
 
   // Exit the scope.

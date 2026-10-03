@@ -36,7 +36,7 @@ namespace spp::asts {
       // vector.
       auto names = Vec<TypeAst*>();
       for (const auto x : keyword_args) {
-        if ((x->CompVal != nullptr) == comp) { names.EmplaceBack(x->Name.get()); }
+        if (x->IsCompArg() == comp) { names.EmplaceBack(x->TypeName().get()); }
       }
 
       // Grab the first set of duplicate into a new vector
@@ -62,7 +62,7 @@ auto GenericArgumentGroupAst::FromParams(
 
   for (auto const &param : generic_params.Params) {
     // Map type generic parameters to keyword type arguments.
-    if (param->CompType == nullptr) {
+    if (param->IsTypeParam()) {
       auto val = AstClone(param->Name);
       auto arg = GenericArgumentAst::NewType(param->Name, std::move(val));
       mapped_args.EmplaceBack(std::move(arg));
@@ -167,7 +167,7 @@ auto GenericArgumentGroupAst::operator==(
 
 auto GenericArgumentGroupAst::operator+=(
   const GenericArgumentGroupAst &other) -> GenericArgumentGroupAst& {
-  MergeGenerics(AstCloneVec(other.Args));
+  MergeArgs(AstCloneVec(other.Args));
   return *this;
 }
 
@@ -213,22 +213,22 @@ auto GenericArgumentGroupAst::At(
   // Find the keyword argument with the matching key. A type and a comp parameter cannot share a name, so neither can
   // their arguments.
   for (auto const &arg : Args) {
-    if (arg->Name != nullptr and arg->Name->LastTypePart()->Name == key) { return arg.get(); }
+    if (arg->TypeName() != nullptr and arg->TypeName()->LastTypePart()->Name == key) { return arg.get(); }
   }
   return nullptr;
 }
 
-auto GenericArgumentGroupAst::MergeGenerics(
+auto GenericArgumentGroupAst::MergeArgs(
   decltype(Args) &&other_args) -> void {
   IMPORT_UTILS;
   // Append the other arguments to this argument group, checking
   // named duplicates.
   for (auto &&other_arg : std::move(other_args)) {
-    if (other_arg->Name == nullptr) {
+    if (other_arg->TypeName() == nullptr) {
       const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
       Raise<SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
     }
-    const auto *name = other_arg->Name->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
+    const auto *name = other_arg->TypeName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
     if (At(name) != nullptr) { continue; }
     Args.EmplaceBack(std::move(other_arg));
   }
@@ -237,7 +237,7 @@ auto GenericArgumentGroupAst::MergeGenerics(
 auto GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by the kind of value.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->TypeVal != nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->IsTypeArg(); })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }
@@ -245,7 +245,7 @@ auto GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
 auto GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by the kind of value.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->CompVal != nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->IsCompArg(); })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }
@@ -253,7 +253,7 @@ auto GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
 auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by whether the argument is named.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->Name != nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->TypeName() != nullptr; })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }
@@ -261,7 +261,7 @@ auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*>
 auto GenericArgumentGroupAst::GetPositionalArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by whether the argument is named.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->Name == nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->TypeName() == nullptr; })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }

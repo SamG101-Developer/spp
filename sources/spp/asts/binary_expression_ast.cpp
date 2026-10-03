@@ -14,11 +14,14 @@ import spp.analyse.utils.operator_desugaring;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -56,7 +59,7 @@ BinaryExpressionAst::BinaryExpressionAst(
   Lhs(std::move(lhs)),
   TokOp(std::move(tok_op)),
   Rhs(std::move(rhs)),
-  _MappedFunc(nullptr),
+  _MappedFn(nullptr),
   _LogicalAnalysed(false),
   _IsLogical(IsLogicalToken(TokOp.get())) {
   Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
@@ -81,7 +84,7 @@ auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Lhs),
     AstClone(TokOp),
     AstClone(Rhs));
-  ast->_MappedFunc = _MappedFunc;
+  ast->_MappedFn = _MappedFn;
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
   ast->Source = Source;
   return ast;
@@ -96,7 +99,7 @@ auto BinaryExpressionAst::ToString() const -> Str {
     SPP_STRING_APPEND(Rhs).append(")");
   }
   else {
-    SPP_STRING_APPEND(_MappedFunc);
+    SPP_STRING_APPEND(_MappedFn);
   }
   SPP_STRING_END;
 }
@@ -112,7 +115,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
 
   // Todo: this guard shouldn't be needed?
-  if (_MappedFunc or _LogicalAnalysed) { return; }
+  if (_MappedFn or _LogicalAnalysed) { return; }
 
   // Handle lhs-folding.
   if (Lhs->To<FoldExpressionAst>()) {
@@ -123,7 +126,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
     const auto rhs_tuple_ref = Rhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTup(rhs_tuple_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTuple(rhs_tuple_ref, *sm->CurrentScope)) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>(
         {sm->CurrentScope},
@@ -132,7 +135,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto rhs_num_elems = rhs_tuple_ref.Sym->TypeArgTypes().Len();
+    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgs().Len();
     if (rhs_num_elems < 2) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>(
@@ -158,8 +161,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
       Rhs = std::move(new_ast);
     }
-    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
-    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+    _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
+    _MappedFn->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Handle rhs-folding.
@@ -171,14 +174,14 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
     const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTup(lhs_tuple_ref, *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeTuple(lhs_tuple_ref, *sm->CurrentScope)) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
     }
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto lhs_num_elems = lhs_tuple_ref.Sym->TypeArgTypes().Len();
+    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgs().Len();
     if (lhs_num_elems < 2) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
@@ -202,8 +205,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
       Lhs = std::move(new_ast);
     }
-    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
-    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+    _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
+    _MappedFn->Stage7_AnalyseSemantics(sm, meta);
   }
 
   else {
@@ -232,11 +235,11 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       // What an "is" on the left binds holds on the right of an
       // "and" (the match succeeded), but not of an "or" - the right
       // only runs when it failed.
-      const auto bound_before = meta->IsBindingsAdded.Len();
+      const auto bound_before = meta->AddedIsBindings.Len();
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        for (auto i = bound_before; i < meta->IsBindingsAdded.Len(); ++i) {
-          meta->ExpiredIsBindings.EmplaceBack(meta->IsBindingsAdded[i]);
+        for (auto i = bound_before; i < meta->AddedIsBindings.Len(); ++i) {
+          meta->ExpiredIsBindings.EmplaceBack(meta->AddedIsBindings[i]);
         }
       }
       Rhs->Stage7_AnalyseSemantics(sm, meta);
@@ -259,8 +262,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     }
 
     // Standard non-folding binary expression.
-    _MappedFunc = operator_desugaring::ConvertBinExprToFuncCall(*this, sm, meta);
-    _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+    _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
+    _MappedFn->Stage7_AnalyseSemantics(sm, meta);
   }
 }
 
@@ -277,14 +280,14 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
   // in all code.
   if (IsLogicalOperator()) {
     Lhs->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, true, true, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*Lhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
     Rhs->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, true, true, false, false, meta);
+    mem_utils::ValidateSymbolMemory(*Rhs, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
     return;
   }
 
   // Forward the memory checking to the mapped function.
-  _MappedFunc->Stage8_CheckMemory(sm, meta);
+  _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto BinaryExpressionAst::Stage9_CompTimeResolve(
@@ -298,14 +301,14 @@ auto BinaryExpressionAst::Stage9_CompTimeResolve(
   // doing an "and", then we can return true already.
   if (IsLogicalOperator()) {
     Lhs->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_is_true = meta->CmpResult->ToUnchecked<BooleanLiteralAst>()->IsTrue();
+    const auto lhs_is_true = meta->CompTimeResult->ToUnchecked<BooleanLiteralAst>()->IsTrue();
     if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
     Rhs->Stage9_CompTimeResolve(sm, meta);
     return;
   }
 
   // Forward the compile-time resolution to the mapped function.
-  _MappedFunc->Stage9_CompTimeResolve(sm, meta);
+  _MappedFn->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto BinaryExpressionAst::Stage11_CodeGen(
@@ -328,7 +331,7 @@ auto BinaryExpressionAst::Stage11_CodeGen(
 
   // Codegen via the mapped function if there is one. For
   // logical operators, move to the next steps below.
-  if (not IsLogicalOperator()) { return _MappedFunc->Stage11_CodeGen(sm, meta, ctx); }
+  if (not IsLogicalOperator()) { return _MappedFn->Stage11_CodeGen(sm, meta, ctx); }
 
   // The "and" and "or" operations cannot map from the function
   // as there is no function to map from. Instead, they have
@@ -388,7 +391,7 @@ auto BinaryExpressionAst::InferType(
   // is boolean, and comp-time arithmetic keeps its left
   // operand's type.
   // Todo: Remove this I think.
-  if (_MappedFunc == nullptr) {
+  if (_MappedFn == nullptr) {
     using lex::SppTokenType;
     const auto op = TokOp->TokenType;
     if (op == SppTokenType::TK_EQ or op == SppTokenType::TK_NE or op == SppTokenType::TK_LT
@@ -400,26 +403,41 @@ auto BinaryExpressionAst::InferType(
 
   // Infer the type from the function mapping of the binary
   // expression.
-  return _MappedFunc->InferType(sm, meta);
+  return _MappedFn->InferType(sm, meta);
 }
 
 auto BinaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // Before analysis maps it onto a function, the type is
   // decided by the operator ("InferType").
-  if (IsLogicalOperator() or _MappedFunc == nullptr) {
+  if (IsLogicalOperator() or _MappedFn == nullptr) {
     return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
   }
-  return _MappedFunc->InferTypeRef(sm, meta);
+  return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto BinaryExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
-  // Both operands are expressions.
+auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*> {
+  if (Lhs != nullptr and Rhs != nullptr) { return {Lhs.get(), Rhs.get()}; }
+  if (_MappedFn == nullptr) { return {nullptr, nullptr}; }
+  // "lhs.add(rhs)" as converted, or "Type::add(self=lhs, that=rhs)" once the call is elaborated.
+  auto const *const access = _MappedFn->Lhs->To<PostfixExpressionAst>();
+  auto const *const call = _MappedFn->Op->To<PostfixExpressionOperatorFunctionCallAst>();
+  if (call == nullptr) { return {nullptr, nullptr}; }
+  auto const &args = call->FnArgGroup->Args;
+  if (args.Len() == 2) { return {args[0]->Val.get(), args[1]->Val.get()}; }
+  if (args.Len() == 1 and access != nullptr and access->Lhs != nullptr) { return {access->Lhs.get(), args[0]->Val.get()}; }
+  return {nullptr, nullptr};
+}
+
+auto BinaryExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  // Both operands are expressions, read where they are written or where analysis moved them.
+  const auto [lhs, rhs] = Operands();
+  if (lhs == nullptr or rhs == nullptr) { return AstCloneShared(this); }
   return MakeShared<BinaryExpressionAst>(
-    AstClone(Lhs->SubstituteGenericsExpr(args)),
+    AstClone(lhs->ReadExpr(sub)),
     AstClone(TokOp),
-    AstClone(Rhs->SubstituteGenericsExpr(args)));
+    AstClone(rhs->ReadExpr(sub)));
 }
 
 auto BinaryExpressionAst::IsAllowedInDefault() const -> bool {

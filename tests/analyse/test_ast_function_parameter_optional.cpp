@@ -238,3 +238,49 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret g[5]()
     }
 )");
+
+// A default naming the function's generics is read by identity at each instantiation, nested ones too.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_valid_function_parameter_optional_default_with_a_nested_generic, R"(
+    fun f[T](a: T, b: Vec[Vec[T]] = Vec[Vec[T]]::new()) -> Vec[Vec[T]] {
+        std::mem::ops::drop(a)
+        ret b
+    }
+    fun g() -> Void {
+        let v: Vec[Vec[S32]] = f(1_s32)
+        std::mem::ops::drop(v)
+    }
+)");
+
+// A caller with a generic spelled like the callee's: the default names the callee's, by identity, not by spelling.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_valid_function_parameter_optional_default_with_a_caller_generic_of_the_same_name, R"(
+    fun f[T](a: T, b: Vec[T] = Vec[T]::new()) -> Vec[T] {
+        std::mem::ops::drop(a)
+        ret b
+    }
+    fun g[T](x: T) -> Vec[S32] {
+        std::mem::ops::drop(x)
+        ret f(1_s32)
+    }
+    fun h() -> Void {
+        let v = g(true)
+        std::mem::ops::drop(v)
+    }
+)");
+
+// A default naming a generic owner's parameter, inherited by the method, read in the owner's instantiation.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_valid_function_parameter_optional_default_naming_an_inherited_generic, R"(
+    cls Box[T] { }
+    sup [T] Box[T] {
+        !public fun make(&self, v: Vec[T] = Vec[T]::new()) -> Vec[T] { ret v }
+    }
+    fun f(b: &Box[S32]) -> Void {
+        let v: Vec[S32] = b.make()
+        std::mem::ops::drop(v)
+    }
+)");

@@ -115,7 +115,7 @@ auto TupleLiteralAst::Stage8_CheckMemory(
   // Check the memory of each element in the tuple literal.
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, meta, {.MarkMoves = false});
   }
 }
 
@@ -125,12 +125,12 @@ auto TupleLiteralAst::Stage9_CompTimeResolve(
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CmpResult);
-    cmp_elems.EmplaceBack(std::move(meta->CmpResult));
+    Elems[i] = AstClone(meta->CompTimeResult);
+    cmp_elems.EmplaceBack(std::move(meta->CompTimeResult));
   }
 
   // Wrap the compile-time array value.
-  meta->CmpResult = MakeUnique<TupleLiteralAst>(
+  meta->CompTimeResult = MakeUnique<TupleLiteralAst>(
     nullptr, std::move(cmp_elems), nullptr);
 }
 
@@ -139,7 +139,7 @@ auto TupleLiteralAst::Stage11_CodeGen(
   IMPORT_UTILS_AND_UID;
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + Uid();
-  const auto tuple_type_sym = InferTypeRef(sm, meta).Sym;
+  const auto tuple_type_sym = InferTypeRef(sm, meta).Symbol;
   const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
@@ -228,9 +228,9 @@ auto TupleLiteralAst::TypeOfElements(
   auto types_gen = elems
     | genex::views::transform([sm, meta](auto *elem) {
       auto type = elem->InferType(sm, meta);
-      const auto sym = sm->CurrentScope->GetTypeSymbol(type->WithoutConvention().get());
-      if (sym != nullptr and sym->IsTypeGeneric() and sym->AsBoundSymbol() != sym) {
-        type = sym->AsBoundSymbol()->FqName()->WithConvention(AstClone(type->GetConvention()));
+      const auto sym = sm->CurrentScope->FindTypeSymbol(type->WithoutConvention().get());
+      if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
+        type = sym->AsBound()->FqName()->WithConvention(AstClone(type->GetConvention()));
       }
       return type;
     })
@@ -242,8 +242,8 @@ auto TupleLiteralAst::TypeOfElements(
   return tuple_type;
 }
 
-auto TupleLiteralAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto TupleLiteralAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Each element is an expression so substitute them
   // all too.
   // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
@@ -251,13 +251,14 @@ auto TupleLiteralAst::SubstituteGenericsExpr(
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) {
-    auto sub = elem->SubstituteGenericsExpr(args);
+    auto sub_elem = elem->ReadExpr(sub);
     auto const *const id = elem->To<IdentifierAst>();
-    if (id != nullptr and analyse::utils::packs::IsPackParam(id->WrittenParam()) and sub->To<TupleLiteralAst>() != nullptr) {
-      for (auto const *inner : analyse::utils::packs::PackElementValues(*sub)) { elems.EmplaceBack(AstClone(inner)); }
+    auto const *const pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
+    if (pack != nullptr and pack->IsVariadic and sub_elem->To<TupleLiteralAst>() != nullptr) {
+      for (auto const *inner : analyse::utils::packs::CompPackElements(*sub_elem)) { elems.EmplaceBack(AstClone(inner)); }
       continue;
     }
-    elems.EmplaceBack(AstClone(sub));
+    elems.EmplaceBack(AstClone(sub_elem));
   }
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }

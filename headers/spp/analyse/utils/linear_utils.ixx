@@ -43,7 +43,7 @@ namespace spp::analyse::utils::linear_utils {
   /// the same thing but checks between this scope and the
   /// enclosing function's scope, allowing nested-ast "ret" or
   /// loop's "exit" to adhere to the memory system properly.
-  SPP_EXP_FUN auto CheckLiveUpToFunction(
+  SPP_EXP_FUN auto CheckLiveUpToFn(
     Ast const &exit_point,
     StrView exit_what,
     ScopeManager &sm,

@@ -123,7 +123,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), nullptr);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 
-  const auto cond_bindings_before = meta->IsBindingsAdded.Len();
+  const auto cond_bindings_before = meta->AddedIsBindings.Len();
 
   // The condition is never what the "case" is assigned to, so it
   // does not see that target: a lowered "is" as the condition has
@@ -166,15 +166,15 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   // continuation of the one before it, so initializing an
   // immutable "let" in one branch must not read as a second
   // initialization in the next.
-  const auto pre_branch_state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+  const auto pre_branch_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
   auto post_first_branch_state = ScopeSnapshot();
 
   // What an "is" in the condition binds only holds in the branch
   // taken when it matched - the first, for the form without "of".
   auto cond_bindings = Vec<VariableSymbol*>();
   if (tests_condition_directly) {
-    for (auto i = cond_bindings_before; i < meta->IsBindingsAdded.Len(); ++i) {
-      cond_bindings.EmplaceBack(meta->IsBindingsAdded[i]);
+    for (auto i = cond_bindings_before; i < meta->AddedIsBindings.Len(); ++i) {
+      cond_bindings.EmplaceBack(meta->AddedIsBindings[i]);
     }
   }
 
@@ -235,7 +235,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
 
   // Check the memory state of the condition.
   Cond->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*Cond, *Cond, *sm, true, true, false, false, meta);
+  mem_utils::ValidateSymbolMemory(*Cond, *Cond, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
   // Whether this "case" takes its subject is decided before
   // the branches run, because a "ret" or a loop jump inside
@@ -260,9 +260,9 @@ auto CaseExpressionAst::Stage8_CheckMemory(
     });
 
   const auto cond_ref = binds_by_move ? Cond->InferTypeRef(sm, meta) : TypeRef{};
-  const auto cond_ty_sym = cond_ref.Sym;
+  const auto cond_ty_sym = cond_ref.Symbol;
   const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
-    ? sm->CurrentScope->GetVarSymbolOutermost(*Cond).first
+    ? sm->CurrentScope->FindVarSymbolOutermost(*Cond).first
     : nullptr;
 
   const auto takes_subject = cond_sym != nullptr
@@ -322,10 +322,10 @@ auto CaseExpressionAst::Stage9_CompTimeResolve(
 
     // Delegate to the branches' compile-time resolution (break
     // at first match).
-    meta->CmpResult = nullptr;
+    meta->CompTimeResult = nullptr;
     for (auto const &branch : Branches) {
       branch->Stage9_CompTimeResolve(sm, meta);
-      if (meta->CmpResult != nullptr) { break; }
+      if (meta->CompTimeResult != nullptr) { break; }
     }
 
     // Otherwise, if no branches matched, this is non-returning,

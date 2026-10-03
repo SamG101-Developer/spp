@@ -109,11 +109,11 @@ auto UnaryExpressionAst::InferTypeRef(
   return Op->InferTypeRef(sm, meta);
 }
 
-auto UnaryExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto UnaryExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The only unary operator is the "async" function call
   // so there will be no specialization.
-  return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->SubstituteGenericsExpr(args)));
+  return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->ReadExpr(sub)));
 }
 
 auto UnaryExpressionAst::IsAllowedInDefault() const -> bool {

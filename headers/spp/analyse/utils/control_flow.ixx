@@ -22,15 +22,4 @@ namespace spp::analyse::utils::control_flow {
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> bool;
-
-  /// Check that nothing follows a statement that diverges: the
-  /// "next" statement would be dead code. Called per statement,
-  /// after it is analysed and before "next" is.
-  /// Todo: Remove this function and inline its 1 usage.
-  SPP_EXP_FUN auto ValidateNoUnreachableCode(
-    StatementAst &member,
-    StatementAst const *next,
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> void;
 }

@@ -31,10 +31,10 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_defer;
-import spp.codegen.llvm_func;
-import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ptr;
@@ -93,7 +93,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
   // Check the enclosing function is a coroutine and not
   // a subroutine.
-  const auto function_flavour = meta->EnclosingFunctionFlavour;
+  const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
     function_flavour->TokenType != lex::SppTokenType::KW_COR,
     {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
@@ -103,15 +103,15 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   auto expr_type = VoidType(PosStart());
   if (Expr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
-    if (not meta->EnclosingFunctionRetType.IsEmpty()) {
-      auto const &ret_type = meta->EnclosingFunctionRetType[0];
-      auto [_, yield_type, _] = marker_sups::GetGenAndYieldTypes(
+    if (not meta->EnclosingFnRetType.IsEmpty()) {
+      auto const &ret_type = meta->EnclosingFnRetType[0];
+      const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
         TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *ret_type,
-        [&] { return ret_type; }, "coroutine");
+        [&] { return ret_type; }, "coroutine"));
 
       meta->AssignmentTargetType = yield_type;
-      meta->AssignmentTargetType = self_type::SubstituteSelfTypeAndAnalyse(
-        *meta->AssignmentTargetType, *sm->CurrentScope, *sm, *meta);
+      meta->AssignmentTargetType = self_type::SubstituteSelf(
+        *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
       meta->AssignmentTarget = IdentifierAst::FromType(*meta->AssignmentTargetType);
       SPP_RETURN_TYPE_OVERLOAD_HELPER(Expr.get()) {
         meta->ReturnTypeOverloadResolverType = yield_type != nullptr
@@ -135,30 +135,32 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
   // Functions provide the return type, closures require
   // inference; handle the inference.
-  if (meta->EnclosingFunctionRetType.IsEmpty()) {
+  if (meta->EnclosingFnRetType.IsEmpty()) {
     _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
     _GenType->Stage7_AnalyseSemantics(sm, meta);
-    meta->EnclosingFunctionRetType.EmplaceBack(_GenType);
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(expr_type);
+    meta->EnclosingFnRetType.EmplaceBack(_GenType);
+    meta->EnclosingFnSourceRetType.EmplaceBack(expr_type);
   }
   else {
     // Todo - this list isn't getting cleared, so [0] != [last] (using .Back() hides the bug - TEMP FIX).
-    _GenType = meta->EnclosingFunctionRetType.Back();
+    _GenType = meta->EnclosingFnRetType.Back();
   }
 
   // Determine the "Yield" type of the enclosing function
   // (to type check the expression against).
   const auto gen_ref = TypeRef::Of(*_GenType, *sm->CurrentScope);
-  auto [gen_sym, yield_type, is_once] = marker_sups::GetGenAndYieldTypes(
+  const auto gen = marker_sups::FindGenSup(
     gen_ref, *sm->CurrentScope, *_GenType, [&] { return _GenType; }, "coroutine");
+  auto *const gen_sym = gen.Symbol;
+  auto yield_type = marker_sups::GenYieldOf(gen);
 
   // When we are yielding a value that *forwards* to the return
   // type, we need to call the forwarding function and inject
   // it into the expression field of this ast.
   const auto matches_as_is = Expr != nullptr
-    and type_compare::TypeEq(*yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+    and type_compare::TypeEq(*yield_type, *expr_type, *meta->EnclosingFnScope, *sm->CurrentScope);
   if (Expr != nullptr and not matches_as_is and type_compare::TypeFwdEq(
-    *expr_type, *yield_type, *sm->CurrentScope, *meta->EnclosingFunctionScope)) {
+    *expr_type, *yield_type, *sm->CurrentScope, *meta->EnclosingFnScope)) {
     const auto expr_ref = TypeRef::Of(*expr_type, *sm->CurrentScope);
     if (auto fwd_call = marker_sups::BuildFwdCall(*Expr, expr_ref, sm, meta); fwd_call != nullptr) {
       Expr = std::move(fwd_call);
@@ -169,18 +171,18 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   }
 
   const auto direct_match = type_compare::Assignable(
-    *yield_type, *expr_type, *meta->EnclosingFunctionScope, *sm->CurrentScope);
+    *yield_type, *expr_type, *meta->EnclosingFnScope, *sm->CurrentScope);
 
   // The enclosing return type, unless it only reaches a generator
   // through a super class, which is then named.
-  if (gen_sym != gen_ref.Sym) { _GenType = gen_sym->FqName(); }
-  _IsOnce = is_once;
+  if (gen_sym != gen_ref.Symbol) { _GenType = gen_sym->FqName(); }
+  _IsOnce = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
 
   // The yield type is read off the generator's identity, shared by every spelling of it, so the error points at the
   // return type this coroutine wrote.
-  if (not direct_match and not meta->EnclosingFunctionSourceRetType.IsEmpty()
-    and meta->EnclosingFunctionSourceRetType.Back() != nullptr) {
-    yield_type = yield_type->WithSourceSpanOf(*meta->EnclosingFunctionSourceRetType.Back());
+  if (not direct_match and not meta->EnclosingFnSourceRetType.IsEmpty()
+    and meta->EnclosingFnSourceRetType.Back() != nullptr) {
+    yield_type = yield_type->WithSourceSpanAt(*meta->EnclosingFnSourceRetType.Back());
   }
   RaiseIf<SppYieldedTypeMismatchError>(
     not direct_match, {sm->CurrentScope},
@@ -199,11 +201,11 @@ auto GenExpressionAst::Stage8_CheckMemory(
   // (for all conventions)
   Expr->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
-    *Expr, *TokGen, *sm, true, true, false, false, meta);
+    *Expr, *TokGen, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
   // If the value is non-symbolic, then there is no borrow
   // logic to implement, so return.
-  auto [sym, _] = sm->CurrentScope->GetVarSymbolOutermost(*Expr);
+  auto [sym, _] = sm->CurrentScope->FindVarSymbolOutermost(*Expr);
   if (sym == nullptr) { return; }
 
   if (Conv == nullptr) {
@@ -211,7 +213,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
     // borrowed value and that pins are maintained. Mark the
     // move or partial move of the argument.
     mem_utils::ValidateSymbolMemory(
-      *Expr, *TokGen, *sm, false, false, true, true, meta);
+      *Expr, *TokGen, *sm, meta, {.CheckMove = false, .CheckPartialMove = false});
   }
 
   else if (*Conv == ConventionTag::MUT) {
@@ -234,9 +236,9 @@ auto GenExpressionAst::Stage11_CodeGen(
   // Consider if we are in a subroutine by desugar (ie for a
   // lowered GenOnce check. If this is the case, use the return
   // instruction instead.
-  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     if (Conv != nullptr) {
-      ctx->Builder.CreateRet(codegen::llvm_addr_of(*Expr, sm, meta, ctx));
+      ctx->Builder.CreateRet(codegen::LlvmAddrOf(*Expr, sm, meta, ctx));
       return nullptr;
     }
 
@@ -263,13 +265,13 @@ auto GenExpressionAst::Stage11_CodeGen(
   // into an "Opt[S32]"), and a named function into a function
   // type. Otherwise the slot holds the bare member, untagged.
   if (llvm_yield_val != nullptr and Conv == nullptr and _GenType != nullptr) {
-    const auto [_, yield_type, _] = marker_sups::GetGenAndYieldTypes(
+    const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*_GenType, *sm->CurrentScope), *sm->CurrentScope, *_GenType, [&] { return _GenType; },
-      "coroutine", false);
+      "coroutine", false));
     if (yield_type != nullptr) {
       const auto yield_ref = TypeRef::Of(*yield_type, *sm->CurrentScope);
       const auto expr_ref = TypeRef::Of(*Expr->InferType(sm, meta), *sm->CurrentScope);
-      llvm_yield_val = codegen::CoerceToFunctionValue(llvm_yield_val, yield_ref, expr_ref, *sm, ctx);
+      llvm_yield_val = codegen::CoerceToFnValue(llvm_yield_val, yield_ref, expr_ref, *sm, ctx);
       llvm_yield_val = codegen::CoerceToVariant(
         llvm_yield_val, yield_ref, expr_ref, *sm->CurrentScope, "gen.yield.coerce", ctx);
     }
@@ -293,7 +295,7 @@ auto GenExpressionAst::Stage11_CodeGen(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());
 
   ctx->Builder.SetInsertPoint(destroy_bb);
-  codegen::EmitDeferredUnwind(*sm->CurrentScope, meta->EnclosingFunctionScope, true, sm, meta, ctx);
+  codegen::EmitDeferredUnwind(*sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
   ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
 
   ctx->Builder.SetInsertPoint(parked_bb);
@@ -324,7 +326,7 @@ auto GenExpressionAst::InferType(
   // "GenOnce", use "Void" in this case.
   using generate::common_types_precompiled::VOID;
   return not _IsOnce
-    ? sm->CurrentScope->GetTypeSymbol(_GenType.get())->TypeArgType("Send")
+    ? sm->CurrentScope->FindTypeSymbol(_GenType.get())->TypeArg("Send")
     : VOID;
 }
 

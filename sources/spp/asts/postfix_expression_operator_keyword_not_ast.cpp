@@ -71,11 +71,11 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The "lhs" will be boolean based on previous analysis.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
-  const auto cmp_lhs_bool = meta->CmpResult->To<BooleanLiteralAst>();
+  const auto cmp_lhs_bool = meta->CompTimeResult->To<BooleanLiteralAst>();
 
   // Extract the value inside the boolean and invert it.
   const auto p = PosStart();
-  meta->CmpResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
+  meta->CompTimeResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(

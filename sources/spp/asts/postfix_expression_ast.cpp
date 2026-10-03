@@ -76,14 +76,13 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
-  // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
+  // A type left-hand side is moved into a shared pointer: a "TypeAst" needs "shared_from_this".
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-      temp_lhs = type_resolution::ResolveWrittenType(*temp_lhs, *sm, *meta);
+      temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -171,7 +170,9 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
     // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
-    mem_utils::ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
+    mem_utils::ValidateSymbolMemory(
+      *meta->PostfixExpressionLhs, *Op, *sm, meta,
+      {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
 }
@@ -227,15 +228,15 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   return lhs_parts;
 }
 
-auto PostfixExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto PostfixExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or
   // a slice was given.
   return MakeShared<PostfixExpressionAst>(
-    AstClone(Lhs->SubstituteGenericsExpr(args)),
-    Op->SubstituteGenericsExpr(args));
+    AstClone(Lhs->ReadExpr(sub)),
+    Op->ReadExpr(sub));
 }
 
 auto PostfixExpressionAst::IsAllowedInDefault() const -> bool {

@@ -39,7 +39,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_moving_non_copy_cmp,
-    SppMovingComptimeConstantMemoryError, R"(
+    SppMovingCompTimeConstantMemoryError, R"(
     cls X { }
 
     cls MyType { }
@@ -85,14 +85,19 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_with_generic_move,
-    SppMovingComptimeConstantMemoryError, R"(
+    SppMovingCompTimeConstantMemoryError, R"(
+    cls Token { }
+    sup Token ext std::ops::drop::Drop {
+        fun drop(self) -> Void { }
+    }
+
     cls MyType[T, cmp m: T] { }
     sup [T, cmp m: T] MyType[T, m] {
         !public cmp n: T = m
     }
 
     fun f() -> Void {
-        let mut x = MyType[StrView, "123"]::n
+        let mut x = MyType[Token, Token()]::n
     }
 )");
 

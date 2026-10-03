@@ -87,8 +87,8 @@ private:
   /// would find the shadower. Only a binding that shadows one
   /// in its own scope uses these; every other binding is found
   /// by its name, as before. Neither is carried by "Clone".
-  Shared<VariableSymbol> _Sym;
-  Shared<VariableSymbol> _PrevSym;
+  Shared<VariableSymbol> _Symbol;
+  Shared<VariableSymbol> _PrevSymbol;
 
   /// Whether this binding is one of a same-scope shadowing
   /// pair, on either side: it shadows a binding in its own

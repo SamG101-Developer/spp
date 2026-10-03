@@ -4,7 +4,6 @@ module;
 export module spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_iterator;
-import spp.analyse.scopes.scope_range;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import std;
@@ -38,20 +37,20 @@ public:
   /// The static list of sup blocks that have been processed.
   /// This field is defined as static so that all the scope
   /// managers (including the temporary ones) can share it.
-  inline static Map<TypeSymbol*, Vec<Scope*>> normal_sup_blocks = {};
+  inline static Map<TypeSymbol*, Vec<Scope*>> NormalSupBlocks = {};
 
   /// The generic sup blocks are sup blocks that will be
   /// applied to all types, and have some special handling
   /// required. Example: "sup [T] T { ... }" and "ext" too.
   /// Todo: Do constraints work with this?
-  inline static Vec<Scope*> generic_sup_blocks = {};
+  inline static Vec<Scope*> GnSupBlocks = {};
 
   /// The temp scopes are a holder of scopes that are generated
   /// for certain things (closures, generic parameter types)
   /// and just need somewhere to live.
   /// Todo: Should look at being able to pop from this during
   /// the compilation (when a temp scope is no longer needed etc).
-  inline static Vec<Unique<Scope>> temp_scopes = {};
+  inline static Vec<Unique<Scope>> TempScopes = {};
 
   /// The master root global scope, the root of the entire
   /// compilation tree. This is shared into temp scope managers.
@@ -71,12 +70,6 @@ public:
 
   /// Default destructor logic.
   ~ScopeManager();
-
-  /// Provide the access to the the scope iterator, by
-  /// creating a range whose "begin()" and "end()" return
-  /// scope iterator instantiations containing the current
-  /// scope and nullptr (sentinel).
-  SPP_ATTR_NODISCARD auto Iter() const -> ScopeRange;
 
   /// Reset the scope manager to the provided scope. If the
   /// scope it nullptr, then it will reset to the global scope.
@@ -109,7 +102,7 @@ public:
   auto MoveToNextScope(bool ignore_alias_class_scopes = true) -> Scope*;
 
   /// Advance the iterator past every scope that's a descendant
-  /// of the current scope, up to its "FinalChildScope", from
+  /// of the current scope, up to its "GetFinalChildScope", from
   /// wherever in that subtree the walk has got to. One more
   /// iteration and the immediate sibling to this scope will be
   /// reached. The current scope stays the one exhausted, so that
@@ -166,7 +159,7 @@ private:
 public:
   /// Get the current iterator, generally for copying into a
   /// scope manager clone.
-  auto CurrentIterator() -> ScopeIterator&;
+  auto GetCurrentIterator() -> ScopeIterator&;
 
   /// Build the symbol for the special "Self" type, linked to the
   /// scope of the type it names and defined in "defined_in".

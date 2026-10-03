@@ -11,7 +11,7 @@ import std;
 namespace spp::utils::algorithms {
   SPP_EXP_FUN
   template <typename InputIt, typename T, typename BinOp>
-  auto MoveAccumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init);
+  auto move_accumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init);
 }
 
 namespace spp::views {
@@ -38,7 +38,7 @@ namespace spp::views {
 /// whilst accumulating. The GenEx equivalent has a forwarding
 /// issue I think. Todo: Check.
 SPP_EXP_FUN template <typename InputIt, typename T, typename BinOp>
-auto spp::utils::algorithms::MoveAccumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init) {
+auto spp::utils::algorithms::move_accumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init) {
   for (; first != last; ++first) {
     init = std::forward<BinOp>(op)(std::forward<T>(init), std::move(*first));
   }

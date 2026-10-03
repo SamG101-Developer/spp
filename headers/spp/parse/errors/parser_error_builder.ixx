@@ -38,7 +38,7 @@ namespace spp::parse::errors {
       case lex::SppTokenType::LX_CHARACTER: return "a character";
       case lex::SppTokenType::LX_DIGIT: return "a digit";
       default: {
-        auto const spelling = lex::tok_to_string(token);
+        auto const spelling = lex::TokToString(token);
         return spelling.empty() ? Str() : "'" + spelling + "'";
       }
     }
@@ -85,17 +85,17 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     if (token_set_str.empty()) { token_set_str = "something else"; }
 
     // Replace the "£" with the string tokens, completing
-    // the error message. Todo: Make "£" a constant.
+    // the error message.
     constexpr auto placeholder = StrView("£");
-    auto err_msg = this->_ErrObj->header;
+    auto err_msg = this->_ErrObj->Header;
     err_msg.replace(err_msg.find(placeholder), placeholder.size(), std::move(token_set_str));
 
     // Inject the error message into the error object for
     // this builder, and call the internal raise steps for
     // the abstract builder.
-    this->_ErrObj->message = err_msg;
-    this->_ErrObj->span = this->_ErrFormatters[0]->SpanOfRawPos(Pos, 1);
-    this->_ErrObj->messages = {
+    this->_ErrObj->Message = err_msg;
+    this->_ErrObj->Span = this->_ErrFormatters[0]->SpanOfRawPos(Pos, 1);
+    this->_ErrObj->Messages = {
       this->_ErrFormatters[0]->ErrorRawPos(
         Pos, 1, std::move(err_msg), "Syntax error")
     };

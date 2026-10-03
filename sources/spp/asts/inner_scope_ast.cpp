@@ -121,7 +121,7 @@ auto InnerScopeAst<T>::Stage8_CheckMemory(
   // (ie assigned or outer variable), then memory check it.
   if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
-      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, meta);
     }
   }
 

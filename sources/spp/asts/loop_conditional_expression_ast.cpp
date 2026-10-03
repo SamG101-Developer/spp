@@ -61,7 +61,7 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body),
     AstClone(ElseBlock));
   if (_IterDesugar) { cloned->MarkAsIterDesugar(); }
-  cloned->m_loop_exit_type_info = m_loop_exit_type_info;
+  cloned->_LoopExitTypeInfo = _LoopExitTypeInfo;
   cloned->_Scope = _Scope;
   return cloned;
 }
@@ -111,7 +111,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     meta->AssignmentTargetType = nullptr;
     Body->Stage7_AnalyseSemantics(sm, meta);
     if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-      m_loop_exit_type_info = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
     }
   }
 
@@ -138,13 +138,13 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // Todo: use the "reset" on "sm" like in TypeStatementAst?
   auto tm = ScopeManager(
     sm->GlobalScope, sm->CurrentScope);
-  tm.Reset(sm->CurrentScope, sm->CurrentIterator());
+  tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
 
-  mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, meta);
 
   // The state the loop was entered with, for the path that
   // never runs the body.
-  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
 
   // The second pass is the next iteration seeing what the first
   // left behind. A body that never reaches its end (it always
@@ -261,7 +261,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // left the "exit" nothing to feed and crashed the compiler.
   const auto uid = "." + Uid();
   const auto ret_type = InferType(sm, meta);
-  const auto is_expr = not type_predicates::IsTypeVoid(TypeRef::OfHead(*ret_type, *sm->CurrentScope), *sm->CurrentScope)
+  const auto is_expr = not type_predicates::IsTypeVoid(*ret_type, *sm->CurrentScope)
     and not ret_type->IsNeverType();
 
   // Create the key required blocks: the condition entry
@@ -375,23 +375,12 @@ auto LoopConditionalExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::NeverType;
 
-  // If the condition is a boolean literal "true" and no flow control statements exist, return the never type.
-  // if (const auto cond_bool_lit = cond->To<BooleanLiteralAst>()) {
-  //     if (cond_bool_lit->tok_bool->token_type == lex::SppTokenType::KW_TRUE) {
-  //         if (m_loop_exit_type_info.has_value()) {
-  //             const auto [exit_expr, _, _] = *m_loop_exit_type_info;
-  //             if (exit_expr == nullptr) {
-  //                 return generate::common_types::never_type(PosStart());
-  //             }
-  //         }
-  //     }
-  // }
 
   // A "loop true" with no exit statements returns "Never".
   const auto cond_lit = Cond->To<BooleanLiteralAst>();
   if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE) {
     // Check the internal flow controls.
-    if (not m_loop_exit_type_info.has_value()) {
+    if (not _LoopExitTypeInfo.has_value()) {
       return NeverType(PosStart());
     }
   }

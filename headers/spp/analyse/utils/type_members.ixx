@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.type_members;
+import spp.analyse.scopes.symbols;
 import spp.utils.ptr;
 import spp.utils.types;
 import std;
@@ -32,8 +33,8 @@ SPP_EXP_CLS struct spp::analyse::utils::type_members::TypePart {
   /// The part's own type.
   Shared<TypeAst> Type;
 
-  /// The symbol of the part's own type.
-  TypeSymbol *Sym;
+  /// The part's own type, as "Where" reads it.
+  TypeRef Ref;
 
   /// The scope that the part's type resolves in.
   Scope const *Where;
@@ -42,9 +43,11 @@ SPP_EXP_CLS struct spp::analyse::utils::type_members::TypePart {
 namespace spp::analyse::utils::type_members {
   /// Get all the parts of a type, either the fields for a type
   /// (and its super types' fields), or the indexes for a tuple
-  /// or array. Use the new type part struct.
+  /// or array, of a type as a value of it holds them (a borrow's
+  /// parts are those of the type borrowed). Use the new type part
+  /// struct.
   SPP_EXP_FUN auto GetAllParts(
-    TypeSymbol const &sym,
+    TypeRef const &ref,
     Scope const &scope,
     bool collapse_arrays = false)
     -> Vec<TypePart>;
@@ -100,15 +103,16 @@ namespace spp::analyse::utils::type_members {
     IdentifierAst const &field_name)
     -> std::size_t;
 
-  /// The classes "sym" is superimposed as ("sup Foo ext Bar"),
-  /// in the order its sup scopes list them. Empty for a type
-  /// with no scope of its own (a generic parameter).
-  SPP_EXP_FUN auto SuperClassTypes(TypeSymbol const &sym) -> Vec<TypeSymbol*>;
+  /// The classes "ref" is superimposed as ("sup Foo ext Bar"),
+  /// in the order its sup scopes list them, each read where
+  /// "scope" reads it. Empty for a type with no scope of its own
+  /// (a generic parameter).
+  SPP_EXP_FUN auto SuperClsRefs(TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
 
   /// The classes among "sup_scopes", each named where its own sup
   /// scope reads it: a sup type's name can hold a "Self" (as in
   /// "S32 ext Ord[Rhs=Self]") only that scope has a symbol for.
-  SPP_EXP_FUN auto SuperClassNames(Vec<Scope*> const &sup_scopes) -> Vec<Pair<Shared<TypeAst>, Scope const*>>;
+  SPP_EXP_FUN auto SuperClsNames(Vec<Scope*> const &sup_scopes) -> Vec<Pair<Shared<TypeAst>, Scope const*>>;
 
   /// Get the number of synthetic fat-pointer fields on this
   /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
@@ -121,12 +125,12 @@ namespace spp::analyse::utils::type_members {
   /// included) that @p matches: as a tuple or array element, a
   /// variant member, or an attribute, at any depth. A borrow or
   /// a pointer holds nothing by value ("Vec[T]" keeps its "T"s
-  /// behind "RawBuf"'s pointer). Null when nothing matches.
+  /// behind "RawBuf"'s pointer). No type when nothing matches.
   SPP_EXP_FUN auto FindHeldByValue(
     TypeRef const &ref,
     Scope const &scope,
-    std::function<bool(TypeSymbol const &, Scope const &)> const &matches)
-    -> TypeSymbol const*;
+    std::function<bool(TypeRef const &)> const &matches)
+    -> TypeRef;
 
   /// Detect if a type is recursive by checking all the fields
   /// of the type recursively, and making sure a look in the

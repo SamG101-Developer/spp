@@ -1,12 +1,13 @@
 module;
 #include <spp/analyse/macros.hpp>
 module spp.analyse.utils.type_compare;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_generics;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -54,7 +55,7 @@ namespace spp::analyse::utils::type_compare {
     /// [CHECKED]
     /// The generic arguments on the type on a type symbol.
     /// Handles type aliases correctly too.
-    auto SymArgGroup(
+    auto SymbolArgGroup(
       TypeSymbol const &sym)-> GenericArgumentGroupAst const& {
       // If the type symbol holds an alias type, get the generics
       // on an alias's resolved type.
@@ -74,8 +75,8 @@ namespace spp::analyse::utils::type_compare {
       Scope const &constraint_scope,
       Scope const &type_scope)
       -> bool {
-      return constraints.IsEmpty() or type.Sym == nullptr
-        or UnmetConstraint(constraints, *type.Sym, false, constraint_scope, type_scope) == nullptr;
+      return constraints.IsEmpty()
+        or UnmetConstraint(constraints, type, false, constraint_scope, type_scope) == nullptr;
     }
 
     /**
@@ -92,9 +93,11 @@ namespace spp::analyse::utils::type_compare {
       -> Vec<Unique<GenericArgumentAst>> const& {
       // A name written through an alias ("Res[T, E]") stands for what the alias resolves to, whose arguments are its
       // class's ("Var[Variants=..]").
-      auto const *const head = scope.GetTypeSymbol(type.WithoutGenerics()->WithoutConvention().get());
+      auto const *const head = scope.FindHeadSymbol(type);
       if (head != nullptr and head->Alias != nullptr) {
-        if (auto const *const sym = TypeRef::Of(type, scope).Sym; sym != nullptr) { return SymArgGroup(*sym).Args; }
+        if (auto const *const sym = TypeRef::Of(type, scope).Symbol; sym != nullptr) {
+          return SymbolArgGroup(*sym).Args;
+        }
       }
       return type.LastTypePart()->GnArgGroup->Args;
     }
@@ -110,7 +113,7 @@ namespace spp::analyse::utils::type_compare {
 
       // The trailing argument is a pack only when it names a
       // variadic parameter that is still unbound.
-      auto const *const pack = not rhs_args.IsEmpty() and packs::IsUnboundPackNamed(*rhs_args.Back(), rhs_scope)
+      auto const *const pack = not rhs_args.IsEmpty() and packs::DoesArgNameAnUnboundPack(*rhs_args.Back(), rhs_scope)
         ? rhs_args.Back().get()
         : nullptr;
 
@@ -129,7 +132,7 @@ namespace spp::analyse::utils::type_compare {
       // be the same length, or the shorter would be read as a
       // prefix of the longer. A fixed prototype needs no check:
       // its parameters already fix the length.
-      const auto is_variadic = proto != nullptr and proto->GnParamGroup->GetVariadicParams() != nullptr;
+      const auto is_variadic = proto != nullptr and proto->GnParamGroup->GetVariadicParam() != nullptr;
       return {
         .Compatible = not is_variadic or lhs_args.Len() == rhs_args.Len(),
         .FixedLen = std::min(lhs_args.Len(), rhs_args.Len()),
@@ -155,16 +158,16 @@ namespace spp::analyse::utils::type_compare {
       Scope const &pack_scope,
       Scope const &arg_scope)
       -> bool {
-      // A comp pack's values are checked against its type where they are bound ("_CheckCompArgTypes"), as a single
-      // comp argument's are, so only a type pack has anything to check here.
-      if (pack_arg.TypeVal == nullptr) { return true; }
-      auto const *const pack = pack_scope.GetTypeSymbol(pack_arg.TypeVal->WithoutGenerics().get(), false);
-      if (pack == nullptr or pack->GenericConstraints.IsEmpty()) { return true; }
+      // A comp pack's values are checked against its type where they are bound ("GenericSolver::_CheckCompArgs"), as a
+      // single comp argument's are, so only a type pack has anything to check here.
+      if (pack_arg.IsCompArg()) { return true; }
+      auto const *const pack = pack_scope.FindHeadSymbol(*pack_arg.TypeVal);
+      if (pack == nullptr or pack->TypeConstraints.IsEmpty()) { return true; }
 
       for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
-        if (lhs_args[i]->TypeVal == nullptr) { return false; }
+        if (lhs_args[i]->IsCompArg()) { return false; }
         if (not ConstraintsHold(
-          pack->GenericConstraints, TypeRef::Of(*lhs_args[i]->TypeVal, arg_scope), pack_scope, arg_scope)) {
+          pack->TypeConstraints, TypeRef::Of(*lhs_args[i]->TypeVal, arg_scope), pack_scope, arg_scope)) {
           return false;
         }
       }
@@ -211,7 +214,7 @@ namespace spp::analyse::utils::type_compare {
     auto AsType(
       TypeRef const &ref)
       -> Shared<TypeAst> {
-      auto name = ref.Sym->FqName();
+      auto name = ref.Symbol->FqName();
       if (ref.Conv == ConventionTag::MUT) {
         return name->WithConvention(MakeUnique<ConventionMutAst>(nullptr, nullptr));
       }
@@ -241,7 +244,7 @@ namespace spp::analyse::utils::type_compare {
       // flatten each type into the resulting list.
       for (const auto arg : variants.LastTypePart()->GnArgGroup->GetTypeArgs()) {
         const auto ref = TypeRef::Of(*arg->TypeVal, scope);
-        const auto nested = VariantMembers(ref, scope);
+        const auto nested = VariantMemberRefs(ref, scope);
         if (nested.IsEmpty()) { add_unique(arg->TypeVal, ref); }
         else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
       }
@@ -258,12 +261,12 @@ namespace spp::analyse::utils::type_compare {
       TypeRef const &variant, TypeRef const &type, Scope const &variant_scope, Scope const &type_scope) -> bool {
       // Get all the members of the variant as a vector of type
       // references; if empty, then return false (shortcut guard).
-      const auto variant_members = VariantMembers(variant, variant_scope);
+      const auto variant_members = VariantMemberRefs(variant, variant_scope);
       if (variant_members.IsEmpty()) { return false; }
 
       // Get the members of the type (assuming it is a subset
       // variant.
-      const auto type_members = VariantMembers(type, type_scope);
+      const auto type_members = VariantMemberRefs(type, type_scope);
       if (not type_members.IsEmpty()) {
         return genex::all_of(type_members, [&](auto const &t) {
           return genex::any_of(variant_members, [&](auto const &v) {
@@ -298,13 +301,13 @@ namespace spp::analyse::utils::type_compare {
       // There are no forwarding extensions definable over the
       // generic, so this will always be false.
       // Todo: Enforce this ^^^ (currently can be done).
-      if (arg.Sym == nullptr or arg.Sym->IsTypeGeneric() or arg.Sym->LinkedScope == nullptr) { return false; }
+      if (arg.Symbol == nullptr or arg.Symbol->IsGn() or arg.Symbol->LinkedScope == nullptr) { return false; }
 
       // An argument already naming the parameter's own class is
       // not forwarded to it (see "TypeFwdEq").
-      if (param.Sym != nullptr and
-        arg.Sym->LinkedScope->NonGenericScope == (
-          param.Sym->LinkedScope != nullptr ? param.Sym->LinkedScope->NonGenericScope : nullptr)) {
+      if (param.Symbol != nullptr and
+        arg.Symbol->LinkedScope->NonGnScope == (
+          param.Symbol->LinkedScope != nullptr ? param.Symbol->LinkedScope->NonGnScope : nullptr)) {
         return false;
       }
 
@@ -312,13 +315,12 @@ namespace spp::analyse::utils::type_compare {
       // superimposition extension and select it.
       // Todo: Move to "marker_sups" util package?
       auto const &fwd_target = both_ref ? *FWD_REF : *FWD_MUT;
-      auto candidates = Vec<TypeSymbol const*>{arg.Sym};
-      candidates.AppendRange(type_members::SuperClassTypes(*arg.Sym));
-      for (const auto candidate : candidates) {
-        if (not IsTemplate(*candidate, fwd_target, arg_scope)) { continue; }
-        const auto target = SymArgGroup(*candidate).At("T");
-        if (target == nullptr or target->TypeVal == nullptr) { continue; }
-        auto inner = TypeRef::Of(*target->TypeVal, param_scope);
+      auto candidates = Vec{arg};
+      candidates.AppendRange(type_members::SuperClsRefs(arg, arg_scope));
+      for (auto const &candidate : candidates) {
+        if (candidate.Symbol == nullptr or not candidate.IsA(fwd_target, arg_scope)) { continue; }
+        auto inner = candidate.Symbol->TypeArgRef("T");
+        if (inner.Symbol == nullptr) { continue; }
         inner.Conv = param.Conv;
         if (AssignableCore(inner, param, param_scope, param_scope, true)) { return true; }
       }
@@ -334,84 +336,60 @@ namespace spp::analyse::utils::type_compare {
       // Iterate every super class of the mock type (this gets
       // the list of FunXXX overloads), and check the type
       // against the "func" type.
-      for (const auto sup_sym : type_members::SuperClassTypes(*mock.Sym)) {
-        const auto sup = TypeRef::OfResolved(*sup_sym, mock_scope);
-        if (type_predicates::IsTypeFunc(sup, mock_scope) and AssignableCore(sup, func, mock_scope, func_scope, true)) {
+      for (auto const &sup : type_members::SuperClsRefs(mock, mock_scope)) {
+        if (type_predicates::IsTypeFunction(sup, mock_scope)
+          and AssignableCore(sup, func, mock_scope, func_scope, true)) {
           return true;
         }
       }
-      return function_values::MatchFunctionValue(mock, func, func_scope).has_value();
+      return fn_values::MatchFnValue(mock, func, func_scope).has_value();
     }
 
     /// [CHECKED]
-    /// If the type references are "Self", then get the true
-    /// class types (depending on the scopes that they are read);
-    /// otherwise use the original symbols. If one isn't "Self",
-    /// then return a pair of nullptrs; no special "Self"
-    /// comparison needed. Otherwise
-    auto ResolveSelfPair(
+    /// If either type is "Self", the class it stands for where the other side is read (a binding's bound type when the
+    /// other side is a binding), read where its own side is; otherwise the types as they are. Both are none when a
+    /// "Self" stands for nothing there. "both_self" is set when both are "Self", which is all a comparison needs.
+    auto ReadSelfPair(
       TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope, bool &both_self)
-      -> Pair<TypeSymbol*, TypeSymbol*> {
+      -> Pair<TypeRef, TypeRef> {
       //
-      using generate::common_types_precompiled::SELF_TYPE;
-      const auto lhs_self = lhs.Sym->IsSelf();
-      const auto rhs_self = rhs.Sym->IsSelf();
+      const auto lhs_self = lhs.Symbol->IsSelf();
+      const auto rhs_self = rhs.Symbol->IsSelf();
       both_self = lhs_self and rhs_self;
+      if (not lhs_self and not rhs_self) { return {lhs, rhs}; }
 
       //
-      auto lhs_sym = lhs_self ? rhs_scope.GetTypeSymbol(SELF_TYPE.get(), false) : lhs.Sym;
-      auto rhs_sym = rhs_self ? lhs_scope.GetTypeSymbol(SELF_TYPE.get(), false) : rhs.Sym;
-
-      //
-      if (lhs_sym == nullptr or rhs_sym == nullptr) { return {nullptr, nullptr}; }
-      if (lhs_self and rhs_sym->Type != nullptr) { lhs_sym = lhs_sym->AsClassSymbol(); }
-      if (rhs_self and lhs_sym->Type != nullptr) { rhs_sym = rhs_sym->AsClassSymbol(); }
-      return {lhs_sym, rhs_sym};
-    }
-
-    /// [CHECKED]
-    /// Whether or not two resolved symbols are the same type
-    /// (under a convention), by getting the type id and comparing
-    /// them.
-    auto SameId(
-      TypeSymbol const &lhs_sym, TypeSymbol const &rhs_sym, const ConventionTag conv,
-      Scope const &lhs_scope, Scope const &rhs_scope) -> bool {
-      // Pointer equality shortcut. Then, get the ids of the
-      // two types based on the scopes provided, and check
-      // that they match.
-      if (&lhs_sym == &rhs_sym) { return true; }
-      auto const lhs_id = lhs_scope.TypeIdOfSym(lhs_sym, static_cast<std::uint64_t>(conv));
-      return lhs_id != nullptr and lhs_id == rhs_scope.TypeIdOfSym(rhs_sym, static_cast<std::uint64_t>(conv));
+      auto lhs_sym = lhs_self ? rhs_scope.FindSelfSymbol() : lhs.Symbol;
+      auto rhs_sym = rhs_self ? lhs_scope.FindSelfSymbol() : rhs.Symbol;
+      if (lhs_sym == nullptr or rhs_sym == nullptr) { return {}; }
+      if (lhs_self and rhs_sym->Type != nullptr) { lhs_sym = lhs_sym->AsBound(); }
+      if (rhs_self and lhs_sym->Type != nullptr) { rhs_sym = rhs_sym->AsBound(); }
+      return {
+        lhs_self ? TypeRef::Of(*lhs_sym, lhs_scope, lhs.Conv, false) : lhs,
+        rhs_self ? TypeRef::Of(*rhs_sym, rhs_scope, rhs.Conv, false) : rhs};
     }
 
     /// [FWD]
     auto AssignableArgs(
-      TypeSymbol const &target_sym, TypeSymbol const &value_sym, Scope const &target_scope,
-      Scope const &value_scope) -> bool;
+      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool;
 
     /// [CHECKED]
     /// Check to type identity, shortcutting on never types,
     /// then a nullptr and convention check. Finally we do a
-    /// "Self"-pair resolution/comparison, before checking
-    /// the identity flag on the 2 symbols.
+    /// "Self"-pair resolution/comparison, before comparing
+    /// the identities.
     auto SameType(
       TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool {
       // Never and convention shortcut guards to avoid unnecessary
       // symbol lookups.
       if (lhs.IsNever or rhs.IsNever) { return lhs.IsNever and rhs.IsNever; }
-      if (lhs.Sym == nullptr or rhs.Sym == nullptr or lhs.Conv != rhs.Conv) { return false; }
+      if (lhs.Symbol == nullptr or rhs.Symbol == nullptr or lhs.Conv != rhs.Conv) { return false; }
 
       // Do the "Self" resolution for the two types, and if they
       // are both "Self" types, return true.
       auto both_self = false;
-      auto [lhs_sym, rhs_sym] = ResolveSelfPair(lhs, rhs, lhs_scope, rhs_scope, both_self);
-      if (both_self) { return true; }
-
-      // The lhs_sym and rhs_sym are the class-resolved versions
-      // of the self symbols (at this point either 0 or 1 is Self;
-      // If neither resolved, do a simple "id ==" under scope.
-      if (lhs_sym == lhs.Sym and rhs_sym == rhs.Sym) { return lhs.Id != nullptr and lhs.Id == rhs.Id; }
-      return lhs_sym != nullptr and SameId(*lhs_sym, *rhs_sym, lhs.Conv, lhs_scope, rhs_scope);
+      const auto [l, r] = ReadSelfPair(lhs, rhs, lhs_scope, rhs_scope, both_self);
+      return both_self or l.SameAs(r);
     }
 
     /// [CHECKED]
@@ -425,14 +403,14 @@ namespace spp::analyse::utils::type_compare {
       // it (except never, which is pre-checked).
       if (value.IsNever) { return true; }
       if (target.IsNever) { return false; }
-      if (target.Sym == nullptr or value.Sym == nullptr) { return false; }
+      if (target.Symbol == nullptr or value.Symbol == nullptr) { return false; }
 
       // Run the "Self" check; if both types are "Self" then
       // return true.
       auto both_self = false;
-      auto [target_sym, value_sym] = ResolveSelfPair(target, value, target_scope, value_scope, both_self);
+      const auto [t, v] = ReadSelfPair(target, value, target_scope, value_scope, both_self);
       if (both_self) { return true; }
-      if (target_sym == nullptr) { return false; }
+      if (t.Symbol == nullptr) { return false; }
 
       // If we are allowing variant checks, then check the value
       // can be accepted by the target variant; return early.
@@ -444,84 +422,94 @@ namespace spp::analyse::utils::type_compare {
       // aside from permitted coalescing, is an early return false.
       if (not ConventionTagEq(target.Conv, value.Conv)) { return false; }
 
-      // Next do the standard id comparison check for the target
-      // and value symbols from the "Self" check.
-      const auto same = target_sym == target.Sym and value_sym == value.Sym
-        ? target.Id != nullptr and target.Id == value.Id
-        : SameId(*target_sym, *value_sym, ConventionTag::MOV, target_scope, value_scope);
-      if (same) { return true; }
+      // Next compare the identities of the types from the "Self"
+      // check, the conventions having been compared above.
+      if (t.Id != nullptr and t.Id == v.Id) { return true; }
 
       // Different templates: a function mock against a function
       // type, or a forwarding type against its target.
-      if (target_sym->Type != value_sym->Type) {
+      if (t.Symbol->Type != v.Symbol->Type) {
         // The target is a $MockType, so check it against FunXXX
         // family overload types.
-        if (target_sym->IsMock()) {
-          return MockMatches(
-            TypeRef::OfResolved(*target_sym, target_scope, target.Conv), value, target_scope, value_scope);
-        }
+        if (t.Symbol->IsMock()) { return MockMatches(t, value, target_scope, value_scope); }
 
         // Same as above but the other way around. Todo: Are both
         // ways needed?
-        if (value_sym->IsMock()) {
-          return MockMatches(
-            TypeRef::OfResolved(*value_sym, value_scope, value.Conv), target, value_scope, target_scope);
-        }
+        if (v.Symbol->IsMock()) { return MockMatches(v, target, value_scope, target_scope); }
 
         // Otherwise, consider a forwarding check, of "Vec" to the
         // "&View" type for example.
-        return ForwardsTo(
-          TypeRef::OfResolved(*value_sym, value_scope, value.Conv),
-          TypeRef::OfResolved(*target_sym, target_scope, target.Conv),
-          value_scope, target_scope);
+        return ForwardsTo(v, t, value_scope, target_scope);
       }
 
       // If we reach this point, then the templates are the same,
       // but the ids are not, and therefore we need to consider
       // the generic arguments.
-      return AssignableArgs(*target_sym, *value_sym, target_scope, value_scope);
+      return AssignableArgs(t, v, target_scope, value_scope);
+    }
+
+    /// The arguments an identity holds: an instance's, or a variant's members (positionally, as its "Variants" tuple
+    /// lists them, in their canonical order). None for anything else.
+    auto IdArgs(
+      TypeId id) -> std::vector<scopes::TypeIdArg> {
+      if (id == nullptr) { return {}; }
+      auto const &head = scopes::HeadOf(id);
+      if (head.Kind == scopes::InstanceKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }
+      auto members = std::vector<scopes::TypeIdArg>();
+      if (head.Kind == scopes::InstanceKey::Tag::Variant) {
+        for (const auto m : head.Members) { members.push_back({.TypeVal = m}); }
+      }
+      return members;
+    }
+
+    /// Whether an identity's argument is a variadic parameter nothing has bound where it was read: a pack, which
+    /// stands for any number of arguments.
+    auto IsUnboundPackArg(
+      scopes::TypeIdArg const &arg) -> bool {
+      if (arg.TypeVal != nullptr) {
+        auto const &head = scopes::HeadOf(arg.TypeVal);
+        auto const *const param = head.Kind == scopes::InstanceKey::Tag::TypeParam
+          ? scopes::GnTypeParamOf(head.TypeParamId)
+          : nullptr;
+        return param != nullptr and param->IsVariadic;
+      }
+      auto const *const node = scopes::CompNodeOf(arg.CompVal);
+      auto const *const param = node != nullptr and node->Kind == scopes::CompNode::Part::Param
+        ? scopes::GnCompParamOf(node->ParamId)
+        : nullptr;
+      return param != nullptr and param->IsVariadic;
     }
 
     /// [CHECKED]
-    /// Run the assignable core for pairs of generic arguments,
-    /// but also consider the variadic case.
+    /// Run the assignable core for pairs of generic arguments, read off the two identities, but also consider the
+    /// variadic case: a trailing unbound pack on the value absorbs what is left.
     auto AssignableArgs(
-      TypeSymbol const &target_sym, TypeSymbol const &value_sym, Scope const &target_scope,
-      Scope const &value_scope) -> bool {
-      // Get references to the generic arguments of both the
-      // types, and determine their "arity".
-      auto const &target_args = SymArgGroup(target_sym).Args;
-      auto const &value_args = SymArgGroup(value_sym).Args;
-      const auto arity = MatchArgListArity(
-        target_sym.Type, target_args, value_args, value_scope);
+      TypeRef const &target, TypeRef const &value, Scope const &target_scope, Scope const &value_scope) -> bool {
+      using Tag = scopes::InstanceKey::Tag;
+      const auto target_args = IdArgs(target.Id);
+      const auto value_args = IdArgs(value.Id);
 
-      // If the lists are incompatible (by size), then shortcut
-      // return false.
-      if (not arity.Compatible) { return false; }
-
-      // The length is the same, so iterate to it and perform
-      // the equality logic.
-      for (auto i = 0uz; i < arity.FixedLen; ++i) {
-        auto const &t = *target_args[i];
-        auto const &v = *value_args[i];
-        // const auto ok = t.TypeVal != nullptr and v.TypeVal != nullptr
-        //   ? Assignable(*t.TypeVal, *v.TypeVal, target_scope, value_scope)
-        //   : t.CompVal != nullptr and v.CompVal != nullptr
-        //   ? TypeEq(*t.CompVal, *v.CompVal, target_scope, value_scope)
-        //   : false;
-        const auto ok = t.TypeVal != nullptr and v.TypeVal != nullptr
-          ? (t.TypeVal->IsSelfType() and v.TypeVal->IsSelfType()) or AssignableCore(
-            TypeRef::Of(*t.TypeVal, target_scope), TypeRef::Of(*v.TypeVal, value_scope), target_scope, value_scope,
-            true)
-          : t.CompVal != nullptr and v.CompVal != nullptr and TypeEq(*t.CompVal, *v.CompVal, target_scope, value_scope);
-
-        // The first mismatch is a false, as all generic arguments
-        // need to match.
-        if (not ok) { return false; }
+      // Without a pack, a variadic template's (or a variant's) two lists have to be the same length, or the shorter
+      // would be read as a prefix of the longer. A fixed template needs no check: its parameters fix the length.
+      const auto has_pack = not value_args.empty() and IsUnboundPackArg(value_args.back());
+      const auto fixed_len = has_pack ? value_args.size() - 1 : std::min(target_args.size(), value_args.size());
+      const auto is_variadic = scopes::HeadOf(target.Id).Kind == Tag::Variant
+        or (target.Symbol->Type != nullptr and target.Symbol->Type->GnParamGroup->GetVariadicParam() != nullptr);
+      if (has_pack ? target_args.size() < fixed_len : is_variadic and target_args.size() != value_args.size()) {
+        return false;
       }
 
-      // No early breaks => no mismatches, so all generics have
-      // matched => containing types also match.
+      // Every argument has to match: types by assignability ("Self" matching "Self"), comp values by identity.
+      for (auto i = 0uz; i < fixed_len; ++i) {
+        auto const &t = target_args[i];
+        auto const &v = value_args[i];
+        const auto ok = t.TypeVal != nullptr and v.TypeVal != nullptr
+          ? (scopes::HeadOf(t.TypeVal).Kind == Tag::Self and scopes::HeadOf(v.TypeVal).Kind == Tag::Self)
+          or AssignableCore(
+            TypeRef::Of(t.TypeVal, target_scope), TypeRef::Of(v.TypeVal, value_scope), target_scope, value_scope, true)
+          : t.TypeVal == nullptr and v.TypeVal == nullptr and t.CompVal == v.CompVal;
+        if (not ok) { return false; }
+      }
       return true;
     }
 
@@ -535,7 +523,7 @@ namespace spp::analyse::utils::type_compare {
     }
 
     /// What a relaxed match binds: a generic's name, and the type
-    /// or comp value opposite it. "Written" is the type as the
+    /// or comp value opposite it. "WrittenTypeId" is the type as the
     /// matched side spelled it, kept for the one case a resolved
     /// type cannot cover: an open instantiation nothing has made
     /// yet ("Mutex[T=T]" as the class writes it) resolves to no
@@ -553,7 +541,7 @@ namespace spp::analyse::utils::type_compare {
     /// [CHECKED]
     /// Given a vector of bindings, find the binding for a given
     /// name. Matches on the "Name" field of a binding.
-    auto FindRelaxedBinding(
+    auto RelaxedFindBinding(
       RelaxedBindings const &bindings, TypeIdentifierAst const &name) -> RelaxedBinding const* {
       // Iterate each binding and compare on the "Name" field;
       // return the first match.
@@ -570,42 +558,30 @@ namespace spp::analyse::utils::type_compare {
       bool CheckConstraints;
     };
 
-    auto RelaxedMatch(
+    auto RelaxedMatchType(
       TypeRef const &lhs, Shared<TypeAst> const &lhs_type, TypeAst const &rhs_type, RelaxedCtx &ctx) -> bool;
 
-    /// A comp value's identity, which compares it by meaning ("1_uz + 1_uz" is "2_uz").
-    auto CompIdentityOf(ExpressionAst const &comp, Scope const &scope) -> Str {
-      auto out = Str();
-      comp_generics::CompExprIdentity(comp, scope, out);
-      return out;
-    }
-
-    /// A type generic of the pattern binds to the type opposite it - the same type each time it is named
-    /// ("Pair[T, T]") - which has to satisfy its constraints.
+    /// A type generic of the pattern binds to the type opposite it, the same type each time it is named ("Pair[T, T]").
+    /// A type that resolved to no symbol has nothing to compare.
     auto RelaxedBindType(
-      Shared<TypeIdentifierAst> name, TypeSymbol const &generic, TypeRef const &lhs, Shared<TypeAst> const &lhs_type,
-      RelaxedCtx &ctx) -> bool {
-      if (const auto existing = FindRelaxedBinding(ctx.Bindings, *name); existing == nullptr) {
-        ctx.Bindings.EmplaceBack(RelaxedBinding{
-          .Name = std::move(name), .Type = lhs, .Comp = nullptr, .TypeWritten = lhs_type
-        });
+      Shared<TypeIdentifierAst> name, TypeRef const &lhs, Shared<TypeAst> lhs_type, RelaxedCtx &ctx) -> bool {
+      if (auto const *const existing = RelaxedFindBinding(ctx.Bindings, *name); existing != nullptr) {
+        return existing->Type.Symbol == nullptr or lhs.Symbol == nullptr
+          or SameType(existing->Type, lhs, ctx.LhsScope, ctx.LhsScope);
       }
-      else if (existing->Type.Sym != nullptr and lhs.Sym != nullptr
-        and not SameType(existing->Type, lhs, ctx.LhsScope, ctx.LhsScope)) {
-        return false;
-      }
-      // A type that resolved to no symbol has nothing to check.
-      return not ctx.CheckConstraints or lhs.Sym == nullptr
-        or ConstraintsHold(generic.GenericConstraints, lhs, ctx.RhsScope, ctx.LhsScope);
+      ctx.Bindings.EmplaceBack(RelaxedBinding{
+        .Name = std::move(name), .Type = lhs, .Comp = nullptr, .TypeWritten = std::move(lhs_type)
+      });
+      return true;
     }
 
     /// "RelaxedBindType" for a comp generic: it binds to the value opposite it, the same value each time it is named
     /// ("P2[n, n]"). Its type is checked where the value is bound to it, as a lone comp argument's is.
     auto RelaxedBindComp(
       Shared<TypeIdentifierAst> name, Shared<ExpressionAst> value, RelaxedCtx &ctx) -> bool {
-      if (auto const *const existing = FindRelaxedBinding(ctx.Bindings, *name); existing != nullptr) {
+      if (auto const *const existing = RelaxedFindBinding(ctx.Bindings, *name); existing != nullptr) {
         return existing->Comp == nullptr or value == nullptr
-          or CompIdentityOf(*existing->Comp, ctx.LhsScope) == CompIdentityOf(*value, ctx.LhsScope);
+          or CompEq(*existing->Comp, *value, ctx.LhsScope, ctx.LhsScope);
       }
       ctx.Bindings.EmplaceBack(RelaxedBinding{
         .Name = std::move(name), .Type = {}, .Comp = std::move(value), .TypeWritten = nullptr
@@ -616,18 +592,18 @@ namespace spp::analyse::utils::type_compare {
     /// A type argument opposite a type argument: matched as a type.
     auto RelaxedMatchTypeArg(
       GenericArgumentAst const &l, GenericArgumentAst const &r, RelaxedCtx &ctx) -> bool {
-      return l.TypeVal != nullptr and RelaxedMatch(TypeRef::Of(*l.TypeVal, ctx.LhsScope), l.TypeVal, *r.TypeVal, ctx);
+      return l.IsTypeArg() and RelaxedMatchType(TypeRef::Of(*l.TypeVal, ctx.LhsScope), l.TypeVal, *r.TypeVal, ctx);
     }
 
     auto RelaxedMatchCompValue(Shared<ExpressionAst> const &l, ExpressionAst const &r, RelaxedCtx &ctx) -> bool;
 
-    /// "RelaxedMatch" for two comp packs ("(0_uz, ns)" against "(0_uz, 1_uz, 2_uz)"), as a type pack's tuple is matched:
-    /// element by element, a trailing pack of the pattern binding what is left as a pack of its own.
+    /// "RelaxedMatchType" for two comp packs ("(0_uz, ns)" against "(0_uz, 1_uz, 2_uz)"), as a type pack's tuple is
+    /// matched: element by element, a trailing pack of the pattern binding what is left as a pack of its own.
     auto RelaxedMatchCompPack(
       Shared<ExpressionAst> const &l, TupleLiteralAst const &l_pack, TupleLiteralAst const &r_pack,
       RelaxedCtx &ctx) -> bool {
       auto const &r_elems = r_pack.Elems;
-      const auto tail = not r_elems.IsEmpty() and packs::IsUnboundCompPackNamed(*r_elems.Back(), ctx.RhsScope);
+      const auto tail = not r_elems.IsEmpty() and packs::DoesCompNameAnUnboundPack(*r_elems.Back(), ctx.RhsScope);
       const auto fixed_len = tail ? r_elems.Len() - 1 : r_elems.Len();
       if (tail ? l_pack.Elems.Len() < fixed_len : l_pack.Elems.Len() != fixed_len) { return false; }
 
@@ -652,18 +628,17 @@ namespace spp::analyse::utils::type_compare {
         return RelaxedMatchCompPack(l, *l_pack, *r_pack, ctx);
       }
       auto const *const r_id = r.To<IdentifierAst>();
-      auto const *const r_var = r_id != nullptr ? ctx.RhsScope.GetVarSymbol(r_id) : nullptr;
-      if (r_id != nullptr and (r_var == nullptr or r_var->IsCompGeneric())) {
+      auto const *const r_var = r_id != nullptr ? ctx.RhsScope.FindVarSymbol(r_id) : nullptr;
+      if (r_id != nullptr and (r_var == nullptr or r_var->IsGn())) {
         return RelaxedBindComp(TypeIdentifierAst::FromIdentifier(*r_id), l, ctx);
       }
-      return l != nullptr and CompIdentityOf(*l, ctx.LhsScope) == CompIdentityOf(r, ctx.RhsScope);
+      return l != nullptr and CompEq(*l, r, ctx.LhsScope, ctx.RhsScope);
     }
 
-    /// A comp argument opposite a comp argument: its value, held through the type it is written in ("lhs_type").
+    /// A comp argument opposite a comp argument: its value.
     auto RelaxedMatchCompArg(
-      GenericArgumentAst const &l, GenericArgumentAst const &r, Shared<TypeAst> const &lhs_type, RelaxedCtx &ctx) -> bool {
-      const auto held = l.CompVal != nullptr ? Shared<ExpressionAst>(lhs_type, l.CompVal.get()) : nullptr;
-      return RelaxedMatchCompValue(held, *r.CompVal, ctx);
+      GenericArgumentAst const &l, GenericArgumentAst const &r, RelaxedCtx &ctx) -> bool {
+      return RelaxedMatchCompValue(l.CompVal, *r.CompVal, ctx);
     }
 
     /// A trailing pack in the pattern ("Tup[First, ..Rest]", "A[m, rest]") binds the arguments past the fixed ones, as
@@ -672,72 +647,72 @@ namespace spp::analyse::utils::type_compare {
     /// too; only a positional list is gathered into one. An argument of the other kind is no part of the pack.
     auto RelaxedGatherPack(
       GenericArgumentAst const &pack_arg, Vec<Unique<GenericArgumentAst>> const &lhs_args, const std::size_t fixed_len,
-      Shared<TypeAst> const &lhs_type, TypeAst const &rhs_type, RelaxedCtx &ctx) -> bool {
-      const auto recorded = lhs_args.Len() == fixed_len + 1 and lhs_args[fixed_len]->Name != nullptr;
+      TypeAst const &rhs_type, RelaxedCtx &ctx) -> bool {
+      const auto recorded = lhs_args.Len() == fixed_len + 1 and lhs_args[fixed_len]->TypeName() != nullptr;
       const auto lone = lhs_args.Len() == fixed_len + 1;
 
-      if (pack_arg.CompVal != nullptr) {
+      if (pack_arg.IsCompArg()) {
         auto rest = Vec<Unique<ExpressionAst>>();
         for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
-          if (lhs_args[i]->CompVal == nullptr) { return false; }
+          if (lhs_args[i]->IsTypeArg()) { return false; }
           rest.EmplaceBack(AstClone(lhs_args[i]->CompVal));
         }
-        auto pack = lone and (recorded or packs::NamesPack(*lhs_args[fixed_len], ctx.LhsScope))
-          ? Shared<ExpressionAst>(lhs_type, lhs_args[fixed_len]->CompVal.get())
+        auto pack = lone and (recorded or packs::DoesArgNameAPack(*lhs_args[fixed_len], ctx.LhsScope))
+          ? lhs_args[fixed_len]->CompVal
           : MakeShared<TupleLiteralAst>(nullptr, std::move(rest), nullptr);
         return RelaxedBindComp(
           TypeIdentifierAst::FromIdentifier(*pack_arg.CompVal->ToUnchecked<IdentifierAst>()), std::move(pack), ctx);
       }
 
       auto pack_name = static_shared_cast<TypeIdentifierAst>(
-        mut_shared_cast(pack_arg.TypeVal->WithoutGenerics()->WithoutConvention()));
+        mut_shared_cast(pack_arg.TypeVal->WithoutGns()->WithoutConvention()));
       auto rest = Vec<Shared<TypeAst>>();
       for (auto i = fixed_len; i < lhs_args.Len(); ++i) {
-        if (lhs_args[i]->TypeVal == nullptr) { return false; }
+        if (lhs_args[i]->IsCompArg()) { return false; }
         rest.EmplaceBack(lhs_args[i]->TypeVal);
       }
-      auto pack = lone and (recorded or packs::NamesPack(*lhs_args[fixed_len], ctx.LhsScope))
+      auto pack = lone and (recorded or packs::DoesArgNameAPack(*lhs_args[fixed_len], ctx.LhsScope))
         ? rest[0]
         : generate::common_types::TupleType(rhs_type.PosStart(), std::move(rest));
-      if (FindRelaxedBinding(ctx.Bindings, *pack_name) == nullptr) {
-        ctx.Bindings.EmplaceBack(RelaxedBinding{
-          .Name = std::move(pack_name), .Type = {}, .Comp = nullptr, .TypeWritten = std::move(pack)
-        });
-      }
-      return true;
+      const auto pack_ref = TypeRef::Of(*pack, ctx.LhsScope);
+      return RelaxedBindType(std::move(pack_name), pack_ref, std::move(pack), ctx);
     }
 
     /// The master relaxed matcher. This does type comparison and loads up the bindings struct with information gained
     /// whilst comparing. Particularly key is the generics that are obtained. "Vec[T]" vs "Vec[Str]" obtains "T=Str".
-    auto RelaxedMatch(
+    auto RelaxedMatchType(
       TypeRef const &lhs, Shared<TypeAst> const &lhs_type, TypeAst const &rhs_type, RelaxedCtx &ctx) -> bool {
       auto const &lhs_scope = ctx.LhsScope;
       auto const &rhs_scope = ctx.RhsScope;
 
-      // Strip the rhs type down, and get the symbol for it. A generic rhs binds the lhs type.
-      const auto stripped_rhs = mut_shared_cast(rhs_type.WithoutGenerics()->WithoutConvention());
-      const auto rhs_head = rhs_scope.GetTypeSymbol(stripped_rhs.get());
+      // Strip the rhs type down, and get the symbol for it.
+      const auto stripped_rhs = mut_shared_cast(rhs_type.WithoutGns()->WithoutConvention());
+      const auto rhs_head = rhs_scope.FindTypeSymbol(stripped_rhs.get());
       if (rhs_head == nullptr) { return false; }
-      if (rhs_head->IsTypeGeneric()) {
-        return RelaxedBindType(static_shared_cast<TypeIdentifierAst>(stripped_rhs), *rhs_head, lhs, lhs_type, ctx);
+      // A generic rhs binds the lhs type, which has to satisfy its constraints (one that resolved to no symbol has
+      // nothing to check). A pack's are checked per element ("PackConstraintsSatisfied").
+      if (rhs_head->IsGn()) {
+        return RelaxedBindType(static_shared_cast<TypeIdentifierAst>(stripped_rhs), lhs, lhs_type, ctx)
+          and (not ctx.CheckConstraints or lhs.Symbol == nullptr
+            or ConstraintsHold(rhs_head->TypeConstraints, lhs, ctx.RhsScope, ctx.LhsScope));
       }
 
       if (not ConventionTagEq(lhs.Conv, ConventionTagOf(rhs_type))) { return false; }
 
       // An open instantiation nothing has made yet resolves to no symbol, and is read as the matched side spelled it.
-      const auto stripped_lhs = mut_shared_cast(lhs_type->WithoutGenerics()->WithoutConvention());
-      auto const *const lhs_head = lhs.Sym != nullptr
-        ? lhs.Sym
+      const auto stripped_lhs = mut_shared_cast(lhs_type->WithoutGns()->WithoutConvention());
+      auto const *const lhs_head = lhs.Symbol != nullptr
+        ? lhs.Symbol
         : lhs_type != nullptr
-        ? lhs_scope.GetTypeSymbol(stripped_lhs.get())
+        ? lhs_scope.FindTypeSymbol(stripped_lhs.get())
         : nullptr;
       if (lhs_head == nullptr) { return false; }
 
       // A variant pattern takes any of its members.
-      if (ctx.CheckVariant and type_predicates::IsTypeVariant(*rhs_head, rhs_scope)) {
-        if (auto const *const rhs_sym = rhs_scope.GetTypeSymbol(&rhs_type); rhs_sym != nullptr) {
-          for (auto const &member : VariantMember(*rhs_sym->FqName(), rhs_scope)) {
-            if (RelaxedMatch(lhs, lhs_type, *member, ctx)) { return true; }
+      if (ctx.CheckVariant and type_predicates::IsTypeVariant(TypeRef::OfKind(*rhs_head, rhs_scope), rhs_scope)) {
+        if (auto const *const rhs_sym = rhs_scope.FindTypeSymbol(&rhs_type); rhs_sym != nullptr) {
+          for (auto const &member : VariantMembers(*rhs_sym->FqName(), rhs_scope)) {
+            if (RelaxedMatchType(lhs, lhs_type, *member, ctx)) { return true; }
           }
         }
       }
@@ -750,16 +725,15 @@ namespace spp::analyse::utils::type_compare {
       // arguments; it stands for its parameters, which the pattern's constraints still apply to. Only where the pattern
       // asks for arguments: a bare "Tup" matches a bare "Tup", whose parameters are not being matched at all.
       auto lhs_self = Shared<TypeAst>();
-      if (not rhs_args.IsEmpty() and lhs.Sym != nullptr and lhs.Sym->Kind == TypeKind::Class
-        and lhs.Sym->InstanceOf == nullptr and lhs.Sym->Alias == nullptr and lhs.Sym->Type != nullptr
-        and not lhs.Sym->Type->GnParamGroup->Params.IsEmpty()
-        and lhs.Sym->Name->GnArgGroup->Args.IsEmpty()) { lhs_self = lhs.Sym->GenericSelfName(); }
-      auto const &args_owner = lhs_type;
+      if (not rhs_args.IsEmpty() and lhs.Symbol != nullptr and lhs.Symbol->Kind == TypeKind::Cls
+        and lhs.Symbol->InstanceOf == nullptr and lhs.Symbol->Alias == nullptr and lhs.Symbol->Type != nullptr
+        and not lhs.Symbol->Type->GnParamGroup->Params.IsEmpty()
+        and lhs.Symbol->Name->GnArgGroup->Args.IsEmpty()) { lhs_self = lhs.Symbol->GnSelfName(); }
       auto const &lhs_args = lhs_self != nullptr
         ? lhs_self->LastTypePart()->GnArgGroup->Args
-        : lhs.Sym == nullptr
+        : lhs.Symbol == nullptr
         ? InstanceArgs(*lhs_type, lhs_scope)
-        : SymArgGroup(*lhs.Sym).Args;
+        : SymbolArgGroup(*lhs.Symbol).Args;
       const auto arity = MatchArgListArity(lhs_head->Type, lhs_args, rhs_args, rhs_scope);
       if (not arity.Compatible) { return false; }
       if (ctx.CheckConstraints and arity.Pack != nullptr
@@ -769,12 +743,12 @@ namespace spp::analyse::utils::type_compare {
       for (auto i = 0uz; i < arity.FixedLen; ++i) {
         auto const &l = *lhs_args[i];
         auto const &r = *rhs_args[i];
-        const auto matched = r.TypeVal != nullptr
+        const auto matched = r.IsTypeArg()
           ? RelaxedMatchTypeArg(l, r, ctx)
-          : RelaxedMatchCompArg(l, r, args_owner, ctx);
+          : RelaxedMatchCompArg(l, r, ctx);
         if (not matched) { return false; }
       }
-      return arity.Pack == nullptr or RelaxedGatherPack(*arity.Pack, lhs_args, arity.FixedLen, args_owner, rhs_type, ctx);
+      return arity.Pack == nullptr or RelaxedGatherPack(*arity.Pack, lhs_args, arity.FixedLen, rhs_type, ctx);
     }
   }
 }
@@ -827,16 +801,9 @@ auto spp::analyse::utils::type_compare::Assignable(
 }
 
 /// [CHECKED]
-auto spp::analyse::utils::type_compare::TypeEq(
-  ExpressionAst const &lhs_expr, ExpressionAst const &rhs_expr, Scope const &lhs_scope,
-  Scope const &rhs_scope) -> bool {
-  // Generate the identity keys for the comp argument's values,
-  // and compare them for equality (allows 1 + 1 to match 2).
-  auto lhs_identity = Str();
-  auto rhs_identity = Str();
-  comp_generics::CompExprIdentity(lhs_expr, lhs_scope, lhs_identity);
-  comp_generics::CompExprIdentity(rhs_expr, rhs_scope, rhs_identity);
-  return lhs_identity == rhs_identity;
+auto spp::analyse::utils::type_compare::CompEq(
+  ExpressionAst const &lhs, ExpressionAst const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool {
+  return lhs_scope.CompIdOf(lhs) == rhs_scope.CompIdOf(rhs);
 }
 
 /// [CHECKED]
@@ -854,8 +821,7 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
   // The matched type is held for as long as what is bound from
   // it: owned when it is shared, else borrowed as before. Just
   // accept this weird "Shared" construction, it works.
-  auto held = std::const_pointer_cast<TypeAst>(
-    std::static_pointer_cast<TypeAst const>(lhs_type.weak_from_this().lock()));
+  auto held = mut_shared_cast(static_shared_cast<TypeAst const>(lhs_type.weak_from_this().lock()));
   if (held == nullptr) { held = Shared<TypeAst>(Shared<void>(), const_cast<TypeAst*>(&lhs_type)); }
 
   // Create the empty bindings, and call the internal relaxed
@@ -866,7 +832,7 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
     .LhsScope = lhs_scope, .RhsScope = rhs_scope, .Bindings = bindings, .CheckVariant = check_variant,
     .CheckConstraints = check_constraints
   };
-  const auto matched = RelaxedMatch(TypeRef::Of(lhs_type, lhs_scope), held, rhs_type, ctx);
+  const auto matched = RelaxedMatchType(TypeRef::Of(lhs_type, lhs_scope), held, rhs_type, ctx);
 
   // Write the bindings' values into the generic args, pulling either the comp or type values into the generic
   // inference. Each name is bound once ("RelaxedBind*"), and an argument already in the map is kept, for both kinds.
@@ -880,20 +846,20 @@ auto spp::analyse::utils::type_compare::RelaxedTypeEq(
 
 auto spp::analyse::utils::type_compare::UnmetConstraint(
   Vec<Shared<TypeAst>> const &constraints,
-  TypeSymbol const &concrete_sym,
+  TypeRef const &concrete,
   const bool is_self,
   Scope const &constraints_owner_scope,
   Scope const &concrete_scope)
   -> TypeAst const* {
   using generate::common_types_precompiled::THREAD_SAFE;
-  const auto type_sym = &concrete_sym;
+  auto *const type_sym = concrete.Symbol;
+  if (type_sym == nullptr) { return nullptr; }
 
   // The concrete type and each class it is superimposed as,
   // resolved where each is read.
-  const auto concrete = const_cast<TypeSymbol*>(type_sym);
   auto sup_info = Vec<Pair<TypeRef, Scope const*>>{};
-  if (is_self and not type_sym->IsTypeGeneric() and type_sym->LinkedScope != nullptr) {
-    sup_info.EmplaceBack(TypeRef::OfResolved(*concrete, *type_sym->LinkedScope), type_sym->LinkedScope);
+  if (is_self and not type_sym->IsGn() and type_sym->LinkedScope != nullptr) {
+    sup_info.EmplaceBack(concrete.WithoutConvention().ReadIn(*type_sym->LinkedScope), type_sym->LinkedScope);
   }
 
   // Get all the sup scopes of the concrete type, which we
@@ -901,14 +867,15 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   // symbols, that generic's constraints are stored on the
   // symbol. Todo: Condense this block.
   const auto sup_scopes = type_sym->LinkedScope
-    ? type_sym->LinkedScope->SupScopes()
-    : type_sym->GenericConstraints | genex::views::transform([&](auto const &constraint) {
-      return constraints_owner_scope.GetTypeSymbol(constraint.get())->LinkedScope;
+    ? type_sym->LinkedScope->GetSupScopes()
+    : type_sym->TypeConstraints | genex::views::transform([&](auto const &constraint) {
+      return constraints_owner_scope.FindTypeSymbol(constraint.get())->LinkedScope;
     }) | genex::to<Vec>();
-  sup_info.EmplaceBack(TypeRef::OfResolved(*concrete, concrete_scope), &concrete_scope);
+  // The bound type itself, by value: a binding's borrow is no part of what its constraints are checked against.
+  sup_info.EmplaceBack(concrete.WithoutConvention(), &concrete_scope);
   for (auto const *sup_scope : sup_scopes) {
-    if (sup_scope->TySym == nullptr or AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    sup_info.EmplaceBack(TypeRef::OfResolved(*sup_scope->TySym, *sup_scope), sup_scope);
+    if (sup_scope->LinkedTypeSymbol == nullptr or AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+    sup_info.EmplaceBack(TypeRef::Of(*sup_scope->LinkedTypeSymbol, *sup_scope), sup_scope);
   }
 
   // Compare each constraint against the concrete type and
@@ -936,29 +903,42 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   return nullptr;
 }
 
+auto spp::analyse::utils::type_compare::OrderVariantMembers(
+  Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
+  -> Vec<Shared<TypeAst>> {
+  auto keyed = Vec<Pair<Str, Shared<TypeAst>>>();
+  for (auto &[type, sym] : members) {
+    keyed.EmplaceBack(sym != nullptr ? sym->FqName()->ToString() : type->ToString(), std::move(type));
+  }
+  genex::actions::stable_sort(keyed, {}, [](auto const &k) -> Str const& { return k.first; });
+  auto out = Vec<Shared<TypeAst>>();
+  for (auto &[_, type] : keyed) { out.EmplaceBack(std::move(type)); }
+  return out;
+}
+
 /// [CHECKED]
-auto spp::analyse::utils::type_compare::VariantMember(
+auto spp::analyse::utils::type_compare::VariantMembers(
   TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>> {
   // A type based overload of the variant member detection,
   // which flattens and deduplicates.
   const auto variants = type.LastTypePart()->GnArgGroup->At("Variants");
-  if (variants != nullptr and variants->TypeVal != nullptr) {
+  if (variants != nullptr and variants->IsTypeArg()) {
     return FlattenVariants(*variants->TypeVal, scope)
       | genex::views::transform([](auto const &x) { return x.first; })
       | genex::to<Vec>();
   }
 
-  return VariantMembers(TypeRef::Of(type, scope), scope)
+  return VariantMemberRefs(TypeRef::Of(type, scope), scope)
     | genex::views::transform([](auto const &x) { return AsType(x); })
     | genex::to<Vec>();
 }
 
 /// [CHECKED]
-auto spp::analyse::utils::type_compare::VariantMembers(
+auto spp::analyse::utils::type_compare::VariantMemberRefs(
   TypeRef const &ref, Scope const &scope) -> Vec<TypeRef> {
   // Never types won't have variant members so guard against
   // that at the start.
-  const auto sym = ref.IsNever ? nullptr : ref.Sym;
+  const auto sym = ref.IsNever ? nullptr : ref.Symbol;
   if (sym == nullptr) { return {}; }
 
   // Its identity lists its members, flattened and in order, each what it means; its name spells them as written where
@@ -973,46 +953,12 @@ auto spp::analyse::utils::type_compare::VariantMembers(
 
   // Get the generic arguments under the variadic generic
   // parameter "Variants".
-  const auto variants = SymArgGroup(*sym).At("Variants");
-  if (variants == nullptr or variants->TypeVal == nullptr) { return {}; }
+  const auto variants = SymbolArgGroup(*sym).At("Variants");
+  if (variants == nullptr or variants->IsCompArg()) { return {}; }
 
   // Run the variant list through the variant flattener, removing
   // duplicates and flattening variants into one root level type.
   return FlattenVariants(*variants->TypeVal, scope)
     | genex::views::transform([](auto const &x) { return x.second; })
     | genex::to<Vec>();
-}
-
-auto spp::analyse::utils::type_compare::TemplateOf(
-  TypeSymbol const &sym,
-  Scope const &scope)
-  -> TypeSymbol* {
-  // Followed until nothing changes, capped against a cycle.
-  auto *s = const_cast<TypeSymbol*>(&sym);
-  for (auto step = 0; step < 8; ++step) {
-    auto *next = s;
-    if (s->Kind == TypeKind::GenericParam and s->ParamId != 0) {
-      if (auto *const bound = scope.Canon(*s); bound != nullptr) { next = bound; }
-    }
-    else if ((s->Kind == TypeKind::GenericArg or s->IsSelf()) and s->LinkedScope != nullptr
-      and s->LinkedScope->TySym != nullptr) {
-      next = s->LinkedScope->TySym.get();
-    }
-    else if (s->Alias != nullptr) {
-      next = s->AliasTarget(scope);
-    }
-    if (next == s) { break; }
-    s = next;
-  }
-  return s->InstanceOf != nullptr ? s->InstanceOf : s;
-}
-
-/// [CHECKED]
-auto spp::analyse::utils::type_compare::IsTemplate(
-  TypeSymbol const &sym, TypeAst const &tmpl, Scope const &scope) -> bool {
-  // Get the template's symbol and check if the template of
-  // the symbol is the template's template symbol (a template's
-  // template symbol is itself).
-  const auto tmpl_sym = scope.GetTypeSymbol(&tmpl);
-  return tmpl_sym != nullptr and TemplateOf(sym, scope) == TemplateOf(*tmpl_sym, scope);
 }

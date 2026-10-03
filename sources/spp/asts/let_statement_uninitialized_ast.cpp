@@ -69,7 +69,7 @@ auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
 
   // Analyse the type, and create a mock value for analysis.
-  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
   const auto mock_init = MakeUnique<ObjectInitializerAst>(
     Type, nullptr);
 
@@ -91,7 +91,7 @@ auto LetStatementUninitializedAst::Stage8_CheckMemory(
 
   // Mark all the parts as uninitialized.
   for (auto const &v : Var->ExtractNames()) {
-    sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(
+    sm->CurrentScope->FindVarSymbol(v.get())->MemInfo->MovedBy(
       *this, sm->CurrentScope);
   }
 }

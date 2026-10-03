@@ -131,7 +131,7 @@ auto FloatLiteralAst::FromBigVal(
   auto frac_part = point == Str::npos ? Str("0") : digits.substr(point + 1);
 
   auto sign_tok = is_negative
-    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
+    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::TokToString(lex::SppTokenType::TK_SUB))
     : nullptr;
   return MakeUnique<FloatLiteralAst>(
     std::move(sign_tok),
@@ -145,7 +145,7 @@ auto FloatLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto FloatLiteralAst::Stage11_CodeGen(
@@ -153,7 +153,7 @@ auto FloatLiteralAst::Stage11_CodeGen(
   using spp::utils::strings::NormalizeFloatString;
 
   // Get the type of the float literal.
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // If come from stage10 cmp statement, register the float
@@ -179,8 +179,8 @@ auto FloatLiteralAst::Stage11_CodeGen(
   return co_float;
 }
 
-auto FloatLiteralAst::_PrecompiledTypeSym(
-  ScopeManager *sm) const -> TypeSymbol* {
+auto FloatLiteralAst::_PrecompiledType(
+  ScopeManager *sm) const -> TypeAst const& {
   //
   IMPORT_UTILS;
   using namespace generate::common_types_precompiled;
@@ -199,17 +199,18 @@ auto FloatLiteralAst::_PrecompiledTypeSym(
       ERR_ARGS(*this, "invalid float literal type"));
   }
 
-  return sm->CurrentScope->GetTypeSymbol(spp_type);
+  return *spp_type;
 }
 
 auto FloatLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
-  return _PrecompiledTypeSym(sm)->FqName();
+  // Named as written ("S32"), not as the instance the alias stands for.
+  return sm->CurrentScope->FindTypeSymbol(&_PrecompiledType(sm))->FqName();
 }
 
 auto FloatLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
-  return TypeRef::OfSym(*_PrecompiledTypeSym(sm), *sm->CurrentScope);
+  return TypeRef::Of(_PrecompiledType(sm), *sm->CurrentScope);
 }
 
 SPP_MOD_END

@@ -119,7 +119,7 @@ auto IntegerLiteralAst::FromBigVal(
   if (is_negative) { magnitude = -magnitude; }
 
   auto sign_tok = is_negative
-    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
+    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::TokToString(lex::SppTokenType::TK_SUB))
     : nullptr;
   auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.ToString());
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
@@ -144,7 +144,7 @@ auto IntegerLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto IntegerLiteralAst::Stage11_CodeGen(
@@ -152,7 +152,7 @@ auto IntegerLiteralAst::Stage11_CodeGen(
   using spp::utils::strings::NormaliseIntegerString;
 
   // Get the type of the integer literal.
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // If come from stage10 cmp statement, register the int type
@@ -180,8 +180,8 @@ auto IntegerLiteralAst::Stage11_CodeGen(
   return co_int;
 }
 
-auto IntegerLiteralAst::_PrecompiledTypeSym(
-  ScopeManager *sm) const -> TypeSymbol* {
+auto IntegerLiteralAst::_PrecompiledType(
+  ScopeManager *sm) const -> TypeAst const& {
   //
   IMPORT_UTILS;
   using namespace generate::common_types_precompiled;
@@ -209,17 +209,18 @@ auto IntegerLiteralAst::_PrecompiledTypeSym(
       ERR_ARGS(*this, "invalid integer literal type"));
   }
 
-  return sm->CurrentScope->GetTypeSymbol(spp_type);
+  return *spp_type;
 }
 
 auto IntegerLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
-  return _PrecompiledTypeSym(sm)->FqName();
+  // Named as written ("S32"), not as the instance the alias stands for.
+  return sm->CurrentScope->FindTypeSymbol(&_PrecompiledType(sm))->FqName();
 }
 
 auto IntegerLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
-  return TypeRef::OfSym(*_PrecompiledTypeSym(sm), *sm->CurrentScope);
+  return TypeRef::Of(_PrecompiledType(sm), *sm->CurrentScope);
 }
 
 template <typename T> requires spp::utils::traits::integral<T>

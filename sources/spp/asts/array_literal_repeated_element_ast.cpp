@@ -115,7 +115,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Elem));
   const auto elem_type = Elem->InferType(sm, meta);
-  const auto elem_type_sym = sm->CurrentScope->GetTypeSymbol(elem_type.get());
+  const auto elem_type_sym = sm->CurrentScope->FindTypeSymbol(elem_type.get());
 
   // Ensure the element type is copyable, so that is can be
   // repeated in the array.
@@ -168,10 +168,10 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
   tm.Reset(_SizeScope);
   _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
-  RaiseIf<SppCompileTimeConstantError>(
-    meta->CmpResult == nullptr,
+  RaiseIf<SppCompTimeConstantError>(
+    meta->CompTimeResult == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*_AnalysedSize));
-  Size = AstClone(meta->CmpResult);
+  Size = AstClone(meta->CompTimeResult);
 
   _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
   _ArrayType->Stage7_AnalyseSemantics(sm, meta);
@@ -185,7 +185,7 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
   // etc).
   Elem->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
-    *Elem, *TokSemicolon, *sm, true, true, true, false, meta);
+    *Elem, *TokSemicolon, *sm, meta, {.MarkMoves = false});
 
   // The analysed size is checked in its own scope, like any
   // analysed expression; it is a comp-time value, so it is only
@@ -196,7 +196,7 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
     SPP_ASSERT(sm->CurrentScope == _SizeScope);
     _AnalysedSize->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(
-      *_AnalysedSize, *TokSemicolon, *sm, true, true, true, false, meta);
+      *_AnalysedSize, *TokSemicolon, *sm, meta, {.MarkMoves = false});
     sm->ExhaustScope();
     sm->MoveOutOfCurrentScope();
   }
@@ -206,12 +206,12 @@ auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner element to a compile-time value.
   Elem->Stage9_CompTimeResolve(sm, meta);
-  Elem = AstClone(meta->CmpResult);
+  Elem = AstClone(meta->CompTimeResult);
   SkipSizeScope(sm);
 
   // Wrap the compile-time array value.
-  meta->CmpResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
-    nullptr, std::move(meta->CmpResult), nullptr, AstClone(Size), nullptr);
+  meta->CompTimeResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
+    nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
 }
 
 auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
@@ -326,15 +326,15 @@ auto ArrayLiteralRepeatedElementAst::InferType(
   return array_type;
 }
 
-auto ArrayLiteralRepeatedElementAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ArrayLiteralRepeatedElementAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both the repeated element and the count are expressions;
   // the count is the one that names a comp parameter.
   return MakeShared<ArrayLiteralRepeatedElementAst>(
     AstClone(TokL),
-    AstClone(Elem->SubstituteGenericsExpr(args)),
+    AstClone(Elem->ReadExpr(sub)),
     AstClone(TokSemicolon),
-    AstClone(Size->SubstituteGenericsExpr(args)),
+    AstClone(Size->ReadExpr(sub)),
     AstClone(TokR));
 }
 

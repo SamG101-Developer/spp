@@ -10,7 +10,7 @@ import spp.asts.module_member_ast;
 import spp.asts.sup_member_ast;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.utils.types;
 import llvm;
 import std;
@@ -162,7 +162,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// function.
   SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Str;
 
-  SPP_ATTR_NODISCARD auto GetLlvmFunc() const -> Shared<codegen::LlvmFuncWrapper>;
+  SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
 
   /// The llvm context of the module this prototype was written
   /// in, which is the one module its definition may be emitted
@@ -171,7 +171,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   ///
   /// An instantiation minted after that walk carries no stamp
   /// of its own, so the answer is taken from the template it
-  /// substitutes (see "GetNonGenericImpl") - the template is
+  /// substitutes (see "GetNonGnImpl") - the template is
   /// what a substitution is registered against, and its
   /// module owns the pair. Without this, an instantiation
   /// first needed halfway through some other module's code
@@ -181,28 +181,28 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// not run yet.
   SPP_ATTR_NODISCARD auto OwnerCtx() const -> codegen::LlvmCtx*;
 
-  auto DetachLlvmFuncSlot() -> void;
+  /// The scope this prototype's signature is read in: a substitution's own ("GenericSubstitution::ProtoScope", where
+  /// its bindings and "Self" are), else the prototype's. Where a declaration made outside the walk is positioned.
+  SPP_ATTR_NODISCARD auto GetDeclarationScope() const -> Scope*;
 
-  SPP_ATTR_NODISCARD auto PrintSignature(Str const &owner) const -> Str;
+  auto DetachLlvmFnSlot() -> void;
 
-  /// One generic instantiation of this prototype: the scope it
-  /// lives in, the substituted prototype itself, and the
-  /// generic arguments it was built from. The arguments give
-  /// the instantiation a stable identity - without them every
-  /// resolution of the same call would mint a fresh,
-  /// indistinguishable substitution, and the declaration
-  /// generated for one would not be findable from another.
+  SPP_ATTR_NODISCARD SPP_ATTR_COLD auto PrintSignature(Str const &owner) const -> Str;
+
+  /// One generic instantiation of this prototype: the scope it lives in and the substituted prototype itself, found
+  /// again by the identity of the arguments it was built from ("ArgsId") - without which every resolution of the same
+  /// call would mint a fresh, indistinguishable substitution, and the declaration generated for one would not be
+  /// findable from another.
   struct GenericSubstitution {
     Unique<Scope> OwnedScope;
     Unique<FunctionPrototypeAst> Proto;
-    Unique<GenericArgumentGroupAst> GnArgs;
     bool IsConcrete = false;
-    bool BodyAnalysed = false;
+    bool IsBodyAnalysed = false;
 
-    /// The identity of the arguments ("Scope::InstanceIdentityKey"),
+    /// The identity of the arguments ("Scope::ArgsIdOf"),
     /// which is what finds this instantiation again: "f[T=T]" called
     /// from two generic contexts is two instantiations, one per "T".
-    TypeId IdentityKey;
+    TypeId ArgsId;
 
     /// Whether a call has been resolved to it. A substitution is
     /// built to check a call against one overload before it is
@@ -210,7 +210,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// kept (it is found again for the same arguments, and what
     /// its analysis registered may point into its scope) but is
     /// never analysed, declared or emitted.
-    bool Required = false;
+    bool IsRequired = false;
 
     /// The scope to position a scope manager on before running
     /// any stage over "Proto", and the scope every symbol this
@@ -225,26 +225,23 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   };
 
   /// File a built substitution against this prototype, not yet
-  /// required ("GenericSubstitution::Required").
-  auto AddGenericSubstitution(
+  /// required ("GenericSubstitution::IsRequired").
+  auto AddGnSubstitution(
     GenericSubstitution &&sub)
     -> GenericSubstitution&;
 
-  /// Mark the substitution whose prototype is "instance" as
-  /// required, and queue it for the monomorphisation stage the
-  /// first time. Nothing if "instance" is not one of this
-  /// prototype's substitutions.
-  auto RequireGenericSubstitution(
-    FunctionPrototypeAst const *instance)
-    -> void;
+  /// Mark this prototype required when it is a substitution of a generic function ("GenericSubstitution::IsRequired"),
+  /// and queue its template for the monomorphisation stage the first time. Called on whatever a call resolved to:
+  /// nothing for a prototype that is no substitution.
+  auto RequireGnSubstitution() const -> void;
 
   /// Find the substitution of this prototype whose arguments have
-  /// this identity ("GenericSubstitution::IdentityKey"), required
+  /// this identity ("GenericSubstitution::ArgsId"), required
   /// or not, or nullptr if there is not one yet. Reusing the match
   /// keeps a call site and the Stage10 declaration walk pointing at
   /// a single prototype object for a given instantiation.
-  SPP_ATTR_NODISCARD auto FindGenericSubstitution(
-    TypeId identity_key)
+  SPP_ATTR_NODISCARD auto FindGnSubstitution(
+    TypeId args_id)
     -> GenericSubstitution*;
 
   /// Analyse the bodies of every instantiation registered
@@ -252,14 +249,14 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// The scope manager is used for its global scope only -
   /// each instantiation is analysed through a manager rooted
   /// at its own scope.
-  auto AnalysePendingGenericSubstitutions(ScopeManager *sm, CompilerMetaData *meta) -> void;
+  auto AnalysePendingGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   static auto AnalysePendingDefaults(ScopeManager *sm) -> void;
   static auto ClearPendingDefaults() -> void;
 
-  auto SetNonGenericImpl(FunctionPrototypeAst *impl) -> void;
+  auto SetNonGnImpl(FunctionPrototypeAst *impl) -> void;
 
-  SPP_ATTR_NODISCARD auto GetNonGenericImpl() const -> FunctionPrototypeAst*;
+  SPP_ATTR_NODISCARD auto GetNonGnImpl() const -> FunctionPrototypeAst*;
 
   auto MarkAsAnnotation() -> void;
 
@@ -269,23 +266,28 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LlvmCtx *ctx)
-    -> Shared<codegen::LlvmFuncWrapper>;
+    -> Shared<codegen::LlvmFnWrapper>;
 
   virtual auto IsCoroutine() const -> bool = 0;
 
 protected:
+  /// What "Clone" copies besides the children it constructs the copy from: the analysed annotation state, the
+  /// original body, the context, scope and lowered function, and the variadic pack type. Re-parents the copy's
+  /// annotations onto it.
+  auto _CloneStateInto(FunctionPrototypeAst &ast) const -> void;
+
   /// Using a list because there are times that the collection
   /// is iterated whilst being appended to.
-  std::list<GenericSubstitution> _GenericSubstitutions;
+  std::list<GenericSubstitution> _GnSubstitutions;
 
-  FunctionPrototypeAst *_NonGenericImpl;
+  FunctionPrototypeAst *_NonGnImpl;
 
   /// The LLVM generated function for this prototype. This is
   /// set during the first pass of code generation, and used
   /// for further codegen in the second pass (function calls
   /// etc). Double shared pointer for altering the value, and
   /// updating in cloned ASTs that share this target.
-  Shared<Shared<codegen::LlvmFuncWrapper>> _LlvmFunc;
+  Shared<Shared<codegen::LlvmFnWrapper>> _LlvmFn;
 
   /// The context of the module this prototype belongs to; read
   /// it through "OwnerCtx". Never set on a clone, because a
@@ -297,7 +299,7 @@ protected:
 
   inline static Vec<Pair<FunctionPrototypeAst*, bool>> _PendingDefaults = {};
 
-  SPP_ATTR_NODISCARD auto _DeduceMockClassType() const -> Pair<Shared<TypeAst>, Str>;
+  SPP_ATTR_NODISCARD auto _DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str>;
 
   /// Swap an "!intrinsic" function's parsed body for the
   /// lowered one that dispatches into "kBuiltinFuncs". Done
@@ -309,7 +311,7 @@ protected:
   /// Mint the destructor an instantiation of a builtin will call,
   /// if "sub_proto" (the instantiation just analysed) is a builtin
   /// whose lowering destroys one of its generics (its table entry's
-  /// "drops_generic"). Nothing else needs this: an ordinary body
+  /// "DropsGn"). Nothing else needs this: an ordinary body
   /// names what it calls, and analysing it instantiates those, but
   /// a builtin has no S++ body at all - see
   /// "drop_utils::EnsureDropInstantiated". "tm" must be positioned
@@ -321,7 +323,7 @@ protected:
     CompilerMetaData *meta)
     -> void;
 
-  SPP_ATTR_NODISCARD auto _IsPureGeneric(
+  SPP_ATTR_NODISCARD auto _IsPureGn(
     ScopeManager *sm,
     CompilerMetaData *meta,
     codegen::LlvmCtx const *ctx) const
@@ -333,5 +335,5 @@ protected:
   /// Both exits from "Stage11_CodeGen" run this, because a
   /// template emits nothing of its own but is exactly where
   /// the instantiations that do are registered.
-  auto _CodeGenGenericSubstitutions(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void;
+  auto _CodeGenGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void;
 };

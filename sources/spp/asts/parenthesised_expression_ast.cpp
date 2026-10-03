@@ -68,7 +68,7 @@ auto ParenthesisedExpressionAst::Stage8_CheckMemory(
 
   // Check the memory of the expression.
   Expr->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, true, true, true, false, meta);
+  mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.MarkMoves = false});
 }
 
 auto ParenthesisedExpressionAst::Stage9_CompTimeResolve(
@@ -94,12 +94,12 @@ auto ParenthesisedExpressionAst::InferTypeRef(
   return Expr->InferTypeRef(sm, meta);
 }
 
-auto ParenthesisedExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ParenthesisedExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Substitute into the inner expression.
   return MakeShared<ParenthesisedExpressionAst>(
     AstClone(TokL),
-    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(Expr->ReadExpr(sub)),
     AstClone(TokR));
 }
 

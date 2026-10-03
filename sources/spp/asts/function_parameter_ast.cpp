@@ -53,7 +53,7 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   // call.
   IMPORT_UTILS;
   using type_resolution::SelfPolicy;
-  Type = type_resolution::ResolveWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
+  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
   // Create the variable for the parameter (use temp copies
   // and put them back).
@@ -65,7 +65,7 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   // holds a pack, as a variadic comp parameter's does.
   const auto conv = Type->GetConvention();
   for (auto const &name : ExtractNames()) {
-    const auto sym = sm->CurrentScope->GetVarSymbol(name.get());
+    const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
     sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
     sym->IsVariadic = To<FunctionParameterVariadicAst>() != nullptr;
@@ -76,7 +76,7 @@ auto FunctionParameterAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // Check the memory of each name.
   for (auto const &name : ExtractNames()) {
-    const auto sym = sm->CurrentScope->GetVarSymbol(name.get());
+    const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
   }
 }

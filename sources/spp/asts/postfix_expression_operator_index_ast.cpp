@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.operator_desugaring;
 import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -39,7 +40,7 @@ PostfixExpressionOperatorIndexAst::PostfixExpressionOperatorIndexAst(
   TokMut(std::move(tok_mut)),
   Expr(std::move(expr)),
   TokR(std::move(tok_r)),
-  _MappedFunc(nullptr) {
+  _MappedFn(nullptr) {
 }
 
 PostfixExpressionOperatorIndexAst::~PostfixExpressionOperatorIndexAst() = default;
@@ -61,14 +62,14 @@ auto PostfixExpressionOperatorIndexAst::Clone() const -> Unique<Ast> {
     AstClone(TokMut),
     AstClone(Expr),
     AstClone(TokR));
-  ast->_MappedFunc = _MappedFunc;
+  ast->_MappedFn = _MappedFn;
   return ast;
 }
 
 auto PostfixExpressionOperatorIndexAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (_MappedFunc != nullptr) {
-    SPP_STRING_APPEND(_MappedFunc->Op);
+  if (_MappedFn != nullptr) {
+    SPP_STRING_APPEND(_MappedFn->Op);
     SPP_STRING_END;
   }
   SPP_STRING_APPEND_RAW("[");
@@ -82,75 +83,52 @@ auto PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
   IMPORT_UTILS;
-  if (_MappedFunc != nullptr) { return; }
+  if (_MappedFn != nullptr) { return; }
 
-  // Determine the left-hand-side type.
-  const auto lhs_type = const_shared_cast(
-    meta->PostfixExpressionLhs->InferType(sm, meta));
-
-  // Check the lhs is actually a typed variable, (issues
-  // with ambiguities for parsing generics vs indexing etc).
-  // A function value (a "$" mock) is never indexable.
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(lhs_type.get());
-  RaiseIf<SppMemberAccessNonIndexableError>(
-    type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
-    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *this));
-
-  auto sup_types = Vec{lhs_type};
-  sup_types.AppendRange(type_sym->LinkedScope->SupTypes());
-
-  // Create the mapped function for the index operator; create the index argument.
-  Unique<FunctionCallArgumentAst> arg = MakeUnique<
-    FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(Expr));
-  auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<decltype(arg)>{}, nullptr);
-  arg_group->Args.EmplaceBack(std::move(arg));
-
-  // Field name is either "index_ref" or "index_mut", then call it with the argument group (index).
-  auto field_name = MakeUnique<IdentifierAst>(PosStart(), TokMut != nullptr ? "index_mut" : "index_ref");
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
-  func_call->Source.OriginalExpr = this;
-  _MappedFunc = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
-  _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+  // "a[i]" is "a.index_ref(i)", or "a.index_mut(i)" for "a[mut i]".
+  operator_desugaring::CheckIndexable(*this, sm, meta);
+  auto args = Vec<Unique<ExpressionAst>>();
+  args.EmplaceBack(std::move(Expr));
+  _MappedFn = operator_desugaring::MapToMethodCall(
+    *this, PosStart(), TokMut != nullptr ? "index_mut" : "index_ref", std::move(args), sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  _MappedFunc->Stage8_CheckMemory(sm, meta);
+  _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the mapped function.
-  _MappedFunc->Stage9_CompTimeResolve(sm, meta);
+  _MappedFn->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
-  return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
+  return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto PostfixExpressionOperatorIndexAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
-  return _MappedFunc->InferType(sm, meta);
+  return _MappedFn->InferType(sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  return _MappedFunc->InferTypeRef(sm, meta);
+  return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionOperatorIndexAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorIndexAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expression inside the []
   // tokens.
   return MakeUnique<PostfixExpressionOperatorIndexAst>(
     AstClone(TokL),
     AstClone(TokMut),
-    AstClone(Expr->SubstituteGenericsExpr(args)),
+    AstClone(Expr->ReadExpr(sub)),
     AstClone(TokR));
 }
 

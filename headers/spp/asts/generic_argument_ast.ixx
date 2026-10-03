@@ -11,6 +11,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(GenericArgumentAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeSymbol);
@@ -24,10 +25,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(GenericArgumentAst);
 
-  /// The name of a keyword argument, used to refer to the
-  /// argument in the generic call. Null for a positional one.
-  Shared<TypeAst> Name;
-
   /// The "=" token separating a keyword argument's name from
   /// its value. Null for a positional one.
   Unique<TokenAst> TokAssign;
@@ -38,25 +35,37 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   /// The value of a comp argument. Any type is allowed, as any
   /// type can be represented at compile time. Null for a type
   /// argument.
-  Unique<ExpressionAst> CompVal;
+  Shared<ExpressionAst> CompVal;
 
-  static auto NewType(decltype(Name) name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
+  static auto NewType(Shared<TypeAst> name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
 
-  static auto NewComp(decltype(Name) name, decltype(CompVal) &&val) -> Unique<GenericArgumentAst>;
+  static auto NewComp(Shared<TypeAst> name, decltype(CompVal) val) -> Unique<GenericArgumentAst>;
 
-  static auto FromSym(TypeSymbol const &sym) -> Unique<GenericArgumentAst>;
+  static auto FromSymbol(TypeSymbol const &sym) -> Unique<GenericArgumentAst>;
 
-  static auto FromSym(VariableSymbol const &sym) -> Unique<GenericArgumentAst>;
+  static auto FromSymbol(VariableSymbol const &sym) -> Unique<GenericArgumentAst>;
 
   GenericArgumentAst(
-    decltype(Name) name,
+    Shared<TypeAst> name,
     decltype(TokAssign) &&tok_assign,
     decltype(TypeVal) type_val,
-    decltype(CompVal) &&comp_val);
+    decltype(CompVal) comp_val);
 
   ~GenericArgumentAst() override;
 
   auto operator==(GenericArgumentAst const &other) const -> bool;
+
+  /// Whether this is a type argument ("Str") or a comp one ("1_uz"): exactly one holds.
+  SPP_ATTR_NODISCARD auto IsTypeArg() const -> bool;
+  SPP_ATTR_NODISCARD auto IsCompArg() const -> bool;
+
+  /// The name of a keyword argument ("T=Str"), as a type. Null for
+  /// a positional one.
+  SPP_ATTR_NODISCARD auto TypeName() const -> Shared<TypeAst> const&;
+
+  /// "TypeName" as an identifier, which is what a comp argument's
+  /// name ("n=1_uz") means. Built once, on first read.
+  SPP_ATTR_NODISCARD auto CompName() const -> Shared<IdentifierAst> const&;
 
   /// The value, of whichever kind this argument is.
   SPP_ATTR_NODISCARD auto Value() const -> ExpressionAst*;
@@ -69,6 +78,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
+  /// The keyword name ("TypeName"), and the identifier it is read
+  /// as for a comp argument ("CompName"), built on first read.
+  Shared<TypeAst> _TypeName;
+  mutable Shared<IdentifierAst> _CompName;
+
   /// Analyse a type value and rewrite it as its qualified name,
   /// so it reads the same from a module that never imports it.
   /// A "Self" outside a function body is kept, for the caller
@@ -88,11 +102,6 @@ private:
   /// an operator expression (analysed on a copy, as analysing it
   /// desugars it). Only that is checked again after.
   SPP_ATTR_NODISCARD auto IsCompValAnalysedInPlace(Scope const &scope) const -> bool;
-
-  /// Whether the comp value is an expression, rather than a literal
-  /// or a name, and whether it is an operator expression.
-  SPP_ATTR_NODISCARD auto IsCompExpression() const -> bool;
-  SPP_ATTR_NODISCARD auto IsCompOperator() const -> bool;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

@@ -117,7 +117,7 @@ auto FunctionParameterOptionalAst::Stage8_CheckMemory(
   // Check the memory status of the default value expression.
   DefaultVal->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
-    *DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
+    *DefaultVal, *DefaultVal, *sm, meta);
 }
 
 SPP_MOD_END

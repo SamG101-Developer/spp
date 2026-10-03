@@ -5,10 +5,10 @@ module;
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
-  if (not handle_validate(is_exe)) { return; }
+  if (not HandleValidate(is_exe)) { return; }
 
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
-  if (not handle_validate(is_exe)) { return __VA_ARGS__; }
+  if (not HandleValidate(is_exe)) { return __VA_ARGS__; }
 
 #define SPP_CLI_NULL \
   bp::v1::std_out > bp::v1::null
@@ -157,7 +157,7 @@ namespace spp::cli {
   }
 }
 
-auto spp::cli::run_cli(
+auto spp::cli::RunCli(
   const std::int32_t argc,
   char **argv)
   -> std::int32_t {
@@ -213,11 +213,11 @@ auto spp::cli::run_cli(
 
   app.add_subcommand("init", "Initialize the new project")
      ->fallthrough()
-     ->callback(handle_init);
+     ->callback(HandleInit);
 
   app.add_subcommand("vcs", "Initialize version control for the project")
      ->fallthrough()
-     ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
+     ->callback([] { if (not HandleVcs()) { throw CLI::RuntimeError(1); } });
 
   const auto build_cmd = app.add_subcommand("build", "Build the project")->fallthrough();
   build_cmd->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
@@ -243,7 +243,7 @@ auto spp::cli::run_cli(
   build_cmd->callback(
     [&build_mode, &build_target, &build_message_format, &build_skip_vcs, &build_analyse_only, &build_index_files,
       &build_index_project] {
-      if (not handle_build(
+      if (not HandleBuild(
         build_mode, build_target, build_skip_vcs, build_message_format, build_analyse_only, build_index_files,
         build_index_project)) {
         throw CLI::RuntimeError(1);
@@ -256,7 +256,7 @@ auto spp::cli::run_cli(
          ->default_val("dev");
   run_cmd->add_option("-t,--target", run_target, target_help);
   run_cmd->callback([&run_mode, &run_target] {
-    if (not handle_run(run_mode, run_target)) { throw CLI::RuntimeError(1); }
+    if (not HandleRun(run_mode, run_target)) { throw CLI::RuntimeError(1); }
   });
 
   const auto clean_cmd = app.add_subcommand("clean", "Clean the project")->fallthrough();
@@ -266,7 +266,7 @@ auto spp::cli::run_cli(
   clean_cmd->add_option(
     "-t,--target", clean_target,
     "Only clean this target's tree; every target's by default");
-  clean_cmd->callback([&clean_mode, &clean_target] { handle_clean(clean_mode, clean_target); });
+  clean_cmd->callback([&clean_mode, &clean_target] { HandleClean(clean_mode, clean_target); });
 
   auto test_name_filter = Str();
   auto test_group_filter = Str();
@@ -287,14 +287,14 @@ auto spp::cli::run_cli(
     "Also run the unit tests of every [vcs] library");
 
   test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs] {
-    handle_test(
+    HandleTest(
       test_name_filter, test_group_filter,
       Vec(test_libs.begin(), test_libs.end()), test_all_libs);
   });
 
   app.add_subcommand("validate", "Validate the project")
      ->fallthrough()
-     ->callback([] { if (not handle_validate(false)) { throw CLI::RuntimeError(1); } });
+     ->callback([] { if (not HandleValidate(false)) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
      ->fallthrough()
@@ -302,7 +302,7 @@ auto spp::cli::run_cli(
 
   app.add_subcommand("version", "Show version information")
      ->fallthrough()
-     ->callback(handle_version);
+     ->callback(HandleVersion);
 
   // Parse the command line arguments.
   try {
@@ -318,7 +318,7 @@ auto spp::cli::run_cli(
   return 0;
 }
 
-auto spp::cli::handle_init()
+auto spp::cli::HandleInit()
   -> void {
   // Check if the current directory is empty or not.
   const auto cwd = std::filesystem::current_path();
@@ -338,11 +338,11 @@ auto spp::cli::handle_init()
   std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
 
   // Fill in "main.spp" and "spp.toml" with template content.
-  utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
-  utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(utils::files::DisplayString(cwd.filename())));
+  utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, FormatDefaultFileContents(MAIN_FILE_CONTENTS));
+  utils::files::WriteFile(cwd / CONFIG_FILE, CreateDefaultConfigFor(utils::files::DisplayString(cwd.filename())));
 }
 
-auto spp::cli::handle_vcs()
+auto spp::cli::HandleVcs()
   -> bool {
   // Validate the project structure first.
   using namespace std::string_literals;
@@ -419,7 +419,7 @@ auto spp::cli::handle_vcs()
   return ok;
 }
 
-auto spp::cli::handle_build(
+auto spp::cli::HandleBuild(
   Str const &mode,
   Str const &target,
   const bool skip_vcs,
@@ -459,7 +459,7 @@ auto spp::cli::handle_build(
   // "vcs" folder reports every imported symbol as undefined
   // rather than the fetch failure that caused it, so stop here
   // instead.
-  if (not skip_vcs and not handle_vcs()) {
+  if (not skip_vcs and not HandleVcs()) {
     std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
     return false;
   }
@@ -497,13 +497,13 @@ auto spp::cli::handle_build(
   return CompileReportingErrors(c, message_format);
 }
 
-auto spp::cli::handle_run(
+auto spp::cli::HandleRun(
   Str const &mode,
   Str const &target)
   -> bool {
   // Build the project first (skip VCS). Don't run the old
   // binary when the current code causes an error.
-  if (not handle_build(mode, target, false)) { return false; }
+  if (not HandleBuild(mode, target, false)) { return false; }
 
   // Nothing this machine can execute comes out of a cross build,
   // so say that rather than reporting the missing executable as
@@ -551,7 +551,7 @@ auto spp::cli::handle_run(
   std::exit(exit_code);
 }
 
-auto spp::cli::handle_clean(
+auto spp::cli::HandleClean(
   Str const &mode,
   Str const &target)
   -> void {
@@ -593,7 +593,7 @@ auto spp::cli::handle_clean(
   }
 }
 
-auto spp::cli::handle_test(
+auto spp::cli::HandleTest(
   Str const &name_filter,
   Str const &group_filter,
   Vec<Str> const &libs,
@@ -605,7 +605,7 @@ auto spp::cli::handle_test(
   // Fetch the dependencies, as an ordinary build does: a
   // test build compiles the same sources plus the "tst"
   // folder.
-  if (not handle_vcs()) {
+  if (not HandleVcs()) {
     std::cerr << "Error: Aborting the test build; the [vcs] dependencies could not be fetched.\n";
     return;
   }
@@ -631,7 +631,7 @@ auto spp::cli::handle_test(
     std::exit(1);
   }
 
-  const auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
+  const auto scope = compiler::TestScope{.Project = true, .AllLibs = all_libs, .Libs = libs};
   auto c = compiler::Compiler(
     compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
@@ -697,7 +697,7 @@ auto spp::cli::handle_test(
   std::exit(1);
 }
 
-auto spp::cli::handle_validate(
+auto spp::cli::HandleValidate(
   const bool is_exe,
   const bool create_missing)
   -> bool {
@@ -771,7 +771,7 @@ auto spp::cli::handle_validate(
   for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
     if (not vcs_dir.is_directory()) { continue; }
     std::filesystem::current_path(vcs_dir.path());
-    handle_validate(false, false);
+    HandleValidate(false, false);
     std::filesystem::current_path(cwd);
   }
 
@@ -818,23 +818,23 @@ auto spp::cli::handle_validate(
   return true;
 }
 
-auto spp::cli::handle_version()
+auto spp::cli::HandleVersion()
   -> void {
   // Print the version information.
   std::cout << "SPP version " << SPP_VERSION << "\n";
 }
 
-auto spp::cli::create_default_config_for(
+auto spp::cli::CreateDefaultConfigFor(
   Str const &project_name)
   -> Str {
   // Inject the project name into the config template.
-  auto contents = format_default_file_contents(CONFIG_FILE_CONTENTS);
+  auto contents = FormatDefaultFileContents(CONFIG_FILE_CONTENTS);
   const auto pos = contents.find('$');
   contents.replace(pos, 1, project_name);
   return contents;
 }
 
-auto spp::cli::run_cpp_google_test(
+auto spp::cli::RunCppGoogleTest(
   Str const &mode,
   Str &&main_code)
   -> Map<Str, Str> {
@@ -858,7 +858,7 @@ auto spp::cli::run_cpp_google_test(
   return c->CompTimeConstants();
 }
 
-auto spp::cli::format_default_file_contents(
+auto spp::cli::FormatDefaultFileContents(
   const StrView contents)
   -> Str {
   return Str(contents);

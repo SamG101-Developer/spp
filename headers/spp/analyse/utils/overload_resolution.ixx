@@ -23,10 +23,10 @@ namespace spp::analyse::utils::overload_resolution {
   /// A function overload struct contains information about
   /// the scope/proto of the function, generics being inherited
   /// into it, and a potential type-forwarding  type too.
-  SPP_EXP_CLS struct FunctionOverload {
+  SPP_EXP_CLS struct FnOverload {
     Scope const *FnScope;
     FunctionPrototypeAst *Proto;
-    Unique<GenericArgumentGroupAst> SupGenerics;
+    Unique<GenericArgumentGroupAst> SupGns;
     Shared<TypeAst> FwdType;
   };
 
@@ -60,7 +60,7 @@ namespace spp::analyse::utils::overload_resolution {
 
     /// Whether the value is handed over through its forwarding
     /// type ("&Vec[T]" to a "&View[T]" parameter).
-    bool Forward = false;
+    bool IsForwarded = false;
   };
 
   SPP_EXP_CLS struct PassedOverload {
@@ -123,11 +123,11 @@ namespace spp::analyse::utils::overload_resolution {
   /// overloads that can be reached. This includes searching
   /// through scopes, handling generics, etc. All overloads
   /// are then processed for eligibility when calling.
-  SPP_EXP_FUN auto GetAllFunctionScopes(
+  SPP_EXP_FUN auto GetAllFnScopes(
     IdentifierAst const &target_fn_name,
     Scope const *target_scope,
     ScopeManager &sm,
     meta::CompilerMetaData *meta)
-    -> Vec<FunctionOverload>;
+    -> Vec<FnOverload>;
 
 }

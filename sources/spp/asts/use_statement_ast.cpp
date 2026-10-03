@@ -72,7 +72,7 @@ auto UseStatementAst::Stage2_GenTopLvlScopes(
 
   // Create the type statement AST conversion.
   const auto new_type = dynamic_shared_cast<TypeIdentifierAst>(
-    OldType->LastTypePart()->WithoutGenerics());
+    OldType->LastTypePart()->WithoutGns());
 
   _Conversion = MakeUnique<TypeStatementAst>(
     std::move(Annotations), nullptr, new_type, nullptr, nullptr, AstCloneShared(OldType));

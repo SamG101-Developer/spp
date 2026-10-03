@@ -1,10 +1,10 @@
 module;
 #include <spp/macros.hpp>
 
-module spp.codegen.llvm_func;
+module spp.codegen.llvm_fn;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.fn_values;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
 import std;
@@ -52,7 +52,7 @@ auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   return declaration;
 }
 
-auto spp::codegen::BuildFunctionValue(
+auto spp::codegen::BuildFnValue(
   llvm::Function const &target,
   LlvmCtx *ctx)
   -> llvm::Constant* {
@@ -86,7 +86,7 @@ auto spp::codegen::BuildFunctionValue(
   return llvm::ConstantStruct::get(llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty}), fields);
 }
 
-auto spp::codegen::CoerceToFunctionValue(
+auto spp::codegen::CoerceToFnValue(
   llvm::Value *llvm_val,
   analyse::scopes::TypeRef const &target,
   analyse::scopes::TypeRef const &source,
@@ -96,10 +96,10 @@ auto spp::codegen::CoerceToFunctionValue(
   // A named function carries nothing at runtime, so whatever was
   // loaded for it is dropped and the chosen overload built.
   const auto fn = llvm_val != nullptr
-    ? analyse::utils::function_values::FindFunctionValue(source, target, sm)
+    ? analyse::utils::fn_values::FindFnValue(source, target, sm)
     : nullptr;
-  if (fn == nullptr or fn->GetLlvmFunc() == nullptr or fn->GetLlvmFunc()->Target == nullptr) { return llvm_val; }
-  return BuildFunctionValue(*fn->GetLlvmFunc()->Target, ctx);
+  if (fn == nullptr or fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) { return llvm_val; }
+  return BuildFnValue(*fn->GetLlvmFn()->Target, ctx);
 }
 
 auto spp::codegen::GetEmissionModule(

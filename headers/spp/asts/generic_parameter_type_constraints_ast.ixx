@@ -1,18 +1,18 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.asts.generic_parameter_type_inline_constraints_ast;
+export module spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterTypeInlineConstraintsAst);
+SPP_AST_COMMON_FWD_DECL(GenericParameterTypeConstraintsAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
-SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : Ast {
-  SPP_AST_KEY_FUNCTIONS(GenericParameterTypeInlineConstraintsAst);
+SPP_EXP_CLS struct spp::asts::GenericParameterTypeConstraintsAst final : Ast {
+  SPP_AST_KEY_FUNCTIONS(GenericParameterTypeConstraintsAst);
 
   /// The ":" token that introduces the inline constraints.
   Unique<TokenAst> TokColon;
@@ -22,13 +22,13 @@ SPP_EXP_CLS struct spp::asts::GenericParameterTypeInlineConstraintsAst final : A
   /// satisfy these constraints.
   Vec<Shared<TypeAst>> Constraints;
 
-  static auto NewEmpty() -> Unique<GenericParameterTypeInlineConstraintsAst>;
+  static auto NewEmpty() -> Unique<GenericParameterTypeConstraintsAst>;
 
-  GenericParameterTypeInlineConstraintsAst(
+  GenericParameterTypeConstraintsAst(
     decltype(TokColon) &&tok_colon,
     Vec<Unique<TypeAst>> &&constraints);
 
-  ~GenericParameterTypeInlineConstraintsAst() override;
+  ~GenericParameterTypeConstraintsAst() override;
 
   auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
 
@@ -22,7 +23,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeIn
 
   SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<IdentifierAst*>;
 
-  SPP_ATTR_NODISCARD virtual auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD virtual auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Unique<PostfixExpressionOperatorAst>;
 };

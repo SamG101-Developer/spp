@@ -7,49 +7,19 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::self_type {
-  /// Resolve the "Self" type for the scope, and do a substitution
-  /// on the type to translate all the generics into the true type.
-  SPP_EXP_FUN auto SubstituteSelfType(
+  /// "Self" in "type" replaced by "self" ("TypeAst::SubstituteSelf", the keyword's desugaring, made before anything
+  /// resolves), then analysed through "sm" when it is given. A plain, unanalysed clone where "self" is null (read off a
+  /// scope, "Scope::FindEnclosingSelfType" has none outside a type) or "type" names no "Self": only a type that had a
+  /// "Self" replaced is analysed here, so a written type is not analysed at a point its owner has not chosen, and a
+  /// "Self" left standing for want of an enclosing type is reported by whoever does analyse it.
+  SPP_EXP_FUN auto SubstituteSelf(
     TypeAst const &type,
-    Scope const &scope,
-    meta::CompilerMetaData const &meta,
-    bool *substituted = nullptr)
+    TypeAst const *self,
+    ScopeManager *sm = nullptr,
+    meta::CompilerMetaData *meta = nullptr)
     -> Shared<TypeAst>;
-
-  /// Resolve the "Self" type for the scope, and do a substitution
-  /// on the type to translate all the generics into the true type.
-  /// Do an analysis afterwards if a substitution actually happened,
-  /// which "substituted" reports.
-  SPP_EXP_FUN auto SubstituteSelfTypeAndAnalyse(
-    TypeAst const &type,
-    Scope const &scope,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta,
-    bool *substituted = nullptr)
-    -> Shared<TypeAst>;
-
-  /// As above, with "Self" already decided ("self_type", or nothing
-  /// to substitute when null) rather than read off a scope.
-  SPP_EXP_FUN auto SubstituteSelfTypeAndAnalyse(
-    TypeAst const &type,
-    TypeAst const *self_type,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta)
-    -> Shared<TypeAst>;
-
-  /// Replace every "Self" part of a written type with a type given
-  /// outright, for the callers that decide what "Self" stands for
-  /// themselves rather than reading it off the scope - overload
-  /// resolution picks between the type owning the function and the
-  /// type at the call site's receiver.
-  SPP_EXP_FUN auto SubstituteSelfTypeWith(
-    TypeAst const &type,
-    TypeAst const &replacement)
-    -> Shared<TypeAst>;
-
 }

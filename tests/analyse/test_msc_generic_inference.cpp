@@ -467,7 +467,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // The same sweep carries comp generics in, and they are stranded on a shared instantiation the same way. They do
-// less damage, because "Scope::GetGenerics" skips a comp symbol that is still an unbound parameter, so a stranded
+// less damage, because "Scope::GetGns" skips a comp symbol that is still an unbound parameter, so a stranded
 // one is never offered as an argument. That skip has no counterpart on the type branch, which is why the type case
 // above had to be stopped at the point the symbol is carried in instead. A comp parameter named like one of the
 // standard library's own is the shape that would expose it if that ever stopped holding.

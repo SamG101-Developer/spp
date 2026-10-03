@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorKeywordAwaitAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
@@ -41,12 +42,12 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordAwaitAst final : P
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Unique<PostfixExpressionOperatorAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  Shared<PostfixExpressionAst> _MappedFunc;
+  Shared<PostfixExpressionAst> _MappedFn;
 };

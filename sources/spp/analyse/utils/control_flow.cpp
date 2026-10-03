@@ -54,12 +54,3 @@ auto spp::analyse::utils::control_flow::Diverges(
   meta->IgnoreMissingElseBranchForInference = true;
   return expr->InferTypeRef(sm, meta).IsNever;
 }
-
-auto spp::analyse::utils::control_flow::ValidateNoUnreachableCode(
-  StatementAst &member, StatementAst const *next, ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using errors::SppUnreachableCodeError;
-  // Check for code after a diverging member.
-  RaiseIf<SppUnreachableCodeError>(
-    next != nullptr and Diverges(member, sm, meta),
-    {sm->CurrentScope}, ERR_ARGS(member, *next));
-}

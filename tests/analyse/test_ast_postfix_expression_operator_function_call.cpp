@@ -537,7 +537,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // Red: the tuple the variadic arguments collapse into is never memory-checked, so moving the same object into two
-// variadic calls goes unreported. See the Todo in "function_values.cpp".
+// variadic calls goes unreported. See the Todo in "fn_values.cpp".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_variadic_pack_reuses_moved_argument,
@@ -687,7 +687,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_postfix_func_call_non_cmp_in_cmp_context,
-  SppInvalidComptimeOperationError, R"(
+  SppInvalidCompTimeOperationError, R"(
     fun g() -> Void { }
 
     cmp fun f() -> Void {

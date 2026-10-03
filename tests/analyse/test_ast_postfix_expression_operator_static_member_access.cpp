@@ -337,6 +337,78 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// Each instantiation of the owner has its own mock, typed in its own terms: "Box[S32]::$Get" and "Box[Bool]::$Get"
+// are two types.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_method_as_value_on_two_instances_of_a_generic_owner, R"(
+    cls Box[T] {
+        val: T
+    }
+
+    sup [T: Copy] Box[T] {
+        !public fun get(&self) -> T { ret self.val }
+    }
+
+    fun apply_s(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+    fun apply_b(f: std::function::FunRef[(&Box[Bool],), Bool], b: &Box[Bool]) -> Bool { ret f(b) }
+
+    fun f(a: Box[S32], b: Box[Bool]) -> Void {
+        let r = apply_s(Box[S32]::get, &a)
+        let s = apply_b(Box[Bool]::get, &b)
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+    }
+)");
+
+// Overloads written in two "sup" blocks of a generic owner coalesce with the instantiation's own blocks, so each is
+// typed in the instantiation's terms.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_method_as_value_overloaded_across_sup_blocks_of_a_generic_owner, R"(
+    cls Box[T] {
+        val: T
+    }
+
+    sup [T: Copy] Box[T] {
+        !public fun get(&self) -> T { ret self.val }
+    }
+
+    sup [T: Copy] Box[T] {
+        !public fun get(&self, x: Bool) -> T { ret self.val }
+    }
+
+    fun apply1(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+    fun apply2(f: std::function::FunRef[(&Box[S32], Bool), S32], b: &Box[S32]) -> S32 { ret f(b, true) }
+
+    fun f(b: Box[S32]) -> Void {
+        let r = apply1(Box[S32]::get, &b)
+        let s = apply2(Box[S32]::get, &b)
+        std::mem::ops::drop(b)
+    }
+)");
+
+// The owner written is checked: "Box[Bool]::get" is not a function of "&Box[S32]".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_method_as_value_on_the_wrong_instance_of_a_generic_owner,
+  SppFunctionCallNoValidSignaturesError, R"(
+    cls Box[T] {
+        val: T
+    }
+
+    sup [T: Copy] Box[T] {
+        !public fun get(&self) -> T { ret self.val }
+    }
+
+    fun apply(f: std::function::FunRef[(&Box[S32],), S32], b: &Box[S32]) -> S32 { ret f(b) }
+
+    fun f(b: Box[S32]) -> Void {
+        let r = apply(Box[Bool]::get, &b)
+        std::mem::ops::drop(b)
+    }
+)");
+
 // Overloads written in two "sup" blocks get a mock each, and each mock is given the other's overloads, so naming
 // "Counter::$Make" reaches both - through a function type, and through a generic parameter (called via the owner).
 // FIXED
@@ -519,5 +591,55 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> S64 {
         let a = RecvF(v=1_s64)
         ret RecvF::m(&a)
+    }
+)");
+
+// A constant a generic "sup" block declares is read in that block, where its own parameters are bound - not in the
+// class's scope, which binds the class's ("n"), not the block's ("k"). "ScopesDeclaringVar" listed a block's member a
+// second time against the class scope, which the folded value and its codegen then read.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_sup_constant_read_in_its_declaring_block, R"(
+    cls Wrap[cmp n: USize] { }
+
+    sup [cmp k: USize] Wrap[k] {
+        !public cmp doubled: USize = k + k
+    }
+
+    fun g(w: Wrap[6_uz]) -> Void { std::mem::ops::drop(w) }
+
+    fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
+        g(w)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_invalid_sup_constant_read_in_its_declaring_block,
+  SppFunctionCallNoValidSignaturesError, R"(
+    cls Wrap[cmp n: USize] { }
+
+    sup [cmp k: USize] Wrap[k] {
+        !public cmp doubled: USize = k + k
+    }
+
+    fun g(w: Wrap[7_uz]) -> Void { }
+
+    fun f(w: Wrap[Wrap[3_uz]::doubled]) -> Void {
+        g(w)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_sup_constant_codegen_read_in_its_declaring_block, R"(
+    cls Wrap[cmp n: USize] { }
+
+    sup [cmp k: USize] Wrap[k] {
+        !public cmp doubled: USize = k + k
+    }
+
+    fun f() -> USize {
+        ret Wrap[3_uz]::doubled
     }
 )");

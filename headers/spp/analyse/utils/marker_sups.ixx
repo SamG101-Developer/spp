@@ -17,31 +17,31 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::marker_sups {
-  /// Check the type and search the supertypes to identify a
-  /// functional superimposition. Retrieve it. There is a hack
-  /// here where generic constraints are considered beforehand,
-  /// because if we have a FunRef that must be a FunMov by
-  /// constraint, for behaviour to be consistent, it must be
-  /// treated like the FunMov would be.
-  SPP_EXP_FUN auto GetFunctionalType(
+  /// The function type ("FunRef" / "FunMut" / "FunMov") the type is or superimposes, looked at through an alias;
+  /// none for a type that is not callable. A generic's constraint is considered first: a "FunRef" constrained to be a
+  /// "FunMov" is treated as the "FunMov" would be, for consistent behaviour.
+  SPP_EXP_FUN auto FindFnSup(
     TypeAst const &type,
     Scope const &scope)
-    -> Shared<const TypeAst>;
+    -> TypeRef;
 
-  /// Check the type and search the supertypes to identifier a
-  /// generator superimposition. Retrieve its symbol along with the
-  /// Yield type in the generator's generics, and if its Gen or
-  /// GenOnce. Fallible with >1 generator candidates. The errors
-  /// are placed on "expr" and print the type "spell" gives, which
-  /// is only asked for when one is raised.
-  SPP_EXP_FUN auto GetGenAndYieldTypes(
+  /// The generator ("Gen" / "GenOnce") the type is or superimposes: its "Yield" argument is what a resumption gives
+  /// ("GenYieldOf"). None for no generator, or more than one, raised on "expr" (printing the type "spell" gives, only
+  /// asked for then) unless "raise" is false.
+  SPP_EXP_FUN auto FindGenSup(
     TypeRef const &ref,
     Scope const &scope,
     ExpressionAst const &expr,
     std::function<Shared<TypeAst>()> const &spell,
     StrView what,
     bool raise = true)
-    -> Tup<TypeSymbol*, Shared<TypeAst>, bool>;
+    -> TypeRef;
+
+  /// What a generator found by "FindGenSup" yields: its "Yield" argument. Null for no generator.
+  SPP_EXP_FUN auto GenYieldOf(TypeRef const &gen) -> Shared<TypeAst>;
+
+  /// Whether a generator found by "FindGenSup" is a "GenOnce".
+  SPP_EXP_FUN auto IsGenOnce(TypeRef const &gen, Scope const &scope) -> bool;
 
   /// Resuming a finished "Gen" answers "GenDone", so a yield type
   /// holding it would be indistinguishable from that. Raised on
@@ -49,34 +49,33 @@ namespace spp::analyse::utils::marker_sups {
   /// never checked. Basically prevent "GenDone" from manually
   /// appearing - always injected.
   SPP_EXP_FUN auto EnforceYieldTypeWithoutGenDone(
-    TypeAst const *yield_type,
-    bool is_once,
+    TypeRef const &gen,
     Scope const &scope,
     Ast const &expr,
     StrView what)
     -> void;
 
-  /// Check the type and search the supertypes to identifier a
-  /// try-type superimposition. Retrieve its symbol, whose "Value"
-  /// and "Residual" arguments are what an early return reads. The
-  /// errors print the type "spell" gives, as above.
-  SPP_EXP_FUN auto GetTryType(
+  /// The "Try" the type is or superimposes, whose "Value" and "Residual" arguments are what an early return reads.
+  /// None for no "Try", or more than one, raised as "FindGenSup" does.
+  SPP_EXP_FUN auto FindTrySup(
     TypeRef const &ref,
     ExpressionAst const &expr,
     std::function<Shared<TypeAst>()> const &spell,
     ScopeManager const &sm,
     StrView what,
     bool raise = true)
-    -> TypeSymbol*;
+    -> TypeRef;
 
-  /// Check the type and search the supertypes to identify a
-  /// forwarding superimposition (pair). Retrieve the ref/mut
-  /// forwarding super classes ("FwdRef[T=StrView]" for "Str"),
-  /// whose "T" is what is forwarded to.
-  SPP_EXP_FUN auto GetFwdTypes(
-    TypeSymbol const &sym,
+  /// The forwarding superimpositions the type is or superimposes: the first "FwdRef" and the first "FwdMut", none for
+  /// a kind it does not have. Each forwards to its "T" ("FwdTargetOf": "StrView" for "Str", which superimposes
+  /// "FwdRef[T=StrView]").
+  SPP_EXP_FUN auto FindFwdSups(
+    TypeRef const &ref,
     Scope const &scope)
-    -> Pair<TypeSymbol*, TypeSymbol*>;
+    -> Pair<TypeRef, TypeRef>;
+
+  /// What a forwarding superimposition found by "FindFwdSups" forwards to: its "T". None for no superimposition.
+  SPP_EXP_FUN auto FwdTargetOf(TypeRef const &fwd) -> TypeRef;
 
   /// Manually build the hidden forwarding call that is
   /// abstracted over for things like member access, assignment,

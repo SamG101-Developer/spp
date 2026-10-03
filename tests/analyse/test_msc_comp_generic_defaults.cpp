@@ -128,7 +128,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompGenericDefaults,
   test_invalid_default_calling_a_runtime_function,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     fun three() -> USize { ret 3_uz }
 
     fun pick[cmp n: USize = three()]() -> USize {

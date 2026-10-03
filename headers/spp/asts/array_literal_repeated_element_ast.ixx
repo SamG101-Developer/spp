@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ArrayLiteralRepeatedElementAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
@@ -86,8 +87,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// Move through the element and size to substitute
   /// generics in as they might contain postfix ops that
   /// need to be checked.
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   /// Arrays can be used ina runtime default context, only

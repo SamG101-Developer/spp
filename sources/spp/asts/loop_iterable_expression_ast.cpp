@@ -112,18 +112,18 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   _IterableName = iterable_name;
 
   // Grab the generator's inner type.
-  auto [_, yield_type, is_once] = [&] {
+  const auto gen = [&] {
     const auto clone_expr = AstClone(Iterable);
     auto tm = ScopeManager(
       sm->GlobalScope, sm->CurrentScope);
-    tm.Reset(sm->CurrentScope, sm->CurrentIterator());
+    tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
     clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-    return marker_sups::GetGenAndYieldTypes(
+    return marker_sups::FindGenSup(
       clone_expr->InferTypeRef(&tm, meta), *tm.CurrentScope, *Iterable,
       [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
   }();
-  marker_sups::EnforceYieldTypeWithoutGenDone(
-    yield_type.get(), is_once, *sm->CurrentScope, *Iterable, "loop iterable");
+  marker_sups::EnforceYieldTypeWithoutGenDone(gen, *sm->CurrentScope, *Iterable, "loop iterable");
+  const auto yield_type = marker_sups::GenYieldOf(gen);
 
   // Create the initial let statement to materialize the
   // condition being iterated.
@@ -244,11 +244,11 @@ auto LoopIterableExpressionAst::Stage8_CheckMemory(
   // whose lifetime ends with the loop. Release any escaping
   // borrows it holds (e.g. the "&mut v" established by
   // "v.iter_mut()").
-  const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName.get());
+  const auto iter_sym = sm->CurrentScope->FindVarSymbol(_IterableName.get());
   for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
     const auto b = spp::get<0>(ceb)->To<IdentifierAst>();
     if (b == nullptr) { continue; }
-    sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
+    sm->CurrentScope->FindVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
       [&](auto info) {
         return *spp::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
       });

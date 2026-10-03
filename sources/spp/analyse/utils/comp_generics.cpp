@@ -3,24 +3,35 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.comp_generics;
+import spp.analyse.scopes.comp_key;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.comptime_intrinsics;
+import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.literal_ast;
 import spp.asts.parenthesised_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
+import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
+import spp.utils.interner;
 import genex;
 import std;
 import numex.big_dec;
@@ -30,235 +41,257 @@ auto spp::analyse::utils::comp_generics::FoldCompExpr(
   ExpressionAst const &expr,
   Scope const &scope)
   -> Unique<ExpressionAst> {
-  using lex::SppTokenType;
+  // What its identity folds to ("CompKey"), as an ast ("Scope::CompAstOf"): a value, or a pack every element of which
+  // is one ("cmp ..ns" is a tuple of values, closed when every element is, as a type pack's tuple is). Anything still
+  // naming a parameter, or an opaque value, is not closed.
+  using Kind = scopes::CompNode::Part;
+  auto const *const node = scopes::CompNodeOf(scope.CompIdOf(expr));
+  const auto closed = node != nullptr and not node->Any([](scopes::CompNode const &part) {
+    return part.Kind != Kind::Value and part.Kind != Kind::Pack;
+  });
+  return closed ? scope.CompAstOf(*node) : nullptr;
+}
 
-  // A literal is its own value, spelled canonically:
-  // "0x10_uz" and "16_uz" are one value.
-  if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
-    return IntegerLiteralAst::FromBigVal(lit->BigVal(), lit->Type);
+auto spp::analyse::utils::comp_generics::CompValueAst(
+  const StrView literal)
+  -> Unique<ExpressionAst> {
+  if (const auto value = scopes::ParseCompBool(literal); value.has_value()) { return BooleanLiteralAst::FromCppVal(*value); }
+  if (const auto value = scopes::ParseCompInt(literal); value.has_value()) {
+    return IntegerLiteralAst::FromBigVal(value->first, value->second);
   }
-  if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
-    return BooleanLiteralAst::FromCppVal(lit->CppVal());
-  }
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    return FoldCompExpr(*paren->Expr, scope);
-  }
+  return nullptr;
+}
 
-  // A pack ("cmp ..ns") is a tuple of values, closed when every element is, as a type pack's tuple is.
-  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-    auto elems = Vec<Unique<ExpressionAst>>();
-    for (auto const &elem : tup->Elems) {
-      auto folded = FoldCompExpr(*elem, scope);
-      if (folded == nullptr) { return nullptr; }
-      elems.EmplaceBack(std::move(folded));
+auto spp::analyse::utils::comp_generics::FindCompMemberId(
+  const scopes::TypeId owner,
+  const StrView name)
+  -> scopes::CompId {
+  using Tag = scopes::InstanceKey::Tag;
+  using Kind = scopes::CompNode::Part;
+  const auto member = scopes::InternCompKey(scopes::CompNode::OfMember(scopes::TypeIdWord(owner), name));
+
+  // Constants defined through each other ("cmp a = Self::b", "cmp b = Self::a") stay members.
+  thread_local auto depth = 0;
+  if (depth > 16) { return member; }
+  ++depth;
+  struct Leave { ~Leave() { --depth; } } const _leave;
+
+  // The owner: a class, or a made instance of a template.
+  auto const &head = scopes::HeadOf(owner);
+  auto const *const tmpl = head.Kind == Tag::Symbol or head.Kind == Tag::Inst
+    ? head.Symbol()
+    : nullptr;
+  auto const *const sym = head.Kind == Tag::Inst and tmpl != nullptr and tmpl->LinkedScope != nullptr
+    ? tmpl->LinkedScope->TypeSymbolOf(owner)
+    : tmpl;
+  if (sym == nullptr or sym->LinkedScope == nullptr) { return 0; }
+
+  // The constant, where the owner's blocks declare it; while those are being attached, where its template's do (the
+  // same constant: a value naming the instance's parameters stays a member below).
+  const auto id = MakeShared<IdentifierAst>(0uz, Str(name));
+  auto const *var = static_cast<VariableSymbol const*>(nullptr);
+  auto const *decl = static_cast<Scope const*>(nullptr);
+  for (auto const &found : member_lookup::ScopesDeclaringVar(*sym->LinkedScope, *id)) {
+    var = found.Symbol;
+    decl = found.Where;
+    break;
+  }
+  if (var == nullptr) {
+    auto *const base = TypeRef::OfKind(*sym, *sym->LinkedScope).Template();
+    if (const auto blocks = ScopeManager::NormalSupBlocks.find(base); blocks != ScopeManager::NormalSupBlocks.end()) {
+      for (auto const *block : blocks->second) {
+        if (auto const *const found = block->FindVarSymbol(id.get(), true); found != nullptr) {
+          var = found;
+          decl = block;
+          break;
+        }
+      }
     }
-    return MakeUnique<TupleLiteralAst>(nullptr, std::move(elems), nullptr);
   }
+  if (var == nullptr or decl == nullptr) { return 0; }
 
-  // A comp generic is the value it is bound to. An unbound
-  // one, or one bound to another generic, is not closed.
-  if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
-    const auto var = scope.GetVarSymbol(id);
-    if (var == nullptr or not var->IsCompGeneric()) { return nullptr; }
-    const auto bound = var->BoundCompValue();
-    if (bound == nullptr or bound->To<IdentifierAst>() != nullptr) { return nullptr; }
-    return FoldCompExpr(*bound, scope);
-  }
-
-  // A binary operation over two folded values, by the
-  // comp-time intrinsic its operator maps to.
-  const auto bin = expr.To<BinaryExpressionAst>();
-  if (bin == nullptr) { return nullptr; }
-  const auto lhs = FoldCompExpr(*bin->Lhs, scope);
-  const auto rhs = lhs != nullptr ? FoldCompExpr(*bin->Rhs, scope) : nullptr;
-  if (lhs == nullptr or rhs == nullptr) { return nullptr; }
-  const auto op = bin->TokOp->TokenType;
-
-  const auto lhs_bool = lhs->To<BooleanLiteralAst>();
-  const auto rhs_bool = rhs->To<BooleanLiteralAst>();
-  if (lhs_bool != nullptr and rhs_bool != nullptr) {
-    if (op == SppTokenType::TK_EQ) { return BooleanLiteralAst::FromCppVal(lhs_bool->CppVal() == rhs_bool->CppVal()); }
-    if (op == SppTokenType::TK_NE) { return BooleanLiteralAst::FromCppVal(lhs_bool->CppVal() != rhs_bool->CppVal()); }
-    return nullptr;
-  }
-
-  // An unsuffixed literal takes the other side's type,
-  // as it does in an expression ("n + 1" with "n: USize");
-  // two different types do not mix.
-  const auto lhs_int = lhs->To<IntegerLiteralAst>();
-  const auto rhs_int = rhs->To<IntegerLiteralAst>();
-  if (lhs_int == nullptr or rhs_int == nullptr) { return nullptr; }
-  if (not lhs_int->Type.empty() and not rhs_int->Type.empty() and lhs_int->Type != rhs_int->Type) { return nullptr; }
-  const auto type = not lhs_int->Type.empty() ? lhs_int->Type : rhs_int->Type;
-  const auto l = IntegerLiteralAst::FromBigVal(lhs_int->BigVal(), type);
-  const auto r = IntegerLiteralAst::FromBigVal(rhs_int->BigVal(), type);
-  const auto by_zero = r->Val->TokenData == "0";
-
-  switch (op) {
-    case SppTokenType::TK_ADD: return comptime_intrinsics::std_intrinsics_add(*l, *r);
-    case SppTokenType::TK_SUB: return comptime_intrinsics::std_intrinsics_sub(*l, *r);
-    case SppTokenType::TK_MUL: return comptime_intrinsics::std_intrinsics_mul(*l, *r);
-    case SppTokenType::TK_DIV: return by_zero ? nullptr : comptime_intrinsics::std_intrinsics_div(*l, *r);
-    case SppTokenType::TK_REM: return by_zero ? nullptr : comptime_intrinsics::std_intrinsics_rem(*l, *r);
-    case SppTokenType::TK_BIT_IOR: return comptime_intrinsics::std_intrinsics_bit_ior(*l, *r);
-    case SppTokenType::TK_BIT_AND: return comptime_intrinsics::std_intrinsics_bit_and(*l, *r);
-    case SppTokenType::TK_BIT_XOR: return comptime_intrinsics::std_intrinsics_bit_xor(*l, *r);
-    case SppTokenType::TK_BIT_SHL: return comptime_intrinsics::std_intrinsics_bit_shl(*l, *r);
-    case SppTokenType::TK_BIT_SHR: return comptime_intrinsics::std_intrinsics_bit_shr(*l, *r);
-    case SppTokenType::TK_EQ: return comptime_intrinsics::std_intrinsics_eq(*l, *r);
-    case SppTokenType::TK_NE: return comptime_intrinsics::std_intrinsics_ne(*l, *r);
-    case SppTokenType::TK_LT: return comptime_intrinsics::std_intrinsics_lt(*l, *r);
-    case SppTokenType::TK_LE: return comptime_intrinsics::std_intrinsics_le(*l, *r);
-    case SppTokenType::TK_GT: return comptime_intrinsics::std_intrinsics_gt(*l, *r);
-    case SppTokenType::TK_GE: return comptime_intrinsics::std_intrinsics_ge(*l, *r);
-    default: return nullptr;
-  }
+  // Its value's identity, where it is declared; one still naming a parameter, or holding anything opaque, keeps the
+  // member as its identity.
+  auto const *const value = var->CompTimeValue != nullptr ? var->CompTimeValue->To<ExpressionAst>() : nullptr;
+  if (value == nullptr) { return member; }
+  const auto value_id = decl->CompIdOf(*value);
+  auto const *const node = scopes::CompNodeOf(value_id);
+  const auto open = node == nullptr or node->Any([](scopes::CompNode const &part) {
+    return part.Kind == Kind::Param or part.Kind == Kind::Opaque or part.Kind == Kind::Member;
+  });
+  return open ? member : value_id;
 }
 
-auto spp::analyse::utils::comp_generics::AnyCompName(
-  ExpressionAst const &expr, std::function<bool(IdentifierAst const &)> const &pred) -> bool {
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    return AnyCompName(*paren->Expr, pred);
-  }
-  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
-    return (bin->Lhs != nullptr and AnyCompName(*bin->Lhs, pred)) or (bin->Rhs != nullptr and AnyCompName(*bin->Rhs, pred));
-  }
-  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-    return genex::any_of(tup->Elems, [&](auto const &elem) { return AnyCompName(*elem, pred); });
-  }
-  const auto id = expr.To<IdentifierAst>();
-  return id != nullptr and pred(*id);
-}
-
-auto spp::analyse::utils::comp_generics::NamesCompParam(
-  ExpressionAst const &expr,
-  Scope const &scope)
+auto spp::analyse::utils::comp_generics::IsCompExpression(
+  ExpressionAst const &value)
   -> bool {
-  return AnyCompName(expr, [&scope](IdentifierAst const &id) {
-    auto const *const sym = scope.GetVarSymbol(&id);
-    return sym != nullptr and sym->Kind == VariableKind::GenericCompParam;
+  return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
+    return part.To<LiteralAst>() == nullptr and part.To<IdentifierAst>() == nullptr;
   });
 }
 
-auto spp::analyse::utils::comp_generics::RecordCompGenerics(
-  ExpressionAst const &expr,
-  Scope const &scope)
+auto spp::analyse::utils::comp_generics::SubstituteCompSelf(
+  ExpressionAst const &value,
+  TypeAst const &with)
+  -> Shared<ExpressionAst> {
+  const auto rewrite = [&with](ExpressionAst const &part) { return AstClone(SubstituteCompSelf(part, with)); };
+  if (auto const *const type = value.To<TypeAst>(); type != nullptr) { return type->SubstituteSelf(with); }
+  if (auto const *const tup = value.To<TupleLiteralAst>(); tup != nullptr) {
+    auto elems = Vec<Unique<ExpressionAst>>();
+    for (auto const &elem : tup->Elems) { elems.EmplaceBack(rewrite(*elem)); }
+    return MakeShared<TupleLiteralAst>(AstClone(tup->TokL), std::move(elems), AstClone(tup->TokR));
+  }
+  if (auto const *const paren = value.To<ParenthesisedExpressionAst>(); paren != nullptr) {
+    return MakeShared<ParenthesisedExpressionAst>(AstClone(paren->TokL), rewrite(*paren->Expr), AstClone(paren->TokR));
+  }
+  if (auto const *const bin = value.To<BinaryExpressionAst>(); bin != nullptr) {
+    if (const auto [lhs, rhs] = bin->Operands(); lhs != nullptr and rhs != nullptr) {
+      return MakeShared<BinaryExpressionAst>(rewrite(*lhs), AstClone(bin->TokOp), rewrite(*rhs));
+    }
+  }
+  if (auto const *const pf = value.To<PostfixExpressionAst>(); pf != nullptr) {
+    return MakeShared<PostfixExpressionAst>(rewrite(*pf->Lhs), AstClone(pf->Op));
+  }
+  return AstCloneShared(&value);
+}
+
+auto spp::analyse::utils::comp_generics::IsCompOperator(
+  ExpressionAst const &value)
+  -> bool {
+  return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
+    return part.To<BinaryExpressionAst>() != nullptr or part.To<ParenthesisedExpressionAst>() != nullptr;
+  });
+}
+
+namespace {
+  /// The value each opaque comp identity ("O<len>:<spelling>") stands for, recorded as it is keyed ("RawCompNode"):
+  /// no identity names it, so this is the only way back to it ("OpaqueCompValue"). Keys are interned for the process,
+  /// and the values are clones owned here, their names recording what they mean where they were first keyed.
+  auto OpaqueValues() -> spp::Map<spp::analyse::scopes::CompId, spp::Shared<spp::asts::ExpressionAst>>& {
+    static auto values = spp::Map<spp::analyse::scopes::CompId, spp::Shared<spp::asts::ExpressionAst>>();
+    return values;
+  }
+
+  /// What "Self" is where "scope" is, read there: the nearest "sup" block's type as written ("Box[T]", over the block's
+  /// own parameters, which its instantiation binds), else the nearest class over its own parameters. A method's own
+  /// "sup $M ext FunXxx" block (stage 1 lowers each method into one) is passed over: its "Self" is the mock, not the
+  /// method's owner.
+  auto SelfOwnerIn(spp::analyse::scopes::Scope const &scope) -> spp::analyse::scopes::TypeId {
+    for (auto const *s = &scope; s != nullptr; s = s->Parent) {
+      if (s->AstNode == nullptr) { continue; }
+      if (s->AstNode->To<spp::asts::ClassPrototypeAst>() != nullptr and s->LinkedTypeSymbol != nullptr) {
+        return s->TypeIdOf(*s->LinkedTypeSymbol->GnSelfName());
+      }
+      if (const auto name = spp::asts::AstNameOrNull(s->AstNode); name != nullptr and not name->IsCompilerGeneratedType()) {
+        return s->TypeIdOf(*name);
+      }
+    }
+    return nullptr;
+  }
+
+  /// What an expression's identity is before folding ("CompKey"): the grammar's parts as the expression is made of
+  /// them ("scopes::CompNode").
+  auto RawCompNode(
+    spp::asts::ExpressionAst const &expr, spp::analyse::scopes::Scope const &scope) -> spp::analyse::scopes::CompNode {
+    using namespace spp::asts;
+    namespace scopes = spp::analyse::scopes;
+    using Kind = scopes::CompNode::Part;
+    const auto leaf = [](const Kind kind, spp::Str text) {
+      return scopes::CompNode{.Kind = kind, .Text = std::move(text), .ParamId = 0, .Kids = {}, .Type = 0};
+    };
+
+    // A literal is its own value, spelled canonically: "0x10_uz" and "16_uz" are one value.
+    if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
+      return leaf(Kind::Value, IntegerLiteralAst::FromBigVal(lit->BigVal(), lit->Type)->ToString());
+    }
+    if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
+      return leaf(Kind::Value, lit->CppVal() ? "true" : "false");
+    }
+
+    // A pack is its elements' identities, each on its own, so a parameter among them is named by identity (and read,
+    // and substituted, as an element) however the pack is spelled or bound: "(n, 1_uz)" with "n" bound to "1_uz" is
+    // "P(V1_uz, V1_uz)", as "(1_uz, 1_uz)" is.
+    if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
+      auto pack = leaf(Kind::Pack, {});
+      for (auto const &elem : tup->Elems) { pack.Kids.push_back(RawCompNode(*elem, scope)); }
+      return pack;
+    }
+    if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
+      return RawCompNode(*paren->Expr, scope);
+    }
+
+    // A comp generic is the parameter at the end of its chain of bindings to other generics - an inherited "w" bound
+    // to the block's own "w" is that "w" - however it is spelled here. A binding to a value is that value.
+    if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
+      auto const *var = scope.FindVarSymbol(id);
+      if (var == nullptr or not var->IsGn()) { return leaf(Kind::Opaque, expr.ToString()); }
+      var = var->AsBound(scope);
+      if (auto const *const value = var->BoundCompVal(); value != nullptr and value->To<IdentifierAst>() == nullptr) {
+        return RawCompNode(*value, scope);
+      }
+      return scopes::CompNode::OfParam(var->ParamId());
+    }
+
+    // An operation is its operands' identities under its operator, bracketed so precedence is explicit. The operator
+    // is spelled from its token's kind: "<<" is parsed from two "<" tokens. An analysed operation is still this node
+    // (its call is held beside it), so it reads as its operator.
+    if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
+      if (const auto [lhs, rhs] = bin->Operands(); lhs != nullptr and rhs != nullptr) {
+        auto op = leaf(Kind::Op, spp::lex::TokToString(bin->TokOp->TokenType));
+        op.Kids.push_back(RawCompNode(*lhs, scope));
+        op.Kids.push_back(RawCompNode(*rhs, scope));
+        return op;
+      }
+    }
+
+    // A constant named through a type ("Self::mo_seq_cst", "T::SIZE") is that type's identity and the constant's name,
+    // so a substitution rewrites the type as it would anywhere. "Self" is the type it is where written, read there
+    // ("SelfOwnerIn"): only read, it is never instantiated from, so it need not wait to be substituted. Through a closed
+    // type, the constant is read now (its value, where it folds); through an open one it is read once a substitution
+    // closes it ("scopes::SubstituteCompId").
+    if (const auto pf = expr.To<PostfixExpressionAst>(); pf != nullptr) {
+      auto const *const lhs_type = pf->Lhs->To<TypeAst>();
+      auto const *const member = pf->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>();
+      const auto owner = lhs_type == nullptr or member == nullptr ? nullptr
+        : lhs_type->IsSelfType() ? SelfOwnerIn(scope)
+        : scope.TypeIdOf(*lhs_type);
+      if (owner != nullptr) {
+        auto const *const read = scopes::IsClosedTypeId(owner)
+          ? scopes::CompNodeOf(scopes::CompMemberIdOf(owner, member->Name->ToView()))
+          : nullptr;
+        if (read != nullptr) { return *read; }
+        return scopes::CompNode::OfMember(scopes::TypeIdWord(owner), member->Name->ToView());
+      }
+    }
+
+    // Anything else is its spelling ("x.f()"), length-prefixed so the identity still parses. As no identity names it,
+    // the value is recorded under it, its names recording what they mean here ("OpaqueCompValue").
+    auto opaque = leaf(Kind::Opaque, expr.ToString());
+    if (const auto id = scopes::InternCompKey(opaque); not OpaqueValues().contains(id)) {
+      auto recorded = spp::asts::AstCloneShared(&expr);
+      spp::analyse::utils::type_resolution::RecordCompParts(*recorded, scope);
+      OpaqueValues().emplace(id, std::move(recorded));
+    }
+    return opaque;
+  }
+}
+
+auto spp::analyse::utils::comp_generics::OpaqueCompValue(
+  const scopes::CompId id)
+  -> ExpressionAst const* {
+  const auto hit = OpaqueValues().find(id);
+  return hit != OpaqueValues().end() ? hit->second.get() : nullptr;
+}
+
+auto spp::analyse::utils::comp_generics::ClearOpaqueCompValues()
   -> void {
-  // Every name, nested ones too. A parameter records itself, and a binding the parameter it binds, as a type argument
-  // naming either does ("GenericArgumentAst::AnalyseTypeVal").
-  static_cast<void>(AnyCompName(expr, [&scope](IdentifierAst const &id) {
-    if (id.WrittenParam() != 0) { return false; }
-    if (auto *const sym = scope.GetVarSymbol(&id); sym != nullptr) {
-      if (sym->Kind == VariableKind::GenericCompParam and sym->ParamId != 0) { id.SetWrittenParam(sym->ParamId); }
-      else if (sym->Kind == VariableKind::GenericCompArg and sym->BindsParamId != 0) {
-        id.SetWrittenParam(sym->BindsParamId);
-      }
-    }
-    return false;
-  }));
+  OpaqueValues().clear();
 }
 
-auto spp::analyse::utils::comp_generics::CompExprIdentity(
-  ExpressionAst const &expr, Scope const &scope, Str &out) -> void {
-  // A pack is its elements' identities, each on its own, so a parameter among them is named by identity (and read, and
-  // substituted, as an element) however the pack is spelled or bound: "(n, 1_uz)" with "n" bound to "1_uz" is
-  // "P(V1_uz, V1_uz)", as "(1_uz, 1_uz)" is ("scopes::CompPackElements" reads it back).
-  if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-    out += "P(";
-    for (auto i = 0uz; i < tup->Elems.Len(); ++i) {
-      if (i != 0) { out += ", "; }
-      CompExprIdentity(*tup->Elems[i], scope, out);
-    }
-    out += ')';
-    return;
-  }
-
-  // A closed value is what it folds to: "1_uz + 1_uz", "n + 1_uz"
-  // with "n" bound to "1_uz", and "2_uz" are one value.
-  if (const auto folded = FoldCompExpr(expr, scope); folded != nullptr) {
-    // A pack folds to a pack, which is named by its elements.
-    if (folded->To<TupleLiteralAst>() != nullptr) {
-      CompExprIdentity(*folded, scope, out);
-      return;
-    }
-    out += 'V';
-    out += folded->ToString();
-    return;
-  }
-  if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
-    CompExprIdentity(*paren->Expr, scope, out);
-    return;
-  }
-
-  // A comp generic is the parameter at the end of its chain of
-  // bindings to other generics - an inherited "w" bound to the
-  // block's own "w" is that "w" - however it is spelled here.
-  // A binding to a value that does not fold is that value.
-  if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
-    auto const *var = scope.GetVarSymbol(id);
-    if (var == nullptr or not var->IsCompGeneric()) {
-      out += 'V';
-      out += expr.ToString();
-      return;
-    }
-    for (auto depth = 0; depth < 16; ++depth) {
-      const auto bound = var->BoundCompValue();
-      if (bound == nullptr) { break; }
-      const auto bound_id = bound->To<IdentifierAst>();
-      if (bound_id == nullptr and bound->To<TupleLiteralAst>() != nullptr) {
-        CompExprIdentity(*bound, scope, out);
-        return;
-      }
-      if (bound_id == nullptr) {
-        out += 'V';
-        out += bound->ToString();
-        return;
-      }
-      const auto next = scope.GetVarSymbol(bound_id);
-      if (next == nullptr or next == var or not next->IsCompGeneric()) { break; }
-      var = next;
-    }
-    const auto param_id = var->ParamIdentity();
-    auto digits = std::array<char, 20>();
-    const auto written = std::to_chars(digits.data(), digits.data() + digits.size(), param_id);
-    out += 'C';
-    out.append(digits.data(), written.ptr);
-    return;
-  }
-
-  // An operation is its operands' identities under its operator, bracketed so precedence is explicit.
-  if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr and bin->Lhs != nullptr and bin->Rhs !=
-    nullptr) {
-    out += '(';
-    CompExprIdentity(*bin->Lhs, scope, out);
-    out += ' ';
-    out += bin->TokOp->TokenData;
-    out += ' ';
-    CompExprIdentity(*bin->Rhs, scope, out);
-    out += ')';
-    return;
-  }
-  out += 'V';
-  out += expr.ToString();
-}
-
-auto spp::analyse::utils::comp_generics::CompIdentityOfSym(
-  VariableSymbol const &sym, Scope const &scope, Str &out) -> void {
-  if (auto const *const bound = sym.BoundCompValue(); bound != nullptr) {
-    CompExprIdentity(*bound, scope, out);
-    return;
-  }
-  out += 'C';
-  out += std::to_string(sym.ParamIdentity());
-}
-
-auto spp::analyse::utils::comp_generics::ResolveCompArg(
-  ExpressionAst const &expr,
-  Scope const &scope)
-  -> Unique<ExpressionAst> {
-  if (auto folded = FoldCompExpr(expr, scope); folded != nullptr) { return folded; }
-  auto const *const id = expr.To<IdentifierAst>();
-  auto const *const var = id != nullptr ? scope.GetVarSymbol(id) : nullptr;
-  auto const *const bound = var != nullptr ? var->BoundCompValue() : nullptr;
-  return bound != nullptr ? AstClone(bound) : nullptr;
+auto spp::analyse::utils::comp_generics::CompKey(
+  ExpressionAst const &expr, Scope const &scope) -> scopes::CompNode {
+  // A closed value is what it folds to: "1_uz + 1_uz", "n + 1_uz" with "n" bound to "1_uz", and "2_uz" are one value.
+  auto raw = RawCompNode(expr, scope);
+  auto folded = scopes::RewriteCompKey(raw);
+  return folded.has_value() ? std::move(*folded) : std::move(raw);
 }

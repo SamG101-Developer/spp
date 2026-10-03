@@ -16,6 +16,5 @@ namespace spp::utils {
   /// The counter is still per-process and per-call-order, so it is reproducible for one compile repeated and not for
   /// a compile that analyses a different amount of code first. Incrementality needs identity that survives that too,
   /// which is a deeper change than this one.
-  SPP_EXP_FUN SPP_ATTR_HOT
-  auto Uid() -> Str;
+  SPP_EXP_FUN auto Uid() -> Str;
 }

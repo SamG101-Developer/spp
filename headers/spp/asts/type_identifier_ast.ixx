@@ -12,6 +12,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeIdentifierAst);
 use(spp::asts, struct ConventionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
@@ -58,8 +59,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto AnyPart(std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool override;
-
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept -> bool override;
 
   SPP_ATTR_NODISCARD auto IsSelfType() const noexcept -> bool override;
@@ -86,16 +85,14 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto WithConvention(Unique<ConventionAst> &&conv) const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto WithoutGenerics() const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
-  /// Record the template (or alias) this name's head names wherever it is read; see "_TemplateWritten".
-  auto SetTemplateWritten(const analyse::scopes::TypeId id) const noexcept -> void { _TemplateWritten = id; }
+  /// Record the template (or alias) this name's head names wherever it is read; see "_WrittenTemplateId".
+  auto SetWrittenTemplateId(const analyse::scopes::TypeId id) const noexcept -> void { _WrittenTemplateId = id; }
 
-  SPP_ATTR_NODISCARD auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto SubstituteSelf(TypeAst const &with) const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto ContainsGenerics(GenericParameterAst const &generic) const -> bool override;
-
-  SPP_ATTR_NODISCARD auto WithGenerics(Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto WithGns(Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
@@ -162,9 +159,9 @@ private:
   bool _IsSourceWritten;
 
   /// The identity of the template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc"
-  /// of "Alloc[T]"). Kept through "Clone", "SubstituteGenerics" and "WithGenerics", and handed to "WithoutGenerics", so
-  /// the stripped name resolves to that declaration from anywhere ("Scope::ResolveWritten") rather than by its spelling.
-  mutable analyse::scopes::TypeId _TemplateWritten = nullptr;
+  /// of "Alloc[T]"). Kept through "Clone", "SubstituteSelf" and "WithGns", and handed to "WithoutGns", so the stripped
+  /// name resolves to that declaration from anywhere ("Scope::FindWrittenTypeSymbol") rather than by its spelling.
+  mutable analyse::scopes::TypeId _WrittenTemplateId = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)

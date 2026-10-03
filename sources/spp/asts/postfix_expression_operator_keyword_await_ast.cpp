@@ -35,7 +35,7 @@ PostfixExpressionOperatorKeywordAwaitAst::PostfixExpressionOperatorKeywordAwaitA
   decltype(TokAwait) &&tok_await) :
   TokDot(std::move(tok_dot)),
   TokAwait(std::move(tok_await)),
-  _MappedFunc(nullptr) {
+  _MappedFn(nullptr) {
 }
 
 PostfixExpressionOperatorKeywordAwaitAst::~PostfixExpressionOperatorKeywordAwaitAst() = default;
@@ -59,7 +59,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(
     AstClone(TokDot),
     AstClone(TokAwait));
-  ast->_MappedFunc = _MappedFunc;
+  ast->_MappedFn = _MappedFn;
   return ast;
 }
 
@@ -77,14 +77,14 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::FUT;
 
   // Already analysed => return early.
-  if (_MappedFunc != nullptr) { return; }
+  if (_MappedFn != nullptr) { return; }
 
   // Check the lhs is an owned future. This is the only type
   // that can be "awaited" on; its type is only spelled out
   // for the error.
   const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
-  if (lhs_ref.KindSym() == nullptr
-    or not type_compare::IsTemplate(*lhs_ref.Sym, *FUT->WithoutGenerics(), *sm->CurrentScope)) {
+  if (lhs_ref.KindSymbol() == nullptr
+    or not lhs_ref.IsA(*FUT, *sm->CurrentScope)) {
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
     Raise<SppAwaitTargetNotFutureError>({sm->CurrentScope}, ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
   }
@@ -112,9 +112,9 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   // method is private.
   const auto _meta_guard = MetaGuard(meta);
   meta->IgnoreAccessModifierViolations = true;
-  _MappedFunc = MakeUnique<PostfixExpressionAst>(
+  _MappedFn = MakeUnique<PostfixExpressionAst>(
     std::move(member_access), std::move(func_call));
-  _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+  _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
@@ -125,14 +125,15 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   // future still holds them, so they pass to its new owner
   // instead. Todo: Maybe move into mem_utils?
   const auto handle = meta->AssignmentTarget;
-  const auto handle_sym = handle != nullptr and type_predicates::IsTypeGen(InferTypeRef(sm, meta), *sm->CurrentScope)
-    ? sm->CurrentScope->GetVarSymbolOutermost(*handle).first : nullptr;
+  const auto handle_sym =
+    handle != nullptr and type_predicates::IsTypeGenerator(InferTypeRef(sm, meta), *sm->CurrentScope)
+    ? sm->CurrentScope->FindVarSymbolOutermost(*handle).first : nullptr;
   if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
-    if (const auto sym = sm->CurrentScope->GetVarSymbolOutermost(*lhs).first; sym != nullptr) {
+    if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*lhs).first; sym != nullptr) {
       const auto contained = sym->MemInfo->AstContainedEscapingBorrows;
       for (auto const &ceb : contained) {
         sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-        const auto borrowed = sm->CurrentScope->GetVarSymbolOutermost(*spp::get<0>(ceb)).first;
+        const auto borrowed = sm->CurrentScope->FindVarSymbolOutermost(*spp::get<0>(ceb)).first;
         if (borrowed == nullptr) { continue; }
         borrowed->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
           [&](auto info) {
@@ -152,30 +153,30 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   // analysis rules, where async needs a bypass (sneaky hack).
   const auto _meta_guard = MetaGuard(meta);
   meta->IgnoreAccessModifierViolations = true;
-  _MappedFunc->Stage8_CheckMemory(sm, meta);
+  _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing of its own to emit: the wait is whatever "await_"
   // compiled to.
-  return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
+  return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type wrapped inside the "Fut[T]" object being awaited
   // on: "T".
-  return _MappedFunc->InferType(sm, meta);
+  return _MappedFn->InferType(sm, meta);
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  return _MappedFunc->InferTypeRef(sm, meta);
+  return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &) const -> Unique<PostfixExpressionOperatorAst> {
+auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
+  analyse::scopes::ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Nothing inside the operator is an expression, so there is
   // nothing to substitute into.
   return MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(

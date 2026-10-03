@@ -144,12 +144,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestSupExtensionSuperClassAlias,
     test_valid_number, R"(
-    sup Str ext From[S32] {
-        fun from(that: S32) -> Self {
-            ret Str::from("test")
-        }
-    }
-
     fun f() -> Void {
         let n = 42
         let mut s = Str::from(n)

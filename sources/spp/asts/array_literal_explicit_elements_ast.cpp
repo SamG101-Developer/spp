@@ -112,7 +112,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   // otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
-    type_predicates::IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
+    type_predicates::IsTypeArray(*meta->AssignmentTargetType, *sm->CurrentScope);
 
   const auto z_type = from_target
     ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
@@ -141,6 +141,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   _InferredType = _BuildType(sm, meta);
 }
 
+/// [CHECKED]
 auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Alias the common utils functions and types.
@@ -149,7 +150,7 @@ auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   // Check the memory of each element in the array literal.
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
-    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, meta, {.MarkMoves = false});
   }
 }
 
@@ -161,13 +162,13 @@ auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CmpResult);
-    cmp_elems.EmplaceBack(std::move(meta->CmpResult));
+    Elems[i] = AstClone(meta->CompTimeResult);
+    cmp_elems.EmplaceBack(std::move(meta->CompTimeResult));
   }
 
   // Wrap the comp-time array value, in the translated
   // asts derived from requesting comp-time evaluation.
-  meta->CmpResult = MakeUnique<ArrayLiteralExplicitElementsAst>(
+  meta->CompTimeResult = MakeUnique<ArrayLiteralExplicitElementsAst>(
     nullptr, std::move(cmp_elems), nullptr);
 }
 
@@ -298,7 +299,7 @@ auto ArrayLiteralExplicitElementsAst::_BuildType(
     nullptr, std::move(size_tok), "uz");
 
   auto elem_gen = meta->AssignmentTargetType != nullptr
-    and type_predicates::IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
+    and type_predicates::IsTypeArray(*meta->AssignmentTargetType, *sm->CurrentScope)
     ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 
@@ -309,13 +310,13 @@ auto ArrayLiteralExplicitElementsAst::_BuildType(
   return array_type;
 }
 
-auto ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ArrayLiteralExplicitElementsAst::ReadExpr(
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.Reserve(Elems.Len());
   for (auto const &elem : Elems) {
-    elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args)));
+    elems.EmplaceBack(AstClone(elem->ReadExpr(sub)));
   }
   return MakeShared<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL), std::move(elems), AstClone(TokR));

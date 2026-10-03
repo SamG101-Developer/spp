@@ -9,7 +9,7 @@ import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -92,7 +92,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   //
   IMPORT_UTILS;
 
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType->WithoutGenerics().get());
+  const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*meta->ObjectInitType);
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
     | spp::views::tuple_nth<0>
@@ -144,20 +144,25 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // only known through them: "a: T" in "MyType[T=Str]" is "Str",
   // but in "MyType(..)" it is whatever the arguments infer - so
   // an overloaded call there has nothing to resolve against.
-  // Where the type already resolves, they are the class instance's own, named by the class's parameters and defaults
-  // filled - through an alias ("MyVec[ZZ=Bool]" for "Vec[T=Bool, A=GlobalAlloc]") the written ones are the alias's.
-  auto written_args = Unique<GenericArgumentGroupAst>(nullptr);
+  // Where the type already resolves, they are the class instance's own, read off its identity (named by the class's
+  // parameters, defaults filled) - through an alias ("MyVec[ZZ=Bool]" for "Vec[T=Bool, A=GlobalAlloc]") the written
+  // ones are the alias's.
+  auto bindings = std::optional<analyse::scopes::GenericSubst>();
   auto const &written_group = meta->ObjectInitType->LastTypePart()->GnArgGroup;
-  auto *const resolved = written_group != nullptr and not written_group->Args.IsEmpty()
-    ? sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get())
-    : nullptr;
-  auto const *const instance = resolved != nullptr ? resolved->AliasTarget(*sm->CurrentScope) : nullptr;
-  if (instance != nullptr and instance->InstanceOf != nullptr and instance->Alias == nullptr) {
-    written_args = AstClone(instance->Name->GnArgGroup.get());
+  const auto instance = written_group != nullptr and not written_group->Args.IsEmpty()
+    ? TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope)
+    : TypeRef();
+  const auto own_params = cls_sym->Type != nullptr ? cls_sym->Type->GnParamGroup.get() : nullptr;
+  if (own_params != nullptr and instance.Symbol != nullptr and instance.Symbol->InstanceOf != nullptr
+    and instance.Symbol->Alias == nullptr) {
+    bindings = type_resolution::InstanceBindings(instance);
   }
-  else if (written_group != nullptr and not written_group->Args.IsEmpty() and cls_sym->Type != nullptr) {
-    written_args = generic_inference::NamedGnArgs(
-      *written_group, *cls_sym->Type->GnParamGroup, *meta->ObjectInitType, *sm, *meta);
+  else if (own_params != nullptr and written_group != nullptr and not written_group->Args.IsEmpty()) {
+    const auto written_args = generic_inference::NamedGnArgs(
+      *written_group, *own_params, *meta->ObjectInitType, *sm, *meta);
+    // Analysed before they are keyed, so a written "Str" is the instance with its defaults ("Str[GlobalAlloc]").
+    written_args->Stage7_AnalyseSemantics(sm, meta);
+    bindings = type_resolution::BindArgs(*own_params, written_args->GetAllArgs(), *sm->CurrentScope);
   }
 
   // Analyse the arguments in the group.
@@ -177,20 +182,15 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
         // What is still generic after that depends on the argument
         // itself, so is no help.
         auto const &attr_ref = spp::get<1>(attrs[0]);
-        const auto attr_type_sym = attr_ref.Sym;
+        const auto attr_type_sym = attr_ref.Symbol;
         auto expected = Shared<TypeRef>(nullptr);
-        if (written_args != nullptr and attr_type_sym != nullptr and attr_ref.Id != nullptr and cls_sym->Type != nullptr) {
-          const auto bindings = type_resolution::BindArgs(
-            *cls_sym->Type->GnParamGroup, written_args->GetAllArgs(), *sm->CurrentScope);
-          const auto id = analyse::scopes::SubstituteTypeId(attr_ref.Id, bindings);
-          const auto closed = id != nullptr and not id->HasSelf
-            and analyse::scopes::ParamsOf(id).Types.empty() and analyse::scopes::ParamsOf(id).Comps.empty();
-          if (auto attr_type = closed ? sm->CurrentScope->TypeAstOf(id) : nullptr; attr_type != nullptr) {
-            attr_type->Stage7_AnalyseSemantics(sm, meta);
-            expected = MakeShared<TypeRef>(TypeRef::Of(*attr_type, *sm->CurrentScope));
+        if (bindings.has_value() and attr_type_sym != nullptr and attr_ref.Id != nullptr) {
+          if (const auto read = attr_ref.Substitute(*bindings, *sm->CurrentScope, true);
+            read.Symbol != nullptr and analyse::scopes::IsClosedTypeId(read.Id)) {
+            expected = MakeShared<TypeRef>(read);
           }
         }
-        if (expected == nullptr and attr_type_sym != nullptr and not attr_type_sym->IsTypeGeneric()) {
+        if (expected == nullptr and attr_type_sym != nullptr and not attr_type_sym->IsGn()) {
           expected = MakeShared<TypeRef>(attr_ref);
         }
         meta->ReturnTypeOverloadResolverType = expected;
@@ -209,7 +209,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
   // Get the attributes on the type and supertypes.
-  const auto cls_sym = sm->CurrentScope->GetTypeSymbol(meta->ObjectInitType.get());
+  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(meta->ObjectInitType.get());
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
 
   // Type check the non-autofill arguments against the class attributes.
@@ -226,12 +226,12 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Enforce visibility on the field being initialized.
     {
-      const auto scope = cls_sym->LinkedScope->NonGenericScope;
-      const auto sym = scope->GetVarSymbol(arg->Name.get(), true);
+      const auto scope = cls_sym->LinkedScope->NonGnScope;
+      const auto sym = scope->FindVarSymbol(arg->Name.get(), true);
       visibility_utils::CheckTypeMemberVisibility(*sym, *arg->Name, *scope, *sm, *meta);
     }
 
-    const auto attr_type = attr_scope->TypeAstOf(attr_ref.Id);
+    const auto attr_type = attr_ref.AstIn(*attr_scope);
     auto arg_type = [&] {
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTargetType = attr_type;
@@ -246,7 +246,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // attribute's type asks for.
-    function_values::InstantiateFunctionValue(arg_ref, attr_ref, sm, meta);
+    fn_values::InstantiateFnValue(arg_ref, attr_ref, sm, meta);
   }
 
   // Type check the default argument (if it exists).
@@ -292,7 +292,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     }
     else {
       // Otherwise default initialize the attribute with an empty object initializer over its type.
-      auto obj_init = MakeUnique<ObjectInitializerAst>(attr_parent_scope->TypeAstOf(attr_ref.Id), nullptr);
+      auto obj_init = MakeUnique<ObjectInitializerAst>(attr_ref.AstIn(*attr_parent_scope), nullptr);
       obj_init->Source.OriginalType = attr_ast->Source.OriginalType;
       val = std::move(obj_init);
       val_scope = attr_parent_scope;

@@ -14,7 +14,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(GenericParameterAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
-use(spp::asts, struct GenericParameterTypeInlineConstraintsAst);
+use(spp::asts, struct GenericParameterTypeConstraintsAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
@@ -42,7 +42,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
   /// The inline constraints of a type parameter. In "fun
   /// func[T: Copy]()", "Copy" constrains "T". Null for a comp
   /// parameter.
-  Unique<GenericParameterTypeInlineConstraintsAst> Constraints;
+  Unique<GenericParameterTypeConstraintsAst> TypeConstraints;
 
   /// The ":" token separating a comp parameter's name from its
   /// type. Null for a type parameter.
@@ -63,7 +63,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
 
   /// The default of an optional comp parameter, used if the
   /// argument is not provided.
-  Unique<ExpressionAst> CompDefault;
+  Shared<ExpressionAst> CompDefault;
 
   /// The comp default as written, before analysis desugars its
   /// operators ("n + 1_uz" analysed is the call "n.add(1_uz)"):
@@ -79,14 +79,24 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
     decltype(TokCmp) &&tok_cmp,
     decltype(TokEllipsis) &&tok_ellipsis,
     decltype(Name) name,
-    decltype(Constraints) &&constraints,
+    decltype(TypeConstraints) &&constraints,
     decltype(TokColon) &&tok_colon,
     decltype(CompType) comp_type,
     decltype(TokAssign) &&tok_assign,
     decltype(TypeDefault) type_default,
-    decltype(CompDefault) &&comp_default);
+    decltype(CompDefault) comp_default);
 
   ~GenericParameterAst() override;
+
+  /// Whether this is a type parameter ("T") or a comp one ("cmp n: USize"): exactly one holds.
+  SPP_ATTR_NODISCARD auto IsTypeParam() const -> bool;
+  SPP_ATTR_NODISCARD auto IsCompParam() const -> bool;
+
+  /// Whether this takes the rest of its kind's arguments ("..Ts", "cmp ..ns"), has a default ("T = Str",
+  /// "cmp n: USize = 1_uz"), or neither, which every use must give.
+  SPP_ATTR_NODISCARD auto IsVariadic() const -> bool;
+  SPP_ATTR_NODISCARD auto IsOptional() const -> bool;
+  SPP_ATTR_NODISCARD auto IsRequired() const -> bool;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
@@ -106,7 +116,10 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
 
   /// Make this a copy of "that" declaration, which it shares its
   /// identity with ("_ParamId"), where it was built rather than cloned.
-  auto ShareParamIdentity(GenericParameterAst const &that) -> void;
+  auto ShareParamId(GenericParameterAst const &that) -> void;
+
+  /// The parameter's identity ("ParamId"), a type or a comp parameter's alike; 0 until declared (Stage 2).
+  SPP_ATTR_NODISCARD auto ParamId() const -> std::uint64_t { return *_ParamId; }
 
 private:
   inline static Vec<Unique<Ast>> _DummyScopeAsts = {};

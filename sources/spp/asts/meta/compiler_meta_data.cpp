@@ -10,7 +10,7 @@ SPP_MOD_BEGIN
 CompilerMetaData::CompilerMetaData() {
   CurrentStage = CompilerStage::kNone;
   ResetContext();
-  CmpResult = nullptr;
+  CompTimeResult = nullptr;
   LlvmGenerator = nullptr;
   LlvmGeneratorState = nullptr;
 }
@@ -22,15 +22,15 @@ auto CompilerMetaData::ResetContext() -> void {
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
   CaseConsumedSubjects.Clear();
-  EnclosingFunctionScope = nullptr;
-  EnclosingFunctionFlavour = nullptr;
-  EnclosingFunctionRetType = {};
-  EnclosingFunctionSourceRetType = {};
-  EnclosingFunctionCmp = nullptr;
+  EnclosingFnScope = nullptr;
+  EnclosingFnFlavour = nullptr;
+  EnclosingFnRetType = {};
+  EnclosingFnSourceRetType = {};
+  EnclosingFnCmp = nullptr;
   OverriddenScopeForClosure = nullptr;
   CurrentLambdaOuterScope = nullptr;
-  TargetCallFunctionPrototype = nullptr;
-  TargetCallWasFunctionAsync = false;
+  TargetCallFnPrototype = nullptr;
+  TargetCallWasFnAsync = false;
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
@@ -41,7 +41,7 @@ auto CompilerMetaData::ResetContext() -> void {
   ObjectInitType = nullptr;
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
-  SkipTypeAnalysisGenericChecks = false;
+  SkipTypeAnalysisGnChecks = false;
   TypeAnalysisTypeScope = nullptr;
   AllowMoveDeref = false;
   LlvmEndBB = nullptr;
@@ -53,14 +53,15 @@ auto CompilerMetaData::ResetContext() -> void {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
-  CmpCallSite = nullptr;
-  CmpCallSiteScope = nullptr;
+  CompTimeCallSite = nullptr;
+  CompTimeCallSiteScope = nullptr;
 }
 
 auto CompilerMetaData::Save() -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
-  // storage persists across cycles. `CmpArgs` is moved (the guarded scope rebuilds it); `CmpResult` is not tracked.
+  // storage persists across cycles. `CompTimeArgs` is moved (the guarded scope rebuilds it); `CompTimeResult` is not
+  // tracked.
   if (_Depth == _History.size()) { _History.EmplaceBack(); }
   auto &s = _History[_Depth];
   ++_Depth;
@@ -74,14 +75,14 @@ auto CompilerMetaData::Save() -> void {
   s.CaseConsumedSubjects = CaseConsumedSubjects;
   s.WithinDeferTok = WithinDeferTok;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
-  s.EnclosingFunctionScope = EnclosingFunctionScope;
-  s.EnclosingFunctionFlavour = EnclosingFunctionFlavour;
-  s.EnclosingFunctionRetType = EnclosingFunctionRetType;
-  s.EnclosingFunctionSourceRetType = EnclosingFunctionSourceRetType;
-  s.EnclosingFunctionCmp = EnclosingFunctionCmp;
+  s.EnclosingFnScope = EnclosingFnScope;
+  s.EnclosingFnFlavour = EnclosingFnFlavour;
+  s.EnclosingFnRetType = EnclosingFnRetType;
+  s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
+  s.EnclosingFnCmp = EnclosingFnCmp;
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
-  s.TargetCallFunctionPrototype = TargetCallFunctionPrototype;
-  s.TargetCallWasFunctionAsync = TargetCallWasFunctionAsync;
+  s.TargetCallFnPrototype = TargetCallFnPrototype;
+  s.TargetCallWasFnAsync = TargetCallWasFnAsync;
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
@@ -92,7 +93,7 @@ auto CompilerMetaData::Save() -> void {
   s.ObjectInitType = ObjectInitType;
   s.PostfixExpressionLhs = PostfixExpressionLhs;
   s.UnaryExpressionRhs = UnaryExpressionRhs;
-  s.SkipTypeAnalysisGenericChecks = SkipTypeAnalysisGenericChecks;
+  s.SkipTypeAnalysisGnChecks = SkipTypeAnalysisGnChecks;
   s.TypeAnalysisTypeScope = TypeAnalysisTypeScope;
   s.AllowMoveDeref = AllowMoveDeref;
   s.LlvmEndBB = LlvmEndBB;
@@ -105,17 +106,17 @@ auto CompilerMetaData::Save() -> void {
   // this one's buffers, leaving both sides to allocate again next cycle - which is exactly what the pool is meant to
   // avoid. Swapping hands the slot the live contents and hands this side the slot's dead ones, and clearing those
   // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
-  CmpArgs.swap(s.CmpArgs);
-  CmpArgs.clear();
-  CmpGnTypeArgs.Swap(s.CmpGnTypeArgs);
-  CmpGnTypeArgs.Clear();
-  CmpGnCompArgs.Swap(s.CmpGnCompArgs);
-  CmpGnCompArgs.Clear();
+  CompTimeArgs.swap(s.CompTimeArgs);
+  CompTimeArgs.clear();
+  CompTimeGnTypeArgs.Swap(s.CompTimeGnTypeArgs);
+  CompTimeGnTypeArgs.Clear();
+  CompTimeGnCompArgs.Swap(s.CompTimeGnCompArgs);
+  CompTimeGnCompArgs.Clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
-  s.CmpCallSite = CmpCallSite;
-  s.CmpCallSiteScope = CmpCallSiteScope;
+  s.CompTimeCallSite = CompTimeCallSite;
+  s.CompTimeCallSiteScope = CompTimeCallSiteScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
@@ -135,16 +136,16 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   CaseConsumedSubjects = std::move(state.CaseConsumedSubjects);
   WithinDeferTok = state.WithinDeferTok;
   if (heavy) {
-    EnclosingFunctionScope = state.EnclosingFunctionScope;
-    EnclosingFunctionFlavour = state.EnclosingFunctionFlavour;
-    EnclosingFunctionRetType = std::move(state.EnclosingFunctionRetType);
-    EnclosingFunctionSourceRetType = std::move(state.EnclosingFunctionSourceRetType);
-    EnclosingFunctionCmp = state.EnclosingFunctionCmp;
+    EnclosingFnScope = state.EnclosingFnScope;
+    EnclosingFnFlavour = state.EnclosingFnFlavour;
+    EnclosingFnRetType = std::move(state.EnclosingFnRetType);
+    EnclosingFnSourceRetType = std::move(state.EnclosingFnSourceRetType);
+    EnclosingFnCmp = state.EnclosingFnCmp;
   }
   OverriddenScopeForClosure = state.OverriddenScopeForClosure;
   CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
-  TargetCallFunctionPrototype = state.TargetCallFunctionPrototype;
-  TargetCallWasFunctionAsync = state.TargetCallWasFunctionAsync;
+  TargetCallFnPrototype = state.TargetCallFnPrototype;
+  TargetCallWasFnAsync = state.TargetCallWasFnAsync;
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;
@@ -155,7 +156,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   ObjectInitType = std::move(state.ObjectInitType);
   PostfixExpressionLhs = state.PostfixExpressionLhs;
   UnaryExpressionRhs = state.UnaryExpressionRhs;
-  SkipTypeAnalysisGenericChecks = state.SkipTypeAnalysisGenericChecks;
+  SkipTypeAnalysisGnChecks = state.SkipTypeAnalysisGnChecks;
   TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
   AllowMoveDeref = state.AllowMoveDeref;
   LlvmEndBB = state.LlvmEndBB;
@@ -164,18 +165,18 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
-  CmpArgs.swap(state.CmpArgs);
-  state.CmpArgs.clear();
-  CmpGnTypeArgs.Swap(state.CmpGnTypeArgs);
-  state.CmpGnTypeArgs.Clear();
-  CmpGnCompArgs.Swap(state.CmpGnCompArgs);
-  state.CmpGnCompArgs.Clear();
-  // Note: CmpResult deliberately omitted here, allowing to pass back up.
+  CompTimeArgs.swap(state.CompTimeArgs);
+  state.CompTimeArgs.clear();
+  CompTimeGnTypeArgs.Swap(state.CompTimeGnTypeArgs);
+  state.CompTimeGnTypeArgs.Clear();
+  CompTimeGnCompArgs.Swap(state.CompTimeGnCompArgs);
+  state.CompTimeGnCompArgs.Clear();
+  // Note: CompTimeResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
-  CmpCallSite = state.CmpCallSite;
-  CmpCallSiteScope = state.CmpCallSiteScope;
+  CompTimeCallSite = state.CompTimeCallSite;
+  CompTimeCallSiteScope = state.CompTimeCallSiteScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }

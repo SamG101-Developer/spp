@@ -13,7 +13,7 @@ import std;
  * lock keeps the workers off each other. Running SppBootstrap.Fixture on its own first, as run-tests.sh does, keeps the
  * [vcs] clone out of the parallel phase entirely.
  */
-auto ensure_temp_project() -> void;
+auto EnsureTempProject() -> void;
 
 /**
  * Compile one module of code as a throwaway project.

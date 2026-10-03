@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
+import spp.analyse.scopes.instance_key;
 import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -162,7 +163,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// is known to have succeeded - on the right of an "and", in the
   /// branch it conditions - so the users of "is" move the ones
   /// they no longer cover into "ExpiredIsBindings".
-  Vec<VariableSymbol*> IsBindingsAdded;
+  Vec<VariableSymbol*> AddedIsBindings;
 
   /// "is" bindings no longer in force: an identifier resolving to
   /// one is reported as unknown. They stay in their scope, as
@@ -178,25 +179,25 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// The function scope containing the surrounding function. This
   /// is not reset on a restore, so persists throughout all save/
   /// restore operations on "meta" during analysis.
-  Scope *EnclosingFunctionScope;
+  Scope *EnclosingFnScope;
 
   /// The function variant of the surrounding function: whether
   /// we are inside a subroutine (fun) or coroutine (cor). Needed
   /// for "ret" and "gen" position checking.
-  TokenAst *EnclosingFunctionFlavour;
+  TokenAst *EnclosingFnFlavour;
 
   /// The return type of the enclosing function type. Again needed
   /// for "ret" and "gen" type checking.
-  Vec<Shared<TypeAst>> EnclosingFunctionRetType;
+  Vec<Shared<TypeAst>> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
-  Vec<Shared<TypeAst>> EnclosingFunctionSourceRetType;
+  Vec<Shared<TypeAst>> EnclosingFnSourceRetType;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
   /// call non-"cmp" functions in their body.
-  TokenAst *EnclosingFunctionCmp;
+  TokenAst *EnclosingFnCmp;
 
   /// The current "outer" closure scope. This is needed so that
   /// when we are in the "inner" closure scope, we can lookup
@@ -206,12 +207,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// The function prototype being called by a postfix function
   /// call operator. Needed for coroutine target checking during
   /// analysis, especially memory rules.
-  FunctionPrototypeAst *TargetCallFunctionPrototype;
+  FunctionPrototypeAst *TargetCallFnPrototype;
 
   /// Similar to above, but rather than tracking the variation
   /// of the target function prototype, check the calling
   /// convention for "async", for memory rules.
-  bool TargetCallWasFunctionAsync;
+  bool TargetCallWasFnAsync;
 
   /// The explicit type, if provided, on a "let" statement,
   /// carried forward for local variable asts to analyse values
@@ -259,8 +260,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// There are some instances where we want to analyse a type
   /// but not the generics attached to it, so allow that.
-  /// Todo: Remove and use ->WithoutGenerics()->Stage7...()?
-  bool SkipTypeAnalysisGenericChecks;
+  /// Todo: Remove and use ->WithoutGns()->Stage7...()?
+  bool SkipTypeAnalysisGnChecks;
 
   /// The overriding type scope to analyse a type in. This is
   /// used for example from a type unary expression to provide
@@ -308,18 +309,19 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Map<
     Shared<IdentifierAst>, Unique<ExpressionAst>,
     utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
-  Vec<Shared<TypeRef>> CmpGnTypeArgs;
-  Vec<ExpressionAst*> CmpGnCompArgs;
-  Unique<ExpressionAst> CmpResult;
-  bool CmpReturned = false;
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
+  /// The call's generic arguments, each as it resolves at the call site: a type's "TypeRef", a comp value's identity.
+  Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
+  Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
+  Unique<ExpressionAst> CompTimeResult;
+  bool CompTimeReturned = false;
 
   /// The outermost call a comp-time evaluation started from, and
   /// the scope it was written in. An error raised while a nested
   /// call is evaluated (std's arithmetic, an intrinsic) reports
   /// here, where the user wrote the expression.
-  Ast const *CmpCallSite = nullptr;
-  Scope *CmpCallSiteScope = nullptr;
+  Ast const *CompTimeCallSite = nullptr;
+  Scope *CompTimeCallSiteScope = nullptr;
 
   /// Ignore access modifier violations during analysis. This is
   /// for when certain asts map to functions private on STD types,
@@ -372,18 +374,18 @@ public:
   /// Put every context field back to its default, as though no
   /// analysis were under way: for an analysis started from inside
   /// another one that is not part of it (a lazy sup attach run by
-  /// a lookup). The stage, "CmpResult" and the LLVM generator are
+  /// a lookup). The stage, "CompTimeResult" and the LLVM generator are
   /// kept. Pair it with a heavy "MetaGuard".
   auto ResetContext() -> void;
 
   /// Snapshot all the current values into the history, making
   /// them "restorable".
-  auto Save() -> void;
+  SPP_ATTR_HOT auto Save() -> void;
 
   /// Restore all the light values (everything except function
   /// context, which we want to persist upwards). Set "heavy"
   /// to true to clear those too.
-  auto Restore(bool heavy = false) -> void;
+  SPP_ATTR_HOT auto Restore(bool heavy = false) -> void;
 
   /// Getter for the internal depth. This is used when an catchable
   /// error might have raised in between a "Save" and "Restore",

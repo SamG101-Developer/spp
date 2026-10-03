@@ -98,7 +98,7 @@ auto ClassAttributeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
-  const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
+  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 }
@@ -111,25 +111,22 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
 
   // Sync the variable symbol's visibility from the AST
   // (annotations set Visibility in Stage5).
-  const auto sym = sm->CurrentScope->GetVarSymbol(Name.get(), true);
+  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
   sym->Visibility = Visibility.first;
   sym->VisibilityAnnotation = Visibility.second;
 
   // What a default may hold is limited, because it is
   // copied into every object initializer that leaves
   // the attribute out. Checked before the analysis below
-  // rewrites it. Todo: Coalesce to single condition in
-  // the "raise_if".
-  if (DefaultVal != nullptr) {
-    RaiseIf<SppInvalidDefaultValueError>(
-      not DefaultVal->IsAllowedInDefault(),
-      {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
-  }
+  // rewrites it.
+  RaiseIf<SppInvalidDefaultValueError>(
+    DefaultVal != nullptr and not DefaultVal->IsAllowedInDefault(),
+    {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
 
   // Check the type is valid before scopes are attached.
-  Type = type_resolution::ResolveWrittenType(
+  Type = type_resolution::AnalyseWrittenType(
     *Type, *sm, *meta, Type->IsSelfType() ? SelfPolicy::kKeep : SelfPolicy::kSubstitute);
-  sm->CurrentScope->GetVarSymbol(Name.get())->Type = Type;
+  sm->CurrentScope->FindVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
   RaiseIf<SppSecondClassBorrowViolationError>(
@@ -147,7 +144,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
     for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   }
 
-  const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
+  const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not Type->IsSelfType()) {
     RaiseIf<SppSecondClassBorrowViolationError>(
@@ -178,7 +175,7 @@ auto ClassAttributeAst::Stage8_CheckMemory(
   if (DefaultVal == nullptr) { return; }
   DefaultVal->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
-    *DefaultVal, *DefaultVal, *sm, true, true, true, true, meta);
+    *DefaultVal, *DefaultVal, *sm, meta);
 }
 
 auto ClassAttributeAst::Stage9_CompTimeResolve(

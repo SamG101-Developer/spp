@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
-module spp.asts.generic_parameter_type_inline_constraints_ast;
+module spp.asts.generic_parameter_type_constraints_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
@@ -20,13 +20,13 @@ import genex;
 // Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN
-auto GenericParameterTypeInlineConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeInlineConstraintsAst> {
+auto GenericParameterTypeConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeConstraintsAst> {
   // New empty constraint set.
-  return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
+  return MakeUnique<GenericParameterTypeConstraintsAst>(
     nullptr, Vec<Unique<TypeAst>>{});
 }
 
-GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsAst(
+GenericParameterTypeConstraintsAst::GenericParameterTypeConstraintsAst(
   decltype(TokColon) &&tok_colon,
   Vec<Unique<TypeAst>> &&constraints) :
   TokColon(std::move(tok_colon)) {
@@ -36,33 +36,33 @@ GenericParameterTypeInlineConstraintsAst::GenericParameterTypeInlineConstraintsA
   }
 }
 
-GenericParameterTypeInlineConstraintsAst::~GenericParameterTypeInlineConstraintsAst() = default;
+GenericParameterTypeConstraintsAst::~GenericParameterTypeConstraintsAst() = default;
 
-auto GenericParameterTypeInlineConstraintsAst::PosStart() const -> std::size_t {
+auto GenericParameterTypeConstraintsAst::PosStart() const -> std::size_t {
   // Use the ":" token.
   return TokColon != nullptr ? TokColon->PosStart() : Constraints.IsEmpty() ? 0 : Constraints.Front()->PosStart();
 }
 
-auto GenericParameterTypeInlineConstraintsAst::PosEnd() const -> std::size_t {
+auto GenericParameterTypeConstraintsAst::PosEnd() const -> std::size_t {
   // Use the last constraint.
   return not Constraints.IsEmpty() ? Constraints.Back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
 }
 
-auto GenericParameterTypeInlineConstraintsAst::Clone() const -> Unique<Ast> {
+auto GenericParameterTypeConstraintsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<GenericParameterTypeInlineConstraintsAst>(
+  return MakeUnique<GenericParameterTypeConstraintsAst>(
     AstClone(TokColon),
     AstCloneVec(Constraints));
 }
 
-auto GenericParameterTypeInlineConstraintsAst::ToString() const -> Str {
+auto GenericParameterTypeConstraintsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokColon);
   SPP_STRING_EXTEND(Constraints, " & ");
   SPP_STRING_END;
 }
 
-auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
+auto GenericParameterTypeConstraintsAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -84,8 +84,8 @@ auto GenericParameterTypeInlineConstraintsAst::Stage4_ResolveDeclarations(
 
     // Stamp it with what it means here, as it is read from wherever
     // the parameter is bound. A constraint imported by a "use" is
-    // an alias here, which "type_resolution::RecordWrittenParts" follows.
-    type_resolution::RecordWrittenParts(*constraint, *sm->CurrentScope);
+    // an alias here, which "type_resolution::RecordTypeParts" follows.
+    type_resolution::RecordTypeParts(*constraint, *sm->CurrentScope);
   }
 }
 

@@ -10,6 +10,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct TypeSymbol);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
@@ -41,33 +42,35 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     return false;
   }
 
-  /// A type in expression position (the "A" of "A::new()", or
-  /// a comp argument naming a type) is substituted as the type
-  /// it is. This is the one node where the expression walk and
-  /// the type walk meet.
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> override;
+  /// A type written inside an expression (the "A" of "A::new()", a call's type arguments) is read by its identity
+  /// ("type_resolution::ReadType"), as a declaration's types are, whatever kind of type it is.
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> override;
+
+  /// "ReadExpr", answered as the type it still is.
+  SPP_ATTR_NODISCARD auto ReadExprType(
+    analyse::scopes::ExprSubst const &sub) const -> Shared<TypeAst>;
 
   /// A clone of this type with "arg_group" on its right-most part.
   /// A plain name builds its own ("TypeIdentifierAst").
-  SPP_ATTR_NODISCARD auto WithGenerics(
+  SPP_ATTR_NODISCARD auto WithGns(
     Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
 
   /// The identity this type resolved to where it was written
-  /// ("Scope::WrittenIdOf"), if it was resolved there
+  /// ("WrittenTypeIdOf"), if it was resolved there
   /// ("TypeSymbol::FqName" writes it into the names it hands out). A
   /// lookup of it reads that identity through the scope asking
-  /// ("Scope::ResolveWritten"), instead of resolving the spelling
+  /// ("Scope::FindWrittenTypeSymbol"), instead of resolving the spelling
   /// again there - which binds a caller's "T" to a callee's
   /// parameter of the same name.
-  SPP_ATTR_NODISCARD auto Written() const noexcept -> analyse::scopes::TypeId {
-    return _Written;
+  SPP_ATTR_NODISCARD auto WrittenTypeId() const noexcept -> analyse::scopes::TypeId {
+    return _WrittenTypeId;
   }
 
   /// Record the identity this type resolved to where it is
-  /// written; see "Written".
-  auto SetWritten(const analyse::scopes::TypeId id) const noexcept -> void {
-    _Written = id;
+  /// written; see "WrittenTypeId".
+  auto SetWrittenTypeId(const analyse::scopes::TypeId id) const noexcept -> void {
+    _WrittenTypeId = id;
   }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
@@ -97,8 +100,8 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   }
 
 protected:
-  mutable Shared<TypeAst> _CachedWithoutGenerics;
-  mutable analyse::scopes::TypeId _Written = nullptr;
+  mutable Shared<TypeAst> _CachedWithoutGns;
+  mutable analyse::scopes::TypeId _WrittenTypeId = nullptr;
   mutable Str _CachedStringification;
 
   /// Whether this type reports "_SpanStart" to "_SpanEnd" as its

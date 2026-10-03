@@ -16,9 +16,9 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_func;
-import spp.codegen.llvm_materialize;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.utils.uid;
@@ -118,8 +118,8 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   // name, so by the time a later stage looks this binding up by name, the name belongs to whichever binding in this
   // scope declared it last. A re-run keeps the shadowed symbol from the first run, not its own.
   auto prev = sm->CurrentScope->RemVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
-  if (_Sym == nullptr or prev != _Sym) { _PrevSym = std::move(prev); }
-  _Sym = sym;
+  if (_Symbol == nullptr or prev != _Symbol) { _PrevSymbol = std::move(prev); }
+  _Symbol = sym;
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
@@ -127,7 +127,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // No value => nothing to check.
   IMPORT_UTILS;
-  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
+  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Symbol); }
   if (meta->LetStatementFromUninitialized) { return; }
 
   // Check the value's memory. A variable does not hold anything until its value has been evaluated, so whatever the
@@ -148,7 +148,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // by it - and is only taken away for the move check below.
   // Todo: a closure assigned to a same-scope shadower tracks its
   //  borrows against the binding it shadows.
-  auto restore = _PrevSym != nullptr ? _ExposePreviousSymbol(sm) : nullptr;
+  auto restore = _PrevSymbol != nullptr ? _ExposePreviousSymbol(sm) : nullptr;
   meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
   if (pre_sym != nullptr) { pre_sym->MemInfo->AstInitialization = pre_init; }
   if (restore == nullptr) { restore = _ExposePreviousSymbol(sm); }
@@ -160,14 +160,15 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // says, which leaves the subject partially initialized.
   const auto borrows = Conv != nullptr;
   mem_utils::ValidateSymbolMemory(
-    *meta->LetStatementValue, *this, *sm, not borrows, true, not borrows, not borrows, meta);
+    *meta->LetStatementValue, *this, *sm, meta,
+    {.CheckMove = not borrows, .CheckMoveFromBorrowedCtx = not borrows, .MarkMoves = not borrows});
   if (restore != nullptr) { sm->CurrentScope->AddVarSymbol(restore); }
 
   // A binding shadowed in its own scope can never be named
   // again, so its value has to have been consumed by now - the
   // value just checked may be what consumed it ("let x = f(x)").
-  if (_PrevSym != nullptr) {
-    linear_utils::CheckOverwrite(*_PrevSym, *this, "Shadowing binding", *sm);
+  if (_PrevSymbol != nullptr) {
+    linear_utils::CheckOverwrite(*_PrevSymbol, *this, "Shadowing binding", *sm);
   }
 
   // Get the name or alias symbol to mark it as initialized.
@@ -183,7 +184,7 @@ auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
   // Assign the generated value into the variable symbol.
   const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
-  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
+  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Symbol); }
 
   // The value is resolved with the name meaning what it did before
   // this binding (see "_ExposePreviousSymbol").
@@ -194,7 +195,7 @@ auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
   const auto var_sym = _OwnSymbol(sm);
   if (var_sym != nullptr) {
     // Can be nullptr for the materialization into $ symbols.
-    var_sym->CompTimeValue = std::move(meta->CmpResult);
+    var_sym->CompTimeValue = std::move(meta->CompTimeResult);
   }
 }
 
@@ -214,7 +215,7 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   // The storage for this variable. Normally a fresh alloca at the top of the function, but inside a coroutine the
   // resume prologue has already pointed the symbol at its env field (its frame lives on the caller's stack). Reuse
   // that pre-set alloca storage instead of allocating a fresh non-persisting slot.
-  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Sym); }
+  if (_UsesSavedSymbol(sm)) { sm->CurrentScope->AddVarSymbol(_Symbol); }
   const auto var_sym = _OwnSymbol(sm);
 
   // Void could have been introduced via a generic implementation,
@@ -245,7 +246,7 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // What a borrow binds is the address of the value, not
     // the value: the same lowering a borrow argument gets.
     auto llvm_val = borrows
-      ? codegen::llvm_addr_of(*meta->LetStatementValue, sm, meta, ctx)
+      ? codegen::LlvmAddrOf(*meta->LetStatementValue, sm, meta, ctx)
       : meta->LetStatementValue->Stage11_CodeGen(sm, meta, ctx);
 
     // Read while the name still means what the value was written
@@ -264,7 +265,7 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // there is nothing to coerce or store.
     const auto diverged = llvm_val == nullptr;
     if (not is_void and not borrows and not diverged and meta->LetStatementExplicitType != nullptr) {
-      llvm_val = codegen::CoerceToFunctionValue(
+      llvm_val = codegen::CoerceToFnValue(
         llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm, ctx);
       llvm_val = codegen::CoerceToVariant(
         llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
@@ -285,10 +286,10 @@ auto LocalVariableSingleIdentifierAst::_UsesSavedSymbol(
   // A shadower of a binding in this scope always does. So does the binding it shadows, once the name has been taken by
   // a later binding here - told apart from a case branch's copied scope, which holds a copy of this binding's own
   // symbol made from the same declaration, and which the saved symbol does not belong to.
-  if (_Sym == nullptr) { return false; }
-  if (_PrevSym != nullptr) { return true; }
-  const auto held = sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get(), true);
-  return held != nullptr and held != _Sym.get()
+  if (_Symbol == nullptr) { return false; }
+  if (_PrevSymbol != nullptr) { return true; }
+  const auto held = sm->CurrentScope->FindVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get(), true);
+  return held != nullptr and held != _Symbol.get()
     and spp::get<0>(held->MemInfo->AstInitializationOrigin) != Name.get();
 }
 
@@ -296,8 +297,8 @@ auto LocalVariableSingleIdentifierAst::_OwnSymbol(
   ScopeManager const *sm) const -> VariableSymbol* {
   // Only one of a same-scope shadowing pair needs its saved symbol;
   // every other binding is found by its name, as it always was.
-  if (_UsesSavedSymbol(sm)) { return _Sym.get(); }
-  return sm->CurrentScope->GetVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
+  if (_UsesSavedSymbol(sm)) { return _Symbol.get(); }
+  return sm->CurrentScope->FindVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
 }
 
 auto LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
@@ -306,14 +307,14 @@ auto LocalVariableSingleIdentifierAst::_ExposePreviousSymbol(
   // that is the binding it shadows, put back in its place; for anything else the name is taken away, leaving it to an
   // outer scope ("let x = x + 1"), as it always was. What comes back is re-added once the value is done.
   const auto sym_name = Alias != nullptr ? Alias->Name.get() : Name.get();
-  if (_PrevSym == nullptr) { return sm->CurrentScope->RemVarSymbol(sym_name); }
-  sm->CurrentScope->AddVarSymbol(_PrevSym);
-  return _Sym;
+  if (_PrevSymbol == nullptr) { return sm->CurrentScope->RemVarSymbol(sym_name); }
+  sm->CurrentScope->AddVarSymbol(_PrevSymbol);
+  return _Symbol;
 }
 
 auto LocalVariableSingleIdentifierAst::InferValueType(
   ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst> {
-  if (_PrevSym == nullptr) { return value.InferType(sm, meta); }
+  if (_PrevSymbol == nullptr) { return value.InferType(sm, meta); }
   const auto restore = _ExposePreviousSymbol(sm);
   auto type = value.InferType(sm, meta);
   if (restore != nullptr) { sm->CurrentScope->AddVarSymbol(restore); }

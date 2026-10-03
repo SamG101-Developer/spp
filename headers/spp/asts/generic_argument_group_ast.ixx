@@ -11,6 +11,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(GenericArgumentGroupAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TokenAst);
@@ -55,7 +56,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   /// The keyword argument named "key", of either kind.
   auto At(const char *key) const -> GenericArgumentAst const*;
 
-  auto MergeGenerics(decltype(Args) &&other_args) -> void;
+  auto MergeArgs(decltype(Args) &&other_args) -> void;
 
   SPP_ATTR_NODISCARD auto GetTypeArgs() const -> Vec<GenericArgumentAst*>;
 

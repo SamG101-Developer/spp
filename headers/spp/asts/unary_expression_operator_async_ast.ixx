@@ -41,5 +41,5 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionOperatorAsyncAst final : UnaryExpre
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  Unique<ExpressionAst> _TransformedFunc;
+  Unique<ExpressionAst> _TransformedFn;
 };

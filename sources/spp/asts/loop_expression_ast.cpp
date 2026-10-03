@@ -51,8 +51,8 @@ auto LoopExpressionAst::InferType(
 
   // Get the loop's exit type (or Void if there are no
   // exits from inside the loop).
-  auto [exit_expr, loop_type, exit_scope] = m_loop_exit_type_info.has_value()
-    ? *m_loop_exit_type_info
+  auto [exit_expr, loop_type, exit_scope] = _LoopExitTypeInfo.has_value()
+    ? *_LoopExitTypeInfo
     : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 

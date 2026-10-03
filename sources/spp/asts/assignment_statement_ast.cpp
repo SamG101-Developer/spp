@@ -9,8 +9,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
-import spp.analyse.utils.comptime_intrinsics;
-import spp.analyse.utils.function_values;
+import spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
@@ -25,7 +25,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
@@ -116,7 +116,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
   // For each assignment, get the outermost symbol of the
   // expression.
   auto lhs_syms = Lhs | genex::views::transform([sm](auto const &x) {
-    return sm->CurrentScope->GetVarSymbolOutermost(*x);
+    return sm->CurrentScope->FindVarSymbolOutermost(*x);
   });
 
   // Full mutation checks, for identifiers, attribute
@@ -177,7 +177,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // target's type asks for.
-    function_values::InstantiateFunctionValue(rhs_ref, lhs_ref, sm, meta);
+    fn_values::InstantiateFnValue(rhs_ref, lhs_ref, sm, meta);
   }
 }
 
@@ -188,7 +188,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
   // For each assignment, check the memory status and resolve
   // any (partial-)moves.
   auto lhs_syms = Lhs | genex::views::transform([sm](auto const &x) {
-    return sm->CurrentScope->GetVarSymbolOutermost(*x);
+    return sm->CurrentScope->FindVarSymbolOutermost(*x);
   }) | genex::to<Vec>();
 
   for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(
@@ -199,7 +199,9 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // expression, if it is an attribute being set. Don't mark
     // the move, but do some checks before calling the internal
     // memory checker on the postfix expression.
-    mem_utils::ValidateSymbolMemory(*rhs_expr, *TokAssign, *sm, regions::IsAttr(lhs_expr, sm), false, true, false, meta);
+    mem_utils::ValidateSymbolMemory(
+      *rhs_expr, *TokAssign, *sm, meta,
+      {.CheckMove = regions::IsAttr(lhs_expr, sm), .CheckPartialMove = false, .MarkMoves = false});
 
     {
       const auto _meta_guard = MetaGuard(meta);
@@ -215,7 +217,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // destination against those borrows rather than refusing
     // the move on sight.
     mem_utils::ValidateSymbolMemory(
-      *rhs_expr, *TokAssign, *sm, true, true, true, true, meta, false);
+      *rhs_expr, *TokAssign, *sm, meta, {.CheckEscapingBorrowMove = false});
 
     // Writing over a value that a live coroutine, future or
     // iterator borrows changes what that borrow points at, just
@@ -233,7 +235,8 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // the partial move.
     if (regions::IsAttr(lhs_expr, sm)) {
       mem_utils::ValidateSymbolMemory(
-        *lhs_expr, *TokAssign, *sm, true, true, false, false, meta, true, true);
+        *lhs_expr, *TokAssign, *sm, meta,
+        {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false, .IsPlaceWritten = true});
       lhs_sym->MemInfo->RemovePartialMoves(*lhs_expr, sm->CurrentScope);
     }
 
@@ -260,8 +263,8 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     }
 
     // Ensure a borrow is not increasing its lifetime.
-    const auto lhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*lhs_expr).first;
-    const auto rhs_outermost = sm->CurrentScope->GetVarSymbolOutermost(*rhs_expr).first;
+    const auto lhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*lhs_expr).first;
+    const auto rhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*rhs_expr).first;
     borrows::PreventBorrowLifetimeExtension(
       *rhs_expr, lhs_outermost, rhs_outermost, this, *sm);
   }
@@ -275,23 +278,23 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
   // variable symbol.
   for (auto i = 0uz; i < Lhs.Len(); ++i) {
     Rhs[i]->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_sym = sm->CurrentScope->GetVarSymbolOutermost(*Lhs[i]).first;
+    const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
 
     // Assign to a full identifier.
     if (regions::IsIdentifier(Lhs[i].get())) {
-      lhs_sym->CompTimeValue = std::move(meta->CmpResult);
+      lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
     }
 
     // Assign to an attribute.
     else if (regions::IsAttr(Lhs[i].get(), sm)) {
-      comptime_intrinsics::SetCompTimeAttrValue(
+      comp_time_intrinsics::SetCompTimeAttrValue(
         lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
-        Lhs[i].get(), std::move(meta->CmpResult), sm);
+        Lhs[i].get(), std::move(meta->CompTimeResult), sm);
     }
 
     // Otherwise, unsupported in the comptime context.
     else {
-      Raise<SppInvalidComptimeOperationError>(
+      Raise<SppInvalidCompTimeOperationError>(
         {sm->CurrentScope}, ERR_ARGS(*Lhs[i]));
     }
   }
@@ -312,7 +315,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
       meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
       if (regions::IsIdentifier(Lhs[i].get())) {
-        meta->LlvmAssignmentTarget = sm->CurrentScope->GetVarSymbol(
+        meta->LlvmAssignmentTarget = sm->CurrentScope->FindVarSymbol(
           Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
       }
 
@@ -324,7 +327,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       // raw over the slot (which would land the member on top of
       // the tag).
       if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
-        value = codegen::CoerceToFunctionValue(
+        value = codegen::CoerceToFnValue(
           value, TypeRef::Of(*target_type, *sm->CurrentScope),
           Rhs[i]->InferTypeRef(sm, meta), *sm, ctx);
 
@@ -356,7 +359,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
     // The statement "a = v" targets the variable's allocation directly
     // (loading it would yield the rvalue).
     else if (regions::IsIdentifier(Lhs[i].get())) {
-      const auto var_sym = sm->CurrentScope->GetVarSymbol(
+      const auto var_sym = sm->CurrentScope->FindVarSymbol(
         Lhs[i]->To<IdentifierAst>());
       SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
       llvm_lhs = var_sym->LlvmInfo->Alloca;

@@ -106,7 +106,7 @@ auto CharLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the char literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto CharLiteralAst::Stage11_CodeGen(
@@ -117,7 +117,7 @@ auto CharLiteralAst::Stage11_CodeGen(
 
   // Resolve the llvm type from the inferred spp type (U8
   // for a byte-prefixed literal, else Char).
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // "b'a'" lowers to a raw U8 byte; a plain "'a'" lowers

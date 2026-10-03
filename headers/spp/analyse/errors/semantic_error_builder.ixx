@@ -54,13 +54,6 @@ namespace spp {
   auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
     if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
-
-  /// The opposite to the "RaiseIf" - this only raises an error
-  /// if the condition is false.
-  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseUnless(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (not condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
-  }
 }
 
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
@@ -101,7 +94,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
       }
       messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
     }
-    cast_error->messages = std::move(messages);
+    cast_error->Messages = std::move(messages);
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.
@@ -109,7 +102,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     for (auto const &msg : _SubErrors) {
       auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
-      cast_error->messages.EmplaceBack(header + msg);
+      cast_error->Messages.EmplaceBack(header + msg);
       ++i;
     }
 
@@ -118,7 +111,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   }
 
 private:
-  /// List of sub-errors. Todo: are these even used anymore?
+  /// List of sub-errors (the failed overloads of a call).
   Vec<Str> _SubErrors;
 
   static auto _StringifyErrorInformation(

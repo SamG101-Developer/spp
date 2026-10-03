@@ -58,8 +58,8 @@ namespace spp::codegen {
 
       // Get the source and target type symbols. These are
       // used to get the llvm type information from.
-      const auto target_sym = target.Sym;
-      const auto source_sym = source.Sym;
+      const auto target_sym = target.Symbol;
+      const auto source_sym = source.Symbol;
       if (target_sym == nullptr or source_sym == nullptr) { return nullptr; }
 
       // Extract the llvm type information needed for the
@@ -82,7 +82,7 @@ namespace spp::codegen {
       if (target_llvm_type->getNumElements() != target_attrs.Len()
         or source_llvm_type->getNumElements() != source_attrs.Len()) { return nullptr; }
 
-      const auto llvm_index = [](LlvmTypeSymInfo const &info, const std::size_t spp_index) {
+      const auto llvm_index = [](LlvmTypeSymbolInfo const &info, const std::size_t spp_index) {
         const auto it = info.FieldIndexMap.find(spp_index);
         return static_cast<unsigned>(it != info.FieldIndexMap.end() ? it->second : spp_index);
       };
@@ -143,10 +143,10 @@ auto spp::codegen::GetVariantIndexOfMember(
   -> std::optional<std::uint64_t> {
   //
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_compare::VariantMembers;
+  using analyse::utils::type_compare::VariantMemberRefs;
 
   // Index the type in the list of member types of the variant.
-  const auto members = VariantMembers(variant, scope);
+  const auto members = VariantMemberRefs(variant, scope);
   for (auto i = 0uz; i < members.Len(); ++i) {
     if (analyse::utils::type_compare::Assignable(members[i], member, scope, scope)) { return static_cast<std::uint64_t>(i); }
   }
@@ -217,8 +217,8 @@ auto spp::codegen::CoerceToVariant(
   //
   using analyse::scopes::TypeRef;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_compare::VariantMembers;
-  using analyse::utils::type_predicates::IsTypeTup;
+  using analyse::utils::type_compare::VariantMemberRefs;
+  using analyse::utils::type_predicates::IsTypeTuple;
   using analyse::utils::type_predicates::IsTypeVariant;
 
   // A "!" value never exists, so whatever consumes it is dead
@@ -230,28 +230,28 @@ auto spp::codegen::CoerceToVariant(
       return llvm::PoisonValue::get(target_llvm_type);
     }
   }
-  if (llvm_val == nullptr or target.Sym == nullptr or source.Sym == nullptr) { return llvm_val; }
+  if (llvm_val == nullptr or target.Symbol == nullptr or source.Symbol == nullptr) { return llvm_val; }
 
   // A tuple takes a narrower value element by element - "(Some[T], U64)" into "(Opt[T], U64)" differs only in the
   // variant inside it. A tuple has no attributes for "CoerceStructurally" to walk, and its layout may reorder the
   // elements, so each side maps a declared index through its own field index map. Told apart by the lowered types,
   // not "TypeEq": its comparison of the generic arguments lets a variant take one of its members.
-  if (IsTypeTup(target, scope) and IsTypeTup(source, scope)) {
-    const auto target_args = target.Sym->TypeArgTypes();
-    const auto source_args = source.Sym->TypeArgTypes();
-    const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
-    const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
+  if (IsTypeTuple(target, scope) and IsTypeTuple(source, scope)) {
+    const auto target_args = target.Symbol->TypeArgs();
+    const auto source_args = source.Symbol->TypeArgs();
+    const auto target_llvm_type = GetLlvmTypeOf(target, ctx);
+    const auto source_llvm_type = GetLlvmTypeOf(source, ctx);
     if (target_llvm_type != nullptr and source_llvm_type != nullptr and target_llvm_type != source_llvm_type
       and target_args.Len() == source_args.Len()) {
       auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
       for (auto i = 0uz; i < target_args.Len(); ++i) {
         const auto elem_name = name + ".tup." + std::to_string(i);
         auto elem = ctx->Builder.CreateExtractValue(
-          llvm_val, {GetPhysicalFieldIndex(*source.Sym->LlvmInfo, i)}, elem_name + ".from");
+          llvm_val, {GetPhysicalFieldIndex(*source.Symbol->LlvmInfo, i)}, elem_name + ".from");
         elem = CoerceToVariant(
           elem, TypeRef::Of(*target_args[i], scope), TypeRef::Of(*source_args[i], scope), scope, elem_name, ctx);
         out = ctx->Builder.CreateInsertValue(
-          out, elem, {GetPhysicalFieldIndex(*target.Sym->LlvmInfo, i)}, elem_name + ".to");
+          out, elem, {GetPhysicalFieldIndex(*target.Symbol->LlvmInfo, i)}, elem_name + ".to");
       }
       return out;
     }
@@ -264,7 +264,7 @@ auto spp::codegen::CoerceToVariant(
 
   // Asked for rather than read, as a type is only lowered when
   // something first needs it.
-  const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
+  const auto target_llvm_type = GetLlvmTypeOf(target.WithoutConvention(), ctx);
   SPP_ASSERT(target_llvm_type != nullptr);
 
   // A member value (source) is wrapped: tagged and copied into
@@ -279,8 +279,8 @@ auto spp::codegen::CoerceToVariant(
     // out as the alternative it matched: copying it into the payload as-is leaves the narrower thing's bytes where the
     // alternative's belong, and the variant reads back as neither. The lowered types say whether that happened.
     auto *member_val = llvm_val;
-    const auto members = VariantMembers(target, scope);
-    if (const auto member_sym = *tag < members.Len() ? members[*tag].Sym : nullptr;
+    const auto members = VariantMemberRefs(target, scope);
+    if (const auto member_sym = *tag < members.Len() ? members[*tag].Symbol : nullptr;
       member_sym != nullptr and member_sym->LlvmInfo->LlvmType != llvm_val->getType()) {
       if (const auto rebuilt = CoerceStructurally(
         llvm_val, members[*tag], source, scope, name, ctx); rebuilt != nullptr) {
@@ -293,12 +293,12 @@ auto spp::codegen::CoerceToVariant(
   // Otherwise, we need to widen one variant into another, like
   // "Str or Bool" into "Str or Bool or S32". As the order is not
   // guaranteed to match, a mapping is needed.
-  const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
+  const auto source_llvm_type = GetLlvmTypeOf(source.WithoutConvention(), ctx);
   SPP_ASSERT(source_llvm_type != nullptr);
 
   auto tag_map = Vec<std::uint64_t>();
   auto is_identity_map = true;
-  const auto source_members = VariantMembers(source, scope);
+  const auto source_members = VariantMemberRefs(source, scope);
   for (auto i = 0uz; i < source_members.Len(); ++i) {
     const auto target_tag = GetVariantIndexOfMember(target, source_members[i], scope);
     if (not target_tag.has_value()) { return llvm_val; }
@@ -359,18 +359,18 @@ auto spp::codegen::NarrowVariant(
   LlvmCtx *ctx)
   -> Pair<llvm::Value*, llvm::Value*> {
   //
-  using analyse::utils::type_compare::VariantMembers;
+  using analyse::utils::type_compare::VariantMemberRefs;
   using analyse::utils::type_predicates::IsTypeVariant;
 
   if (not IsTypeVariant(target, scope) or not IsTypeVariant(source, scope)) { return {nullptr, nullptr}; }
-  const auto source_llvm_type = GetLlvmType(*source.Sym, ctx);
-  const auto target_llvm_type = GetLlvmType(*target.Sym, ctx);
+  const auto source_llvm_type = GetLlvmTypeOf(source.WithoutConvention(), ctx);
+  const auto target_llvm_type = GetLlvmTypeOf(target.WithoutConvention(), ctx);
   if (source_llvm_type == nullptr or target_llvm_type == nullptr) { return {nullptr, nullptr}; }
 
   // Where each of the target's members sits in the source. Any
   // member the source lacks means this is not a sub-variant.
   auto source_tags = Vec<std::uint64_t>();
-  for (auto const &member : VariantMembers(target, scope)) {
+  for (auto const &member : VariantMemberRefs(target, scope)) {
     const auto source_tag = GetVariantIndexOfMember(source, member, scope);
     if (not source_tag.has_value()) { return {nullptr, nullptr}; }
     source_tags.EmplaceBack(*source_tag);

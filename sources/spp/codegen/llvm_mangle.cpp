@@ -21,13 +21,53 @@ import genex;
 
 namespace spp::codegen::mangle {
   namespace {
-    /// A generic argument list, printed by what each argument
-    /// resolves to rather than as it was spelled: one spelling
-    /// names different types from different modules, and
-    /// different spellings name one type. An argument that
-    /// resolves to nothing, or to the type being named, is
-    /// printed as spelled.
-    auto MangleGenericArgs(
+    /// A type argument by its identity: its convention, then the symbol filed under it unless that is the type being
+    /// named ("naming"), else the type the identity builds as spelled. One spelling names different types from
+    /// different modules, and different spellings (an alias, its target) name one type.
+    auto MangleTypeId(
+      analyse::scopes::Scope const &scope,
+      const analyse::scopes::TypeId id,
+      analyse::scopes::TypeSymbol const *naming)
+      -> Str {
+      const auto named = scope.TypeAstOf(id);
+      auto out = named != nullptr and named->GetConvention() != nullptr ? named->GetConvention()->ToString() : Str();
+      auto const *const sym = scope.TypeSymbolOf(analyse::scopes::BareTypeId(id));
+      return out + (sym != nullptr and sym != naming ? MangleTypeName(*sym)
+        : named != nullptr ? named->WithoutConvention()->ToString()
+        : Str("?"));
+    }
+
+    /// "MangleTypeId" for a written type argument, read in "scope"; as spelled where there is no scope to read it in,
+    /// or it has no identity there.
+    auto MangleTypeArg(
+      asts::TypeAst const &type,
+      analyse::scopes::Scope const *scope,
+      analyse::scopes::TypeSymbol const *naming)
+      -> Str {
+      const auto id = scope != nullptr ? scope->TypeIdOf(type) : nullptr;
+      return id != nullptr ? MangleTypeId(*scope, id, naming) : type.ToString();
+    }
+
+    /// "MangleTypeId" for a comp argument ("Scope::CompAstOf"): "1_uz + 1_uz" and "2_uz" are one value, and print
+    /// alike. The identity's own text where it builds no value (an opaque one).
+    auto MangleCompId(
+      analyse::scopes::Scope const &scope,
+      const analyse::scopes::CompId id)
+      -> Str {
+      const auto value = scope.CompAstOf(id);
+      return value != nullptr ? value->ToString() : Str(analyse::scopes::CompIdText(id));
+    }
+
+    /// "MangleTypeArg" for a written comp argument.
+    auto MangleCompArg(
+      asts::ExpressionAst const &value,
+      analyse::scopes::Scope const *scope)
+      -> Str {
+      return scope != nullptr ? MangleCompId(*scope, scope->CompIdOf(value)) : value.ToString();
+    }
+
+    /// A generic argument list, each argument printed by its identity ("MangleTypeArg", "MangleCompArg").
+    auto MangleGnArgs(
       Vec<asts::GenericArgumentAst*> const &args,
       analyse::scopes::Scope const *scope,
       analyse::scopes::TypeSymbol const *naming)
@@ -36,16 +76,8 @@ namespace spp::codegen::mangle {
       for (auto i = 0uz; i < args.Len(); ++i) {
         auto const *arg = args[i];
         if (i != 0) { out += ", "; }
-        if (arg->Name != nullptr) { out += arg->Name->ToString() + "="; }
-        if (arg->TypeVal == nullptr) {
-          out += arg->CompVal->ToString();
-          continue;
-        }
-        if (auto const *conv = arg->TypeVal->GetConvention(); conv != nullptr) { out += conv->ToString(); }
-        auto const *sym = scope != nullptr ? scope->GetTypeSymbol(arg->TypeVal.get()) : nullptr;
-        out += sym != nullptr and sym != naming
-          ? mangle_type_name(*sym)
-          : arg->TypeVal->WithoutConvention()->ToString();
+        if (arg->TypeName() != nullptr) { out += arg->TypeName()->ToString() + "="; }
+        out += arg->IsTypeArg() ? MangleTypeArg(*arg->TypeVal, scope, naming) : MangleCompArg(*arg->CompVal, scope);
       }
       return out + "]";
     }
@@ -67,7 +99,7 @@ namespace spp::codegen::mangle {
         ? last->GnArgGroup->GetAllArgs()
         : spp::Vec<asts::GenericArgumentAst*>();
       const auto short_arg = [](asts::GenericArgumentAst const *arg) -> Str {
-        return arg->TypeVal != nullptr ? ShortTypeName(*arg->TypeVal) : arg->CompVal->ToString();
+        return arg->IsTypeArg() ? ShortTypeName(*arg->TypeVal) : arg->CompVal->ToString();
       };
       const auto join = [&](auto const &list, Str const &sep) {
         auto joined = Str();
@@ -75,9 +107,9 @@ namespace spp::codegen::mangle {
         return joined;
       };
 
-      const auto head = bare->WithoutGenerics()->ToString();
+      const auto head = bare->WithoutGns()->ToString();
       if (head == "std::tuple::Tup") { return out + "(" + join(args, ", ") + ")"; }
-      if (head == "std::variant::Var" and args.Len() == 1 and args[0]->TypeVal != nullptr) {
+      if (head == "std::variant::Var" and args.Len() == 1 and args[0]->IsTypeArg()) {
         auto const *tup = args[0]->TypeVal->LastTypePart();
         if (tup != nullptr and tup->GnArgGroup != nullptr) { return out + join(tup->GnArgGroup->GetAllArgs(), " or "); }
       }
@@ -111,16 +143,14 @@ namespace spp::codegen::mangle {
       analyse::scopes::TypeSymbol const &type_sym)
       -> Str {
       // "Self" is mangled as the type it stands for: the class its linked scope belongs to, unless that is itself.
-      if (not type_sym.IsSelf() or type_sym.LinkedScope == nullptr or type_sym.LinkedScope->TySym == nullptr
-        or type_sym.LinkedScope->TySym.get() == &type_sym or type_sym.LinkedScope->TySym->IsSelf()) {
-        return mangle_type_name(type_sym);
-      }
-      return mangle_type_name(*type_sym.LinkedScope->TySym);
+      auto const *const linked = type_sym.LinkedSymbol();
+      if (not type_sym.IsSelf() or linked == &type_sym or linked->IsSelf()) { return MangleTypeName(type_sym); }
+      return MangleTypeName(*linked);
     }
   }
 }
 
-auto spp::codegen::mangle::mangle_type_name(
+auto spp::codegen::mangle::MangleTypeName(
   analyse::scopes::TypeSymbol const &type_sym)
   -> Str {
   // An instantiation is printed off its identity: its template's qualified name, then each argument as the symbol filed
@@ -130,24 +160,14 @@ auto spp::codegen::mangle::mangle_type_name(
   if (type_sym.Id != nullptr and type_sym.LinkedScope != nullptr
     and analyse::scopes::HeadOf(type_sym.Id).Kind == InstanceKey::Tag::Inst) {
     auto const &scope = *type_sym.LinkedScope;
-    auto const *const tmpl = static_cast<analyse::scopes::TypeSymbol const*>(analyse::scopes::HeadOf(type_sym.Id).Ptr);
-    auto out = tmpl->FqName()->WithoutGenerics()->ToString() + "[";
+    auto const *const tmpl = analyse::scopes::HeadOf(type_sym.Id).Symbol();
+    auto out = tmpl->FqName()->WithoutGns()->ToString() + "[";
     auto first = true;
     for (auto const &arg : analyse::scopes::ArgsOf(analyse::scopes::HeadOf(type_sym.Id).Args)) {
       if (not first) { out += ", "; }
       first = false;
-      if (arg.Named) { out += Str(utils::InternedText(static_cast<utils::InternedId>(arg.Name))) + "="; }
-      if (arg.Type == nullptr) {
-        const auto value = analyse::scopes::Scope::CompValueOf(arg.Comp);
-        out += value != nullptr ? value->ToString() : Str(utils::InternedText(static_cast<utils::InternedId>(arg.Comp)));
-        continue;
-      }
-      const auto named = scope.TypeAstOf(arg.Type);
-      if (named != nullptr and named->GetConvention() != nullptr) { out += named->GetConvention()->ToString(); }
-      auto const *const sym = scope.SymbolOf(analyse::scopes::BareTypeId(arg.Type));
-      out += sym != nullptr and sym != &type_sym ? mangle_type_name(*sym)
-        : named != nullptr ? named->WithoutConvention()->ToString()
-        : Str("?");
+      if (arg.Named) { out += Str(analyse::scopes::WordText(arg.Name)) + "="; }
+      out += arg.TypeVal != nullptr ? MangleTypeId(scope, arg.TypeVal, &type_sym) : MangleCompId(scope, arg.CompVal);
     }
     return out + "]";
   }
@@ -155,23 +175,20 @@ auto spp::codegen::mangle::mangle_type_name(
   // The qualified head is built from the scope tree, so
   // it reads the same however the type was written; the
   // arguments are printed by what they resolve to
-  // ("MangleGenericArgs").
+  // ("MangleGnArgs").
   const auto fq_name = type_sym.FqName();
-  auto text = fq_name->ToString();
   auto const *last = fq_name->LastTypePart();
-  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.IsEmpty()) { return text; }
-  const auto spelled_args = last->GnArgGroup->ToString();
-  if (not text.ends_with(spelled_args)) { return text; }
-  text.resize(text.size() - spelled_args.size());
-  return text + MangleGenericArgs(last->GnArgGroup->GetAllArgs(), type_sym.LinkedScope, &type_sym);
+  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.IsEmpty()) { return fq_name->ToString(); }
+  return fq_name->WithoutGns()->ToString()
+    + MangleGnArgs(last->GnArgGroup->GetAllArgs(), type_sym.LinkedScope, &type_sym);
 }
 
-auto spp::codegen::mangle::mangle_mod_name(
+auto spp::codegen::mangle::MangleModName(
   analyse::scopes::Scope const &mod_scope)
   -> Str {
   // Generate the module name by joining the ancestor
   // scope names with '#'.
-  return mod_scope.Ancestors()
+  return mod_scope.GetAncestors()
     | genex::views::reverse
     | genex::views::filter([](auto *scope) { return not scope->NameAsString().contains("<"); })
     | genex::views::transform([](auto *scope) { return scope->NameAsString(); })
@@ -180,26 +197,26 @@ auto spp::codegen::mangle::mangle_mod_name(
     | genex::to<Str>();
 }
 
-auto spp::codegen::mangle::mangle_cmp_name(
+auto spp::codegen::mangle::MangleCmpName(
   analyse::scopes::Scope const &owner_scope,
   asts::CmpStatementAst const &cmp_stmt)
   -> Str {
   // Qualify the "cmp" name and return the whole thing.
-  const auto mod_name = mangle_mod_name(owner_scope);
+  const auto mod_name = MangleModName(owner_scope);
   const auto cmp_name = cmp_stmt.Name->Val;
   return mod_name + "#" + cmp_name;
 }
 
-auto spp::codegen::mangle::mangle_fun_name(
+auto spp::codegen::mangle::MangleFnName(
   analyse::scopes::Scope const &owner_scope,
   asts::FunctionPrototypeAst const &fun_proto)
   -> Str {
   // The module/context name that the function belongs to.
   // Todo: Change to use the llvm type (u32/s32 are same in llvm but different in spp).
-  const auto mod_name = mangle_mod_name(owner_scope);
+  const auto mod_name = MangleModName(owner_scope);
 
   // Get the return and parameter types of the function.
-  const auto return_type_sym = owner_scope.GetTypeSymbol(fun_proto.ReturnType.get());
+  const auto return_type_sym = owner_scope.FindTypeSymbol(fun_proto.ReturnType.get());
 
   // The variadic parameter is mangled from the tuple it
   // actually receives, not from the single element it
@@ -207,16 +224,17 @@ auto spp::codegen::mangle::mangle_fun_name(
   // in argument count mangle to one name, and llvm quietly
   // uniques the second, leaving callers pointing at
   // whichever one won.
-  const auto variadic_param = fun_proto.FnParamGroup->GetVariadicParams();
+  const auto variadic_param = fun_proto.FnParamGroup->GetVariadicParam();
   const auto param_type_syms = fun_proto.FnParamGroup->Params
     | genex::views::transform([&](auto const &param) {
       auto const &param_type = (fun_proto.VariadicPackType != nullptr
           and param.get() == static_cast<asts::FunctionParameterAst const*>(variadic_param))
         ? fun_proto.VariadicPackType
         : param->Type;
-      return owner_scope.GetTypeSymbol(param_type.get());
+      return owner_scope.FindTypeSymbol(param_type.get());
     })
     | genex::to<Vec>();
+
 
   // Save the type symbols into a vector.
   auto types = Vec{return_type_sym};
@@ -236,10 +254,10 @@ auto spp::codegen::mangle::mangle_fun_name(
   // for mangling (was merging multiple generic implementations).
   // The owner's generics are printed by identity, as a type's
   // arguments are.
-  const auto owner_generic_args = owner_scope.GetGenerics();
+  const auto owner_generic_args = owner_scope.GetGns();
   auto owner_args = Vec<asts::GenericArgumentAst*>();
   for (auto const &arg : owner_generic_args) { owner_args.EmplaceBack(arg.get()); }
-  const auto owner_name = owner_args.IsEmpty() ? Str() : "#" + MangleGenericArgs(owner_args, &owner_scope, nullptr);
+  const auto owner_name = owner_args.IsEmpty() ? Str() : "#" + MangleGnArgs(owner_args, &owner_scope, nullptr);
   const auto full = mod_name + "#" + fun_proto.Name->Val + owner_name + "#" + fun_sig;
 
   // The readable part: the path, the name, and the owner's generics as a backtrace shows them.
@@ -253,20 +271,20 @@ auto spp::codegen::mangle::mangle_fun_name(
     for (auto i = 0uz; i < owner_args.Len(); ++i) {
       auto const *arg = owner_args[i];
       if (i != 0) { readable += ", "; }
-      if (arg->Name != nullptr) { readable += arg->Name->ToString() + "="; }
-      auto const *sym = arg->TypeVal != nullptr ? owner_scope.GetTypeSymbol(arg->TypeVal.get()) : nullptr;
-      readable += sym != nullptr
-        ? ShortTypeName(*sym->FqName())
-        : arg->TypeVal != nullptr
-        ? ShortTypeName(*arg->TypeVal)
-        : arg->CompVal->ToString();
+      if (arg->TypeName() != nullptr) { readable += arg->TypeName()->ToString() + "="; }
+      if (arg->IsCompArg()) {
+        readable += MangleCompArg(*arg->CompVal, &owner_scope);
+        continue;
+      }
+      auto const *const sym = owner_scope.FindTypeSymbol(arg->TypeVal.get());
+      readable += ShortTypeName(sym != nullptr ? *sym->FqName() : *arg->TypeVal);
     }
     readable += "]";
   }
   return readable + "$h" + HashHex(full);
 }
 
-auto spp::codegen::mangle::mangle_closure_name(
+auto spp::codegen::mangle::MangleClosureName(
   Str const &enclosing,
   const std::size_t index)
   -> Str {

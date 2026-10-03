@@ -142,7 +142,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     std::move(residual_target), std::move(residual_call));
 
   auto residual_statements = Vec<Unique<StatementAst>>();
-  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     residual_statements.EmplaceBack(MakeUnique<RetStatementAst>(nullptr, std::move(residual_extract)));
   }
   else {
@@ -188,33 +188,33 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // through stage 7, and an expression that has not cannot be
   // asked for its type - a function call has no overload picked
   // yet, so "_OverloadInfo" is still empty.
-  const auto residual_type = marker_sups::GetTryType(
+  const auto residual_type = marker_sups::FindTrySup(
     analysed_lhs->InferTypeRef(sm, meta), *analysed_lhs, [&] { return analysed_lhs->InferType(sm, meta); }, *sm,
-    "early return")->TypeArgType("Residual");
+    "early return").Symbol->TypeArg("Residual");
 
   // Todo: Tidy!
   // Subroutine return type check.
-  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(
-        *meta->EnclosingFunctionRetType.Back(), *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-      {meta->EnclosingFunctionScope, sm->CurrentScope},
+        *meta->EnclosingFnRetType.Back(), *residual_type, *meta->EnclosingFnScope, *sm->CurrentScope),
+      {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFunctionSourceRetType.Back(), *meta->EnclosingFunctionRetType.Back(),
+        *meta->EnclosingFnSourceRetType.Back(), *meta->EnclosingFnRetType.Back(),
         *analysed_lhs, *residual_type));
   }
 
   // Todo: Tidy!
   // Coroutine return type check.
   else {
-    auto const &ret_type = meta->EnclosingFunctionRetType.Back();
-    auto [_, yield_type, _] = marker_sups::GetGenAndYieldTypes(
+    auto const &ret_type = meta->EnclosingFnRetType.Back();
+    const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
-      [&] { return ret_type; }, "early return");
+      [&] { return ret_type; }, "early return"));
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-      {meta->EnclosingFunctionScope, sm->CurrentScope},
-      ERR_ARGS(*meta->EnclosingFunctionSourceRetType.Back(), *yield_type, *analysed_lhs, *residual_type));
+      not type_compare::Assignable(*yield_type, *residual_type, *meta->EnclosingFnScope, *sm->CurrentScope),
+      {meta->EnclosingFnScope, sm->CurrentScope},
+      ERR_ARGS(*meta->EnclosingFnSourceRetType.Back(), *yield_type, *analysed_lhs, *residual_type));
   }
 }
 
@@ -255,9 +255,9 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferType(
   // to reading it off the left-hand-side. This only works
   // for an operand that some other path has already analysed.
   const auto lhs = meta->PostfixExpressionLhs;
-  return marker_sups::GetTryType(
+  return marker_sups::FindTrySup(
     lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
-    "early return")->TypeArgType("Value");
+    "early return").Symbol->TypeArg("Value");
 }
 
 auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(

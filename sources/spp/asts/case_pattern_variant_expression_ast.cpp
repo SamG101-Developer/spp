@@ -65,7 +65,7 @@ auto CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
     not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Expr));
 
-  case_utils::CreateAndAnalysePatternEqFuncsDummyCore(
+  case_utils::CreateAndAnalysePatternEqFnsDummyCore(
     {this}, sm, meta);
 }
 
@@ -77,7 +77,7 @@ auto CasePatternVariantExpressionAst::Stage8_CheckMemory(
   // do this via generated == function?
   Expr->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
-    *Expr, *Expr, *sm, true, true, true, true, meta);
+    *Expr, *Expr, *sm, meta);
 }
 
 auto CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
@@ -89,7 +89,7 @@ auto CasePatternVariantExpressionAst::Stage9_CompTimeResolve(
     {this}, sm, meta);
 
   // Return the single result (only one expression will be here).
-  meta->CmpResult = std::move(comptime_transforms[0]);
+  meta->CompTimeResult = std::move(comptime_transforms[0]);
 }
 
 auto CasePatternVariantExpressionAst::Stage11_CodeGen(
@@ -97,7 +97,7 @@ auto CasePatternVariantExpressionAst::Stage11_CodeGen(
   IMPORT_UTILS;
 
   // Generate the LLVM.
-  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFuncsLlvm(
+  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFnsLlvm(
     {this}, sm, meta, ctx);
   return llvm_master_transform[0];
 }

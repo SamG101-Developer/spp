@@ -19,11 +19,6 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import std;
 
-namespace spp::analyse::utils::expr_utils {
-  namespace {
-  }
-}
-
 auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   ExpressionAst const &expr, ScopeManager const &sm,
   PrimaryExpressionOptions &&options) -> bool {
@@ -32,14 +27,15 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   // tuple's type, which has exactly one value, like any
   // zero type.
   if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
-    const auto type_sym = sm.CurrentScope->GetTypeSymbol(expr.To<asts::TypeAst>());
+    const auto type_sym = sm.CurrentScope->FindTypeSymbol(expr.To<asts::TypeAst>());
     return type_sym != nullptr and (type_sym->IsZeroType()
-      or (type_predicates::IsTypeTup(*type_sym, *sm.CurrentScope) and type_sym->TypeArgTypes().IsEmpty()));
+      or (type_predicates::IsTypeTuple(TypeRef::OfKind(*type_sym, *sm.CurrentScope), *sm.CurrentScope)
+        and type_sym->TypeArgs().IsEmpty()));
   }
 
   // Only allow tokens when they're explicit allowed,
   // like "5 + .."
-  if (not options.AllowTokenAst and expr.To<asts::TokenAst>() != nullptr) { return false; }
+  if (expr.To<asts::TokenAst>() != nullptr) { return false; }
   return true;
 }
 
@@ -86,6 +82,6 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   if (type == nullptr) { return; }
 
   const auto type_name = type->ToString();
-  if (IsTypeVoid(TypeRef::OfHead(*type, *scope), *scope) or type->IsNeverType()) { return; }
+  if (IsTypeVoid(*type, *scope) or type->IsNeverType()) { return; }
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
 }

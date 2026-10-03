@@ -135,7 +135,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   if (TokSkip != nullptr) {
     ++meta->LoopSkipsSeen;
     if (TokSeqExit.IsEmpty() and meta->LoopSkipMoves != nullptr) {
-      for (auto *sym : sm->CurrentScope->AllVarSymbols()) {
+      for (auto *sym : sm->CurrentScope->GetAllVarSymbols()) {
         if (spp::get<0>(sym->MemInfo->AstMoved) != nullptr) { meta->LoopSkipMoves->EmplaceBack(sym, this); }
       }
     }
@@ -147,14 +147,14 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   if (Expr != nullptr) {
     Expr->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(
-      *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
+      *Expr, *TokSeqExit.Back(), *sm, meta);
   }
 
   // An "exit" (with no "skip") is a path out of the loop it
   // targets, and what memory looks like here is what that loop
   // leaves behind on it. "exit exit" targets the loop two back.
   if (TokSkip == nullptr and not TokSeqExit.IsEmpty() and TokSeqExit.Len() <= meta->LoopExitStates.Len()) {
-    auto state = memory_state::SnapshotSymbols(sm->CurrentScope->AllVarSymbols());
+    auto state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
     meta->LoopExitStates[meta->LoopExitStates.Len() - TokSeqExit.Len()]->EmplaceBack(
       TokSeqExit.Back().get(), std::move(state));
   }

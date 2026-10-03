@@ -124,14 +124,13 @@ auto FunctionParameterGroupAst::Stage11_CodeGen(
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the
   // 0th argument is the closure env (skip it).
-  // Todo: why not using meta->Save()/->Restore()?
   const auto llvm_fn = ctx->Builder.GetInsertBlock()->getParent();
   auto arg_index = ctx->CurrentClosureType != nullptr ? 1u : 0u;
   for (auto const &param : Params) {
     SPP_ASSERT(arg_index < llvm_fn->arg_size());
+    const auto _meta_guard = MetaGuard(meta);
     meta->LetStatementPrecomputedValue = llvm_fn->getArg(arg_index);
     param->Stage11_CodeGen(sm, meta, ctx);
-    meta->LetStatementPrecomputedValue = nullptr;
     ++arg_index;
   }
   return nullptr;
@@ -171,7 +170,7 @@ auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParamet
   return out;
 }
 
-auto FunctionParameterGroupAst::GetVariadicParams() const -> FunctionParameterVariadicAst* {
+auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVariadicAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterVariadicAst*>();
   for (auto const &param : Params) {

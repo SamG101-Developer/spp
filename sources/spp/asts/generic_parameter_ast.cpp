@@ -22,7 +22,7 @@ import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -42,12 +42,12 @@ GenericParameterAst::GenericParameterAst(
   decltype(TokCmp) &&tok_cmp,
   decltype(TokEllipsis) &&tok_ellipsis,
   decltype(Name) name,
-  decltype(Constraints) &&constraints,
+  decltype(TypeConstraints) &&constraints,
   decltype(TokColon) &&tok_colon,
   decltype(CompType) comp_type,
   decltype(TokAssign) &&tok_assign,
   decltype(TypeDefault) type_default,
-  decltype(CompDefault) &&comp_default) :
+  decltype(CompDefault) comp_default) :
   OrderableAst(
     tok_ellipsis != nullptr
     ? utils::OrderableTag::kVariadicParam
@@ -57,7 +57,7 @@ GenericParameterAst::GenericParameterAst(
   TokCmp(std::move(tok_cmp)),
   TokEllipsis(std::move(tok_ellipsis)),
   Name(std::move(name)),
-  Constraints(std::move(constraints)),
+  TypeConstraints(std::move(constraints)),
   TokColon(std::move(tok_colon)),
   CompType(std::move(comp_type)),
   TokAssign(std::move(tok_assign)),
@@ -67,24 +67,44 @@ GenericParameterAst::GenericParameterAst(
   _DummyScopes({}) {
   // Default the tokens and constraints of the parameter's kind.
   using lex::SppTokenType;
-  if (CompType != nullptr) {
+  if (IsCompParam()) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, SppTokenType::KW_CMP, "cmp");
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, SppTokenType::TK_COLON, ":");
   }
   else {
-    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Constraints);
+    SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TypeConstraints);
   }
-  if (TypeDefault != nullptr or CompDefault != nullptr) {
+  if (IsOptional()) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, SppTokenType::TK_ASSIGN, "=");
   }
 }
 
 GenericParameterAst::~GenericParameterAst() = default;
 
+auto GenericParameterAst::IsTypeParam() const -> bool {
+  return CompType == nullptr;
+}
+
+auto GenericParameterAst::IsCompParam() const -> bool {
+  return CompType != nullptr;
+}
+
+auto GenericParameterAst::IsVariadic() const -> bool {
+  return TokEllipsis != nullptr;
+}
+
+auto GenericParameterAst::IsOptional() const -> bool {
+  return TypeDefault != nullptr or CompDefault != nullptr;
+}
+
+auto GenericParameterAst::IsRequired() const -> bool {
+  return not IsVariadic() and not IsOptional();
+}
+
 auto GenericParameterAst::PosStart() const -> std::size_t {
   // Use the first token: "cmp", "..", or the name.
   if (TokCmp != nullptr) { return TokCmp->PosStart(); }
-  if (TokEllipsis != nullptr) { return TokEllipsis->PosStart(); }
+  if (IsVariadic()) { return TokEllipsis->PosStart(); }
   return Name->PosStart();
 }
 
@@ -93,12 +113,12 @@ auto GenericParameterAst::PosEnd() const -> std::size_t {
   // ".." of a variadic type parameter, then the name.
   if (TypeDefault != nullptr) { return TypeDefault->PosEnd(); }
   if (CompDefault != nullptr) { return CompDefault->PosEnd(); }
-  if (CompType != nullptr) { return CompType->PosEnd(); }
-  if (TokEllipsis != nullptr) { return TokEllipsis->PosEnd(); }
+  if (IsCompParam()) { return CompType->PosEnd(); }
+  if (IsVariadic()) { return TokEllipsis->PosEnd(); }
   return Name->PosEnd();
 }
 
-auto GenericParameterAst::ShareParamIdentity(
+auto GenericParameterAst::ShareParamId(
   GenericParameterAst const &that) -> void {
   _ParamId = that._ParamId;
 }
@@ -109,12 +129,12 @@ auto GenericParameterAst::Clone() const -> Unique<Ast> {
     AstClone(TokCmp),
     AstClone(TokEllipsis),
     AstCloneShared(Name),
-    AstClone(Constraints),
+    AstClone(TypeConstraints),
     AstClone(TokColon),
     AstCloneShared(CompType),
     AstClone(TokAssign),
     AstCloneShared(TypeDefault),
-    AstClone(CompDefault));
+    AstCloneShared(CompDefault));
   ast->IsInherited = IsInherited;
   ast->WrittenCompDefault = WrittenCompDefault;
   ast->_ParamId = _ParamId;
@@ -123,23 +143,23 @@ auto GenericParameterAst::Clone() const -> Unique<Ast> {
 
 auto GenericParameterAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (CompType != nullptr) {
+  if (IsCompParam()) {
     SPP_STRING_APPEND(TokCmp).append(" ");
-    if (TokEllipsis != nullptr) { SPP_STRING_APPEND(TokEllipsis); }
+    if (IsVariadic()) { SPP_STRING_APPEND(TokEllipsis); }
     SPP_STRING_APPEND(Name);
     SPP_STRING_APPEND(TokColon).append(" ");
     SPP_STRING_APPEND(CompType);
-    if (CompDefault != nullptr) {
+    if (IsOptional()) {
       SPP_STRING_APPEND_RAW(" ");
       SPP_STRING_APPEND(TokAssign).append(" ");
       SPP_STRING_APPEND(CompDefault);
     }
   }
   else {
-    if (TokEllipsis != nullptr) { SPP_STRING_APPEND(TokEllipsis); }
+    if (IsVariadic()) { SPP_STRING_APPEND(TokEllipsis); }
     SPP_STRING_APPEND(Name);
-    SPP_STRING_APPEND(Constraints);
-    if (TypeDefault != nullptr) {
+    SPP_STRING_APPEND(TypeConstraints);
+    if (IsOptional()) {
       SPP_STRING_APPEND(TokAssign);
       SPP_STRING_APPEND(TypeDefault);
     }
@@ -157,21 +177,20 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
 
   // A comp parameter is a variable symbol for its constant in
   // the current scope (class / function).
-  if (CompType != nullptr) {
+  if (IsCompParam()) {
     auto sym = MakeUnique<VariableSymbol>(
       IdentifierAst::FromType(*Name), CompType, sm->CurrentScope,
-      VariableKind::GenericCompParam, false, Visibility::kPublic);
+      VariableKind::GnCompParam, false, Visibility::kPublic);
 
-    // sym->MemInfo->AstPins.EmplaceBack(Name.get()); TODO
     sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-    if (*_ParamId == 0) { *_ParamId = NextGenericParamId(); }
-    sym->ParamId = *_ParamId;
-    sym->IsVariadic = TokEllipsis != nullptr;
-    RegisterGenericCompParam(*sym);
+    if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
+    sym->OwnParamId = *_ParamId;
+    sym->IsVariadic = IsVariadic();
+    RegisterGnCompParam(*sym);
 
     // Recorded as a type parameter's is (below), so an argument built from it is matched to an occurrence of the
-    // parameter by identity ("IdentifierAst::SubstituteGenericsExpr").
-    Name->SetWritten(Scope::WrittenIdOfCompParam(sym->ParamId));
+    // parameter by identity ("IdentifierAst::ReadExpr").
+    Name->SetWrittenTypeId(WrittenCompIdOf(*sym));
     sm->CurrentScope->AddVarSymbol(std::move(sym));
     return;
   }
@@ -188,26 +207,26 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<TypeSymbol>(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
-    sm->CurrentScope, TypeKind::GenericParam, false, Visibility::kPublic,
-    nullptr, Constraints->Constraints);
-  sym->IsVariadic = TokEllipsis != nullptr;
-  if (*_ParamId == 0) { *_ParamId = NextGenericParamId(); }
-  sym->ParamId = *_ParamId;
-  RegisterGenericParam(*sym);
+    sm->CurrentScope, TypeKind::GnTypeParam, false, Visibility::kPublic,
+    nullptr, TypeConstraints->Constraints);
+  sym->IsVariadic = IsVariadic();
+  if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
+  sym->OwnParamId = *_ParamId;
+  RegisterGnTypeParam(*sym);
 
   // The declaration names this parameter, and so does every
   // argument group built from it: "FromParams" shares this
-  // node, "GenericArgumentAst::FromSym" the symbol's. Stamping
+  // node, "GenericArgumentAst::FromSymbol" the symbol's. Stamping
   // both lets substitution match an occurrence to the argument
   // standing for it by identity ("ParamId"), rather than by
   // the name the two happen to share.
-  Name->SetWritten(Scope::WrittenIdOf(*sym));
-  sym->Name->SetWritten(Scope::WrittenIdOf(*sym));
+  Name->SetWrittenTypeId(WrittenTypeIdOf(*sym));
+  sym->Name->SetWrittenTypeId(WrittenTypeIdOf(*sym));
   sm->CurrentScope->AddTypeSymbol(sym);
 
-  dummy_scope->TySym = sym;
+  dummy_scope->LinkedTypeSymbol = sym;
   _DummyScopes.EmplaceBack(dummy_scope.get());
-  ScopeManager::temp_scopes.EmplaceBack(
+  ScopeManager::TempScopes.EmplaceBack(
     std::move(dummy_scope));
 }
 
@@ -217,12 +236,12 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
 
   // An optional type parameter analyses its default where it
   // is written and records what it means there
-  // ("type_resolution::RecordWrittenParts"), as it is read from
+  // ("type_resolution::RecordTypeParts"), as it is read from
   // wherever the parameter is bound.
-  if (CompType == nullptr) {
-    if (TypeDefault != nullptr) {
+  if (IsTypeParam()) {
+    if (IsOptional()) {
       TypeDefault->Stage7_AnalyseSemantics(sm, meta);
-      type_resolution::RecordWrittenParts(*TypeDefault, *sm->CurrentScope);
+      type_resolution::RecordTypeParts(*TypeDefault, *sm->CurrentScope);
     }
     return;
   }
@@ -235,13 +254,13 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // Todo: a method's "cmp p: Box[T]" (or "Self") in a generic
   //  sup keeps the sup's "T", unknown at the call (E26, located
   //  in std) - GenericParameterCompGenericClass.test_valid_comp_parameter_typed_by_the_class_generic.
-  CompType = type_resolution::ResolveWrittenType(*CompType, *sm, *meta);
+  CompType = type_resolution::AnalyseWrittenType(*CompType, *sm, *meta);
 
   // The default records the comp generics it names where it is written, as a type default records its parts: it is
-  // read from wherever the parameter is bound ("comp_generics::RecordCompGenerics").
-  if (WrittenCompDefault != nullptr) { comp_generics::RecordCompGenerics(*WrittenCompDefault, *sm->CurrentScope); }
+  // read from wherever the parameter is bound ("type_resolution::RecordCompParts").
+  if (WrittenCompDefault != nullptr) { type_resolution::RecordCompParts(*WrittenCompDefault, *sm->CurrentScope); }
   if (not IsInherited) {
-    const auto sym = sm->CurrentScope->GetVarSymbol(
+    const auto sym = sm->CurrentScope->FindVarSymbol(
       IdentifierAst::FromType(*Name).get());
     sym->Type = CompType;
   }
@@ -263,13 +282,13 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
   // scopes load, which is too early for the constraints
   // of their own generic arguments, so they are analysed
   // again now that those can be checked.
-  if (CompType == nullptr) {
+  if (IsTypeParam()) {
     Name->Stage7_AnalyseSemantics(sm, meta);
-    if (TypeDefault != nullptr) { TypeDefault->Stage7_AnalyseSemantics(sm, meta); }
-    if (Constraints != nullptr) {
+    if (IsOptional()) { TypeDefault->Stage7_AnalyseSemantics(sm, meta); }
+    if (TypeConstraints != nullptr) {
       const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
-      for (auto const &constraint : Constraints->Constraints) {
+      for (auto const &constraint : TypeConstraints->Constraints) {
         constraint->ResetCache();
         constraint->Stage7_AnalyseSemantics(sm, meta);
       }
@@ -279,7 +298,7 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
 
   // An optional comp parameter analyses its default, and
   // makes sure it is of the parameter's type.
-  if (CompDefault == nullptr) { return; }
+  if (not IsOptional()) { return; }
   CompDefault->Stage7_AnalyseSemantics(sm, meta);
   if (not type_compare::Assignable(
     TypeRef::Of(*CompType, *sm->CurrentScope), CompDefault->InferTypeRef(sm, meta),
@@ -295,35 +314,35 @@ auto GenericParameterAst::Stage8_CheckMemory(
 
   // Only an optional comp parameter's default holds memory to
   // check.
-  if (CompDefault == nullptr) {
+  if (not IsCompParam() or not IsOptional()) {
     Ast::Stage8_CheckMemory(sm, meta);
     return;
   }
   CompDefault->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, meta);
 }
 
 auto GenericParameterAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A comp parameter resolves to its own name.
-  if (CompType == nullptr) {
+  if (IsTypeParam()) {
     Ast::Stage9_CompTimeResolve(sm, meta);
     return;
   }
-  meta->CmpResult = IdentifierAst::FromType(*Name);
+  meta->CompTimeResult = IdentifierAst::FromType(*Name);
 }
 
 auto GenericParameterAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Only a comp parameter generates anything.
-  if (CompType == nullptr) { return Ast::Stage11_CodeGen(sm, meta, ctx); }
+  if (IsTypeParam()) { return Ast::Stage11_CodeGen(sm, meta, ctx); }
 
   // The compile time constants' symbols need to be allocated
   // into the function. Start with "nullptr" value, to generate
   // the alloca. Generic instantiations of these functions will
   // then inject in the generic argument translations.
   auto cast_name = IdentifierAst::FromType(*Name);
-  const auto sym = sm->CurrentScope->GetVarSymbol(cast_name.get());
+  const auto sym = sm->CurrentScope->FindVarSymbol(cast_name.get());
   const auto held_type = sym != nullptr and sym->Type != nullptr ? sym->Type : CompType;
   const auto cmp = MakeUnique<CmpStatementAst>(
     SPP_NO_ANNOTATIONS, nullptr, std::move(cast_name), nullptr, held_type, nullptr, nullptr);

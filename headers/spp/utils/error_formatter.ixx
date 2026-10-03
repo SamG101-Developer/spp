@@ -36,20 +36,20 @@ public:
 
   /// Given an ast position and size, throw the error with
   /// the string built from the error builder.
-  auto ErrorRawPos(std::size_t ast_start_pos, std::size_t ast_size, Str &&message, Str &&tag_message) -> Str;
+  SPP_ATTR_COLD auto ErrorRawPos(std::size_t ast_start_pos, std::size_t ast_size, Str &&message, Str &&tag_message) -> Str;
 
   /// Given an ast position and size, throw the error with
   /// the minimally formatted version of the error builder
   /// output.
-  auto ErrorRawPosMinimal(std::size_t ast_start_pos, std::size_t ast_size, Str &&tag_message) -> Str;
+  SPP_ATTR_COLD auto ErrorRawPosMinimal(std::size_t ast_start_pos, std::size_t ast_size, Str &&tag_message) -> Str;
 
   /// Given an entire ast, use the ast properties to
   /// determine what to highlight, and throw the error.
-  auto ErrorAst(Ast const *ast, Str &&message, Str &&tag_message) -> Str;
+  SPP_ATTR_COLD auto ErrorAst(Ast const *ast, Str &&message, Str &&tag_message) -> Str;
 
   /// Minimal version of the ast scan based highlighting,
   /// typically for ast "context", not the "error" site.
-  auto ErrorAstMinimal(Ast const *ast, Str &&tag_message) -> Str;
+  SPP_ATTR_COLD auto ErrorAstMinimal(Ast const *ast, Str &&tag_message) -> Str;
 
   /// The span an ast covers, for a consumer that wants the
   /// position itself rather than a quote of the line: the json

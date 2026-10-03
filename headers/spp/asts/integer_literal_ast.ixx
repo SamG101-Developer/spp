@@ -24,22 +24,9 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
-  inline static const auto kBounds = utils::numbers::IntLimitMap{
-    {Str("s8"), LIMIT_S(8)},
-    {Str("s16"), LIMIT_S(16)},
-    {Str("s32"), LIMIT_S(32)},
-    {Str("s64"), LIMIT_S(64)},
-    {Str("s128"), LIMIT_S(128)},
-    {Str("s256"), LIMIT_S(256)},
-    {Str("sz"), LIMIT_S(sizeof(sys::ssize_t) * 8)},
-    {Str("u8"), LIMIT_U(8)},
-    {Str("u16"), LIMIT_U(16)},
-    {Str("u32"), LIMIT_U(32)},
-    {Str("u64"), LIMIT_U(64)},
-    {Str("u128"), LIMIT_U(128)},
-    {Str("u256"), LIMIT_U(256)},
-    {Str("uz"), LIMIT_U(sizeof(std::size_t) * 8)},
-  };
+  /// The lowest and highest value of each integer type, by suffix: one table, shared with the folding of comp values
+  /// ("utils::numbers::IntegerBounds").
+  inline static utils::numbers::IntLimitMap const &kBounds = utils::numbers::IntegerBounds();
 
   SPP_GCC_VTABLE_FIX;
   SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);
@@ -106,8 +93,8 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
 
 private:
-  /// The precompiled type this literal's suffix names, resolved where "sm" is.
-  auto _PrecompiledTypeSym(ScopeManager *sm) const -> TypeSymbol*;
+  /// The precompiled type this literal's suffix names ("S32" for "1", "U8" for "1_u8").
+  auto _PrecompiledType(ScopeManager *sm) const -> TypeAst const&;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IntegerLiteralAst)

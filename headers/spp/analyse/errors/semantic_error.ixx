@@ -14,7 +14,7 @@ use(spp::analyse::errors, struct SemanticError);
 use(spp::analyse::errors, struct SppInvalidPrimaryExpressionError);
 use(spp::analyse::errors, struct SppTypeMismatchError);
 use(spp::analyse::errors, struct SppSecondClassBorrowViolationError);
-use(spp::analyse::errors, struct SppCompileTimeConstantError);
+use(spp::analyse::errors, struct SppCompTimeConstantError);
 use(spp::analyse::errors, struct SppInvalidMutationError);
 use(spp::analyse::errors, struct SppUninitializedMemoryUseError);
 use(spp::analyse::errors, struct SppPartiallyInitializedMemoryUseError);
@@ -98,7 +98,7 @@ use(spp::analyse::errors, struct SppGenericArgumentTooManyError);
 use(spp::analyse::errors, struct SppMissingMainFunctionError);
 use(spp::analyse::errors, struct SppInvalidVoidValueError);
 use(spp::analyse::errors, struct SppBorrowLifetimeIncreaseError);
-use(spp::analyse::errors, struct SppInvalidComptimeOperationError);
+use(spp::analyse::errors, struct SppInvalidCompTimeOperationError);
 use(spp::analyse::errors, struct SppInternalCompilerError);
 use(spp::analyse::errors, struct SppGenericConstraintError);
 use(spp::analyse::errors, struct SppAnnotationTargetNotAnAnnotationError);
@@ -113,7 +113,7 @@ use(spp::analyse::errors, struct SppInvalidBinaryFoldExpressionError);
 use(spp::analyse::errors, struct SppAccessViolationError);
 use(spp::analyse::errors, struct SppFunctionOverloadVisibilityMismatchError);
 use(spp::analyse::errors, struct SppMovingEscapingBorrowedMemoryError);
-use(spp::analyse::errors, struct SppMovingComptimeConstantMemoryError);
+use(spp::analyse::errors, struct SppMovingCompTimeConstantMemoryError);
 use(spp::analyse::errors, struct SppHigherOrderGenericsNotSupportedError);
 use(spp::analyse::errors, struct SppGeneratedCodeError);
 use(spp::analyse::errors, struct SppCharLiteralOutOfBoundsError);
@@ -124,7 +124,7 @@ use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
 use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
-use(spp::analyse::errors, struct SppDeferInCompileTimeFunctionError);
+use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
 use(spp::analyse::errors, struct SppFeatureNotYetSupportedError);
 
@@ -184,34 +184,30 @@ SPP_EXP_CLS struct spp::analyse::errors::SemanticError :
 
   /// Add the header to the error message. This provides a
   /// title and error code.
-  auto AddHeader(std::size_t err_code, Str &&msg) -> void;
+  SPP_ATTR_COLD auto AddHeader(std::size_t err_code, Str &&msg) -> void;
 
   /// Add error information from an ast with a tag. This ast
   /// will get "^^^" underlined based on start/end positions,
   /// and the tag appended after "<-". Transform to linked asts
   /// for better reporting.
-  auto AddErr(Ast const *ast, Str &&tag) -> void;
+  SPP_ATTR_COLD auto AddErr(Ast const *ast, Str &&tag) -> void;
 
   /// A slightly modified error append. Usually, the asts have
   /// some transformation they can go through depending on what
   /// variant they are. In this case, no transformation at all.
-  auto AddErrExact(Ast const *ast, Str &&tag) -> void;
+  SPP_ATTR_COLD auto AddErrExact(Ast const *ast, Str &&tag) -> void;
 
   /// Add context to an error, for example, pointing to another
   /// ast that provides more information about the error.
-  auto AddCtxForErr(Ast const *ast, Str &&tag) -> void;
+  SPP_ATTR_COLD auto AddCtxForErr(Ast const *ast, Str &&tag) -> void;
 
   /// Add the footer, containing the final summary note, and a
   /// help line.
-  auto AddFooter(Str &&note, Str &&help) -> void;
+  SPP_ATTR_COLD auto AddFooter(Str &&note, Str &&help) -> void;
 
   /// Wrap an error that has been caught, re-displaying it within
   /// this error.
   auto AddWrapped(Str &&msg) -> void;
-
-  /// Simple clone copying over all the fields. Todo: Do we still
-  /// need this method? Is it being called anywhere?
-  SPP_ATTR_NODISCARD auto Clone() const -> Unique<SemanticError>;
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidPrimaryExpressionError final : SemanticError {
@@ -227,8 +223,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppSecondClassBorrowViolationError fina
   explicit SppSecondClassBorrowViolationError(Ast const &expr, Ast const &type, StrView ctx);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppCompileTimeConstantError final : SemanticError {
-  explicit SppCompileTimeConstantError(Ast const &expr);
+SPP_EXP_CLS struct spp::analyse::errors::SppCompTimeConstantError final : SemanticError {
+  explicit SppCompTimeConstantError(Ast const &expr);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidMutationError final : SemanticError {
@@ -608,9 +604,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppBorrowLifetimeIncreaseError final : 
     Ast const &rhs_borrow_definition);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppInvalidComptimeOperationError final : SemanticError {
+SPP_EXP_CLS struct spp::analyse::errors::SppInvalidCompTimeOperationError final : SemanticError {
   // Todo: Check other comptime error: merge?
-  explicit SppInvalidComptimeOperationError(Ast const &ast);
+  explicit SppInvalidCompTimeOperationError(Ast const &ast);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppInternalCompilerError final : SemanticError {
@@ -673,8 +669,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppMovingEscapingBorrowedMemoryError fi
   explicit SppMovingEscapingBorrowedMemoryError(Ast const &container, Ast const &where_moved);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppMovingComptimeConstantMemoryError final : SemanticError {
-  explicit SppMovingComptimeConstantMemoryError(Ast const &ast, Ast const &move_location);
+SPP_EXP_CLS struct spp::analyse::errors::SppMovingCompTimeConstantMemoryError final : SemanticError {
+  explicit SppMovingCompTimeConstantMemoryError(Ast const &ast, Ast const &move_location);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppHigherOrderGenericsNotSupportedError final : SemanticError {
@@ -723,8 +719,8 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDeferConsumesMovedValueError final :
     StrView symbol_name, StrView exit_what);
 };
 
-SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompileTimeFunctionError final : SemanticError {
-  explicit SppDeferInCompileTimeFunctionError(Ast const &tok_defer);
+SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompTimeFunctionError final : SemanticError {
+  explicit SppDeferInCompTimeFunctionError(Ast const &tok_defer);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.generic_inference;
+import spp.analyse.scopes.instance_key;
 import spp.analyse.utils.type_compare;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
@@ -31,7 +32,8 @@ use(spp::asts, struct TypeIdentifierAst);
 /// 2. Equations ("Unify"): what was given for a parameter or attribute against its declared type, binding the
 ///    generics the declared type names.
 /// 3. "Solve": the equations, then comp values' types and the constraints, repeated until nothing new is bound; then
-///    the defaults; then conflicts, uninferred parameters, cross-substitution and comp argument types are checked.
+///    the defaults; then conflicts and uninferred parameters are checked, every binding is read in the use site's
+///    terms, and both kinds of argument are checked against their parameters (comp types, type constraints).
 /// 4. "TakeArgs": the solution, in parameter order.
 SPP_EXP_CLS class spp::analyse::utils::generic_inference::GenericSolver {
 public:
@@ -63,11 +65,11 @@ public:
     -> void;
 
   /// Everything bound so far, as arguments (borrowed from the solver).
-  SPP_ATTR_NODISCARD auto KnownArgs() const
+  SPP_ATTR_NODISCARD auto GetKnownArgs() const
     -> Vec<GenericArgumentAst*>;
 
-  /// Solve, raising on a conflict, an uninferred parameter or a
-  /// comp argument of the wrong type. "variadic_fn_param" names a
+  /// Solve, raising on a conflict, an uninferred parameter, a comp
+  /// argument of the wrong type or an unsatisfied constraint. "variadic_fn_param" names a
   /// variadic function parameter, whose non-variadic generics bind
   /// to the pack's element rather than its tuple.
   auto Solve(
@@ -91,7 +93,6 @@ private:
   Vec<Unique<_Entry>> _Entries;
   Vec<Unique<_Equation>> _Equations;
   Vec<Unique<GenericArgumentAst>> _Given;
-  Vec<Shared<ExpressionAst>> _OwnedComps;
 
   bool _Trivial = false;
 
@@ -100,15 +101,15 @@ private:
     Function<Shared<TypeAst>(_Entry const &, Shared<TypeAst>)> const &adjust_type = nullptr) -> bool;
   auto _Match(Shared<TypeAst> const &source, Shared<TypeAst> const &target) const
     -> type_compare::GenericInferenceMap;
-  auto _InferTypesFromCompValues() -> bool;
-  auto _InferFromConstraints() -> bool;
+  auto _ReadCompValues() -> bool;
+  auto _ReadConstraints() -> bool;
   auto _SelfForDefault(bool as_value) const -> Shared<TypeAst>;
-  auto _ApplyTypeDefaults() -> void;
-  auto _ApplyCompDefaults() -> void;
+  auto _ApplyDefaults() -> void;
   auto _EnforceNoConflicts() const -> void;
   auto _EnforceAllInferred(Ast const &owner) const -> void;
   auto _CrossSubstitute() -> void;
-  auto _CheckCompArgTypes() const -> void;
+  auto _CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void;
+  auto _CheckCompArgs(scopes::GenericSubst const &bindings) const -> void;
   auto _InferenceMap() const -> type_compare::GenericInferenceMap;
 };
 
@@ -116,28 +117,11 @@ namespace spp::analyse::utils::generic_inference {
   /// A sup block's or an alias's own generic parameters, standing
   /// in as the arguments to the type they fill ("sup [T] Box[T]"),
   /// checked against that type's constraints.
-  SPP_EXP_FUN auto EnforceGenericConstraintsOfParams(
+  SPP_EXP_FUN auto EnforceGnConstraintsOfParams(
     TypeSymbol const &target,
     GenericParameterGroupAst const &params,
     ScopeManager &sm,
     meta::CompilerMetaData &meta)
-    -> void;
-
-  /// Given the constraints on the generic parameters, ensure
-  /// that the corresponding generic arguments satisfy the
-  /// constraints. Also handles the cross-application of
-  /// generics into the constraints that themselves rely on
-  /// these generics.
-  /// "decl_scope" is where the parameters were declared, which
-  /// an unsatisfied constraint is reported from; it defaults to
-  /// "owner_scope", which is where the constraints are looked up.
-  SPP_EXP_FUN auto EnforceGenericConstraintsAllArgs(
-    GenericParameterGroupAst const &p_group,
-    GenericArgumentGroupAst const &a_group,
-    Scope const &owner_scope,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta,
-    Scope const *decl_scope = nullptr)
     -> void;
 
   /// The arguments written for "p_group", each named after the
