@@ -797,6 +797,16 @@ SppObjectInitializerVariantError::SppObjectInitializerVariantError(
     "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
+SppObjectInitializerZeroTypeError::SppObjectInitializerZeroTypeError(
+  Ast const &initializer,
+  Ast const &type) {
+  AddHeader(115, "Object Initializer Zero Type Error");
+  AddErr(&initializer, "Zero type initialized here");
+  AddFooter(
+    "A zero type has exactly one value, which is written as the type's own name.",
+    "Write " + INLINE_HELP(type.ToString()) + ", not " + INLINE_HELP(type.ToString() + "()") + ".");
+}
+
 SppObjectInitializerGeneratorError::SppObjectInitializerGeneratorError(
   Ast const &type,
   Ast const &generator_type) {

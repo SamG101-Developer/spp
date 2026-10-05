@@ -60,6 +60,7 @@ use(spp::analyse::errors, struct SppLoopTooManyControlFlowStatementsError);
 use(spp::analyse::errors, struct SppObjectInitializerMultipleAutofillArgumentsError);
 use(spp::analyse::errors, struct SppObjectInitializerInvalidArgumentError);
 use(spp::analyse::errors, struct SppObjectInitializerVariantError);
+use(spp::analyse::errors, struct SppObjectInitializerZeroTypeError);
 use(spp::analyse::errors, struct SppObjectInitializerGeneratorError);
 use(spp::analyse::errors, struct SppAbstractTypeUseError);
 use(spp::analyse::errors, struct SppArgumentNameInvalidError);
@@ -439,6 +440,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerInvalidArgumentErro
 
 SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerVariantError final : SemanticError {
   explicit SppObjectInitializerVariantError(Ast const &type);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerZeroTypeError final : SemanticError {
+  explicit SppObjectInitializerZeroTypeError(Ast const &initializer, Ast const &type);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppObjectInitializerGeneratorError final : SemanticError {
