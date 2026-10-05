@@ -1,6 +1,3 @@
-module;
-#include <spp/macros.hpp>
-
 module spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.utils.types;
@@ -8,12 +5,19 @@ import std;
 
 namespace spp::analyse::errors::diagnostic_sink {
   namespace {
+    /// [CHECKED]
+    /// The state is the struct that holds all the diagnostic
+    /// info for the build, that accumulates and will be used
+    /// for IntelliJ error reporting,
     struct State {
       bool Enabled = false;
       Vec<SemanticError> Errors;
       Set<Ast const*> Poisoned;
     };
 
+    /// [CHECKED]
+    /// The singleton instance of the State, used in all the
+    /// diagnostic methods. Shared on all calls.
     auto Current() -> State& {
       static auto state = State();
       return state;
@@ -22,14 +26,12 @@ namespace spp::analyse::errors::diagnostic_sink {
 }
 
 auto spp::analyse::errors::diagnostic_sink::Enable(
-  const bool enabled)
-  -> void {
+  const bool enabled) -> void {
   // Mark the static sink as enabled.
   Current().Enabled = enabled;
 }
 
-auto spp::analyse::errors::diagnostic_sink::IsEnabled()
-  -> bool {
+auto spp::analyse::errors::diagnostic_sink::IsEnabled() -> bool {
   // Check if the state has been enabled for usage.
   return Current().Enabled;
 }
@@ -55,12 +57,12 @@ auto spp::analyse::errors::diagnostic_sink::Collected()
 
 auto spp::analyse::errors::diagnostic_sink::HasErrors()
   -> bool {
-  // If the errors list is not empty, 1 or more have been raised.
+  // If the errors list is not empty, 1 or more have been
+  // raised.
   return not Current().Errors.IsEmpty();
 }
 
-auto spp::analyse::errors::diagnostic_sink::Clear()
-  -> void {
+auto spp::analyse::errors::diagnostic_sink::Clear() -> void {
   Current().Errors.Clear();
   Current().Poisoned.clear();
 }
