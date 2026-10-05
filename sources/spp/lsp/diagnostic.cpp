@@ -88,6 +88,7 @@ namespace spp::lsp {
         out += ",\"member\":" + JsonString(member.Kind);
         out += ",\"type\":" + JsonString(member.Type);
         out += ",\"definition\":{" + JsonSpan(member.Definition) + "}";
+        if (not member.Visibility.empty()) { out += ",\"visibility\":" + JsonString(member.Visibility); }
 
         out += ",\"signatures\":[";
         for (auto j = 0uz; j < member.Signatures.Len(); ++j) {
