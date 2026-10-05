@@ -22,6 +22,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.asts.utils.visibility;
 import spp.utils.error_formatter;
 import spp.utils.files;
 import genex;
@@ -105,7 +106,17 @@ namespace spp::lsp::resolution_index {
 
     /// The stringification of the symbol's representation; is
     /// this a "function" or an "attribute" etc, for the IDEA
-    /// plugin to specify.
+    /// plugin to specify. A visibility as the editor names it.
+    auto VisibilityName(
+      const asts::utils::Visibility visibility) -> Str {
+      switch (visibility) {
+        case asts::utils::Visibility::kPublic: return "public";
+        case asts::utils::Visibility::kPackage: return "package";
+        case asts::utils::Visibility::kProtected: return "protected";
+        default: return "private";
+      }
+    }
+
     auto KindOf(
       VariableSymbol const &sym) -> Str {
       switch (sym.Kind) {
@@ -264,7 +275,8 @@ namespace spp::lsp::resolution_index {
           .Kind = KindOf(*sym),
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
-          .Signatures = SignaturesOf(*sym, type_scope)
+          .Signatures = SignaturesOf(*sym, type_scope),
+          .Visibility = VisibilityName(sym->Visibility)
         });
       }
 
@@ -283,7 +295,8 @@ namespace spp::lsp::resolution_index {
           .Name = std::move(name),
           .Kind = "type",
           .Type = Str(),
-          .Definition = DefinitionOfType(*sym)
+          .Definition = DefinitionOfType(*sym),
+          .Visibility = VisibilityName(sym->Visibility)
         });
       }
       return members;
@@ -315,7 +328,8 @@ namespace spp::lsp::resolution_index {
           .Kind = KindOf(*sym),
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
-          .Signatures = SignaturesOf(*sym, ns_scope)
+          .Signatures = SignaturesOf(*sym, ns_scope),
+          .Visibility = VisibilityName(sym->Visibility)
         });
       }
 
@@ -334,7 +348,8 @@ namespace spp::lsp::resolution_index {
           .Name = std::move(name),
           .Kind = "type",
           .Type = Str(),
-          .Definition = DefinitionOfType(*sym)
+          .Definition = DefinitionOfType(*sym),
+          .Visibility = VisibilityName(sym->Visibility)
         });
       }
 

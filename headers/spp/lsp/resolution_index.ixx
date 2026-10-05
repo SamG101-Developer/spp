@@ -57,6 +57,11 @@ SPP_EXP_CLS struct spp::lsp::resolution_index::Member {
   /// This is because otherwise we just get the mock $Type for
   /// functions.
   Vec<Str> Signatures = {};
+
+  /// Who can reach a member of a type or namespace: "public",
+  /// "package", "protected" or "private". Empty for a name in
+  /// scope (a local or a parameter has no visibility to show).
+  Str Visibility = {};
 };
 
 /// Everything reachable through one type or one namespace,
