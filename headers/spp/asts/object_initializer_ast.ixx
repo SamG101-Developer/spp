@@ -28,6 +28,11 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
 
   struct {
     Shared<TypeAst> OriginalType;
+
+    /// Whether the author wrote this initializer, rather than the
+    /// compiler building it for its own analysis. Needed for the
+    /// zero-type initialisation check.
+    bool IsWritten = false;
   } Source;
 
   ObjectInitializerAst(

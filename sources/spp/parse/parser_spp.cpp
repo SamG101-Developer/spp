@@ -1435,7 +1435,9 @@ auto spp::parse::ParserSpp::ParseObjectInitializer()
   -> Unique<asts::ObjectInitializerAst> {
   PARSE_ONCE(p1, ParseTypeExpressionSimple);
   PARSE_ONCE(p2, ParseObjectInitializerArgumentGroup);
-  return CREATE_AST(asts::ObjectInitializerAst, p1, p2);
+  auto ast = CREATE_AST(asts::ObjectInitializerAst, p1, p2);
+  ast->Source.IsWritten = true;
+  return ast;
 }
 
 auto spp::parse::ParserSpp::ParseObjectInitializerArgumentGroup()
