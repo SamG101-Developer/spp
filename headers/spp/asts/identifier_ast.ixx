@@ -108,9 +108,10 @@ public:
 private:
   std::size_t _Pos;
 
-  /// The written length of the token a mapped name came from
+  /// The raw tokens the token a mapped name came from covers
   /// ("MappedFromTok"), which "PosEnd" spans instead of the
-  /// name's own length; 0 for a name spelt as written.
+  /// name's own length (a keyword is one raw token, whatever
+  /// its length); 0 for a name spelt as written.
   std::size_t _ForTok = 0;
 
   utils::InternedId _NameId;

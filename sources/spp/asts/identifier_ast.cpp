@@ -80,8 +80,10 @@ IdentifierAst::IdentifierAst(
 auto IdentifierAst::MappedFromTok(
   TokenAst const &tok, decltype(Val) val) -> Unique<IdentifierAst> {
   //
+  // As many raw tokens as the token covers, which is not always
+  // its length: a keyword ("self", "and") is one raw token.
   auto id = MakeUnique<IdentifierAst>(tok.PosStart(), std::move(val));
-  id->_ForTok = tok.TokenData.length();
+  id->_ForTok = tok.PosEnd() - tok.PosStart();
   return id;
 }
 
