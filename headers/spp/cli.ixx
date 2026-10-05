@@ -10,9 +10,10 @@ namespace spp::cli {
 
   /// Initialise the current directory as a new S++ project,
   /// creating the default files and directories needed to
-  /// build and run it.
+  /// build and run it. Answers false when the directory is
+  /// not empty.
   SPP_EXP_FUN auto HandleInit()
-    -> void;
+    -> bool;
 
   /// Clone or update every repository in the project's [vcs]
   /// section into the "vcs" folder. Answers false when any git

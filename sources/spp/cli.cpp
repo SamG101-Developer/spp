@@ -213,7 +213,7 @@ auto spp::cli::RunCli(
 
   app.add_subcommand("init", "Initialize the new project")
      ->fallthrough()
-     ->callback(HandleInit);
+     ->callback([] { if (not HandleInit()) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("vcs", "Initialize version control for the project")
      ->fallthrough()
@@ -319,12 +319,12 @@ auto spp::cli::RunCli(
 }
 
 auto spp::cli::HandleInit()
-  -> void {
+  -> bool {
   // Check if the current directory is empty or not.
   const auto cwd = std::filesystem::current_path();
   if (not std::filesystem::is_empty(cwd)) {
     std::cerr << "Error: The current directory is not empty. Please run this command in an empty directory.\n";
-    return;
+    return false;
   }
 
   // Create the directory structure (folders).
@@ -340,6 +340,7 @@ auto spp::cli::HandleInit()
   // Fill in "main.spp" and "spp.toml" with template content.
   utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, FormatDefaultFileContents(MAIN_FILE_CONTENTS));
   utils::files::WriteFile(cwd / CONFIG_FILE, CreateDefaultConfigFor(utils::files::DisplayString(cwd.filename())));
+  return true;
 }
 
 auto spp::cli::HandleVcs()
