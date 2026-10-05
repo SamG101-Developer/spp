@@ -119,8 +119,6 @@ auto spp::analyse::utils::aliases::StatementTarget(
   return {old_type, attach, final_sym->ScopeDefinedIn, final_sym};
 }
 
-/// [CHECKED]
-
 auto spp::analyse::utils::aliases::InstanceTargetOf(
   TypeSymbol const &alias,
   const scopes::TypeId id,
