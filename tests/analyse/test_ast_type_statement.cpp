@@ -179,7 +179,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_local_type_statement_of_an_option, R"(
     fun f() -> Void {
         type T = Opt[S32]
-        let x: T = None()
+        let x: T = None
     }
 )");
 

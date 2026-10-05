@@ -189,7 +189,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_loop_over_a_generator_yielding_an_optional, R"(
     cor g() -> Gen[Opt[S32]] {
         gen Some[S32](val=1)
-        gen None()
+        gen None
     }
 
     fun f() -> Void {
@@ -203,7 +203,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_valid_res_result_distinguishes_gen_done_from_a_yielded_none, R"(
     cor g() -> Gen[Opt[S32]] {
-        gen None()
+        gen None
     }
 
     fun f() -> Void {

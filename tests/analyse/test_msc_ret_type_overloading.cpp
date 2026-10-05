@@ -271,7 +271,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public
         a: Opt[T]
     }
-    fun g() -> Opt[Str] { ret None() }
+    fun g() -> Opt[Str] { ret None }
     fun g() -> Bool { ret false }
     fun f() -> Void { std::mem::ops::drop(MyType[T=Str](a=g())) }
 )");
