@@ -1778,7 +1778,7 @@ auto spp::parse::ParserSpp::ParseNumericIdentifier()
 auto spp::parse::ParserSpp::ParseSelfIdentifier()
   -> Unique<asts::IdentifierAst> {
   PARSE_ONCE(p1, ParseKeywordSelf);
-  return CREATE_AST(asts::IdentifierAst, p1->PosStart(), p1->TokenData);
+  return asts::IdentifierAst::MappedFromTok(*p1, p1->TokenData);
 }
 
 auto spp::parse::ParserSpp::ParseUpperIdentifier()
