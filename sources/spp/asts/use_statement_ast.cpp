@@ -79,6 +79,7 @@ auto UseStatementAst::Stage2_GenTopLvlScopes(
   _Conversion->MarkFromUseStatement();
   _Conversion->Stage2_GenTopLvlScopes(sm, meta);
   _Generated = true;
+  _Scope = _Conversion->GetAstScope();
 }
 
 auto UseStatementAst::Stage3_GenTopLvlAliases(
