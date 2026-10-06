@@ -93,6 +93,14 @@ namespace spp::analyse::scopes {
       Append(reinterpret_cast<std::uintptr_t>(id));
     }
 
+    /// Append an interned comp value ("CompId") as one part of
+    /// this key: its tag, then its address, as "PushId" does for
+    /// a type; interning makes equal values one address.
+    auto PushCompId(CompNode const *const id) -> void {
+      Push(Tag::CompId);
+      Append(reinterpret_cast<std::uintptr_t>(id));
+    }
+
     /// Append a whole key, as one part of this one: its length
     /// first, so where it ends is part of the key.
     auto PushKey(InstanceKey const &that) -> void {
@@ -151,6 +159,12 @@ namespace spp::analyse::scopes {
   /// meaningful within one compilation.
   SPP_EXP_CLS using TypeId = InstanceKey const*;
 
+  /// A "comp id" is a pointer to a comp node ("CompNode"),
+  /// representing an interned comp value, as a "type id" is a
+  /// pointer to an interned key: the same id for the same value,
+  /// meaningful within one compilation.
+  SPP_EXP_CLS using CompId = CompNode const*;
+
   /// Convert a "type id" into a word, just by casting the
   /// address into a number. It is unique, so fine.
   SPP_EXP_FUN inline auto TypeIdWord(TypeId id) -> Word {
@@ -163,45 +177,43 @@ namespace spp::analyse::scopes {
     return reinterpret_cast<TypeId>(static_cast<std::uintptr_t>(word));
   }
 
-  /// A "comp id" is a bit more difficult, and has its own
-  /// generation function, because they can be simplified/folded
-  /// for their ids.
-  SPP_EXP_CLS using CompId = std::uint64_t;
-
-  /// Convert a "comp id" into a word, by reusing the internal
-  /// interner logic.
-  SPP_EXP_FUN inline auto CompIdOfText(const StrView text) -> CompId {
-    return InternWord(text);
+  /// Convert a "comp id" into a word, just by casting the
+  /// address into a number, as for a "type id".
+  SPP_EXP_FUN inline auto CompIdWord(const CompId id) -> Word {
+    return reinterpret_cast<std::uintptr_t>(id);
   }
 
-  /// Convert a "word" into a "comp id", by reusing the internal
-  /// interner reverse logic.
-  SPP_EXP_FUN inline auto CompIdText(const CompId id) -> StrView {
-    return WordText(id);
+  /// Convert a "word" into a "comp id", by inverting the cast.
+  SPP_EXP_FUN inline auto CompIdOfWord(const Word word) -> CompId {
+    return reinterpret_cast<CompId>(static_cast<std::uintptr_t>(word));
   }
 
-  /// A "comp node" is the comp side of an instance key (types),
-  /// containing information about comp instances. Because comps
-  /// don't have their own symbols (they are values), they need
-  /// more logic.
-  SPP_EXP_FUN auto CompNodeOf(CompId id) -> CompNode const*;
+  /// Produce a "type id" from an "instance key".
+  SPP_EXP_FUN SPP_ATTR_HOT inline auto InternTypeKey(InstanceKey &&key) -> TypeId {
+    // Most keys are already interned, and an insert would move the key in before finding that out, so find first.
+    static auto interned = StableSet<InstanceKey, InstanceKeyHash>();
+    if (const auto hit = interned.find(key); hit != interned.end()) { return &*hit; }
+    return &*interned.emplace(std::move(key)).first;
+  }
 
-  /// Produce a "comp id" from a "comp node" instance.
-  SPP_EXP_FUN auto InternCompKey(CompNode const &node) -> CompId;
+  /// An order over keys that reads no address where anything else tells two keys apart: a symbol by its name and then
+  /// the order it was made in ("TypeSymbol::Serial"), a nested type or comp identity by this same order, a spelling
+  /// by its text, anything else by its value. Only keys alike in all of that fall back to their raw words, which keeps
+  /// the order total. A variant's members are put in this order ("VariantKey"), so its tags do not follow where
+  /// things happened to be allocated, and nothing it reads changes once made, so one set of members has one order.
+  SPP_EXP_FUN auto StableKeyLess(InstanceKey const &lhs, InstanceKey const &rhs) -> bool;
 
-  /// The identity of a parameter standing for itself, unbound: a type parameter's ("T" as the parameter it is) and a
-  /// comp parameter's ("C12"), by "ParamId". The two halves of "WrittenTypeIdOf" / "WrittenCompIdOf" for a parameter.
+  /// Given a generic parameter's id (on the symbol), get the
+  /// type id being represented by it.
   SPP_EXP_FUN auto ParamTypeId(std::uint64_t param_id) -> TypeId;
+
+  /// Given a generic parameter's id (on the symbol), get the
+  /// comp id being represented by it.
   SPP_EXP_FUN auto ParamCompId(std::uint64_t param_id) -> CompId;
 
-  /// The one "TypeId" for a key.
-  SPP_EXP_FUN SPP_ATTR_HOT inline auto InternTypeKey(InstanceKey &&key) -> TypeId {
-    static auto interned = StableSet<InstanceKey, InstanceKeyHash>();
-    return &*interned.insert(std::move(key)).first;
-  }
-
-  /// The identity of the instantiation of "tmpl" whose arguments have the identity "args" ("Scope::ArgsIdOf"): an
-  /// "Inst" head, then the arguments as one part.
+  /// The identity of the instantiation of "tmpl" whose arguments
+  /// have the identity "args" ("Scope::ArgsIdOf"): an "Inst"
+  /// head, then the arguments as one part.
   SPP_EXP_FUN inline auto InstanceIdOfArgs(TypeSymbol const &tmpl, const TypeId args) -> TypeId {
     auto key = InstanceKey();
     key.Push(InstanceKey::Tag::Inst);
@@ -216,6 +228,11 @@ namespace spp::analyse::scopes {
     if (part.HasUnresolved) { into.PushKey(part); }
     else { into.PushId(InternTypeKey(std::move(part))); }
   }
+
+  /// "PushTypePart" for a comp value: append its identity to "key" as one part, carrying what the types it names
+  /// constants through are ("Self", unresolved), as a type part would. A constant named through a closed type that
+  /// cannot be read yet ("CompMembers::Find") leaves the key unresolved, so it is keyed again once it can be.
+  SPP_EXP_FUN auto PushCompPart(InstanceKey &key, CompId id) -> void;
 
   /// What a substitution rewrites in a "TypeId" ("SubstituteTypeId") or a "CompId" ("SubstituteCompId"): type and comp
   /// parameters by "ParamId" (0 standing for "Self", which a key spells rather than identifies), each to what it is
@@ -260,11 +277,6 @@ namespace spp::analyse::scopes {
   /// any depth, a pack spread, an operation folded once its operands are values, and a constant named through a type
   /// read once the type is closed. Zero when the result is no identity.
   SPP_EXP_FUN auto SubstituteCompId(CompId id, GenericSubst const &subst) -> CompId;
-
-  /// "PushTypePart" for a comp value: append its identity to "key" as one part, carrying what the types it names
-  /// constants through are ("Self", unresolved), as a type part would. A constant named through a closed type that
-  /// cannot be read yet ("CompMembers::Find") leaves the key unresolved, so it is keyed again once it can be.
-  SPP_EXP_FUN auto PushCompPart(InstanceKey &key, CompId id) -> void;
 
   /// How a constant named through a type is read, installed at compiler boot ("CompilerBoot::Stage1_PreProcess") by
   /// the layer that can look it up ("comp_generics::FindCompMemberId"); read only through "CompMemberIdOf".
@@ -337,19 +349,14 @@ namespace spp::analyse::scopes {
   /// constant named through it, which "DoesCompIdNameParams" counts.
   SPP_EXP_FUN auto IsConcreteCompId(CompId id) -> bool;
 
-  /// "IsClosedTypeId" for a comp value: concrete ("IsConcreteCompId"), and naming no constant through a type that
-  /// cannot be read yet (an unresolved owner, or a closed one whose constant "CompMemberIdOf" cannot reach yet) - the
-  /// part "PushCompPart" marks a key unresolved for.
-  SPP_EXP_FUN auto IsClosedCompId(CompId id) -> bool;
-
   /// Whether "id" is a type that means the same wherever it is read: concrete ("IsConcreteTypeId"), and with nothing
   /// unresolved.
   SPP_EXP_FUN auto IsClosedTypeId(TypeId id) -> bool;
 
-  /// Whether "id" can be stamped on a written type as the identity it was written with ("SetWrittenTypeId"): it reads
-  /// the same wherever the stamp is read - no "Self" (keyed by its spelling) and nothing unresolved. Parameters are
-  /// allowed: a stamp is read through the bindings where it is read.
-  SPP_EXP_FUN auto IsStampableTypeId(TypeId id) -> bool;
+  /// "IsClosedTypeId" for a comp value: concrete ("IsConcreteCompId"), and naming no constant through a type that
+  /// cannot be read yet (an unresolved owner, or a closed one whose constant "CompMemberIdOf" cannot reach yet) - the
+  /// part "PushCompPart" marks a key unresolved for.
+  SPP_EXP_FUN auto IsClosedCompId(CompId id) -> bool;
 
   /// One argument of an instantiation's identity ("TypeIdHead::Args"): named (its interned name) or positional (its
   /// index), then a type or a comp value's interned identity text.
@@ -357,7 +364,7 @@ namespace spp::analyse::scopes {
     bool Named = false;
     std::uint64_t Name = 0;
     TypeId TypeVal = nullptr;
-    CompId CompVal = 0;
+    CompId CompVal = nullptr;
   };
 
   /// The arguments an instantiation's arguments key lists, in order.
