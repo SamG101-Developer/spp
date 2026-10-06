@@ -222,7 +222,7 @@ namespace spp::analyse::utils::overload_resolution {
       // Direct access into a namespaced free function:
       // "std::io::print(variable)".
       else if (postfix_lhs != nullptr and static_field != nullptr) {
-        fn_owner_scope = sm.CurrentScope->ConvertPostfixToNestedScope(postfix_lhs->Lhs.get());
+        fn_owner_scope = sm.CurrentScope->FindNsScope(postfix_lhs->Lhs.get());
         fn_name = static_field->Name;
 
         // Add a name check here because we need to get

@@ -341,7 +341,7 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   // Evaluate the context that this annotation can be applied to.
   const auto annotation_scope_name = INJECT_CODE("std::annotations", ParseExpression);
   const auto annotation_scope = const_cast<Scope*>(
-    sm->CurrentScope->ConvertPostfixToNestedScope(annotation_scope_name.get()));
+    sm->CurrentScope->FindNsScope(annotation_scope_name.get()));
   auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
 
   const auto allowed_ctx = [&] {
