@@ -45,11 +45,11 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// direct LLVM intrinsics, for short-circuiting.
   SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
 
-  /// The two operands as written: held here until analysis converts the operation into its method call
-  /// ("operator_desugaring::ConvertBinExprToFnCall"), which they are moved into ("lhs.add(rhs)", elaborated to
-  /// "Type::add(self=lhs, that=rhs)"), and read from there after. Null for a shape the conversion did not produce (a
-  /// collapsed comparison chain).
-  SPP_ATTR_NODISCARD auto Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*>;
+  /// The two operands to the binary expression, left-hand-side
+  /// and right-hand-side, held until their owning pointers
+  /// are moved into the function call.
+  SPP_ATTR_NODISCARD auto Operands() const
+    -> Pair<ExpressionAst const*, ExpressionAst const*>;
 
   BinaryExpressionAst(
     decltype(Lhs) &&lhs,
@@ -87,7 +87,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// Do the substitution of the left and right side operators.
   /// Todo: Do we need to use function mapping here?
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
+    ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   /// Check the left and right side are safe to use in runtime
