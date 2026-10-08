@@ -26,10 +26,8 @@ namespace spp::codegen::mangle {
     /// named ("naming"), else the type the identity builds as spelled. One spelling names different types from
     /// different modules, and different spellings (an alias, its target) name one type.
     auto MangleTypeId(
-      analyse::scopes::Scope const &scope,
-      const analyse::scopes::TypeId id,
-      analyse::scopes::TypeSymbol const *naming)
-      -> Str {
+      analyse::scopes::Scope const &scope, const analyse::scopes::TypeId id,
+      analyse::scopes::TypeSymbol const *naming) -> Str {
       const auto named = scope.TypeAstOf(id);
       const auto out = named != nullptr and named->GetConvention() != nullptr
         ? named->GetConvention()->ToString()
@@ -111,7 +109,8 @@ namespace spp::codegen::mangle {
       return scope != nullptr ? MangleCompId(*scope, scope->CompIdOf(value)) : value.ToString();
     }
 
-    /// A generic argument list, each argument printed by its identity ("MangleTypeArg", "MangleCompArg").
+    /// A generic argument list, each argument printed by its
+    /// identity ("MangleTypeArg", "MangleCompArg").
     auto MangleGnArgs(
       Vec<asts::GenericArgumentAst*> const &args,
       analyse::scopes::Scope const *scope,
@@ -223,7 +222,9 @@ auto spp::codegen::mangle::MangleTypeName(
   // ("MangleGnArgs").
   const auto fq_name = type_sym.FqName();
   auto const *last = fq_name->LastTypePart();
-  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.IsEmpty()) { return fq_name->ToString(); }
+  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.IsEmpty()) {
+    return fq_name->ToString();
+  }
   return fq_name->WithoutGns()->ToString()
     + MangleGnArgs(last->GnArgGroup->GetAllArgs(), type_sym.LinkedScope, &type_sym);
 }
@@ -279,7 +280,6 @@ auto spp::codegen::mangle::MangleFnName(
       return owner_scope.FindTypeSymbol(param_type.get());
     })
     | genex::to<Vec>();
-
 
   // Save the type symbols into a vector.
   auto types = Vec{return_type_sym};
