@@ -123,6 +123,22 @@ namespace spp::asts {
   SPP_EXP_FUN auto IsRuntimeMemberAccess(Ast const *ast) -> bool;
 
   /**
+   * Check if an AST is a static member access ("a::b"), that is a @c PostfixExpressionAst whose operator is a
+   * @c PostfixExpressionOperatorStaticMemberAccessAst. The left-hand side is a type or a namespace.
+   * @param[in] ast The AST to check.
+   * @return If the AST is a static member access expression.
+   */
+  SPP_EXP_FUN auto IsStaticMemberAccess(Ast const *ast) -> bool;
+
+  /**
+   * Check if an AST is a dereference ("a@"), that is a @c PostfixExpressionAst whose operator is a
+   * @c PostfixExpressionOperatorDerefAst.
+   * @param[in] ast The AST to check.
+   * @return If the AST is a dereference expression.
+   */
+  SPP_EXP_FUN auto IsDeref(Ast const *ast) -> bool;
+
+  /**
    * Bind an expression to a fresh local. @code let $uid = <expr>@endcode is appended to the prelude, and the expression
    * is replaced where it was by the local's name, so whatever held it now reads the local instead.
    * @param[in,out] slot The expression to bind, replaced by the local's name.

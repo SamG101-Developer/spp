@@ -14,7 +14,9 @@ import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -77,6 +79,24 @@ auto spp::asts::IsRuntimeMemberAccess(
   const auto postfix = ast->To<PostfixExpressionAst>();
   return postfix != nullptr
     and postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+}
+
+auto spp::asts::IsStaticMemberAccess(
+  Ast const *ast) -> bool {
+  // Check the ast is a postfix expression, whose operator is
+  // the static member access operator.
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr;
+}
+
+auto spp::asts::IsDeref(
+  Ast const *ast) -> bool {
+  // Check the ast is a postfix expression, whose operator is
+  // the deref operator.
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
 }
 
 auto spp::asts::BindLocal(
