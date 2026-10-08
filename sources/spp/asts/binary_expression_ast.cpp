@@ -408,10 +408,19 @@ auto BinaryExpressionAst::InferType(
 
 auto BinaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // Before analysis maps it onto a function, the type is
-  // decided by the operator ("InferType").
-  if (IsLogicalOperator() or _MappedFn == nullptr) {
-    return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
+  // A logical operator is boolean by construction. Before
+  // analysis maps it onto a function, a comparison is boolean
+  // and comp-time arithmetic keeps its left operand's type.
+  using generate::common_types_precompiled::BOOL;
+  if (IsLogicalOperator()) { return TypeRef::Of(*BOOL, *sm->CurrentScope); }
+  if (_MappedFn == nullptr) {
+    using lex::SppTokenType;
+    const auto op = TokOp->TokenType;
+    if (op == SppTokenType::TK_EQ or op == SppTokenType::TK_NE or op == SppTokenType::TK_LT
+      or op == SppTokenType::TK_LE or op == SppTokenType::TK_GT or op == SppTokenType::TK_GE) {
+      return TypeRef::Of(*BOOL, *sm->CurrentScope);
+    }
+    return Lhs->InferTypeRef(sm, meta);
   }
   return _MappedFn->InferTypeRef(sm, meta);
 }
