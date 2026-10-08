@@ -35,7 +35,7 @@ import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
@@ -362,7 +362,7 @@ auto CaseExpressionAst::Stage11_CodeGen(
     // would be checked against this case's branches as if it were.
     if (meta->AssignmentTarget == nullptr) { meta->AssignmentTargetType = nullptr; }
     return not codegen::IsValuelessType(
-      codegen::GetLlvmTypeOf(TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope), ctx));
+      codegen::GetLlvmTypeOf(InferTypeRef(sm, meta), ctx));
   }();
 
   const auto is_expr = meta->AssignmentTarget != nullptr
@@ -464,7 +464,7 @@ auto CaseExpressionAst::Stage11_CodeGen(
 auto CaseExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
-  using generate::common_types::VoidType;
+  using generate::common_types_precompiled::VoidAt;
 
   // Ensure consistency across branches. Also done in "Stage7_AnalyseSemantics", which is what covers a case in
   // statement position - nothing asks one of those for its type, so this would never run for it.
@@ -493,13 +493,20 @@ auto CaseExpressionAst::InferType(
   // @n
   // This is also half of the Todo above: a case that is not an expression yields nothing, and no "else" is the one
   // case of that which can be told apart here, because an "else" is mandatory in expression position.
-  if (final_not_else) { return VoidType(PosStart()); }
+  if (final_not_else) { return VoidAt(PosStart()); }
 
   // Return the branches' return type. If there are any
   // branches, otherwise Void.
   return branches_type_info.IsEmpty()
-    ? VoidType(PosStart())
+    ? VoidAt(PosStart())
     : master_branch_type_info.second;
+}
+
+auto CaseExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The branches' agreed type, checked as written ("case_utils::ValidateInconsistentTypes"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
 auto CaseExpressionAst::Terminates() const -> bool {

@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ClosureExpressionAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct ClosureExpressionParameterAndCaptureGroupAst);
 use(spp::asts, struct TokenAst);
@@ -69,6 +70,8 @@ SPP_EXP_CLS struct spp::asts::ClosureExpressionAst final : PrimaryExpressionAst 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
 

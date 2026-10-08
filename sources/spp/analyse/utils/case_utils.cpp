@@ -4,6 +4,7 @@ module;
 module spp.analyse.utils.case_utils;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -94,7 +95,7 @@ namespace spp::analyse::utils::case_utils {
 
         // An array lowers to "[n x T]" rather than to a struct,
         // so it is indexed through the array itself.
-        if (IsTypeArray(TypeRef::OfKind(*base_type_sym, *sm.CurrentScope), *sm.CurrentScope)) {
+        if (IsTypeArray(TypeRef::ForKindCheck(*base_type_sym, *sm.CurrentScope), *sm.CurrentScope)) {
           const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
           field_ptr = ctx->Builder.CreateGEP(
             llvm_base_ty, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -194,12 +195,10 @@ namespace spp::analyse::utils::case_utils {
       const auto real_index = [&](const std::size_t i) -> std::size_t {
         if (not skip_index.has_value() or i <= *skip_index) { return i; }
         if (not num_rhs_elems.has_value()) {
-          const auto cond_type = meta->CaseCondition->InferType(sm, meta);
-          const auto &gn_arg_group = cond_type->LastTypePart()->GnArgGroup;
-          num_rhs_elems = type_predicates::IsTypeArray(*cond_type, *sm->CurrentScope)
-            ? std::stoull(
-              gn_arg_group->Args[1]->CompVal->ToUnchecked<IntegerLiteralAst>()->Val->TokenData)
-            : gn_arg_group->Args.Len();
+          const auto cond_ref = meta->CaseCondition->InferTypeRef(sm, meta).WithoutConvention();
+          num_rhs_elems = type_predicates::IsTypeArray(cond_ref, *sm->CurrentScope)
+            ? static_cast<std::size_t>(U64Of(cond_ref.Symbol->CompArgId("n")).value())
+            : cond_ref.Symbol->TypeArgRefs().Len();
         }
         return *num_rhs_elems - (elems.Len() - i);
       };
@@ -368,7 +367,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // analysis.
   auto variant_branches_type_info = valued_branches_type_info
     | genex::views::filter([&sm](auto &&x) {
-      return type_predicates::IsTypeVariant(*x.second, *sm.CurrentScope);
+      return type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*x.second, *sm.CurrentScope), *sm.CurrentScope);
     })
     | genex::to<Vec>();
 
@@ -413,7 +412,10 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
       return x.first == master_branch_type_info.first;
     })
     | genex::views::remove_if([&](auto const &x) {
-      return type_compare::Assignable(*master_branch_type_info.second, *x.second, *sm.CurrentScope, *sm.CurrentScope);
+      return type_compare::Assignable(
+        TypeRef::Of(*master_branch_type_info.second, *sm.CurrentScope),
+        TypeRef::Of(*x.second, *sm.CurrentScope),
+        *sm.CurrentScope, *sm.CurrentScope);
     })
     | genex::to<Vec>();
 

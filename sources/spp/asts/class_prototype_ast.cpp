@@ -174,7 +174,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   // Mark the "Copy" class itself as copyable. Minimise
   // `TypeEq` calls.
   if (_ClsSymbol != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
-    if (TypeRef::OfKind(*_ClsSymbol, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)) {
+    if (TypeRef::ForKindCheck(*_ClsSymbol, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)) {
       sm->CurrentScope->FindHeadSymbol(*Name)->IsDirectlyCopyable = true;
       _ClsSymbol->IsDirectlyCopyable = true;
     }
@@ -221,9 +221,6 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   // Analyse semantics for the class body.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Re-map "Self" to the true type.
-  sm->SyncSelfTypeSymbol(*Name);
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
@@ -444,7 +441,8 @@ auto ClassPrototypeAst::FillLlvmLayout(
 
   // Next we need to handle tuples (anonymous index-attribute
   // based classes) vs standard struct classes.
-  const auto is_tuple = type_predicates::IsTypeTuple(TypeRef::OfKind(*type_sym, *sm->CurrentScope), *sm->CurrentScope);
+  const auto is_tuple = type_predicates::IsTypeTuple(
+    TypeRef::ForKindCheck(*type_sym, *sm->CurrentScope), *sm->CurrentScope);
   auto types = Vec<llvm::Type*>();
 
   // The "Spp" layout sorts the fields by size and alignment, so
@@ -459,9 +457,9 @@ auto ClassPrototypeAst::FillLlvmLayout(
   // Tuple fields are positional based off of the types found
   // in the generic arguments.
   if (is_tuple) {
-    const auto elems = type_sym->TypeArgs();
+    const auto elems = type_sym->TypeArgRefs();
     types = elems
-      | genex::views::transform([&](auto const &elem) { return sm->CurrentScope->FindTypeSymbol(elem.get()); })
+      | genex::views::transform([](auto const &elem) { return elem.Symbol; })
       | genex::views::transform([&](auto const &type) { return lower_field(type); })
       | genex::to<Vec>();
   }

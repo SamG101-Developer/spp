@@ -11,7 +11,6 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -75,10 +74,11 @@ namespace spp::asts {
 
         // Check that a variant is being considered, and that
         // we don't have a direct (non-narrowing) match.
-        if (not type_predicates::IsTypeVariant(*a, scope)) { continue; }
-        if (type_compare::TypeEq(*a, *p, scope, scope)) { continue; }
-        if (codegen::GetVariantIndexOfMember(
-          TypeRef::Of(*a, scope), TypeRef::Of(*p, scope), scope).has_value()) {
+        if (not type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*a, scope), scope)) { continue; }
+        const auto a_ref = TypeRef::Of(*a, scope);
+        const auto p_ref = TypeRef::Of(*p, scope);
+        if (type_compare::TypeEq(a_ref, p_ref, scope, scope)) { continue; }
+        if (codegen::GetVariantIndexOfMember(a_ref, p_ref, scope).has_value()) {
           return {p, a};
         }
       }
@@ -164,7 +164,7 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   // this still needed? It helps with the variant breakdown
   // within the deref type.
   auto *mapped_cond = meta->CaseCondition;
-  if (regions::IsDeref(mapped_cond)) {
+  if (IsDeref(mapped_cond)) {
     auto *const inner = mapped_cond->To<PostfixExpressionAst>()->Lhs.get();
     if (inner->To<IdentifierAst>() != nullptr) { mapped_cond = inner; }
   }
@@ -368,7 +368,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
 
     if (bare_cond_type != nullptr
-      and type_predicates::IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
+      and type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
       const auto cond_ref = TypeRef::Of(*bare_cond_type, *sm->CurrentScope);
       const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope);
       auto tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref, *sm->CurrentScope);
@@ -380,8 +380,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // so it is read rather than rebuilt: it may be the variant
       // value itself, or a pointer to it when the condition was
       // reached through a borrow.
-      const auto llvm_variant_ty = codegen::GetLlvmType(
-        *sm->CurrentScope->FindTypeSymbol(bare_cond_type.get()), ctx);
+      const auto llvm_variant_ty = codegen::GetLlvmType(*cond_ref.Symbol, ctx);
 
       // A pattern naming several of the subject's members at once
       // is not one member, so it matches any of them. Without this

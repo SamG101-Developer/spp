@@ -463,6 +463,14 @@ auto ClosureExpressionAst::InferType(
   return _MockType != nullptr ? _MockType : _FnType(sm, meta);
 }
 
+auto ClosureExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The closure's type is built as syntax (its mock, or the
+  // functional type); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
 auto ClosureExpressionAst::_FnType(
   ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst> {
   using generate::common_types::FunRefType;
