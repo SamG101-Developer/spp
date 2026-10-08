@@ -45,6 +45,14 @@ message = "query about finding a new regex module instead"
 files = '\.(?:cpp|ixx|hpp)$'
 
 [[rule]]
+id = "no-std-hash"
+enabled = false
+pattern = '\bstd::hash\b'
+message = "use the ankerl hash via spp::Hash instead"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/types.ixx"]
+
+[[rule]]
 id = "processor-conditional-include"
 enabled = true
 pattern = '#ifdef|#ifndef'
