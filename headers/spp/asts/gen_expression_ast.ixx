@@ -32,6 +32,10 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
   /// value returned when the coroutine is resumed.
   Unique<ExpressionAst> Expr;
 
+  struct {
+    std::size_t OriginalPosEnd;
+  } Source;
+
   GenExpressionAst(
     decltype(TokGen) &&tok_gen,
     decltype(Conv) &&conv,

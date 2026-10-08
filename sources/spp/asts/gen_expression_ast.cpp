@@ -52,6 +52,7 @@ GenExpressionAst::GenExpressionAst(
   _GenType(nullptr),
   _IsOnce(false) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokGen, lex::SppTokenType::KW_GEN, "gen");
+  Source.OriginalPosEnd = Expr ? Expr->PosEnd() : Conv ? Conv->PosEnd() : TokGen->PosEnd();
 }
 
 GenExpressionAst::~GenExpressionAst() = default;
@@ -62,8 +63,8 @@ auto GenExpressionAst::PosStart() const -> std::size_t {
 }
 
 auto GenExpressionAst::PosEnd() const -> std::size_t {
-  // Use the expression.
-  return Expr->PosEnd();
+  // Use the expression, or where it ended once it was moved.
+  return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto GenExpressionAst::Clone() const -> Unique<Ast> {
