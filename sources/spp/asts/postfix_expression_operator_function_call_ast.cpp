@@ -221,7 +221,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   if (const auto test_annotation = _OverloadInfo->Proto->TestAnnotation;
     test_annotation != nullptr and not meta->IsTestHarness) {
     Raise<SppUnitTestNotCallableError>(
-      {sm->CurrentScope}, ERR_ARGS(*this, *test_annotation));
+      {_OverloadInfo->OverloadScope, sm->CurrentScope},
+      ERR_ARGS(*this, *test_annotation));
   }
 
   // Check that if we are in a cmp context, that the overload
