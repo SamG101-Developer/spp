@@ -123,7 +123,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
       [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
   }();
   marker_sups::EnforceYieldTypeWithoutGenDone(gen, *sm->CurrentScope, *Iterable, "loop iterable");
-  const auto yield_type = marker_sups::GenYieldOf(gen);
+  const auto yield_type = marker_sups::GenYieldOf(gen).AstIn(*sm->CurrentScope);
 
   // Create the initial let statement to materialize the
   // condition being iterated.
