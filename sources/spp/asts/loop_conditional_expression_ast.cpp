@@ -20,7 +20,6 @@ import spp.asts.inner_scope_expression_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -261,8 +260,9 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   // left the "exit" nothing to feed and crashed the compiler.
   const auto uid = "." + Uid();
   const auto ret_type = InferType(sm, meta);
-  const auto is_expr = not type_predicates::IsTypeVoid(*ret_type, *sm->CurrentScope)
-    and not ret_type->IsNeverType();
+  const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
+  const auto is_expr = not type_predicates::IsTypeVoid(
+    ret_ref, *sm->CurrentScope) and not ret_ref.IsNever;
 
   // Create the key required blocks: the condition entry
   // point, the body entry point, and the end of the loop
@@ -299,7 +299,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   if (is_expr) {
     ctx->Builder.SetInsertPoint(loop_end_bb);
     const auto llvm_phi_type = codegen::GetLlvmTypeOf(
-      TypeRef::Of(*ret_type, *sm->CurrentScope), ctx);
+      ret_ref, ctx);
     phi = ctx->Builder.CreatePHI(
       llvm_phi_type, 2U, "loop.phi" + uid);
   }
@@ -373,7 +373,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
 
 auto LoopConditionalExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  using generate::common_types::NeverType;
+  using generate::common_types_precompiled::NeverAt;
 
 
   // A "loop true" with no exit statements returns "Never".
@@ -381,11 +381,23 @@ auto LoopConditionalExpressionAst::InferType(
   if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE) {
     // Check the internal flow controls.
     if (not _LoopExitTypeInfo.has_value()) {
-      return NeverType(PosStart());
+      return NeverAt(PosStart());
     }
   }
 
   return LoopExpressionAst::InferType(sm, meta);
+}
+
+auto LoopConditionalExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // A "loop true" with no exit statements is "Never"; otherwise as any loop.
+  using generate::common_types_precompiled::NEVER;
+  const auto cond_lit = Cond->To<BooleanLiteralAst>();
+  if (cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE
+    and not _LoopExitTypeInfo.has_value()) {
+    return TypeRef::Of(*NEVER, *sm->CurrentScope);
+  }
+  return LoopExpressionAst::InferTypeRef(sm, meta);
 }
 
 auto LoopConditionalExpressionAst::MarkAsIterDesugar() -> void {
