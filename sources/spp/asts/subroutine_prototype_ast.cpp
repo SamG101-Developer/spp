@@ -86,7 +86,9 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
   // Check for a void return type.
   const auto is_void = type_compare::TypeEq(
-    *ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope);
+    TypeRef::Of(*ReturnType, *sm->CurrentScope),
+    TypeRef::Of(*VOID, *sm->CurrentScope),
+    *sm->CurrentScope, *sm->CurrentScope);
 
   // Check there is a return statement at the end (for non-void
   // functions).
