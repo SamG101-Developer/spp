@@ -60,9 +60,10 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   // checks.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
+  const auto lhs_ref = TypeRef::Of(*lhs_type, *sm->CurrentScope);
   const auto is_view =
-    type_compare::TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope) or
-    type_compare::TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope);
+    type_compare::TypeEq(lhs_ref, TypeRef::Of(*STR_VIEW, *sm->CurrentScope), *sm->CurrentScope, *sm->CurrentScope) or
+    type_compare::TypeEq(lhs_ref, TypeRef::Of(*VIEW, *sm->CurrentScope), *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the right-hand-side expression is a borrowable
   // type.
@@ -70,11 +71,13 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     lhs_type->GetConvention() == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
-  // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
-  const auto lhs_type_no_conv = lhs_type->WithoutConvention();
-  RaiseIf<SppNonCopyableTypeError>(
-    not sm->CurrentScope->FindTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
-    {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+  // Check the right-hand-side expression is a "Copy" type.
+  // Todo: Add to unit tests.
+  if (not lhs_ref.Symbol->IsCopyable() and not meta->AllowMoveDeref and not is_view) {
+    // Held here: "ERR_ARGS" keeps references, not the copy.
+    const auto lhs_type_no_conv = lhs_type->WithoutConvention();
+    Raise<SppNonCopyableTypeError>({sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+  }
 }
 
 auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
