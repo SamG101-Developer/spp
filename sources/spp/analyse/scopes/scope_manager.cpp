@@ -566,21 +566,6 @@ auto ScopeManager::AddSelfTypeSymbol(
     MakeSelfTypeSymbol(linked_scope, CurrentScope, pos));
 }
 
-auto ScopeManager::SyncSelfTypeSymbol(
-  TypeAst const &cls_name) const-> void {
-  // No work for $MockType values.
-  if (cls_name.IsCompilerGeneratedType()) { return; }
-
-  // Get the class symbol built off of the class name, in this
-  // scope. Then, get the symbol for "Self", and copy the type
-  // and LLVM info over from the "cls" symbol, into the "Self"
-  // symbol.
-  const auto cls_sym = CurrentScope->FindTypeSymbol(&cls_name);
-  const auto self_sym = CurrentScope->FindSelfSymbol(true);
-  self_sym->Type = cls_sym->Type;
-  self_sym->LlvmInfo = cls_sym->LlvmInfo;
-}
-
 auto ScopeManager::Cleanup() -> void {
   // Clean up all static caches.
   utils::monomorphization::StopInstantiatingOnRead();

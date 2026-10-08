@@ -170,10 +170,6 @@ public:
   /// as possible, making "Self" resolvable.
   auto AddSelfTypeSymbol(Scope *linked_scope, std::size_t pos) const -> void;
 
-  /// Point the current scope's "Self" symbol at the class "cls_name" names, taking that class's type and layout. A
-  /// compiler-generated name (a method's "$" mock) is left alone.
-  auto SyncSelfTypeSymbol(TypeAst const &cls_name) const -> void;
-
   /// Clear the static caches on the scope manager for general
   /// cleanup. Called at the end of a compilation.
   static auto Cleanup() -> void;
