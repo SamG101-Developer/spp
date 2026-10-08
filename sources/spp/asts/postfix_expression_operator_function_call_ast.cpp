@@ -246,10 +246,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   // Todo: Is this needed?
   const auto ret_type = InferType(sm, meta);
   RaiseIf<SppSecondClassBorrowViolationError>(
-    _OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_FUN and type_predicates::IsTypeBorrowed(
-      *ret_type->WithoutConvention(), *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *ret_type, "function return type"));
-
+    _OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_FUN
+    and type_predicates::IsTypeBorrowed(*ret_type->WithoutConvention(), *sm),
+    {_OverloadInfo->OverloadScope, sm->CurrentScope},
+    ERR_ARGS(*this, *ret_type, "function return type"));
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
