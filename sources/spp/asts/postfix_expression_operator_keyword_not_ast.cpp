@@ -13,7 +13,6 @@ import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -94,13 +93,6 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
 
   // Use a "not" instruction to invert the expression on the lhs.
   return ctx->Builder.CreateNot(lhs_val, "not" + uid);
-}
-
-auto PostfixExpressionOperatorKeywordNotAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // The type of a "not" expression is always boolean.
-  using generate::common_types::BooleanType;
-  return BooleanType(PosStart());
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::InferTypeRef(

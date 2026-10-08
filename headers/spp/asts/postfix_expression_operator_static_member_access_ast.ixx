@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorStaticMemberAccessAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct IdentifierAst);
@@ -39,6 +40,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 

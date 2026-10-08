@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorKeywordResAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct FunctionCallArgumentGroupAst);
@@ -44,7 +45,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
     analyse::scopes::ExprSubst const &sub) const
