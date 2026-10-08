@@ -18,6 +18,7 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
+import spp.asts.convention_ast;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.coroutine_prototype_ast;
@@ -44,7 +45,6 @@ import spp.asts.integer_literal_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
 import spp.asts.subroutine_prototype_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -173,7 +173,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       nullptr, nullptr, AstClone(meta->PostfixExpressionLhs));
 
     // The callable's function type, as the template it stands for (a borrow of one is neither).
-    const auto lhs_head = type_predicates::HeadKindRef(*lhs_type, *sm->CurrentScope);
+    const auto lhs_head = TypeRef::ForKindCheck(*lhs_type, *sm->CurrentScope);
     const auto is_fun = [&](auto const &tmpl) {
       return lhs_head.KindSymbol() != nullptr and lhs_head.IsA(*tmpl, *sm->CurrentScope);
     };
@@ -407,14 +407,13 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // is typed as. An inner scope built here to hold them would step
   // the scope walk into a scope that was never created.
   if (Fold != nullptr) {
-    const auto tuple_type = InferType(sm, meta);
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) {
       auto pf = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), AstClone(ast));
       results.EmplaceBack(pf->Stage11_CodeGen(sm, meta, ctx));
     }
 
-    const auto tuple_sym = sm->CurrentScope->FindTypeSymbol(tuple_type.get());
+    const auto tuple_sym = InferTypeRef(sm, meta).Symbol;
     const auto tuple_llvm_type = tuple_sym != nullptr ? codegen::GetLlvmType(*tuple_sym, ctx) : nullptr;
     if (tuple_llvm_type == nullptr or not tuple_llvm_type->isStructTy()) { return nullptr; }
     auto tuple_val = static_cast<llvm::Value*>(llvm::PoisonValue::get(tuple_llvm_type));
@@ -480,14 +479,13 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // Bandaid for resolving generic issues with closure return
     // types, before any variant coercion is done. Todo: tidy this
     // up.
-    const auto expected_ret_type = InferType(sm, meta);
-    auto actual_ret_type = expected_ret_type;
+    const auto expected_ret_ref = InferTypeRef(sm, meta);
+    auto actual_ret_ref = expected_ret_ref;
     if (const auto callable = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope); callable.Symbol != nullptr) {
-      if (auto out = callable.Symbol->TypeArg("Out"); out != nullptr) { actual_ret_type = std::move(out); }
+      if (const auto out = callable.Symbol->TypeArgRef("Out"); out.Symbol != nullptr) { actual_ret_ref = out; }
     }
 
-    const auto closure_ret_ty = codegen::GetLlvmTypeOf(
-      TypeRef::Of(*actual_ret_type, *sm->CurrentScope), ctx);
+    const auto closure_ret_ty = codegen::GetLlvmTypeOf(actual_ret_ref, ctx);
     const auto closure_fn_ty = llvm::FunctionType::get(
       closure_ret_ty, closure_param_tys.ToStdVector(), false);
 
@@ -502,8 +500,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     const auto closure_call = ctx->Builder.CreateCall(
       closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
     return codegen::CoerceToVariant(
-      closure_call, TypeRef::Of(*expected_ret_type, *sm->CurrentScope),
-      TypeRef::Of(*actual_ret_type, *sm->CurrentScope), *sm->CurrentScope,
+      closure_call, expected_ret_ref, actual_ret_ref, *sm->CurrentScope,
       "closure.ret" + closure_uid, ctx);
   }
 
@@ -560,7 +557,9 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // declaration's own signature, else "Self or S32" widens
     // into "Var[Self, S32]" and the call mismatches it.
     const auto param_written = p < fn_params.Len()
-      ? self_type::SubstituteSelf(*fn_params[p]->Type, _OverloadInfo->OverloadScope->FindEnclosingSelfType(*meta).get())
+      ? self_type::SubstituteSelf(
+        *fn_params[p]->Type, _OverloadInfo->OverloadScope->FindEnclosingSelfType(*meta).get(),
+        *_OverloadInfo->OverloadScope)
       : nullptr;
     const auto param_type_sym = param_written != nullptr
       ? _OverloadInfo->OverloadScope->FindTypeSymbol(param_written.get())
@@ -699,29 +698,20 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
 
   // For GenOnce coroutines, automatically resume the coroutine and return the "Yield" type.
   if (_IsCoroAndAutoResume) {
-    const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
+    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope,
       *meta->PostfixExpressionLhs, [&] { return ret_type; }, "function call"));
     // Read off the generator's identity, shared by every spelling of it, so it points at the return type the callee
     // wrote.
-    ret_type = yield_type->WithSourceSpanAt(*_OverloadInfo->Proto->ReturnType);
+    ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*_OverloadInfo->Proto->ReturnType);
   }
 
   // "Self", alone or inside the return type ("Opt[Self]"), is what the call decided it stands for
-  // ("PassedOverload::SelfType"), always as a node of its own: callers modify the type they are given, and "SelfType"
-  // can be a symbol's cached name. A call through a receiver ("a.m()", "A::m()") always gets a fresh copy, recording no identity, of
-  // its return type from "SubstituteSelf", "Self" or not - not "self_type::SubstituteSelf", which returns a plain
-  // clone when "Self" is absent, and a clone keeps the written node's access marks, which then answer access checks
-  // here as if the return type were written at this call.
-  const auto pf = meta->PostfixExpressionLhs->To<PostfixExpressionAst>();
-  const auto through_receiver = pf != nullptr and (
-    pf->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr
-    or (pf->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr and pf->Lhs->To<TypeAst>() != nullptr));
-  if (_OverloadInfo->SelfType != nullptr and ret_type->IsSelfType()) {
-    ret_type = AstCloneShared(_OverloadInfo->SelfType);
-  }
-  else if (_OverloadInfo->SelfType != nullptr and through_receiver) {
-    ret_type = ret_type->SubstituteSelf(*_OverloadInfo->SelfType);
+  // ("PassedOverload::SelfType"): parameter 0, read from this call ("self_type::SubstituteSelf"), as a node of its own
+  // (callers modify the type they are given, and "SelfType" can be a symbol's cached name). A return type naming no
+  // "Self" is a clone, and is cloned again below.
+  if (_OverloadInfo->SelfType != nullptr) {
+    ret_type = self_type::SubstituteSelf(*ret_type, _OverloadInfo->SelfType.get(), *sm->CurrentScope);
   }
 
   // Generic instantiations embedded in the return type (eg "Var[Tup[Pass[Str], Fail[Utf8Err]]]" from a "Res[...]"
@@ -739,22 +729,21 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
 auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   IMPORT_UTILS;
-  // The plain case answers from the return type's own symbol, as "InferType"'s name resolves from here by its written
-  // identity ("Scope::FindWrittenTypeSymbol"), without building and analysing a copy of the name every time; the call's
+  // The plain case answers from the return type's identity read once where the call is ("Scope::ReadIn"), as
+  // "InferType"'s name resolves from here, without building and analysing a copy of the name every time; the call's
   // own analysis has already made sure the instantiation exists. A folded call, a coroutine auto-resumed, and a return
   // type written in terms of "Self" build the type they return, so they are inferred as one - as is any return type
-  // "FindWrittenTypeSymbol" has no answer for from here.
+  // whose instantiation is not filed under that identity here.
   if (_FoldedAsts.IsEmpty() and not _IsCoroAndAutoResume and _OverloadInfo->OverloadScope != nullptr) {
     auto const &ret_type = _OverloadInfo->Proto->ReturnType;
     if (not type_predicates::DoesTypeNameSelf(*ret_type)) {
       auto *ret_sym = _OverloadInfo->OverloadScope->FindTypeSymbol(ret_type.get());
       if (ret_sym == nullptr) { ret_sym = sm->CurrentScope->FindTypeSymbol(ret_type.get()); }
       if (ret_sym != nullptr and ret_sym->Kind == TypeKind::Cls and ret_sym->Alias == nullptr
-        and ret_sym->Convention == nullptr) {
-        if (auto *const canon = sm->CurrentScope->FindWrittenTypeSymbol(analyse::scopes::WrittenTypeIdOf(*ret_sym));
-          canon != nullptr) {
-          return TypeRef::Of(*canon, *sm->CurrentScope);
-        }
+        and ret_sym->Convention == ConventionTag::MOV) {
+        // Read in once, and no symbol when nothing is filed under it here (not the callee's, "Open" would keep).
+        const auto read = TypeRef::Of(*ret_sym, *sm->CurrentScope, std::nullopt, TypeRef::OnMissing::Null);
+        if (read.Symbol != nullptr) { return read; }
       }
     }
   }
@@ -812,11 +801,11 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
   auto fold_indexes = Vec<std::size_t>{};
   for (auto [i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
     auto arg_type = arg->InferType(sm, meta);
-    if (type_predicates::IsTypeTuple(*arg_type, *sm->CurrentScope)) {
+    if (type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*arg_type, *sm->CurrentScope), *sm->CurrentScope)) {
       fold_indexes.EmplaceBack(i);
       folded_args.EmplaceBack(arg);
       folded_arg_types.EmplaceBack(arg_type.get());
-      folded_tup_lens.EmplaceBack(sm->CurrentScope->FindTypeSymbol(arg_type.get())->TypeArgs().Len());
+      folded_tup_lens.EmplaceBack(sm->CurrentScope->FindTypeSymbol(arg_type.get())->TypeArgRefs().Len());
     }
   }
 
