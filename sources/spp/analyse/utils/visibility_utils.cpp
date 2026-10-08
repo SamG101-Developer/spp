@@ -96,7 +96,9 @@ namespace spp::analyse::utils::visibility_utils {
       if (AstAs<SupPrototypeFunctionsAst>(type_scope.AstNode) != nullptr
         or AstAs<SupPrototypeExtensionAst>(type_scope.AstNode) != nullptr) {
         if (const auto self_sym = type_scope.FindSelfSymbol(true);
-          self_sym != nullptr and self_sym->LinkedScope != nullptr) { owner_scope = self_sym->LinkedScope->NonGnScope; }
+          self_sym != nullptr and self_sym->LinkedScope != nullptr) {
+          owner_scope = self_sym->LinkedScope->NonGnScope;
+        }
       }
 
       // Get the module owning the access, and the module owning
