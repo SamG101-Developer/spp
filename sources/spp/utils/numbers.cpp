@@ -10,25 +10,40 @@ import numex.big_int;
 
 namespace {
   /// The range of a signed integer "bits" wide.
-  auto SignedBounds(const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
-    return spp::MakePair(-(numex::BigInt(1) << (bits - 1)), (numex::BigInt(1) << (bits - 1)) - 1);
+  auto SignedBounds(
+    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
+    // The signed bounds use the negative and positive for
+    // "2 ** (n - 1)" where "n" is the number of bits.
+    return spp::MakePair(
+      -(numex::BigInt(1) << (bits - 1)), (numex::BigInt(1) << (bits - 1)) - 1);
   }
 
   /// The range of an unsigned integer "bits" wide.
-  auto UnsignedBounds(const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
-    return spp::MakePair(numex::BigInt(0), (numex::BigInt(1) << bits) - 1);
+  auto UnsignedBounds(
+    const std::size_t bits) -> spp::Pair<numex::BigInt, numex::BigInt> {
+    // The unsigned bounds use the positive for "2 ** n"
+    // where "n" is the number of bits (no negative).
+    return spp::MakePair(
+      numex::BigInt(0), (numex::BigInt(1) << bits) - 1);
   }
 
-  /// The range of an IEEE float with "digits" significand bits and a largest exponent of "max_exp": its largest finite
+  /// The range of an IEEE float with "digits" significand bits
+  /// and a largest exponent of "max_exp": its largest finite
   /// magnitude, either sign.
-  auto IeeeBounds(const std::size_t digits, const std::size_t max_exp) -> spp::Pair<numex::BigDec, numex::BigDec> {
+  auto IeeeBounds(
+    const std::size_t digits, const std::size_t max_exp)
+    -> spp::Pair<numex::BigDec, numex::BigDec> {
+    // Key the float bounds off of the magnitude, calculated by
+    // bit-shifting with the number of bits and the exponent.
     const auto magnitude = (((numex::BigInt(1) << digits) - 1) << (max_exp - digits)).ToString();
     return spp::MakePair(numex::BigDec(("-" + magnitude).c_str()), numex::BigDec(magnitude.c_str()));
   }
 }
 
-auto spp::utils::numbers::IntegerBounds()
-  -> IntLimitMap const& {
+/// [CHECKED]
+auto spp::utils::numbers::IntegerBounds() -> IntLimitMap const& {
+  // Return a reference to a statically created integer
+  // bounds limit map.
   static const auto bounds = IntLimitMap{
     {Str("s8"), SignedBounds(8)},
     {Str("s16"), SignedBounds(16)},
@@ -48,8 +63,10 @@ auto spp::utils::numbers::IntegerBounds()
   return bounds;
 }
 
-auto spp::utils::numbers::FloatBounds()
-  -> FloatLimitMap const& {
+/// [CHECKED]
+auto spp::utils::numbers::FloatBounds() -> FloatLimitMap const& {
+  // Return a reference to a statically created float
+  // bounds limit map.
   static const auto bounds = FloatLimitMap{
     {Str("f8"), MakePair(numex::BigDec("-448"), numex::BigDec("448"))},
     {Str("f16"), IeeeBounds(11, 16)},
@@ -58,4 +75,36 @@ auto spp::utils::numbers::FloatBounds()
     {Str("f128"), IeeeBounds(113, 16384)}
   };
   return bounds;
+}
+
+/// [CHECKED]
+auto spp::utils::numbers::WrapToInteger(
+  numex::BigInt const &value,
+  Str const &type)
+  -> std::optional<numex::BigInt> {
+  // If the type doesn't match, then return nullopt, otherwise
+  // take the bounds from the map, keyed or the type.
+  const auto bounds = IntegerBounds().find(type);
+  if (bounds == IntegerBounds().end()) { return std::nullopt; }
+  auto const &[lower, upper] = bounds->second;
+
+  // Calculate the modulus against the range of the integer
+  // bounds, wrapping the value to the bounds its type should
+  // fit within.
+  const auto modulus = upper - lower + numex::BigInt(1);
+  auto wrapped = value % modulus;
+  if (wrapped.IsNegative()) { wrapped = wrapped + modulus; }
+  if (wrapped > upper) { wrapped = wrapped - modulus; }
+  return wrapped;
+}
+
+/// [CHECKED]
+auto spp::utils::numbers::ToU64(
+  numex::BigInt const &value)
+  -> std::optional<std::uint64_t> {
+  // Within the "u64" range, read back through its text (the
+  // big integer has no native conversion).
+  auto const &[lower, upper] = IntegerBounds().at("u64");
+  if (value < lower or value > upper) { return std::nullopt; }
+  return static_cast<std::uint64_t>(std::stoull(value.ToString()));
 }
