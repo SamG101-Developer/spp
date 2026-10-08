@@ -8,14 +8,15 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.sup_blocks;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
+import spp.analyse.utils.type_unify;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
@@ -75,14 +76,20 @@ namespace spp::asts {
       const bool check_constraints)
       -> Pair<Scope*, SupPrototypeExtensionAst const*> {
       IMPORT_UTILS;
-      using type_compare::GenericInferenceMap;
+      // By identity, read where each is written; nothing is made while the blocks are searched. Either pattern may
+      // take the other.
+      const auto super_id = check_scope.TypeIdOf(super_class);
+      const auto name_id = check_scope.TypeIdOf(name);
+      if (super_id == nullptr or name_id == nullptr) { return {nullptr, nullptr}; }
       for (auto *const sc : scopes) {
         const auto ext = AstAs<SupPrototypeExtensionAst>(sc->AstNode);
-        if (ext == nullptr or not type_compare::TypeEq(*ext->SuperCls, super_class, *sc, check_scope)) { continue; }
-        auto fwd = GenericInferenceMap();
-        auto rev = GenericInferenceMap();
-        if (type_compare::RelaxedTypeEq(*ext->Name, name, *sc, check_scope, fwd, false, check_constraints)
-          or type_compare::RelaxedTypeEq(name, *ext->Name, check_scope, *sc, rev, false, check_constraints)) {
+        if (ext == nullptr or sc->TypeIdOf(*ext->SuperCls) != super_id) { continue; }
+        const auto ext_id = sc->TypeIdOf(*ext->Name);
+        if (ext_id == nullptr) { continue; }
+        auto fwd = analyse::scopes::GenericSubst();
+        auto rev = analyse::scopes::GenericSubst();
+        if (type_unify::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
+          or type_unify::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
           return {sc, ext};
         }
       }
@@ -236,9 +243,8 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // change the analysis of code that cannot see it - including
   // the package's own, which is analysed as if it were absent.
   if (not Name->IsCompilerGeneratedType()) {
-    const auto is_marker =
-      type_compare::TypeEq(*SuperCls, *COPY, *sm->CurrentScope, *sm->CurrentScope) or
-      type_compare::TypeEq(*SuperCls, *DROP, *sm->CurrentScope, *sm->CurrentScope);
+    const auto super_kind = TypeRef::ForKindCheck(*SuperCls, *sm->CurrentScope);
+    const auto is_marker = super_kind.IsA(*COPY, *sm->CurrentScope) or super_kind.IsA(*DROP, *sm->CurrentScope);
 
     // A blanket "sup [T] T ext Copy" names a generic parameter
     // rather than a type, so no package declares what it marks,
@@ -296,70 +302,10 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // Mark the class as copyable if the "Copy" type is the supertype (that its attributes are all copyable is checked
   // in stage 7).
   for (const auto sup_scope : sup_scopes) {
-    if (TypeRef::OfKind(*sup_scope).IsA(*COPY, *sup_scope)) {
+    if (TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) {
       sm->CurrentScope->FindHeadSymbol(*Name)->IsDirectlyCopyable = true;
       cls_sym->IsDirectlyCopyable = true;
       break;
-    }
-  }
-
-  // Check every member on the superimposition exists on
-  // the supertype.
-  for (auto const &member : Impl->Members) {
-    if (const auto ext_member = member->To<SupPrototypeExtensionAst>()) {
-      // Get the method and identify the base method it
-      // is overriding.
-      const auto this_method = ext_member->Impl->FinalMember()->To<FunctionPrototypeAst>();
-      const auto base_method = fn_values::CheckForConflictingOverride(
-        *member->GetAstScope(), sup_sym->LinkedScope, *this_method, *sm, meta);
-
-      // Check the base method exists.
-      RaiseIf<SppSuperimpositionExtensionMethodInvalidError>(
-        base_method == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *SuperCls));
-
-      // Check the base method is virtual or abstract.
-      RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
-        not(base_method->AbstractAnnotation or base_method->VirtualAnnotation), {sm->CurrentScope},
-        ERR_ARGS(*this_method->Name, *base_method->Name, *SuperCls));
-
-      // Sync up the annotations from the base function.
-      // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
-      this_method->Visibility = base_method->Visibility;
-      const auto func_sym = sm->CurrentScope->FindVarSymbol(this_method->Name.get(), true);
-      func_sym->Visibility = base_method->Visibility.first;
-      func_sym->VisibilityAnnotation = this_method->Visibility.second;
-    }
-
-    else if (const auto type_member = member->To<TypeStatementAst>()) {
-      // Get the associated type from the supertype directly.
-      const auto this_type = type_member->NewType;
-      const auto base_type = sup_sym->LinkedScope->FindTypeSymbol(
-        this_type.get(), true);
-
-      // Check to see if the base type exists.
-      RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
-        base_type == nullptr, {sm->CurrentScope, member->GetAstScope()},
-        ERR_ARGS(*type_member, *SuperCls));
-    }
-
-    else if (const auto cmp_member = member->To<CmpStatementAst>()) {
-      // Get the associated cmp from the supertype directly.
-      const auto this_const = cmp_member->Name;
-      const auto base_const = sup_sym->LinkedScope->FindVarSymbol(
-        this_const.get(), true);
-
-      // Check to see if the base cmp exists. Same as method,
-      // as part of an extension, it's "overriding" the
-      // declaration.
-      RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
-        base_const == nullptr, {sm->CurrentScope},
-        ERR_ARGS(*cmp_member, *SuperCls));
-
-      // Check the constant agrees in type with every declaration
-      // of that name on the type and its super types.
-      type_members::CheckShadowedCmpAgreesInType(
-        *cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
     }
   }
 
@@ -377,9 +323,6 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Re-map "Self" to the true type.
-  sm->SyncSelfTypeSymbol(*Name);
-
   GnParamGroup->Stage7_AnalyseSemantics(sm, meta);
 
   // Both the superimposition target and the superclass are allowed to be abstract, as neither names a value.
@@ -390,14 +333,11 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
-    if (cls_sym->Type)
-      generic_inference::EnforceGnConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
 
     SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
-      generic_inference::EnforceGnConstraintsOfParams(*sup_sym, *GnParamGroup, *sm, *meta);
 
       // Copying a value copies every attribute, so "Copy" only
       // holds over a type whose attributes are all copyable -
@@ -405,13 +345,20 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       // buffer), which is then destroyed twice. An attribute of
       // a generic parameter's type is left to the instantiation.
       using generate::common_types_precompiled::COPY;
-      if (TypeRef::OfKind(*sup_sym, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)
+      if (TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)
         and cls_sym->LinkedScope != nullptr) {
-        for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
+        // Each attribute is shown from the class declaring it (an inherited one's can be in another file): the two
+        // walks line up index for index ("GetAllAttrAsts").
+        const auto attrs = type_members::GetAllAttrs(*cls_sym);
+        const auto attr_asts = type_members::GetAllAttrAsts(*cls_sym);
+        for (auto i = 0uz; i < attr_asts.Len(); ++i) {
+          auto const *const attr = attr_asts[i];
           const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
+          auto const *const attr_scope = i < attrs.Len() ? spp::get<2>(attrs[i]) : nullptr;
           RaiseIf<SppGenericConstraintError>(
             attr_sym != nullptr and not attr_sym->IsGn() and not attr_sym->IsCopyable(),
-            {sm->CurrentScope}, ERR_ARGS(*SuperCls, *attr->Type));
+            {sm->CurrentScope, attr_scope != nullptr ? attr_scope : sm->CurrentScope},
+            ERR_ARGS(*SuperCls, *attr->Type));
         }
       }
     }
@@ -458,19 +405,97 @@ auto SupPrototypeExtensionAst::Stage11_CodeGen(
   return nullptr;
 }
 
+auto SupPrototypeExtensionAst::CheckExtensionMembers(
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Checked for every block before any is pre-analysed: a member that overrides nothing leaves the abstract method it
+  // meant to implement unimplemented, so a type using this block is abstract, and whichever module happened to name
+  // that type first would otherwise report it as an abstract type use instead of this, the cause.
+  IMPORT_UTILS;
+  const auto cls_sym = _Scope->FindTypeSymbol(Name.get());
+  const auto sup_sym = _Scope->FindTypeSymbol(SuperCls.get());
+
+  // Check every member on the superimposition exists on
+  // the supertype.
+  for (auto const &member : Impl->Members) {
+    if (const auto ext_member = member->To<SupPrototypeExtensionAst>()) {
+      // Get the method and identify the base method it
+      // is overriding.
+      const auto this_method = ext_member->Impl->FinalMember()->To<FunctionPrototypeAst>();
+      const auto base_method = fn_values::CheckForConflictingOverride(
+        *member->GetAstScope(), sup_sym->LinkedScope, *this_method, sm, meta);
+
+      // Check the base method exists.
+      RaiseIf<SppSuperimpositionExtensionMethodInvalidError>(
+        base_method == nullptr, {_Scope},
+        ERR_ARGS(*this_method->Name, *SuperCls));
+
+      // Check the base method is virtual or abstract.
+      // The base method is shown from the super class, which can be in another file than this block.
+      RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
+        not(base_method->AbstractAnnotation or base_method->VirtualAnnotation),
+        {sup_sym->LinkedScope != nullptr ? sup_sym->LinkedScope : _Scope, _Scope, _Scope},
+        ERR_ARGS(*this_method->Name, *base_method->Name, *SuperCls));
+
+      // Sync up the annotations from the base function.
+      // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
+      this_method->Visibility = base_method->Visibility;
+      const auto func_sym = _Scope->FindVarSymbol(this_method->Name.get(), true);
+      func_sym->Visibility = base_method->Visibility.first;
+      func_sym->VisibilityAnnotation = this_method->Visibility.second;
+    }
+
+    else if (const auto type_member = member->To<TypeStatementAst>()) {
+      // Get the associated type from the supertype directly.
+      const auto this_type = type_member->NewType;
+      const auto base_type = sup_sym->LinkedScope->FindTypeSymbol(
+        this_type.get(), true);
+
+      // Check to see if the base type exists.
+      RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
+        base_type == nullptr, {_Scope, member->GetAstScope()},
+        ERR_ARGS(*type_member, *SuperCls));
+    }
+
+    else if (const auto cmp_member = member->To<CmpStatementAst>()) {
+      // Get the associated cmp from the supertype directly.
+      const auto this_const = cmp_member->Name;
+      const auto base_const = sup_sym->LinkedScope->FindVarSymbol(
+        this_const.get(), true);
+
+      // Check to see if the base cmp exists. Same as method,
+      // as part of an extension, it's "overriding" the
+      // declaration.
+      RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
+        base_const == nullptr, {_Scope},
+        ERR_ARGS(*cmp_member, *SuperCls));
+
+      // Check the constant agrees in type with every declaration
+      // of that name on the type and its super types.
+      type_members::CheckShadowedCmpAgreesInType(
+        *cmp_member, *cls_sym->LinkedScope, *_Scope, sm);
+    }
+  }
+}
+
 auto SupPrototypeExtensionAst::CheckCyclicExtension(
   TypeSymbol const &sup_sym, Scope &check_scope) const -> void {
-  // Prevent cyclic inheritance: this block's super class already extending its type, at any level.
+  // Prevent cyclic inheritance: this block's super class
+  // already extending its type, at any level.
   IMPORT_UTILS;
   const auto cycle = FindMatchingExtension(sup_sym.LinkedScope->GetSupScopes(), *Name, *SuperCls, check_scope, true);
+  // The extension closing the cycle is shown from its own
+  // block, which can be in another file than this one.
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
-    cycle.second != nullptr, {&check_scope}, ERR_ARGS(*cycle.second->SuperCls, *SuperCls));
+    cycle.second != nullptr, {cycle.first != nullptr ? cycle.first : &check_scope, &check_scope},
+    ERR_ARGS(*cycle.second->SuperCls, *SuperCls));
 }
 
 auto SupPrototypeExtensionAst::CheckDoubleExtension(
   TypeSymbol const &cls_sym, Scope &check_scope) const -> void {
-  // Prevent double inheritance: the same type extended by the same super class, at this level. A function class's
-  // blocks are generated one per overload, so it is not checked.
+  // Prevent double inheritance: the same type extended by
+  // the same super class, at this level. A function class's
+  // blocks are generated one per overload, so it is not
+  // checked.
   IMPORT_UTILS;
   if (cls_sym.IsMock()) { return; }
   const auto twin = FindMatchingExtension(cls_sym.LinkedScope->DirectSupScopes, *SuperCls, *Name, check_scope, false);
@@ -490,9 +515,11 @@ auto SupPrototypeExtensionAst::CheckSelfExtension(
   // Todo: Apply to cyclic and double extension checks too?
   if (Name->IsCompilerGeneratedType()) { return; }
 
-  // Check if the superimposition is extending itself.
+  // Check if the superimposition is extending itself: the same
+  // identity, read where both are written.
+  const auto name_id = check_scope.TypeIdOf(*Name);
   RaiseIf<SppSuperimpositionSelfExtensionError>(
-    type_compare::TypeEq(*Name, *SuperCls, check_scope, check_scope), {&check_scope},
+    name_id != nullptr and name_id == check_scope.TypeIdOf(*SuperCls), {&check_scope},
     ERR_ARGS(*Name, *SuperCls));
 }
 

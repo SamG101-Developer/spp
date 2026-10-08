@@ -86,6 +86,13 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  /// Check every method, type and "cmp" in the block names
+  /// one on the super class to override. Run over every block
+  /// before stage 6 pre-analyses any, so an override that
+  /// matches nothing is reported before a use of the type it
+  /// leaves abstract.
+  auto CheckExtensionMembers(ScopeManager &sm, CompilerMetaData *meta) -> void;
+
   auto CheckCyclicExtension(TypeSymbol const &sup_sym, Scope &check_scope) const -> void;
 
   auto CheckDoubleExtension(TypeSymbol const &cls_sym, Scope &check_scope) const -> void;

@@ -187,12 +187,6 @@ auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
     Name->Stage7_AnalyseSemantics(sm, meta);
   }
 
-  // Re-map "Self" to the true type.
-  sm->SyncSelfTypeSymbol(*Name);
-
-  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
-  if (cls_sym->Type)
-    generic_inference::EnforceGnConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
