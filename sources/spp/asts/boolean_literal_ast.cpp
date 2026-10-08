@@ -9,7 +9,6 @@ import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -120,13 +119,6 @@ auto BooleanLiteralAst::Stage11_CodeGen(
     ? 1ul
     : 0ul;
   return llvm::ConstantInt::get(llvm_type, value);
-}
-
-auto BooleanLiteralAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // The boolean ast is always inferred as "std::boolean::Bool".
-  using generate::common_types::BooleanType;
-  return BooleanType(PosStart());
 }
 
 auto BooleanLiteralAst::InferTypeRef(

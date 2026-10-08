@@ -65,8 +65,6 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
 
   /// The boolean literal's type is always "std::boolean::Bool",
   /// the compiler known boolean type.
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
