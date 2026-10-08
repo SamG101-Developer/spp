@@ -37,8 +37,11 @@ namespace spp::analyse::utils::marker_sups {
     bool raise = true)
     -> TypeRef;
 
-  /// What a generator found by "FindGenSup" yields: its "Yield" argument. Null for no generator.
-  SPP_EXP_FUN auto GenYieldOf(TypeRef const &gen) -> Shared<TypeAst>;
+  /// What a generator found by "FindGenSup" yields: its "Yield"
+  /// argument, off its identity ("TypeArgRef"). No type for no
+  /// generator; name it with "AstIn" where syntax or a message
+  /// needs it.
+  SPP_EXP_FUN auto GenYieldOf(TypeRef const &gen) -> TypeRef;
 
   /// Whether a generator found by "FindGenSup" is a "GenOnce".
   SPP_EXP_FUN auto IsGenOnce(TypeRef const &gen, Scope const &scope) -> bool;

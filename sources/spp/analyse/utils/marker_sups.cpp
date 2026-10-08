@@ -70,19 +70,21 @@ auto spp::analyse::utils::marker_sups::FindFnSup(
   // constraint of FunMov but passed as FunMut needs to still
   // use the FunMov overload.
   for (auto const &constraint : type_sym->TypeConstraints) {
-    const auto target = aliases::TargetOf(*constraint, scope);
-    if (type_predicates::IsTypeFunction(*target, scope)) { return TypeRef::Of(*target, scope); }
+    if (type_predicates::IsTypeFunction(TypeRef::ForKindCheck(*constraint, scope), scope)) {
+      return TypeRef::Of(*constraint, scope);
+    }
   }
 
   // Check the type itself and all its supertypes (a type
   // superimposing a function type is also callable). Either is
-  // looked at through an alias: an alias of a function type is
-  // callable as its target.
-  const auto target = aliases::TargetOf(type, scope);
-  if (not type.IsCompilerGeneratedType() and type_predicates::IsTypeFunction(*target, scope)) {
-    return TypeRef::Of(*target, scope);
+  // looked at through an alias ("ForKindCheck" and "Of" both
+  // follow one): an alias of a function type is callable as its
+  // target.
+  if (not type.IsCompilerGeneratedType()
+    and type_predicates::IsTypeFunction(TypeRef::ForKindCheck(type, scope), scope)) {
+    return TypeRef::Of(type, scope);
   }
-  for (auto const &sup : type_members::SuperClsRefs(TypeRef::OfKind(*type_sym, scope), scope)) {
+  for (auto const &sup : type_members::SuperClsRefs(TypeRef::ForKindCheck(*type_sym, scope), scope)) {
     if (type_predicates::IsTypeFunction(sup, scope)) { return sup; }
   }
 
@@ -147,8 +149,8 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
 
 auto spp::analyse::utils::marker_sups::GenYieldOf(
   TypeRef const &gen)
-  -> Shared<TypeAst> {
-  return gen.Symbol != nullptr ? gen.Symbol->TypeArg("Yield") : nullptr;
+  -> TypeRef {
+  return gen.Symbol != nullptr ? gen.Symbol->TypeArgRef("Yield") : TypeRef();
 }
 
 auto spp::analyse::utils::marker_sups::IsGenOnce(
@@ -167,21 +169,20 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
   //
   using type_compare::TypeEq;
   using type_compare::VariantMemberRefs;
-  const auto yield_type = GenYieldOf(gen);
-  if (yield_type == nullptr or IsGenOnce(gen, scope)) { return; }
+  const auto yield_ref = GenYieldOf(gen);
+  if (yield_ref.Symbol == nullptr or IsGenOnce(gen, scope)) { return; }
 
   // A variant yield is checked member by member, as that is how
   // it is flattened into the result.
   const auto done_ref = TypeRef::Of(*generate::common_types::GenDone(expr.PosStart()), scope);
   if (done_ref.Symbol == nullptr) { return; }
-  const auto yield_ref = TypeRef::Of(*yield_type, scope);
   auto members = VariantMemberRefs(yield_ref, scope);
   if (members.IsEmpty()) { members.EmplaceBack(yield_ref); }
 
   const auto holds_done = genex::any_of(
     members, [&](auto const &m) { return m.Symbol != nullptr and TypeEq(m, done_ref, scope, scope); });
   if (holds_done) {
-    Raise<errors::SppYieldTypeContainsGenDoneError>({&scope}, ERR_ARGS(expr, *yield_type, what));
+    Raise<errors::SppYieldTypeContainsGenDoneError>({&scope}, ERR_ARGS(expr, ErrTypeAt(yield_ref, expr), what));
   }
 }
 
