@@ -388,14 +388,16 @@ SppIdentifierDuplicateError::SppIdentifierDuplicateError(
 }
 
 SppIdentifierDuplicateError::SppIdentifierDuplicateError(
-  Ast const &duplicate_identifier, const StrView what) {
+  Ast const &duplicate_identifier, const StrView what, const bool is_import) {
   AddHeader(14, "Identifier Duplicate Error");
-  AddErr(&duplicate_identifier,
-         "Duplicate " + INLINE_INFO(what) + " named " + INLINE_INFO(duplicate_identifier.ToString()) +
-         " defined here");
+  AddErr(
+    &duplicate_identifier,
+    "Duplicate " + INLINE_INFO(what) + " named " + INLINE_INFO(duplicate_identifier.ToString()) + " defined here");
   AddFooter(
     "The prelude already imports a " + INLINE_NOTE(what) + " with this name.",
-    "Remove this import; the name is already in scope");
+    is_import
+    ? "Remove this import; the name is already in scope"
+    : "Rename this declaration; a prelude name cannot be shadowed");
 }
 
 SppRecursiveTypeError::SppRecursiveTypeError(

@@ -282,7 +282,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierDuplicateError final : Sem
 
   /// A name the prelude already imports: only the author's own
   /// identifier is shown, as the prelude's is not one they wrote.
-  explicit SppIdentifierDuplicateError(Ast const &duplicate_identifier, StrView what);
+  /// The help reads by whether the author's side is an import
+  /// (remove it) or a declaration (rename it).
+  explicit SppIdentifierDuplicateError(Ast const &duplicate_identifier, StrView what, bool is_import);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppRecursiveTypeError final : SemanticError {
