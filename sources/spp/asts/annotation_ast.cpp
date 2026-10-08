@@ -313,11 +313,13 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   FnArgGroup = std::move(fn_ptr->FnArgGroup);
 
   // Check the target function is an annotation (via the "!annotation"
-  // annotation).
+  // annotation). The target function is shown from its own scope,
+  // which can be another file than the annotation.
   const auto overload = fn_ptr->Target();
   RaiseIf<SppAnnotationTargetNotAnAnnotationError>(
     not overload->GetAnnotationInfo(),
-    {_Scope}, ERR_ARGS(*this, *overload));
+    {fn_ptr->TargetScope() != nullptr ? fn_ptr->TargetScope() : _Scope, _Scope},
+    ERR_ARGS(*this, *overload));
 
   // Stamp the overload as the "target" of this annotation. This
   // will be used for extensively for custom annotations.
