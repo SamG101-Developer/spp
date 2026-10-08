@@ -11,8 +11,8 @@ import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.utils.ast_utils;
 import std;
 
 namespace spp::analyse::utils::regions {
@@ -103,25 +103,11 @@ auto spp::analyse::utils::regions::IsAttr(
   Ast const *expr, ScopeManager const *sm) -> bool {
   // Determine if the AST node is an attribute (ie not
   // an identifier).
-  const auto *const postfix = expr->To<PostfixExpressionAst>();
-  if (postfix == nullptr) { return false; }
-  if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
+  if (not asts::IsRuntimeMemberAccess(expr)) { return false; }
 
   // Perform validation on the actual attribute too.
   auto const var_symbol_outermost = sm->CurrentScope->FindVarSymbolOutermost(*expr);
   return var_symbol_outermost.first != nullptr;
-}
-
-auto spp::analyse::utils::regions::IsDeref(
-  Ast const *expr) -> bool {
-  // Determine if the AST node is a deref op (ie not
-  // an identifier or an attribute).
-  const auto *const postfix = expr->To<PostfixExpressionAst>();
-  if (postfix == nullptr) { return false; }
-
-  // Check the operator on the postfix expression ast
-  // node.
-  return postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
 }
 
 auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
@@ -152,7 +138,7 @@ auto spp::analyse::utils::regions::DescendToPart(
   const std::size_t count)
   -> Pair<TypeRef, Scope const*> {
   auto part = Pair<TypeRef, Scope const*>{root, &root_scope};
-  for (auto i = std::size_t{1}; i <= count and i < steps.Len(); ++i) {
+  for (auto i = 1uz; i <= count and i < steps.Len(); ++i) {
     if (part.first.Symbol == nullptr or part.second == nullptr) { break; }
     auto next = Pair<TypeRef, Scope const*>{};
     for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(part.first, *part.second)) {

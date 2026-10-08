@@ -59,11 +59,6 @@ namespace spp::analyse::utils::regions {
   /// just negate the identifier check.
   SPP_EXP_FUN auto IsAttr(Ast const *expr, ScopeManager const *sm) -> bool;
 
-  /// Check if an ast is a dereference operation ast, by
-  /// checking for a postfix expression ast and the operation
-  /// bound to that ast.
-  SPP_EXP_FUN auto IsDeref(Ast const *expr) -> bool;
-
   /// Whether the expression holds "destructure-able" storage
   /// or not. Typically, if not, then a materialization occurs.
   SPP_EXP_FUN auto IsDestructurePlaceExpression(
