@@ -73,6 +73,9 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   SPP_ATTR_NODISCARD auto Target() const -> FunctionPrototypeAst*;
 
+  /// The scope "Target" is declared in (the overload's own), which an error showing the target is formatted against.
+  SPP_ATTR_NODISCARD auto TargetScope() const -> Scope const*;
+
   auto SetClosureDummyProto(Unique<FunctionPrototypeAst> &&proto) -> void;
 
   SPP_ATTR_NODISCARD auto TakeClosureDummyProto() -> Unique<FunctionPrototypeAst>;
