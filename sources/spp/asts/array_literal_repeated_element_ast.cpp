@@ -115,7 +115,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
     not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Elem));
   const auto elem_type = Elem->InferType(sm, meta);
-  const auto elem_type_sym = sm->CurrentScope->FindTypeSymbol(elem_type.get());
+  const auto elem_type_sym = Elem->InferTypeRef(sm, meta).Symbol;
 
   // Ensure the element type is copyable, so that is can be
   // repeated in the array.

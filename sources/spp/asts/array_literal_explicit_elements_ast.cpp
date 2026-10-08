@@ -112,7 +112,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   // otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
-    type_predicates::IsTypeArray(*meta->AssignmentTargetType, *sm->CurrentScope);
+    type_predicates::IsTypeArray(TypeRef::ForKindCheck(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto z_type = from_target
     ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
@@ -131,7 +131,9 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     auto c_type = c_elem->InferType(sm, meta);
 
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
+      not type_compare::Assignable(
+        TypeRef::Of(*z_type, *sm->CurrentScope), TypeRef::Of(*c_type, *sm->CurrentScope), *sm->CurrentScope,
+        *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
@@ -306,7 +308,7 @@ auto ArrayLiteralExplicitElementsAst::_BuildType(
     nullptr, std::move(size_tok), "uz");
 
   auto elem_gen = meta->AssignmentTargetType != nullptr
-    and type_predicates::IsTypeArray(*meta->AssignmentTargetType, *sm->CurrentScope)
+    and type_predicates::IsTypeArray(TypeRef::ForKindCheck(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
     ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 

@@ -128,7 +128,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
          lhs_syms) | genex::to<Vec>()) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
     const auto lhs_type = lhs_expr->InferType(sm, meta);
-    const auto lhs_deref_ref = regions::IsDeref(lhs_expr)
+    const auto lhs_deref_ref = IsDeref(lhs_expr)
       ? lhs_expr->To<PostfixExpressionAst>()->Lhs->InferTypeRef(sm, meta)
       : TypeRef{};
 
@@ -156,7 +156,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
     // Dereference assignment (ie "x@ = y") writes through a
     // borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
-      regions::IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
+      IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
       {sm->CurrentScope},
       ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
@@ -326,13 +326,14 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       // is tagged and copied into the payload rather than written
       // raw over the slot (which would land the member on top of
       // the tag).
-      if (const auto target_type = Lhs[i]->InferType(sm, meta); target_type != nullptr) {
+      const auto target_ref = Lhs[i]->InferTypeRef(sm, meta);
+      if (target_ref.Symbol != nullptr) {
         value = codegen::CoerceToFnValue(
-          value, TypeRef::Of(*target_type, *sm->CurrentScope),
+          value, target_ref,
           Rhs[i]->InferTypeRef(sm, meta), *sm, ctx);
 
         value = codegen::CoerceToVariant(
-          value, TypeRef::Of(*target_type, *sm->CurrentScope),
+          value, target_ref,
           Rhs[i]->InferTypeRef(sm, meta), *sm->CurrentScope,
           "assign.variant." + Uid(), ctx);
       }
@@ -351,7 +352,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
 
     // The statement "x@ = v" writes through a borrow: the target is
     // the borrow pointer itself.
-    if (regions::IsDeref(Lhs[i].get())) {
+    if (IsDeref(Lhs[i].get())) {
       const auto inner = Lhs[i]->To<PostfixExpressionAst>()->Lhs.get();
       llvm_lhs = inner->Stage11_CodeGen(sm, meta, ctx);
     }
