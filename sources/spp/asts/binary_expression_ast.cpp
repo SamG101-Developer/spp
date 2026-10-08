@@ -26,7 +26,7 @@ import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
-import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -135,7 +135,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgs().Len();
+    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgRefs().Len();
     if (rhs_num_elems < 2) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>(
@@ -181,7 +181,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgs().Len();
+    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().Len();
     if (lhs_num_elems < 2) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
@@ -383,7 +383,7 @@ auto BinaryExpressionAst::InferType(
   // operands are required to be, and the result is one of
   // them.
   if (IsLogicalOperator()) {
-    return generate::common_types::BooleanType(PosStart());
+    return generate::common_types_precompiled::BoolAt(PosStart());
   }
 
   // Not yet analysed - a comp argument waits for the sup
@@ -396,7 +396,7 @@ auto BinaryExpressionAst::InferType(
     const auto op = TokOp->TokenType;
     if (op == SppTokenType::TK_EQ or op == SppTokenType::TK_NE or op == SppTokenType::TK_LT
       or op == SppTokenType::TK_LE or op == SppTokenType::TK_GT or op == SppTokenType::TK_GE) {
-      return generate::common_types::BooleanType(PosStart());
+      return generate::common_types_precompiled::BoolAt(PosStart());
     }
     return Lhs->InferType(sm, meta);
   }
