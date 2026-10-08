@@ -766,6 +766,10 @@ auto PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
   _IsAsync = async_token;
 }
 
+auto PostfixExpressionOperatorFunctionCallAst::TargetScope() const -> Scope const* {
+  return _OverloadInfo.has_value() ? _OverloadInfo->OverloadScope : nullptr;
+}
+
 auto PostfixExpressionOperatorFunctionCallAst::Target() const -> FunctionPrototypeAst* {
   if (not _OverloadInfo.has_value()) { return nullptr; }
   const auto target_proto = _OverloadInfo->Proto;
