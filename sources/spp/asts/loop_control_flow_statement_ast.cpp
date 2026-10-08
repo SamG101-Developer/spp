@@ -17,7 +17,6 @@ import spp.asts.expression_ast;
 import spp.asts.loop_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -71,7 +70,7 @@ auto LoopControlFlowStatementAst::ToString() const -> Str {
 auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-  using generate::common_types::VoidType;
+  using generate::common_types_precompiled::VoidAt;
 
   // Get the number of control flow statements, and the
   // loop's nesting level.
@@ -91,7 +90,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   // Save and compare the loop's "exiting" type against
   // other nested loop's exit statement types.
   if (not has_skip) {
-    auto expr_type = VoidType(PosStart());
+    auto expr_type = VoidAt(PosStart());
 
     // Analyse the expression if it is present.
     if (Expr != nullptr) {
@@ -117,7 +116,9 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       }
       else if (not expr_type->IsNeverType()) {
         RaiseIf<SppTypeMismatchError>(
-          not type_compare::Assignable(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
+          not type_compare::Assignable(
+            TypeRef::Of(*expr_type, *sm->CurrentScope), TypeRef::Of(*that_expr_type, *that_scope), *sm->CurrentScope,
+            *that_scope),
           {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
       }
     }
@@ -240,8 +241,8 @@ auto LoopControlFlowStatementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // If there is an attached expression, return its type,
   // otherwise Void.
-  using generate::common_types::VoidType;
-  return Expr != nullptr ? Expr->InferType(sm, meta) : VoidType(PosStart());
+  using generate::common_types_precompiled::VoidAt;
+  return Expr != nullptr ? Expr->InferType(sm, meta) : VoidAt(PosStart());
 }
 
 auto LoopControlFlowStatementAst::InferTypeRef(
