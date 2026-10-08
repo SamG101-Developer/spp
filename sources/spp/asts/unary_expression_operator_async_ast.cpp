@@ -279,6 +279,13 @@ auto UnaryExpressionOperatorAsyncAst::InferType(
   return future_type;
 }
 
+auto UnaryExpressionOperatorAsyncAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The future type is built as syntax ("Fut[T]"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
 auto UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {
   // Lowers into a closure => not allowed as a default.
   return false;
