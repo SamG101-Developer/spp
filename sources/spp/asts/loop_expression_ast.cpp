@@ -23,7 +23,6 @@ import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -47,13 +46,13 @@ auto LoopExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
-  using generate::common_types::VoidType;
+  using generate::common_types_precompiled::VoidAt;
 
   // Get the loop's exit type (or Void if there are no
   // exits from inside the loop).
   auto [exit_expr, loop_type, exit_scope] = _LoopExitTypeInfo.has_value()
     ? *_LoopExitTypeInfo
-    : Tup(static_cast<ExpressionAst*>(nullptr), VoidType(PosStart()), static_cast<Scope*>(nullptr));
+    : Tup(static_cast<ExpressionAst*>(nullptr), VoidAt(PosStart()), static_cast<Scope*>(nullptr));
   exit_expr = exit_expr ? exit_expr : this;
 
   // Check the else block's type is the same as the loop exit
@@ -74,12 +73,22 @@ auto LoopExpressionAst::InferType(
       : *sm->CurrentScope;
 
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(*loop_type, *else_type, loop_scope, *sm->CurrentScope),
+      not type_compare::Assignable(
+        TypeRef::Of(*loop_type, loop_scope),
+        TypeRef::Of(*else_type, *sm->CurrentScope),
+        loop_scope, *sm->CurrentScope),
       {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
   }
 
   // Return the loop type.
   return loop_type;
+}
+
+auto LoopExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The exit type, checked against the else block as written; resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
 SPP_MOD_END
