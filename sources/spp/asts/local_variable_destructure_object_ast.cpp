@@ -108,7 +108,8 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   //  LocalVariableDestructureObjectGeneric.test_valid_destructure_of_a_generic_class_in_its_sup.
   Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
 
-  const auto cls_proto = sm->CurrentScope->FindTypeSymbol(Type.get())->Type;
+  auto const *const cls_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
+  const auto cls_proto = cls_sym->Type;
   const auto cls_attrs = cls_proto != nullptr
     ? cls_proto->Impl->Members | genex::views::ptr | genex::to<Vec>()
     : Vec<Ast*>{};
@@ -143,14 +144,16 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // already read past the convention here, because they
   // check the shape ("IsTypeTuple" / "IsTypeArray"). Manually
   // apply the same semantics here.
+  const auto val_ref = TypeRef::Of(*val_type, *sm->CurrentScope);
+  const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope);
   const auto conv_only_mismatch = _FromCasePattern
-    and type_compare::TypeEq(*val_type->WithoutConvention(), *Type, *sm->CurrentScope, *sm->CurrentScope);
+    and type_compare::TypeEq(val_ref.WithoutConvention(), type_ref, *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the type matches.
   RaiseIf<SppTypeMismatchError>(
     not (_FromCasePattern
-      ? type_compare::Assignable(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)
-      : type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) and not conv_only_mismatch,
+      ? type_compare::Assignable(val_ref, type_ref, *sm->CurrentScope, *sm->CurrentScope)
+      : type_compare::TypeEq(val_ref, type_ref, *sm->CurrentScope, *sm->CurrentScope)) and not conv_only_mismatch,
     {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
@@ -163,10 +166,12 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0]));
 
-  // Check all attributes are provided unless there is a multi-skip.
+  // Check all attributes are provided unless there is a multi-skip. The attribute is shown from its class, which can be
+  // in another file than the destructure.
   RaiseIf<SppArgumentMissingError>(
     not missing_attributes.IsEmpty() and multi_arg_skips.IsEmpty(),
-    {sm->CurrentScope}, ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
+    {cls_sym->LinkedScope != nullptr ? cls_sym->LinkedScope : sm->CurrentScope, sm->CurrentScope},
+    ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
   // Bind the value to a hidden temporary, and index that from
   // every element, so the value is analysed and evaluated once
@@ -187,7 +192,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // elements index, so it is layered on top of the temporary rather than on the value.
   if (_FromCasePattern
     and not conv_only_mismatch
-    and not type_compare::TypeEq(*val_type, *Type, *sm->CurrentScope, *sm->CurrentScope)) {
+    and not type_compare::TypeEq(val_ref, type_ref, *sm->CurrentScope, *sm->CurrentScope)) {
     const auto uid = Uid();
     uid_name = MakeShared<IdentifierAst>(PosStart(), uid);
     auto uid_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, uid_name, nullptr);
@@ -281,7 +286,7 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
     // and narrowing through that would move the condition itself onto the payload.
     if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->LlvmInfo->Alloca != nullptr) {
       const auto bare_cond_type = _CondSymbol->Type->WithoutConvention();
-      if (type_predicates::IsTypeVariant(*bare_cond_type, *sm->CurrentScope)) {
+      if (type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
         const auto uid = "." + Uid();
         const auto variant_ty = sm->CurrentScope->FindTypeSymbol(
           bare_cond_type.get())->LlvmInfo->LlvmType;

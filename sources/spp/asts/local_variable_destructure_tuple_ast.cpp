@@ -82,9 +82,9 @@ auto LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
   const auto shape = destructure_utils::SequenceShape{
     .CheckAndCount = [&](ExpressionAst const &val, Shared<TypeAst> const &val_type) -> std::size_t {
       RaiseIf<SppVariableTupleDestructureTupleTypeMismatchError>(
-        not type_predicates::IsTypeTuple(*val_type, *sm->CurrentScope),
+        not type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*val_type, *sm->CurrentScope), *sm->CurrentScope),
         {sm->CurrentScope}, ERR_ARGS(*this, val, *val_type));
-      return sm->CurrentScope->FindTypeSymbol(val_type.get())->TypeArgs().Len();
+      return sm->CurrentScope->FindTypeSymbol(val_type.get())->TypeArgRefs().Len();
     },
     .RaiseSizeMismatch = [&](const std::size_t lhs, ExpressionAst const &val, const std::size_t rhs) {
       Raise<SppVariableTupleDestructureTupleSizeMismatchError>({sm->CurrentScope}, ERR_ARGS(*this, lhs, val, rhs));

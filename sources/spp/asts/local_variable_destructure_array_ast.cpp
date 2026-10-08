@@ -5,6 +5,7 @@ module;
 module spp.asts.local_variable_destructure_array_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
@@ -83,10 +84,10 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
   const auto shape = destructure_utils::SequenceShape{
     .CheckAndCount = [&](ExpressionAst const &val, Shared<TypeAst> const &val_type) -> std::size_t {
       RaiseIf<SppVariableArrayDestructureArrayTypeMismatchError>(
-        not type_predicates::IsTypeArray(*val_type, *sm->CurrentScope),
+        not type_predicates::IsTypeArray(TypeRef::ForKindCheck(*val_type, *sm->CurrentScope), *sm->CurrentScope),
         {sm->CurrentScope}, ERR_ARGS(*this, val, *val_type));
-      return std::stoul(
-        sm->CurrentScope->FindTypeSymbol(val_type.get())->CompArg("n")->To<IntegerLiteralAst>()->Val->TokenData);
+      return static_cast<std::size_t>(
+        analyse::scopes::U64Of(sm->CurrentScope->FindTypeSymbol(val_type.get())->CompArgId("n")).value());
     },
     .RaiseSizeMismatch = [&](const std::size_t lhs, ExpressionAst const &val, const std::size_t rhs) {
       Raise<SppVariableArrayDestructureArraySizeMismatchError>({sm->CurrentScope}, ERR_ARGS(*this, lhs, val, rhs));
