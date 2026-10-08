@@ -25,7 +25,7 @@ import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
@@ -77,7 +77,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
-  using generate::common_types::VoidType;
+  using generate::common_types_precompiled::VoidAt;
 
   // Analyse the expression.
   RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -91,8 +91,8 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokRet));
 
   // Analyse the expression if it exists, and determine the type of the expression.
-  auto expr_type = VoidType(PosStart());
-  _RetType = VoidType(PosStart());
+  auto expr_type = VoidAt(PosStart());
+  _RetType = VoidAt(PosStart());
   if (Expr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
 
@@ -103,7 +103,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
       : meta->EnclosingFnRetType.Back();
     if (meta->AssignmentTargetType != nullptr) {
       meta->AssignmentTargetType = self_type::SubstituteSelf(
-        *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
+        *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
     }
     meta->AssignmentTarget = meta->AssignmentTargetType
       ? IdentifierAst::FromType(*meta->AssignmentTargetType)
@@ -134,7 +134,9 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 
   // Type check the expression type against the return type of the enclosing subroutine.
   if (function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
-    const auto direct_match = type_compare::Assignable(*_RetType, *expr_type, *meta->EnclosingFnScope, *sm->CurrentScope);
+    const auto direct_match = type_compare::Assignable(
+      TypeRef::Of(*_RetType, *meta->EnclosingFnScope), TypeRef::Of(*expr_type, *sm->CurrentScope),
+      *meta->EnclosingFnScope, *sm->CurrentScope);
     const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
     RaiseIf<SppTypeMismatchError>(
       not direct_match, {meta->EnclosingFnScope, sm->CurrentScope},
@@ -245,13 +247,11 @@ auto RetStatementAst::Stage11_CodeGen(
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
-    const auto expr_type = Expr->InferType(sm, meta);
-    llvm_ret_val = codegen::CoerceToFnValue(
-      llvm_ret_val, TypeRef::Of(*ret_type, *sm->CurrentScope),
-      TypeRef::Of(*expr_type, *sm->CurrentScope), *sm, ctx);
+    const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
+    const auto expr_ref = Expr->InferTypeRef(sm, meta);
+    llvm_ret_val = codegen::CoerceToFnValue(llvm_ret_val, ret_ref, expr_ref, *sm, ctx);
     return codegen::CoerceToVariant(
-      llvm_ret_val, TypeRef::Of(*ret_type, *sm->CurrentScope),
-      TypeRef::Of(*expr_type, *sm->CurrentScope), *sm->CurrentScope, "ret.variant" + uid, ctx);
+      llvm_ret_val, ret_ref, expr_ref, *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
   const auto _meta_guard = MetaGuard(meta);
