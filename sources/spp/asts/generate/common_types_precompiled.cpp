@@ -1,6 +1,21 @@
 module spp.asts.generate.common_types_precompiled;
+import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+
+namespace {
+  /// "fresh" recording what "like", its precompiled constant,
+  /// records.
+  auto StampedLike(
+    spp::Shared<spp::asts::TypeAst> fresh,
+    spp::asts::TypeAst const &like)
+    -> spp::Shared<spp::asts::TypeAst> {
+    // Create a new type ast instance, but make the stamped
+    // identity that of a precompiled type.
+    fresh->LastTypePart()->StampTypeId(like.LastTypePart()->StampedTypeId());
+    return fresh;
+  }
+}
 
 auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   GEN = nullptr;
@@ -102,4 +117,24 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
   VIEW = common_types::ViewType(0, common_types::VoidType(0))->WithoutGns();
   SELF_TYPE = common_types::SelfType(0)->WithoutGns();
   SELF_VAR = MakeShared<IdentifierAst>(0, "self");
+}
+
+auto spp::asts::generate::common_types_precompiled::BoolAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::BooleanType(pos), *BOOL);
+}
+
+auto spp::asts::generate::common_types_precompiled::VoidAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::VoidType(pos), *VOID);
+}
+
+auto spp::asts::generate::common_types_precompiled::NeverAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::NeverType(pos), *NEVER);
+}
+
+auto spp::asts::generate::common_types_precompiled::StrViewAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::StringViewType(pos), *STR_VIEW);
 }
