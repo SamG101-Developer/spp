@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_fn_impls;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -202,12 +203,18 @@ namespace {
 
     auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
     switch (op) {
-      case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow; break;
-      case BinOp::UAddChecked: intrinsic = llvm::Intrinsic::uadd_with_overflow; break;
-      case BinOp::SSubChecked: intrinsic = llvm::Intrinsic::ssub_with_overflow; break;
-      case BinOp::USubChecked: intrinsic = llvm::Intrinsic::usub_with_overflow; break;
-      case BinOp::SMulChecked: intrinsic = llvm::Intrinsic::smul_with_overflow; break;
-      case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow; break;
+      case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow;
+        break;
+      case BinOp::UAddChecked: intrinsic = llvm::Intrinsic::uadd_with_overflow;
+        break;
+      case BinOp::SSubChecked: intrinsic = llvm::Intrinsic::ssub_with_overflow;
+        break;
+      case BinOp::USubChecked: intrinsic = llvm::Intrinsic::usub_with_overflow;
+        break;
+      case BinOp::SMulChecked: intrinsic = llvm::Intrinsic::smul_with_overflow;
+        break;
+      case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow;
+        break;
       default: std::unreachable();
     }
 
@@ -270,12 +277,18 @@ namespace {
     // operation and not per operation *site*.
     auto code = 0U;
     switch (op) {
-      case BinOp::SAddChecked: code = 0x10; break;
-      case BinOp::UAddChecked: code = 0x11; break;
-      case BinOp::SSubChecked: code = 0x12; break;
-      case BinOp::USubChecked: code = 0x13; break;
-      case BinOp::SMulChecked: code = 0x14; break;
-      case BinOp::UMulChecked: code = 0x15; break;
+      case BinOp::SAddChecked: code = 0x10;
+        break;
+      case BinOp::UAddChecked: code = 0x11;
+        break;
+      case BinOp::SSubChecked: code = 0x12;
+        break;
+      case BinOp::USubChecked: code = 0x13;
+        break;
+      case BinOp::SMulChecked: code = 0x14;
+        break;
+      case BinOp::UMulChecked: code = 0x15;
+        break;
       default: std::unreachable();
     }
 
@@ -654,29 +667,20 @@ auto spp::codegen::fn_impls::ApplyAtomicRmwOp(
  * "llvm::Function"'s arguments cannot work: an "llvm::Argument" is never an "llvm::ConstantInt", whatever the caller
  * passed.
  * @param sm The scope manager, positioned on the instantiated function's scope.
- * @param meta The compiler meta data.
- * @param ctx The llvm context to generate the bound value into.
  * @param name The name of the generic parameter holding the ordering.
  * @return The atomic ordering this instantiation was created for.
  */
 static auto AtomicOrderingOf(
-  spp::analyse::scopes::ScopeManager *const sm,
-  spp::asts::meta::CompilerMetaData *const meta,
-  spp::codegen::LlvmCtx *const ctx,
-  spp::Str const &name)
-  -> llvm::AtomicOrdering {
-  const auto param_name = spp::asts::IdentifierAst(0uz, name);
+  ScopeManager *const sm, spp::Str const &name) -> llvm::AtomicOrdering {
+  const auto param_name = IdentifierAst(0uz, name);
   const auto order_sym = sm->CurrentScope->FindVarSymbol(&param_name);
   SPP_ASSERT(order_sym != nullptr);
 
-  // A template never reaches code generation, so the parameter is always bound by the time this runs.
-  const auto bound = order_sym->BoundCompVal();
-  SPP_ASSERT(bound != nullptr);
-
-  ctx->InConstantContext = true;
-  const auto order_val = bound->Stage11_CodeGen(sm, meta, ctx);
-  ctx->InConstantContext = false;
-  return static_cast<llvm::AtomicOrdering>(llvm::cast<llvm::ConstantInt>(order_val)->getZExtValue());
+  // A template never reaches code generation, so the parameter is always bound to a value by the time this runs: read
+  // it off the binding's identity.
+  const auto order = U64Of(sm->CurrentScope->CompIdOfSymbol(*order_sym));
+  SPP_ASSERT(order.has_value());
+  return static_cast<llvm::AtomicOrdering>(*order);
 }
 
 auto spp::codegen::fn_impls::SimpleAtomicFetchRmw(
@@ -705,7 +709,7 @@ auto spp::codegen::fn_impls::SimpleAtomicFetchRmw(
   auto const &dl = ctx->Module->getDataLayout();
   const auto rmw_inst = ctx->Builder.CreateAtomicRMW(
     ApplyAtomicRmwOp(op), val_field_ptr, val_arg, dl.getABITypeAlign(val_ty),
-    AtomicOrderingOf(sm, meta, ctx, "order"));
+    AtomicOrderingOf(sm, "order"));
   ctx->Builder.CreateRet(rmw_inst);
 }
 
@@ -727,11 +731,9 @@ namespace {
     spp::asts::TypeAst const &type,
     spp::analyse::scopes::Scope const &scope) -> bool {
     auto const *const sym = scope.FindTypeSymbol(&type);
-    if (const auto signed_val = sym != nullptr ? sym->CompArg("signed") : nullptr; signed_val != nullptr) {
-      auto const *literal = signed_val->To<spp::asts::BooleanLiteralAst>();
-      if (literal != nullptr) { return literal->CppVal(); }
-    }
-    return false;
+    const auto signed_id = sym != nullptr ? sym->CompArgId("signed") : nullptr;
+    auto const *const is_signed = signed_id != nullptr ? signed_id->AsBool() : nullptr;
+    return is_signed != nullptr and *is_signed;
   }
 }
 
@@ -1125,7 +1127,8 @@ auto spp::codegen::fn_impls::SimpleCoroContiguousFwd(
       : _Data(data), _Length(length), _ViewTy(view_ty), _DataIdx(data_idx), _LengthIdx(length_idx),
         _Uid(std::move(uid)) {}
 
-    auto Stage11_CodeGen(analyse::scopes::ScopeManager *, asts::meta::CompilerMetaData *, LlvmCtx *ctx) -> llvm::Value* override {
+    auto Stage11_CodeGen(analyse::scopes::ScopeManager *, asts::meta::CompilerMetaData *,
+      LlvmCtx *ctx) -> llvm::Value* override {
       const auto view = LlvmEntryAlloca(_ViewTy, "fwd.view" + _Uid, ctx);
       ctx->Builder.CreateStore(
         _Data, ctx->Builder.CreateStructGEP(_ViewTy, view, _DataIdx, "fwd.view.data_ptr" + _Uid));
@@ -2393,7 +2396,7 @@ auto spp::codegen::fn_impls::StdGeneratorDrop(
   // null check for a handle that was never assigned one.
   const auto self_param = proto->FnParamGroup->GetSelfParam();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(self_param->ExtractName().get());
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   EmitDrop(TypeRef::Of(*self_ty_sym, *sm->CurrentScope), self_sym->LlvmInfo->Alloca, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
@@ -2630,7 +2633,7 @@ auto spp::codegen::fn_impls::StdVolRead(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto self_ty = GetLlvmType(*self_ty_sym, ctx);
 
   // Get the "value" alloca and load the value from it. The
@@ -2654,7 +2657,7 @@ auto spp::codegen::fn_impls::StdVolWrite(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto self_ty = GetLlvmType(*self_ty_sym, ctx);
 
   // Get the llvm representation of the value being written
@@ -2717,7 +2720,7 @@ auto spp::codegen::fn_impls::StdRawBufTakeAt(
 
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.take_at.self" + uid);
 
@@ -2791,7 +2794,7 @@ auto spp::codegen::fn_impls::StdRawBufPlaceAt(
   //
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
@@ -2826,7 +2829,7 @@ auto spp::codegen::fn_impls::StdRawBufShift(
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
@@ -2869,7 +2872,7 @@ auto spp::codegen::fn_impls::StdRawBufClearRange(
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.clear.self" + uid);
 
@@ -3023,7 +3026,7 @@ auto spp::codegen::fn_impls::StdThreadingAtomicIsLockFree(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
 
-  const auto self_type_sym = sm->CurrentScope->FindSelfSymbol();
+  const auto self_type_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
   const auto atom_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_type_sym, ctx));
   const auto val_ty = atom_ty->getElementType(0);
 
@@ -3043,7 +3046,7 @@ auto spp::codegen::fn_impls::StdThreadingAtomicFenceInner(
   SimpleCreateFn(sm, proto, meta, ctx, void_ty, Vec<llvm::Type*>{});
 
   // Build the function body.
-  ctx->Builder.CreateFence(AtomicOrderingOf(sm, meta, ctx, "order"));
+  ctx->Builder.CreateFence(AtomicOrderingOf(sm, "order"));
   ctx->Builder.CreateRetVoid();
 }
 
@@ -3057,7 +3060,7 @@ auto spp::codegen::fn_impls::StdThreadingAtomicLoadInner(
   const auto ptr_arg = fn->arg_begin();
 
   const auto load_inst = ctx->Builder.CreateLoad(ty, ptr_arg, "atomic.load" + uid);
-  load_inst->setAtomic(AtomicOrderingOf(sm, meta, ctx, "order"));
+  load_inst->setAtomic(AtomicOrderingOf(sm, "order"));
   ctx->Builder.CreateRet(load_inst);
 }
 
@@ -3076,7 +3079,7 @@ auto spp::codegen::fn_impls::StdThreadingAtomicStoreInner(
   const auto val_arg = fn->arg_begin() + 1;
 
   const auto store_inst = ctx->Builder.CreateStore(val_arg, ptr_arg);
-  store_inst->setAtomic(AtomicOrderingOf(sm, meta, ctx, "order"));
+  store_inst->setAtomic(AtomicOrderingOf(sm, "order"));
   ctx->Builder.CreateRetVoid();
 }
 
@@ -3096,8 +3099,8 @@ auto spp::codegen::fn_impls::StdThreadingAtomicCompexInner(
   auto const &dl = ctx->Module->getDataLayout();
   const auto cmpxchg_inst = ctx->Builder.CreateAtomicCmpXchg(
     ptr_arg, old_arg, new_arg, dl.getABITypeAlign(elem_ty),
-    AtomicOrderingOf(sm, meta, ctx, "success_order"),
-    AtomicOrderingOf(sm, meta, ctx, "failure_order"));
+    AtomicOrderingOf(sm, "success_order"),
+    AtomicOrderingOf(sm, "failure_order"));
 
   // Repack
   const auto uid = "." + utils::Uid();
@@ -3125,8 +3128,8 @@ auto spp::codegen::fn_impls::StdThreadingAtomicCompexWeakInner(
   auto const &dl = ctx->Module->getDataLayout();
   const auto cmpxchg_inst = ctx->Builder.CreateAtomicCmpXchg(
     ptr_arg, old_arg, new_arg, dl.getABITypeAlign(elem_ty),
-    AtomicOrderingOf(sm, meta, ctx, "success_order"),
-    AtomicOrderingOf(sm, meta, ctx, "failure_order"));
+    AtomicOrderingOf(sm, "success_order"),
+    AtomicOrderingOf(sm, "failure_order"));
   cmpxchg_inst->setWeak(true);
 
   // Repack
@@ -3186,7 +3189,7 @@ auto spp::codegen::fn_impls::StdThreadingAtomicFetchNot(
   auto const &dl = ctx->Module->getDataLayout();
   const auto rmw_inst = ctx->Builder.CreateAtomicRMW(
     ApplyAtomicRmwOp(AtomicRmwOp::Xor), val_field_ptr, val_arg, dl.getABITypeAlign(val_ty),
-    AtomicOrderingOf(sm, meta, ctx, "order"));
+    AtomicOrderingOf(sm, "order"));
   ctx->Builder.CreateRet(rmw_inst);
 }
 

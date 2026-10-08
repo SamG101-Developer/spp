@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_type;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -9,6 +10,7 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.class_prototype_ast;
+import spp.asts.convention_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
@@ -82,7 +84,7 @@ namespace spp::codegen {
       -> std::optional<Vec<llvm::Type*>> {
       using analyse::utils::type_predicates::IsTypeFunction;
       const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-      if (IsTypeFunction(analyse::scopes::TypeRef::OfKind(sym, scope), scope)) {
+      if (IsTypeFunction(analyse::scopes::TypeRef::ForKindCheck(sym, scope), scope)) {
         return Vec<llvm::Type*>{ptr_ty, ptr_ty};
       }
       return std::nullopt;
@@ -91,10 +93,8 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
-  asts::ClassPrototypeAst const *cls_proto,
-  analyse::scopes::ScopeManager const &sm,
-  LlvmCtx const *ctx)
-  -> void {
+  ClassPrototypeAst const *cls_proto,
+  ScopeManager const &sm, LlvmCtx const *ctx) -> void {
   // $ types are function "mock" types (a $-type generated per
   // function that superimposes n FunXXXs over itself). A function
   // used as a value is one of these mocks, so it lowers to the
@@ -112,10 +112,8 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
-  analyse::scopes::Scope const *scope,
-  analyse::scopes::ScopeManager const &sm,
-  LlvmCtx const *ctx)
-  -> void {
+  Scope const *scope, ScopeManager const &sm,
+  LlvmCtx const *ctx) -> void {
   // Get the class symbol from the scope that owns it. This
   // pulls the correct generic instantiation for struct types.
   const auto cls_sym = scope->LinkedTypeSymbol;
@@ -158,20 +156,18 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
   if (parts == kSizedIntegerParts) {
-    const auto bit_width_val = scope->LinkedTypeSymbol->CompArg("w");
-    const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
-    if (bit_width_ast == nullptr) { return; }
-    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
+    const auto bit_width = U64Of(scope->LinkedTypeSymbol->CompArgId("w"));
+    if (not bit_width.has_value()) { return; }
+    const auto w = static_cast<unsigned>(*bit_width);
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getIntNTy(*ctx->Context, w);
     return;
   }
 
   // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
   if (parts == kSizedFloatParts) {
-    const auto bit_width_val = scope->LinkedTypeSymbol->CompArg("w");
-    const auto bit_width_ast = bit_width_val != nullptr ? bit_width_val->To<asts::IntegerLiteralAst>() : nullptr;
-    if (bit_width_ast == nullptr) { return; }
-    const auto w = static_cast<unsigned>(std::stoi(bit_width_ast->Val->TokenData));;
+    const auto bit_width = U64Of(scope->LinkedTypeSymbol->CompArgId("w"));
+    if (not bit_width.has_value()) { return; }
+    const auto w = static_cast<unsigned>(*bit_width);
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
     return;
   }
@@ -180,16 +176,15 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   if (parts == kArrParts) {
     // The template ("Arr", named as written) has no layout; only an instantiation carries its element type and length.
     if (not cls_sym->IsConcrete or cls_sym->InstanceOf == nullptr) { return; }
-    const auto length_val = cls_sym->CompArg("n");
-    const auto length_ast = length_val != nullptr ? length_val->To<asts::IntegerLiteralAst>() : nullptr;
+    const auto length = analyse::scopes::U64Of(cls_sym->CompArgId("n"));
     const auto elem_ref = cls_sym->TypeArgRef("T");
     auto const *const elem_sym = elem_ref.Symbol;
-    if (length_ast != nullptr and elem_sym != nullptr) {
+    if (length.has_value() and elem_sym != nullptr) {
       if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
         RegisterLlvmTypeInfo(elem_sym->Type, sm, ctx);
       }
       if (const auto elem_llvm_type = GetLlvmTypeOf(elem_ref, ctx); elem_llvm_type != nullptr) {
-        cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, std::stoull(length_ast->Val->TokenData));
+        cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, *length);
       }
     }
     return;
@@ -235,15 +230,15 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     cls_sym->LlvmInfo->LlvmType = struct_type;
 
     auto const &dl = ctx->Module->getDataLayout();
-    auto max_size = std::uint64_t{0};
-    auto max_align = std::uint64_t{1};
+    auto max_size = static_cast<std::uint64_t>(0);
+    auto max_align = static_cast<std::uint64_t>(1);
 
     // The members are named relative to the variant, so
     // they are measured from the variant's own scope rather
     // than from wherever the registration walk happens to
     // be.
-    const auto member_sm = analyse::scopes::ScopeManager(
-      sm.GlobalScope, const_cast<analyse::scopes::Scope*>(scope));
+    const auto member_sm = ScopeManager(
+      sm.GlobalScope, const_cast<Scope*>(scope));
 
     const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym, *scope);
     for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(variant_ref, *scope)) {
@@ -285,12 +280,12 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 }
 
 auto spp::codegen::GetLlvmType(
-  analyse::scopes::TypeSymbol const &type_sym,
+  TypeSymbol const &type_sym,
   LlvmCtx const *ctx)
   -> llvm::Type* {
   // A borrow is a pointer to the borrowee whatever the borrowee
   // is, so nothing has to be lowered to answer for it.
-  if (type_sym.Convention != nullptr) { return llvm::PointerType::get(*ctx->Context, 0); }
+  if (type_sym.Convention != asts::ConventionTag::MOV) { return llvm::PointerType::get(*ctx->Context, 0); }
 
   // Otherwise lower it now if nothing has yet. Types are minted
   // right through monomorphisation and code generation, so "has
@@ -303,16 +298,14 @@ auto spp::codegen::GetLlvmType(
 }
 
 auto spp::codegen::GetLlvmTypeOf(
-  analyse::scopes::TypeRef const &ref,
-  LlvmCtx const *ctx)
-  -> llvm::Type* {
+  TypeRef const &ref, LlvmCtx const *ctx) -> llvm::Type* {
   if (ref.IsBorrowed()) { return llvm::PointerType::get(*ctx->Context, 0); }
   return ref.Symbol != nullptr ? GetLlvmType(*ref.Symbol, ctx) : nullptr;
 }
 
 auto spp::codegen::EnsureLlvmTypeComplete(
-  analyse::scopes::TypeSymbol const &type_sym,
-  analyse::scopes::ScopeManager const &sm,
+  TypeSymbol const &type_sym,
+  ScopeManager const &sm,
   LlvmCtx const *ctx)
   -> void {
   // A symbol that names another type without carrying its
@@ -338,7 +331,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
     // whose class scope carries another "Self" - and following
     // the chain would then never end. Same guard, and for the
     // same reason, as the layout walk below.
-    static thread_local auto in_progress = Set<analyse::scopes::TypeSymbol const*>();
+    static thread_local auto in_progress = Set<TypeSymbol const*>();
     if (not in_progress.insert(&type_sym).second) { return; }
 
     EnsureLlvmTypeComplete(*linked_sym, sm, ctx);

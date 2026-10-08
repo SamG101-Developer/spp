@@ -1,8 +1,9 @@
 module spp.codegen.llvm_mangle;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.asts.cmp_statement_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_ast;
@@ -30,10 +31,14 @@ namespace spp::codegen::mangle {
       analyse::scopes::TypeSymbol const *naming)
       -> Str {
       const auto named = scope.TypeAstOf(id);
-      auto out = named != nullptr and named->GetConvention() != nullptr ? named->GetConvention()->ToString() : Str();
-      auto const *const sym = scope.TypeSymbolOf(analyse::scopes::BareTypeId(id));
-      return out + (sym != nullptr and sym != naming ? MangleTypeName(*sym)
-        : named != nullptr ? named->WithoutConvention()->ToString()
+      const auto out = named != nullptr and named->GetConvention() != nullptr
+        ? named->GetConvention()->ToString()
+        : Str();
+      auto const *const sym = scope.FindTypeSymbolById(analyse::scopes::BareOf(id));
+      return out + (sym != nullptr and sym != naming
+        ? MangleTypeName(*sym)
+        : named != nullptr
+        ? named->WithoutConvention()->ToString()
         : Str("?"));
     }
 
@@ -48,14 +53,54 @@ namespace spp::codegen::mangle {
       return id != nullptr ? MangleTypeId(*scope, id, naming) : type.ToString();
     }
 
-    /// "MangleTypeId" for a comp argument ("Scope::CompAstOf"): "1_uz + 1_uz" and "2_uz" are one value, and print
-    /// alike. The identity's own text where it builds no value (an opaque one).
+    /// A comp identity ("CompKey") written out, for a value that builds no ast to print (an opaque one): a value as its
+    /// literal ("V2_uz"), a comp parameter by its "ParamId" ("C12"), a pack ("P(V1_uz, C12)"), an operation over two
+    /// of them ("(C12 + V1_uz)"), a constant named through a type ("M<type>.name", the type by its "TypeId"'s word), or
+    /// anything else as its spelling, length-prefixed ("O5:x.y()"). The prefixes keep a value and a parameter of the
+    /// same number apart in the symbol name, and the brackets keep "(a + b) * c" and "a + (b * c)" apart.
+    auto MangleCompKey(
+      analyse::scopes::CompKey const &node)
+      -> Str {
+      using Kind = analyse::scopes::CompKey::Part;
+      switch (node.Kind) {
+        case Kind::Value:
+          if (auto const *const value = node.AsBool(); value != nullptr) { return *value ? "Vtrue" : "Vfalse"; }
+          if (auto const *const value = node.AsFloat(); value != nullptr) {
+            return "V" + value->ToString() + "_" + node.Text;
+          }
+          return "V" + node.AsInt()->ToString() + "_" + node.Text;
+        case Kind::Param:
+          return "C" + std::to_string(node.ParamId);
+        case Kind::Opaque:
+          return "O" + std::to_string(node.Text.size()) + ":" + node.Text;
+        case Kind::Member:
+          return "M" + std::to_string(node.Type) + "." + node.Text;
+        case Kind::Pack: {
+          auto out = Str("P(");
+          for (auto i = 0uz; i < node.Kids.size(); ++i) {
+            if (i != 0) { out += ", "; }
+            out += MangleCompKey(*node.Kids[i]);
+          }
+          return out + ")";
+        }
+        case Kind::Op:
+          return "(" + MangleCompKey(*node.Kids[0]) + " " + node.Text + " " + MangleCompKey(*node.Kids[1]) + ")";
+        default:
+          return {};
+      }
+    }
+
+    /// "MangleTypeId" for a comp argument ("Scope::CompAstOf"):
+    /// "1_uz + 1_uz" and "2_uz" are one value, and print alike.
+    /// The identity written out where it builds no value (an
+    /// opaque one).
     auto MangleCompId(
       analyse::scopes::Scope const &scope,
       const analyse::scopes::CompId id)
       -> Str {
       const auto value = scope.CompAstOf(id);
-      return value != nullptr ? value->ToString() : Str(analyse::scopes::CompIdText(id));
+      if (value != nullptr) { return value->ToString(); }
+      return id != nullptr ? MangleCompKey(*id) : Str();
     }
 
     /// "MangleTypeArg" for a written comp argument.
@@ -76,7 +121,7 @@ namespace spp::codegen::mangle {
       for (auto i = 0uz; i < args.Len(); ++i) {
         auto const *arg = args[i];
         if (i != 0) { out += ", "; }
-        if (arg->TypeName() != nullptr) { out += arg->TypeName()->ToString() + "="; }
+        if (arg->KeywordName() != nullptr) { out += arg->KeywordName()->ToString() + "="; }
         out += arg->IsTypeArg() ? MangleTypeArg(*arg->TypeVal, scope, naming) : MangleCompArg(*arg->CompVal, scope);
       }
       return out + "]";
@@ -126,7 +171,7 @@ namespace spp::codegen::mangle {
     auto HashHex(
       Str const &text)
       -> Str {
-      auto hash = std::uint64_t{14695981039346656037ull};
+      auto hash = static_cast<std::uint64_t>(14695981039346656037ull);
       for (const auto c : text) {
         hash ^= static_cast<unsigned char>(c);
         hash *= 1099511628211ull;
@@ -156,9 +201,9 @@ auto spp::codegen::mangle::MangleTypeName(
   // An instantiation is printed off its identity: its template's qualified name, then each argument as the symbol filed
   // under it (else its identity's name). Its spelled arguments, read in its own scope, would be read through its own
   // bindings, which can name the parameters they bind ("Args" bound to "Tup[FunMov[Args, Out], Args]") and grow.
-  using analyse::scopes::InstanceKey;
+  using analyse::scopes::TypeKey;
   if (type_sym.Id != nullptr and type_sym.LinkedScope != nullptr
-    and analyse::scopes::HeadOf(type_sym.Id).Kind == InstanceKey::Tag::Inst) {
+    and analyse::scopes::HeadOf(type_sym.Id).Kind == TypeKey::Tag::Inst) {
     auto const &scope = *type_sym.LinkedScope;
     auto const *const tmpl = analyse::scopes::HeadOf(type_sym.Id).Symbol();
     auto out = tmpl->FqName()->WithoutGns()->ToString() + "[";
@@ -166,7 +211,7 @@ auto spp::codegen::mangle::MangleTypeName(
     for (auto const &arg : analyse::scopes::ArgsOf(analyse::scopes::HeadOf(type_sym.Id).Args)) {
       if (not first) { out += ", "; }
       first = false;
-      if (arg.Named) { out += Str(analyse::scopes::WordText(arg.Name)) + "="; }
+      if (arg.Named) { out += analyse::scopes::ArgNameOf(arg) + "="; }
       out += arg.TypeVal != nullptr ? MangleTypeId(scope, arg.TypeVal, &type_sym) : MangleCompId(scope, arg.CompVal);
     }
     return out + "]";
@@ -271,7 +316,7 @@ auto spp::codegen::mangle::MangleFnName(
     for (auto i = 0uz; i < owner_args.Len(); ++i) {
       auto const *arg = owner_args[i];
       if (i != 0) { readable += ", "; }
-      if (arg->TypeName() != nullptr) { readable += arg->TypeName()->ToString() + "="; }
+      if (arg->KeywordName() != nullptr) { readable += arg->KeywordName()->ToString() + "="; }
       if (arg->IsCompArg()) {
         readable += MangleCompArg(*arg->CompVal, &owner_scope);
         continue;

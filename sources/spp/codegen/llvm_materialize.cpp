@@ -5,7 +5,6 @@ module spp.codegen.LlvmMaterialize;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.regions;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -23,20 +22,18 @@ import llvm;
 import std;
 
 auto spp::codegen::LlvmMaterialize(
-  asts::ExpressionAst &ast,
-  analyse::scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta,
-  LlvmCtx *ctx)
-  -> asts::IdentifierAst* {
+  ExpressionAst &ast, ScopeManager *sm, CompilerMetaData *meta,
+  LlvmCtx *ctx) -> IdentifierAst* {
   // Materialise an expression by assigning it to a temporary
   // variable.
   const auto uid = "." + spp::utils::Uid();
-  auto var_name = MakeShared<asts::IdentifierAst>(ast.PosStart(), "$temp" + uid);
-  const auto var = MakeUnique<asts::LocalVariableSingleIdentifierAst>(nullptr, std::move(var_name), nullptr);
+  auto var_name = MakeShared<IdentifierAst>(ast.PosStart(), "$temp" + uid);
+  const auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
+    nullptr, std::move(var_name), nullptr);
 
   // Analyse semantics and generate code for the let statement.
   {
-    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta);
     meta->LetStatementExplicitType = ast.InferType(sm, meta);
     meta->LetStatementFromUninitialized = true;
     meta->LetStatementValue = nullptr;
@@ -47,22 +44,19 @@ auto spp::codegen::LlvmMaterialize(
     meta->LetStatementValue = &ast;
     var->Stage11_CodeGen(sm, meta, ctx);
   }
-  const auto materialized_val = var->To<asts::LocalVariableSingleIdentifierAst>()->Name.get();
+  const auto materialized_val = var->To<LocalVariableSingleIdentifierAst>()->Name.get();
   return materialized_val;
 }
 
 auto spp::codegen::LlvmAddrOf(
-  asts::ExpressionAst &ast,
-  analyse::scopes::ScopeManager *sm,
-  asts::meta::CompilerMetaData *meta,
-  LlvmCtx *ctx)
-  -> llvm::Value* {
-  //
-  using analyse::utils::regions::IsDeref;
-
-  // An expression that is already a borrow evaluates to the address of what it borrows, so it is its own address:
-  // this covers re-borrowing a borrowed variable, and the forwarding calls ("x.fwd_ref()") that yield one. Note: we
-  // don't enforce the borrow on the llvm type, because Gen[&XXX] is valid, but not a borrow.
+  ExpressionAst &ast, ScopeManager *sm, CompilerMetaData *meta,
+  LlvmCtx *ctx) -> llvm::Value* {
+  // An expression that is already a borrow evaluates to the
+  // address of what it borrows, so it is its own address:
+  // this covers re-borrowing a borrowed variable, and the
+  // forwarding calls ("x.fwd_ref()") that yield one. Note:
+  // we don't enforce the borrow on the llvm type, because
+  // Gen[&XXX] is valid, but not a borrow.
   if (ast.InferTypeRef(sm, meta).IsBorrowed()) {
     const auto borrow_val = ast.Stage11_CodeGen(sm, meta, ctx);
     return borrow_val;
@@ -72,14 +66,16 @@ auto spp::codegen::LlvmAddrOf(
   // is the pointer that "x" holds - not the address of "x"
   // itself, (the borrow)
   if (IsDeref(&ast)) {
-    return ast.To<asts::PostfixExpressionAst>()->Lhs->Stage11_CodeGen(sm, meta, ctx);
+    return ast.To<PostfixExpressionAst>()->Lhs->Stage11_CodeGen(sm, meta, ctx);
   }
 
-  // A member access generates the address of its own field, which is the object a borrow of it points at. The symbol
-  // lookup below cannot be used for one, because it resolves to the head of the chain ("a" in "a.b").
-  if (asts::IsRuntimeMemberAccess(&ast)) {
+  // A member access generates the address of its own field,
+  // which is the object a borrow of it points at. The symbol
+  // lookup below cannot be used for one, because it resolves
+  // to the head of the chain ("a" in "a.b").
+  if (IsRuntimeMemberAccess(&ast)) {
     const auto field_ptr = [&] {
-      const auto _meta_guard = asts::meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->LlvmWantAddress = true;
       return ast.Stage11_CodeGen(sm, meta, ctx);
     }();
@@ -87,23 +83,29 @@ auto spp::codegen::LlvmAddrOf(
     return field_ptr;
   }
 
-  // A symbolic expression (a variable, or a static member of a type or namespace) is already allocated somewhere. A
-  // constant folded where it is used ("cmp n: USize = k + 1_uz" in a generic "sup") has no storage, and is materialised
-  // below like any other value.
+  // A symbolic expression (a variable, or a static member
+  // of a type or namespace) is already allocated somewhere.
+  // A constant folded where it is used
+  // ("cmp n: USize = k + 1_uz" in a generic "sup") has no
+  // storage, and is materialised below like any other value.
   if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(ast).first;
     sym != nullptr and sym->LlvmInfo != nullptr and sym->LlvmInfo->Alloca != nullptr) {
     const auto llvm_alloca = sym->LlvmInfo->Alloca;
     SPP_ASSERT(llvm_alloca != nullptr and llvm_alloca->getType()->isPointerTy());
 
-    // A "cmp" constant is a global, and a global belongs to the one module that defines it - borrowing one from
-    // another module has to go through that module's own declaration of the symbol, the same way a load of one does.
+    // A "cmp" constant is a global, and a global belongs to
+    // the one module that defines it - borrowing one from
+    // another module has to go through that module's own
+    // declaration of the symbol, the same way a load of one
+    // does.
     if (const auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(llvm_alloca); global_var != nullptr) {
       return GetOrAddGlobalIntoCurrentModule(*global_var, *GetEmissionModule(*ctx));
     }
     return llvm_alloca;
   }
 
-  // Anything else has no storage of its own, so give it some by binding it to a temporary.
+  // Anything else has no storage of its own, so give it
+  // some by binding it to a temporary.
   const auto materialized_val = LlvmMaterialize(ast, sm, meta, ctx);
   const auto materialized_sym = sm->CurrentScope->FindVarSymbol(materialized_val);
   SPP_ASSERT(materialized_sym->LlvmInfo->Alloca->getType()->isPointerTy());

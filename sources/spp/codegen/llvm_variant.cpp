@@ -237,8 +237,8 @@ auto spp::codegen::CoerceToVariant(
   // elements, so each side maps a declared index through its own field index map. Told apart by the lowered types,
   // not "TypeEq": its comparison of the generic arguments lets a variant take one of its members.
   if (IsTypeTuple(target, scope) and IsTypeTuple(source, scope)) {
-    const auto target_args = target.Symbol->TypeArgs();
-    const auto source_args = source.Symbol->TypeArgs();
+    const auto target_args = target.Symbol->TypeArgRefs();
+    const auto source_args = source.Symbol->TypeArgRefs();
     const auto target_llvm_type = GetLlvmTypeOf(target, ctx);
     const auto source_llvm_type = GetLlvmTypeOf(source, ctx);
     if (target_llvm_type != nullptr and source_llvm_type != nullptr and target_llvm_type != source_llvm_type
@@ -249,7 +249,7 @@ auto spp::codegen::CoerceToVariant(
         auto elem = ctx->Builder.CreateExtractValue(
           llvm_val, {GetPhysicalFieldIndex(*source.Symbol->LlvmInfo, i)}, elem_name + ".from");
         elem = CoerceToVariant(
-          elem, TypeRef::Of(*target_args[i], scope), TypeRef::Of(*source_args[i], scope), scope, elem_name, ctx);
+          elem, target_args[i], source_args[i], scope, elem_name, ctx);
         out = ctx->Builder.CreateInsertValue(
           out, elem, {GetPhysicalFieldIndex(*target.Symbol->LlvmInfo, i)}, elem_name + ".to");
       }
