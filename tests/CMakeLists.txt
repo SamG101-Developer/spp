@@ -10,7 +10,7 @@ add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
 find_package(GTest REQUIRED)
 target_link_libraries(
   ${PROJECT_NAME}_tests
-  PRIVATE spp_lib GenEx::GenEx GTest::gtest GTest::gtest_main
+  PRIVATE spp_lib GenEx::GenEx NumEx::NumEx GTest::gtest GTest::gtest_main
 )
 
 # Include test frameworks for discovering tests.
