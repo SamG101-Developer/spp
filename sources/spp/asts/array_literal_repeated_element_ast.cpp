@@ -326,6 +326,13 @@ auto ArrayLiteralRepeatedElementAst::InferType(
   return array_type;
 }
 
+auto ArrayLiteralRepeatedElementAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The array type is built as syntax ("Arr[T, n]"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
 auto ArrayLiteralRepeatedElementAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both the repeated element and the count are expressions;

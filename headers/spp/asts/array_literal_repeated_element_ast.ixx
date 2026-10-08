@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ArrayLiteralRepeatedElementAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct GenericArgumentAst);
@@ -83,6 +84,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// type, and the provided size; and then analyse the
   /// type to trigger a generic instantiation.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// Move through the element and size to substitute
   /// generics in as they might contain postfix ops that

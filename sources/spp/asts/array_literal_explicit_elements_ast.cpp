@@ -283,6 +283,13 @@ auto ArrayLiteralExplicitElementsAst::InferType(
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
+auto ArrayLiteralExplicitElementsAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The array type is built as syntax ("Arr[T, n]", "_BuildType"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
 auto ArrayLiteralExplicitElementsAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;

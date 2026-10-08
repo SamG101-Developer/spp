@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ArrayLiteralExplicitElementsAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
@@ -76,6 +77,8 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
   /// consistent types, the number of elements, and then
   /// analyse the type to trigger a generic instantiation.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// Move through the elements to substitute generics in
   /// as they might contain postfix ops that need to be
