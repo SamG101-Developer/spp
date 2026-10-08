@@ -71,7 +71,7 @@ auto TypeUnaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypeUnaryExpressionAst>(
     Op, AstCloneShared(Rhs));
-  t->_WrittenTypeId = _WrittenTypeId;
+  t->_StampedTypeId = _StampedTypeId;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -114,6 +114,16 @@ auto TypeUnaryExpressionAst::InferType(
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
   const auto type_sym = type_scope->FindTypeSymbol(this);
   return type_sym->FqName()->WithConvention(AstClone(GetConvention()));
+}
+
+auto TypeUnaryExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The symbol this type finds, read here, held as written ("&T") and by value otherwise.
+  const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
+  const auto type_sym = type_scope->FindTypeSymbol(this);
+  if (type_sym == nullptr) { return TypeRef(); }
+  const auto conv = GetConvention();
+  return TypeRef::Of(*type_sym, *sm->CurrentScope, conv != nullptr ? conv->Tag() : ConventionTag::MOV);
 }
 
 auto TypeUnaryExpressionAst::IsNeverType() const noexcept -> bool {
