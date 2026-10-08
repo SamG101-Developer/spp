@@ -121,10 +121,11 @@ auto FloatLiteralAst::ValidateBounds(
 }
 
 auto FloatLiteralAst::FromBigVal(
-  numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst> {
+  numex::BigDec const &value, Str const &type, const std::optional<std::uint64_t> places) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
-  const auto digits = (is_negative ? -value : value).Decimal(kDecimalPlaces.at(type));
+  const auto digits = (is_negative ? -value : value).Decimal(
+    places.has_value() ? *places : kDecimalPlaces.at(type));
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);

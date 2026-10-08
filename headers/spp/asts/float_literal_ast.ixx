@@ -98,8 +98,12 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// with the sign as its own token. The value is not range
   /// checked here - what produced it has no scope to report an
   /// error against - so a caller that can compute an out of range
-  /// value pairs this with "ValidateBounds".
-  static auto FromBigVal(numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
+  /// value pairs this with "ValidateBounds". Printed to "places"
+  /// decimal places when given (enough for an exact value), else
+  /// to the type's own precision.
+  static auto FromBigVal(
+    numex::BigDec const &value, Str const &type,
+    std::optional<std::uint64_t> places = std::nullopt) -> Unique<FloatLiteralAst>;
 
   /// Raise if this literal's value is one its type cannot hold. A
   /// written literal is checked when it is analysed; one that
