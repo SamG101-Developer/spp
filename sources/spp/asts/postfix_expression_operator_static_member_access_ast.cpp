@@ -314,6 +314,30 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   return lhs_ns_scope->FindTypeSymbol(type.get())->FqName();
 }
 
+auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // A member of a type is read where its owner declares it, which binds the parameters its type names; a method's
+  // "$" mock is named as a nested type of the owner ("InferType"). A namespace member is read in its namespace.
+  IMPORT_UTILS;
+  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+    const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
+    const auto sym = analyse::utils::member_lookup::MemberOf(
+      *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
+    if (sym != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
+      return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
+    }
+    if (sym != nullptr) { return sym->TypeRefIn(*lhs_type_sym->LinkedScope); }
+
+    // A member reached by forwarding is the forwarded-to type's.
+    const auto lhs_ref = TypeRef::Of(*lhs_as_type, *sm->CurrentScope);
+    const auto inner_type_sym =
+      marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
+    return inner_type_sym->LinkedScope->FindVarSymbol(Name.get(), true)->TypeRefIn(*inner_type_sym->LinkedScope);
+  }
+  const auto lhs_ns_scope = LhsNsScope(sm, meta);
+  return lhs_ns_scope->FindVarSymbol(Name.get(), true)->TypeRefIn(*lhs_ns_scope);
+}
+
 auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
   ScopeManager const *sm, CompilerMetaData const *meta) -> Scope const* {
   // Resolve the namespace once, from where the access was written. A
