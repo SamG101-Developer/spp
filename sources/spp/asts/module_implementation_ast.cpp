@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.asts.module_member_ast;
+import spp.asts.sup_prototype_extension_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.lsp.resolution_index;
@@ -21,34 +22,63 @@ namespace {
   /// For the normal caller, once we get an error, we raise it
   /// and stop the compiler execution. If the sink is enabled
   /// however, this is for the IDEA plugin's indexing, so we
-  /// store the error in the sink, shift past the member's scope,
-  /// and move onto the next member, allowing multiple errors,
-  /// from different functions, to show at once.
+  /// store the error in the sink against the member, which
+  /// "poisons" it so every later stage skips it, allowing
+  /// multiple errors, from different members, to show at once.
+  /// Answers whether the member ran without an error.
   template <typename F>
-  auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
+  auto CheckMember(Ast *const member, F &&check) -> bool {
     IMPORT_UTILS;
     namespace sink = diagnostic_sink;
     // Normal behaviour: run the member, an error stops execution,
     // displays the error and terminates the compiler.
-    if (not sink::IsEnabled()) { return stage(member); }
-
-    // If we have "poisoned" the sink for this member (via the
-    // "report" method), then skip the scopes and we move to the
-    // next member.
-    if (sink::IsPoisoned(member)) {
-      sm->SkipPastScope(member->GetAstScope());
-      return;
+    if (not sink::IsEnabled()) {
+      check(member);
+      return true;
     }
 
-    // Otherwise, try to run the stage for the member, and if it
-    // raises an error, then report it to the sink, skip the member's
-    // scopes, and move to the next member.
+    // A member that an earlier stage "poisoned" (via the "report"
+    // method) is not run again.
+    if (sink::IsPoisoned(member)) { return false; }
+
+    // Otherwise, try to run the check for the member, and if it
+    // raises an error, then report it to the sink.
     try {
-      stage(member);
+      check(member);
+      return true;
     }
     catch (SemanticError const &e) {
       sink::Report(e, member);
-      sm->SkipPastScope(member->GetAstScope());
+      return false;
+    }
+  }
+
+  /// Whether a member has scopes of its own for the walk to skip.
+  /// A member's scope is where it was declared unless it makes
+  /// one, and skipping past the scope the walk is already in (or
+  /// one above it) would throw away the rest of the module.
+  auto OwnsScope(Ast const &member, Scope const &walk_scope) -> bool {
+    for (auto const *s = &walk_scope; s != nullptr; s = s->Parent) {
+      if (s == member.GetAstScope()) { return false; }
+    }
+    return member.GetAstScope() != nullptr;
+  }
+
+  /// "CheckMember" for a stage that walks the scopes: a member
+  /// that did not run to the end is skipped past, so the walk
+  /// continues at the next member. The walk only moves forwards,
+  /// and an error can be raised after the member has walked past
+  /// its own scopes (a value left unconsumed is found as the
+  /// function's scope is left), so it is first put back where it
+  /// stood before the member, from where the member's scopes are
+  /// all still ahead.
+  template <typename F>
+  auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
+    const auto start_scope = sm->CurrentScope;
+    const auto start_it = sm->GetCurrentIterator();
+    if (not CheckMember(member, std::forward<F>(stage))) {
+      sm->Reset(start_scope, start_it);
+      if (OwnsScope(*member, *start_scope)) { sm->SkipPastScope(member->GetAstScope()); }
     }
   }
 }
@@ -117,7 +147,9 @@ auto ModuleImplementationAst::Stage5_LoadSupScopes(
 auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
-  for (auto const &member : Members) { member->Stage6_PreAnalyseSemantics(sm, meta); }
+  for (auto const &member : Members) {
+    RunMember(member.get(), sm, [&](auto *m) { m->Stage6_PreAnalyseSemantics(sm, meta); });
+  }
 }
 
 auto ModuleImplementationAst::Stage7_AnalyseSemantics(
@@ -127,7 +159,8 @@ auto ModuleImplementationAst::Stage7_AnalyseSemantics(
     RunMember(member.get(), sm, [&](auto *m) { m->Stage7_AnalyseSemantics(sm, meta); });
   }
 
-  // What the module itself holds - its own declarations, and everything imported into it - which can be named
+  // What the module itself holds - its own declarations,
+  // and everything imported into it - which can be named
   // anywhere in the file.
   if (lsp::resolution_index::IsEnabled()) {
     lsp::resolution_index::RecordScopeOf(*this, *sm, true);
@@ -162,6 +195,18 @@ auto ModuleImplementationAst::Stage11_CodeGen(
   // Shift to members.
   for (auto const &member : Members) { member->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;
+}
+
+auto ModuleImplementationAst::CheckExtensionMembers(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Check the members of each extension block against its super
+  // class. Nothing walks the scopes here, so there is nothing to
+  // skip past for a block that fails.
+  for (auto const &member : Members) {
+    if (const auto ext = member->To<SupPrototypeExtensionAst>()) {
+      CheckMember(member.get(), [&](auto *) { ext->CheckExtensionMembers(*sm, meta); });
+    }
+  }
 }
 
 SPP_MOD_END

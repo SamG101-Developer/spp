@@ -8,12 +8,11 @@ module;
 module spp.compiler.compiler_boot;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.comp_generics;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.monomorphization;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
@@ -22,6 +21,7 @@ import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -101,9 +101,6 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
   ModuleTree &tree,
   asts::Ast *ctx)
   -> void {
-  // The identity layer reads a constant named through a type through the analysis that can look it up.
-  analyse::scopes::CompMembers::Find = &analyse::utils::comp_generics::FindCompMemberId;
-
   // Pre-processing stage.
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER;
@@ -199,6 +196,17 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::utils::monomorphization::StartInstantiatingOnRead(
     sm->GlobalScope, asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
+
+  // Every extension block's members are checked against its
+  // super class before anything is pre-analysed, so a bad
+  // override is reported where it is written, rather than
+  // as an abstract type use wherever the type is first named.
+  for (auto const &mod : _Modules) {
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
+    mod->Impl->CheckExtensionMembers(sm, &meta);
+    sm->Reset();
+  }
+
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
