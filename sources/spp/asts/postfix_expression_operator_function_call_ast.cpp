@@ -687,11 +687,19 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // Get the function return type from the overload.
   auto ret_type = _OverloadInfo->Proto->ReturnType;
 
-  // If there is a scope present (non-closure), then fully qualify the return type.
-  if (_OverloadInfo->OverloadScope != nullptr and not ret_type->IsSelfType()) {
-    // A return type naming the callee's "sup" block generics through a convention ("GenOnce[&V]") can miss from the
-    // callee's own block, and is found from the call site, where the same generic is in view.
-    auto *ret_sym = _OverloadInfo->OverloadScope->FindTypeSymbol(ret_type.get());
+  // An instantiation whose arguments name a parameter it
+  // binds returns by identity, spelled where the call is,
+  // whose parameters those are.
+  if (const auto ret_id = _OverloadInfo->Proto->InstanceReturnTypeId; ret_id != nullptr) {
+    if (auto spelled = sm->CurrentScope->TypeAstOf(ret_id); spelled != nullptr) {
+      ret_type = std::move(spelled);
+    }
+  }
+
+  // Otherwise, if there is a scope present (non-closure),
+  // then fully qualify the return type.
+  else if (_OverloadInfo->OverloadScope != nullptr and not ret_type->IsSelfType()) {
+    auto ret_sym = _OverloadInfo->OverloadScope->FindTypeSymbol(ret_type.get());
     if (ret_sym == nullptr) { ret_sym = sm->CurrentScope->FindTypeSymbol(ret_type.get()); }
     if (ret_sym != nullptr) { ret_type = ret_sym->FqName(); }
   }
@@ -735,6 +743,15 @@ auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   // type written in terms of "Self" build the type they return, so they are inferred as one - as is any return type
   // whose instantiation is not filed under that identity here.
   if (_FoldedAsts.IsEmpty() and not _IsCoroAndAutoResume and _OverloadInfo->OverloadScope != nullptr) {
+    // An instantiation's return type by identity, as it is.
+    if (const auto ret_id = _OverloadInfo->Proto->InstanceReturnTypeId; ret_id != nullptr) {
+      if (not ret_id->HasSelf) {
+        if (const auto read = TypeRef::Of(ret_id, *sm->CurrentScope); read.Symbol != nullptr) {
+          return read;
+        }
+      }
+      return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
+    }
     auto const &ret_type = _OverloadInfo->Proto->ReturnType;
     if (not type_predicates::DoesTypeNameSelf(*ret_type)) {
       auto *ret_sym = _OverloadInfo->OverloadScope->FindTypeSymbol(ret_type.get());
