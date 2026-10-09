@@ -55,6 +55,11 @@ public:
   auto Give(
     Vec<Unique<GenericArgumentAst>> args, bool emit = false) -> void;
 
+  /// "Give" for a layer of bindings by identity (a match's): each
+  /// under its parameter, read where "scope" reads it.
+  auto Give(
+    GenericSubst const &bindings, Scope const &scope) -> void;
+
   /// Record that "source" was given where "target" is declared,
   /// under the name "name" (a parameter or an attribute).
   auto Unify(
@@ -66,9 +71,11 @@ public:
   auto ReadDeclaredWith(
     GenericSubst reading) -> void;
 
-  /// Everything bound so far, as arguments (borrowed from the solver).
-  SPP_ATTR_NODISCARD auto GetKnownArgs() const
-    -> Vec<GenericArgumentAst*>;
+  /// Everything given so far, as bindings of the parameters "params"
+  /// declares, and of "Self" (0) where it is pinned; nothing when
+  /// nothing was given.
+  SPP_ATTR_NODISCARD auto KnownBindings(GenericParameterGroupAst const &params) const
+    -> std::optional<GenericSubst>;
 
   /// Solve, raising on a conflict, an uninferred parameter, a comp
   /// argument of the wrong type or an unsatisfied constraint. "variadic_fn_param" names a
@@ -77,8 +84,15 @@ public:
   auto Solve(
     Ast const &owner, Shared<IdentifierAst> const &variadic_fn_param = nullptr) -> void;
 
+  /// The solution's instance key, as "Scope::ArgsIdOf" keys the
+  /// arguments "TakeArgs" makes, built from the identities held
+  /// rather than from arguments read back.
+  SPP_ATTR_NODISCARD auto SolvedArgsId() const -> scopes::TypeId;
+
   /// The solution, in parameter order, followed by the emitted
-  /// names that are not parameters.
+  /// names that are not parameters. A type not given is read back
+  /// from its identity, recording what it means ("Scope::TypeAstOf"),
+  /// so it needs no analysis to be read again.
   auto TakeArgs()
     -> Vec<Unique<GenericArgumentAst>>;
 
@@ -97,8 +111,11 @@ private:
   scopes::GenericSubst _DeclaredReading;
 
   bool _Trivial = false;
+  bool _AnyGiven = false;
 
   auto _Find(TypeIdentifierAst const &name) const -> _Entry*;
+  auto _EntryParamId(_Entry const &entry) const -> std::uint64_t;
+  auto _EntryTypeId(_Entry const &entry) const -> scopes::TypeId;
   auto _AstOf(_TypeVal const &val) const -> Shared<TypeAst>;
   auto _Bindings(_Entry const *except = nullptr) const -> scopes::GenericSubst;
   auto _OfferAll(scopes::GenericSubst const &inferred, Shared<TypeAst> const &site,

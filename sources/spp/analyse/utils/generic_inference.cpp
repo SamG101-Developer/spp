@@ -381,6 +381,41 @@ auto GenericSolver::Give(
     }
     else { entry->CompVals.EmplaceBack(arg->CompVal); }
     _Given.EmplaceBack(std::move(arg));
+    _AnyGiven = true;
+  }
+}
+
+auto GenericSolver::Give(
+  GenericSubst const &bindings, Scope const &scope) -> void {
+  // As "Give" does for arguments, each binding under its parameter's name (by identity where the name records one),
+  // held as the identity it is; a layer given earlier outranks it.
+  const auto take = [&](TypeIdentifierAst const &name) -> _Entry* {
+    auto *entry = _Find(name);
+    if (entry != nullptr and entry->IsBound()) { return nullptr; }
+    if (entry == nullptr) {
+      auto extra = MakeUnique<_Entry>();
+      extra->Param = nullptr;
+      extra->Name = static_shared_cast<TypeIdentifierAst>(AstCloneShared(&name));
+      entry = extra.get();
+      _Entries.EmplaceBack(std::move(extra));
+    }
+    _AnyGiven = true;
+    return entry;
+  };
+  for (auto const &[pid, id] : bindings.TypeParams) {
+    auto const *const param = pid != 0 ? scopes::FindGnTypeParamById(pid) : nullptr;
+    if (param == nullptr or id == nullptr) { continue; }
+    if (auto *const entry = take(*param->Name); entry != nullptr) {
+      entry->TypeVals.EmplaceBack(_TypeVal{.Id = id, .Written = nullptr, .Site = nullptr});
+      entry->IsTypeGiven = true;
+    }
+  }
+  for (auto const &[pid, id] : bindings.CompParams) {
+    auto const *const param = scopes::FindGnCompParamById(pid);
+    if (param == nullptr or id == nullptr) { continue; }
+    if (auto *const entry = take(*TypeIdentifierAst::FromIdentifier(*param->Name)); entry != nullptr) {
+      entry->CompVals.EmplaceBack(scope.CompAstOf(id));
+    }
   }
 }
 
@@ -398,8 +433,57 @@ auto GenericSolver::ReadDeclaredWith(
   _DeclaredReading = std::move(reading);
 }
 
-auto GenericSolver::GetKnownArgs() const -> Vec<GenericArgumentAst*> {
-  return _Given | genex::views::ptr | genex::to<Vec>();
+auto GenericSolver::KnownBindings(
+  GenericParameterGroupAst const &params) const -> std::optional<GenericSubst> {
+  // What was given, by the parameter each binds ("BindByName"'s rule over the given layers), packs marked; and "Self"
+  // where it is pinned.
+  if (not _AnyGiven) { return std::nullopt; }
+  const auto declared = scopes::ParamsDeclaredBy(params);
+  auto out = GenericSubst();
+  for (auto const &entry : _Entries) {
+    if (not entry->IsBound()) { continue; }
+    const auto pid = _EntryParamId(*entry);
+    if (pid == 0 and entry->Name->ToView() == "Self" and not entry->TypeVals.IsEmpty()) {
+      if (const auto self_id = _EntryTypeId(*entry); self_id != nullptr) { out.TypeParams.emplace_back(0, self_id); }
+      continue;
+    }
+    if (not entry->TypeVals.IsEmpty() and genex::contains(declared.TypeParams, pid)) {
+      const auto id = _EntryTypeId(*entry);
+      if (id == nullptr) { continue; }
+      out.TypeParams.emplace_back(pid, id);
+      if (auto const *const param = scopes::FindGnTypeParamById(pid); param != nullptr and param->IsVariadic) {
+        out.TypePackParams.push_back(pid);
+      }
+    }
+    else if (not entry->CompVals.IsEmpty() and genex::contains(declared.CompParams, pid)) {
+      out.CompParams.emplace_back(pid, _Sm->CurrentScope->CompIdOf(*entry->CompVals[0]));
+      if (auto const *const param = scopes::FindGnCompParamById(pid); param != nullptr and param->IsVariadic) {
+        out.CompPackParams.push_back(pid);
+      }
+    }
+  }
+  return out;
+}
+
+auto GenericSolver::_EntryParamId(
+  _Entry const &entry) const -> std::uint64_t {
+  // The parameter an entry's argument is keyed by ("Scope::ArgsIdOf"): the one its name records, else its own.
+  if (const auto stamped = entry.Name->StampedTypeId(); stamped != nullptr) {
+    auto const &head = scopes::HeadOf(stamped);
+    if (head.Kind == scopes::TypeKey::Tag::TypeParam or head.Kind == scopes::TypeKey::Tag::TypeBound) {
+      return head.TypeParamId;
+    }
+  }
+  return entry.Id;
+}
+
+auto GenericSolver::_EntryTypeId(
+  _Entry const &entry) const -> scopes::TypeId {
+  // Its type's identity; one given as written that does not resolve yet ("Wrap[3_uz]::doubled" read before the block
+  // declaring it is attached) keyed as written, what does not resolve spelled ("Scope::PartialTypeIdOf").
+  auto const &val = entry.TypeVals[0];
+  if (val.Id != nullptr) { return val.Id; }
+  return val.Written != nullptr ? _Sm->CurrentScope->PartialTypeIdOf(*val.Written) : nullptr;
 }
 
 auto GenericSolver::_OfferAll(
@@ -847,24 +931,55 @@ auto GenericSolver::Solve(
   if (check_types) { _CheckTypeArgs(bindings); }
 }
 
+auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
+  // As "Scope::ArgsIdOf" keys a keyword argument: the parameter its name stamps, else the entry's, "Self" as 0, else
+  // the name as spelled; then the value's identity, a comp value keyed where the call is.
+  using scopes::TypeKey;
+
+  // Nothing was solved, so the given arguments are the answer as given, keyed as written.
+  if (_Trivial) {
+    const auto given = _Given | genex::views::transform([](auto const &arg) { return arg.get(); }) | genex::to<Vec>();
+    return _Sm->CurrentScope->ArgsIdOf(given, _Params);
+  }
+  auto key = TypeKey();
+  for (auto const &entry : _Entries) {
+    if (entry->Param == nullptr and not entry->Emit) { continue; }
+    if (not entry->IsBound()) { continue; }
+    const auto id = _EntryParamId(*entry);
+    if (id != 0) { key.Push(TypeKey::Tag::Arg, id); }
+    else if (entry->Name->ToView() == "Self") { key.Push(TypeKey::Tag::Arg, 0); }
+    else { key.PushText(TypeKey::Tag::Name, entry->Name->ToView()); }
+
+    if (not entry->TypeVals.IsEmpty()) {
+      const auto type_id = _EntryTypeId(*entry);
+      if (type_id == nullptr) { return nullptr; }
+      key.PushTypePart(type_id);
+    }
+    else {
+      const auto comp = _Sm->CurrentScope->CompIdOf(*entry->CompVals[0]);
+      if (comp == nullptr) { return nullptr; }
+      key.PushCompPart(comp);
+    }
+  }
+  return scopes::InternTypeKey(std::move(key));
+}
+
 auto GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
   // With nothing solved, the given arguments are the answer as they were given.
   if (_Trivial) { return std::move(_Given); }
 
   // The parameters in declaration order, which is what an instantiation's name is built from, then the names given
-  // alongside them that are part of the solution. A type not given is read back from its identity here, and analysed
-  // where it is used.
+  // alongside them that are part of the solution. A type not given is read back from its identity here, recording what
+  // it means ("Scope::TypeAstOf"), so it is not analysed again.
   auto out = Vec<Unique<GenericArgumentAst>>();
   for (auto const &entry : _Entries) {
     if (entry->Param == nullptr and not entry->Emit) { continue; }
     if (not entry->TypeVals.IsEmpty()) {
-      if (entry->IsTypeGiven) {
+      if (entry->IsTypeGiven and entry->TypeVals[0].Written != nullptr) {
         out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, entry->TypeVals[0].Written));
         continue;
       }
-      auto type = _AstOf(entry->TypeVals[0]);
-      type->Stage7_AnalyseSemantics(_Sm, _Meta);
-      out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, std::move(type)));
+      out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, _AstOf(entry->TypeVals[0])));
     }
     else if (not entry->CompVals.IsEmpty()) {
       // A comp value is cloned where a type is shared: it is analysed in place where the argument is read, and may be
