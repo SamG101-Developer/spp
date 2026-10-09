@@ -54,6 +54,7 @@ Todo
 [Ss]ubstring
 [Ss]uperimpositions?
 [Tt]oolchains?
+[Tt]uples?
 [Uu]ntaken
 [Uu]serspaces?
 [Uu]noptimised
@@ -99,3 +100,4 @@ cppcheck
 [Uu]npruned
 [Aa]llowlists?
 ReadIn
+Uids?
