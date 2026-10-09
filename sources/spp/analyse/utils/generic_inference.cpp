@@ -5,15 +5,17 @@ module;
 module spp.analyse.utils.generic_inference;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
+import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
@@ -35,61 +37,52 @@ import genex;
 
 namespace spp::analyse::utils::generic_inference {
   namespace {
-    /// Reject the first argument name no parameter has, reported against the first parameter (or the argument itself,
-    /// when there are none).
+    /// Reject the first argument name no parameter has, reported
+    /// against the first parameter (or the argument itself, when
+    /// there are none). The parameter is shown from "params_scope",
+    /// where it is written - another file than the use site
+    /// ("scope") for any template not declared beside its use.
     auto EnforceGnArgNamesKnown(
-      Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args, Scope *scope) -> void {
+      Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args,
+      Scope const &params_scope, Scope const *scope) -> void {
       for (auto const *arg : args) {
-        const auto known = genex::any_of(params, [arg](auto const *p) { return *p->Name == *arg->TypeName(); });
+        const auto known = genex::any_of(params, [arg](auto const *p) { return *p->Name == *arg->KeywordName(); });
         if (known) { continue; }
         Raise<errors::SppArgumentNameInvalidError>(
-          {scope}, ERR_ARGS(
-            params.IsEmpty() ? static_cast<Ast const&>(*arg->TypeName()) : *params[0], StrView("gn param"),
-            *arg->TypeName(), StrView("gn arg")));
+          {params.IsEmpty() ? scope : &params_scope, scope}, ERR_ARGS(
+            params.IsEmpty() ? static_cast<Ast const&>(*arg->KeywordName()) : *params[0], StrView("gn param"),
+            *arg->KeywordName(), StrView("gn arg")));
       }
     }
 
-    /// Check each type argument against its parameter's constraints, read where the parameters are written
-    /// ("written_scope", which an unsatisfied one is reported from) with the arguments bound ("bindings"), from the use
-    /// site. A pack's constraints hold for each of its elements.
+    /// Check each type argument ("args": its parameter, the
+    /// identity bound to it, and the type shown for it in an
+    /// error) against its parameter's constraints, read where
+    /// the parameters are written ("written_scope", which an
+    /// unsatisfied one is reported from) with the arguments
+    /// bound ("bindings"), from the use site. A pack's constraints
+    /// hold for each of its elements.
     auto CheckTypeArgConstraints(
-      GenericParameterGroupAst const &p_group, GenericArgumentGroupAst const &a_group, Scope const &written_scope,
-      scopes::GenericSubst const &bindings, ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
+      Vec<Tup<GenericParameterAst const*, TypeId, Shared<TypeAst>>> const &args,
+      Scope const &written_scope, GenericSubst const &bindings,
+      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
       using errors::SppGenericConstraintError;
-
-      // Extract important information.
-      auto p_names = p_group.GetTypeParams()
-        | genex::views::transform([](auto &&x) { return dynamic_shared_cast<TypeIdentifierAst>(x->Name); })
-        | genex::to<Vec>();
-      auto p_con_groups = p_group.GetTypeParams()
-        | genex::views::transform([](auto &&x) { return x->TypeConstraints->Constraints; })
-        | genex::to<Vec>();
-      const auto type_args = a_group.GetTypeArgs();
-
-      // Check that each argument satisfies its constraints.
-      for (auto [i, p_name] : p_names | genex::views::enumerate) {
-        auto matching = type_args
-          | genex::views::filter([&](auto const *a) { return a->ViewName() == p_name->Name; })
-          | genex::to<Vec>();
-        if (matching.IsEmpty()) { continue; }
-
-        const auto arg_sym = sm.CurrentScope->FindTypeSymbol(matching[0]->TypeVal.get());
+      auto const &scope = *sm.CurrentScope;
+      for (auto const &[param, arg, shown] : args) {
+        auto const *const arg_sym = TypeRef::Of(arg, scope).Symbol;
         if (arg_sym == nullptr) { continue; }
-        const auto con_scope = arg_sym->LinkedScope != nullptr
-          ? arg_sym->LinkedScope
-          : sm.CurrentScope;
-        auto con_sm = ScopeManager(sm.GlobalScope, con_scope);
+        auto con_sm = ScopeManager(
+          sm.GlobalScope, arg_sym->LinkedScope != nullptr ? arg_sym->LinkedScope : sm.CurrentScope);
 
         // This parameter's constraints, with the arguments bound.
         auto p_cons = Vec<Shared<TypeAst>>();
-        for (auto const &p_con : p_con_groups[i]) {
-          const auto sub = type_resolution::ReadType(
-            *p_con, ExprSubst::Across(written_scope, bindings, *sm.CurrentScope));
+        for (auto const &p_con : param->TypeConstraints->Constraints) {
+          const auto sub = type_resolution::ReadType(*p_con, ExprSubst::Across(written_scope, bindings, scope));
           {
             // Resolved from the argument's scope, but written, and
             // checked for visibility, where the parameter is declared:
-            // a module-private alias there is not visible from, say, a
-            // closure argument's (global) scope, and needn't be.
+            // a module-private alias there is not visible from, say,
+            // a closure argument's (global) scope, and needn't be.
             const auto _meta_guard = meta::MetaGuard(&meta);
             meta.AllowAbstractType = true;
             meta.IgnoreAccessModifierViolations = true;
@@ -99,50 +92,65 @@ namespace spp::analyse::utils::generic_inference {
         }
 
         // A pack's constraints hold for each of its elements, not for
-        // the tuple it is bound to.
-        const auto targets = p_group.GetTypeParams()[i]->IsVariadic()
-          ? packs::TypePackElements(*matching[0]->TypeVal)
-          : Vec<Shared<TypeAst>>{matching[0]->TypeVal};
+        // the tuple it is bound to: each shown as given,
+        // when the tuple was.
+        auto targets = Vec<Pair<scopes::TypeId, Shared<TypeAst>>>();
+        if (not param->IsVariadic()) { targets.EmplaceBack(arg, shown); }
+        else if (auto const &head = scopes::HeadOf(arg); head.Args != nullptr) {
+          const auto shown_elems = packs::TypePackElements(*shown);
+          const auto elems = scopes::ArgsOf(head.Args);
+          for (auto i = 0uz; i < elems.size(); ++i) {
+            if (elems[i].TypeVal == nullptr) { continue; }
+            targets.EmplaceBack(
+              elems[i].TypeVal, i < shown_elems.Len() ? shown_elems[i] : scope.TypeAstOf(elems[i].TypeVal));
+          }
+        }
 
         // Raise an error if any constraint of this argument is
         // not satisfied.
-        for (auto const &target : targets) {
+        for (auto const &[target, target_ast] : targets) {
           const auto unsatisfied = type_compare::UnmetConstraint(
-            p_cons, TypeRef::Of(*target, *sm.CurrentScope), target->IsSelfType(), *sm.CurrentScope, *sm.CurrentScope);
+            p_cons, TypeRef::Of(target, scope), scopes::IsSelfTypeId(target), scope, scope);
           RaiseIf<SppGenericConstraintError>(
             unsatisfied != nullptr, {&written_scope, sm.CurrentScope},
-            ERR_ARGS(*unsatisfied, *target));
+            ERR_ARGS(*unsatisfied, *target_ast));
         }
       }
     }
 
-    /// Name the positional arguments of one kind after the parameters they bind ("type_resolution::ParamsOfArgs";
-    /// "NameTypeArgs", "NameCompArgs"): each is copied under its parameter's name by "bind", until a trailing variadic
-    /// parameter takes the rest as a tuple, built by "pack". "f[U32, U32]" for "f[..Ts]" is "f[Ts=(U32, U32)]", and
-    /// "f[1_u32, 1_u32]" for "f[cmp ..s]" is "f[s=(1_u32, 1_u32)]". A lone argument naming a pack ("A[Ts]" inside
-    /// "g[..Ts]") already is that tuple, so is forwarded as it is ("forwards").
+    /// Name the positional arguments of one kind after the
+    /// parameters they bind ("type_resolution::ParamsBoundByArgs";
+    /// "NameTypeArgs", "NameCompArgs"): each is copied under
+    /// its parameter's name by "bind", until a trailing variadic
+    /// parameter takes the rest as a tuple, built by "pack".
+    /// "f[U32, U32]" for "f[..Ts]" is "f[Ts=(U32, U32)]", and
+    /// "f[1_u32, 1_u32]" for "f[cmp ..s]" is "f[s=(1_u32, 1_u32)]".
+    /// A lone argument naming a pack ("A[Ts]" inside "g[..Ts]")
+    /// already is that tuple, so is forwarded as it is ("forwards").
     auto NameArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner, ScopeManager &sm,
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Scope const &params_scope,
+      Ast const &owner, ScopeManager &sm,
       meta::CompilerMetaData &meta,
       Function<void(GenericArgumentAst &, Vec<GenericArgumentAst*> const &, bool)> const &pack,
       Function<void(GenericArgumentAst &, GenericArgumentAst const &)> const &bind) -> void {
       const auto keyword_args = args
         | genex::views::ptr
-        | genex::views::filter([](auto const *x) { return x->TypeName() != nullptr; })
+        | genex::views::filter([](auto const *x) { return x->KeywordName() != nullptr; })
         | genex::to<Vec>();
-      EnforceGnArgNamesKnown(params, keyword_args, sm.CurrentScope);
+      EnforceGnArgNamesKnown(params, keyword_args, params_scope, sm.CurrentScope);
 
-      const auto targets = type_resolution::ParamsOfArgs(args | genex::views::ptr | genex::to<Vec>(), params);
+      const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
 
       const auto _meta_guard = meta::MetaGuard(&meta);
       meta.TypeAnalysisTypeScope = nullptr;
 
       for (auto i = 0uz; i < args.Len(); ++i) {
         auto const &positional = args[i];
-        if (positional->TypeName() != nullptr) { continue; }
+        if (positional->KeywordName() != nullptr) { continue; }
         auto const *const param = targets[i];
         RaiseIf<errors::SppGenericArgumentTooManyError>(
-          param == nullptr, {sm.CurrentScope}, ERR_ARGS(params.IsEmpty() ? owner : *params[0], owner, *positional));
+          param == nullptr, {params.IsEmpty() ? sm.CurrentScope : &params_scope, sm.CurrentScope, sm.CurrentScope},
+          ERR_ARGS(params.IsEmpty() ? owner : *params[0], owner, *positional));
         auto named = MakeUnique<GenericArgumentAst>(param->Name, nullptr, nullptr, nullptr);
 
         if (param->IsVariadic()) {
@@ -157,12 +165,15 @@ namespace spp::analyse::utils::generic_inference {
       }
     }
 
-    /// "NameArgs" for type arguments. Collected into the pack's tuple, an argument naming a bound type pack is spread
-    /// into that pack's elements ("A[S32, Ts]" with "Ts" bound to "Tup[Bool, U8]" is "A[S32, Bool, U8]"). Each is
+    /// "NameArgs" for type arguments. Collected into the pack's
+    /// tuple, an argument naming a bound type pack is spread
+    /// into that pack's elements ("A[S32, Ts]" with "Ts" bound
+    /// to "Tup[Bool, U8]" is "A[S32, Bool, U8]"). Each is
     /// analysed once types resolve.
     auto NameTypeArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner, ScopeManager &sm,
-      meta::CompilerMetaData &meta) -> void {
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params,
+      Scope const &params_scope, Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta)
+      -> void {
       const auto analyse = [&](GenericArgumentAst &named) {
         if (meta.CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
           named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
@@ -186,7 +197,7 @@ namespace spp::analyse::utils::generic_inference {
         named.TypeVal = AstCloneShared(positional.TypeVal);
         analyse(named);
       };
-      NameArgs(args, params, owner, sm, meta, pack, bind);
+      NameArgs(args, params, params_scope, owner, sm, meta, pack, bind);
     }
 
     /// "NameTypeArgs" for comp arguments: a bound comp pack is spread into its elements. A literal or a name is analysed
@@ -195,8 +206,9 @@ namespace spp::analyse::utils::generic_inference {
     /// analysed here - analysing it consumes it - but by the argument's own "AnalyseCompVal", which folds it or checks
     /// a copy.
     auto NameCompArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner, ScopeManager &sm,
-      meta::CompilerMetaData &meta) -> void {
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params,
+      Scope const &params_scope, Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta)
+      -> void {
       const auto pack = [&](GenericArgumentAst &named, Vec<GenericArgumentAst*> const &rest, const bool forwards) {
         if (forwards) {
           named.CompVal = AstCloneShared(rest[0]->CompVal);
@@ -215,29 +227,45 @@ namespace spp::analyse::utils::generic_inference {
         named.CompVal = AstCloneShared(positional.CompVal);
         auto &val = *named.CompVal;
         const auto stage = meta.CurrentStage;
-        if (stage >= meta::CompilerStage::kResolveDeclarations and (not comp_generics::IsCompExpression(val)
+        if (stage >= meta::CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
           or (stage >= meta::CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
           val.Stage7_AnalyseSemantics(&sm, &meta);
         }
       };
-      NameArgs(args, params, owner, sm, meta, pack, bind);
+      NameArgs(args, params, params_scope, owner, sm, meta, pack, bind);
     }
   }
 }
 
 SPP_MOD_BEGIN
+/// A type a parameter is offered. Its identity is what the solver compares, substitutes and checks; it is null only
+/// for a type given that does not key (yet), which is passed on as written. "Written" is the type as given, or the
+/// default as declared; "Site" what an inferred type, or a default, is read back pointing at. One "Written" with no
+/// "Site" is shown as given.
+struct spp::analyse::utils::generic_inference::GenericSolver::_TypeVal {
+  TypeId Id = nullptr;
+  Shared<TypeAst> Written;
+  Shared<TypeAst> Site;
+};
+
 /// Everything one generic parameter (or a name given alongside the parameters, like a pinned "Self") is offered.
 struct spp::analyse::utils::generic_inference::GenericSolver::_Entry {
   /// The parameter, or @c nullptr for a given name that is not one.
   GenericParameterAst const *Param;
+
+  /// The parameter's identity ("ParamId"), which is what a name is found by; 0 for a name that is no parameter.
+  std::uint64_t Id = 0;
+
+  /// The parameter's name, for a name that carries no identity (a keyword argument as written, "Self").
   Shared<TypeIdentifierAst> Name;
-  Vec<Shared<TypeAst>> TypeVals;
+  Vec<_TypeVal> TypeVals;
   Vec<Shared<ExpressionAst>> CompVals;
 
   /// Given a type rather than inferred one, so inference neither offers it another nor rewrites it.
   bool IsTypeGiven = false;
 
   /// Bound to its default, which is written in the declaration's own terms and so may name the others.
+  bool IsTypeFromDefault = false;
   bool IsCompFromDefault = false;
 
   /// Whether a name that is not a parameter is part of the solution.
@@ -266,6 +294,7 @@ GenericSolver::GenericSolver(
   for (auto const *param : params.GetAllParams()) {
     auto entry = MakeUnique<_Entry>();
     entry->Param = param;
+    entry->Id = param->ParamId();
     entry->Name = dynamic_shared_cast<TypeIdentifierAst>(param->Name);
     _Entries.EmplaceBack(std::move(entry));
   }
@@ -275,8 +304,53 @@ GenericSolver::~GenericSolver() = default;
 
 auto GenericSolver::_Find(
   TypeIdentifierAst const &name) const -> _Entry* {
+  // By identity: a name stamped as one of this declaration's parameters ("TypeParam", or "TypeBound" through a
+  // binding of it) is that parameter's entry. A name with no identity (a keyword argument as written, "Self"), or one
+  // naming a parameter this declaration does not declare (a "sup" block's, copied into a method's group), is found by
+  // its spelling.
+  if (const auto id = name.StampedTypeId(); id != nullptr) {
+    auto const &head = scopes::HeadOf(id);
+    if (head.Kind == scopes::TypeKey::Tag::TypeParam or head.Kind == scopes::TypeKey::Tag::TypeBound) {
+      for (auto const &entry : _Entries) {
+        if (entry->Id != 0 and entry->Id == head.TypeParamId) { return entry.get(); }
+      }
+    }
+  }
   for (auto const &entry : _Entries) { if (*entry->Name == name) { return entry.get(); } }
   return nullptr;
+}
+
+auto GenericSolver::_AstOf(
+  _TypeVal const &val) const -> Shared<TypeAst> {
+  // A type given, or one that does not key (a default's own copy), as it was written; anything else read back from its
+  // identity, pointed at what it was read from (or the default it was declared as), on a copy, as the solution is
+  // analysed in place.
+  if (val.Id == nullptr or (val.Written != nullptr and val.Site == nullptr)) { return val.Written; }
+  const auto type = _Sm->CurrentScope->TypeAstOf(val.Id);
+  return val.Site != nullptr ? type->WithSourceSpanOf(*val.Site) : AstCloneShared(type);
+}
+
+auto GenericSolver::_Bindings(
+  _Entry const *except) const -> scopes::GenericSubst {
+  // Every parameter bound so far, by identity, but "except": what a type or value written in the declaration's terms
+  // is read with. A comp value is keyed where it was given.
+  auto out = scopes::GenericSubst();
+  auto const &scope = *_Sm->CurrentScope;
+  for (auto const &entry : _Entries) {
+    if (entry.get() == except or entry->Param == nullptr or entry->Id == 0) { continue; }
+    const auto is_pack = entry->Param->IsVariadic();
+    if (entry->IsTypeParam() and not entry->TypeVals.IsEmpty() and entry->TypeVals[0].Id != nullptr) {
+      out.TypeParams.emplace_back(entry->Id, entry->TypeVals[0].Id);
+      if (is_pack) { out.TypePackParams.push_back(entry->Id); }
+    }
+    else if (entry->IsCompParam() and not entry->CompVals.IsEmpty()) {
+      if (const auto id = scope.CompIdOf(*entry->CompVals[0]); id != nullptr) {
+        out.CompParams.emplace_back(entry->Id, id);
+        if (is_pack) { out.CompPackParams.push_back(entry->Id); }
+      }
+    }
+  }
+  return out;
 }
 
 auto GenericSolver::Give(
@@ -284,13 +358,13 @@ auto GenericSolver::Give(
   // Taken by value, so the caller's list is emptied rather than left holding moved-from arguments.
   using errors::SppInternalCompilerError;
   for (auto &arg : args) {
-    if (arg->TypeName() == nullptr or (not arg->IsTypeArg() and not arg->IsCompArg())) {
+    if (arg->KeywordName() == nullptr or (not arg->IsTypeArg() and not arg->IsCompArg())) {
       const auto err = "generic argument '" + arg->ToString() + "' is still positional where a binding is expected";
       Raise<SppInternalCompilerError>({_Sm->CurrentScope}, ERR_ARGS(*arg, err));
     }
 
     // A layer given earlier outranks this one: the first binding offered for a name is the one it keeps.
-    const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->TypeName());
+    const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->KeywordName());
     auto *entry = _Find(*name);
     if (entry != nullptr and entry->IsBound()) { continue; }
     if (entry == nullptr) {
@@ -302,7 +376,8 @@ auto GenericSolver::Give(
       _Entries.EmplaceBack(std::move(extra));
     }
     if (arg->IsTypeArg()) {
-      entry->TypeVals.EmplaceBack(arg->TypeVal);
+      entry->TypeVals.EmplaceBack(
+        _TypeVal{.Id = _Sm->CurrentScope->TypeIdOf(*arg->TypeVal), .Written = arg->TypeVal, .Site = nullptr});
       entry->IsTypeGiven = true;
     }
     else { entry->CompVals.EmplaceBack(arg->CompVal); }
@@ -319,40 +394,35 @@ auto GenericSolver::Unify(
   _Equations.EmplaceBack(std::move(eq));
 }
 
+auto GenericSolver::ReadDeclaredWith(
+  scopes::GenericSubst reading) -> void {
+  _DeclaredReading = std::move(reading);
+}
+
 auto GenericSolver::GetKnownArgs() const -> Vec<GenericArgumentAst*> {
   return _Given | genex::views::ptr | genex::to<Vec>();
 }
 
-auto GenericSolver::_InferenceMap() const -> type_compare::GenericInferenceMap {
-  auto out = type_compare::GenericInferenceMap();
-  for (auto const &entry : _Entries) {
-    if (not entry->TypeVals.IsEmpty()) { out.emplace(entry->Name, entry->TypeVals[0]); }
-    else if (not entry->CompVals.IsEmpty()) { out.emplace(entry->Name, entry->CompVals[0]); }
-  }
-  return out;
-}
-
 auto GenericSolver::_OfferAll(
-  type_compare::GenericInferenceMap const &inferred, Function<bool(_Entry const &)> const &skip,
-  Function<Shared<TypeAst>(_Entry const &, Shared<TypeAst>)> const &adjust_type) -> bool {
-  // A comp value offered to a type parameter is not a binding for it; nor is anything offered to a name the group does
-  // not declare. A type offered to a comp parameter is a value named through that type ("Self::mo_seq_cst"), taken in
-  // its identifier form, so every comp binding the solver holds is an expression, whatever reads it.
+  scopes::GenericSubst const &inferred, Shared<TypeAst> const &site, Function<bool(_Entry const &)> const &skip,
+  Function<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type) -> bool {
+  // Each parameter of this declaration that a match bound is offered what it was bound to, by "ParamId"; a parameter
+  // of anything else the match named (a class's, read through) is not this solve's.
   auto newly_bound = false;
-  for (auto const &[name, value] : inferred) {
-    auto *const entry = _Find(*name);
-    if (entry == nullptr or entry->Param == nullptr or skip(*entry)) { continue; }
+  for (auto const &entry : _Entries) {
+    if (entry->Param == nullptr or entry->Id == 0 or skip(*entry)) { continue; }
     const auto was_bound = entry->IsBound();
     if (entry->IsTypeParam()) {
-      if (value->To<TypeAst>() == nullptr) { continue; }
-      auto type = static_shared_cast<TypeAst>(value);
-      if (adjust_type) { type = adjust_type(*entry, std::move(type)); }
+      const auto hit = genex::find_if(inferred.TypeParams, [&](auto const &x) { return x.first == entry->Id; });
+      if (hit == inferred.TypeParams.end()) { continue; }
+      const auto type = adjust_type ? adjust_type(*entry, hit->second) : hit->second;
       if (type == nullptr) { continue; }
-      entry->TypeVals.EmplaceBack(std::move(type));
+      entry->TypeVals.EmplaceBack(_TypeVal{.Id = type, .Written = nullptr, .Site = site});
     }
     else {
-      auto const *const as_type = value->To<TypeAst>();
-      entry->CompVals.EmplaceBack(as_type != nullptr ? Shared<ExpressionAst>(IdentifierAst::FromType(*as_type)) : value);
+      const auto hit = genex::find_if(inferred.CompParams, [&](auto const &x) { return x.first == entry->Id; });
+      if (hit == inferred.CompParams.end()) { continue; }
+      entry->CompVals.EmplaceBack(Shared<ExpressionAst>(_Sm->CurrentScope->CompAstOf(hit->second)));
     }
     newly_bound = newly_bound or not was_bound;
   }
@@ -360,31 +430,63 @@ auto GenericSolver::_OfferAll(
 }
 
 auto GenericSolver::_Match(
-  Shared<TypeAst> const &source, Shared<TypeAst> const &target) const -> type_compare::GenericInferenceMap {
-  // Match the type of what was given against the type it was given for, binding the generics the target names.
-  auto &sm = *_Sm;
-  auto inferred = type_compare::GenericInferenceMap();
-  const auto matched = type_compare::RelaxedTypeEq(
-    *source->WithoutConvention(), *target->WithoutConvention(), *sm.CurrentScope, *_OwnerScope, inferred, true);
+  TypeAst const &source, TypeAst const &target) const -> scopes::GenericSubst {
+  // Match the type of what was given against the type it was given for, by identity, binding the generics the target
+  // names. Conventions are not part of it ("x: &T" given "&Str" binds "T" to "Str"). Either side not keying binds
+  // nothing.
+  auto const &scope = *_Sm->CurrentScope;
+  auto inferred = scopes::GenericSubst();
+  const auto given = scope.TypeIdOf(source);
+  auto declared = _OwnerScope->TypeIdOf(target);
+  if (given == nullptr or declared == nullptr) { return inferred; }
+  if (not _DeclaredReading.IsEmpty()) { declared = scopes::SubstituteTypeId(declared, _DeclaredReading); }
+  const auto given_id = scopes::BareOf(given);
+  declared = scopes::BareOf(declared);
+  const auto matched = type_unify::UnifyTypeIds(given_id, declared, scope, *_OwnerScope, inferred, true, true);
 
   // A value can match through a type it is superimposed with, and then that is what the generics are read from: a
   // closure is a "FunMov[(S32,), Bool]" only through its superimposition, so "f: FunMov[(S32,), U]" had nothing to
   // take "U" from. Only a target with a shape to match: a bare "x: T" that failed did so on its constraints, which a
   // supertype would silently dodge ("T: ThreadSafe" bound to a closure's sup).
-  const auto target_has_args = not target->WithoutConvention()->LastTypePart()->GnArgGroup->Args.IsEmpty();
-  if (matched or not target_has_args) { return inferred; }
-  const auto source_sym = sm.CurrentScope->FindTypeSymbol(source->WithoutConvention().get());
-  if (source_sym == nullptr or source_sym->LinkedScope == nullptr) { return inferred; }
-  for (auto const *sup_scope : source_sym->LinkedScope->GetSupScopes()) {
+  auto const &d = scopes::HeadOf(declared);
+  const auto is_bare_param = d.Kind == scopes::TypeKey::Tag::TypeParam or d.Kind == scopes::TypeKey::Tag::TypeBound;
+  if (matched or is_bare_param or not scopes::DoesTypeIdNameAnyGnParams(declared)) { return inferred; }
+  auto const *const given_sym = TypeRef::Of(given_id, scope).Symbol;
+  if (given_sym == nullptr or given_sym->LinkedScope == nullptr) { return inferred; }
+  for (auto const *sup_scope : given_sym->LinkedScope->GetSupScopes()) {
     if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
-    auto sup_inferred = type_compare::GenericInferenceMap();
-    if (type_compare::RelaxedTypeEq(
-      *sup_scope->LinkedTypeSymbol->FqName(), *target->WithoutConvention(), *sm.CurrentScope, *_OwnerScope,
-      sup_inferred, true)) {
+    const auto sup_id = scope.TypeIdOfSymbol(*sup_scope->LinkedTypeSymbol);
+    if (sup_id == nullptr) { continue; }
+    auto sup_inferred = scopes::GenericSubst();
+    if (type_unify::UnifyTypeIds(sup_id, declared, scope, *_OwnerScope, sup_inferred, true, true)) {
       return sup_inferred;
     }
   }
   return inferred;
+}
+
+auto GenericSolver::_SeedFromOwner() -> void {
+  // A parameter the declaration's own scope binds already (an instantiation's, or a block whose parameters stand for
+  // it) is read there as what it is bound to, so no declared type names it, and a match never binds it: what it is
+  // bound to is its value, unless something was given for it.
+  for (auto const &entry : _Entries) {
+    if (entry->Param == nullptr or entry->Id == 0 or entry->IsBound()) { continue; }
+    if (entry->IsTypeParam()) {
+      const auto own = scopes::ParamTypeId(entry->Id);
+      auto const *const sym = _OwnerScope->FindBoundTypeSymbolById(own);
+      const auto bound = sym != nullptr ? _OwnerScope->TypeIdOfSymbol(*sym) : nullptr;
+      if (bound != nullptr and bound != own) {
+        entry->TypeVals.EmplaceBack(_TypeVal{.Id = bound, .Written = nullptr, .Site = nullptr});
+      }
+      continue;
+    }
+    const auto own = scopes::ParamCompId(entry->Id);
+    auto const *const sym = _OwnerScope->FindBoundVarSymbolById(own);
+    const auto bound = sym != nullptr ? _OwnerScope->CompIdOfSymbol(*sym) : nullptr;
+    if (bound != nullptr and bound != own) {
+      entry->CompVals.EmplaceBack(Shared<ExpressionAst>(_Sm->CurrentScope->CompAstOf(bound)));
+    }
+  }
 }
 
 auto GenericSolver::_ReadCompValues() -> bool {
@@ -409,7 +511,7 @@ auto GenericSolver::_ReadCompValues() -> bool {
     // one of a closed type ("cmp n: USize") is not read, so a value that cannot be typed yet ("Self::n", before the
     // "sup" blocks are attached) is not asked to be.
     if (const auto declared = _OwnerScope->TypeIdOf(*entry->Param->CompType);
-      declared != nullptr and scopes::ParamsOf(declared).TypeParams.empty() and not declared->HasSelf) {
+      declared != nullptr and scopes::ParamsNamedBy(declared).TypeParams.empty() and not declared->HasSelf) {
       entry->IsCompValueRead = true;
       continue;
     }
@@ -428,15 +530,15 @@ auto GenericSolver::_ReadCompValues() -> bool {
     for (auto *source : sources) {
       if (not sups_attached and source->To<LiteralAst>() == nullptr) { continue; }
       const auto is_operator = comp_generics::IsCompOperator(*source);
-      const auto folded = is_operator ? comp_generics::FoldCompExpr(*source, *sm.CurrentScope) : nullptr;
+      const auto folded = is_operator ? sm.CurrentScope->FoldedCompAstOf(*source) : nullptr;
       if (is_operator and folded == nullptr) { continue; }
       // A copy: a literal's type is its symbol's cached "FqName" node, shared by every use of the type, and the
       // binding is analysed where it is used - early, it would cache a resolution made before the sups exist on all
       // of them.
       const auto source_type = AstCloneShared((folded != nullptr ? folded.get() : source)->InferType(&sm, &meta));
       newly_bound = _OfferAll(
-        _Match(source_type, entry->Param->CompType), [](auto const &e) { return not e.TypeVals.IsEmpty(); })
-        or newly_bound;
+        _Match(*source_type, *entry->Param->CompType), source_type,
+        [](auto const &e) { return not e.TypeVals.IsEmpty(); }) or newly_bound;
     }
   }
   return newly_bound;
@@ -447,33 +549,40 @@ auto GenericSolver::_ReadConstraints() -> bool {
   // bound to "F" and its super classes is the "FunRef".
   using errors::SppGenericConstraintError;
   auto &sm = *_Sm;
+  auto const &scope = *sm.CurrentScope;
   auto newly_bound = false;
   const auto type_params = _Params->GetTypeParams();
   for (auto const &entry : _Entries) {
     if (not entry->IsTypeParam() or entry->Param->TypeConstraints->Constraints.IsEmpty()) { continue; }
     if (entry->TypeVals.IsEmpty() or entry->IsConstraintsRead) { continue; }
     entry->IsConstraintsRead = true;
-    auto const inferred_type = entry->TypeVals[0];
+    const auto inferred_id = entry->TypeVals[0].Id;
+    if (inferred_id == nullptr) { continue; }
 
     // The candidates are the type and its super classes, each with the scope its name resolves in: a sup type's
     // name can hold a "Self" (as in "S32 ext Ord[Rhs=Self]"), which only has a symbol inside that sup scope.
-    const auto concrete_sym = sm.CurrentScope->FindTypeSymbol(inferred_type.get());
-    auto candidates = Vec<Pair<Shared<TypeAst>, Scope const*>>{};
+    auto const *const concrete_sym = TypeRef::Of(inferred_id, scope).Symbol;
+    auto candidates = Vec<Pair<scopes::TypeId, Scope const*>>{};
     if (concrete_sym != nullptr and not concrete_sym->IsGn()) {
-      candidates.EmplaceBack(concrete_sym->FqName(), sm.CurrentScope);
+      candidates.EmplaceBack(scope.TypeIdOfSymbol(*concrete_sym), &scope);
       if (concrete_sym->LinkedScope != nullptr) {
-        candidates.AppendRange(type_members::SuperClsNames(concrete_sym->LinkedScope->GetSupScopes()));
+        for (auto const &[sup, sup_scope] : type_members::SuperClsNames(concrete_sym->LinkedScope->GetSupScopes())) {
+          candidates.EmplaceBack(sup_scope->TypeIdOf(*sup), sup_scope);
+        }
       }
     }
 
     for (auto const &constraint : entry->Param->TypeConstraints->Constraints) {
-      auto inferred = type_compare::GenericInferenceMap();
+      // A constraint that does not key binds nothing and matches nothing; it is reported by "_CheckTypeArgs".
+      const auto declared = _OwnerScope->TypeIdOf(*constraint);
+      if (declared == nullptr) { continue; }
+      auto inferred = scopes::GenericSubst();
       auto matched = false;
       for (auto const &[candidate, candidate_scope] : candidates) {
-        inferred.clear();
-        if (type_compare::RelaxedTypeEq(
-          *candidate->WithoutConvention(), *constraint->WithoutConvention(),
-          *candidate_scope, *_OwnerScope, inferred, true, false)) {
+        if (candidate == nullptr) { continue; }
+        inferred = scopes::GenericSubst();
+        if (type_unify::UnifyTypeIds(
+          scopes::BareOf(candidate), scopes::BareOf(declared), *candidate_scope, *_OwnerScope, inferred, true, false)) {
           matched = true;
           break;
         }
@@ -482,16 +591,19 @@ auto GenericSolver::_ReadConstraints() -> bool {
       // A constraint that other parameters are inferred through ("U" in "P: FunMov[(T,), Opt[U]]") and that the
       // argument does not fit is reported as a constraint error here, rather than as the dependent parameter being
       // uninferred later, which would hide the cause. One naming no other generics ("P: Copy") is left to the
-      // authoritative "_CheckTypeArgs", so a "RelaxedTypeEq" false negative rejects nothing.
+      // authoritative "_CheckTypeArgs".
       if (not candidates.IsEmpty() and not matched) {
         const auto constraint_drives_inference = genex::any_of(
           type_params, [&](auto const *other) {
             return type_resolution::DoesTypeNameAGnParam(*constraint, *other, *_OwnerScope);
           });
-        RaiseIf<SppGenericConstraintError>(
-          constraint_drives_inference, {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*constraint, *inferred_type));
+        if (constraint_drives_inference) {
+          const auto inferred_type = _AstOf(entry->TypeVals[0]);
+          Raise<SppGenericConstraintError>({_OwnerScope, sm.CurrentScope}, ERR_ARGS(*constraint, *inferred_type));
+        }
       }
-      newly_bound = _OfferAll(inferred, [](auto const &e) { return e.IsBound(); }) or newly_bound;
+      newly_bound = _OfferAll(inferred, entry->TypeVals[0].Written, [](auto const &e) { return e.IsBound(); })
+        or newly_bound;
     }
   }
   return newly_bound;
@@ -502,10 +614,10 @@ auto GenericSolver::_SelfForDefault(
   // What "Self" stands for in a default, decided in one place for both kinds. What the use pinned "Self" to (a call's
   // receiver) comes first. Otherwise a value named through it ("Self::mo_seq_cst") is looked up in the type the owner
   // is written for, so needs that type; a type argument keeps "Self" as written - it is read where it is used, and an
-  // instantiation keys a "Self" argument by its spelling (keyed by meaning, "Vec[Self]" minted "View[T=Self]" without
-  // end).
+  // instantiation keys a "Self" argument as parameter 0, open (keyed by meaning, "Vec[Self]" minted "View[T=Self]"
+  // without end).
   if (auto const *const pinned = _Find(*generate::common_types::SelfType(0)->ToUnchecked<TypeIdentifierAst>());
-    pinned != nullptr and not pinned->TypeVals.IsEmpty()) { return pinned->TypeVals[0]; }
+    pinned != nullptr and not pinned->TypeVals.IsEmpty()) { return pinned->TypeVals[0].Written; }
   if (not as_value) { return nullptr; }
   auto self_type = _OwnerScope->FindEnclosingSelfType(*_Meta);
   return self_type != nullptr and not self_type->IsSelfType() ? self_type : nullptr;
@@ -513,20 +625,27 @@ auto GenericSolver::_SelfForDefault(
 
 auto GenericSolver::_ApplyDefaults() -> void {
   // An optional parameter nothing has bound takes its default, as written in the declaration's own terms: it is read in
-  // the use site's, with everything bound, by "_CrossSubstitute". A type default records what it means where it is
-  // written, on a copy of its own ("Self" as "_SelfForDefault" decides); a comp default is read from its written form
-  // ("GenericParameterAst::WrittenCompDefault").
+  // the use site's, with everything bound, by "_CrossSubstitute". A type default is keyed where it is written ("Self"
+  // as "_SelfForDefault" decides, in the use site's terms already); nothing is keyed before the aliases exist. A comp
+  // default is read from its written form ("GenericParameterAst::WrittenCompDefault").
   for (auto const &entry : _Entries) {
     if (entry->Param == nullptr or entry->IsBound()) { continue; }
     if (entry->IsTypeParam() and entry->Param->IsOptional()) {
       auto def_type = AstCloneShared(entry->Param->TypeDefault);
+      auto def_id = scopes::TypeId(nullptr);
       if (_Meta->CurrentStage >= meta::CompilerStage::kGenTopLvlAliases) {
-        if (not def_type->IsSelfType()) { type_resolution::RecordTypeParts(*def_type, *_OwnerScope); }
+        if (not def_type->IsSelfType()) {
+          def_id = _OwnerScope->TypeIdOf(*def_type);
+          entry->IsTypeFromDefault = true;
+        }
         else if (const auto self_type = _SelfForDefault(false); self_type != nullptr) {
           def_type = self_type->WithConvention(AstClone(def_type->GetConvention()));
+          def_id = _Sm->CurrentScope->TypeIdOf(*def_type);
         }
+        else { def_id = _OwnerScope->TypeIdOf(*def_type); }
       }
-      entry->TypeVals.EmplaceBack(std::move(def_type));
+      auto site = def_id != nullptr ? def_type : nullptr;
+      entry->TypeVals.EmplaceBack(_TypeVal{.Id = def_id, .Written = std::move(def_type), .Site = std::move(site)});
     }
     else if (entry->IsCompParam() and entry->Param->IsOptional()) {
       entry->CompVals.EmplaceBack(entry->Param->CompDefault);
@@ -537,25 +656,24 @@ auto GenericSolver::_ApplyDefaults() -> void {
 
 auto GenericSolver::_EnforceNoConflicts() const -> void {
   // A parameter reached through several arguments, or through an argument and a constraint, has to be offered the
-  // same thing by each. Types must be the same type ("TypeEq" is identity, so the binding cannot depend on which
-  // argument came first). Comp values must be the same value ("CompEq", by identity rather than
-  // spelling): "0x2_uz" and "2_uz" are one value.
+  // same thing by each: the same type, and the same value (the same "CompId", by identity rather than spelling:
+  // "0x2_uz" and "2_uz" are one value). A type that does not key has nothing to compare.
   using errors::SppGenericParameterConflictError;
-  using type_compare::TypeEq;
-  using type_compare::CompEq;
   auto const &scope = *_Sm->CurrentScope;
   for (auto const &entry : _Entries) {
+    // A parameter is shown where it is declared ("_OwnerScope"); a name that is no parameter where it was given.
+    const auto scopes = Vec<Scope const*>{entry->Param != nullptr ? _OwnerScope : &scope, &scope};
     auto const &types = entry->TypeVals;
     for (auto i = 1uz; i < types.Len(); ++i) {
-      RaiseIf<SppGenericParameterConflictError>(
-        not TypeEq(*types[i], *types[0], scope, scope),
-        {_Sm->CurrentScope}, ERR_ARGS(*entry->Name, *types[0], *types[i]));
+      if (types[0].Id == nullptr or types[i].Id == nullptr or types[0].Id == types[i].Id) { continue; }
+      const auto first = _AstOf(types[0]);
+      const auto other = _AstOf(types[i]);
+      Raise<SppGenericParameterConflictError>(scopes, ERR_ARGS(*entry->Name, *first, *other));
     }
     auto const &comps = entry->CompVals;
     for (auto i = 1uz; i < comps.Len(); ++i) {
       RaiseIf<SppGenericParameterConflictError>(
-        not CompEq(*comps[i], *comps[0], scope, scope),
-        {_Sm->CurrentScope}, ERR_ARGS(*entry->Name, *comps[0], *comps[i]));
+        scope.CompIdOf(*comps[i]) != scope.CompIdOf(*comps[0]), scopes, ERR_ARGS(*entry->Name, *comps[0], *comps[i]));
     }
   }
 }
@@ -575,10 +693,11 @@ auto GenericSolver::_EnforceAllInferred(
 }
 
 auto GenericSolver::_CrossSubstitute() -> void {
-  // Read each binding the solver made in the declaration's own terms in the use site's, with everything else bound
-  // (each skipping itself): an inferred or default type, so "Vec[T, A=Alloc[T]]" receives the actual "T", and a comp
-  // default, so "m = n + 1_uz" receives the "n" bound with it and "Self::mo_seq_cst" the "Self" the use pinned. A
-  // literal default names nothing, and nothing is read before the aliases exist.
+  // Read each default, written in the declaration's own terms, in the use site's, with everything else bound (each
+  // skipping itself): a type default by identity, so "Vec[T, A=Alloc[T]]" receives the actual "T"; a comp default
+  // from its written form, so "m = n + 1_uz" receives the "n" bound with it and "Self::mo_seq_cst" the "Self" the use
+  // pinned. What was inferred or given is in the use site's terms already. A literal default names nothing, and
+  // nothing is read before the aliases exist.
   //
   // A comp default read is its value when it folds ("n + 1_uz" with "n" bound to "3_uz" is "4_uz"). One still naming a
   // generic is analysed: an operator caches the symbol its left-hand side resolved to, and code generation reads that
@@ -587,19 +706,15 @@ auto GenericSolver::_CrossSubstitute() -> void {
   auto self_type = Shared<TypeAst>(nullptr);
   auto self_looked_up = false;
   for (auto const &entry : _Entries) {
-    const auto rewrites_type = not entry->TypeVals.IsEmpty() and not entry->IsTypeGiven;
+    const auto rewrites_type = entry->IsTypeFromDefault and entry->TypeVals[0].Id != nullptr;
     const auto rewrites_comp = entry->IsCompFromDefault
       and _Meta->CurrentStage >= meta::CompilerStage::kGenTopLvlAliases
       and entry->Param->WrittenCompDefault->To<LiteralAst>() == nullptr;
     if (not rewrites_type and not rewrites_comp) { continue; }
-    auto others = _InferenceMap();
-    others.erase(entry->Name);
-    auto bindings = type_resolution::BindInferred(others, *_Params, *sm.CurrentScope);
+    auto bindings = _Bindings(entry.get());
     if (rewrites_type) {
-      auto type = type_resolution::ReadType(*entry->TypeVals[0], ExprSubst::In(*sm.CurrentScope, bindings));
-      type->Stage7_AnalyseSemantics(_Sm, _Meta);
-      entry->TypeVals.Clear();
-      entry->TypeVals.EmplaceBack(std::move(type));
+      auto &val = entry->TypeVals[0];
+      if (not bindings.IsEmpty()) { val.Id = scopes::SubstituteTypeId(val.Id, bindings); }
       continue;
     }
 
@@ -608,9 +723,9 @@ auto GenericSolver::_CrossSubstitute() -> void {
       self_looked_up = true;
       self_type = _SelfForDefault(true);
     }
-    if (self_type != nullptr) { type_resolution::BindSelf(bindings, *self_type, *sm.CurrentScope); }
+    if (self_type != nullptr) { scopes::BindSelf(bindings, *self_type, *sm.CurrentScope); }
     auto comp = type_resolution::ReadCompDefault(*entry->Param, std::move(bindings), *_OwnerScope, *sm.CurrentScope);
-    if (auto folded = comp_generics::FoldCompExpr(*comp, *sm.CurrentScope); folded != nullptr) {
+    if (auto folded = sm.CurrentScope->FoldedCompAstOf(*comp); folded != nullptr) {
       comp = std::move(folded);
     }
     else { comp->Stage7_AnalyseSemantics(_Sm, _Meta); }
@@ -621,8 +736,13 @@ auto GenericSolver::_CrossSubstitute() -> void {
 
 auto GenericSolver::_CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void {
   // Check each type argument against its parameter's constraints, read with every binding substituted in.
-  CheckTypeArgConstraints(
-    *_Params, *GenericArgumentGroupAst::FromMap(_InferenceMap()), *_OwnerScope, bindings, *_Sm, *_Meta);
+  auto args = Vec<Tup<GenericParameterAst const*, scopes::TypeId, Shared<TypeAst>>>();
+  for (auto const &entry : _Entries) {
+    if (not entry->IsTypeParam() or entry->TypeVals.IsEmpty() or entry->TypeVals[0].Id == nullptr) { continue; }
+    if (entry->Param->TypeConstraints->Constraints.IsEmpty()) { continue; }
+    args.EmplaceBack(entry->Param, entry->TypeVals[0].Id, _AstOf(entry->TypeVals[0]));
+  }
+  CheckTypeArgConstraints(args, *_OwnerScope, bindings, *_Sm, *_Meta);
 }
 
 auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -> void {
@@ -638,26 +758,28 @@ auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -
     auto *const value = entry->CompVals[0].get();
     // A comp expression is typed once the sweep has attached every "sup" scope, as it is analysed then
     // ("GenericArgumentAst::AnalyseCompVal"); a type made during the sweep is checked where it is written.
-    if (meta.CurrentStage < meta::CompilerStage::kPreAnalyseSemantics and comp_generics::IsCompExpression(*value)) {
+    if (meta.CurrentStage < meta::CompilerStage::kPreAnalyseSemantics and comp_generics::NeedsSupScopesToType(*value)) {
       continue;
     }
     const auto raw_a_type = value->InferType(&sm, &meta);
     const auto p_type = type_resolution::ReadType(
       *entry->Param->CompType, ExprSubst::Across(*_OwnerScope, bindings, *sm.CurrentScope));
 
-    // A pack's value is a tuple, each element of which is of the declared type.
+    // A pack's value is a tuple, each element of which is of the declared type, read off the tuple's identity.
     if (entry->Param->IsVariadic()) {
-      auto const *const a_sym = sm.CurrentScope->FindTypeSymbol(raw_a_type.get());
-      const auto a_type = a_sym != nullptr ? a_sym->FqName() : raw_a_type;
-      for (auto const &inner : packs::TypePackElements(*a_type)) {
+      const auto p_ref = TypeRef::Of(*p_type, *sm.CurrentScope);
+      auto const *const a_sym = TypeRef::Of(*raw_a_type, *sm.CurrentScope).Symbol;
+      for (auto const &inner : a_sym != nullptr ? a_sym->TypeArgRefs() : Vec<TypeRef>()) {
         RaiseIf<SppTypeMismatchError>(
-          not type_compare::Assignable(*p_type, *inner, *sm.CurrentScope, *sm.CurrentScope),
-          {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*entry->Param, *p_type, *value, *inner));
+          not type_compare::Assignable(p_ref, inner, *sm.CurrentScope, *sm.CurrentScope),
+          {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*entry->Param, *p_type, *value, ErrTypeAt(inner, *value)));
       }
       continue;
     }
     RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(*p_type, *raw_a_type, *sm.CurrentScope, *sm.CurrentScope),
+      not type_compare::Assignable(
+        TypeRef::Of(*p_type, *sm.CurrentScope), TypeRef::Of(*raw_a_type, *sm.CurrentScope), *sm.CurrentScope,
+        *sm.CurrentScope),
       {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*entry->Param, *p_type, *value, *raw_a_type));
   }
 }
@@ -670,17 +792,19 @@ auto GenericSolver::Solve(
     return;
   }
 
-  // The equations. A variadic function parameter is matched against the pack's tuple, so a non-variadic type
-  // parameter it names is bound to the element, not the tuple; an empty pack binds no element. What was given as a
-  // type is not offered anything else.
+  // What the declaration's own scope binds already, then the equations. A variadic function parameter is matched
+  // against the pack's tuple, so a non-variadic type parameter it names is bound to the element, not the tuple; an
+  // empty pack binds no element. What was given as a type is not offered anything else.
+  _SeedFromOwner();
   for (auto const &eq : _Equations) {
     const auto is_pack_slot = variadic_fn_param != nullptr and *eq->Name == *variadic_fn_param;
     _OfferAll(
-      _Match(eq->Source, eq->Target), [](auto const &e) { return e.IsTypeGiven; },
-      [is_pack_slot](auto const &e, Shared<TypeAst> type) -> Shared<TypeAst> {
+      _Match(*eq->Source, *eq->Target), eq->Source, [](auto const &e) { return e.IsTypeGiven; },
+      [is_pack_slot](auto const &e, const scopes::TypeId type) -> scopes::TypeId {
         if (not is_pack_slot or e.Param->IsVariadic()) { return type; }
-        const auto elements = packs::TypePackElements(*type);
-        return elements.IsEmpty() ? nullptr : elements[0];
+        auto const &head = scopes::HeadOf(type);
+        const auto elements = head.Args != nullptr ? scopes::ArgsOf(head.Args) : std::vector<scopes::TypeIdArg>();
+        return elements.empty() ? nullptr : elements[0].TypeVal;
       });
   }
 
@@ -703,7 +827,7 @@ auto GenericSolver::Solve(
   const auto check_types = _Meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
     and not _Meta->SkipSubstitutedConstraintChecks;
   if (not check_comps and not check_types) { return; }
-  const auto bindings = type_resolution::BindInferred(_InferenceMap(), *_Params, *_Sm->CurrentScope);
+  const auto bindings = _Bindings();
   if (check_comps) { _CheckCompArgs(bindings); }
   if (check_types) { _CheckTypeArgs(bindings); }
 }
@@ -713,12 +837,19 @@ auto GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
   if (_Trivial) { return std::move(_Given); }
 
   // The parameters in declaration order, which is what an instantiation's name is built from, then the names given
-  // alongside them that are part of the solution.
+  // alongside them that are part of the solution. A type not given is read back from its identity here, and analysed
+  // where it is used.
   auto out = Vec<Unique<GenericArgumentAst>>();
   for (auto const &entry : _Entries) {
     if (entry->Param == nullptr and not entry->Emit) { continue; }
     if (not entry->TypeVals.IsEmpty()) {
-      out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, entry->TypeVals[0]));
+      if (entry->IsTypeGiven) {
+        out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, entry->TypeVals[0].Written));
+        continue;
+      }
+      auto type = _AstOf(entry->TypeVals[0]);
+      type->Stage7_AnalyseSemantics(_Sm, _Meta);
+      out.EmplaceBack(GenericArgumentAst::NewType(entry->Name, std::move(type)));
     }
     else if (not entry->CompVals.IsEmpty()) {
       // A comp value is cloned where a type is shared: it is analysed in place where the argument is read, and may be
@@ -728,10 +859,12 @@ auto GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
   }
   return out;
 }
+
 SPP_MOD_END
 
 auto spp::analyse::utils::generic_inference::NamedGnArgs(
-  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Ast const &owner, ScopeManager &sm,
+  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const &params_scope,
+  Ast const &owner, ScopeManager &sm,
   meta::CompilerMetaData &meta, const bool is_tuple_owner) -> Unique<GenericArgumentGroupAst> {
   // A tuple's arguments stay positional.
   auto named = AstClone(&written);
@@ -744,8 +877,8 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
   for (auto &&arg : std::move(named->Args)) {
     (arg->IsCompArg() ? comp_args : type_args).EmplaceBack(std::move(arg));
   }
-  NameCompArgs(comp_args, p_group.GetCompParams(), owner, sm, meta);
-  NameTypeArgs(type_args, p_group.GetTypeParams(), owner, sm, meta);
+  NameCompArgs(comp_args, p_group.GetCompParams(), params_scope, owner, sm, meta);
+  NameTypeArgs(type_args, p_group.GetTypeParams(), params_scope, owner, sm, meta);
   named->Args = std::move(comp_args);
   named->Args.AppendRange(std::move(type_args));
 
@@ -757,18 +890,4 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
     return param_index[a->ViewName()] < param_index[b->ViewName()];
   });
   return named;
-}
-
-auto spp::analyse::utils::generic_inference::EnforceGnConstraintsOfParams(
-  TypeSymbol const &target, GenericParameterGroupAst const &params,
-  ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
-  // The block's own parameters stand in as the arguments, so
-  // the constraints are checked against what they allow. A
-  // constraint that fails is reported where the target declares
-  // it.
-  const auto args = GenericArgumentGroupAst::FromParams(params);
-  const auto bindings = type_resolution::BindArgs(*target.Type->GnParamGroup, args->GetAllArgs(), *sm.CurrentScope);
-  CheckTypeArgConstraints(
-    *target.Type->GnParamGroup, *args, target.LinkedScope != nullptr ? *target.LinkedScope : *sm.CurrentScope, bindings,
-    sm, meta);
 }

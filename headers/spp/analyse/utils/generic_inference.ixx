@@ -2,8 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.generic_inference;
-import spp.analyse.scopes.instance_key;
-import spp.analyse.utils.type_compare;
+import spp.analyse.scopes.substitution;
+import spp.analyse.scopes.type_key;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -30,11 +30,12 @@ use(spp::asts, struct TypeIdentifierAst);
 /// 1. What is given, in layers of precedence ("Give"): the arguments written at the use site, then whatever the
 ///    receiver, the enclosing "sup" block and a pinned "Self" bind. A name already given keeps its first binding.
 /// 2. Equations ("Unify"): what was given for a parameter or attribute against its declared type, binding the
-///    generics the declared type names.
+///    generics the declared type names, by identity ("type_unify::UnifyTypeIds"). What the declaration's own scope
+///    binds a parameter to already is that parameter's value.
 /// 3. "Solve": the equations, then comp values' types and the constraints, repeated until nothing new is bound; then
-///    the defaults; then conflicts and uninferred parameters are checked, every binding is read in the use site's
+///    the defaults; then conflicts and uninferred parameters are checked, the defaults are read in the use site's
 ///    terms, and both kinds of argument are checked against their parameters (comp types, type constraints).
-/// 4. "TakeArgs": the solution, in parameter order.
+/// 4. "TakeArgs": the solution, in parameter order. A type is held as its identity; only one given is kept as written.
 SPP_EXP_CLS class spp::analyse::utils::generic_inference::GenericSolver {
 public:
   GenericSolver(
@@ -52,17 +53,18 @@ public:
   /// parameters ("Self") is part of the solution, or only seen by
   /// the inference.
   auto Give(
-    Vec<Unique<GenericArgumentAst>> args,
-    bool emit = false)
-    -> void;
+    Vec<Unique<GenericArgumentAst>> args, bool emit = false) -> void;
 
   /// Record that "source" was given where "target" is declared,
   /// under the name "name" (a parameter or an attribute).
   auto Unify(
-    Shared<IdentifierAst> const &name,
-    Shared<TypeAst> source,
-    Shared<TypeAst> target)
-    -> void;
+    Shared<IdentifierAst> const &name, Shared<TypeAst> source, Shared<TypeAst> target) -> void;
+
+  /// Read every declared type the equations name through "reading"
+  /// first: the parameters of a class whose attributes are matched,
+  /// bound to those of an alias of it being solved.
+  auto ReadDeclaredWith(
+    GenericSubst reading) -> void;
 
   /// Everything bound so far, as arguments (borrowed from the solver).
   SPP_ATTR_NODISCARD auto GetKnownArgs() const
@@ -73,9 +75,7 @@ public:
   /// variadic function parameter, whose non-variadic generics bind
   /// to the pack's element rather than its tuple.
   auto Solve(
-    Ast const &owner,
-    Shared<IdentifierAst> const &variadic_fn_param = nullptr)
-    -> void;
+    Ast const &owner, Shared<IdentifierAst> const &variadic_fn_param = nullptr) -> void;
 
   /// The solution, in parameter order, followed by the emitted
   /// names that are not parameters.
@@ -83,6 +83,7 @@ public:
     -> Vec<Unique<GenericArgumentAst>>;
 
 private:
+  struct _TypeVal;
   struct _Entry;
   struct _Equation;
 
@@ -93,14 +94,18 @@ private:
   Vec<Unique<_Entry>> _Entries;
   Vec<Unique<_Equation>> _Equations;
   Vec<Unique<GenericArgumentAst>> _Given;
+  scopes::GenericSubst _DeclaredReading;
 
   bool _Trivial = false;
 
   auto _Find(TypeIdentifierAst const &name) const -> _Entry*;
-  auto _OfferAll(type_compare::GenericInferenceMap const &inferred, Function<bool(_Entry const &)> const &skip,
-    Function<Shared<TypeAst>(_Entry const &, Shared<TypeAst>)> const &adjust_type = nullptr) -> bool;
-  auto _Match(Shared<TypeAst> const &source, Shared<TypeAst> const &target) const
-    -> type_compare::GenericInferenceMap;
+  auto _AstOf(_TypeVal const &val) const -> Shared<TypeAst>;
+  auto _Bindings(_Entry const *except = nullptr) const -> scopes::GenericSubst;
+  auto _OfferAll(scopes::GenericSubst const &inferred, Shared<TypeAst> const &site,
+    Function<bool(_Entry const &)> const &skip,
+    Function<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type = nullptr) -> bool;
+  auto _Match(TypeAst const &source, TypeAst const &target) const -> scopes::GenericSubst;
+  auto _SeedFromOwner() -> void;
   auto _ReadCompValues() -> bool;
   auto _ReadConstraints() -> bool;
   auto _SelfForDefault(bool as_value) const -> Shared<TypeAst>;
@@ -110,33 +115,24 @@ private:
   auto _CrossSubstitute() -> void;
   auto _CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void;
   auto _CheckCompArgs(scopes::GenericSubst const &bindings) const -> void;
-  auto _InferenceMap() const -> type_compare::GenericInferenceMap;
 };
 
 namespace spp::analyse::utils::generic_inference {
-  /// A sup block's or an alias's own generic parameters, standing
-  /// in as the arguments to the type they fill ("sup [T] Box[T]"),
-  /// checked against that type's constraints.
-  SPP_EXP_FUN auto EnforceGnConstraintsOfParams(
-    TypeSymbol const &target,
-    GenericParameterGroupAst const &params,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta)
-    -> void;
-
   /// The arguments written for "p_group", each named after the
   /// parameter it binds, in parameter order: a positional argument
   /// binds the next parameter not named by a keyword one, and a
   /// trailing variadic parameter takes the rest as a tuple (a lone
   /// argument naming a pack already is that tuple). "written" is
   /// not changed. A tuple's arguments stay positional.
+  /// "params_scope" is where "p_group" is written, which a name
+  /// no parameter has is reported against.
   SPP_EXP_FUN auto NamedGnArgs(
     GenericArgumentGroupAst const &written,
     GenericParameterGroupAst const &p_group,
+    Scope const &params_scope,
     Ast const &owner,
     ScopeManager &sm,
     meta::CompilerMetaData &meta,
     bool is_tuple_owner = false)
     -> Unique<GenericArgumentGroupAst>;
-
 }
