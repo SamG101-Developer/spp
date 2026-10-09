@@ -83,28 +83,6 @@ auto GenericArgumentGroupAst::FromParams(
   return arg_group;
 }
 
-auto GenericArgumentGroupAst::FromBindings(
-  GenericSubst const &bindings, Scope const &scope)
-  -> Unique<GenericArgumentGroupAst> {
-  // Each binding under its parameter's name: a type read back as a type, a comp value as an expression. One whose
-  // parameter or value has no reading here is left out.
-  auto mapped_args = Vec<Unique<GenericArgumentAst>>();
-  for (auto const &[pid, id] : bindings.TypeParams) {
-    auto const *const param = pid != 0 ? analyse::scopes::FindGnTypeParamById(pid) : nullptr;
-    auto val = param != nullptr ? scope.TypeAstOf(id) : nullptr;
-    if (val == nullptr) { continue; }
-    mapped_args.EmplaceBack(GenericArgumentAst::NewType(AstCloneShared(param->Name), AstCloneShared(val)));
-  }
-  for (auto const &[pid, id] : bindings.CompParams) {
-    auto const *const param = analyse::scopes::FindGnCompParamById(pid);
-    auto val = param != nullptr ? scope.CompAstOf(id) : nullptr;
-    if (val == nullptr) { continue; }
-    mapped_args.EmplaceBack(GenericArgumentAst::NewComp(
-      TypeIdentifierAst::FromIdentifier(*param->Name), Shared<ExpressionAst>(std::move(val))));
-  }
-  return MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(mapped_args), nullptr);
-}
-
 GenericArgumentGroupAst::GenericArgumentGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Args) &&args,

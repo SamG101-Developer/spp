@@ -35,11 +35,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   static auto FromParams(GenericParameterGroupAst const &generic_params) -> Unique<GenericArgumentGroupAst>;
 
-  /// The arguments "bindings" makes (a match's, "scopes::UnifyTypeIds"), one per parameter it binds, named after
-  /// that parameter and read back from its identity in "scope". "Self" (parameter 0) is none.
-  static auto FromBindings(
-    GenericSubst const &bindings, Scope const &scope) -> Unique<GenericArgumentGroupAst>;
-
   GenericArgumentGroupAst(
     decltype(TokL) &&tok_l,
     decltype(Args) &&args,
