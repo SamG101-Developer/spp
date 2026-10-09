@@ -78,7 +78,7 @@ auto TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(TokOp));
-  t->_WrittenTypeId = _WrittenTypeId;
+  t->_StampedTypeId = _StampedTypeId;
   CopySourceSpanTo(*t);
   return t;
 }
@@ -97,9 +97,7 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
 
   // Move through the left-hand-side type.
   Lhs->Stage7_AnalyseSemantics(sm, meta);
-  const auto scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-  const auto lhs_type = Lhs->InferType(sm, meta);
-  const auto lhs_type_sym = scope->FindTypeSymbol(lhs_type.get());
+  const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
   // Check there is only 1 target field on the lhs at the
@@ -137,6 +135,17 @@ auto TypePostfixExpressionAst::InferType(
   // Infer the type of the postfix operation.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
   return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
+}
+
+auto TypePostfixExpressionAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The nested type the left-hand side's scope declares ("A::B"), read here.
+  IMPORT_UTILS;
+  Lhs->Stage7_AnalyseSemantics(sm, meta);
+  const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
+  const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
+  const auto sym = member_lookup::FindTypeSymbolOrError(*lhs_type_sym->LinkedScope, *op_nested->Name, *sm);
+  return TypeRef::Of(*sym, *sm->CurrentScope);
 }
 
 auto TypePostfixExpressionAst::IsNeverType() const noexcept -> bool {
@@ -196,7 +205,7 @@ auto TypePostfixExpressionAst::WithConvention(
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
   auto wrapped = MakeShared<TypeUnaryExpressionAst>(std::move(borrow_op), AstClone(this));
-  wrapped->SetWrittenTypeId(_WrittenTypeId);
+  wrapped->StampTypeId(_StampedTypeId);
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written once it is borrowed.
