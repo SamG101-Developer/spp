@@ -20,7 +20,6 @@ import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -292,7 +291,7 @@ auto InnerScopeExpressionAst::InferType(
   }
 
   // Otherwise, return the void type.
-  return generate::common_types::VoidType(PosStart());
+  return generate::common_types_precompiled::VoidAt(PosStart());
 }
 
 auto InnerScopeExpressionAst::InferTypeRef(
