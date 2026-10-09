@@ -623,7 +623,8 @@ auto GenericSolver::_SelfForDefault(
 }
 
 auto GenericSolver::_ApplyDefaults() -> void {
-  // An optional parameter nothing has bound takes its default, as written in the declaration's own terms: it is read in
+  // An optional parameter nothing has bound takes its default, and a pack nothing has bound is empty. A default is
+  // written in the declaration's own terms: it is read in
   // the use site's, with everything bound, by "_CrossSubstitute". A type default is keyed where it is written ("Self"
   // as "_SelfForDefault" decides, in the use site's terms already); nothing is keyed before the aliases exist. A comp
   // default is read from its written form ("GenericParameterAst::WrittenCompDefault").
@@ -649,6 +650,21 @@ auto GenericSolver::_ApplyDefaults() -> void {
     else if (entry->IsCompParam() and entry->Param->IsOptional()) {
       entry->CompVals.EmplaceBack(entry->Param->CompDefault);
       entry->IsCompFromDefault = true;
+    }
+
+    // A pack nothing has bound is given nothing: it is empty, the
+    // tuple of no elements, as a variadic function parameter given
+    // no arguments is ("f[..Ts]()" called as "f()").
+    else if (entry->IsTypeParam() and entry->Param->IsVariadic()) {
+      auto empty = generate::common_types::TupleType(entry->Param->PosStart(), {});
+      const auto empty_id = _Meta->CurrentStage >= meta::CompilerStage::kGenTopLvlAliases
+        ? _OwnerScope->TypeIdOf(*empty)
+        : nullptr;
+      auto site = empty_id != nullptr ? empty : nullptr;
+      entry->TypeVals.EmplaceBack(_TypeVal{.Id = empty_id, .Written = std::move(empty), .Site = std::move(site)});
+    }
+    else if (entry->IsCompParam() and entry->Param->IsVariadic()) {
+      entry->CompVals.EmplaceBack(MakeShared<TupleLiteralAst>(nullptr, Vec<Unique<ExpressionAst>>(), nullptr));
     }
   }
 }
