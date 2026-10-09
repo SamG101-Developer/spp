@@ -16,7 +16,6 @@ import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.packs;
-import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -504,27 +503,6 @@ auto TypeIdentifierAst::WithoutGns() const -> Shared<TypeAst> {
   _CachedWithoutGns->StampTypeId(
     GnArgGroup == nullptr or GnArgGroup->Args.IsEmpty() ? _StampedTypeId : _StampedTemplateId);
   return _CachedWithoutGns;
-}
-
-auto TypeIdentifierAst::SubstituteSelf(
-  TypeAst const &with) const -> Shared<TypeAst> {
-  // "Self" itself, recording nothing of where it was written; else a clone, rebuilt only where it has arguments to
-  // rebuild, which then keeps no written identity (it is about to be another type). This is the keyword's desugaring,
-  // made before anything resolves: a comp argument ("Foo[Self::N]") has its "Self"s replaced through the parts a comp
-  // value is made of ("comp_generics::SubstituteCompSelf").
-  if (IsSelfType()) {
-    auto substituted = AstCloneShared(&with);
-    for (auto *part : substituted->TypeParts()) { part->ClearSourceWritten(); }
-    return substituted;
-  }
-  if (GnArgGroup == nullptr or GnArgGroup->Args.IsEmpty()) { return AstCloneShared(this); }
-  auto name_clone = AstCloneShared(this);
-  name_clone->_StampedTypeId = nullptr;
-  for (auto &g : name_clone->GnArgGroup->Args) {
-    if (g->IsTypeArg()) { g->TypeVal = g->TypeVal->SubstituteSelf(with); }
-    else if (g->IsCompArg()) { g->CompVal = analyse::utils::self_type::SubstituteCompSelf(*g->CompVal, with); }
-  }
-  return name_clone;
 }
 
 auto TypeIdentifierAst::WithGns(

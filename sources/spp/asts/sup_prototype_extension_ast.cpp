@@ -12,6 +12,7 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -222,6 +223,14 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // The type superimposed over: analysed, qualified, the block filed against it (a method's "$" mock block too), and
   // "Self" made precise.
   const auto base_cls_sym = sup_blocks::LoadTarget(*this, Name, true, *sm, meta);
+
+  // A method's "$" mock block sits in its "sup" block and has no
+  // "Self" of its own, so the function type's "Self" is that
+  // block's owner: read in by identity, before it is analysed.
+  if (Name->IsCompilerGeneratedType() and sm->CurrentScope->Parent != sm->CurrentScope->GetParentModule()) {
+    SuperCls = self_type::SubstituteSelf(
+      *SuperCls, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope);
+  }
 
   // Analyse the supertype after Self has been added
   // (allows use in generic arguments to the superclass).

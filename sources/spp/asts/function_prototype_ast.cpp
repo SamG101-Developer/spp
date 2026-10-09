@@ -923,29 +923,17 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
   using generate::common_types::FunRefType;
   using generate::common_types::TupleType;
 
-  // A method's mock is named from outside its "sup" block, where
-  // "Self" is not its owner, so the owner is written in its place.
-  // Stage 1 has no scopes yet, so this is the one rewrite of the
-  // spelling ("TypeAst::SubstituteSelf") rather than the identity.
-  auto owner = Shared<TypeAst>(nullptr);
-  if (const auto sup_ctx = _Ctx->To<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) { owner = sup_ctx->Name; }
-  if (const auto ext_ctx = _Ctx->To<SupPrototypeExtensionAst>(); ext_ctx != nullptr) { owner = ext_ctx->Name; }
-  const auto with_owner = [&owner](Shared<TypeAst> const &type) -> Shared<TypeAst> {
-    if (owner == nullptr or not type_predicates::DoesTypeNameSelf(*type)) {
-      return type;
-    }
-    return type->SubstituteSelf(*owner);
-  };
-
   // Extract the parameter types. A "self" parameter's type is a
   // bare "Self", its convention held apart, so it is put back.
+  // "Self" stays as written: the mock's block reads it as its
+  // "sup" block's owner once scopes exist (its stage 5).
   auto param_types = FnParamGroup->Params
-    | genex::views::transform([&with_owner](auto &&x) {
+    | genex::views::transform([](auto &&x) -> Shared<TypeAst> {
       const auto self_param = x->template To<FunctionParameterSelfAst>();
-      return with_owner(self_param != nullptr ? x->Type->WithConvention(AstClone(self_param->Conv)) : x->Type);
+      return self_param != nullptr ? x->Type->WithConvention(AstClone(self_param->Conv)) : x->Type;
     })
     | genex::to<Vec>();
-  const auto return_type = with_owner(ReturnType);
+  const auto &return_type = ReturnType;
 
   // Module level functions, and static methods, are always FunRef.
   if (_Ctx->To<ModulePrototypeAst>() != nullptr or FnParamGroup->GetSelfParam() == nullptr) {

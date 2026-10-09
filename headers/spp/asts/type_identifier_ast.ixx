@@ -93,8 +93,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   /// Record the template (or alias) this name's head names wherever it is read; see "_StampedTemplateId".
   auto StampTemplateId(const analyse::scopes::TypeId id) const noexcept -> void { _StampedTemplateId = id; }
 
-  SPP_ATTR_NODISCARD auto SubstituteSelf(TypeAst const &with) const -> Shared<TypeAst> override;
-
   SPP_ATTR_NODISCARD auto WithGns(Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;

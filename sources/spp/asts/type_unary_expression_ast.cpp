@@ -228,11 +228,6 @@ auto TypeUnaryExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   return _CachedWithoutGns;
 }
 
-auto TypeUnaryExpressionAst::SubstituteSelf(
-  TypeAst const &with) const -> Shared<TypeAst> {
-  return MakeShared<TypeUnaryExpressionAst>(Op, Rhs->SubstituteSelf(with));
-}
-
 auto TypeUnaryExpressionAst::IsCompilerGeneratedType() const -> bool {
   // Move into the rhs, ie for the type
   // "std::annotations::$Public", it moves to

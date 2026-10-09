@@ -94,12 +94,6 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// "std::vector::Vec".
   SPP_ATTR_NODISCARD virtual auto WithoutGns() const -> Shared<TypeAst> = 0;
 
-  /// This type with every "Self" in it replaced by "with"
-  /// ("Vec[Self]" with "Node[S32]" is "Vec[Node[S32]]"), as
-  /// a new tree, by spelling. Only for stage 1, before any
-  /// scope exists; anywhere else "Self" is parameter 0.
-  SPP_ATTR_NODISCARD virtual auto SubstituteSelf(TypeAst const &with) const -> Shared<TypeAst> = 0;
-
   /// Create a new type by adding a generic argument group onto
   /// the type, converting something like "Vec" + "[T=S32]" into
   /// "Vec[T=S32]". Not substitution based.

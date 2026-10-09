@@ -224,14 +224,6 @@ auto TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   return _CachedWithoutGns;
 }
 
-auto TypePostfixExpressionAst::SubstituteSelf(
-  TypeAst const &with) const -> Shared<TypeAst> {
-  const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
-    nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->SubstituteSelf(with)));
-  return MakeShared<TypePostfixExpressionAst>(Lhs->SubstituteSelf(with), std::move(new_rhs));
-}
-
 auto TypePostfixExpressionAst::IsCompilerGeneratedType() const -> bool {
   // A method's "$" mock is named through its owner
   // ("main::A::$Method"), so check the nested part.
