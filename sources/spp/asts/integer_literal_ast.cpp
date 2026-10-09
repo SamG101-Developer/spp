@@ -127,17 +127,8 @@ auto IntegerLiteralAst::FromBigVal(
 
 auto IntegerLiteralAst::FromWrappedBigVal(
   numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
-  //
-  auto const &[lower, upper] = kBounds.at(type);
-  const auto modulus = upper - lower + 1;
-
-  // Take the value within the span, then read it back where
-  // the type puts it: a pattern past the top of the range
-  // is the negative one the same bits stand for.
-  auto wrapped = value % modulus;
-  if (wrapped.IsNegative()) { wrapped = wrapped + modulus; }
-  if (wrapped > upper) { wrapped = wrapped - modulus; }
-  return FromBigVal(wrapped, type);
+  // An unknown type throws, as reading its bounds does.
+  return FromBigVal(utils::numbers::WrapToInteger(value, type).value(), type);
 }
 
 auto IntegerLiteralAst::Stage9_CompTimeResolve(
