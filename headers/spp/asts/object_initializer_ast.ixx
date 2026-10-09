@@ -49,11 +49,7 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerAst final : PrimaryExpressionAst 
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
-
-  auto InferTypeForDisplay(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
     analyse::scopes::ExprSubst const &sub) const

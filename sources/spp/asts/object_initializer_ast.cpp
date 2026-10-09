@@ -66,7 +66,7 @@ auto ObjectInitializerAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<ObjectInitializerAst>(
     AstClone(Type),
     AstClone(ArgGroup));
-  ast->Source.OriginalType = Source.OriginalType;
+  ast->Source = Source;
   return ast;
 }
 
@@ -106,8 +106,28 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
 
   // If the type is a variant type, prevent instantiation.
   RaiseIf<SppObjectInitializerVariantError>(
-    type_predicates::IsTypeVariant(TypeRef::OfKind(*base_cls_sym, *sm->CurrentScope), *sm->CurrentScope),
+    type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*base_cls_sym, *sm->CurrentScope), *sm->CurrentScope),
     {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
+
+  // A zero type has exactly one value, written as the type's name
+  // ("None", not "None()"). The rule is about what the author
+  // wrote: a generic parameter ("A()", or a "Self" standing for
+  // one) may become a zero type, and is the only way to ask for a
+  // value of whatever it becomes, so it is never an error - in the
+  // template, or in an instance, where it is bound to an argument.
+  if (Source.IsWritten) {
+    auto const *written = named_cls_sym;
+    if (written != nullptr and written->IsSelf() and written->LinkedSymbol() != nullptr) {
+      written = written->LinkedSymbol();
+    }
+    // An alias resolves to what it names; a "Self" to the type it
+    // was followed to above.
+    auto const *resolved = TypeRef::Of(*Type, *sm->CurrentScope).Symbol;
+    if (resolved == nullptr or resolved->IsSelf()) { resolved = written; }
+    RaiseIf<SppObjectInitializerZeroTypeError>(
+      written != nullptr and not written->IsGn() and resolved != nullptr and resolved->IsZeroType(),
+      {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType));
+  }
 
   // Prepare the object initializer arguments. The type is passed
   // as written, generics and all: the class is found without
@@ -136,7 +156,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     }
   }
 
-  Type = self_type::SubstituteSelf(*Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get())
+  Type = self_type::SubstituteSelf(*Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
     ->WithSourceSpanOf(*Type);
   Type->LastTypePart()->InferFromAttributes(std::move(equations));
   Type->Stage7_AnalyseSemantics(sm, meta);
@@ -328,23 +348,10 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(struct_type, comp_fields.ToStdVector());
 }
 
-auto ObjectInitializerAst::InferType(
-  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // The type being initialized ("InferTypeRef"), by its name, which an instance's identity gives it. The convention is
-  // for dummy types made into values during other asts' analysis: types cannot be instantiated as borrows in user code.
-  return InferTypeRef(sm, meta).Symbol->FqName()->WithConvention(AstClone(Type->GetConvention()));
-}
-
 auto ObjectInitializerAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The type being initialized, held as written.
   return TypeRef::Of(*Type, *sm->CurrentScope);
-}
-
-auto ObjectInitializerAst::InferTypeForDisplay(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // Use the source original type.
-  return Source.OriginalType;
 }
 
 auto ObjectInitializerAst::ReadExpr(
