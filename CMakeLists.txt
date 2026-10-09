@@ -67,6 +67,7 @@ configure_file(
 option(SPP_WERROR "Treat compiler warnings as errors" ON)
 option(SPP_BUILD_TESTS "Build the unit tests" ON)
 option(SPP_ALL_TARGETS "Link every LLVM backend" OFF)
+option(SPP_STATIC_RUNTIME "Link the C++ runtime and mimalloc statically" OFF)
 set(SPP_SANITIZER
   ""
   CACHE STRING
@@ -83,6 +84,10 @@ if (SPP_SANITIZER)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
 endif ()
 
+if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_link_options(-static-libstdc++ -static-libgcc -Wl,--as-needed)
+endif ()
+
 if (NOT MSVC)
   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127228
   add_compile_options(-fvisibility-inlines-hidden)
@@ -93,6 +98,12 @@ set(
   SPP_NO_MIMALLOC_GENEX
   $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
+
+if (SPP_STATIC_RUNTIME)
+  set(SPP_MIMALLOC_TARGET mimalloc-static)
+else ()
+  set(SPP_MIMALLOC_TARGET mimalloc)
+endif ()
 
 if (NOT APPLE)
   set(CMAKE_LINKER_TYPE LLD)
@@ -255,7 +266,7 @@ target_link_libraries(
   LLVMTarget
   ${LLVM_NATIVE_LIBS}
   Threads::Threads
-  $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:mimalloc>
+  $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:${SPP_MIMALLOC_TARGET}>
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
