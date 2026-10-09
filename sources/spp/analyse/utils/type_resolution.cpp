@@ -260,6 +260,14 @@ auto spp::analyse::utils::type_resolution::StampPrecompiledTypes(
        }) {
     if (type != nullptr) { StampTypeParts(*type, global); }
   }
+
+  // The templates a scope-free reader compares against
+  // ("CachedPrecompiledTemplate"): a substitution has no scope.
+  for (auto const &tmpl : {TUP, VAR}) {
+    if (tmpl != nullptr) {
+      static_cast<void>(scopes::PrecompiledTemplate(*tmpl, global));
+    }
+  }
 }
 
 auto spp::analyse::utils::type_resolution::StampCompParts(
