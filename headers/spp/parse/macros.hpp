@@ -58,7 +58,7 @@
 
 #define PARSE_NEGATE(invalid)                \
     if (_Pos < _TokensLen) {                 \
-        if (_Tokens[_Pos].type == invalid) { \
+        if (_Tokens[_Pos].Type == invalid) { \
             return nullptr;                  \
         }                                    \
     }

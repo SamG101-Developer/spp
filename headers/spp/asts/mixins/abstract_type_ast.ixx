@@ -7,6 +7,7 @@ import genex;
 import std;
 
 use(spp::asts, struct ConventionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
@@ -23,12 +24,6 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   AbstractTypeAst();
 
   virtual ~AbstractTypeAst();
-
-  /// Whether any part of this type satisfies a predicate. This
-  /// is used to prevent calling "any_of" on a vector of parts
-  /// generated from this type, which was allocation-heavy and
-  /// a bottleneck. Moved to "internal" processing.
-  SPP_ATTR_NODISCARD virtual auto AnyPart(std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool = 0;
 
   /// Because the "Never" type has unique checking, we don't want
   /// to have extras "TypeEq"s against "Never" for every standard
@@ -97,22 +92,12 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// Create a new type by stripping off all the generics on
   /// the type, converting "std::vector::Vec[S32]" into
   /// "std::vector::Vec".
-  SPP_ATTR_NODISCARD virtual auto WithoutGenerics() const -> Shared<TypeAst> = 0;
-
-  /// Substitute all the generics on a type given a generic
-  /// argument (keyword arguments), converting something like
-  /// "Vec[T]" + "[T=S32]" into "Vec[S32]".
-  SPP_ATTR_NODISCARD virtual auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> = 0;
-
-  /// Check if a type contains a generic parameter. For example,
-  /// "Vec[T]" contains "T". Used to check for unbound generics
-  /// in "sup" blocks (ie never inferable).
-  SPP_ATTR_NODISCARD virtual auto ContainsGenerics(GenericParameterAst const &generic) const -> bool = 0;
+  SPP_ATTR_NODISCARD virtual auto WithoutGns() const -> Shared<TypeAst> = 0;
 
   /// Create a new type by adding a generic argument group onto
   /// the type, converting something like "Vec" + "[T=S32]" into
   /// "Vec[T=S32]". Not substitution based.
-  SPP_ATTR_NODISCARD virtual auto WithGenerics(Unique<GenericArgumentGroupAst> &&arg_group) const
+  SPP_ATTR_NODISCARD virtual auto WithGns(Unique<GenericArgumentGroupAst> &&arg_group) const
     -> Shared<TypeAst> =0;
 
   /// If the type name starts with a "$", then it is a compiler

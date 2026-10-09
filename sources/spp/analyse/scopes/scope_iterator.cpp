@@ -5,6 +5,7 @@ module spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope;
 
 SPP_MOD_BEGIN
+/// [CHECKED]
 ScopeIterator::ScopeIterator(
   Scope *root) {
   if (root != nullptr) {
@@ -12,26 +13,31 @@ ScopeIterator::ScopeIterator(
   }
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator*() -> reference {
   // Hook into the node on the frame at the back of the stack.
   return _Stack.Back().Node;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator*() const -> const_reference {
   // Hook into the node on the frame at the back of the stack.
   return _Stack.Back().Node;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator->() -> pointer {
   // Hook into the node on the frame at the back of the stack.
   return &_Stack.Back().Node;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator->() const -> const_pointer {
   // Hook into the node on the frame at the back of the stack.
   return &_Stack.Back().Node;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator++() -> ScopeIterator& {
   // Nothing in the stack means that no more iteration can be
   // done.
@@ -64,17 +70,20 @@ auto ScopeIterator::operator++() -> ScopeIterator& {
   return *this;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator++(int) -> ScopeIterator {
   auto tmp = *this;
   ++*this;
   return tmp;
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator==(
   ScopeIterator const &other) const -> bool {
   return _Stack.IsEmpty() and other._Stack.IsEmpty();
 }
 
+/// [CHECKED]
 auto ScopeIterator::operator!=(
   ScopeIterator const &other) const -> bool {
   return not(*this == other);

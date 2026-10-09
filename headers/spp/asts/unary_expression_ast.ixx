@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(UnaryExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct UnaryExpressionOperatorAst);
 use(spp::analyse::scopes, struct TypeRef);
@@ -40,8 +41,8 @@ SPP_EXP_CLS struct spp::asts::UnaryExpressionAst final : ExpressionAst {
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;

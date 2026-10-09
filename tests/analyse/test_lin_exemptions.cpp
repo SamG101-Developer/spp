@@ -79,7 +79,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls Marker { }
 
     fun f() -> Void {
-        let m = Marker()
+        let m = Marker
     }
 )");
 

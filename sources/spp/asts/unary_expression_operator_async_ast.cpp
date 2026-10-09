@@ -50,7 +50,7 @@ SPP_MOD_BEGIN
 UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
   decltype(TokAsync) &&tok_async) :
   TokAsync(std::move(tok_async)),
-  _TransformedFunc(nullptr) {
+  _TransformedFn(nullptr) {
 }
 
 UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
@@ -69,14 +69,14 @@ auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<UnaryExpressionOperatorAsyncAst>(
     AstClone(TokAsync));
-  ast->_TransformedFunc = AstClone(_TransformedFunc);
+  ast->_TransformedFn = AstClone(_TransformedFn);
   return ast;
 }
 
 auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (_TransformedFunc != nullptr) {
-    SPP_STRING_APPEND(_TransformedFunc);
+  if (_TransformedFn != nullptr) {
+    SPP_STRING_APPEND(_TransformedFn);
     SPP_STRING_END;
   }
   SPP_STRING_APPEND(TokAsync).append(" ");
@@ -86,10 +86,7 @@ auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
 auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppAsyncTargetNotFunctionCallError;
-  using analyse::utils::async_utils::CaptureBorrow;
-  using analyse::utils::async_utils::CaptureOnce;
-  using analyse::utils::async_utils::CaptureReceiver;
+  IMPORT_UTILS;
 
   // Check that the right-hand-side to the "async" keyword is
   // a function call ast. This blocks things like "async 123"
@@ -121,7 +118,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // to handle stringification properly.
   const auto pos = TokAsync->PosStart();
   const auto tok = [pos](const lex::SppTokenType type) {
-    return TokenAst::NewEmpty(type, lex::tok_to_string(type), pos);
+    return TokenAst::NewEmpty(type, lex::TokToString(type), pos);
   };
 
   // The prelude holds the "let" bindings made before the closure,
@@ -140,9 +137,9 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // would consume a global.
   // Todo: Can we borrow here so no extra check needed? Simpler.
   if (const auto target = pristine->Lhs->To<IdentifierAst>(); target != nullptr) {
-    const auto sym = scope.GetVarSymbol(target);
-    if (sym != nullptr and sym->ScopeDefinedIn != scope.ParentModule()) {
-      CaptureOnce(captures, AstClone(target), nullptr);
+    const auto sym = scope.FindVarSymbol(target);
+    if (sym != nullptr and sym->ScopeDefinedIn != scope.GetParentModule()) {
+      async_utils::CaptureOnce(captures, AstClone(target), nullptr);
     }
   }
 
@@ -150,7 +147,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // object - has a receiver, used the way the method's "self"
   // says - see "CaptureReceiver".
   else if (IsRuntimeMemberAccess(pristine->Lhs.get())) {
-    CaptureReceiver(
+    async_utils::CaptureReceiver(
       *pristine->Lhs->ToUnchecked<PostfixExpressionAst>(),
       rhs_fn_call->Target(), scope, prelude, captures, pos);
   }
@@ -160,7 +157,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // callable - "async (chooser())()" - so it is evaluated here into
   // a local of its own, and that local is captured.
   else if (pristine->Lhs->To<PostfixExpressionAst>() == nullptr) {
-    CaptureOnce(
+    async_utils::CaptureOnce(
       captures,
       BindLocal(pristine->Lhs, prelude, pos), nullptr);
   }
@@ -168,7 +165,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   for (auto const &arg : pristine_call->FnArgGroup->Args) {
     // A borrow - see "CaptureBorrow".
     if (arg->Conv != nullptr) {
-      CaptureBorrow(arg->Val, *arg->Conv, scope, prelude, captures, pos);
+      async_utils::CaptureBorrow(arg->Val, *arg->Conv, scope, prelude, captures, pos);
       continue;
     }
 
@@ -180,12 +177,12 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     // body reads the caller's own symbol - which is what makes
     // a moved argument report against the right variable.
     if (const auto ident = arg->Val->To<IdentifierAst>(); ident != nullptr) {
-      CaptureOnce(captures, AstClone(ident), nullptr);
+      async_utils::CaptureOnce(captures, AstClone(ident), nullptr);
       continue;
     }
 
     // Anything else is bound to a local the closure owns.
-    CaptureOnce(captures, BindLocal(arg->Val, prelude, pos), nullptr);
+    async_utils::CaptureOnce(captures, BindLocal(arg->Val, prelude, pos), nullptr);
   }
 
   // Copy the async flag into the original function for
@@ -233,39 +230,39 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // then the future is built from them, and the scope's value is
   // the future.
   if (prelude.IsEmpty()) {
-    _TransformedFunc = std::move(mapped);
+    _TransformedFn = std::move(mapped);
   }
   else {
     prelude.EmplaceBack(std::move(mapped));
-    _TransformedFunc = MakeUnique<InnerScopeExpressionAst>(
+    _TransformedFn = MakeUnique<InnerScopeExpressionAst>(
       tok(lex::SppTokenType::TK_LEFT_CURLY_BRACE), std::move(prelude),
       tok(lex::SppTokenType::TK_RIGHT_CURLY_BRACE));
   }
 
   // Analysed here so that codegen has a fully resolved call to
   // emit.
-  _TransformedFunc->Stage7_AnalyseSemantics(sm, meta);
+  _TransformedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Failsafe - Todo: is this ever hittable? Not sure if it is
   // needed
-  if (_TransformedFunc == nullptr) {
+  if (_TransformedFn == nullptr) {
     meta->UnaryExpressionRhs->Stage8_CheckMemory(sm, meta);
     return;
   }
 
   // Map the analysis to the inner transformation ast - the mapped
   // closure.
-  _TransformedFunc->Stage8_CheckMemory(sm, meta);
+  _TransformedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the mapped object initialization, which handles the
   // sppc lowering.
-  const auto value = _TransformedFunc->Stage11_CodeGen(sm, meta, ctx);
+  const auto value = _TransformedFn->Stage11_CodeGen(sm, meta, ctx);
   return value;
 }
 
@@ -280,6 +277,13 @@ auto UnaryExpressionOperatorAsyncAst::InferType(
     TokAsync->PosStart(), std::move(inner_type));
   future_type->Stage7_AnalyseSemantics(sm, meta);
   return future_type;
+}
+
+auto UnaryExpressionOperatorAsyncAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The future type is built as syntax ("Fut[T]"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
 auto UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_ast;
+import spp.analyse.scopes.type_key;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
 import spp.utils.types;
@@ -9,7 +10,9 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct TypeRef);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ConventionAst);
@@ -26,7 +29,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   PrimaryExpressionAst,
   mixins::AbstractTypeAst,
   EnableLocalSharedFromThis<TypeAst> {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
 
   TypeAst();
 
@@ -40,57 +43,35 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     return false;
   }
 
-  /// A type in expression position (the "A" of "A::new()", or
-  /// a comp argument naming a type) is substituted as the type
-  /// it is. This is the one node where the expression walk and
-  /// the type walk meet.
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
-    -> Shared<ExpressionAst> override;
+  /// A type written inside an expression (the "A" of "A::new()", a call's type arguments) is read by its identity
+  /// ("type_resolution::ReadType"), as a declaration's types are, whatever kind of type it is.
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> override;
+
+  /// "ReadExpr", answered as the type it still is.
+  SPP_ATTR_NODISCARD auto ReadExprType(
+    analyse::scopes::ExprSubst const &sub) const -> Shared<TypeAst>;
 
   /// A clone of this type with "arg_group" on its right-most part.
   /// A plain name builds its own ("TypeIdentifierAst").
-  SPP_ATTR_NODISCARD auto WithGenerics(Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto WithGns(
+    Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
 
-  /// Get the symbol this type resolved to the last time it was
-  /// looked up in "scope", if that answer still stands. An
-  /// answer remembered under an earlier "TypeLookupGeneration"
-  /// is discarded. "out" is only set when there is an answer.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TryCachedLookup(
-    Scope const *const scope, const std::uint64_t generation,
-    TypeSymbol *&out) const -> bool {
-    if (_LookupScope != scope or _LookupGen != generation) { return false; }
-    out = _LookupSym;
-    return true;
+  /// The identity this type resolved to where it was written
+  /// ("NameTypeIdOf"), if it was resolved there
+  /// ("TypeSymbol::FqName" writes it into the names it hands out). A
+  /// lookup of it reads that identity through the scope asking
+  /// ("Scope::FindBoundTypeSymbolById"), instead of resolving the spelling
+  /// again there - which binds a caller's "T" to a callee's
+  /// parameter of the same name.
+  SPP_ATTR_NODISCARD auto StampedTypeId() const noexcept -> TypeId {
+    return _StampedTypeId;
   }
 
-  /// Remember what this type resolved to in "scope", so the
-  /// next identical lookup is a pointer comparison. A null
-  /// symbol is cached too: "not found" is as expensive to
-  /// re-derive as a found symbol.
-  SPP_ATTR_HOT auto RememberLookup(
-    Scope const *const scope,
-    const std::uint64_t generation,
-    TypeSymbol *const sym) const
-    -> void {
-    _LookupScope = scope;
-    _LookupSym = sym;
-    _LookupGen = generation;
-  }
-
-  /// The symbol this type resolved to where it was written, if it
-  /// was stamped with one ("TypeSymbol::FqName" stamps the names it
-  /// hands out). A lookup of a stamped type asks "Scope::Canon" what
-  /// that symbol means from the scope asking, instead of resolving
-  /// the spelling again there - which binds a caller's "T" to a
-  /// callee's parameter of the same name.
-  SPP_ATTR_NODISCARD auto Stamp() const noexcept -> TypeSymbol* {
-    return _Stamp;
-  }
-
-  /// Stamp this type with the symbol it resolved to; see "Stamp".
-  auto SetStamp(TypeSymbol *const sym) const noexcept -> void {
-    _Stamp = sym;
+  /// Record the identity this type resolved to where it is
+  /// written; see "StampedTypeId".
+  auto StampTypeId(const TypeId id) const noexcept -> void {
+    _StampedTypeId = id;
   }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
@@ -102,7 +83,14 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   /// written rather than at the declaration. A copy, because the
   /// rebuilt type may be shared by every use of the symbol. A
   /// written type with no real span leaves the copy unstamped.
-  SPP_ATTR_NODISCARD auto WithSourceSpanOf(TypeAst const &written) const -> Shared<TypeAst>;
+  SPP_ATTR_NODISCARD auto WithSourceSpanOf(
+    TypeAst const &written) const -> Shared<TypeAst>;
+
+  /// A copy of this type that errors point at @p site, such as the
+  /// expression the type was inferred from ("1" for "S32"). Unlike
+  /// "WithSourceSpanOf", it keeps this type's own spelling.
+  SPP_ATTR_NODISCARD auto WithSourceSpanAt(
+    Ast const &site) const -> Shared<TypeAst>;
 
   /// The text of the type written in source that this one was
   /// rebuilt from (see "WithSourceSpanOf"), for error messages
@@ -113,11 +101,8 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   }
 
 protected:
-  mutable Shared<TypeAst> _CachedWithoutGenerics;
-  mutable Scope const *_LookupScope;
-  mutable TypeSymbol *_LookupSym;
-  mutable std::uint64_t _LookupGen;
-  mutable TypeSymbol *_Stamp = nullptr;
+  mutable Shared<TypeAst> _CachedWithoutGns;
+  mutable TypeId _StampedTypeId = nullptr;
   mutable Str _CachedStringification;
 
   /// Whether this type reports "_SpanStart" to "_SpanEnd" as its

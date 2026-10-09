@@ -13,7 +13,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final : TypePostfixExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionOperatorNestedTypeAst);
 
   /// The "::" namespace operator token.

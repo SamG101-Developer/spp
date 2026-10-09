@@ -14,7 +14,9 @@ import genex;
 import std;
 
 use(spp::asts, struct Ast);
+use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
@@ -23,6 +25,23 @@ namespace spp::analyse::errors {
 }
 
 namespace spp {
+  /// A resolved type given to an error in place of a type ast:
+  /// named where the error is raised ("TypeRef::AstIn") and placed
+  /// at "At", so an error that points at the type points there.
+  /// Held by value, as "ERR_ARGS" builds its arguments before the
+  /// error is. Made by "ErrTypeAt".
+  SPP_EXP_CLS template <typename R = analyse::scopes::TypeRef>
+  struct ErrType {
+    R Ref;
+    asts::Ast const *At = nullptr;
+  };
+
+  /// "ref" for an error message, placed at "at" ("ErrType").
+  SPP_EXP_FUN template <typename R>
+  auto ErrTypeAt(R const &ref, asts::Ast const &at) -> ErrType<R> {
+    return {ref, &at};
+  }
+
   /// Build the arguments tuple from the parameter pack, which
   /// will be passed into the semantic error builder.
   SPP_EXP_FUN template <typename... Args>
@@ -30,16 +49,37 @@ namespace spp {
     return {std::forward<Args>(args)...};
   }
 
+  namespace detail {
+    template <typename T>
+    constexpr auto kIsErrType = false;
+
+    template <typename R>
+    constexpr auto kIsErrType<ErrType<R>> = true;
+  }
+
   /// Raise an error with a list of scopes, a deferred argument
   /// binder, and any sub-errors.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
   SPP_ATTR_COLD SPP_ATTR_NORETURN
   auto Raise(Vec<Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
+    // A resolved type ("ErrType") is named where the error is
+    // raised, the first scope, and kept alive for the build.
+    auto named = Vec<Shared<void const>>();
+    const auto adapt = [&]<typename T>(T &&arg) -> decltype(auto) {
+      if constexpr (detail::kIsErrType<std::remove_cvref_t<T>>) {
+        auto type = arg.Ref.AstIn(*scopes[0]);
+        SPP_ASSERT(type != nullptr);
+        if (arg.At != nullptr) { type = type->WithSourceSpanAt(*arg.At); }
+        named.EmplaceBack(type);
+        return static_cast<asts::Ast const&>(*type);
+      }
+      else { return std::forward<T>(arg); }
+    };
     std::apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))
-          .WithArgs(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
+          .WithArgs(adapt(std::forward<Args2>(unpacked_args))...).raises_from_vec(scopes);
       },
       std::forward<A>(arg_binder)());
     std::unreachable();
@@ -53,13 +93,6 @@ namespace spp {
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
   auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
     if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
-  }
-
-  /// The opposite to the "RaiseIf" - this only raises an error
-  /// if the condition is false.
-  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseUnless(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (not condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
   }
 }
 
@@ -92,13 +125,16 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     // swap the two scopes of every two-scope error.
     auto messages = Vec<Str>();
     auto next = 0uz;
-    for (auto const &info : cast_error->ErrorInfo) {
+    for (auto &info : cast_error->ErrorInfo) {
       if (this->_ErrFormatters.IsEmpty()) { break; }
       auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.Len()];
-      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) { ++next; }
+      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
+        info.Span = formatter->SpanOfAst(info.Ast);
+        ++next;
+      }
       messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
     }
-    cast_error->messages = std::move(messages);
+    cast_error->Messages = std::move(messages);
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.
@@ -106,7 +142,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     for (auto const &msg : _SubErrors) {
       auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
-      cast_error->messages.EmplaceBack(header + msg);
+      cast_error->Messages.EmplaceBack(header + msg);
       ++i;
     }
 
@@ -115,7 +151,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   }
 
 private:
-  /// List of sub-errors. Todo: are these even used anymore?
+  /// List of sub-errors (the failed overloads of a call).
   Vec<Str> _SubErrors;
 
   static auto _StringifyErrorInformation(
@@ -124,22 +160,26 @@ private:
     -> Str {
     using namespace std::string_literals;
 
-    switch (auto [ast, kind, tag, msg] = info; kind) {
+    // A copy, because the rendering moves the strings out of it,
+    // and the error keeps its own for the consumers that read
+    // the information rather than the message.
+    auto parts = info;
+    switch (parts.Kind) {
       case ErrorInformationKind::ERROR: {
-        return formatter->ErrorAst(ast, std::move(msg), std::move(tag));
+        return formatter->ErrorAst(parts.Ast, std::move(parts.Msg), std::move(parts.Tag));
       }
       case ErrorInformationKind::CONTEXT: {
-        return formatter->ErrorAstMinimal(ast, std::move(tag));
+        return formatter->ErrorAstMinimal(parts.Ast, std::move(parts.Tag));
       }
       case ErrorInformationKind::HEADER: {
-        return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + ": "s + std::move(tag) + "\n"s;
+        return (colex::fg_bright_white & colex::st_bold) + std::move(parts.Msg) + ": "s + std::move(parts.Tag) + "\n"s;
       }
       case ErrorInformationKind::FOOTER: {
-        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(tag) + "\n"s +
-          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(msg) + "\n"s;
+        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(parts.Tag) + "\n"s +
+          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(parts.Msg) + "\n"s;
       }
       case ErrorInformationKind::WRAPPED: {
-        return std::move(tag);
+        return std::move(parts.Tag);
       }
       default:
         std::unreachable();

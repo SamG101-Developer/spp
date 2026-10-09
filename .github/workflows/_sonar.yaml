@@ -1,7 +1,7 @@
-name: sonar
-
 # Shares the release variant's build tree; Sonar only adds -DCMAKE_EXPORT_COMPILE_COMMANDS, which invalidates no
 # objects, so the build below is just the configure step catching up.
+
+name: sonar
 
 on:
   workflow_call:
@@ -16,10 +16,10 @@ on:
         type: string
         default: "ubuntu-24.04"
       variant:
-        description: "Build variant whose tree to restore. Must be one _build.yaml actually builds on that os."
+        description: "Build variant whose tree to restore. Must be one _lane.yaml actually builds on that os."
         required: false
         type: string
-        default: "release-rel"
+        default: "release"
     secrets:
       SONAR_TOKEN:
         required: true
@@ -59,7 +59,8 @@ jobs:
           version: ${{ env.GCC_VERSION }}
           cache-key-suffix: sonar
 
-      # The key comes from the same action the compile action writes the tree with, so restoring it needs only the
+      # The key comes from the same action the compile action
+      # writes the tree with, so restoring it needs only the
       # variant name to agree.
       - name: Compose build tree cache key
         id: cache-key
@@ -84,10 +85,12 @@ jobs:
           build-type: ${{ inputs.build-type }}
           extra-flags: -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      # Needed for the compile_commands.json the scanner reads, not for the objects.
+      # Needed for the compile_commands.json the scanner reads, not
+      # for the objects.
       - name: Build
         run: cmake --build build --parallel
 
+      # Run the sonar scanner action on the build tree.
       - name: SonarQube scan
         uses: sonarsource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f
         env:

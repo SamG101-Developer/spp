@@ -60,8 +60,8 @@ SPP_EXP_CLS struct spp::asts::LocalVariableDestructureObjectAst final : LocalVar
 
 private:
   Vec<Unique<LetStatementInitializedAst>> _NewAsts;
-  Shared<VariableSymbol> _CondSym;
-  Shared<VariableSymbol> _FlowSym;
+  Shared<VariableSymbol> _CondSymbol;
+  Shared<VariableSymbol> _FlowSymbol;
   Unique<LetStatementInitializedAst> _CondLet;
   Shared<IdentifierAst> _TmpName;
 };

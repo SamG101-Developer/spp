@@ -8,8 +8,9 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -59,8 +60,7 @@ auto DeferStatementAst::ToString() const -> Str {
 auto DeferStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppDeferTerminatesError;
-  using analyse::utils::expr_utils::ValidateDiscardedValue;
+  IMPORT_UTILS;
 
   // Marked for the duration of the expression's own analysis,
   // so that a "?" anywhere inside it - however deeply nested
@@ -76,22 +76,19 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
   RaiseIf<SppDeferTerminatesError>(
-    Expr->Terminates(), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
+    control_flow::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value
   // rule, which also reports a "case" against the expressions
   // its branches end on rather than against the "case".
-  ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
+  expr_utils::ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
 }
 
 auto DeferStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
-  auto saved = Vec<Pair<
-    Shared<VariableSymbol>,
-    analyse::utils::mem_info_utils::MemoryInfoSnapshot>>();
-
   // The expression has to be walked here, in the place it
   // is written, because the walk is what consumes the scopes
   // it owns. But it does not *run* here, so nothing it names
@@ -99,41 +96,47 @@ auto DeferStatementAst::Stage8_CheckMemory(
   // the rest of the scope, which is the entire point of
   // deferring it. So the walk happens, and the memory state
   // it produced is rolled back.
-  for (auto const *scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
-    for (auto *sym : scope->AllVarSymbols(true)) {
-      saved.EmplaceBack(sym->SharedFromThis<VariableSymbol>(), sym->MemInfo->Snapshot());
-    }
-    if (scope == meta->EnclosingFunctionScope) { break; }
-  }
+  const auto saved = memory_state::SnapshotScopes(sm->CurrentScope, meta->EnclosingFnScope);
 
   // Registered where it is reached, so an exit written above
   // this statement does not run it - which is what a "defer"
-  // means. Guarded against repeats because a loop body is
-  // walked twice, and the scope is the same one both times.
+  // means. Guarded against repeats in case the scope is walked
+  // again without being re-entered.
   if (not genex::contains(sm->CurrentScope->Deferred, this)) {
     sm->CurrentScope->Deferred.EmplaceBack(this);
   }
 
-  Expr->Stage8_CheckMemory(sm, meta);
+  // Each exit replays the walk from here (see "CheckAtExit").
+  _DeferScope = sm->CurrentScope;
+  _DeferPosition = sm->GetCurrentIterator();
 
-  // Whatever the walk moved is what running the expression
-  // at a scope exit will move, so that is what gets recorded.
-  // Todo: Only whole moves are carried over. A deferred
-  //  expression that partially moves a value - taking one
-  //  attribute off it rather than the whole thing - is not
-  //  accounted for, and the value will still read as owed.
-  Consumed.Clear();
-  for (auto const &[sym, snapshot] : saved) {
-    const auto was_moved = spp::get<0>(snapshot.AstMoved) != nullptr;
-    const auto now_moved = spp::get<0>(sym->MemInfo->AstMoved) != nullptr;
-    if (not was_moved and now_moved) { Consumed.EmplaceBack(sym->Name); }
-    sym->MemInfo->FillFromSnapshot(snapshot);
-  }
+  Expr->Stage8_CheckMemory(sm, meta);
+  memory_state::RestoreSnapshot(saved);
+}
+
+auto DeferStatementAst::CheckAtExit(
+  Ast const &exit_point, const StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Running the expression at this exit is checked as running it
+  // there would be: the whole of its memory check - what it
+  // consumes, and what it only reads or borrows - against the
+  // state the exit is reached with. Its names mean what they do
+  // where it is written, so the walk is replayed from there.
+  if (_DeferScope == nullptr) { return; }
+  auto tm = ScopeManager(sm.GlobalScope, _DeferScope);
+  tm.Reset(_DeferScope, *_DeferPosition);
+
+  struct DeferExitGuard {
+    CompilerMetaData *Meta;
+    std::optional<CompilerMetaData::DeferExitInfo> Outer;
+    ~DeferExitGuard() { Meta->DeferExit = Outer; }
+  } const guard{meta, meta->DeferExit};
+  meta->DeferExit = CompilerMetaData::DeferExitInfo{this, &exit_point, exit_what};
+  Expr->Stage8_CheckMemory(&tm, meta);
 }
 
 auto DeferStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *) -> void {
-  using analyse::errors::SppDeferInCompileTimeFunctionError;
+  IMPORT_UTILS;
 
   // Only a body being evaluated at compile time reaches this:
   // a function prototype exhausts its scope at stage 9 rather
@@ -141,7 +144,7 @@ auto DeferStatementAst::Stage9_CompTimeResolve(
   // notion of a scope exit to run the expression at, so rather
   // than silently skipping it, say so.
   // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompileTimeFunctionError>(
+  Raise<SppDeferInCompTimeFunctionError>(
     {sm->CurrentScope}, ERR_ARGS(*TokDefer));
 }
 

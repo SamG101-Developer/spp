@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(CaseExpressionAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
@@ -83,6 +84,8 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// A "case" block only terminates if one or more of its
   /// branches can terminate, as it has to be assumed that the

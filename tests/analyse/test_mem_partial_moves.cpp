@@ -58,6 +58,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPartialMoves,
     test_valid_memory_assign_attribute_on_non_initialized_attribute_4, R"(
@@ -69,5 +70,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut c = C()
         let x = c.b.a.str
         c.b.a.str = Str::from("hello")
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(c)
     }
 )");

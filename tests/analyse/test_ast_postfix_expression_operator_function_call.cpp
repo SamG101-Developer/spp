@@ -327,6 +327,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_postfix_function_folding_2, R"(
@@ -336,6 +337,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (1, 2, 3, 4)
         let y = (1, 2, 3, 4)
         let mut z = f(x, y)..
+        std::mem::ops::drop(z)
     }
 )");
 
@@ -535,7 +537,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // Red: the tuple the variadic arguments collapse into is never memory-checked, so moving the same object into two
-// variadic calls goes unreported. See the Todo in "func_utils.cpp".
+// variadic calls goes unreported. See the Todo in "fn_values.cpp".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_variadic_pack_reuses_moved_argument,
@@ -685,7 +687,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_postfix_func_call_non_cmp_in_cmp_context,
-  SppInvalidComptimeOperationError, R"(
+  SppInvalidCompTimeOperationError, R"(
     fun g() -> Void { }
 
     cmp fun f() -> Void {

@@ -238,6 +238,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case true {
             generator_mut = object.custom_iter_mut()
         }
+        else {
+            generator_mut = object.custom_iter_mut()
+        }
         let generator_ref = object.custom_iter_ref()
     }
 )");
@@ -256,6 +259,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut object = MyType()
         let generator_ref: Gen[&Str, Void]
         case true {
+            generator_ref = object.custom_iter_ref()
+        }
+        else {
             generator_ref = object.custom_iter_ref()
         }
         let mut generator_mut = object.custom_iter_mut()
@@ -278,10 +284,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case true {
             generator_mut_1 = object.custom_iter_mut()
         }
+        else {
+            generator_mut_1 = object.custom_iter_mut()
+        }
         let mut generator_mut_2 = object.custom_iter_mut()
     }
 )");
 
+// FIXED (the test itself moved "object" while a generator still borrowed it, or looped forever)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstYieldedBorrow,
   test_valid_memory_create_ref_borrow_create_ref_borrow_use_ref_borrow_with_scoping, R"(
@@ -293,16 +303,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun test_fn() -> Void {
         let object = MyType()
-        let mut generator_ref_1: Gen[&Str, Void]
-        case true {
-            generator_ref_1 = object.custom_iter_ref()
+        {
+            let mut generator_ref_1: Gen[&Str, Void]
+            case true {
+                generator_ref_1 = object.custom_iter_ref()
+            }
+            else {
+                generator_ref_1 = object.custom_iter_ref()
+            }
+            let generator_ref_2 = object.custom_iter_ref()
+            std::mem::ops::drop(generator_ref_1.res())
         }
-        let generator_ref_2 = object.custom_iter_ref()
-        std::mem::ops::drop(generator_ref_1.res())
         std::mem::ops::drop(object)
     }
 )");
 
+// Resuming a generator ends every "&mut" borrow it yielded before (the next yield may be the same element).
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestAstYieldedBorrow,
   test_invalid_memory_use_mut_borrow_after_conflicting_mut_borrow_created_for_resume,
@@ -356,6 +373,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself moved "object" while a generator still borrowed it, or looped forever)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstYieldedBorrow,
   test_valid_memory_use_mut_borrow_after_conflicting_ref_borrow_created_with_scoping, R"(
@@ -369,13 +387,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut object = MyType()
         loop true {
             let generator_mut = object.custom_iter_mut()
+            exit
         }
-        let mut generator_ref = object.custom_iter_ref()
-        std::mem::ops::drop(generator_ref.res())
+        {
+            let mut generator_ref = object.custom_iter_ref()
+            std::mem::ops::drop(generator_ref.res())
+        }
         std::mem::ops::drop(object)
     }
 )");
 
+// FIXED (the test itself moved "object" while a generator still borrowed it, or looped forever)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstYieldedBorrow,
   test_valid_memory_use_ref_borrow_after_conflicting_mut_borrow_created_with_scoping, R"(
@@ -389,9 +411,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut object = MyType()
         loop true {
             let generator_ref = object.custom_iter_ref()
+            exit
         }
-        let mut generator_mut = object.custom_iter_mut()
-        std::mem::ops::drop(generator_mut.res())
+        {
+            let mut generator_mut = object.custom_iter_mut()
+            std::mem::ops::drop(generator_mut.res())
+        }
         std::mem::ops::drop(object)
     }
 )");
@@ -409,6 +434,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let mut object = MyType()
         loop true {
             let generator_mut_1 = object.custom_iter_mut()
+            exit
         }
         {
             let mut generator_mut_1 = object.custom_iter_mut()
@@ -428,9 +454,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public cor custom_iter_mut(&mut self) -> Gen[&mut Str, Void] { }
     }
 
-    fun test_fn() -> Void {
+    fun test_fn(b: Bool) -> Void {
         let object = MyType()
-        loop true {
+        loop b {
             let generator_ref_1 = object.custom_iter_ref()
         }
         {
@@ -504,18 +530,141 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstYieldedBorrow,
   test_valid_memory_assign_narrowed_yielded_borrow_to_outer_binding, R"(
-    fun f() -> Void {
+    fun f(b: Bool) -> Void {
         let mut v = Vec[Str]()
         {
             let mut i = v.iter_mut()
-            loop true {
+            loop b {
                 let mut e2: &mut Str
                 let e1 = i.res()
                 case e1 of {
                     is &mut Str(..) { e2 = e1 }
+                    else { std::mem::ops::drop(e1) }
                 }
             }
         }
         std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_valid_mut_yield_consumed_before_the_next_resume, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f() -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            let x = g.res()
+            std::mem::ops::drop(x)
+            let y = g.res()
+            std::mem::ops::drop(y)
+        }
+        std::mem::ops::drop(object)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_valid_mut_yield_rebound_by_the_next_resume, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f() -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            let mut x = g.res()
+            x = g.res()
+            std::mem::ops::drop(x)
+        }
+        std::mem::ops::drop(object)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_valid_fresh_mut_yield_per_iteration, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f(b: Bool) -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            loop b {
+                let y = g.res()
+                std::mem::ops::drop(y)
+            }
+        }
+        std::mem::ops::drop(object)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_invalid_mut_yield_used_after_a_resume_in_an_inner_scope,
+  SppUninitializedMemoryUseError, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f() -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            let x = g.res()
+            {
+                let y = g.res()
+                std::mem::ops::drop(y)
+            }
+            std::mem::ops::drop(x)
+        }
+        std::mem::ops::drop(object)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_invalid_mut_yield_used_after_a_resume_in_one_branch,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f(b: Bool) -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            let x = g.res()
+            case b {
+                let y = g.res()
+                std::mem::ops::drop(y)
+            }
+            std::mem::ops::drop(x)
+        }
+        std::mem::ops::drop(object)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstYieldedBorrow,
+  test_invalid_mut_yield_used_after_a_resume_in_a_loop,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+    cls MyType { }
+    sup MyType { !public cor it(&mut self) -> Gen[&mut Str, Void] { } }
+
+    fun f(b: Bool) -> Void {
+        let mut object = MyType()
+        {
+            let mut g = object.it()
+            let x = g.res()
+            loop b {
+                let y = g.res()
+                std::mem::ops::drop(y)
+            }
+            std::mem::ops::drop(x)
+        }
+        std::mem::ops::drop(object)
     }
 )");

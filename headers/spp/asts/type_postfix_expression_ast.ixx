@@ -11,7 +11,9 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(TypePostfixExpressionAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ConventionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
@@ -19,7 +21,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionAst);
 
   /// The base type on which the postfix operation is applied.
@@ -48,7 +50,7 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto AnyPart(std::function<bool(TypeIdentifierAst const &)> const &pred) const -> bool override;
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept -> bool override;
 
@@ -74,11 +76,8 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto WithConvention(Unique<ConventionAst> &&conv) const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto WithoutGenerics() const -> Shared<TypeAst> override;
+  SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenerics(Vec<GenericArgumentAst*> const &args) const -> Shared<TypeAst> override;
-
-  SPP_ATTR_NODISCARD auto ContainsGenerics(GenericParameterAst const &generic) const -> bool override;
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
   auto ResetCache() -> void override;

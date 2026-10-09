@@ -8,7 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.gen_expression_ast;
 import spp.asts.generic_argument_ast;
@@ -43,6 +43,7 @@ GenWithExpressionAst::GenWithExpressionAst(
     this->TokGen, SppTokenType::KW_GEN, "gen");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
     this->TokWith, SppTokenType::KW_WITH, "with");
+  Source.OriginalPosEnd = Expr ? Expr->PosEnd() : TokWith->PosEnd();
 }
 
 GenWithExpressionAst::~GenWithExpressionAst() = default;
@@ -53,8 +54,8 @@ auto GenWithExpressionAst::PosStart() const -> std::size_t {
 }
 
 auto GenWithExpressionAst::PosEnd() const -> std::size_t {
-  // Use the expression.
-  return Expr->PosEnd();
+  // Use the expression, or where it ended once it was moved.
+  return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto GenWithExpressionAst::Clone() const -> Unique<Ast> {
@@ -79,12 +80,12 @@ auto GenWithExpressionAst::ToString() const -> Str {
 
 auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppFunctionSubroutineContainsGenExpressionError;
+  IMPORT_UTILS_AND_UID;
 
   // Check the enclosing function is a coroutine and not a
   // subroutine (kept explicit so the error points at this
   // "gen with", rather than at the synthetic inner "gen").
-  const auto function_flavour = meta->EnclosingFunctionFlavour;
+  const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
     function_flavour->TokenType != lex::SppTokenType::KW_COR,
     {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
@@ -92,7 +93,7 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   // Desugar the standard "gen with <Expr>" into the expanded
   // "loop _tmp in <Expr> { gen _tmp }". This keeps all "gen"
   // analysis uniform.
-  const auto uid = "_" + spp::utils::Uid(this);
+  const auto uid = "_" + Uid();
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(PosStart(), "$gen_with" + uid), nullptr);
   auto gen_value = MakeUnique<IdentifierAst>(

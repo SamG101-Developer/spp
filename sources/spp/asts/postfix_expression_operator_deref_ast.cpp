@@ -16,7 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_sym_info;
+import spp.codegen.llvm_type;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -52,9 +52,7 @@ auto PostfixExpressionOperatorDerefAst::ToString() const -> Str {
 auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppDereferenceNonBorrowedTypeError;
-  using analyse::errors::SppNonCopyableTypeError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::STR_VIEW;
   using generate::common_types_precompiled::VIEW;
 
@@ -62,9 +60,10 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   // checks.
   const auto lhs = meta->PostfixExpressionLhs;
   const auto lhs_type = lhs->InferType(sm, meta);
+  const auto lhs_ref = TypeRef::Of(*lhs_type, *sm->CurrentScope);
   const auto is_view =
-    TypeEq(*lhs_type, *STR_VIEW, *sm->CurrentScope, *sm->CurrentScope, false) or
-    TypeEq(*lhs_type, *VIEW, *sm->CurrentScope, *sm->CurrentScope, false);
+    type_compare::TypeEq(lhs_ref, TypeRef::Of(*STR_VIEW, *sm->CurrentScope), *sm->CurrentScope, *sm->CurrentScope) or
+    type_compare::TypeEq(lhs_ref, TypeRef::Of(*VIEW, *sm->CurrentScope), *sm->CurrentScope, *sm->CurrentScope);
 
   // Check the right-hand-side expression is a borrowable
   // type.
@@ -72,11 +71,13 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
     lhs_type->GetConvention() == nullptr,
     {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
-  // Check the right-hand-side expression is a "Copy" type. TODO: Add to unit tests.
-  const auto lhs_type_no_conv = lhs_type->WithoutConvention();
-  RaiseIf<SppNonCopyableTypeError>(
-    not sm->CurrentScope->GetTypeSymbol(lhs_type.get())->IsCopyable() and not meta->AllowMoveDeref and not is_view,
-    {sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+  // Check the right-hand-side expression is a "Copy" type.
+  // Todo: Add to unit tests.
+  if (not lhs_ref.Symbol->IsCopyable() and not meta->AllowMoveDeref and not is_view) {
+    // Held here: "ERR_ARGS" keeps references, not the copy.
+    const auto lhs_type_no_conv = lhs_type->WithoutConvention();
+    Raise<SppNonCopyableTypeError>({sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+  }
 }
 
 auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
@@ -87,8 +88,9 @@ auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Get the value underlying the borrow.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + Uid();
   const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 
@@ -96,7 +98,8 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   // value's type: under opaque pointers the latter is just
   // "ptr", so the pointee is unrecoverable from it and has
   // to come from the symbol table instead.
-  const auto llvm_type = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Sym->LlvmInfo->LlvmType;
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // Dereference the borrow to get the underlying value.

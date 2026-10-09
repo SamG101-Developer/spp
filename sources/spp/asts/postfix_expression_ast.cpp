@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
@@ -24,6 +24,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lsp.resolution_index;
 
 SPP_MOD_BEGIN
 PostfixExpressionAst::PostfixExpressionAst(
@@ -64,10 +65,7 @@ auto PostfixExpressionAst::ToString() const -> Str {
 auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::expr_utils::PrimaryExpressionOptions;
-  using analyse::utils::type_utils::ResolveWrittenType;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
+  IMPORT_UTILS;
 
   if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
     {
@@ -78,14 +76,13 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  // The "ast_clone" is required because the "lhs" could be a uniquely owned TypeAst, which must have access to
-  // "shared_from_this" (on a shared pointer, which "ast_clone" provides).
+  // A type left-hand side is moved into a shared pointer: a "TypeAst" needs "shared_from_this".
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
       auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
-      temp_lhs = ResolveWrittenType(*temp_lhs, *sm, *meta);
+      temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
     else {
@@ -100,7 +97,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
       // checking that the lhs is a valid form of primary expression.
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
-        not IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+        not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
         {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
     }
   }
@@ -109,17 +106,34 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
+
+  // Use the hook to record information for the resolution and
+  // completion plugin.
+  {
+    const auto produces_value =
+     Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr or
+     Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+
+    if (produces_value) {
+      lsp::resolution_index::RecordExpression(
+        *this, *sm, *meta, [this, sm, meta] { return InferType(sm, meta); });
+    }
+  }
 }
 
 auto PostfixExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
-  // Memory analysis used the transformed AST to not repeat lhs as self.
+  // A method call is checked in its function form, where the receiver is the "self" argument, so the lhs is not also
+  // checked as a use of its own.
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  if (func != nullptr and func->GetTransformedAst() != nullptr) {
-    func->GetTransformedAst()->Stage8_CheckMemory(sm, meta);
+  if (const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr; fn_lhs != nullptr) {
+    fn_lhs->Stage8_CheckMemory(sm, meta);
+    const auto _meta_guard = MetaGuard(meta);
+    meta->PostfixExpressionLhs = fn_lhs;
+    Op->Stage8_CheckMemory(sm, meta);
     return;
   }
 
@@ -156,7 +170,9 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
     // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
-    ValidateSymbolMemory(*meta->PostfixExpressionLhs, *Op, *sm, false, false, false, false, meta);
+    mem_utils::ValidateSymbolMemory(
+      *meta->PostfixExpressionLhs, *Op, *sm, meta,
+      {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
 }
@@ -171,17 +187,13 @@ auto PostfixExpressionAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // Memory analysis used the transformed AST to not
-  // repeat lhs as self.
+  // A method call is generated in its function form ("Type::m(obj)").
   const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  if (func != nullptr and func->GetTransformedAst() != nullptr) {
-    const auto ret_val = func->GetTransformedAst()->Stage11_CodeGen(sm, meta, ctx);
-    return ret_val;
-  }
+  const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr;
 
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  meta->PostfixExpressionLhs = fn_lhs != nullptr ? static_cast<ExpressionAst*>(fn_lhs) : Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
 }
@@ -216,15 +228,15 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   return lhs_parts;
 }
 
-auto PostfixExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto PostfixExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or
   // a slice was given.
   return MakeShared<PostfixExpressionAst>(
-    AstClone(Lhs->SubstituteGenericsExpr(args)),
-    Op->SubstituteGenericsExpr(args));
+    AstClone(Lhs->ReadExpr(sub)),
+    Op->ReadExpr(sub));
 }
 
 auto PostfixExpressionAst::IsAllowedInDefault() const -> bool {

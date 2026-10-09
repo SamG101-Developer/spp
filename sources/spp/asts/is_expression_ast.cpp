@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.is_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -7,16 +8,19 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.bin_utils;
+import spp.analyse.utils.case_utils;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.operator_desugaring;
+import spp.asts.ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_pattern_variant_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
@@ -29,7 +33,7 @@ IsExpressionAst::IsExpressionAst(
   Lhs(std::move(lhs)),
   TokOp(std::move(tok_op)),
   Rhs(std::move(rhs)),
-  _MappedFunc(nullptr) {
+  _MappedFn(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokOp, lex::SppTokenType::KW_IS, "is");
   Source.OriginalPosStart = Lhs ? Lhs->PosStart() : 0;
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
@@ -53,14 +57,14 @@ auto IsExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Lhs),
     AstClone(TokOp),
     AstClone(Rhs));
-  ast->_MappedFunc = _MappedFunc;
+  ast->_MappedFn = _MappedFn;
   return ast;
 }
 
 auto IsExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (_MappedFunc) {
-    SPP_STRING_APPEND(_MappedFunc);
+  if (_MappedFn) {
+    SPP_STRING_APPEND(_MappedFn);
     SPP_STRING_END;
   }
   SPP_STRING_APPEND(Lhs);
@@ -71,23 +75,22 @@ auto IsExpressionAst::ToString() const -> Str {
 
 auto IsExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::bin_utils::ConvertIsExprToFuncCall;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
+  IMPORT_UTILS;
 
   _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.Len();
-  _MappedFunc = ConvertIsExprToFuncCall(*this, sm, meta);
-  _MappedFunc->Stage7_AnalyseSemantics(sm, meta);
+  _MappedFn = case_utils::ConvertIsExprToFnCall(*this, sm, meta);
+  _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
   // Add the destructure symbols to the current scope.
   // This includes the lhs symbol if it's been flow typed.
-  if (not sm->CurrentScope->NameAsString().starts_with("<inner-scope#")) {
-    const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->AllVarSymbols(true, true);
+  if (AstAs<InnerScopeAst<Unique<Ast>>>(sm->CurrentScope->AstNode) == nullptr) {
+    const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->GetAllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
       sm->CurrentScope->AddVarSymbol(x->SharedFromThis<VariableSymbol>());
+      if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.EmplaceBack(x); }
     }
   }
 }
@@ -95,7 +98,7 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
 auto IsExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory checking to the mapped function.
-  _MappedFunc->Stage8_CheckMemory(sm, meta);
+  _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto IsExpressionAst::Stage11_CodeGen(
@@ -104,24 +107,16 @@ auto IsExpressionAst::Stage11_CodeGen(
   // flow typed, so we need to promote the original "alloca"
   // into the flow typed symbol.
   if (_LhsAsId) {
-    const auto flow_typed_lhs_sym = sm->CurrentScope->GetVarSymbol(_LhsAsId.get(), true);
+    const auto flow_typed_lhs_sym = sm->CurrentScope->FindVarSymbol(_LhsAsId.get(), true);
     if (flow_typed_lhs_sym != nullptr) {
-      auto original_sym = sm->CurrentScope->Parent->GetVarSymbol(_LhsAsId.get());
+      auto original_sym = sm->CurrentScope->Parent->FindVarSymbol(_LhsAsId.get());
       original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
       flow_typed_lhs_sym->LlvmInfo->Alloca = original_sym->LlvmInfo->Alloca;
     }
   }
 
   // Forward the code generation to the mapped function.
-  return _MappedFunc->Stage11_CodeGen(sm, meta, ctx);
-}
-
-auto IsExpressionAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // Always return a boolean type (successful or failed
-  // match).
-  using generate::common_types::BooleanType;
-  return BooleanType(_MappedFunc->PosStart());
+  return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto IsExpressionAst::InferTypeRef(
@@ -133,10 +128,11 @@ auto IsExpressionAst::InferTypeRef(
 }
 
 auto IsExpressionAst::IsAllowedInDefault() const -> bool {
-  // The pattern tests and binds, and holds no control
-  // flow of its own; only the tested value is an expression.
-  // Todo: Remove nullptr guard?
-  return Lhs == nullptr or Lhs->IsAllowedInDefault();
+  // The pattern names types ("Point[T](x, y)") that a default
+  // carried to its use would read where they mean something
+  // else, and a pattern is not rewritten for it ("ReadExpr"),
+  // so it is banned, as "case" is.
+  return false;
 }
 
 SPP_MOD_END

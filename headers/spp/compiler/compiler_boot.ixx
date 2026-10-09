@@ -185,7 +185,7 @@ private:
   /**
    * Every native library a package ships, found by shape: @c \<package\>/ffi/\<name\>/lib\<name\>.so , which is
    * the library beside the stub that declares it, under the one name the loader will ask for. The shape is what
-   * @c handle_validate holds a project to, so a library the sweep does not find is a validation error rather than a
+   * @c HandleValidate holds a project to, so a library the sweep does not find is a validation error rather than a
    * link that quietly leaves it out.
    * @param[in] project_root The directory to sweep.
    */

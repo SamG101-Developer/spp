@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.closure_expression_capture_group_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -85,12 +87,12 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
     // constraint, not its own type (see "ReattachCallableConstraints"),
     // and a capture of it has to keep that: "(caps f) { f() }" inside a
     // "FunMov"-constrained generic consumes "f", whatever closure it is.
-    const auto outer_sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    const auto outer_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
     const auto callable_as = outer_sym != nullptr ? outer_sym->CallableAsType : nullptr;
     let->Stage7_AnalyseSemantics(sm, meta);
 
     // Apply the borrow to the symbol.
-    const auto sym = sm->CurrentScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
+    const auto sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
     if (callable_as != nullptr) { sym->CallableAsType = callable_as; }
     sym->Kind = VariableKind::Capture;
     const auto conv = cap->Conv.get();
@@ -105,13 +107,20 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   // borrows.
   auto ass_sym = static_cast<VariableSymbol*>(nullptr);
   if (meta->AssignmentTarget != nullptr) {
-    ass_sym = meta->CurrentLambdaOuterScope->GetVarSymbolOutermost(*meta->AssignmentTarget).first;
+    ass_sym = meta->CurrentLambdaOuterScope->FindVarSymbolOutermost(*meta->AssignmentTarget).first;
   }
   for (auto const &cap : Captures) {
+    // The closure's own copy of the capture is initialised here,
+    // as a parameter is. A loop body is checked twice against the
+    // same scopes, so without this the second pass would still see
+    // whatever the body did to the copy on the first.
+    const auto inner_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
+    if (inner_sym != nullptr) { inner_sym->MemInfo->InitializedBy(*cap, sm->CurrentScope); }
+
     if (cap->Conv != nullptr) {
       // Mark the borrow on the closure's own copy of the symbol.
       const auto cap_val = cap->Val->To<IdentifierAst>();
-      const auto cap_sym = sm->CurrentScope->GetVarSymbol(cap_val);
+      const auto cap_sym = sm->CurrentScope->FindVarSymbol(cap_val);
       cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
 
       // The closure object outlives the expression that created
@@ -120,7 +129,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       // to the closure handle in both directions, so the captured
       // value can't move whilst the closure holds it, and the
       // closure itself can't move either.
-      const auto outer_cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap_val);
+      const auto outer_cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap_val);
       if (ass_sym != nullptr and outer_cap_sym != nullptr) {
         const auto is_mut = *cap->Conv == ConventionTag::MUT;
         ass_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
@@ -132,11 +141,11 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
     else {
       // Mark the symbol from the outer context as moved, unless
       // the type of the capture is copyable, in which case no
-      // action needs to be taken. Todo: Remove nullptr check?
-      const auto cap_sym = meta->CurrentLambdaOuterScope->GetVarSymbol(cap->Val->To<IdentifierAst>());
-      const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Sym;
+      // action needs to be taken.
+      const auto cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
+      const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Symbol;
       if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
-        cap_sym->MemInfo->AstMoved = {this, sm->CurrentScope};
+        cap_sym->MemInfo->MovedBy(*cap, sm->CurrentScope);
       }
     }
   }
@@ -144,10 +153,11 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
 
 auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Build the variable bindings from the environment object.
   // This allows the body to remain unchanged as the variables
   // get loaded from the environment struct.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + Uid();
   for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
     const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
     const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
@@ -163,7 +173,7 @@ auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
 
     const auto gep = ctx->Builder.CreateInBoundsGEP(
       ctx->CurrentClosureType,
-      AstAs<ClosureExpressionAst>(ctx->CurrentClosureScope->AstNode)->GetLlvmFunc()->Target->getArg(0),
+      AstAs<ClosureExpressionAst>(ctx->CurrentClosureScope->AstNode)->GetLlvmFn()->Target->getArg(0),
       Vec<llvm::Value*>{zero, idx}.ToStdVector());
 
     const auto load = ctx->Builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);

@@ -10,6 +10,7 @@ Subcommands:
     runners     one tab-separated record per canonical runner image
     caches      one tab-separated record per build-tree cache family: name, generation, key prefix
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
+    keys TABLE  print the keys of one table by dotted path (pin.boost), for scripts that loop over a table's entries
     set PATH V  rewrite one value in place, preserving comments and layout; used by refresh-pins.sh
     check       validate the file and print what it exports
 """
@@ -31,7 +32,7 @@ MANIFEST = Path(".github/dependencies.toml")
 
 # Keys inside a [pin.*] table that become environment variables. Anything else in such a table is metadata for the
 # install or refresh logic and is deliberately not exported.
-EXPORTED = re.compile(r"^(version|commit|tag|asset|developer-dir(-[a-z0-9-]+)?|sha256(-[a-z0-9-]+)?)$")
+EXPORTED = re.compile(r"^(version|commit|tag|asset(-[a-z0-9-]+)?|developer-dir(-[a-z0-9-]+)?|sha256(-[a-z0-9-]+)?)$")
 
 # A pin is a version, a tag, a commit, a digest or one release asset filename. Notably no whitespace, so nothing here
 # can inject a second line into GITHUB_ENV.
@@ -48,10 +49,8 @@ FAMILY = re.compile(r"^[a-z][a-z0-9]*$")
 GENERATION = re.compile(r"^v[1-9][0-9]*$")
 
 # Runner images are not exported: `runs-on` cannot read the env context, and RUNNER_* is GitHub's own namespace. The
-# manifest is the canonical list and check_workflows() enforces that the YAML agrees with it.
+# manifest is the canonical list; .github/scripts/ci/check-workflows.py holds the YAML to it.
 IMAGE = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.-]+$")
-IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?)?\b")
-WORKFLOW_DIRS = (Path(".github/workflows"), Path(".github/actions"))
 
 
 def fail(message: str) -> None:
@@ -163,23 +162,6 @@ def caches(data: dict) -> dict[str, str]:
     return out
 
 
-def check_workflows(data: dict) -> int:
-    """Every runner image named in the workflows must be one the manifest lists."""
-    allowed = set(runners(data).values())
-    if not allowed:
-        fail("[runner] is empty, so there is nothing to check the workflows against")
-
-    problems = 0
-    for directory in WORKFLOW_DIRS:
-        for path in sorted(directory.rglob("*.y*ml")):
-            for number, line in enumerate(path.read_text().splitlines(), start=1):
-                for found in IMAGE_IN_TEXT.findall(line):
-                    if found not in allowed:
-                        print(f"::error file={path},line={number}::{found} is not in [runner]: {line.strip()}")
-                        problems += 1
-    return problems
-
-
 def cmd_runners(data: dict) -> None:
     for key, value in runners(data).items():
         print(f"{key}\t{value}")
@@ -233,6 +215,16 @@ def cmd_get(data: dict, name: str) -> None:
     print(values[name])
 
 
+def cmd_keys(data: dict, path: str) -> None:
+    node: object = data
+    for part in path.split("."):
+        node = node.get(part) if isinstance(node, dict) else None
+    if not isinstance(node, dict):
+        fail(f"{path} is not a table in {MANIFEST}")
+    for key in node:
+        print(key)
+
+
 def cmd_check(data: dict, quiet: bool) -> None:
     values = exports(data)
     libs = libraries(data)
@@ -245,13 +237,10 @@ def cmd_check(data: dict, quiet: bool) -> None:
             print(f"  runner.{key}={value}")
         for key, value in families.items():
             print(f"  cache.{key}={value}")
-    problems = check_workflows(data)
     summary = (
         f"{MANIFEST}: {len(values)} pins, {len(libs)} libraries, "
         f"{len(images)} runner images, {len(families)} cache families"
     )
-    if problems:
-        fail(f"{summary}; {problems} workflow reference(s) disagree with [runner]")
     if not quiet:
         print(summary)
 
@@ -312,6 +301,8 @@ def main() -> None:
     check.add_argument("-q", "--quiet", action="store_true")
     get = sub.add_parser("get")
     get.add_argument("name")
+    keys = sub.add_parser("keys")
+    keys.add_argument("table")
     setter = sub.add_parser("set")
     setter.add_argument("path")
     setter.add_argument("value")
@@ -332,6 +323,8 @@ def main() -> None:
         cmd_caches(data)
     elif args.command == "get":
         cmd_get(data, args.name)
+    elif args.command == "keys":
+        cmd_keys(data, args.table)
     else:
         cmd_check(data, args.quiet)
 

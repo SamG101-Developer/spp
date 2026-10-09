@@ -7,8 +7,9 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.type_compare;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -73,11 +74,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
 auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppDeferTerminatesError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_utils::GetTryType;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS_AND_UID;
 
   // A deferred expression runs at the exits of its scope,
   // so the "ret" this lowers to would have to be emitted at
@@ -87,7 +84,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     meta->WithinDeferTok != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*meta->WithinDeferTok, *this));
 
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + Uid();
   auto temp_name = MakeShared<IdentifierAst>(PosStart(), "$temp" + uid);
 
   // Build the materializing left-hand-side to contain the
@@ -145,7 +142,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     std::move(residual_target), std::move(residual_call));
 
   auto residual_statements = Vec<Unique<StatementAst>>();
-  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     residual_statements.EmplaceBack(MakeUnique<RetStatementAst>(nullptr, std::move(residual_extract)));
   }
   else {
@@ -191,33 +188,37 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // through stage 7, and an expression that has not cannot be
   // asked for its type - a function call has no overload picked
   // yet, so "_OverloadInfo" is still empty.
-  const auto residual_type = GetTryType(
+  const auto residual_ref = marker_sups::FindTrySup(
     analysed_lhs->InferTypeRef(sm, meta), *analysed_lhs, [&] { return analysed_lhs->InferType(sm, meta); }, *sm,
-    "early return")->TypeArgType("Residual");
+    "early return").Symbol->TypeArgRef("Residual");
 
   // Todo: Tidy!
   // Subroutine return type check.
-  if (meta->EnclosingFunctionFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(
-        *meta->EnclosingFunctionRetType.Back(), *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-      {meta->EnclosingFunctionScope, sm->CurrentScope},
+      not type_compare::Assignable(
+        TypeRef::Of(*meta->EnclosingFnRetType.Back(), *meta->EnclosingFnScope),
+        residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
+      {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFunctionSourceRetType.Back(), *meta->EnclosingFunctionRetType.Back(),
-        *analysed_lhs, *residual_type));
+        *meta->EnclosingFnSourceRetType.Back(), *meta->EnclosingFnRetType.Back(),
+        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
   }
 
   // Todo: Tidy!
   // Coroutine return type check.
   else {
-    auto const &ret_type = meta->EnclosingFunctionRetType.Back();
-    auto [_, yield_type, _] = GetGenAndYieldTypes(
+    auto const &ret_type = meta->EnclosingFnRetType.Back();
+    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
-      [&] { return ret_type; }, "early return");
+      [&] { return ret_type; }, "early return"));
+
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*yield_type, *residual_type, *meta->EnclosingFunctionScope, *sm->CurrentScope),
-      {meta->EnclosingFunctionScope, sm->CurrentScope},
-      ERR_ARGS(*meta->EnclosingFunctionSourceRetType.Back(), *yield_type, *analysed_lhs, *residual_type));
+      not type_compare::Assignable(yield_ref, residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
+      {meta->EnclosingFnScope, sm->CurrentScope},
+      ERR_ARGS(
+        *meta->EnclosingFnSourceRetType.Back(), ErrTypeAt(yield_ref, *meta->EnclosingFnSourceRetType.Back()),
+        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
   }
 }
 
@@ -244,7 +245,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
 auto PostfixExpressionOperatorEarlyReturnAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
-  using analyse::utils::type_utils::GetTryType;
+  IMPORT_UTILS;
   if (_TransformedExpr != nullptr) {
     // Infer from the transformed ast.
     const auto _meta_guard = MetaGuard(meta);
@@ -254,25 +255,30 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferType(
     return transformed_type;
   }
 
-  // Before stage 7 there is no lowering yet, so fall back
-  // to reading it off the left-hand-side. This only works
+  // Before stage 7 there is no lowering yet, so it is read
+  // off the left-hand-side ("InferTypeRef"). This only works
   // for an operand that some other path has already analysed.
-  const auto lhs = meta->PostfixExpressionLhs;
-  return GetTryType(
-    lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
-    "early return")->TypeArgType("Value");
+  return TypeInferrableAst::InferType(sm, meta);
 }
 
 auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // The try type's "Value" is read off the type's arguments, so only the transformed expression is forwarded.
+  // The try type's "Value" is read off the type's arguments,
+  // so only the transformed expression is forwarded.
+  IMPORT_UTILS;
   if (_TransformedExpr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     return _TransformedExpr->InferTypeRef(sm, meta);
   }
-  return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
+
+  // Before stage 7 there is no lowering yet: the "Value" the
+  // left-hand side's "Try" sup gives, as "InferType".
+  const auto lhs = meta->PostfixExpressionLhs;
+  return marker_sups::FindTrySup(
+    lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
+    "early return").Symbol->TypeArgRef("Value");
 }
 
 SPP_MOD_END

@@ -89,8 +89,8 @@ auto ExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {};
 }
 
-auto ExpressionAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &) const -> Shared<ExpressionAst> {
+auto ExpressionAst::ReadExpr(
+  analyse::scopes::ExprSubst const &) const -> Shared<ExpressionAst> {
   // The default operation is to do nothing, because all
   // other asts will specialize.
   return AstCloneShared(this);

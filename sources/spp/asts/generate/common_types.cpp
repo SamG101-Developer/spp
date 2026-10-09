@@ -342,6 +342,13 @@ auto generate::common_types::None(std::size_t pos) -> Shared<TypeAst> {
   FINISH_TYPE()
 }
 
+auto generate::common_types::GenDone(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("GenDone")
+  ADD_NAMESPACE("generator")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
+}
+
 auto generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type,
   Shared<TypeAst> send_type) -> Shared<TypeAst> {
   MAKE_GENERICS()

@@ -262,3 +262,62 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(b)
     }
 )");
+
+// Moving a value an iterator or future borrows is caught, but assigning over it is not.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_invalid_memory_assign_over_iterated_vector,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    fun f() -> Void {
+        let mut v = Vec[S32]()
+        loop x in v.iter_ref() {
+            v = Vec[S32]()
+        }
+        std::mem::ops::drop(v)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_invalid_memory_assign_while_borrowed_by_a_future,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    fun g(a: &mut S32) -> S32 { ret 1 }
+
+    fun f() -> Void {
+        let mut v = 1
+        let x = async g(&mut v)
+        v = 5
+        let r = x.await
+    }
+)");
+
+// Borrowing a value a future holds "&mut" was caught, but copying it out was not.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_invalid_memory_read_while_mutably_borrowed_by_a_future,
+  SppMemoryOverlapUsageError, R"(
+    fun g(a: &mut S32) -> S32 { ret 1 }
+
+    fun f() -> Void {
+        let mut v = 1
+        let x = async g(&mut v)
+        let y = v
+        let r = x.await
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstEscapingBorrows,
+  test_valid_memory_read_while_immutably_borrowed_by_a_future, R"(
+    fun g(a: &S32) -> S32 { ret 1 }
+
+    fun f() -> Void {
+        let v = 1
+        let x = async g(&v)
+        let y = v
+        let r = x.await
+    }
+)");

@@ -322,6 +322,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// An extension that grows its own type never ends, which a use of the type reports; the declaration alone, like any
+// generic code nothing instantiates, is not read far enough to.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstSupPrototypeExtensionAst,
   test_invalid_superimposition_extension_instantiation_depth,
@@ -329,4 +331,81 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls Box[T] { }
 
     sup [T] Box[T] ext Box[Box[T]] { }
+
+    fun f() -> Void {
+        let b = Box[S32]()
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_external_copy_marker,
+  SppSuperimpositionExternalMarkerExtensionError, "Copy", R"(
+    sup Bool ext Copy { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_external_drop_marker,
+  SppSuperimpositionExternalMarkerExtensionError, R"(
+    use std::ops::drop::Drop
+
+    sup Str ext Drop {
+        fun drop(self) -> Void { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_external_marker_generic_type,
+  SppSuperimpositionExternalMarkerExtensionError, R"(
+    sup [T] Vec[T] ext Copy { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_blanket_marker,
+  SppSuperimpositionExternalMarkerExtensionError, R"(
+    sup [T] T ext Copy { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstSupPrototypeExtensionAst,
+    test_valid_superimposition_extension_own_copy_marker, R"(
+    cls OwnCopyMarker { }
+    sup OwnCopyMarker ext Copy { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstSupPrototypeExtensionAst,
+    test_valid_superimposition_extension_own_drop_marker, R"(
+    use std::ops::drop::Drop
+
+    cls OwnDropMarker { !public a: S32 }
+
+    sup OwnDropMarker ext Drop {
+        fun drop(self) -> Void {
+            let Self(a) = self
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstSupPrototypeExtensionAst,
+    test_valid_extending_two_instantiations_of_one_generic_class, R"(
+    cls Base[B] { }
+    sup [B] Base[B] {
+        !public fun f1(&self, a: B) -> B { ret a }
+    }
+    cls D { }
+    sup D ext Base[Str] { }
+    sup D ext Base[Bool] { }
+
+    fun t() -> Void {
+        let d = D()
+        let mut x = d.f1(false)
+        x = false
+        let D(..) = d
+    }
 )");

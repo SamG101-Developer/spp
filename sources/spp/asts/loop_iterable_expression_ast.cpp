@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.loop_iterable_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -9,7 +10,8 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.type_resolution;
 import spp.asts.assignment_statement_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_ast;
@@ -100,28 +102,28 @@ auto LoopIterableExpressionAst::ToString() const -> Str {
 
 auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS_AND_UID;
 
   // Simple statements to move from.
-  const auto uid = "_" + spp::utils::Uid(this);
+  const auto uid = "_" + Uid();
   auto iterable_name = MakeShared<IdentifierAst>(PosStart(), "$_iter" + uid);
   auto resume_name = MakeShared<IdentifierAst>(PosStart(), "$_res" + uid);
   auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok" + uid);
   _IterableName = iterable_name;
 
   // Grab the generator's inner type.
-  auto [_, yield_type, _] = [&] {
+  const auto gen = [&] {
     const auto clone_expr = AstClone(Iterable);
     auto tm = ScopeManager(
       sm->GlobalScope, sm->CurrentScope);
-    tm.Reset(sm->CurrentScope, sm->CurrentIterator());
+    tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
     clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-    return GetGenAndYieldTypes(
+    return marker_sups::FindGenSup(
       clone_expr->InferTypeRef(&tm, meta), *tm.CurrentScope, *Iterable,
       [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
   }();
+  marker_sups::EnforceYieldTypeWithoutGenDone(gen, *sm->CurrentScope, *Iterable, "loop iterable");
+  const auto yield_type = marker_sups::GenYieldOf(gen).AstIn(*sm->CurrentScope);
 
   // Create the initial let statement to materialize the
   // condition being iterated.
@@ -242,11 +244,11 @@ auto LoopIterableExpressionAst::Stage8_CheckMemory(
   // whose lifetime ends with the loop. Release any escaping
   // borrows it holds (e.g. the "&mut v" established by
   // "v.iter_mut()").
-  const auto iter_sym = sm->CurrentScope->GetVarSymbol(_IterableName.get());
+  const auto iter_sym = sm->CurrentScope->FindVarSymbol(_IterableName.get());
   for (auto const &ceb : iter_sym->MemInfo->AstContainedEscapingBorrows) {
     const auto b = spp::get<0>(ceb)->To<IdentifierAst>();
     if (b == nullptr) { continue; }
-    sm->CurrentScope->GetVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
+    sm->CurrentScope->FindVarSymbol(b)->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
       [&](auto info) {
         return *spp::get<0>(info)->template To<IdentifierAst>() == *iter_sym->Name;
       });

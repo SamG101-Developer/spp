@@ -1,36 +1,65 @@
 module spp.utils.strings;
 import genex;
 
-static auto DecodeEscapeChar(
-  const char c)
-  -> char {
-  switch (c) {
-    case 'n': return '\n';
-    case 't': return '\t';
-    case 'r': return '\r';
-    case '0': return '\0';
-    case '\\': return '\\';
-    case '\'': return '\'';
-    case '"': return '"';
-    default: return c;
+namespace spp {
+  namespace {
+    auto DecodeEscapeChar(
+      const char c) -> char {
+      switch (c) {
+        case 'n': return '\n';
+        case 't': return '\t';
+        case 'r': return '\r';
+        case '0': return '\0';
+        case '\\': return '\\';
+        case '\'': return '\'';
+        case '"': return '"';
+        default: return c;
+      }
+    }
+
+    /// The value of a "\x" escape's two hex digits, or -1 when
+    /// "at" is not the position of two hex digits.
+    auto DecodeHexEscape(
+      const StrView content, const std::size_t at) -> std::int32_t {
+      // Function to extract the numeric value of a hex digit.
+      // Called to get the "hi" and "lo" part of a 2-digit hex
+      // escape sequence.
+      const auto digit = [](const char c) -> std::int32_t {
+        if (c >= '0' and c <= '9') { return c - '0'; }
+        if (c >= 'a' and c <= 'f') { return c - 'a' + 10; }
+        if (c >= 'A' and c <= 'F') { return c - 'A' + 10; }
+        return -1;
+      };
+
+      // Defensive guard against an empty literal (eg "\x").
+      // Extract the two bytes, validate them, and return
+      // their combined numeric representation for the char.
+      if (at + 1 >= content.size()) { return -1; }
+      const auto hi = digit(content[at]);
+      const auto lo = digit(content[at + 1]);
+      return hi < 0 or lo < 0 ? -1 : hi * 16 + lo;
+    }
+
+    auto StripLiteralQuotes(
+      const StrView token_data) -> StrView {
+      // Assume the presence of " characters has been checked,
+      // so strip the first and last character off of the view
+      // and return a substring view.
+      return token_data.size() >= 2 ? token_data.substr(1, token_data.size() - 2) : StrView();
+    }
   }
 }
 
-static auto StripLiteralQuotes(
-  const spp::StrView token_data)
-  -> spp::StrView {
-  return token_data.size() >= 2 ? token_data.substr(1, token_data.size() - 2) : spp::StrView();
+auto spp::utils::strings::IsAlNum(const char c) -> bool {
+  // Character comparison against constants to make sure the
+  // provided character is in range.
+  return (c >= 'a' and c <= 'z')
+    or (c >= 'A' and c <= 'Z')
+    or (c >= '0' and c <= '9')
+    or (c == '_');
 }
 
-auto spp::utils::strings::IsAlNum(
-  const char c)
-  -> bool {
-  return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or (c == '_');
-}
-
-auto spp::utils::strings::SnakeToPascal(
-  Str const &str)
-  -> Str {
+auto spp::utils::strings::SnakeToPascal(Str const &str) -> Str {
   auto out = Str();
   auto caps = true;
   for (auto i = 0uz; i < str.length(); ++i) {
@@ -51,9 +80,7 @@ auto spp::utils::strings::SnakeToPascal(
 }
 
 auto spp::utils::strings::ClosestMatch(
-  const StrView query,
-  Vec<Str> const &choices)
-  -> std::optional<Str> {
+  const StrView query, Vec<Str> const &choices) -> std::optional<Str> {
   auto match_found = false;
   auto best_score = 0.0;
   auto best_match = Str();
@@ -71,9 +98,7 @@ auto spp::utils::strings::ClosestMatch(
 }
 
 auto spp::utils::strings::Levenshtein(
-  const StrView s1,
-  const StrView s2)
-  -> std::size_t {
+  const StrView s1, const StrView s2) -> std::size_t {
   const auto m = s1.length();
   const auto n = s2.length();
 
@@ -145,15 +170,22 @@ auto spp::utils::strings::DecodeCharLiteral(
   -> std::uint32_t {
   const auto content = StripLiteralQuotes(token_data);
 
-  // Defensive guard against an empty literal (eg "''"); a well-formed char always has content.
+  // Defensive guard against an empty literal (eg "''"); a
+  // well-formed char always has content.
   if (content.empty()) { return 0; }
 
-  // Escape sequences, eg "\n" (a backslash followed by a single character).
+  // Escape sequences, eg "\n" (a backslash followed by a
+  // single character), or "\x0b" (two hex digits), which
+  // used to read as the letter "x".
   if (content.size() >= 2 and content[0] == '\\') {
+    if (content[1] == 'x') {
+      if (const auto hex = DecodeHexEscape(content, 2); hex >= 0) { return static_cast<std::uint32_t>(hex); }
+    }
     return static_cast<unsigned char>(DecodeEscapeChar(content[1]));
   }
 
-  // Otherwise decode the single UTF-8 scalar value into its Unicode code point.
+  // Otherwise decode the single UTF-8 scalar value into
+  // its Unicode code point.
   const auto b0 = static_cast<unsigned char>(content[0]);
   if (b0 < 0x80 or content.size() < 2) {
     return b0;
@@ -177,11 +209,17 @@ auto spp::utils::strings::DecodeStringLiteral(
   -> Str {
   const auto content = StripLiteralQuotes(token_data);
 
-  // Copy the bytes across, resolving backslash escape sequences; multi-byte UTF-8 bytes pass through.
+  // Copy the bytes across, resolving backslash escape
+  // sequences; multi-byte UTF-8 bytes pass through.
   auto out = Str();
   out.reserve(content.size());
   for (auto i = 0uz; i < content.size(); ++i) {
     if (content[i] == '\\' and i + 1 < content.size()) {
+      if (const auto hex = content[i + 1] == 'x' ? DecodeHexEscape(content, i + 2) : -1; hex >= 0) {
+        out += static_cast<char>(hex);
+        i += 3;
+        continue;
+      }
       out += DecodeEscapeChar(content[i + 1]);
       ++i;
     }

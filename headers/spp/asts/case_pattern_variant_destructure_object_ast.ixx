@@ -58,6 +58,6 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 
 private:
-  Shared<VariableSymbol> _CondSym;
-  Shared<VariableSymbol> _FlowSym;
+  Shared<VariableSymbol> _CondSymbol;
+  Shared<VariableSymbol> _FlowSymbol;
 };

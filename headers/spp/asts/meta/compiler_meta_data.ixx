@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
+import spp.analyse.scopes.type_key;
 import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -11,6 +12,8 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::memory_state, struct MemoryState);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
@@ -41,15 +44,6 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kPreCodeGen, // stage 10
   kCodeGen, // stage 11
 };
-
-namespace spp::asts::meta {
-  /// Generic parameter names mapped to the types an object
-  /// initializer infers their arguments from.
-  SPP_EXP_CLS using GenericInferenceBindings = Map<
-    Shared<IdentifierAst>, Shared<TypeAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-    utils::ptr::ptr_eq<Shared<IdentifierAst>>>;
-}
 
 /// The LLVM blocks belonging to a single enclosing loop,
 /// tracked so that "exit" and "skip" loop flow control
@@ -119,15 +113,63 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// condition.
   ExpressionAst *CaseCondition;
 
-  /// If we are consuming the case condition or not. It is stored
-  /// as a vector so that nested "case" statements work properly,
-  /// moving back to the correct case expression per case block.
-  Vec<Shared<IdentifierAst>> CaseConsumedSubjects;
+  /// The subjects of the surrounding "case ... of"s that take
+  /// them, by symbol. It is stored as a vector so that nested
+  /// "case" statements work properly, moving back to the correct
+  /// case expression per case block.
+  Vec<VariableSymbol const*> CaseConsumedSubjects;
 
   /// Whether we are currently operating within a "defer"
   /// statement's expression - different rules for analysis and
   /// terminating.
   TokenAst *WithinDeferTok = nullptr;
+
+  /// The scope holding a function's parameters while one of
+  /// their defaults is analysed. A default is copied into the
+  /// calls that leave it out, so it cannot name a parameter.
+  Scope const *ParameterDefaultScope = nullptr;
+
+  /// How many "skip" statements memory checking has passed. A
+  /// loop compares it across its body to learn whether anything
+  /// in the body can start another iteration early.
+  std::size_t LoopSkipsSeen = 0;
+
+  /// The innermost loop's record of what a plain "skip" left
+  /// moved, paired with the "skip" itself: those paths enter the
+  /// next iteration too, not just the one reaching the body's
+  /// end. Null outside a loop's memory check.
+  Vec<Pair<VariableSymbol*, Ast const*>> *LoopSkipMoves = nullptr;
+
+  /// For every loop being memory checked (innermost last), the
+  /// state at each "exit" that leaves it, paired with the "exit".
+  /// An "exit exit" records into the loop two back. The loop
+  /// merges these into the state after it, as they are paths out
+  /// of it just as much as its condition turning false.
+  Vec<Vec<Pair<Ast const*, Vec<Pair<Shared<VariableSymbol>, MemoryState>>>>*> LoopExitStates;
+
+  /// While a "defer" is checked at an exit it runs from
+  /// ("DeferStatementAst::CheckAtExit"): the statement, and the
+  /// exit. A value its expression uses that is gone by then is
+  /// reported against both.
+  struct DeferExitInfo {
+    Ast const *Stmt;
+    Ast const *ExitPoint;
+    StrView ExitWhat;
+  };
+  std::optional<DeferExitInfo> DeferExit;
+
+  /// Every binding an "is" has introduced into its enclosing
+  /// scope, in order. An "is" binding only exists where the match
+  /// is known to have succeeded - on the right of an "and", in the
+  /// branch it conditions - so the users of "is" move the ones
+  /// they no longer cover into "ExpiredIsBindings".
+  Vec<VariableSymbol*> AddedIsBindings;
+
+  /// "is" bindings no longer in force: an identifier resolving to
+  /// one is reported as unknown. They stay in their scope, as
+  /// later stages still find them by name for the code that could
+  /// use them.
+  Vec<VariableSymbol*> ExpiredIsBindings;
 
   /// The actual "current scope" of the program, which has been
   /// hidden by the isolated closure scope being set to the
@@ -137,25 +179,25 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// The function scope containing the surrounding function. This
   /// is not reset on a restore, so persists throughout all save/
   /// restore operations on "meta" during analysis.
-  Scope *EnclosingFunctionScope;
+  Scope *EnclosingFnScope;
 
   /// The function variant of the surrounding function: whether
   /// we are inside a subroutine (fun) or coroutine (cor). Needed
   /// for "ret" and "gen" position checking.
-  TokenAst *EnclosingFunctionFlavour;
+  TokenAst *EnclosingFnFlavour;
 
   /// The return type of the enclosing function type. Again needed
   /// for "ret" and "gen" type checking.
-  Vec<Shared<TypeAst>> EnclosingFunctionRetType;
+  Vec<Shared<TypeAst>> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
-  Vec<Shared<TypeAst>> EnclosingFunctionSourceRetType;
+  Vec<Shared<TypeAst>> EnclosingFnSourceRetType;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
   /// call non-"cmp" functions in their body.
-  TokenAst *EnclosingFunctionCmp;
+  TokenAst *EnclosingFnCmp;
 
   /// The current "outer" closure scope. This is needed so that
   /// when we are in the "inner" closure scope, we can lookup
@@ -165,12 +207,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// The function prototype being called by a postfix function
   /// call operator. Needed for coroutine target checking during
   /// analysis, especially memory rules.
-  FunctionPrototypeAst *TargetCallFunctionPrototype;
+  FunctionPrototypeAst *TargetCallFnPrototype;
 
   /// Similar to above, but rather than tracking the variation
   /// of the target function prototype, check the calling
   /// convention for "async", for memory rules.
-  bool TargetCallWasFunctionAsync;
+  bool TargetCallWasFnAsync;
 
   /// The explicit type, if provided, on a "let" statement,
   /// carried forward for local variable asts to analyse values
@@ -208,18 +250,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// group needs it for generic inference.
   Shared<TypeAst> ObjectInitType;
 
-  /// Critical to advanced generic inference, the infer source
-  /// is the map of "arguments" such as function or object init
-  /// arguments. These are compared by name against the inference
-  /// targets to infer generics.
-  Shared<GenericInferenceBindings> InferSource;
-
-  /// Critical to advanced generic inference, the infer target
-  /// is the map of "parameters" such as function param or object
-  /// init class fields. These are compared by name against the
-  /// inference sources to infer generics.
-  Shared<GenericInferenceBindings> InferTarget;
-
   /// Track the left-hand-side of a postfix expression so that
   /// the operator being applied to it can read from it.
   ExpressionAst *PostfixExpressionLhs;
@@ -230,8 +260,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// There are some instances where we want to analyse a type
   /// but not the generics attached to it, so allow that.
-  /// Todo: Remove and use ->WithoutGenerics()->Stage7...()?
-  bool SkipTypeAnalysisGenericChecks;
+  /// Todo: Remove and use ->WithoutGns()->Stage7...()?
+  bool SkipTypeAnalysisGnChecks;
 
   /// The overriding type scope to analyse a type in. This is
   /// used for example from a type unary expression to provide
@@ -279,18 +309,19 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Map<
     Shared<IdentifierAst>, Unique<ExpressionAst>,
     utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CmpArgs; // Todo: struct
-  Vec<Shared<TypeRef>> CmpGnTypeArgs;
-  Vec<ExpressionAst*> CmpGnCompArgs;
-  Unique<ExpressionAst> CmpResult;
-  bool CmpReturned = false;
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
+  /// The call's generic arguments, each as it resolves at the call site: a type's "TypeRef", a comp value's identity.
+  Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
+  Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
+  Unique<ExpressionAst> CompTimeResult;
+  bool CompTimeReturned = false;
 
   /// The outermost call a comp-time evaluation started from, and
   /// the scope it was written in. An error raised while a nested
   /// call is evaluated (std's arithmetic, an intrinsic) reports
   /// here, where the user wrote the expression.
-  Ast const *CmpCallSite = nullptr;
-  Scope *CmpCallSiteScope = nullptr;
+  Ast const *CompTimeCallSite = nullptr;
+  Scope *CompTimeCallSiteScope = nullptr;
 
   /// Ignore access modifier violations during analysis. This is
   /// for when certain asts map to functions private on STD types,
@@ -340,14 +371,21 @@ private:
 public:
   CompilerMetaData();
 
+  /// Put every context field back to its default, as though no
+  /// analysis were under way: for an analysis started from inside
+  /// another one that is not part of it (a lazy sup attach run by
+  /// a lookup). The stage, "CompTimeResult" and the LLVM generator are
+  /// kept. Pair it with a heavy "MetaGuard".
+  auto ResetContext() -> void;
+
   /// Snapshot all the current values into the history, making
   /// them "restorable".
-  auto Save() -> void;
+  SPP_ATTR_HOT auto Save() -> void;
 
   /// Restore all the light values (everything except function
   /// context, which we want to persist upwards). Set "heavy"
   /// to true to clear those too.
-  auto Restore(bool heavy = false) -> void;
+  SPP_ATTR_HOT auto Restore(bool heavy = false) -> void;
 
   /// Getter for the internal depth. This is used when an catchable
   /// error might have raised in between a "Save" and "Restore",

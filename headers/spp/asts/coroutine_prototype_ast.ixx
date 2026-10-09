@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(CoroutinePrototypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct SubroutinePrototypeAst);
 use(spp::asts, struct TypeAst);
 
@@ -50,7 +51,7 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 private:
   bool _IsOnce;
   Shared<TypeAst> _YieldType;
-  Shared<TypeAst> _SendType;
+  Shared<TypeRef> _SendRef;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;
 
   /// Desugar a "GenOnce" coroutine into a subroutine returning

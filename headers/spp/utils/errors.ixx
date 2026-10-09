@@ -15,8 +15,8 @@ use(spp::utils::errors, template <typename T> struct AbstractErrorBuilder;);
 /// the key features of an error raised in the S++ compiler;
 /// either a syntactic or semantic error as of right now.
 SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
-  Vec<Str> messages;
-  Str final_message;
+  Vec<Str> Messages;
+  Str FinalMessage;
 
   SPP_ATTR_COLD AbstractError() : std::runtime_error("") {}
 
@@ -29,7 +29,7 @@ SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
   /// Override the string ".what()" for C++ compatibility in
   /// the error system.
   auto what() const noexcept -> const char* override {
-    return final_message.c_str();
+    return FinalMessage.c_str();
   }
 };
 
@@ -74,7 +74,7 @@ struct spp::utils::errors::AbstractErrorBuilder {
     // Throw the error object. Terminated with an explicit reset: the
     // message is written in colour, so the reset is needed so the
     // console can go back to how it was once s++ is done.
-    this->_ErrObj->final_message = (this->_ErrObj->messages
+    this->_ErrObj->FinalMessage = (this->_ErrObj->Messages
       | genex::views::join_with('\n')
       | genex::to<Str>()) + "\x1b[0m";
     throw T(*_ErrObj);

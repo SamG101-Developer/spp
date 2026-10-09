@@ -309,6 +309,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// Naming an abstract type as a generic argument produces no value of it; only a type holding one by value does.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAbstract,
     test_abstract_type_as_generic_argument_no_usage, R"(
@@ -323,6 +325,65 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g(b: B[A]) -> Void {
         std::mem::ops::drop(b)
+    }
+
+    fun test_fn() -> Void { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAbstract,
+    test_abstract_type_nested_as_generic_argument_no_usage, R"(
+    cls A { }
+    cls C[T] { t: T }
+    cls B[T] { }
+
+    sup A {
+        !public
+        !abstract_method
+        fun f(&self) -> Void { }
+    }
+
+    fun g(b: B[C[A]]) -> Void {
+        std::mem::ops::drop(b)
+    }
+
+    fun test_fn() -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAbstract,
+    test_type_holding_an_abstract_type_as_a_parameter,
+    SppAbstractTypeUseError, R"(
+    cls A { }
+    cls C[T] { t: T }
+
+    sup A {
+        !public
+        !abstract_method
+        fun f(&self) -> Void { }
+    }
+
+    fun g(c: C[A]) -> Void {
+        std::mem::ops::drop(c)
+    }
+
+    fun test_fn() -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAbstract,
+    test_abstract_type_as_a_parameter_still_rejected,
+    SppAbstractTypeUseError, R"(
+    cls A { }
+
+    sup A {
+        !public
+        !abstract_method
+        fun f(&self) -> Void { }
+    }
+
+    fun g(a: A) -> Void {
+        std::mem::ops::drop(a)
     }
 
     fun test_fn() -> Void { }

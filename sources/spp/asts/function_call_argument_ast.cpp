@@ -16,7 +16,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_materialize;
+import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_type;
 
 SPP_MOD_BEGIN
@@ -32,13 +32,12 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
 
 auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
+  IMPORT_UTILS;
 
   // Analyse the semantics of the value expression.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Val, *sm),
+    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
     {sm->CurrentScope}, ERR_ARGS(*Val));
 }
 
@@ -58,7 +57,7 @@ auto FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
-  return codegen::llvm_addr_of(*Val, sm, meta, ctx);
+  return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
 }
 
 auto FunctionCallArgumentAst::InferType(

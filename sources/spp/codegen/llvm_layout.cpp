@@ -52,7 +52,7 @@ auto spp::codegen::SortMembersForSppLayout(
 }
 
 auto spp::codegen::GetPhysicalFieldIndex(
-  LlvmTypeSymInfo const &sym_info,
+  LlvmTypeSymbolInfo const &sym_info,
   const std::size_t decl_index)
   -> std::uint32_t {
   // An empty map means the layout preserved the declaration

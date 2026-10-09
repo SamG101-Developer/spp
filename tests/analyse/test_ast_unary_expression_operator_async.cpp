@@ -598,8 +598,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Todo: the awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator.
-//  Expected red until the borrow is carried through the future's value.
+// The awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator.
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_gen_coroutine_borrow_outlives_the_await,

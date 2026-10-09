@@ -8,5 +8,5 @@
  * the clone is done serially, in a phase where a git failure is the only thing that can go wrong.
  */
 TEST(SppBootstrap, Fixture) {
-  ensure_temp_project();
+  EnsureTempProject();
 }

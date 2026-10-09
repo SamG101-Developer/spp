@@ -90,34 +90,29 @@ auto UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
 auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Generate the top-level alias for the converted type statement.
-  // const auto scope = sm->CurrentScope->convert_postfix_to_nested_scope(old_var->To<PostfixExpressionAst>()->lhs.get());
-  const auto [old_var_sym, scope] = sm->CurrentScope->GetVarSymbolOutermost(*OldVar);
+  const auto [old_var_sym, scope] = sm->CurrentScope->FindVarSymbolOutermost(*OldVar);
   if (old_var_sym != nullptr) {
     // Cmp statements
-    _Conversion->Type = old_var_sym->TypeRefIn(*scope).Sym->FqName(false);
+    _Conversion->Type = old_var_sym->TypeRefIn(*scope).Symbol->FqName(false);
     old_var_sym->Type = _Conversion->Type;
 
-    _Conversion->_AliasSym->AliasSym = old_var_sym->SharedFromThis<VariableSymbol>();
-    _Conversion->_AliasSym->Type = _Conversion->Type;
+    _Conversion->_AliasSymbol->AliasSymbol = old_var_sym->SharedFromThis<VariableSymbol>();
+    _Conversion->_AliasSymbol->Type = _Conversion->Type;
 
     // The import's type is only known now, so it takes the kind of
     // what it names (a function's mock, or a constant) here too.
-    _Conversion->_AliasSym->Kind = old_var_sym->Kind;
+    _Conversion->_AliasSymbol->Kind = old_var_sym->Kind;
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;
   }
 
-  // const auto old_ns_sym = sm->CurrentScope->convert_postfix_to_nested_scope(old_var.get());
-  if (old_var_sym == nullptr) {
-    // and old_ns_sym == nullptr) {
-    // Todo: alternatives based on lhs of the old var.
-    const auto closest_match = spp::utils::strings::ClosestMatch(
-      OldVar->ToString(), {});
-
-    Raise<analyse::errors::SppIdentifierUnknownError>(
-      {sm->CurrentScope}, ERR_ARGS(*this, "constant variable", closest_match));
-  }
+  // Todo: alternatives based on lhs of the old var.
+  const auto closest_match = spp::utils::strings::ClosestMatch(
+    OldVar->ToString(), {});
+  Raise<SppIdentifierUnknownError>(
+    {sm->CurrentScope}, ERR_ARGS(*this, "constant variable", closest_match));
 }
 
 auto UseStatementVariableAst::Stage4_ResolveDeclarations(

@@ -311,6 +311,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 let r = p
                 std::mem::ops::drop(r)
             }
+            else {
+                let r = p
+                std::mem::ops::drop(r)
+            }
         }
     }
 )");
@@ -328,6 +332,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case 1 of {
             == 1 { p = Point(x=Str::from("5"), y=Str::from("5")) }
             == 2 { p = Point(x=Str::from("6"), y=Str::from("6")) }
+            else { p = Point(x=Str::from("7"), y=Str::from("7")) }
         }
 
         let r = p
@@ -422,6 +427,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         case 1 of {
             == 1 { h = c(&p.x) }
             == 2 { h = c(&p.x) }
+            else { h = c(&p.x) }
         }
 
         let r = p

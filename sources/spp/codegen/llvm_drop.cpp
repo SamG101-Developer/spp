@@ -6,7 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.function_prototype_ast;
@@ -14,7 +14,7 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
@@ -22,7 +22,7 @@ import spp.utils.uid;
 import genex;
 
 auto spp::codegen::EmitDrop(
-  analyse::scopes::TypeSymbol const &type_sym,
+  analyse::scopes::TypeRef const &type,
   llvm::Value *ptr,
   analyse::scopes::ScopeManager *sm,
   asts::meta::CompilerMetaData *meta,
@@ -32,15 +32,14 @@ auto spp::codegen::EmitDrop(
   using analyse::utils::drop_utils::FindDropOverload;
   using analyse::utils::drop_utils::NeedsDrop;
   using analyse::utils::type_members::GetAllParts;
-  using analyse::utils::type_predicates::GetNthTypeOfIndexableType;
-  using analyse::utils::type_predicates::IsIndexWithinBound;
-  using analyse::utils::type_predicates::IsTypeArr;
+  using analyse::utils::type_predicates::IsTypeArray;
   using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
 
   // Destroying a value that owns nothing is a no-op;
   // an "S32" local, or a struct built only from them,
   // leaves no instructions behind at all.
-  if (not NeedsDrop(type_sym, *sm, meta)) { return; }
+  if (not NeedsDrop(type, *sm, meta)) { return; }
+  auto const &type_sym = *type.Symbol;
 
   const auto uid = "." + spp::utils::Uid();
 
@@ -51,7 +50,7 @@ auto spp::codegen::EmitDrop(
   // Todo: "llvm.coro.destroy" releases the frame's storage but runs no destructors for the values living in it, so a
   //  generator abandoned while holding owned locals still leaks those. That needs drops emitted into the coroutine's
   //  own cleanup path.
-  if (analyse::utils::type_predicates::IsTypeGen(type_sym, *sm->CurrentScope)) {
+  if (analyse::utils::type_predicates::IsTypeGenerator(type, *sm->CurrentScope)) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto handle = ctx->Builder.CreateLoad(ptr_ty, ptr, "drop.gen.handle" + uid);
 
@@ -75,20 +74,22 @@ auto spp::codegen::EmitDrop(
     // been declared yet, because nothing in the source
     // ever called it. Declare it into the module that owns
     // its definition, exactly as a written call site would.
-    if (drop_proto->GetLlvmFunc() == nullptr) {
+    // Declared from its own scope, where its signature's names ("self: Self", a substitution's bindings) resolve.
+    if (drop_proto->GetLlvmFn() == nullptr) {
       const auto owner_ctx = drop_proto->OwnerCtx();
-      drop_proto->GenerateLlvmDeclaration(sm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
+      auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, drop_proto->GetDeclarationScope());
+      drop_proto->GenerateLlvmDeclaration(&tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
     }
 
-    if (drop_proto->GetLlvmFunc() != nullptr) {
+    if (drop_proto->GetLlvmFn() != nullptr) {
       const auto drop_func = GetOrAddTargetIntoCurrentModule(
-        *drop_proto->GetLlvmFunc()->Target, *GetEmissionModule(*ctx));
+        *drop_proto->GetLlvmFn()->Target, *GetEmissionModule(*ctx));
 
       // Destroying a value consumes it, so "drop" takes "self"
       // by move, which lowers to the value itself rather than
       // to a pointer to it. The value is loaded out of the
       // storage this is destroying through. Todo: Bandaid?
-      const auto fn_ty = drop_proto->GetLlvmFunc()->Target->getFunctionType();
+      const auto fn_ty = drop_proto->GetLlvmFn()->Target->getFunctionType();
       const auto self_ty = fn_ty->getNumParams() > 0
         ? fn_ty->getParamType(0)
         : GetLlvmType(type_sym, ctx);
@@ -102,23 +103,24 @@ auto spp::codegen::EmitDrop(
 
   // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), which is not a
   // name the checks below can read a tuple or an array off. "NeedsDrop" resolves through for the same reason.
-  auto const *const bare_sym = type_sym.AsBoundSymbol();
+  auto const *const bare_sym = type_sym.AsBound();
 
   // Only a type that has no destructor of its own is destroyed part by part - its elements when it is a tuple or an
   // array, its attributes otherwise. A struct's parts are reached through its lowered form, which has to be one.
-  const auto is_indexable = IsTypeCompTimeIndexable(*bare_sym, *sm->CurrentScope);
-  const auto is_arr = is_indexable and IsTypeArr(*bare_sym, *sm->CurrentScope);
+  const auto is_indexable = IsTypeCompTimeIndexable(type, *sm->CurrentScope);
+  const auto is_arr = is_indexable and IsTypeArray(type, *sm->CurrentScope);
   if (not is_indexable and not llvm::isa<llvm::StructType>(elem_ty)) { return; }
 
-  const auto parts = GetAllParts(*bare_sym, *sm->CurrentScope);
+  // Each part is read where it was found ("TypePart::Where").
+  const auto parts = GetAllParts(type, *sm->CurrentScope);
   const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
 
   // Reverse order: the last part built is the first one
   // destroyed, mirroring the order they were initialized in.
   for (auto i = parts.Len(); i > 0uz; --i) {
     auto const &part = parts[i - 1uz];
-    if (part.Sym == nullptr or part.Sym == &type_sym or part.Sym == bare_sym) { continue; }
-    if (not NeedsDrop(*part.Sym, *sm, meta)) { continue; }
+    if (part.Ref.Symbol == &type_sym or part.Ref.Symbol == bare_sym) { continue; }
+    if (not NeedsDrop(part.Ref, *sm, meta)) { continue; }
 
     // An array is one value repeated, so its elements are reached by indexing into it; a tuple's and a struct's are
     // separate fields. The S++ layout re-orders a struct's fields to minimize padding, so a declaration index has to
@@ -133,6 +135,6 @@ auto spp::codegen::EmitDrop(
         : ctx->Builder.CreateStructGEP(
           elem_ty, ptr, GetPhysicalFieldIndex(*type_sym.LlvmInfo, part.Index),
           "drop.field" + uid + "." + part.Step->Val);
-    EmitDrop(*part.Sym, part_ptr, sm, meta, ctx);
+    EmitDrop(part.Ref, part_ptr, sm, meta, ctx);
   }
 }

@@ -69,7 +69,7 @@ private:
   /// Save the generated combined pattern expressions for
   /// codegen, without re-walking asts and scopes, which messes
   /// up the scope manager's alignment.
-  Vec<Unique<BinaryExpressionAst>> _MappedPatFuncs;
+  Vec<Unique<BinaryExpressionAst>> _MappedPatFns;
 
   /// With multiple patterns, the llvm value is a logical OR of
   /// all the pattern matches (analysis guarantees they are all

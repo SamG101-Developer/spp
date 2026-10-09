@@ -28,6 +28,10 @@ SPP_EXP_CLS struct spp::asts::GenWithExpressionAst final : PrimaryExpressionAst 
   /// value used in the generation.
   Unique<ExpressionAst> Expr;
 
+  struct {
+    std::size_t OriginalPosEnd;
+  } Source;
+
   GenWithExpressionAst(
     decltype(TokGen) &&tok_gen,
     decltype(TokWith) &&tok_with,

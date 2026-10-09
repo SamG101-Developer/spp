@@ -1,8 +1,5 @@
 name: claude-review
 
-# Advisory, like Sonar: left out of the ci-success `needs` list, so nothing it says blocks a merge. It has no
-# trigger of its own - pr.yaml owns the concurrency group, so a new push cancels the run rather than posting twice.
-
 on:
   workflow_call:
     secrets:

@@ -10,6 +10,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.control_flow;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
@@ -17,9 +19,8 @@ import spp.asts.function_implementation_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
-import spp.asts.generic_parameter_type_inline_constraints_ast;
+import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.identifier_ast;
-import spp.asts.ret_statement_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -49,6 +50,7 @@ SubroutinePrototypeAst::SubroutinePrototypeAst(
 SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
 auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
+  IMPORT_UTILS;
   auto ast = MakeUnique<SubroutinePrototypeAst>(
     AstCloneVec(Annotations),
     AstClone(TokCmp),
@@ -59,64 +61,46 @@ auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(TokArrow),
     AstClone(ReturnType),
     AstClone(Impl));
-  ast->_AnnotationInfo = _AnnotationInfo
-    ? MakeUnique<analyse::utils::annotation_utils::AnnotationInfo>(*_AnnotationInfo)
-    : nullptr;
-  ast->Source.OriginalImpl = AstClone(Source.OriginalImpl);
-  ast->_Ctx = _Ctx;
-  ast->_Scope = _Scope;
-  ast->AbstractAnnotation = AbstractAnnotation;
-  ast->VirtualAnnotation = VirtualAnnotation;
-  ast->TemperatureAnnotation = TemperatureAnnotation;
-  ast->FfiAnnotation = FfiAnnotation;
-  ast->BuiltinAnnotation = BuiltinAnnotation;
-  ast->TestAnnotation = TestAnnotation;
-  ast->InlineAnnotation = InlineAnnotation;
-  ast->Visibility = Visibility;
-  ast->_LlvmFunc = _LlvmFunc;
-  ast->VariadicPackType = VariadicPackType;
-  for (auto const &a : ast->Annotations) { a->SetAstCtx(ast.get()); }
+  _CloneStateInto(*ast);
   return ast;
 }
 
 auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
   using generate::common_types_precompiled::VOID;
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(ReturnType.get());
+  const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
 
   // Update the meta information for enclosing function information.
   meta->Save();
-  meta->EnclosingFunctionFlavour = this->TokFun.get();
-  meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-  meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-  meta->EnclosingFunctionScope = sm->CurrentScope;
-  meta->EnclosingFunctionCmp = TokCmp.get();
+  meta->EnclosingFnFlavour = this->TokFun.get();
+  meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName());
+  meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+  meta->EnclosingFnScope = sm->CurrentScope;
+  meta->EnclosingFnCmp = TokCmp.get();
   Impl->Stage7_AnalyseSemantics(sm, meta);
 
-  // Handle the "!" never type.
-  auto tm = ScopeManager(
-    sm->GlobalScope, sm->CurrentScope->Children[0].get());
-  const auto is_never = [&] {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->IgnoreMissingElseBranchForInference = true;
-    return not Impl->Members.IsEmpty() and Impl->FinalMember()->To<StatementAst>()->InferTypeRef(&tm, meta).IsNever;
-  }();
-
   // Check for a void return type.
-  const auto is_void = TypeEq(
-    *ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope);
+  const auto is_void = type_compare::TypeEq(
+    TypeRef::Of(*ReturnType, *sm->CurrentScope),
+    TypeRef::Of(*VOID, *sm->CurrentScope),
+    *sm->CurrentScope, *sm->CurrentScope);
 
-  // Check there is a return statement at the end (for non-void functions).
+  // Check there is a return statement at the end (for non-void
+  // functions).
   const auto final_member = Impl->FinalMember();
   const auto annotation_blocks_ret = FfiAnnotation or BuiltinAnnotation or AbstractAnnotation;
-  const auto final_member_check = (not Impl->Members.IsEmpty() and Impl->Members.Back()->To<RetStatementAst>());
-  RaiseUnless<analyse::errors::SppFunctionSubroutineMissingReturnStatementError>(
-    is_void or is_never or annotation_blocks_ret or final_member_check,
+
+  // A body that never reaches its end ("ret", "abort()", a loop
+  // with no way out, a "case" every branch of which does one of
+  // those) needs no value there.
+  const auto body_diverges = control_flow::Diverges(*Impl, sm, meta);
+  RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
+    not is_void and not annotation_blocks_ret and not body_diverges,
     {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
@@ -125,7 +109,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   if (FfiAnnotation != nullptr) {
     const auto ffi_symbol = GetFfiSymbolName();
     for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
-      Raise<analyse::errors::SppFfiGenericParameterError>(
+      Raise<SppFfiGenericParameterError>(
         {sm->CurrentScope}, ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
     }
   }
@@ -142,7 +126,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   //  ast overrides this.
   sm->MoveToNextScope();
 
-  const auto llvm_func = GetLlvmFunc();
+  const auto llvm_func = GetLlvmFn();
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
   // An "@ffi" function is a declaration and will receive its
@@ -150,13 +134,13 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   // into it.
   if (FfiAnnotation != nullptr) {
     ctx->Builder.ClearInsertionPoint();
-    const auto ffi_final_scope = sm->CurrentScope->FinalChildScope();
+    const auto ffi_final_scope = sm->CurrentScope->GetFinalChildScope();
     while (sm->CurrentScope != ffi_final_scope) { sm->MoveToNextScope(false); }
     sm->MoveOutOfCurrentScope();
     return nullptr;
   }
 
-  // A template ("_IsPureGeneric" declined to declare it) or an
+  // A template ("_IsPureGn" declined to declare it) or an
   // uninstantiable signature. There is no llvm function to emit
   // into, so nothing here applies to it: not an entry block
   // (which would be built parentless, and leak), not the enclosing
@@ -166,7 +150,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   if (llvm_func_target == nullptr) {
     sm->ExhaustScope();
     sm->MoveOutOfCurrentScope();
-    _CodeGenGenericSubstitutions(sm, meta, ctx);
+    _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;
   }
 
@@ -179,14 +163,14 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   FnParamGroup->Stage11_CodeGen(sm, meta, ctx);
   GnParamGroup->Stage11_CodeGen(sm, meta, ctx);
 
-  const auto ret_type_sym = sm->CurrentScope->GetTypeSymbol(
+  const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(
     ReturnType.get());
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->EnclosingFunctionFlavour = TokFun.get();
-    meta->EnclosingFunctionRetType.EmplaceBack(ret_type_sym->FqName());
-    meta->EnclosingFunctionSourceRetType.EmplaceBack(ReturnType);
-    meta->EnclosingFunctionScope = sm->CurrentScope;
+    meta->EnclosingFnFlavour = TokFun.get();
+    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName());
+    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.
     if (BuiltinAnnotation or FfiAnnotation) {
@@ -216,7 +200,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
 
   }
   sm->MoveOutOfCurrentScope();
-  _CodeGenGenericSubstitutions(sm, meta, ctx);
+  _CodeGenGnSubstitutions(sm, meta, ctx);
   return nullptr;
 }
 

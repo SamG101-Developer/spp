@@ -5,14 +5,16 @@ module;
 module spp.asts.cmp_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_argument_ast;
@@ -26,6 +28,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import genex;
 import llvm;
 
@@ -46,7 +49,7 @@ CmpStatementAst::CmpStatementAst(
   TokAssign(std::move(tok_assign)),
   Value(std::move(value)),
   _FromUseStatement(false),
-  _AliasSym(nullptr) {
+  _AliasSymbol(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokCmp, lex::SppTokenType::KW_CMP, "cmp");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokColon, lex::SppTokenType::TK_COLON, ":");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
@@ -116,13 +119,13 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
   const auto kind = _FromUseStatement
     ? VariableKind::Import
     : Type != nullptr and Type->IsCompilerGeneratedType()
-    ? VariableKind::Function
+    ? VariableKind::FnMock
     : VariableKind::Constant;
-  _AliasSym = MakeShared<VariableSymbol>(
+  _AliasSymbol = MakeShared<VariableSymbol>(
     Name, Type, sm->CurrentScope, kind, false, Visibility.first);
-  _AliasSym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-  _AliasSym->CompTimeValue = AstClone(Value);
-  sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSym);
+  _AliasSymbol->MemInfo->InitializedBy(*this, sm->CurrentScope);
+  _AliasSymbol->CompTimeValue = AstClone(Value);
+  sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSymbol);
 
   // Create a scope for the value. This provides a space for
   // the rhs expression to be placed into; it could be a "case"
@@ -147,8 +150,7 @@ auto CmpStatementAst::Stage3_GenTopLvlAliases(
 
 auto CmpStatementAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_utils::ResolveWrittenType;
+  IMPORT_UTILS;
 
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
@@ -164,8 +166,8 @@ auto CmpStatementAst::Stage4_ResolveDeclarations(
     // Todo: a class-typed "cmp" in a generic sup gets a global
     //  of the unbound "Unit[T=T]", which LLVM rejects as unsized
     //  SupCmpStatementGeneric.test_valid_class_typed_cmp_in_a_generic_sup.
-    Type = ResolveWrittenType(*Type, *sm, *meta);
-    _AliasSym->Type = Type;
+    Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
+    _AliasSymbol->Type = Type;
   }
   sm->MoveOutOfCurrentScope();
 }
@@ -176,11 +178,9 @@ auto CmpStatementAst::Stage5_LoadSupScopes(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Check the type exists before attaching super scopes
-  // type->Stage7_AnalyseSemantics(sm, meta);
-  if (_AliasSym != nullptr and not Type->IsCompilerGeneratedType()) {
-    _AliasSym->Visibility = Visibility.first;
-    _AliasSym->VisibilityAnnotation = Visibility.second;
+  if (_AliasSymbol != nullptr and not Type->IsCompilerGeneratedType()) {
+    _AliasSymbol->Visibility = Visibility.first;
+    _AliasSymbol->VisibilityAnnotation = Visibility.second;
   }
   sm->MoveOutOfCurrentScope();
 }
@@ -196,8 +196,7 @@ auto CmpStatementAst::Stage6_PreAnalyseSemantics(
 
 auto CmpStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   //
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
@@ -215,7 +214,7 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
 
   // Check the value's type is the same as the given type;
   // it is only spelled out for the error.
-  if (not IsFromUseStatement() and not TypeEq(
+  if (not IsFromUseStatement() and not type_compare::Assignable(
     TypeRef::Of(*Type, *sm->CurrentScope), Value->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto inferred_type = Value->InferType(sm, meta);
@@ -227,15 +226,15 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
 auto CmpStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the type.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   Value->Stage8_CheckMemory(sm, meta);
-  ValidateSymbolMemory(*Value, *Value, *sm, true, true, true, true, meta);
+  mem_utils::ValidateSymbolMemory(*Value, *Value, *sm, meta);
 
   //
   if (not _FromUseStatement) {
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
+    const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
     var_sym->CompTimeValue = AstClone(Value);
   }
   sm->MoveOutOfCurrentScope();
@@ -244,13 +243,22 @@ auto CmpStatementAst::Stage8_CheckMemory(
 auto CmpStatementAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
+  IMPORT_UTILS;
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Generate the value and assign it to the variable symbol's compile-time value.
+  // Generate the value and assign it to the variable symbol's compile-time value. One naming a parameter of a generic
+  // "sup" block it is declared in ("cmp n: USize = k + 1_uz") has no value until an instantiation binds it: it is kept
+  // as written, and read where it is used ("comp_generics::FindCompMemberId", the folded static access).
   if (not Type->IsCompilerGeneratedType()) {
-    const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
+    const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
+    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value))) {
+      var_sym->CompTimeValue = AstClone(Value);
+      sm->ExhaustScope();
+      sm->MoveOutOfCurrentScope();
+      return;
+    }
 
     // Because the comp-time resolution takes the first branch
     // that matches, it leaves the resulting "case" branches'
@@ -260,8 +268,13 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
     auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
     tm.Reset(sm->CurrentScope);
     Value->Stage9_CompTimeResolve(&tm, meta);
-    Value = AstClone(meta->CmpResult);
-    var_sym->CompTimeValue = std::move(meta->CmpResult);
+    Value = AstClone(meta->CompTimeResult);
+    var_sym->CompTimeValue = std::move(meta->CompTimeResult);
+
+    // Use the hook to record information for the resolution and
+    // completion plugin.
+    lsp::resolution_index::RecordCompTimeValue(
+      *Name, *sm, *meta, Value != nullptr ? Value->ToString() : Str());
   }
   sm->ExhaustScope();
   sm->MoveOutOfCurrentScope();
@@ -269,6 +282,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
 
 auto CmpStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS;
   // A "cmp" generic parameter builds one of these on the
   // spot to get its storage allocated and calls only this
   // stage on it, so there is no scope from stage 2 to step
@@ -284,8 +298,14 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     TypeRef::Of(*Type, *sm->CurrentScope), ctx);
 
   // A type with no layout ("T" in an uninstantiated "sup"
-  // template) has no constant to emit.
-  if (llvm_type == nullptr) {
+  // template) has no constant to emit, and neither has one only
+  // written in terms of such a parameter ("Unit[T]"): its llvm
+  // struct is an unsized placeholder, not the instance's. Nor
+  // has a value naming such a parameter ("k + 1_uz", Stage 9).
+  // The use site folds the value instead.
+  if (llvm_type == nullptr
+    or not type_predicates::IsTypeConcrete(*Type, *sm->CurrentScope)
+    or (Value != nullptr and not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value)))) {
     if (owns_scope) {
       sm->ExhaustScope();
       sm->MoveOutOfCurrentScope();
@@ -298,8 +318,8 @@ auto CmpStatementAst::Stage10_PreCodeGen(
   // of its own, so what it was bound to has to be read back
   // off the symbol the instantiation's own scope registered.
   ctx->InConstantContext = true;
-  const auto var_sym = sm->CurrentScope->GetVarSymbol(Name.get());
-  const auto generic_val = Value == nullptr ? var_sym->BoundCompValue() : nullptr;
+  const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
+  const auto generic_val = Value == nullptr ? var_sym->BoundCompVal() : nullptr;
 
   // A binding that is still a name stands for another parameter
   // rather than for a value, so there is nothing to emit for it.
@@ -324,7 +344,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
       auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
       tm.Reset(sm->CurrentScope);
       bound_val->Stage9_CompTimeResolve(&tm, meta);
-      if (const auto folded = std::move(meta->CmpResult); folded != nullptr and folded->To<IdentifierAst>() ==
+      if (const auto folded = std::move(meta->CompTimeResult); folded != nullptr and folded->To<IdentifierAst>() ==
         nullptr) {
         return folded->Stage11_CodeGen(sm, meta, ctx);
       }
@@ -341,7 +361,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
   const auto llvm_global_var = new llvm::GlobalVariable(
     *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
     llvm::cast<llvm::Constant>(val),
-    codegen::mangle::mangle_cmp_name(*sm->CurrentScope, *this));
+    codegen::mangle::MangleCmpName(*sm->CurrentScope, *this));
 
   // Register in the llvm info. Nothing here descends into
   // the value - the constant is emitted from what comp-time

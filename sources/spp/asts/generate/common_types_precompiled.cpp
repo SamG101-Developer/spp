@@ -1,6 +1,21 @@
 module spp.asts.generate.common_types_precompiled;
+import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+
+namespace {
+  /// "fresh" recording what "like", its precompiled constant,
+  /// records.
+  auto StampedLike(
+    spp::Shared<spp::asts::TypeAst> fresh,
+    spp::asts::TypeAst const &like)
+    -> spp::Shared<spp::asts::TypeAst> {
+    // Create a new type ast instance, but make the stamped
+    // identity that of a precompiled type.
+    fresh->LastTypePart()->StampTypeId(like.LastTypePart()->StampedTypeId());
+    return fresh;
+  }
+}
 
 auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   GEN = nullptr;
@@ -50,32 +65,34 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   VIEW = nullptr;
   SELF_TYPE = nullptr;
   SELF_VAR = nullptr;
+  TEMPLATE_SYMBOLS.clear();
 }
 
 auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
-  GEN = common_types::GenType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGenerics();
-  GEN_ONCE = common_types::GenOnceType(0, common_types::VoidType(0))->WithoutGenerics();
-  INDEX_MUT = common_types::IndexMutType(0, common_types::VoidType(0))->WithoutGenerics();
-  INDEX_REF = common_types::IndexRefType(0, common_types::VoidType(0))->WithoutGenerics();
-  SLICE_MUT = common_types::SliceMutType(0, common_types::VoidType(0))->WithoutGenerics();
-  SLICE_REF = common_types::SliceRefType(0, common_types::VoidType(0))->WithoutGenerics();
-  FUN_MOV = common_types::FunMovType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
-  FUN_MUT = common_types::FunMutType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
-  FUN_REF = common_types::FunRefType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGenerics();
-  ARR = common_types::ArrayType(0, common_types::VoidType(0), AstClone(common_types::USize(0)))->WithoutGenerics();
-  TUP = common_types::TupleType(0, {})->WithoutGenerics();
-  VAR = common_types::VariantType(0, {})->WithoutGenerics();
-  TRY = common_types::TryType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGenerics();
-  FUT = common_types::FutureType(0, common_types::VoidType(0))->WithoutGenerics();
-  BOOL = common_types::BooleanType(0)->WithoutGenerics();
-  VOID = common_types::VoidType(0)->WithoutGenerics();
-  NEVER = common_types::NeverType(0)->WithoutGenerics();
-  COPY = common_types::CopyType(0)->WithoutGenerics();
-  DROP = common_types::DropType(0)->WithoutGenerics();
-  THREAD_SAFE = common_types::ThreadSafeType(0)->WithoutGenerics();
-  FWD_MUT = common_types::ForwardMutType(0, common_types::VoidType(0))->WithoutGenerics();
-  FWD_REF = common_types::ForwardRefType(0, common_types::VoidType(0))->WithoutGenerics();
-  NON_NULL = common_types::NonNullType(0, common_types::VoidType(0))->WithoutGenerics();
+  TEMPLATE_SYMBOLS.clear();
+  GEN = common_types::GenType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGns();
+  GEN_ONCE = common_types::GenOnceType(0, common_types::VoidType(0))->WithoutGns();
+  INDEX_MUT = common_types::IndexMutType(0, common_types::VoidType(0))->WithoutGns();
+  INDEX_REF = common_types::IndexRefType(0, common_types::VoidType(0))->WithoutGns();
+  SLICE_MUT = common_types::SliceMutType(0, common_types::VoidType(0))->WithoutGns();
+  SLICE_REF = common_types::SliceRefType(0, common_types::VoidType(0))->WithoutGns();
+  FUN_MOV = common_types::FunMovType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGns();
+  FUN_MUT = common_types::FunMutType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGns();
+  FUN_REF = common_types::FunRefType(0, common_types::TupleType(0, {}), common_types::VoidType(0))->WithoutGns();
+  ARR = common_types::ArrayType(0, common_types::VoidType(0), AstClone(common_types::USize(0)))->WithoutGns();
+  TUP = common_types::TupleType(0, {})->WithoutGns();
+  VAR = common_types::VariantType(0, {})->WithoutGns();
+  TRY = common_types::TryType(0, common_types::VoidType(0), common_types::VoidType(0))->WithoutGns();
+  FUT = common_types::FutureType(0, common_types::VoidType(0))->WithoutGns();
+  BOOL = common_types::BooleanType(0)->WithoutGns();
+  VOID = common_types::VoidType(0)->WithoutGns();
+  NEVER = common_types::NeverType(0)->WithoutGns();
+  COPY = common_types::CopyType(0)->WithoutGns();
+  DROP = common_types::DropType(0)->WithoutGns();
+  THREAD_SAFE = common_types::ThreadSafeType(0)->WithoutGns();
+  FWD_MUT = common_types::ForwardMutType(0, common_types::VoidType(0))->WithoutGns();
+  FWD_REF = common_types::ForwardRefType(0, common_types::VoidType(0))->WithoutGns();
+  NON_NULL = common_types::NonNullType(0, common_types::VoidType(0))->WithoutGns();
   S8 = common_types::S8(0);
   S16 = common_types::S16(0);
   S32 = common_types::S32(0);
@@ -96,8 +113,28 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
   F64 = common_types::F64(0);
   F128 = common_types::F128(0);
   CHAR = common_types::CharType(0);
-  STR_VIEW = common_types::StringViewType(0)->WithoutGenerics();
-  VIEW = common_types::ViewType(0, common_types::VoidType(0))->WithoutGenerics();
-  SELF_TYPE = common_types::SelfType(0)->WithoutGenerics();
+  STR_VIEW = common_types::StringViewType(0)->WithoutGns();
+  VIEW = common_types::ViewType(0, common_types::VoidType(0))->WithoutGns();
+  SELF_TYPE = common_types::SelfType(0)->WithoutGns();
   SELF_VAR = MakeShared<IdentifierAst>(0, "self");
+}
+
+auto spp::asts::generate::common_types_precompiled::BoolAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::BooleanType(pos), *BOOL);
+}
+
+auto spp::asts::generate::common_types_precompiled::VoidAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::VoidType(pos), *VOID);
+}
+
+auto spp::asts::generate::common_types_precompiled::NeverAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::NeverType(pos), *NEVER);
+}
+
+auto spp::asts::generate::common_types_precompiled::StrViewAt(
+  const std::size_t pos) -> Shared<TypeAst> {
+  return StampedLike(common_types::StringViewType(pos), *STR_VIEW);
 }

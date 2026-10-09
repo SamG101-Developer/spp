@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.inner_scope_ast;
 import spp.analyse.errors.semantic_error;
@@ -22,6 +23,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import genex;
 
 SPP_MOD_BEGIN
@@ -84,6 +86,7 @@ template <typename T>
 auto InnerScopeAst<T>::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create a scope for the InnerScopeAst node.
+  IMPORT_UTILS;
   auto scope_name = ScopeBlockName::FromParts(
     "inner-scope", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
@@ -91,13 +94,21 @@ auto InnerScopeAst<T>::Stage7_AnalyseSemantics(
 
   // Analyse the members of the inner scope.
   for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
+
+  // What can be written in this block, for an editor offering
+  // names where nothing is being accessed. Recorded from here,
+  // where the block and its scope are both to hand and both
+  // alive.
+  if (lsp::resolution_index::IsEnabled()) {
+    lsp::resolution_index::RecordScopeOf(*this, *sm);
+  }
   sm->MoveOutOfCurrentScope();
 }
 
 template <typename T>
 auto InnerScopeAst<T>::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Move into the next scope.
   sm->MoveToNextScope();
@@ -110,7 +121,7 @@ auto InnerScopeAst<T>::Stage8_CheckMemory(
   // (ie assigned or outer variable), then memory check it.
   if (const auto move = meta->AssignmentTarget; not Members.IsEmpty() and move != nullptr) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
-      ValidateSymbolMemory(*expr_member, *move, *sm, true, true, true, true, meta);
+      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, meta);
     }
   }
 

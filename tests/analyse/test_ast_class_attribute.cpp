@@ -177,6 +177,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   ClassAttributeAst,
+  test_invalid_is_default,
+  SppInvalidDefaultValueError, R"(
+    fun g() -> Str or Bool { ret false }
+    cls A {
+        a: Bool = g() is Str(..)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassAttributeAst,
   test_invalid_ret_in_a_scope_default,
   SppInvalidDefaultValueError, R"(
     cls A {

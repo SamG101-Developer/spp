@@ -9,6 +9,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
+use_ns(spp::analyse::utils);
+
 SPP_MOD_BEGIN
 CompilerStages::CompilerStages() = default;
 
@@ -75,8 +77,8 @@ auto CompilerStages::Stage9_CompTimeResolve(
   -> void {
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.
-  using analyse::errors::SppInvalidComptimeOperationError;
-  Raise<SppInvalidComptimeOperationError>(
+  IMPORT_UTILS;
+  Raise<SppInvalidCompTimeOperationError>(
     {sm->CurrentScope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
 }
 

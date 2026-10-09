@@ -79,23 +79,35 @@ public:
 
   /// Add a symbol into the table, replacing any existing symbol
   /// with the same name.
-  SPP_ATTR_HOT auto Add(I const *sym_name, Shared<S> const &sym) -> void;
+  auto Add(I const *sym_name, Shared<S> const &sym) -> void;
 
   /// Remove a symbol from the table, returning it.
   auto Rem(I const *sym_name) -> Shared<S>;
 
   /// Query the table for a symbol with a matching name. Return
   /// it in raw pointer form to prevent unnecessary copies.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto Get(I const *sym_name) const -> S*;
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto Find(I const *sym_name) const -> S*;
 
   /// Get all the symbols in the table unrolled into a vector.
-  SPP_ATTR_NODISCARD auto All() const -> Vec<S*>;
+  SPP_ATTR_NODISCARD auto GetAll() const -> Vec<S*>;
+
+  /// The symbol filed for a generic parameter, by its identity
+  /// ("Symbol::ParamId") rather than its spelling: a binding of it
+  /// where there is one, else the parameter (or a copy of it).
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindByParam(std::uint64_t id) const -> S*;
 
 private:
   using Key = typename SymbolTableKeyOf<I>::Type;
 
   /// The actual symbol table.
   Map<Key, Shared<S>, typename SymbolTableKeyOf<I>::Hasher, typename SymbolTableKeyOf<I>::Eq> _Table;
+
+  /// The parameters and bindings in "_Table", by parameter identity ("FindByParam").
+  Map<std::uint64_t, S*> _ByParam;
+
+  auto IndexParam(S *sym) -> void;
+  auto UnindexParam(S const *sym) -> void;
+  auto ReindexParams() -> void;
 };
 
 /// The combined symbol table holder, that holds all three
@@ -115,7 +127,7 @@ public:
   /// Use the deep copy on each individual symbol tables.
   auto DeepCopyFrom(SymbolTable const &that) -> void;
 
-  IndividualSymbolTable<IdentifierAst, NamespaceSymbol> NsTbl;
-  IndividualSymbolTable<TypeIdentifierAst, TypeSymbol> TypeTbl;
-  IndividualSymbolTable<IdentifierAst, VariableSymbol> VarTbl;
+  IndividualSymbolTable<IdentifierAst, NamespaceSymbol> NsTable;
+  IndividualSymbolTable<TypeIdentifierAst, TypeSymbol> TypeTable;
+  IndividualSymbolTable<IdentifierAst, VariableSymbol> VarTable;
 };

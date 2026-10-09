@@ -8,6 +8,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(LiteralAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);

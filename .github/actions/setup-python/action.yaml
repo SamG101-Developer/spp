@@ -1,21 +1,25 @@
+# Get Python ready for all the tasks that the runner needs to
+# do.
 name: setup-python
 description: "Install the pinned Python, then publish every pin in .github/dependencies.toml into the job environment."
 
 runs:
   using: composite
   steps:
-    # Bash, not pins.py: the interpreter that would read the manifest is the thing being installed.
+    # Bash, not pins.py: the interpreter that would read the
+    # manifest is the thing being installed.
     - name: Read pinned Python version
       shell: bash
       run: bash .github/scripts/lib/python-version.sh
 
-    # Every script under .github/scripts is written and formatted for this version, so the runner's own python3 is
-    # not good enough: ubuntu-24.04 ships 3.12, which cannot parse 3.14 syntax.
+    # Use a pinned version of Python, not a Ubuntu default. Allows
+    # for more recent features.
     - name: Install Python
       uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
       with:
         python-version: ${{ env.SPP_PYTHON_VERSION }}
 
+    # Load all the pinned dependencies into the job environment.
     - name: Load pinned versions
       shell: bash
       run: bash .github/scripts/lib/load-versions.sh

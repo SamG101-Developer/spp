@@ -21,17 +21,17 @@ SPP_EXP_CLS struct spp::asts::mixins::TypeInferrableAst {
 
   virtual ~TypeInferrableAst();
 
-  /// The core type inference function, which recursively
-  /// uses asts and the fields to derive the type that the
-  /// expression produces.
-  virtual auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> = 0;
+  /// The core type inference function: what the expression's
+  /// type resolves to where it is inferred, its symbol and how
+  /// it is held. Every analysis and codegen reader uses this.
+  virtual auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef = 0;
 
-  /// The inferred type as what it resolves to where it is inferred: its symbol and how it is held. By default this is
-  /// "InferType" resolved in the current scope; an expression that knows its symbol already answers with it directly.
-  virtual auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef;
-
-  /// The source agnostic version, that uses a "Source"
-  /// struct's original type, for error reporting purposes.
-  /// Less used, potentially removable.
-  virtual auto InferTypeForDisplay(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+  /// The inferred type as syntax, for messages and for building
+  /// other syntax. By default the resolved type's name, placed at
+  /// this expression ("TypeRef::AstIn"); an expression overrides
+  /// it where the written form says more (an alias's name, a
+  /// declared type), or where its type is built as syntax.
+  virtual auto InferType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 };

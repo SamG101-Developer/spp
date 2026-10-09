@@ -9,7 +9,6 @@ import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -95,7 +94,7 @@ auto BooleanLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the boolean literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto BooleanLiteralAst::Stage11_CodeGen(
@@ -109,7 +108,7 @@ auto BooleanLiteralAst::Stage11_CodeGen(
   // Bool type and then use the uniform LLVM type mapping
   // function to evaluate what the LLVM type is, should Bool
   // ever be changed from "i1".
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // Create the "constant int" (this literal represents a known
@@ -120,13 +119,6 @@ auto BooleanLiteralAst::Stage11_CodeGen(
     ? 1ul
     : 0ul;
   return llvm::ConstantInt::get(llvm_type, value);
-}
-
-auto BooleanLiteralAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // The boolean ast is always inferred as "std::boolean::Bool".
-  using generate::common_types::BooleanType;
-  return BooleanType(PosStart());
 }
 
 auto BooleanLiteralAst::InferTypeRef(

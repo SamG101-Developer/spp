@@ -120,3 +120,84 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         close(b)
     }
 )");
+
+// Assigning over a live non-Copy value discards the old one without consuming it. There is no implicit drop, so the
+// old value leaks. Note "TestUnaryExpressionOperatorAsyncAst.test_valid_async_overwriting_a_future_that_owns_its_
+// receiver" overwrites a live future on purpose, which is the same shape.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearScopeExit,
+    test_invalid_assign_over_live_local,
+    SppLinearValueNotConsumedError, R"(
+    cls OwHandleA { }
+
+    fun eat(l: OwHandleA) -> Void { let OwHandleA() = l }
+
+    fun f() -> Void {
+        let mut l = OwHandleA()
+        l = OwHandleA()
+        eat(l)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearScopeExit,
+    test_invalid_assign_over_live_attribute,
+    SppLinearValueNotConsumedError, R"(
+    cls OwHandleB { }
+    cls OwHolderB { !public a: OwHandleB }
+
+    fun eat(l: OwHandleB) -> Void { let OwHandleB() = l }
+
+    fun f() -> Void {
+        let mut p = OwHolderB(a=OwHandleB())
+        p.a = OwHandleB()
+        let OwHolderB(a) = p
+        eat(a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearScopeExit,
+    test_invalid_assign_over_live_parameter,
+    SppLinearValueNotConsumedError, R"(
+    cls OwHandleC { }
+
+    fun eat(l: OwHandleC) -> Void { let OwHandleC() = l }
+
+    fun f(mut l: OwHandleC) -> Void {
+        l = OwHandleC()
+        eat(l)
+    }
+)");
+
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearScopeExit,
+    test_invalid_shadowing_a_live_local,
+    SppLinearValueNotConsumedError, R"(
+    cls OwHandleD { }
+
+    fun eat(l: OwHandleD) -> Void { let OwHandleD() = l }
+
+    fun f() -> Void {
+        let x = OwHandleD()
+        let x = OwHandleD()
+        eat(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestLinearScopeExit,
+    test_valid_assign_over_moved_local, R"(
+    cls OwHandleE { }
+
+    fun id(l: OwHandleE) -> OwHandleE { ret l }
+
+    fun eat(l: OwHandleE) -> Void { let OwHandleE() = l }
+
+    fun f() -> Void {
+        let mut l = OwHandleE()
+        l = id(l)
+        eat(l)
+    }
+)");

@@ -1,7 +1,7 @@
 module;
 #include <spp/macros.hpp>
 
-export module spp.codegen.llvm_materialize;
+export module spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_ctx;
 import llvm;
 
@@ -11,7 +11,7 @@ use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 
 namespace spp::codegen {
-  SPP_EXP_FUN auto llvm_materialize(
+  SPP_EXP_FUN auto LlvmMaterialize(
     ExpressionAst &ast,
     ScopeManager *sm,
     CompilerMetaData *meta,
@@ -24,7 +24,7 @@ namespace spp::codegen {
   /// uses its symbol's allocation, and anything else (a call
   /// result, a literal) is materialised into a temporary so
   /// there is an address to hand out.
-  SPP_EXP_FUN auto llvm_addr_of(
+  SPP_EXP_FUN auto LlvmAddrOf(
     ExpressionAst &ast,
     ScopeManager *sm,
     CompilerMetaData *meta,

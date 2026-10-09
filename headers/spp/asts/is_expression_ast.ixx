@@ -47,14 +47,12 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  Shared<CaseExpressionAst> _MappedFunc;
+  Shared<CaseExpressionAst> _MappedFn;
 
   Shared<IdentifierAst> _LhsAsId;
 };

@@ -1,39 +1,4 @@
 #pragma once
-#define GTEST_BUILD_WITH_IMPORT_STD
-
-import pthread;
-import sys;
-using pthread::pthread_create;
-using pthread::pthread_equal;
-using pthread::pthread_getspecific;
-using pthread::pthread_join;
-using pthread::pthread_key_create;
-using pthread::pthread_key_delete;
-using pthread::pthread_self;
-using pthread::pthread_mutex_destroy;
-using pthread::pthread_mutex_init;
-using pthread::pthread_mutex_lock;
-using pthread::pthread_mutex_unlock;
-using pthread::pthread_setspecific;
-using pthread::pthread_t;
-using pthread::pthread_key_t;
-using pthread::pthread_mutex_t;
-using sys::chdir;
-using sys::close;
-using sys::errno;
-using sys::fileno;
-using sys::fdopen;
-using sys::isatty;
-using sys::read;
-using sys::rmdir;
-using sys::strcasecmp;
-using sys::stderr;
-using sys::stdin;
-using sys::stdout;
-using sys::write;
-using sys::stat;
-using sys::S_ISDIR;
-
 #include <gtest/gtest.h>
 #include <spp/macros.hpp>
 #include "test_boot.hpp"
@@ -100,7 +65,14 @@ namespace spp_test {
     auto primary_seen = false;
     for (auto const &raw : messages) {
       const auto block = StripAnsi(std::string(raw));
-      if (block.starts_with("-----")) { continue; }
+
+      // A candidate's own error (under "no valid signatures") points at that candidate, in whatever file it is in, but
+      // never past the end of a file: a block formatted against the wrong file's text lands there.
+      if (block.starts_with("-----")) {
+        EXPECT_EQ(block.find("at the end of the file"), std::string::npos)
+          << "A candidate's error block points past the end of a file:\n" << block;
+        continue;
+      }
       const auto is_error = block.find("Error in file '") != std::string::npos;
       const auto is_context = block.find("Context from file '") != std::string::npos;
       if (not is_error and not is_context) { continue; }
@@ -136,7 +108,7 @@ namespace spp_test {
       build_temp_project(std::move(code), add_main);
     }
     catch (E const &e) {
-      CheckErrorLocations(e.messages, underline);
+      CheckErrorLocations(e.Messages, underline);
       return;
     }
     catch (std::exception const &e) {

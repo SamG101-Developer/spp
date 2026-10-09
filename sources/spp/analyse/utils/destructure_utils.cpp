@@ -8,21 +8,19 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.regions;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
-import spp.asts.local_variable_destructure_array_ast;
-import spp.asts.local_variable_destructure_attribute_binding_ast;
-import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
-import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -49,27 +47,12 @@ auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
   return MakeShared<IdentifierAst>(pos, kUnmatchableTag);
 }
 
-auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
-  ExpressionAst const &expr) -> bool {
-  // Strip the member accesses off the expression: "a.b.c"
-  // becomes "a". Any other postfix operator (a function call,
-  // an early return etc) means the expression produces a new
-  // value rather than naming existing storage.
-  auto cur = static_cast<Ast const*>(&expr);
-  while (auto const *postfix = cur->To<PostfixExpressionAst>()) {
-    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
-    cur = postfix->Lhs.get();
-  }
-
-  return cur->To<IdentifierAst>() != nullptr;
-}
-
 auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
-  Ast const &owner, ExpressionAst *val, Shared<TypeAst> const &val_type,
+  ExpressionAst *val, Shared<TypeAst> const &val_type,
   ScopeManager &sm) -> Shared<IdentifierAst> {
   // The "$" prefix cannot be written in user code, so the
   // temporary can never collide with a real binding.
-  auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid(&owner));
+  auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid());
 
   // Mirror the symbol an initialized single-identifier "let"
   // would create.
@@ -101,17 +84,23 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   // (not a case pattern), then there must be a value, and it
   // must name existing storage.
   const auto val = meta->LetStatementValue;
-  if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
+  if (val == nullptr or not regions::IsDestructurePlaceExpression(*val)) { return; }
 
   // Get the outermost (root) symbol for the value being
   // destructured.
-  const auto sym = sm.CurrentScope->GetVarSymbolOutermost(*val).first;
+  const auto sym = sm.CurrentScope->FindVarSymbolOutermost(*val).first;
   if (sym == nullptr) { return; }
 
   // Destructuring a borrow reads through it. The value behind
   // it belongs to someone else, so it is not consumed here.
   if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
   if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
+
+  // The value has to still be there to be taken apart. Each
+  // bound part is checked as it is read, but a destructure
+  // binding nothing ("let L() = l") reads no part, so a value
+  // already moved away was consumed a second time unnoticed.
+  if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
 
   // A destructure takes the value apart, so what it does
   // not bind is left with nothing holding it. This creates
@@ -121,9 +110,9 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = mem_utils::RegionPath(*val);
+    const auto region = regions::RegionPath(*val);
 
-    if (const auto skipped = linear_utils::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
+    if (const auto skipped = regions::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
         {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
     }
@@ -135,7 +124,6 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   if (val->To<IdentifierAst>() != nullptr) {
     if (from_case_pattern) { return; }
     sym->MemInfo->MovedBy(owner, sm.CurrentScope);
-    sym->MemInfo->AstPartialMoves.Clear();
   }
   else {
     sym->MemInfo->AstPartialMoves.EmplaceBack(val);
@@ -146,10 +134,9 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
   IdentifierAst const &tmp_name, ScopeManager const &sm) -> void {
   // Every part the bindings read came off the temporary, so
   // between them they took all of it.
-  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
+  const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
   if (sym == nullptr) { return; }
   sym->MemInfo->MovedBy(tmp_name, sm.CurrentScope);
-  sym->MemInfo->AstPartialMoves.Clear();
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
@@ -162,10 +149,10 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
   // the scopes the value created in stage 7.
   meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
   ValidateSymbolMemory(
-    *meta->LetStatementValue, owner, sm, true, true, true, true, meta);
+    *meta->LetStatementValue, owner, sm, meta);
 
   // Mark the temporary as initialized by the value.
-  const auto sym = sm.CurrentScope->GetVarSymbol(&tmp_name);
+  const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
   sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
 }
 
@@ -176,16 +163,16 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
   // value, so the temporary takes a copy of that result
   // rather than resolving the value a second time (which
   // would walk the value's scopes twice).
-  const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
-  sym->CompTimeValue = AstClone(meta->CmpResult);
+  const auto sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
+  sym->CompTimeValue = AstClone(meta->CompTimeResult);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   Shared<IdentifierAst> const &tmp_name, llvm::Value *llvm_subject,
   ScopeManager &sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void {
   // Give the temporary its own stack slot.
-  const auto uid = "." + spp::utils::Uid(tmp_name.get());
-  const auto sym = sm.CurrentScope->GetVarSymbol(tmp_name.get());
+  const auto uid = "." + spp::utils::Uid();
+  const auto sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
 
   const auto no_tmp_msg = Str(
     "The hidden temporary for this destructure has no symbol in the scope being generated. Its binding was introduced "
@@ -195,7 +182,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     sym == nullptr, {sm.CurrentScope},
     ERR_ARGS(*tmp_name, no_tmp_msg));
 
-  const auto type_sym = sym->TypeRefIn(*sm.CurrentScope).Sym;
+  const auto type_sym = sym->TypeRefIn(*sm.CurrentScope).Symbol;
   const auto llvm_type = GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
@@ -255,4 +242,91 @@ auto spp::analyse::utils::destructure_utils::DestructureStage9(
   if (tmp_name != nullptr) { DestructureTempStage9(tmp_name, sm, meta); }
   if (cond_let != nullptr) { cond_let->Stage9_CompTimeResolve(&sm, meta); }
   for (auto const &x : new_asts) { x->Stage9_CompTimeResolve(&sm, meta); }
+}
+
+auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
+  LocalVariableAst const &self,
+  Vec<Unique<LocalVariableAst>> const &elems,
+  SequenceShape const &shape,
+  Shared<IdentifierAst> &tmp_name,
+  Vec<Unique<LetStatementInitializedAst>> &new_asts,
+  const bool from_case_pattern,
+  ScopeManager *sm,
+  CompilerMetaData *meta)
+  -> void {
+  using asts::LocalVariableDestructureSkipMultipleArgumentsAst;
+  using asts::LocalVariableDestructureSkipSingleArgumentAst;
+
+  // Only 1 "multi-skip" allowed in a destructure.
+  const auto multi_arg_skips = elems
+    | genex::views::ptr
+    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+    | genex::to<Vec>();
+  RaiseIf<errors::SppMultipleRestPatternsError>(
+    multi_arg_skips.Len() > 1, {sm->CurrentScope},
+    ERR_ARGS(self, *multi_arg_skips[0], *multi_arg_skips[1]));
+
+  // The value is of the destructure's kind, with as many elements as are written (fewer only with a "..").
+  const auto val = meta->LetStatementValue;
+  const auto val_type = val->InferType(sm, meta);
+  const auto num_lhs_elems = elems.Len();
+  const auto num_rhs_elems = shape.CheckAndCount(*val, val_type);
+  if ((num_lhs_elems < num_rhs_elems and multi_arg_skips.IsEmpty()) or num_lhs_elems > num_rhs_elems) {
+    shape.RaiseSizeMismatch(num_lhs_elems, *val, num_rhs_elems);
+  }
+
+  // Bind the value to a hidden temporary, and index that from every element, so the value is analysed and evaluated
+  // once for the whole pattern.
+  auto effective_val = static_cast<ExpressionAst const*>(val);
+  if (not regions::IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
+    tmp_name = BindDestructureTemporary(val, val_type, *sm);
+    effective_val = tmp_name.get();
+  }
+  else {
+    tmp_name = nullptr; // Clear from clone.
+  }
+  const auto index_of = [&](const std::size_t i) -> Unique<ExpressionAst> {
+    auto index = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
+    auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(index));
+    return MakeUnique<asts::PostfixExpressionAst>(AstClone(effective_val), std::move(field));
+  };
+
+  // Elements before the skip keep their own position; elements after it are counted back from the end of the value
+  // (there are "num_lhs_elems - skip_index - 1" of them), not forward from "num_lhs_elems", which would over-count by
+  // the (unindexed) skip slot itself.
+  const auto skip_index = not multi_arg_skips.IsEmpty()
+    ? static_cast<std::size_t>(genex::position(elems | genex::views::ptr, [&](auto const &x) {
+      return x == multi_arg_skips[0];
+    }))
+    : elems.Len() - 1;
+
+  // A bound ".." ("let [a, ..b, c] = t") collects what it skips.
+  auto bound_multi_skip = Unique<ExpressionAst>(nullptr);
+  if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
+    auto skipped = Vec<Unique<ExpressionAst>>();
+    for (auto i = skip_index; i < skip_index + num_rhs_elems - num_lhs_elems + 1; ++i) {
+      skipped.EmplaceBack(index_of(i));
+    }
+    bound_multi_skip = shape.MakeRest(std::move(skipped));
+  }
+
+  auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<Vec>();
+  indexes.AppendRange(
+    genex::views::iota(num_rhs_elems - num_lhs_elems + skip_index + 1uz, num_rhs_elems) | genex::to<Vec>());
+
+  // One "let" per element; a skip ("_", or an unbound "..") converts to nothing.
+  const auto add_let = [&](Unique<LocalVariableAst> &&var, Unique<ExpressionAst> &&value) {
+    auto new_ast = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(value));
+    if (from_case_pattern) { new_ast->Var->MarkFromCasePattern(); }
+    new_ast->Stage7_AnalyseSemantics(sm, meta);
+    new_asts.EmplaceBack(std::move(new_ast));
+  };
+  for (auto const &[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
+    if (const auto rest = elem->To<LocalVariableDestructureSkipMultipleArgumentsAst>(); rest != nullptr) {
+      if (rest->Binding != nullptr) { add_let(AstClone(rest->Binding), std::move(bound_multi_skip)); }
+    }
+    else if (elem->To<LocalVariableDestructureSkipSingleArgumentAst>() == nullptr) {
+      add_let(AstClone(elem), index_of(i));
+    }
+  }
 }

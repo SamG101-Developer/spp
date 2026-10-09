@@ -1,0 +1,14 @@
+# actionlint v1.7.12 predates the parallel-step keywords
+# GitHub shipped on 2026-06-25, so `background`, `parallel`
+# and `wait-all` all read as malformed steps. Tracked as
+# rhysd/actionlint#693; drop these ignores once the pinned
+# rev in .pre-commit-config.yaml knows the keys.
+paths:
+  .github/workflows/_docs.yaml:
+    ignore:
+      - 'unexpected key "(background|parallel|wait|wait-all|cancel)" for '
+      - 'step must run script with "run" section or run action with "uses" section'
+  .github/workflows/_security.yaml:
+    ignore:
+      - 'unexpected key "(background|parallel|wait|wait-all|cancel)" for '
+      - 'step must run script with "run" section or run action with "uses" section'

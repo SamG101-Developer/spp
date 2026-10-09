@@ -249,3 +249,25 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let u = t
     }
 )");
+
+// A second binding of a name in one destructure silently replaced the first.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LocalVariableDestructureTupleAst,
+    test_invalid_tuple_destructure_binding_a_name_twice,
+    SppIdentifierDuplicateError, R"(
+    fun f() -> Void {
+        let (a, a) = (1, 2)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LocalVariableDestructureTupleAst,
+    test_valid_tuple_destructure_aliasing_one_attribute_name_twice, R"(
+    fun f(x: (Opt[S32], Opt[S32])) -> Void {
+        case x of {
+            is (Some[S32](val as a), Some[S32](val as b)) { }
+            else { }
+        }
+    }
+)");

@@ -15,15 +15,15 @@ use(spp::asts, struct TypeIdentifierAst);
 /// A low level token created by the lexer, such as "=" or "+"
 /// in statements and expressions. Associated token data is
 /// needed when strings or numbers are created, for example.
-/// This ast is also the terminator for "pos_end()" recursive
+/// This ast is also the terminator for "PosEnd" recursive
 /// calls; the end position is the start position plus the
 /// length of the associated data.
 SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TokenAst);
 
   /// Very similar to the constructor, but required for the
-  /// macro'd unified "new_empty" caller for defaulting
+  /// macro'd unified "NewEmpty" caller for defaulting
   /// attributes. The pos isn't always given so is optional.
   static auto NewEmpty(lex::SppTokenType token_type, Str &&token_data, std::size_t pos = 0) -> Unique<TokenAst>;
 

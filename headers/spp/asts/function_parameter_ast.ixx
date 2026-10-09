@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_parameter_ast;
+import spp.analyse.scopes.type_key;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.orderable;
@@ -37,6 +38,12 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
     Shared<TypeAst> OriginalType;
     Unique<ExpressionAst> OriginalDefaultVal;
   } Source;
+
+  /// In an instantiation, the parameter's type by identity: the
+  /// template's, with the instantiation's bindings substituted
+  /// once ("FindOrMakeGnSubstitutedPrototype"), which is what a call
+  /// is checked against.
+  analyse::scopes::TypeId InstanceTypeId = nullptr;
 
   FunctionParameterAst(
     decltype(Var) &&var,
