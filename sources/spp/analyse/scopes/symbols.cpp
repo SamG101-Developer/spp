@@ -5,6 +5,7 @@ module spp.analyse.scopes.symbols;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.substitution;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
@@ -43,39 +44,73 @@ namespace {
   using spp::analyse::scopes::Scope;
   using spp::analyse::scopes::TypeSymbol;
 
-  /// The one place reading a type makes an instantiation: "id" (already read where "scope" reads it), standing for
-  /// "open", an open instantiation (of a class or an alias) a lookup reached ("monomorphization::InstantiateForScope",
-  /// while an analysis stage lets reads make one). Nothing where "open" is no instantiation, or when nothing can be
-  /// made yet.
-  auto MakeOnRead(
-    Scope const &scope, TypeSymbol const &open, const spp::analyse::scopes::TypeId id) -> TypeSymbol* {
-    using spp::analyse::scopes::TypeKind;
-    if (id == nullptr or open.InstanceOf == nullptr) { return nullptr; }
-    if (open.Kind != TypeKind::Cls and open.Alias == nullptr) { return nullptr; }
-    return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
+  auto NextTypeSymbolSerial() -> std::uint64_t {
+    static auto serial = static_cast<std::uint64_t>(0);
+    return ++serial;
   }
 
-  /// An instantiation's argument "name" as its identity holds it ("TypeSymbol::TypeArg", "CompArgId"), when "inst"
-  /// has an identity holding one under that name.
+  /// The one place reading a type makes an instantiation:
+  /// "id" (already read where "scope" reads it), standing
+  /// for "open", an open instantiation (of a class or an
+  /// alias).
+  auto MakeOnRead(
+    Scope const &scope, TypeSymbol const &open,
+    const TypeId id) -> TypeSymbol* {
+    using spp::analyse::scopes::TypeKind;
+    // Check that the id is valid, and that the open type
+    // symbol is an instantiation of a template. For an
+    // unformed alias, ignore too.
+    if (id == nullptr or open.InstanceOf == nullptr) { return nullptr; }
+    if (open.Kind != TypeKind::Cls and open.Alias == nullptr) { return nullptr; }
+
+    // Create the monomorphised version of the type symbol
+    // for "id" within "scope".
+    return spp::analyse::utils::monomorphization::InstantiateForScope(
+      id, scope);
+  }
+
+  /// An instantiation's argument for its template's parameter "name" ("TypeSymbol::TypeArgRef",
+  /// "TypeSymbol::CompArgId"): the name is read against the template's own parameters, once, and the argument found by
+  /// that parameter's identity ("FindArgOf"). A variadic parameter finds nothing: its elements are positional, and no
+  /// one argument is its value. The kind is as found, so a caller reads the field it wants, and gets null from a name
+  /// of the other kind (each parameter's name has one kind).
   auto IdArgNamed(
-    TypeSymbol const &inst, spp::Str const &name) -> std::optional<spp::analyse::scopes::TypeIdArg> {
+    TypeSymbol const &inst, spp::Str const &name) -> std::optional<TypeIdArg> {
     using namespace spp::analyse::scopes;
-    if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != InstanceKey::Tag::Inst) {
+    if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) {
       return std::nullopt;
     }
-    const auto name_id = InternWord(name);
-    for (auto const &id_arg : ArgsOf(HeadOf(inst.Id).Args)) {
-      if (id_arg.Named and id_arg.Name == name_id) { return id_arg; }
+    auto const *const tmpl = HeadOf(inst.Id).Symbol();
+    auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
+    if (params == nullptr) { return std::nullopt; }
+    for (auto const *param : params->GetAllParams()) {
+      if (param->Name->ToString() == name and param->ParamId() != 0) {
+        return FindArgOf(HeadOf(inst.Id).Args, param->ParamId());
+      }
     }
     return std::nullopt;
   }
 
-  /// What a written type names here ("Scope::FindTypeSymbol"); else, for a name written as an open instantiation not
-  /// made from here yet, the one its arguments name here, made now ("MakeOnRead").
+  /// What a written type names here ("Scope::FindTypeSymbol");
+  /// else, for a name written as an open instantiation not
+  /// made from here yet, the one its arguments name here,
+  /// made now ("MakeOnRead").
   auto FindOrMakeTypeSymbol(
-    Scope const &scope, spp::asts::TypeAst const &type) -> TypeSymbol* {
-    if (auto *const sym = scope.FindTypeSymbol(&type); sym != nullptr) { return sym; }
-    auto *const open = scope.TypeSymbolOf(type.LastTypePart()->WrittenTypeId());
+    Scope const &scope, TypeAst const &type) -> TypeSymbol* {
+    // Find the type symbol. If there is type symbol for the
+    // type name, then return it.
+    if (const auto sym = scope.FindTypeSymbol(&type); sym != nullptr) {
+      return sym;
+    }
+
+    // The open instantiation the type was stamped with, read
+    // raw from its template's instances (not re-read through
+    // this scope's bindings, which is what found nothing); the
+    // stamps are read in the order "FindTypeSymbol" reads them.
+    // Make the instantiation its identity names here.
+    auto const *const last = type.LastTypePart();
+    auto open = scope.FindTypeSymbolById(type.StampedTypeId());
+    if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
     return open != nullptr ? MakeOnRead(scope, *open, scope.ReadIn(open->Id)) : nullptr;
   }
 
@@ -99,7 +134,6 @@ namespace {
   /// unbound generic safe.
   auto HasThreadSafeConstraint(
     TypeSymbol const &sym) -> bool {
-    using spp::analyse::utils::type_predicates::HeadKindRef;
     using generate::common_types_precompiled::THREAD_SAFE;
 
     const auto scope = sym.ScopeDefinedIn != nullptr
@@ -110,7 +144,7 @@ namespace {
     // A constraint naming the special "ThreadSafe" type (or an
     // alias of it), as the template it stands for.
     return genex::any_of(sym.TypeConstraints, [&](auto const &c) {
-      const auto head = HeadKindRef(*c, *scope);
+      const auto head = TypeRef::ForKindCheck(*c, *scope);
       return head.KindSymbol() != nullptr and head.IsA(*THREAD_SAFE, *scope);
     });
   }
@@ -172,12 +206,12 @@ namespace {
     if (compiler_special_type and sym->Id != nullptr) {
       auto const &head = HeadOf(sym->Id);
       auto arg_ids = spp::Vec<TypeId>();
-      if (head.Kind == InstanceKey::Tag::Inst) {
+      if (head.Kind == TypeKey::Tag::Inst) {
         for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.EmplaceBack(arg.TypeVal); } }
       }
-      else if (head.Kind == InstanceKey::Tag::Variant) { arg_ids.AppendRange(head.Members); }
+      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.AppendRange(head.Members); }
       for (const auto arg_id : arg_ids) {
-        if (not IsThreadSafeRec(arg_scope->TypeSymbolOf(arg_id), seen)) { return false; }
+        if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
       }
     }
 
@@ -258,7 +292,8 @@ VariableSymbol::VariableSymbol(
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),
   LlvmInfo(MakeShared<codegen::LlvmVarSymbolInfo>()),
-  CompTimeValue(AstClone(that.CompTimeValue)) {
+  CompTimeValue(AstClone(that.CompTimeValue)),
+  BoundCompId(that.BoundCompId) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
 }
 
@@ -275,7 +310,7 @@ auto spp::analyse::scopes::RegisterGnTypeParam(TypeSymbol &param) -> void {
   GnTypeParams()[param.OwnParamId] = &param;
 }
 
-auto spp::analyse::scopes::GnTypeParamOf(const std::uint64_t id) -> TypeSymbol* {
+auto spp::analyse::scopes::FindGnTypeParamById(const std::uint64_t id) -> TypeSymbol* {
   const auto hit = GnTypeParams().find(id);
   return hit != GnTypeParams().end() ? hit->second : nullptr;
 }
@@ -291,98 +326,74 @@ auto spp::analyse::scopes::RegisterGnCompParam(VariableSymbol &param) -> void {
   GnCompParams()[param.OwnParamId] = &param;
 }
 
-auto spp::analyse::scopes::GnCompParamOf(const std::uint64_t id) -> VariableSymbol* {
+auto spp::analyse::scopes::FindGnCompParamById(const std::uint64_t id) -> VariableSymbol* {
   const auto hit = GnCompParams().find(id);
   return hit != GnCompParams().end() ? hit->second : nullptr;
+}
+
+namespace {
+  /// The variadic packs given a parameter identity ("GnPackParamId"): by pack, and each identity's name.
+  struct GnPackParams {
+    spp::Map<void const*, std::uint64_t> Ids;
+    spp::Map<std::uint64_t, spp::Str> Names;
+  };
+
+  auto GnPacks() -> GnPackParams& {
+    static auto packs = GnPackParams();
+    return packs;
+  }
 }
 
 auto spp::analyse::scopes::ClearGnParams() -> void {
   GnTypeParams().clear();
   GnCompParams().clear();
+  GnPacks().Ids.clear();
+  GnPacks().Names.clear();
 }
 
-auto spp::analyse::scopes::FileInstance(
-  const TypeId id, TypeSymbol &instance)
-  -> void {
-  auto *const tmpl = HeadOf(id).Symbol();
-  if (tmpl != nullptr) { tmpl->Instances[BareTypeId(id)] = &instance; }
+auto spp::analyse::scopes::GnPackParamId(
+  void const *pack, Str const &name) -> std::uint64_t {
+  // Minted the first time a pack is asked for, and the same identity every time after.
+  auto &packs = GnPacks();
+  if (const auto hit = packs.Ids.find(pack); hit != packs.Ids.end()) { return hit->second; }
+  const auto id = NextGnParamId();
+  packs.Ids.emplace(pack, id);
+  packs.Names.emplace(id, name);
+  return id;
 }
 
-auto spp::analyse::scopes::ParamsOfGroup(
-  asts::GenericParameterGroupAst const &params)
-  -> TypeIdParams {
-  auto out = TypeIdParams();
-  for (auto const &param : params.Params) {
-    if (const auto pid = param->ParamId(); pid == 0) { continue; }
-    else if (param->IsCompParam()) { out.CompParams.push_back(pid); }
-    else { out.TypeParams.push_back(pid); }
-  }
-  return out;
+auto spp::analyse::scopes::ArgNameOf(
+  TypeIdArg const &arg) -> Str {
+  if (not arg.Named) { return Str(); }
+  return arg.Spelled ? Str(TextOfWord(arg.Slot)) : ParamNameOf(arg.Slot);
 }
 
-auto spp::analyse::scopes::BindByName(
-  TypeIdParams const &params,
-  const TypeId args,
-  const bool all)
-  -> std::optional<GenericSubst> {
-  if (args == nullptr) { return std::nullopt; }
-  const auto arg_list = ArgsOf(args);
-  const auto arg_named = [&arg_list](StrView name) -> TypeIdArg const* {
-    const auto id = InternWord(name);
-    const auto it = genex::find_if(arg_list, [id](auto const &arg) { return arg.Named and arg.Name == id; });
-    return it != arg_list.end() ? &*it : nullptr;
-  };
-  auto subst = GenericSubst();
-  for (const auto pid : params.TypeParams) {
-    auto const *const param = GnTypeParamOf(pid);
-    auto const *const arg = param != nullptr ? arg_named(param->Name->ToView()) : nullptr;
-    if (arg == nullptr or arg->TypeVal == nullptr) {
-      if (all) { return std::nullopt; }
-      continue;
-    }
-    subst.TypeParams.emplace_back(pid, arg->TypeVal);
-    if (param->IsVariadic) { subst.TypePackParams.push_back(pid); }
-  }
-  for (const auto comp : params.CompParams) {
-    auto const *const param = GnCompParamOf(comp);
-    auto const *const arg = param != nullptr ? arg_named(param->Name->Val) : nullptr;
-    if (arg == nullptr or arg->CompVal == 0) {
-      if (all) { return std::nullopt; }
-      continue;
-    }
-    subst.CompParams.emplace_back(comp, arg->CompVal);
-    if (param->IsVariadic) { subst.CompPackParams.push_back(comp); }
-  }
-  return subst;
+auto spp::analyse::scopes::ParamNameOf(
+  const std::uint64_t id) -> Str {
+  // "Self" is parameter 0; otherwise whichever registry holds the identity.
+  if (id == 0) { return "Self"; }
+  if (auto const *const type = FindGnTypeParamById(id); type != nullptr) { return Str(type->Name->ToView()); }
+  if (auto const *const comp = FindGnCompParamById(id); comp != nullptr) { return comp->Name->Val; }
+  const auto hit = GnPacks().Names.find(id);
+  return hit != GnPacks().Names.end() ? hit->second : Str();
 }
 
-auto spp::analyse::scopes::WrittenTypeIdOf(
+auto spp::analyse::scopes::NameTypeIdOf(
   TypeSymbol const &sym)
   -> TypeId {
-  using Tag = InstanceKey::Tag;
   if (const auto param = sym.ParamId(); param != 0) { return ParamTypeId(param); }
-  auto key = InstanceKey();
-  if (sym.Kind == TypeKind::Self) {
-    key.Push(Tag::Self);
-    return InternTypeKey(std::move(key));
-  }
+  if (sym.Kind == TypeKind::Self) { return ParamTypeId(0); }
   if (sym.InstanceOf != nullptr and sym.Id != nullptr) { return sym.Id; }
-  key.PushPtr(&sym);
+  auto key = TypeKey();
+  key.PushSymbol(&sym);
   return InternTypeKey(std::move(key));
 }
 
-auto spp::analyse::scopes::WrittenCompIdOf(
-  VariableSymbol const &sym)
-  -> TypeId {
-  auto key = InstanceKey();
-  key.Push(InstanceKey::Tag::CompId, ParamCompId(sym.ParamId()));
-  return InternTypeKey(std::move(key));
-}
 
 auto spp::analyse::scopes::NextGnParamId() -> std::uint64_t {
   // Never zero, which is what a symbol that is not a parameter
   // holds.
-  static auto next = std::uint64_t{0};
+  static auto next = static_cast<std::uint64_t>(0);
   return ++next;
 }
 
@@ -413,7 +424,7 @@ auto TypeSymbol::IsCopyable() const -> bool {
   if (has_generic_args and LinkedScope != nullptr) {
     for (auto const *sup_scope : LinkedScope->GetSupScopes()) {
       if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
-      if (not TypeRef::OfKind(*sup_scope).IsA(*COPY, *sup_scope)) { continue; }
+      if (not TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) { continue; }
 
       // "Copy" superimposed over a generic class ("sup [T] P[T]
       // ext Copy") only holds for an instance whose attributes
@@ -445,6 +456,10 @@ auto TypeSymbol::IsGn() const -> bool {
 
 auto TypeSymbol::IsMock() const -> bool {
   return Kind == TypeKind::FnMock or Kind == TypeKind::ClosureMock;
+}
+
+auto TypeSymbol::IsImport() const -> bool {
+  return Alias != nullptr and Alias->IsFromUseStmt;
 }
 
 auto TypeSymbol::IsSelf() const -> bool {
@@ -488,17 +503,12 @@ auto VariableSymbol::BoundCompVal() const -> ExpressionAst* {
   return CompTimeValue->To<ExpressionAst>();
 }
 
-auto VariableSymbol::AsBound(
-  Scope const &scope) const -> VariableSymbol const* {
-  auto const *var = this;
-  for (auto depth = 0; depth < 16; ++depth) {
-    auto const *const bound = var->BoundCompVal();
-    auto const *const bound_id = bound != nullptr ? bound->To<IdentifierAst>() : nullptr;
-    auto const *const next = bound_id != nullptr ? scope.FindVarSymbol(bound_id) : nullptr;
-    if (next == nullptr or next == var or not next->IsGn()) { break; }
-    var = next;
+auto VariableSymbol::AsBound() const -> VariableSymbol const* {
+  // The chain was followed where the argument was written ("BoundCompId"): a parameter at its end is that parameter.
+  if (BoundCompId != nullptr and BoundCompId->Kind == CompKey::Part::Param) {
+    if (auto const *const param = FindGnCompParamById(BoundCompId->ParamId); param != nullptr) { return param; }
   }
-  return var;
+  return this;
 }
 
 auto VariableSymbol::FqName() const -> Shared<ExpressionAst> {
@@ -542,7 +552,7 @@ TypeSymbol::TypeSymbol(
   const TypeKind kind,
   const bool is_directly_copyable,
   const asts::utils::Visibility visibility,
-  Unique<ConventionAst> &&convention,
+  const ConventionTag convention,
   Vec<Shared<TypeAst>> const &generic_constraints) :
   Name(std::move(name)),
   Type(type),
@@ -551,10 +561,11 @@ TypeSymbol::TypeSymbol(
   Kind(kind),
   TypeConstraints(generic_constraints),
   Visibility(visibility),
-  Convention(std::move(convention)),
+  Convention(convention),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymbolInfo>()),
   IsDirectlyCopyable(is_directly_copyable),
-  IsDirectlyZeroType(false) {
+  IsDirectlyZeroType(false),
+  Serial(NextTypeSymbolSerial()) {
 }
 
 TypeSymbol::TypeSymbol(TypeSymbol const &that) :
@@ -570,13 +581,13 @@ TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   Id(that.Id),
   TypeConstraints(that.TypeConstraints),
   BoundTypeVal(that.BoundTypeVal),
-  BoundAlias(that.BoundAlias),
   DerivesFromSymbol(that.DerivesFromSymbol),
   Visibility(that.Visibility),
-  Convention(AstClone(that.Convention)),
+  Convention(that.Convention),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
-  IsDirectlyThreadHazard(that.IsDirectlyThreadHazard) {
+  IsDirectlyThreadHazard(that.IsDirectlyThreadHazard),
+  Serial(NextTypeSymbolSerial()) {
   // Shared rather than cloned: an alias's description is
   // fixed once resolved, and an instantiation of a generic
   // alias builds its own ("CreateGnClsScope") rather
@@ -603,40 +614,15 @@ auto TypeSymbol::GnParams() const -> GenericParameterGroupAst* {
   return Type != nullptr ? Type->GnParamGroup.get() : nullptr;
 }
 
+auto TypeSymbol::GnParamsScope() const -> Scope* {
+  return Alias != nullptr ? Alias->DeclaredIn() : LinkedScope;
+}
+
 auto TypeSymbol::LinkedSymbol() const -> TypeSymbol* {
   // Borrowed: owned by the scope it links, which outlives any caller.
   return LinkedScope != nullptr and LinkedScope->LinkedTypeSymbol != nullptr
     ? LinkedScope->LinkedTypeSymbol.get()
     : const_cast<TypeSymbol*>(this);
-}
-
-auto TypeSymbol::Rebind() const -> void {
-  // Linked to a bare generic template, which nothing is bound to: the instance its value names (recorded, closed) was
-  // not made when it was bound. Re-linked to it once it is.
-  if (BoundAlias == nullptr and Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr and LinkedSymbol() != this) {
-    if (LinkedSymbol()->IsBareTemplate()) {
-      const auto written = BoundTypeVal->LastTypePart()->WrittenTypeId();
-      auto const *const target = IsClosedTypeId(written)
-        ? LinkedScope->TypeSymbolOf(written) : nullptr;
-      if (target != nullptr and target->LinkedScope != nullptr and target->InstanceOf != nullptr) {
-        const_cast<TypeSymbol*>(this)->BindTo(*target);
-      }
-    }
-    return;
-  }
-  if (BoundAlias == nullptr) { return; }
-
-  // Looked up, not made: a binding is read while keying, which makes nothing. Only once the whole chain has been made
-  // is there anything to re-link to.
-  auto const *const where = BoundAlias->Alias != nullptr and BoundAlias->Alias->WrittenIn != nullptr
-    ? BoundAlias->Alias->WrittenIn : BoundAlias->LinkedScope;
-  if (where == nullptr) { return; }
-  auto const *const target = BoundAlias->AliasTarget(*where, false);
-  if (not target->IsBindTarget()) { return; }
-  // As "CreateGnTypeSymbol" would have bound it, had the target been made then.
-  const auto self = const_cast<TypeSymbol*>(this);
-  self->BindTo(*target);
-  self->BoundAlias = nullptr;
 }
 
 auto TypeSymbol::LinkTo(
@@ -658,12 +644,22 @@ auto TypeSymbol::BindTo(
 }
 
 auto TypeSymbol::AsBound() const -> TypeSymbol* {
+  // Followed link by link until a symbol links to itself, or the walk comes back round ("Self" stand-ins can name each
+  // other). The loop is found by Brent's method: a marker left at each power of two, met again only on a loop, so each
+  // link is followed once, and nothing is allocated.
   auto *s = const_cast<TypeSymbol*>(this);
-  for (auto step = 0; step < 8 and (s->IsGn() or s->IsSelf()); ++step) {
-    s->Rebind();
+  auto *marker = s;
+  auto power = 1uz;
+  auto steps = 0uz;
+  while (s->IsGn() or s->IsSelf()) {
     auto *const linked = s->LinkedSymbol();
-    if (linked == s) { break; }
+    if (linked == s or linked == marker) { break; }
     s = linked;
+    if (++steps == power) {
+      marker = s;
+      power *= 2;
+      steps = 0;
+    }
   }
   return s;
 }
@@ -700,13 +696,13 @@ auto TypeSymbol::AliasTargetId(
   auto const &resolved = *Alias->Resolved;
   auto const *const where = Alias->WrittenIn;
   // Its stamp, unless that still has an unresolved part (stamped before "Buf::n" could be read): then keyed again.
-  auto target = resolved.LastTypePart()->WrittenTypeId();
+  auto target = resolved.LastTypePart()->StampedTypeId();
   if ((target == nullptr or target->HasUnresolved) and where != nullptr) { target = where->TypeIdOf(resolved); }
   if (target == nullptr or args == nullptr or Alias->Params == nullptr) { return target; }
 
   // The alias's own parameters bound to the arguments; an enclosing block's, which the target can name too, are left.
   // Qualified: GCC ICEs ("lookup_mark") on the unqualified lookup from this member.
-  const auto params = spp::analyse::scopes::ParamsOfGroup(*Alias->Params);
+  const auto params = spp::analyse::scopes::ParamsDeclaredBy(*Alias->Params);
   const auto subst = spp::analyse::scopes::BindByName(params, args, false);
   return subst.has_value() ? SubstituteTypeId(target, *subst) : nullptr;
 }
@@ -721,6 +717,11 @@ auto TypeSymbol::UseTarget() const -> TypeSymbol* {
     s = next;
   }
   return s;
+}
+
+auto TypeSymbol::InstanceTemplate() const -> TypeSymbol* {
+  auto *const target = UseTarget();
+  return target->Alias == nullptr ? target : const_cast<TypeSymbol*>(this);
 }
 
 auto TypeSymbol::FqName(
@@ -740,7 +741,7 @@ auto TypeSymbol::FqName(
   if (Kind == TypeKind::GnTypeParam and OwnParamId != 0) {
     if (_CachedFqName == nullptr) {
       _CachedFqName = AstCloneShared(Name);
-      _CachedFqName->SetWrittenTypeId(spp::analyse::scopes::WrittenTypeIdOf(*this));
+      _CachedFqName->StampTypeId(spp::analyse::scopes::NameTypeIdOf(*this));
     }
     return _CachedFqName;
   }
@@ -750,16 +751,9 @@ auto TypeSymbol::FqName(
   // is only its spelling, which means something else wherever
   // it is read. A binding with no scope to reach records the
   // argument it was given instead.
-  // One still waiting on an alias's target ("T=U8" before its "SizedInteger" instance is made) links only the target's
-  // template, so it answers with the alias, which names its target by the arguments it records.
-  if (Kind == TypeKind::GnTypeArg) { Rebind(); }
-  if (Kind == TypeKind::GnTypeArg and BoundAlias != nullptr) {
-    auto aliased = BoundAlias->FqName();
-    return Convention != nullptr ? aliased->WithConvention(AstClone(Convention)) : aliased;
-  }
   if (Kind == TypeKind::GnTypeArg and LinkedSymbol() != this) {
     auto bound = LinkedSymbol()->FqName();
-    return Convention != nullptr ? bound->WithConvention(AstClone(Convention)) : bound;
+    return Convention != ConventionTag::MOV ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention)) : bound;
   }
   if (Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr) {
     return BoundTypeVal;
@@ -810,9 +804,12 @@ auto TypeSymbol::FqName(
     return _CachedFqName;
   }
 
-  // Fully qualify the name from the root scope.
+  // Fully qualify the name from the root scope. A class's name
+  // records its identity on its last part (below), so it is
+  // built from a copy: "Name" is shared with the declaration.
+  const auto records_id = Kind == TypeKind::Cls and Alias == nullptr;
   auto qualifier_scope = LinkedScope->Parent;
-  auto qualified_name = dynamic_shared_cast<TypeAst>(Name);
+  auto qualified_name = records_id ? AstCloneShared(Name) : dynamic_shared_cast<TypeAst>(Name);
   while (qualifier_scope->Parent != nullptr) {
     while (std::holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;
@@ -825,237 +822,357 @@ auto TypeSymbol::FqName(
   }
 
   // Re-add the convention of the type if it exists.
-  _CachedFqName = Convention ? qualified_name->WithConvention(AstClone(Convention)) : qualified_name;
+  _CachedFqName = Convention != ConventionTag::MOV
+    ? qualified_name->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention))
+    : qualified_name;
   _CachedFqNameGen = ScopeLinkageGeneration();
 
   // A class's name records its identity. A closed one means it
   // from anywhere; an open instantiation's arguments are read
-  // again from the scope asking ("Scope::FindWrittenTypeSymbol"), through that
-  // scope's bindings of the generics they name.
-  if (Kind == TypeKind::Cls and Alias == nullptr) {
-    _CachedFqName->SetWrittenTypeId(spp::analyse::scopes::WrittenTypeIdOf(*this));
+  // again from the scope asking ("Scope::FindBoundTypeSymbolById"),
+  // through that scope's bindings of the generics they name. It
+  // is on the last part, where every stamp is read from (as
+  // "type_resolution::StampTypeParts" records them), and on the
+  // whole name too, which "Scope::FindTypeSymbol" reads first.
+  if (records_id) {
+    const auto id = spp::analyse::scopes::NameTypeIdOf(*this);
+    _CachedFqName->StampTypeId(id);
+    _CachedFqName->LastTypePart()->StampTypeId(id);
   }
   return _CachedFqName;
-}
-
-auto TypeSymbol::GnSelfName() const -> Shared<TypeAst> {
-  // A template is named as written; as a pattern it is itself
-  // over its own parameters. Matched against "sup Limits[U8]"
-  // as bare "Limits" it would take every such block (and each
-  // one's "SInt"), which "Limits[T=T]" correctly does not.
-  auto fq = FqName();
-  if (Kind == TypeKind::Cls and InstanceOf == nullptr and Alias == nullptr and Type != nullptr
-    and not Type->GnParamGroup->Params.IsEmpty()) {
-    return fq->WithGns(GenericArgumentGroupAst::FromParams(*Type->GnParamGroup));
-  }
-  return fq;
 }
 
 auto TypeSymbol::CompArgId(
   Str const &name) const -> CompId {
   // Off the identity, as "TypeArgRef"; anything without one reads its name's argument in its own scope.
   auto const &inst = *LinkedSymbol();
-  if (inst.LinkedScope == nullptr) { return 0; }
-  if (const auto arg = IdArgNamed(inst, name); arg.has_value()) { return arg->CompVal; }
+  if (inst.LinkedScope == nullptr) { return nullptr; }
+  if (const auto id_arg = IdArgNamed(inst, name); id_arg.has_value()) { return id_arg->CompVal; }
   auto const *arg = inst.Name->GnArgGroup->At(name.c_str());
-  return arg != nullptr and arg->IsCompArg() ? inst.LinkedScope->CompIdOf(*arg->CompVal) : 0;
-}
-
-auto TypeSymbol::CompArg(
-  Str const &name) const -> Shared<ExpressionAst> {
-  // What its identity names ("CompArgId"), as an ast ("Scope::CompAstOf"): a closed value is its literal.
-  const auto id = CompArgId(name);
-  return id != 0 ? LinkedSymbol()->LinkedScope->CompAstOf(id) : nullptr;
-}
-
-auto TypeSymbol::TypeArg(
-  Str const &name) const -> Shared<TypeAst> {
-  // Off the identity, which holds what each argument means, pointing where its name's argument was written. Only an
-  // instantiation has arguments.
-  auto const &inst = *LinkedSymbol();
-  const auto id_arg = IdArgNamed(inst, name);
-  if (not id_arg.has_value() or id_arg->TypeVal == nullptr) { return nullptr; }
-  auto type = inst.LinkedScope->TypeAstOf(id_arg->TypeVal);
-  auto const *arg = inst.Name->GnArgGroup->At(name.c_str());
-  return type != nullptr and arg != nullptr and arg->IsTypeArg() ? type->WithSourceSpanOf(*arg->TypeVal) : type;
+  return arg != nullptr and arg->IsCompArg() ? inst.LinkedScope->CompIdOf(*arg->CompVal) : nullptr;
 }
 
 auto TypeSymbol::TypeArgRef(
   Str const &name) const -> TypeRef {
-  // Off the identity, with no ast in between. Only an instantiation has arguments.
+  // Get the linked symbol and create the empty type arg
+  // list.
   auto const &inst = *LinkedSymbol();
   const auto id_arg = IdArgNamed(inst, name);
-  return id_arg.has_value() and id_arg->TypeVal != nullptr ? TypeRef::Of(id_arg->TypeVal, *inst.LinkedScope) : TypeRef();
+  return id_arg.has_value() and id_arg->TypeVal != nullptr
+    ? TypeRef::Of(id_arg->TypeVal, *inst.LinkedScope)
+    : TypeRef();
 }
 
-auto TypeSymbol::TypeArgs() const -> Vec<Shared<TypeAst>> {
-  // As "TypeArg": off its identity. Only an instantiation has arguments.
+/// [CHECKED]
+auto TypeSymbol::TypeArgRefs() const -> Vec<TypeRef> {
+  // Get the linked symbol and create the empty type arg
+  // list.
   auto const &inst = *LinkedSymbol();
-  auto types = Vec<Shared<TypeAst>>();
-  if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != InstanceKey::Tag::Inst) {
+  auto types = Vec<TypeRef>();
+
+  // If the instantiation is not a type key "Inst" tag
+  // type, then return the empty type list.
+  if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) {
     return types;
   }
+
+  // Otherwise, extract the args off of the head (all by
+  // identity), and keep the type args only, as refs.
   for (auto const &arg : ArgsOf(HeadOf(inst.Id).Args)) {
-    if (arg.TypeVal != nullptr) { types.EmplaceBack(inst.LinkedScope->TypeAstOf(arg.TypeVal)); }
+    if (arg.TypeVal != nullptr) {
+      types.EmplaceBack(TypeRef::Of(arg.TypeVal, *inst.LinkedScope));
+    }
   }
   return types;
 }
 
+/// [CHECKED]
+auto TypeSymbol::GnSelfName() const -> Shared<TypeAst> {
+  // This effectively takes a symbol like "Vec" (a template),
+  // and create "Vec[T=T]" from it, when it is a template with
+  // generics ("IsBareTemplate"; see the "Vec" example).
+  auto fq = FqName();
+  if (IsBareTemplate()) {
+    // Attach the generics.
+    return fq->WithGns(
+      GenericArgumentGroupAst::FromParams(*Type->GnParamGroup));
+  }
+  return fq;
+}
+
+/// [CHECKED]
 TypeRef::TypeRef(
-  TypeSymbol *resolved, const TypeId id, const ConventionTag conv, const bool never) :
+  TypeSymbol *resolved,
+  const TypeId id,
+  const ConventionTag conv,
+  const bool never) :
   Symbol(resolved),
   Conv(conv),
   IsNever(never),
-  Id(resolved != nullptr ? BareTypeId(id) : nullptr) {
+  Id(resolved != nullptr ? BareOf(id) : nullptr) {
 }
 
-auto TypeRef::Named(
-  Scope const &scope, const TypeId id, TypeSymbol *open, const ConventionTag conv, const bool never,
-  const bool make) -> TypeRef {
-  // The symbol is what the identity names: the instantiation filed under it, made here first if it is not yet ("open"
-  // is the one the lookup reached, instantiated under this scope's bindings). Only where the identity names no one
-  // symbol - a part that is "Self" (keyed by spelling, standing for the implementer), a binding to nothing, or nothing
-  // made yet where nothing can be - is it "open" itself.
-  auto *sym = id != nullptr and not id->HasSelf ? scope.TypeSymbolOf(id) : nullptr;
-  if (make and sym == nullptr and id != nullptr and not id->HasSelf and open != nullptr and open->Alias == nullptr) {
+/// [CHECKED]
+auto TypeRef::FromId(
+  Scope const &scope, const TypeId id, TypeSymbol *open, const ConventionTag conv,
+  const bool never, const OnMissing missing) -> TypeRef {
+  // Find the type symbol by its id (as long as it doesn't
+  // contain "Self"). Make the symbol if it's missing and
+  // the flag allows creation.
+  auto sym = id != nullptr and not id->HasSelf ? scope.FindTypeSymbolById(id) : nullptr;
+  if (missing == OnMissing::Make and sym == nullptr and id != nullptr
+    and not id->HasSelf and open != nullptr and open->Alias == nullptr) {
     if (HeadOf(id).IsInstance()) {
-      auto *const made = MakeOnRead(scope, *open, id);
-      sym = scope.TypeSymbolOf(id);
-
-      // Made under the identity of what was instantiated, which differs from the one asked for when that names it
-      // through a "use" of its class (a "use" files its own instances apart): what was made, under its own identity.
-      if (sym == nullptr and made != nullptr and made->Id != nullptr) {
-        return TypeRef(made, made->Id, conv, never);
-      }
+      static_cast<void>(MakeOnRead(scope, *open, id));
+      sym = scope.FindTypeSymbolById(id);
     }
   }
-  return TypeRef(sym != nullptr ? sym : open, id, conv, never);
+
+  // Build the type ref from the symbol and the carried
+  // flags.
+  return TypeRef(
+    sym != nullptr ? sym : missing == OnMissing::Null ? nullptr : open,
+    id, conv, never);
 }
 
+/// [CHECKED]
 auto TypeRef::Of(
   TypeAst const &type, Scope const &scope) -> TypeRef {
-  // A resolved type is never an alias: it is what the alias stands for ("AliasTarget"). The alias stays on the
-  // written type, for visibility and messages.
-  auto *const found = FindOrMakeTypeSymbol(scope, type);
+  // A resolved type is never an alias: it is what the
+  // alias stands for ("AliasTarget"). The alias stays
+  // on the written type, for visibility and messages.
+  const auto found = FindOrMakeTypeSymbol(scope, type);
   if (found == nullptr) { return TypeRef(); }
-  return Named(
-    scope, scope.TypeIdOf(type), found->AliasTarget(scope), found->HeldConvention(&type), type.IsNeverType());
+
+  // Build the type ref from the newly created "found",
+  // which is a found or monomorphised
+  return FromId(
+    scope, scope.TypeIdOf(type), found->AliasTarget(scope),
+    found->HeldConvention(&type), type.IsNeverType());
 }
 
+/// [CHECKED]
 auto TypeRef::Of(
-  const TypeId id, Scope const &scope, const std::optional<ConventionTag> conv, const std::optional<bool> never)
-  -> TypeRef {
-  // An identity carries its convention, and "!" is the "Never" class by identity.
-  using asts::generate::common_types_precompiled::NEVER;
-  const auto own_conv = id != nullptr ? static_cast<ConventionTag>(HeadOf(id).Conv) : ConventionTag::MOV;
-  auto ref = Named(scope, id, nullptr, conv.value_or(own_conv), never.value_or(false));
-  if (not never.has_value()) { ref.IsNever = ref.Symbol != nullptr and ref.IsA(*NEVER, scope); }
+  TypeSymbol &sym, Scope const &scope,
+  const std::optional<ConventionTag> conv,
+  const OnMissing missing) -> TypeRef {
+  // Get the id of the type symbol, and get the "bare" id
+  // version of it.
+  const auto written = BareOf(scope.TypeIdOfSymbol(sym));
+  const auto id = sym.LinkedScope == &scope
+    ? written
+    : scope.ReadIn(written);
+
+  // Move through the alias if there is one, via the alias
+  // target in the scope, then call the "FromId" function
+  // too.
+  const auto open = sym.Alias != nullptr ? sym.AliasTarget(scope) : &sym;
+  return FromId(
+    scope, id, open, conv.value_or(sym.HeldConvention()),
+    sym.Name != nullptr and sym.Name->IsNeverType(), missing);
+}
+
+/// [CHECKED]
+auto TypeRef::Of(
+  const TypeId id, Scope const &scope,
+  const std::optional<ConventionTag> conv,
+  const std::optional<bool> never) -> TypeRef {
+  // An identity carries its convention, and "!" is the
+  // "Never" class by identity. This is the main function
+  // to create a type ref.
+  using generate::common_types_precompiled::NEVER;
+  const auto own_conv = id != nullptr
+    ? static_cast<ConventionTag>(HeadOf(id).Conv)
+    : ConventionTag::MOV;
+
+  // Call into the "FromId" function with the "null" flag
+  // for a non-existing symbol; this is purely an accessor.
+  auto ref = FromId(
+    scope, id, nullptr, conv.value_or(own_conv),
+    never.value_or(false), OnMissing::Null);
+
+  // If "never" has been set, then set the symbol's flag
+  // to a comparison with the precompiled NEVER type.
+  if (not never.has_value()) {
+    ref.IsNever = ref.Symbol != nullptr and ref.IsA(*NEVER, scope);
+  }
   return ref;
 }
 
-auto TypeRef::Of(
-  TypeSymbol &sym, Scope const &scope, const std::optional<ConventionTag> conv, const bool make) -> TypeRef {
-  // Its identity read here ("Scope::ReadIn"): a parameter as this scope binds it, an open instantiation under this
-  // scope's bindings, an alias as its target. Its own scope is not read through: that binds its class's parameters to
-  // its arguments, which name the parameters of where it was written ("FunMov[Args=Tup[FunMov[Args, Out], Args]]"
-  // would re-read as one more level, without end).
-  const auto written = BareTypeId(scope.TypeIdOfSymbol(sym, 0));
-  const auto id = sym.LinkedScope == &scope ? written : scope.ReadIn(written);
-  auto *const open = sym.Alias != nullptr ? sym.AliasTarget(scope) : &sym;
-  return Named(
-    scope, id, open, conv.value_or(sym.HeldConvention()), sym.Name != nullptr and sym.Name->IsNeverType(), make);
-}
-
-auto TypeRef::OfKind(
+auto TypeRef::ForKindCheck(
   TypeSymbol const &sym, Scope const &scope) -> TypeRef {
   // "Template" reads only the identity and the symbol, so the instantiation filed under it is not looked up.
-  const auto written = BareTypeId(scope.TypeIdOfSymbol(sym, 0));
-  const auto id = sym.LinkedScope == &scope ? written : scope.ReadIn(written);
-  auto *const open = sym.Alias != nullptr ? sym.AliasTarget(scope, false) : const_cast<TypeSymbol*>(&sym);
+  const auto written = BareOf(scope.TypeIdOfSymbol(sym));
+  const auto id = sym.LinkedScope == &scope
+    ? written
+    : scope.ReadIn(written);
+
+  const auto open = sym.Alias != nullptr
+    ? sym.AliasTarget(scope, false)
+    : const_cast<TypeSymbol*>(&sym);
   return TypeRef(open, id, ConventionTag::MOV, false);
 }
 
-auto TypeRef::OfKind(
+auto TypeRef::ForKindCheck(
+  TypeAst const &type, Scope const &scope) -> TypeRef {
+  // Held as written: a borrow or "!" stays one, so the same checks reject it.
+  auto *const head = type.IsNeverType() ? nullptr : scope.FindHeadSymbol(type);
+  if (head == nullptr) { return TypeRef(); }
+  auto ref = ForKindCheck(*head, scope);
+  if (type.GetConvention() != nullptr) { ref.Conv = type.GetConvention()->Tag(); }
+  return ref;
+}
+
+auto TypeRef::ForKindCheck(
   Scope const &scope) -> TypeRef {
-  return OfKind(*scope.LinkedTypeSymbol, scope);
+  return ForKindCheck(*scope.LinkedTypeSymbol, scope);
 }
 
+/// [CHECKED]
 auto TypeRef::ReadIn(
-  Scope const &scope, const bool make) const -> TypeRef {
+  Scope const &scope, const OnMissing missing) const -> TypeRef {
+  // Read a type ref into another scope, using the scope's
+  // bindings to canon it. Skip a canon if not required.
   if (Id == nullptr) { return *this; }
-  const auto id = Symbol != nullptr and Symbol->LinkedScope == &scope ? Id : scope.ReadIn(Id);
-  return Named(scope, id, Symbol, Conv, IsNever, make);
+  const auto id = Symbol != nullptr and Symbol->LinkedScope == &scope
+    ? Id
+    : scope.ReadIn(Id);
+
+  // Use the new id to build a type ref from the "FromId"
+  // method.
+  return FromId(
+    scope, id, Symbol, Conv, IsNever, missing);
 }
 
+/// [CHECKED]
 auto TypeRef::Substitute(
-  GenericSubst const &subst, Scope const &scope, const bool make) const -> TypeRef {
+  GenericSubst const &subst, Scope const &scope,
+  const OnMissing missing) const -> TypeRef {
+  // Substitute the type by its id and substitution pack,
+  // and send in all the current info (symbol, conv, never
+  // flag etc).
   if (Id == nullptr) { return *this; }
-  return Named(scope, SubstituteTypeId(Id, subst), Symbol, Conv, IsNever, make);
+  return FromId(
+    scope, SubstituteTypeId(Id, subst), Symbol, Conv,
+    IsNever, missing);
 }
 
+/// [CHECKED]
 auto TypeRef::Template() const -> TypeSymbol* {
-  // A symbol whose identity names something unresolved has none, and is read as the symbol it is.
-  auto *named = Symbol;
+  // Get the head of the symbol, and if it is an instance,
+  // return the symbol on the head. If the head's kind is
+  // a symbol, set the tracking symbol to it. Importantly,
+  // it is not an instantiation (concrete like S32, or
+  // template like Vec).
+  auto named = Symbol;
   if (Id != nullptr) {
     auto const &head = HeadOf(Id);
     if (head.IsInstance()) { return head.Symbol(); }
-    if (head.Kind == InstanceKey::Tag::Symbol and head.Symbol() != nullptr) { named = head.Symbol(); }
+    if (head.Kind == TypeKey::Tag::Symbol and head.Symbol() != nullptr) { named = head.Symbol(); }
   }
   if (named == nullptr) { return nullptr; }
-  auto *const bound = named->AsBound();
+
+  // Get the bound version of the symbol through its linked
+  // scope, and get the bound symbol's "template" if it has
+  // one, otherwise it itself is the template, so return it.
+  const auto bound = named->AsBound();
   return bound->InstanceOf != nullptr ? bound->InstanceOf : bound;
 }
 
+/// [CHECKED]
+auto spp::analyse::scopes::ConventionAstOf(
+  const ConventionTag tag) -> Unique<ConventionAst> {
+  // The convention ast for the tag; nothing for "MOV".
+  if (tag == ConventionTag::MUT) { return MakeUnique<ConventionMutAst>(nullptr, nullptr); }
+  if (tag == ConventionTag::REF) { return MakeUnique<ConventionRefAst>(nullptr); }
+  return nullptr;
+}
+
 auto spp::analyse::scopes::PrecompiledTemplate(
-  asts::TypeAst const &tmpl, Scope const &scope) -> TypeSymbol* {
-  // Only a type held shared is cached, so the address it is keyed by stays its own.
-  auto &cache = asts::generate::common_types_precompiled::TEMPLATE_SYMBOLS;
+  TypeAst const &tmpl, Scope const &scope) -> TypeSymbol* {
+  // Extract from the cache if its available and return the
+  // value. If not, The cache will be updated at the end of
+  // the function.
+  auto &cache = generate::common_types_precompiled::TEMPLATE_SYMBOLS;
   if (const auto hit = cache.find(&tmpl); hit != cache.end()) { return hit->second.second; }
-  auto *sym = scope.FindTypeSymbol(&tmpl);
+
+  // Find the template symbol from the scope, and map through
+  // its alias target if it has one. Nullptr guard for safety.
+  auto sym = scope.FindTypeSymbol(&tmpl);
   if (sym == nullptr) { return nullptr; }
   sym = sym->AliasTarget(scope);
+
+  // If this symbol contains a template (ie isn't a template
+  // itself), then move into the template.
   if (sym->InstanceOf != nullptr) { sym = sym->InstanceOf; }
-  if (auto held = static_shared_cast<asts::TypeAst const>(tmpl.weak_from_this().lock()); held != nullptr) {
+
+  // Update the cache so next time it comes directly out of
+  // the cache map. Return the symbol.
+  if (auto held = static_shared_cast<TypeAst const>(
+    tmpl.weak_from_this().lock()); held != nullptr) {
     cache.emplace(&tmpl, std::make_pair(std::move(held), sym));
   }
   return sym;
 }
 
+/// [CHECKED]
 auto TypeRef::IsA(
   TypeAst const &tmpl, Scope const &scope) const -> bool {
-  auto *const mine = Template();
-  return mine != nullptr and mine == spp::analyse::scopes::PrecompiledTemplate(tmpl, scope);
+  // Get the template symbol for this type ref, and check by
+  // pointer against the precompiled template for the type
+  // passed in.
+  const auto mine = Template();
+  return mine != nullptr and mine == spp::analyse::scopes::PrecompiledTemplate(
+    tmpl, scope);
 }
 
+/// [CHECKED]
 auto TypeRef::SameAs(
   TypeRef const &that) const -> bool {
+  // Two type refs are the same if their ids are the same,
+  // and their conventions are the same too.
   return Id != nullptr and Id == that.Id and Conv == that.Conv;
 }
 
+/// [CHECKED]
 auto TypeRef::AstIn(
   Scope const &scope) const -> Shared<TypeAst> {
+  // Get the type ast from either the symbols fq name (should
+  // the symbol exist), and otherwise the scope's "type ast of"
+  // for the id.
   if (Id == nullptr) { return nullptr; }
   auto type = Symbol != nullptr ? AstCloneShared(Symbol->FqName()) : scope.TypeAstOf(Id);
   if (type == nullptr or Conv == ConventionTag::MOV) { return type; }
-  auto conv = Conv == ConventionTag::MUT
-    ? Unique<ConventionAst>(MakeUnique<ConventionMutAst>(nullptr, nullptr))
-    : Unique<ConventionAst>(MakeUnique<ConventionRefAst>(nullptr));
-  return type->WithConvention(std::move(conv));
+
+  // Given a convention is now guaranteed, build the convention
+  // ast and add it into the type.
+  return type->WithConvention(spp::analyse::scopes::ConventionAstOf(Conv));
 }
 
+/// [CHECKED]
 auto VariableSymbol::TypeRefIn(
   Scope const &scope) const -> TypeRef {
+  // Take the current type and re-create it in the provided
+  // scope. Null guard (should never be hit).
   return Type != nullptr ? TypeRef::Of(*Type, scope) : TypeRef{};
 }
 
 auto TypeSymbol::HeldConvention(
   TypeAst const *written) const -> ConventionTag {
-  if (written != nullptr and written->GetConvention() != nullptr) { return written->GetConvention()->Tag(); }
-  return Kind == TypeKind::GnTypeArg and Convention != nullptr ? Convention->Tag() : ConventionTag::MOV;
+  // Pull the convention from the "written" if it has one,
+  // otherwise the symbol's convention for the generic types.
+  if (written != nullptr and written->GetConvention() != nullptr) {
+    return written->GetConvention()->Tag();
+  }
+
+  return Kind == TypeKind::GnTypeArg
+    ? Convention
+    : ConventionTag::MOV;
 }
 
-auto TypeSymbol::InvalidateFqNameCache() const
-  -> void {
+/// [CHECKED]
+auto TypeSymbol::InvalidateFqNameCache() const -> void {
+  // Clear caches.
   _CachedFqName = nullptr;
   _CachedFqNameGen = 0;
 }

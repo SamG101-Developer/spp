@@ -2,7 +2,8 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.symbols;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.substitution;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.memory_state;
 import spp.asts.ast;
 import spp.asts.convention_ast;
@@ -38,14 +39,30 @@ use(spp::asts, struct TypeStatementAst);
 /// differently), and "!" is marked rather than resolved: it
 /// names the "Never" class, but fits anywhere that class would
 /// not.
+///
+/// Which factory to build one with depends on what is in hand:
+/// - a type ast (written or inferred): "Of(TypeAst, Scope)";
+/// - a symbol a lookup already found: "Of(TypeSymbol, Scope)";
+/// - an identity already in the scope's terms: "Of(TypeId, Scope)";
+/// - a symbol only asked what it is ("IsA", "Template"):
+///   "ForKindCheck".
 SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
-  /// No type: what an expression with none, or a name that did not
-  /// resolve, answers with.
+  /// What reading an identity answers when nothing is filed
+  /// under it where it is read: no symbol ("Null"), the symbol
+  /// the read started from ("Open", which the identity then
+  /// names no one symbol of its own), or that instantiation
+  /// made there first, else "Open" ("Make"). Every factory
+  /// that reads takes one, so a caller says which it needs
+  /// instead of inheriting it.
+  enum class OnMissing : std::uint8_t { Null, Open, Make };
+
+  /// No type: what an expression with none, or a name that
+  /// did not resolve, answers with.
   TypeRef() = default;
 
-  /// The type's symbol, as the lookup found it; null when the type
-  /// resolved to none. Identity is "Id", not this: two symbols can be
-  /// one type (a binding and what it is bound to).
+  /// The type's symbol, as the lookup found it; null when the
+  /// type resolved to none. Identity is "Id", not this: two
+  /// symbols can be one type (a binding and what it is bound to).
   TypeSymbol *Symbol = nullptr;
 
   /// How the value is held. "MOV" is no convention, as
@@ -55,63 +72,120 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
   /// Whether the type is "!".
   bool IsNever = false;
 
-  /// The type's identity without its convention: two references are
-  /// one type exactly when these are equal and so are their
+  /// The type's identity without its convention: two references
+  /// are one type exactly when these are equal and so are their
   /// conventions. Present whenever "Symbol" is.
   TypeId Id = nullptr;
 
-  /// A written or inferred type, resolved where "scope" reads
-  /// it.
-  static auto Of(TypeAst const &type, Scope const &scope) -> TypeRef;
-
-  /// A symbol already resolved - a class, a super class, a
-  /// template, a parameter, a binding - as a reference: its identity
-  /// read through "scope"'s bindings, held under "conv", else as the
-  /// symbol is held ("TypeSymbol::HeldConvention": a binding's own).
+  /// Resolves a type ast, as written or inferred, where "scope"
+  /// reads it. The symbol is found by the type's stamp or by
+  /// name; an instantiation not made from here yet is made now
+  /// ("FindOrMakeTypeSymbol"), and an alias is followed to its
+  /// target. The convention and "!" are the ones written on the
+  /// type. No type if nothing resolves.
+  /// ---
+  /// Use it whenever the type is an ast: parameter, attribute
+  /// and return types, annotations, inferred expression types.
   static auto Of(
-    TypeSymbol &sym, Scope const &scope, std::optional<ConventionTag> conv = std::nullopt, bool make = true) -> TypeRef;
+    TypeAst const &type, Scope const &scope) -> TypeRef;
 
-  /// "sym" as a kind check reads it ("IsA", "Template", "type_predicates::IsType*"): by value (a binding to "&Vec" is
-  /// a "Vec"), and read without making anything, which a template check never needs and must not do while the "sup"
-  /// scopes are being attached.
-  static auto OfKind(TypeSymbol const &sym, Scope const &scope) -> TypeRef;
+  /// Wraps a symbol a lookup already found (a class, a super
+  /// class, a template, a parameter, a binding). Its identity is
+  /// read through "scope"'s bindings ("Scope::ReadIn"). The
+  /// symbol filed under that identity is the answer; when there
+  /// is none, "missing" says what to do. An alias is followed to
+  /// its target. Held under "conv", else as "sym" is held (a
+  /// binding to "&Str" is borrowed); "!" when "sym" is named "!".
+  ///---
+  /// Use it when the symbol is in hand and the type ast is not,
+  /// or would only be rebuilt to resolve it again.
+  static auto Of(
+    TypeSymbol &sym, Scope const &scope, std::optional<ConventionTag> conv = std::nullopt,
+    OnMissing missing = OnMissing::Make) -> TypeRef;
 
-  /// "OfKind" for a type's own scope: its type ("Scope::LinkedTypeSymbol", which it must have), read there.
-  static auto OfKind(Scope const &scope) -> TypeRef;
-
-  /// What an identity names where "scope" reads it: the symbol filed under it, made there first if it is not yet.
-  /// Held under "conv", else the convention the identity carries; "!" when "never", else when it names the "Never"
-  /// class (an argument's identity, "ArgsOf", is either).
+  /// Looks up the symbol filed under an identity, where "scope"
+  /// reads it. The identity is taken as already in "scope"'s
+  /// terms (not read through its bindings), and nothing is made
+  /// or substituted: an identity with nothing filed under it,
+  /// or one holding "Self", gives no type. Held under "conv",
+  /// else the convention the identity carries; "!" as "never"
+  /// says, else when the identity names the "Never" class.
+  ///
+  /// Use it for an identity built or substituted already (off
+  /// another "TypeRef", an argument, an inferred binding), when
+  /// only an existing instantiation is wanted. To read one into
+  /// a scope, or to make what is missing, use "ReadIn" or
+  /// "Substitute" on a "TypeRef" instead.
   static auto Of(
     TypeId id, Scope const &scope, std::optional<ConventionTag> conv = std::nullopt,
     std::optional<bool> never = std::nullopt) -> TypeRef;
 
+  /// Wraps "sym" for a question about what kind of type it is
+  /// ("IsA", "Template", "type_predicates::IsType*"), not for
+  /// use as a type. Its identity is read through "scope"'s
+  /// bindings as "Of" reads it, but no instantiation is looked
+  /// up or made: the symbol stays "sym" (or an alias's target,
+  /// found without making it), which may be the open template
+  /// rather than the instance. Always by value and never "!", so
+  /// a binding to "&Vec" is a "Vec".
+  ///
+  /// Use it for kind checks, and always while the "sup" scopes
+  /// are being attached, where making an instance must not
+  /// happen. Never use the result as a value's type.
+  static auto ForKindCheck(
+    TypeSymbol const &sym, Scope const &scope) -> TypeRef;
+
+  /// "ForKindCheck" for a written type: what its head names here
+  /// ("Vec" for "Vec[Str]"), held as written, so a borrow or "!"
+  /// stays one and the same checks reject it. No instance is
+  /// looked up or made; no type for "!" or a name that does not
+  /// resolve.
+  ///
+  /// Use it to give a written type to the kind checks
+  /// ("type_predicates::IsTypeTuple(TypeRef::ForKindCheck(type,
+  /// scope), scope)").
+  static auto ForKindCheck(
+    TypeAst const &type, Scope const &scope) -> TypeRef;
+
+  /// "ForKindCheck" for the type a scope belongs to (its
+  /// "Scope::LinkedTypeSymbol", which it must have), read in
+  /// that scope.
+  ///
+  /// Use it inside a class or "sup" block to ask what the
+  /// enclosing type is ("is this block's type a Drop?").
+  static auto ForKindCheck(
+    Scope const &scope) -> TypeRef;
+
   /// This type read where "scope" reads it ("Scope::ReadIn"): a parameter as that scope binds it, an open
   /// instantiation under its bindings; its convention and "!" kept. A symbol's own scope is not read through (it binds
-  /// the symbol's parameters to its arguments, which would read one level further each time). Made there first, when
-  /// "make" and it is not yet.
-  SPP_ATTR_NODISCARD auto ReadIn(Scope const &scope, bool make = false) const -> TypeRef;
+  /// the symbol's parameters to its arguments, which would read one level further each time). Nothing filed under the
+  /// read identity is answered as "missing" says.
+  SPP_ATTR_NODISCARD auto ReadIn(Scope const &scope, OnMissing missing = OnMissing::Open) const -> TypeRef;
 
   /// "ReadIn" with "subst" applied to this type's identity first ("SubstituteTypeId"): this type, written in the terms
   /// of the parameters "subst" binds, read where "scope" reads it.
-  SPP_ATTR_NODISCARD auto Substitute(GenericSubst const &subst, Scope const &scope, bool make = false) const -> TypeRef;
+  SPP_ATTR_NODISCARD auto Substitute(
+    GenericSubst const &subst, Scope const &scope, OnMissing missing = OnMissing::Open) const -> TypeRef;
 
-  /// The template this type instantiates, off its identity ("HeadOf"): "Vec" for "Vec[Str]", the variant template for
-  /// a variant, what a binding, parameter or "Self" stands for, and a type that instantiates nothing itself (or a
-  /// symbol whose identity does not resolve). Null for no type.
+  /// The template this type instantiates: for an instantiation,
+  /// the one its identity's head names ("HeadOf"; "Vec" for
+  /// "Vec[Str]", the variant template for a variant); for a
+  /// binding, parameter or "Self", the template of what it
+  /// stands for.
   SPP_ATTR_NODISCARD auto Template() const -> TypeSymbol*;
 
-  /// Whether this type instantiates the precompiled template "tmpl" ("std::tuple::Tup", ...), as "Template" reads it.
-  /// The template's own symbol is found once from "scope", and cached for the compile ("PrecompiledTemplate"), so
-  /// "tmpl" must be one of "common_types_precompiled"'s.
+  /// Whether this type instantiates the precompiled template
+  /// "tmpl" ("std::tuple::Tup", ...), as "Template" reads it.
+  /// The template must be from the precompiled types.
   SPP_ATTR_NODISCARD auto IsA(TypeAst const &tmpl, Scope const &scope) const -> bool;
 
-  /// Whether "that" is the same type held the same way: the same identity and convention. No type is the same as
-  /// nothing.
+  /// Whether "that" is the same type held the same way: the
+  /// same identity and convention. Nothing matches a no-type.
   SPP_ATTR_NODISCARD auto SameAs(TypeRef const &that) const -> bool;
 
-  /// This type as a type ast of its own, under its convention: its symbol's qualified name, else what its identity
-  /// names where "scope" reads it ("Scope::TypeAstOf"). Null for no type.
+  /// A reverse builder to create a type ast of its own, under
+  /// its convention: its symbol's qualified name, else what
+  /// its identity names where "scope" reads it. Null for no-types.
   SPP_ATTR_NODISCARD auto AstIn(Scope const &scope) const -> Shared<TypeAst>;
 
   SPP_ATTR_NODISCARD auto IsBorrowed() const -> bool {
@@ -145,18 +219,26 @@ private:
   TypeRef(TypeSymbol *resolved, TypeId id, ConventionTag conv, bool never);
 
   /// A reference to what "id" names where "scope" reads it: the
-  /// symbol filed under it, made there first (when "make") if it is
-  /// not yet and "open" (the open instantiation a lookup reached)
-  /// can be; "open" itself where the identity names no one symbol.
-  static auto Named(
-    Scope const &scope, TypeId id, TypeSymbol *open, ConventionTag conv, bool never, bool make = true) -> TypeRef;
+  /// symbol filed under it; else as "missing" says - none, "open"
+  /// (the open instantiation a lookup reached), or made there
+  /// first from "open" when it can be, else "open".
+  static auto FromId(
+    Scope const &scope, TypeId id, TypeSymbol *open, ConventionTag conv, bool never,
+    OnMissing missing = OnMissing::Make) -> TypeRef;
 };
 
 namespace spp::analyse::scopes {
-  /// The template a precompiled template type ("std::tuple::Tup") names, found from "scope" on first query and cached
-  /// for the compile ("common_types_precompiled::TEMPLATE_SYMBOLS"). What "TypeRef::IsA" compares against; also usable
-  /// while an identity is being built, as it only looks a name up.
-  SPP_EXP_CLS auto PrecompiledTemplate(asts::TypeAst const &tmpl, Scope const &scope) -> TypeSymbol*;
+  /// The template a precompiled template type (like "Tup")
+  /// names, found from "scope" on first query and cached
+  /// for the "common_types_precompiled::TEMPLATE_SYMBOLS".
+  /// ONLY USE FOR PRECOMPILED TYPES (TUP/VAR/etc).
+  SPP_EXP_CLS auto PrecompiledTemplate(
+    TypeAst const &tmpl, Scope const &scope) -> TypeSymbol*;
+
+  /// The convention a tag stands for, as a node of its own ("&mut" or "&"); null for "MOV", which is no convention
+  /// written. The inverse of "ConventionAst::Tag": how a held type's convention is written back onto its name.
+  SPP_EXP_CLS auto ConventionAstOf(
+    ConventionTag tag) -> Unique<ConventionAst>;
 }
 
 /// The base symbol type for all symbol variations to inherit
@@ -242,31 +324,19 @@ SPP_EXP_CLS enum class spp::analyse::scopes::TypeKind {
 };
 
 namespace spp::analyse::scopes {
-  /// A fresh identity for a generic parameter's symbol ("ParamId"),
-  /// never zero. Declared "extern C++" like the rest of this module,
-  /// whose definitions sit in the global module ("SPP_MOD_BEGIN").
+  /// A fresh identity for a generic parameter's symbol, never
+  /// zero; this is param id. Declared "extern C++" like the
+  /// rest of this module. 0 is pseudo-reserved for "Self".
   SPP_EXP_CLS auto NextGnParamId() -> std::uint64_t;
 
   /// File a generic type parameter under its "ParamId", so the
-  /// "TypeId" of a type naming it can answer with it
-  /// ("Scope::TypeSymbolOf"). Ids are never reused within a process.
+  /// "TypeId" of a type naming it can answer with it Ids are
+  /// never reused within a process.
   SPP_EXP_CLS auto RegisterGnTypeParam(TypeSymbol &param) -> void;
 
   /// The generic type parameter filed under "id", if any.
-  SPP_EXP_CLS SPP_ATTR_HOT auto GnTypeParamOf(std::uint64_t id) -> TypeSymbol*;
+  SPP_EXP_CLS SPP_ATTR_HOT auto FindGnTypeParamById(std::uint64_t id) -> TypeSymbol*;
 
-  /// File an instance under its identity in the template its identity is headed by ("TypeSymbol::Instances"), so a
-  /// lookup by that identity ("Scope::TypeSymbolOf") finds it however it is spelled.
-  SPP_EXP_CLS auto FileInstance(TypeId id, TypeSymbol &instance) -> void;
-
-  /// The parameters a parameter group declares, by identity, as "ParamsOf" lists a type's.
-  SPP_EXP_CLS auto ParamsOfGroup(asts::GenericParameterGroupAst const &params) -> TypeIdParams;
-
-  /// Bind the parameters "params" lists to the arguments of the same names in "args" (an instantiation's arguments'
-  /// key, as "Scope::ArgsIdOf" makes one), as an instantiation's arguments name the parameters of what it
-  /// instantiates. With "all", nothing unless every one is bound; otherwise a parameter with no argument of its name
-  /// is left out.
-  SPP_EXP_CLS auto BindByName(TypeIdParams const &params, TypeId args, bool all) -> std::optional<GenericSubst>;
 
   /// Forget every registered parameter, of both kinds: they belong to one compilation's scopes, which are freed
   /// after it ("ScopeManager::Cleanup"). Ids are not reused, so nothing later asks for one.
@@ -276,16 +346,27 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS auto RegisterGnCompParam(VariableSymbol &param) -> void;
 
   /// The comp parameter filed under "id", if any.
-  SPP_EXP_CLS auto GnCompParamOf(std::uint64_t id) -> VariableSymbol*;
+  SPP_EXP_CLS auto FindGnCompParamById(std::uint64_t id) -> VariableSymbol*;
+
+  /// The parameter a function's variadic pack ("..xs") is bound through, which no generic parameter declares: the
+  /// "VariadicPackOf.." argument its instantiations are keyed by ("packs::PackTypeParamName"). Minted once per pack,
+  /// named "name", so an argument for it is keyed by identity as any other parameter's is.
+  SPP_EXP_CLS auto GnPackParamId(void const *pack, Str const &name) -> std::uint64_t;
+
+  /// The name of the parameter "id" identifies, as an argument for it is written: "Self" for 0, else the type or comp
+  /// parameter's name, else a variadic pack's ("GnPackParamId"). How a key's argument, which holds only the identity,
+  /// is spelled again (in a type's name, a mangled name, and a stable order).
+  SPP_EXP_CLS auto ParamNameOf(std::uint64_t id) -> Str;
+
+  /// The name a key's named argument is written under: its parameter's ("ParamNameOf"), or its spelling where it
+  /// names none. Empty for a positional argument.
+  SPP_EXP_CLS auto ArgNameOf(TypeIdArg const &arg) -> Str;
 
   /// The identity a type symbol stands for wherever it is named, as a type written naming it means it: a parameter
   /// (or a binding of one) is that parameter, read through the reader's bindings ("Scope::ReadIn"); "Self" is "Self";
   /// an instantiation is the identity it is filed under; anything else (a class, a template, an alias) is itself.
-  SPP_EXP_CLS auto WrittenTypeIdOf(TypeSymbol const &sym) -> TypeId;
+  SPP_EXP_CLS auto NameTypeIdOf(TypeSymbol const &sym) -> TypeId;
 
-  /// The identity a comp parameter (or a binding of one) stands for wherever its name is written: that parameter's
-  /// comp identity ("C<ParamId>"), as a type parameter's is its "TypeParam" ("WrittenTypeIdOf").
-  SPP_EXP_CLS auto WrittenCompIdOf(VariableSymbol const &sym) -> TypeId;
 }
 
 /// A variable symbol is used extremely often, for class fields,
@@ -383,6 +464,12 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// generic.
   Unique<Ast> CompTimeValue;
 
+  /// A bound comp generic's value as its identity ("Scope::CompIdOf"), keyed once where the argument was written, as a
+  /// type binding's link is resolved there: a chain of bindings to other generics already followed to its end (a value,
+  /// or the parameter still unbound). What reading the binding answers, with no lookup and no scope. Null for anything
+  /// else, and for a value naming a constant that cannot be read yet ("IsReadableCompId"), which is keyed where read.
+  CompId BoundCompId = nullptr;
+
   VariableSymbol(
     Shared<IdentifierAst> name,
     Shared<TypeAst> type,
@@ -413,10 +500,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// including a comp generic that is still unbound.
   SPP_ATTR_NODISCARD auto BoundCompVal() const -> ExpressionAst*;
 
-  /// The comp generic at the end of this one's chain of bindings to other comp generics, as each is named where read
-  /// ("scope"): the generic it is bound through to, whose value ("BoundCompVal") is a value or nothing. The comp analog
-  /// of "TypeSymbol::AsBound"; itself for anything that is not bound to another generic.
-  SPP_ATTR_NODISCARD auto AsBound(Scope const &scope) const -> VariableSymbol const*;
+  /// The comp generic at the end of this one's chain of bindings to other comp generics, off the binding's own
+  /// identity ("BoundCompId"), as "TypeSymbol::AsBound" follows a type binding's link: the parameter it is bound to
+  /// when that is still unbound, else itself (whose value, "BoundCompVal", is the answer). No scope is read: the chain
+  /// was followed once, where the argument was written.
+  SPP_ATTR_NODISCARD auto AsBound() const -> VariableSymbol const*;
 
   /// Whether this is a comp generic, bound or not.
   SPP_ATTR_NODISCARD auto IsGn() const -> bool;
@@ -543,13 +631,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// value of the next generic symbol.
   Shared<TypeAst> BoundTypeVal;
 
-  /// On a binding made to an alias whose target was not made yet
-  /// (an instantiation during the alias stage, "U8" before its
-  /// "SizedInteger[w=8, ..]" exists), the alias: the binding links
-  /// what the alias's target reached then - its template - and is
-  /// re-linked to the target once it resolves ("Rebind").
-  TypeSymbol *BoundAlias = nullptr;
-
   /// There is sometimes a case where we want to derive information
   /// off of another symbol, such as a generic base might be copyable
   /// so any instantiation also needs to be.
@@ -560,9 +641,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// it's module or type (sup-defined).
   asts::utils::Visibility Visibility;
 
-  /// The symbol's type convention. Todo: Why is needed again
-  /// as opposed to how it gets used with "&" tokens etc.
-  Unique<ConventionAst> Convention;
+  /// How a binding holds what it is bound to: the convention its
+  /// argument was written with ("T=&Str" holds "Str" by "&");
+  /// "MOV" for none, and for anything that is not a binding.
+  ConventionTag Convention = ConventionTag::MOV;
 
   /// The LLVM metadata for this type, used during stage 10 and 11
   /// of the compilation pipeline. Currently, tracks the LLVM type
@@ -591,6 +673,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   mutable Shared<TypeAst> _CachedFqName;
   mutable std::uint64_t _CachedFqNameGen = 0;
 
+  /// The order this symbol was made in, among all type symbols (a copy is made anew). With its name it orders the
+  /// symbols in a key ("StableKeyLess") by things fixed when the symbol is made, where its address is not
+  /// reproducible and its qualified name changes when a scope is re-parented.
+  std::uint64_t Serial;
+
   TypeSymbol(
     Shared<TypeIdentifierAst> name,
     ClassPrototypeAst *type,
@@ -599,7 +686,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     TypeKind kind,
     bool is_directly_copyable = false,
     asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,
-    Unique<ConventionAst> &&convention = nullptr,
+    ConventionTag convention = ConventionTag::MOV,
     Vec<Shared<TypeAst>> const &generic_constraints = {});
 
   TypeSymbol(TypeSymbol const &that);
@@ -610,6 +697,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// Whether this is a compiler-generated "$" mock class: a
   /// function's or a closure's.
   SPP_ATTR_NODISCARD auto IsMock() const -> bool;
+
+  /// Whether this names something brought in by a "use" rather
+  /// than declared here (an alias made from a "use" statement).
+  SPP_ATTR_NODISCARD auto IsImport() const -> bool;
 
   /// Whether this stands for "Self": a class / "sup" block / alias
   /// "Self", or the generic argument an instantiation registers when
@@ -656,26 +747,24 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// know if two pointers are the same effectively.
   auto operator==(TypeSymbol const &that) const -> bool;
 
-  /// The symbol the scope this one links belongs to ("LinkedScope->LinkedTypeSymbol"): a class for itself, the class a
-  /// binding or "Self" stands for, an alias's target. Itself where it links none.
+  /// The symbol the scope this one links belongs to via
+  /// "LinkedScope->LinkedTypeSymbol": a class for itself,
+  /// the class a binding or "Self" stands for, an alias's
+  /// target. Itself where it links none.
   SPP_ATTR_NODISCARD auto LinkedSymbol() const -> TypeSymbol*;
 
   /// The generic parameters a name of this symbol takes: an alias's own ("AliasInfo::Params"), else its class's. Null
   /// for neither (a generic, a symbol with no prototype).
   SPP_ATTR_NODISCARD auto GnParams() const -> GenericParameterGroupAst*;
 
-  /// What this symbol stands for: a binding, a parameter or "Self" followed through the scopes it links
-  /// ("LinkedSymbol") to the symbol it names, a binding still waiting on its alias's target re-linked first
-  /// ("Rebind"); anything else is itself. Capped against "Self" stand-ins naming each other.
-  SPP_ATTR_NODISCARD auto AsBound() const -> TypeSymbol*;
+  /// The scope "GnParams" is written in: an alias's declaring scope ("AliasInfo::DeclaredIn"), else its class's own.
+  /// Null where there is none.
+  SPP_ATTR_NODISCARD auto GnParamsScope() const -> Scope*;
 
-  /// Re-link a binding made to an alias ("BoundAlias") to what the
-  /// alias's target resolves to, once it does; once re-linked, it
-  /// stays. Nothing for any other symbol. A lazy link: the one
-  /// mutation reading a binding makes ("AsBound", "FqName", keying a
-  /// binding), idempotent, and no identity depends on whether it has
-  /// run yet.
-  auto Rebind() const -> void;
+  /// What this symbol stands for: a binding, a parameter or "Self" followed through the scopes it links
+  /// ("LinkedSymbol") to the symbol it names; anything else is itself. Stops where the walk comes back round ("Self"
+  /// stand-ins naming each other).
+  SPP_ATTR_NODISCARD auto AsBound() const -> TypeSymbol*;
 
   /// Link an alias to the type it stands for: the same type under
   /// another name, so it shares that type's class, scope and lowered
@@ -714,9 +803,18 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// that is not a "use" is itself.
   SPP_ATTR_NODISCARD auto UseTarget() const -> TypeSymbol*;
 
-  /// The convention a type naming this symbol is held under: the one "written" with it, else a binding's own ("T"
+  /// The template an instance of this name is keyed under, made
+  /// from and stamped with: for a "use" of a class, that class
+  /// ("UseTarget"), so the instance is the class's whichever name
+  /// reached it; anything else, a "use" of a "type" alias
+  /// included (aliases are keyed as themselves), itself.
+  SPP_ATTR_NODISCARD auto InstanceTemplate() const -> TypeSymbol*;
+
+  /// The convention a type naming this symbol is held under:
+  /// the one "written" with it, else a binding's own ("T"
   /// bound to "&mut Str" is held as "&mut Str"), else by value.
-  SPP_ATTR_NODISCARD auto HeldConvention(asts::TypeAst const *written = nullptr) const -> ConventionTag;
+  SPP_ATTR_NODISCARD auto HeldConvention(
+    TypeAst const *written = nullptr) const -> ConventionTag;
 
   /// Discard this symbol's cached fully qualified name. Needed
   /// when the "LinkedScope" is re-pointed after the symbol has
@@ -729,34 +827,32 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// generic, alias, and $Type rules. There is a rare occasion
   /// where we don't want to qualify the $Types, so we have a
   /// flag for it.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FqName(bool ignore_dollar = false) const -> Shared<TypeAst>;
-
-  /// "TypeArg" for a comp argument: the value it is, read off the
-  /// identity of the instantiation this stands for ("CompArgId") and
-  /// named as an ast ("Scope::CompAstOf", a closed value as its
-  /// literal); null if there is none.
-  SPP_ATTR_NODISCARD auto CompArg(Str const &name) const -> Shared<ExpressionAst>;
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FqName(
+    bool ignore_dollar = false) const -> Shared<TypeAst>;
 
   /// "TypeArgRef" for a comp argument: its identity, read off the
-  /// instantiation's (no ast built); zero if there is none.
+  /// instantiation's (no ast built), else off the argument written
+  /// on its name; null if there is none. Read a value off it with
+  /// "CompKey::AsInt"/"AsBool", or "U64Of" for a count.
   SPP_ATTR_NODISCARD auto CompArgId(Str const &name) const -> CompId;
 
   /// The type an instantiation's type argument "name" is (convention, "Self" and all), read off the identity of the
-  /// instantiation this stands for (an alias's target, a binding's bound type, "Self"'s class) and pointing where the
-  /// argument was written; null if there is none. Its symbol is "TypeRef::Of" it, read in the instantiation's scope.
-  SPP_ATTR_NODISCARD auto TypeArg(Str const &name) const -> Shared<TypeAst>;
-
-  /// That type argument as a "TypeRef", read off the identity in the instantiation's scope (no ast built); no type if
-  /// there is none.
+  /// instantiation this stands for (an alias's target, a binding's bound type, "Self"'s class), in the instantiation's
+  /// scope (no ast built); no type if there is none. Name it with "TypeRef::AstIn" where syntax or a message needs it.
   SPP_ATTR_NODISCARD auto TypeArgRef(Str const &name) const -> TypeRef;
 
-  /// Every type argument of that instantiation, in order (a tuple's stay positional, with no names to read).
-  SPP_ATTR_NODISCARD auto TypeArgs() const -> Vec<Shared<TypeAst>>;
+  /// Every type argument of that instantiation, in order (a
+  /// tuple's stay positional, with no names to read), each as
+  /// "TypeArgRef" reads one: off the identity, in the
+  /// instantiation's scope, no ast built. Name one with
+  /// "TypeRef::AstIn" where syntax needs it.
+  SPP_ATTR_NODISCARD auto TypeArgRefs() const -> Vec<TypeRef>;
 
   /// This type as a pattern: a template (named as written,
-  /// "Vec") over its own parameters ("Vec[T=T]"), and any other
-  /// type as its own name. What "Self" means inside a template,
-  /// and what the sup blocks written over it are matched against.
+  /// "Vec") over its own parameters ("Vec[T=T]"), and any
+  /// other type as its own name. What "Self" means inside
+  /// a template, and what the sup blocks written over it
+  /// are matched against.
   SPP_ATTR_NODISCARD auto GnSelfName() const -> Shared<TypeAst>;
 };
 
