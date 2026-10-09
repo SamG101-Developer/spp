@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.function_prototype_ast;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;

@@ -447,12 +447,14 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // Error if there are conflicts. This has to run here rather
   // than in stage 5, because sup scopes are only attached once
   // every module has finished stage 5, so a type's methods
-  // aren't reachable from its class scope until now.
-  // Todo: Maybe need 2 scopes if the conflict is across
-  //  modules (if possible, esp in sup-blocks)?
-  const auto conflict = fn_values::CheckForConflictingOverload(*sm->CurrentScope, type_scope, *this, *sm, meta);
+  // aren't reachable from its class scope until now. The
+  // conflicting overload is shown from its own scope: a
+  // "sup" block in another module puts it in another file.
+  const auto [conflict, conflict_scope] = fn_values::CheckForConflictingOverload(
+    *sm->CurrentScope, type_scope, *this, *sm, meta);
   RaiseIf<SppFunctionPrototypeConflictError>(
-    conflict, {sm->CurrentScope}, ERR_ARGS(*conflict, *this));
+    conflict, {conflict_scope != nullptr ? conflict_scope : sm->CurrentScope, sm->CurrentScope},
+    ERR_ARGS(*conflict, *this));
 
   // New version
   if (const auto self_param = FnParamGroup->GetSelfParam()) {
@@ -460,13 +462,13 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     const auto self_conv = self_param->Conv.get();
 
     const auto enclosing_self = sm->CurrentScope->FindEnclosingSelfType(*meta);
-    self_sym->Type = self_type::SubstituteSelf(*self_sym->Type, enclosing_self.get(), sm, meta)
+    self_sym->Type = self_type::SubstituteSelf(*self_sym->Type, enclosing_self.get(), *sm->CurrentScope, sm, meta)
       ->WithConvention(AstClone(self_conv));
 
     for (auto const &param : FnParamGroup->GetAllParams()) {
       const auto var_sym = sm->CurrentScope->FindVarSymbol(param->ExtractName().get());
       if (var_sym == nullptr) { continue; } // Destructuring parameters.
-      var_sym->Type = self_type::SubstituteSelf(*var_sym->Type, enclosing_self.get(), sm, meta);
+      var_sym->Type = self_type::SubstituteSelf(*var_sym->Type, enclosing_self.get(), *sm->CurrentScope, sm, meta);
     }
   }
 
@@ -544,7 +546,9 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
     if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
     if (not FnParamGroup->Params.IsEmpty()) { bad("declares parameters"); }
     if (not GnParamGroup->Params.IsEmpty()) { bad("declares generic parameters"); }
-    if (not type_compare::TypeEq(*ReturnType, *VOID, *sm->CurrentScope, *sm->CurrentScope)) {
+    if (not type_compare::TypeEq(
+      TypeRef::Of(*ReturnType, *sm->CurrentScope), TypeRef::Of(*VOID, *sm->CurrentScope), *sm->CurrentScope,
+      *sm->CurrentScope)) {
       bad("does not return 'Void'");
     }
   }
@@ -921,6 +925,8 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
 
   // A method's mock is named from outside its "sup" block, where
   // "Self" is not its owner, so the owner is written in its place.
+  // Stage 1 has no scopes yet, so this is the one rewrite of the
+  // spelling ("TypeAst::SubstituteSelf") rather than the identity.
   auto owner = Shared<TypeAst>(nullptr);
   if (const auto sup_ctx = _Ctx->To<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) { owner = sup_ctx->Name; }
   if (const auto ext_ctx = _Ctx->To<SupPrototypeExtensionAst>(); ext_ctx != nullptr) { owner = ext_ctx->Name; }
@@ -928,7 +934,7 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
     if (owner == nullptr or not type_predicates::DoesTypeNameSelf(*type)) {
       return type;
     }
-    return self_type::SubstituteSelf(*type, owner.get());
+    return type->SubstituteSelf(*owner);
   };
 
   // Extract the parameter types. A "self" parameter's type is a
@@ -972,7 +978,7 @@ auto FunctionPrototypeAst::_IsPureGn(
 
   // Convert the return and parameter types to LLVM types.
   const auto ret_type = self_type::SubstituteSelf(
-        *ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
+    *ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(
     TypeRef::Of(*ret_type, *sm->CurrentScope), ctx);
 
@@ -989,7 +995,7 @@ auto FunctionPrototypeAst::_IsPureGn(
         : x->Type;
 
       const auto param_type = self_type::SubstituteSelf(
-        *source_type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
+        *source_type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
 
       return codegen::GetLlvmTypeOf(
         TypeRef::Of(*param_type, *sm->CurrentScope), ctx);
@@ -1007,7 +1013,7 @@ auto FunctionPrototypeAst::_IsPureGn(
     }
     else {
       const auto self_type = self_type::SubstituteSelf(
-        *self_param->Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
+        *self_param->Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
       const auto self_ty_sym = sm->CurrentScope->FindTypeSymbol(self_type.get());
       const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
       llvm_param_types.Insert(llvm_param_types.begin(), self_val_type);
