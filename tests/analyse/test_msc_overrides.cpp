@@ -270,6 +270,32 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// An override that matches nothing leaves the abstract method unimplemented, so the type is abstract. The bad
+// override is the cause and must be what is reported, at the override, even when a use of the type is analysed first
+// (the "std::mem::RawBuf::index_mut" case, which surfaced as an abstract use of "BigUInt" elsewhere in std).
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestOverrides,
+  test_invalid_override_reported_before_the_abstract_use_it_causes,
+  SppSuperimpositionExtensionMethodInvalidError, "get", R"(
+    cls Getter[T] { }
+
+    sup [T] Getter[T] {
+        !abstract_method
+        !public
+        cor get(&self) -> std::generator::Gen[T] { }
+    }
+
+    fun use_it(h: Holder[S32]) -> Void { }
+
+    cls Holder[T] {
+        v: T
+    }
+
+    sup [T] Holder[T] ext Getter[T] {
+        cor get(&self) -> std::generator::Gen[T or Bool] { }
+    }
+)");
+
 // A signature is the same up to renaming its own generics: the override's are the base's, by position.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverrides,

@@ -157,7 +157,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_gen_member_into_a_variant_yield_type, R"(
     cor g() -> Gen[std::option::Opt[S32]] {
         gen std::option::Some[S32](val=1)
-        gen std::option::None()
+        gen std::option::None
     }
 )");
 

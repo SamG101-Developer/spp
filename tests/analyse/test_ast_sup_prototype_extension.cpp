@@ -322,6 +322,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// An extension that grows its own type never ends, which a use of the type reports; the declaration alone, like any
+// generic code nothing instantiates, is not read far enough to.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstSupPrototypeExtensionAst,
   test_invalid_superimposition_extension_instantiation_depth,
@@ -329,6 +331,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls Box[T] { }
 
     sup [T] Box[T] ext Box[Box[T]] { }
+
+    fun f() -> Void {
+        let b = Box[S32]()
+        std::mem::ops::drop(b)
+    }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(

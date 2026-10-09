@@ -133,6 +133,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(a: S32 = case true { 1_s32 } else { 2_s32 }) -> Void { }
 )");
 
+// An "is" pattern names types ("Point[T](x, y)") a default carried to the call would read where they mean something else,
+// and the pattern is not rewritten for it ("ReadExpr"), so it is banned, as "case" is.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_invalid_function_parameter_optional_is_default,
+  SppInvalidDefaultValueError, R"(
+    fun g() -> Str or Bool { ret false }
+    fun f(a: Bool = g() is Str(..)) -> Void { }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   FunctionParameterOptionalAst,
   test_invalid_function_parameter_optional_loop_default,

@@ -91,3 +91,19 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   SppIdentifierDuplicateError, R"(
     use std::vector::Vec
 )");
+
+// A type declared over a prelude name is not a shadowing, as a comptime variable's would be: it is a redefinition,
+// reported on the declaration alone (the prelude's is not written by the author).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestPrelude,
+  test_invalid_class_declared_over_a_prelude_type,
+  SppIdentifierDuplicateError, R"(
+    cls Vec { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestPrelude,
+  test_invalid_alias_declared_over_a_prelude_type,
+  SppIdentifierDuplicateError, R"(
+    type Vec = Str
+)");

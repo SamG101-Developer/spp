@@ -65,7 +65,14 @@ namespace spp_test {
     auto primary_seen = false;
     for (auto const &raw : messages) {
       const auto block = StripAnsi(std::string(raw));
-      if (block.starts_with("-----")) { continue; }
+
+      // A candidate's own error (under "no valid signatures") points at that candidate, in whatever file it is in, but
+      // never past the end of a file: a block formatted against the wrong file's text lands there.
+      if (block.starts_with("-----")) {
+        EXPECT_EQ(block.find("at the end of the file"), std::string::npos)
+          << "A candidate's error block points past the end of a file:\n" << block;
+        continue;
+      }
       const auto is_error = block.find("Error in file '") != std::string::npos;
       const auto is_context = block.find("Context from file '") != std::string::npos;
       if (not is_error and not is_context) { continue; }
