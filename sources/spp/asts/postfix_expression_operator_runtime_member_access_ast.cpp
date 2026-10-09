@@ -126,11 +126,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   // it.
   if (_MappedFwd != nullptr) { return; }
 
-  // Prevent types on the left-hand-side of a runtime
-  // member access.
-  RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
-    meta->PostfixExpressionLhs->To<TypeAst>() != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
+  // Prevent zero-type types on the left-hand-side of a
+  // runtime member access - except for a zero type, whose
+  // name is its one value ("GlobalAlloc.allocate(..)",
+  // "None").
+  {
+    auto const *const lhs_type = meta->PostfixExpressionLhs->To<TypeAst>();
+    auto const *const lhs_sym = lhs_type != nullptr ? sm->CurrentScope->FindTypeSymbol(lhs_type) : nullptr;
+    RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
+      lhs_type != nullptr and not (lhs_sym != nullptr and lhs_sym->IsZeroType()),
+      {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
+  }
 
   // Numeric index access (for tuples). An unbound pack's length
   // is only known per instantiation, where it is a tuple and is
@@ -405,7 +411,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
     // so it is indexed through the array itself: the leading
     // zero index steps over the pointer to the array, and the
     // second one selects the element.
-    if (type_predicates::IsTypeArray(TypeRef::OfKind(*lhs_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
+    if (type_predicates::IsTypeArray(TypeRef::ForKindCheck(*lhs_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
       const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
       field_ptr = ctx->Builder.CreateGEP(
         llvm_type, base_ptr, {llvm::ConstantInt::get(i32_ty, 0), llvm::ConstantInt::get(i32_ty, index)},
@@ -446,35 +452,38 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   // type, so the rewritten access knows its type.
   if (_MappedFwd != nullptr) { return _MappedFwd->InferType(sm, meta); }
 
-  // Get the type of the left-hand-side expression.
-  const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
-
-  // Numeric index access (for tuples), or an element of a pack
-  // not yet bound to its tuple, which is typed as its element.
-  if (std::isdigit(Name->Val[0])) {
-    if (auto const *const pack = UnboundPack(*meta->PostfixExpressionLhs, *sm); pack != nullptr) {
-      return sm->CurrentScope->FindTypeSymbol(pack->Type.get())->FqName();
-    }
-    return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
-  }
-
-  // Get the field symbol and return its type. Resolved by
-  // access form, so that an attribute is what this reads on
-  // a type that also declares a constant of that name.
-  // Named from its identity, which means the same in any scope; the field's written type names the owner's parameters.
+  // Named from its identity ("InferTypeRef"), which means
+  // the same in any scope; the field's written type names
+  // the owner's parameters.
   return InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // As "InferType": forwarded to the rewritten access, and an element of a tuple or an array read off the left-hand
-  // side's arguments; a named field is its type's symbol, where the field's type resolves.
+  // As "InferType": forwarded to the rewritten access, and
+  // an element of a tuple or an array read off the left-hand
+  // side's arguments; a named field is its type's symbol,
+  // where the field's type resolves.
+  IMPORT_UTILS;
   if (_MappedFwd != nullptr) { return _MappedFwd->InferTypeRef(sm, meta); }
-  if (std::isdigit(Name->Val[0])) { return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope); }
-  // Read where the field is declared for this instance: its owner's scope, which binds the parameters its type names.
+
+  // Numeric index access (for tuples), or an element of a
+  // pack not yet bound to its tuple, which is typed as its
+  // element.
+  if (std::isdigit(Name->Val[0])) {
+    if (auto const *const pack = UnboundPack(*meta->PostfixExpressionLhs, *sm); pack != nullptr) {
+      return TypeRef::Of(*sm->CurrentScope->FindTypeSymbol(pack->Type.get()), *sm->CurrentScope);
+    }
+    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    return type_members::GetNthTypeOfIndexableType(
+      std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
+  }
+
+  // Read where the field is declared for this instance: its
+  // owner's scope, which binds the parameters its type names.
   const auto lhs_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Symbol;
   const auto var_sym = analyse::utils::member_lookup::MemberOf(
-    *lhs_sym->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Runtime);
+    *lhs_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
   return var_sym->TypeRefIn(*lhs_sym->LinkedScope);
 }
 

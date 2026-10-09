@@ -153,10 +153,10 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   // A "&mut" borrow this resume yields, bound to a name, lasts
   // until the next resume.
   if (gen_sym != nullptr and meta->AssignmentTarget != nullptr) {
-    const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
+    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
       [&] { return meta->PostfixExpressionLhs->InferType(sm, meta); }, "resume expression", false));
-    if (yield_type != nullptr and TypeRef::Of(*yield_type, *sm->CurrentScope).Conv == ConventionTag::MUT) {
+    if (yield_ref.Conv == ConventionTag::MUT) {
       gen_sym->MemInfo->AstYieldedMutBorrowHolders.EmplaceBack(meta->AssignmentTarget.get());
     }
   }
@@ -234,14 +234,14 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   const auto gen = marker_sups::FindGenSup(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
-  const auto yield_type = marker_sups::GenYieldOf(gen);
+  const auto yield_ref = marker_sups::GenYieldOf(gen);
   const auto is_once = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
-  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*yield_type, *sm->CurrentScope), ctx);
+  const auto llvm_yield_ty = codegen::GetLlvmTypeOf(yield_ref, ctx);
 
-  const auto send_type = is_once
-    ? generate::common_types_precompiled::VOID
-    : gen.Symbol->TypeArg("Send");
-  const auto llvm_send_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*send_type, *sm->CurrentScope), ctx);
+  const auto send_ref = is_once
+    ? TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope)
+    : gen.Symbol->TypeArgRef("Send");
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(send_ref, ctx);
   const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
 
   // Step 1: Place the value of the argument (if it exists),
@@ -303,11 +303,9 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // variant ("Opt[Str]") is flattened into the result
   // rather than being one member of it, so it is re-tagged
   // member by member instead.
-  const auto res_type = InferType(sm, meta);
-  const auto llvm_res_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*res_type, *sm->CurrentScope), ctx);
+  const auto res_ref = InferTypeRef(sm, meta);
+  const auto llvm_res_ty = codegen::GetLlvmTypeOf(res_ref, ctx);
   const auto done_type = generate::common_types::GenDone(PosStart());
-  const auto res_ref = TypeRef::Of(*res_type, *sm->CurrentScope);
-  const auto yield_ref = TypeRef::Of(*yield_type, *sm->CurrentScope);
   const auto yield_tag = codegen::GetVariantIndexOfMember(res_ref, yield_ref, *sm->CurrentScope);
   const auto yield_is_variant = type_predicates::IsTypeVariant(yield_ref, *sm->CurrentScope);
   const auto done_tag = codegen::GetVariantIndexOfMember(
@@ -341,13 +339,11 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   return llvm_res;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::InferType(
-  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // The mapped ".send()" call is what says how much a resumption tells the caller: "Gen" declares it as
-  // "Generated[Yield or GenDone]", because a "Gen" may be finished, and "GenOnce" as "Generated[Yield]", because it
-  // cannot be. Reading it off the declaration keeps the two in step instead of deciding it a second time here.
-  // "Generated" is the compiler-known wrapper the coroutine machinery travels in, and is unwrapped on the way out.
-  return _MappedFn->InferTypeRef(sm, meta).Symbol->TypeArg("Yield");
+auto PostfixExpressionOperatorKeywordResAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The "Yield" argument of what the mapped ".send()"
+  // returns ("InferType").
+  return _MappedFn->InferTypeRef(sm, meta).Symbol->TypeArgRef("Yield");
 }
 
 auto PostfixExpressionOperatorKeywordResAst::ReadExpr(

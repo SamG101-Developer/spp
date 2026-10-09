@@ -5,10 +5,11 @@ module;
 module spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.marker_sups;
@@ -185,10 +186,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Handle accessing a symbol on a type.
   if (_LhsTypeSymbol != nullptr) {
-    // Read by its identity where that is a value ("scopes::CompMemberIdOf"): a constant whose value names its
-    // block's parameters ("k + 1_uz") is read in this instantiation's block, where they are bound.
-    if (const auto owner = WrittenTypeIdOf(*_LhsTypeSymbol); analyse::scopes::IsClosedTypeId(owner)) {
-      if (const auto read = analyse::scopes::CompMemberIdOf(owner, Name->ToView()); read != 0) {
+    if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
+      if (const auto read = analyse::utils::comp_generics::FindCompMemberId(owner, Name->ToView()); read != nullptr) {
         if (const auto value = sm->CurrentScope->CompAstOf(read);
           value != nullptr and value->To<LiteralAst>() != nullptr) {
           meta->CompTimeResult = AstClone(value.get());
@@ -252,9 +251,9 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
       if (_LhsTypeSymbol->InstanceOf != nullptr) {
         const auto declaring = member_lookup::ScopesDeclaringVar(*_LhsTypeSymbol->LinkedScope, *Name);
         const auto in = genex::find_if(declaring, [var_sym](auto const &d) { return d.Symbol == var_sym; });
-        auto bindings = analyse::scopes::GenericSubst();
-        type_resolution::BindSelf(bindings, *_LhsTypeSymbol->FqName(), *sm->CurrentScope);
-        return folded->ReadExpr(analyse::scopes::ExprSubst::Across(
+        auto bindings = GenericSubst();
+        BindSelf(bindings, *_LhsTypeSymbol->FqName(), *sm->CurrentScope);
+        return folded->ReadExpr(ExprSubst::Across(
           in != declaring.end() ? *in->Where : *_LhsTypeSymbol->LinkedScope, std::move(bindings), *sm->CurrentScope))
           ->Stage11_CodeGen(sm, meta, ctx);
       }
@@ -286,8 +285,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   // Get the left-hand-side type's member's type.
   if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
-    const auto sym = analyse::utils::member_lookup::MemberOf(
-      *lhs_type_sym->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
+    const auto sym = member_lookup::MemberOf(
+      *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
 
     // A method's "$" mock is declared in its "sup" block, so it is
     // named as a nested type of the owner: "main::A::$Method". There
@@ -345,7 +344,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
   // be relative to the callee's module ("cffi::x" in std), which the
   // caller's scope cannot reach.
   if (_LhsNsScope == nullptr) {
-    _LhsNsScope = sm->CurrentScope->ConvertPostfixToNestedScope(meta->PostfixExpressionLhs);
+    _LhsNsScope = sm->CurrentScope->FindNsScope(meta->PostfixExpressionLhs);
   }
   return _LhsNsScope;
 }
