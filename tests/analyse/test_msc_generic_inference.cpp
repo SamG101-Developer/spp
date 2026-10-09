@@ -501,12 +501,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: Polymorphic recursion never terminates - each instantiation asks for a bigger one, and there is no limit on
-//  function instantiation (E109 only guards type nesting). Disabled because it exhausts memory rather than failing,
-//  which would take the parallel suite down with it.
+// Polymorphic recursion never terminates on its own - each instantiation asks for a bigger one - so a function
+// instantiation is refused (E109) past 64 levels of its own template, or once its arguments spelled out pass 256 nodes
+// (doubling reaches that in a handful of levels; real code peaks around 20).
+// A function calling itself with arguments naming its own parameter ("f[(T, T)]((x, x))" in "f[T]") is checked
+// against its signature by identity ("FunctionParameterAst::InstanceTypeId"), so the template is fine, and the
+// recursion is caught by the depth limit once instantiated.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestGenericInference_Recursion,
-  DISABLED_test_invalid_polymorphic_recursion_through_a_tuple,
+  test_invalid_polymorphic_recursion_through_a_tuple,
   SppGenericInstantiationDepthError, R"(
     fun f[T: std::copy::Copy](x: T) -> Void {
         f[(T, T)]((x, x))
@@ -515,9 +518,36 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> Void { f(1) }
 )");
 
+// Its result too ("FunctionPrototypeAst::InstanceReturnTypeId"): a template uninstantiated is not rejected.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Recursion,
+  test_valid_self_call_naming_its_own_parameter_in_the_template, R"(
+    fun f[T: std::copy::Copy](x: T, n: Bool) -> T {
+        case n {
+            let y: (T, T) = f[(T, T)]((x, x), false)
+        }
+        ret x
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestGenericInference_Recursion,
-  DISABLED_test_invalid_polymorphic_recursion_through_a_vector,
+  test_invalid_polymorphic_recursion_through_mutually_recursive_tuples,
+  SppGenericInstantiationDepthError, R"(
+    fun f[T: std::copy::Copy](x: T) -> Void {
+        g[(T, T)]((x, x))
+    }
+
+    fun g[U: std::copy::Copy](y: U) -> Void {
+        f[(U, U)]((y, y))
+    }
+
+    fun h() -> Void { f(1) }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Recursion,
+  test_invalid_polymorphic_recursion_through_a_vector,
   SppGenericInstantiationDepthError, R"(
     fun f[T]() -> Void {
         f[Vec[T]]()
