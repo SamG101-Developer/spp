@@ -2,8 +2,10 @@ module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 module spp.analyse.utils.type_members;
+import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -72,21 +74,22 @@ namespace spp::analyse::utils::type_members {
       TypeRef const &ref,
       Scope const &scope)
       -> std::optional<std::size_t> {
-      if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgs().Len(); }
+      if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().Len(); }
       if (not type_predicates::IsTypeArray(ref, scope)) { return std::nullopt; }
-      const auto size_val = ref.Symbol->CompArg("n");
-      const auto *const size_lit = size_val != nullptr ? size_val->To<IntegerLiteralAst>() : nullptr;
-      if (size_lit == nullptr) { return std::nullopt; }
-      return std::stoul(size_lit->Val->TokenData);
+      const auto size = U64Of(ref.Symbol->CompArgId("n"));
+      return size.has_value() ? std::optional(static_cast<std::size_t>(*size)) : std::nullopt;
     }
 
-    /** The type of a tuple's or array's element "index": per element for a tuple, the one "T" for an array. */
+    /** The type of a tuple's or array's element "index": per element for a tuple, the one "T" for an array; read off
+     * the instance's identity ("TypeSymbol::TypeArgRefs"). No type past the end. */
     auto IndexableElem(
       TypeRef const &ref,
       Scope const &scope,
       const std::size_t index)
-      -> Shared<TypeAst> {
-      return ref.Symbol->TypeArgs()[type_predicates::IsTypeArray(ref, scope) ? 0uz : index];
+      -> TypeRef {
+      const auto args = ref.Symbol->TypeArgRefs();
+      const auto at = type_predicates::IsTypeArray(ref, scope) ? 0uz : index;
+      return at < args.Len() ? args[at] : TypeRef();
     }
 
     /// A type's unimplemented abstract methods, with what the answer was read off: the generation it was last known
@@ -160,8 +163,8 @@ auto spp::analyse::utils::type_members::GetAllParts(
     if (collapse_arrays and type_predicates::IsTypeArray(value, scope)) { elems = std::min(elems, 1uz); }
 
     for (auto i = 0uz; i < elems; ++i) {
-      auto elem_type = IndexableElem(value, scope, i);
-      auto elem_ref = TypeRef::Of(*elem_type, scope);
+      auto elem_ref = IndexableElem(value, scope, i);
+      auto elem_type = elem_ref.AstIn(scope);
       parts.EmplaceBack(MakeShared<IdentifierAst>(0uz, std::to_string(i)), i, std::move(elem_type), elem_ref, &scope);
     }
     return parts;
@@ -264,7 +267,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   };
 
   if (type_scope.LinkedTypeSymbol != nullptr) {
-    if (type_predicates::IsTypeFunction(TypeRef::OfKind(type_scope), type_scope)) { return remember({}); }
+    if (type_predicates::IsTypeFunction(TypeRef::ForKindCheck(type_scope), type_scope)) { return remember({}); }
   }
 
   // Gather every method visible on the type, from the type's own scope and from all of its super scopes, each tagged
@@ -320,12 +323,35 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   return remember(std::move(unimplemented));
 }
 
+auto spp::analyse::utils::type_members::IsLeftUnimplementedByAnError(
+  Scope const &type_scope,
+  FunctionPrototypeAst const &abs_fn)
+  -> bool {
+  // Only a recovering compile carries on past a failed block,
+  // so only it reaches a use of the type the block left abstract.
+  // A block's instances share its ast, which is what the failure
+  // was recorded against.
+  if (not errors::diagnostic_sink::IsEnabled()) { return false; }
+  for (auto const *sup_scope : type_scope.GetSupScopes()) {
+    const auto ext = AstAs<SupPrototypeExtensionAst>(sup_scope->AstNode);
+    if (ext == nullptr or not errors::diagnostic_sink::IsPoisoned(ext)) { continue; }
+    for (const auto member : AstBody(sup_scope->AstNode)) {
+      const auto fn = SupMemberAsMethod(member);
+      if (fn != nullptr and *fn->Name == *abs_fn.Name) { return true; }
+    }
+  }
+  return false;
+}
+
 auto spp::analyse::utils::type_members::GetAllAttrAsts(
   TypeSymbol const &cls_sym)
   -> Vec<ClassAttributeAst*> {
-  // Driven off the same walk as "GetAllAttrs" so the two line up index for index, then resolved to an ast by name
-  // within the scope the symbol came from. Enumerating the prototype's members directly is what let the two lists
-  // drift, because the member list has no notion of the generic symbols the other walk skips.
+  // Driven off the same walk as "GetAllAttrs" so the two line
+  // up index for index, then resolved to an ast by name within
+  // the scope the symbol came from. Enumerating the prototype's
+  // members directly is what let the two lists drift, because
+  // the member list has no notion of the generic symbols the
+  // other walk skips.
   auto attr_asts = Vec<ClassAttributeAst*>{};
   for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
     const auto cls_proto = sup_scope->AstNode->ToUnchecked<ClassPrototypeAst>();
@@ -338,8 +364,9 @@ auto spp::analyse::utils::type_members::GetAllAttrAsts(
       }
     }
 
-    // Pushed even when nothing matched, so that a symbol with no written attribute shortens neither list and the
-    // index alignment holds regardless.
+    // Pushed even when nothing matched, so that a symbol with
+    // no written attribute shortens neither list and the index
+    // alignment holds regardless.
     attr_asts.EmplaceBack(found);
   }
 
@@ -350,10 +377,11 @@ auto spp::analyse::utils::type_members::GetFieldIndexInType(
   TypeSymbol const &type_sym,
   IdentifierAst const &field_name)
   -> std::size_t {
-  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets that interface's fat-pointer fields prepended ahead of
-  // its own declared attributes (see "ClassPrototypeAst::FillLlvmLayout"), so an attribute's declared index has
-  // to be shifted past them.
-  const auto base = type_members::GetSuperimposedFatPointerFieldCount(type_sym);
+  // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
+  // that interface's fat-pointer fields prepended ahead of
+  // its own declared attributes, so an attribute's declared
+  // index has to be shifted past them.
+  const auto base = GetSuperimposedFatPointerFieldCount(type_sym);
 
   // Get all the attributes on the type.
   const auto all_attrs = GetAllAttrs(type_sym);
@@ -402,7 +430,7 @@ auto spp::analyse::utils::type_members::GetSuperimposedFatPointerFieldCount(
   // pointer - only the "FunXXX" family is a { fn_ptr, env_ptr } pair.
   if (type_sym.LinkedScope == nullptr) { return 0uz; }
   auto const &scope = *type_sym.LinkedScope;
-  for (auto const &sup : SuperClsRefs(TypeRef::OfKind(type_sym, scope), scope)) {
+  for (auto const &sup : SuperClsRefs(TypeRef::ForKindCheck(type_sym, scope), scope)) {
     if (type_predicates::IsTypeGenerator(sup, scope)) { return 1uz; }
     if (type_predicates::IsTypeFunction(sup, scope)) { return 2uz; }
   }
@@ -429,7 +457,7 @@ auto spp::analyse::utils::type_members::IsTypeRecursive(
   // source type is returned, as this is used for error reporting
   // exclusively.
   auto const &scope = *sm.CurrentScope;
-  auto const *const self_template = TypeRef::OfKind(*type.GetClsSymbol(), scope).Template();
+  auto const *const self_template = TypeRef::ForKindCheck(*type.GetClsSymbol(), scope).Template();
   const auto is_self = [&](TypeRef const &held) { return held.Template() == self_template; };
   for (auto const *attr : type.Impl->Members
        | genex::views::ptr
@@ -464,7 +492,7 @@ auto spp::analyse::utils::type_members::GetNthTypeOfIndexableType(
   const std::size_t index,
   TypeRef const &ref,
   Scope const &scope)
-  -> Shared<TypeAst> {
+  -> TypeRef {
   using errors::SppInternalCompilerError;
   if (type_predicates::IsTypeCompTimeIndexable(ref, scope)) {
     return IndexableElem(ref, scope, index);
