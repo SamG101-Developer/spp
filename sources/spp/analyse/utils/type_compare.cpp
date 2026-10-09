@@ -415,7 +415,7 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   Scope const &constraints_owner_scope, Scope const &concrete_scope) -> TypeAst const* {
   //
   using generate::common_types_precompiled::THREAD_SAFE;
-  auto type_sym = concrete.Symbol;
+  const auto type_sym = concrete.Symbol;
   if (type_sym == nullptr) { return nullptr; }
 
   // The concrete type and each class it is superimposed as,
@@ -425,25 +425,36 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
     sup_info.EmplaceBack(concrete.WithoutConvention().ReadIn(*type_sym->LinkedScope), type_sym->LinkedScope);
   }
 
-  // Get all the sup scopes of the concrete type, which we
-  // compare against required constraints. For generic type
-  // symbols, that generic's constraints are stored on the
-  // symbol. Todo: Condense this block.
-  const auto sup_scopes = type_sym->LinkedScope
-    ? type_sym->LinkedScope->GetSupScopes()
-    : type_sym->TypeConstraints | genex::views::transform([&](auto const &constraint) {
-      return constraints_owner_scope.FindTypeSymbol(constraint.get())->LinkedScope;
-    }) | genex::to<Vec>();
-  // The bound type itself, by value: a binding's borrow
-  // is no part of what its constraints are checked against.
+  // The bound type itself, by value (a binding's borrow is no
+  // part of what its constraints are checked against), then each
+  // class it is superimposed as: its sup scopes, or for a generic
+  // type symbol the classes its own constraints name.
   sup_info.EmplaceBack(concrete.WithoutConvention(), &concrete_scope);
-  for (auto const *sup_scope : sup_scopes) {
-    if (sup_scope->LinkedTypeSymbol == nullptr or AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
+  const auto add_sup = [&](Scope const *sup_scope) {
+    if (sup_scope == nullptr or sup_scope->LinkedTypeSymbol == nullptr) { return; }
+    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { return; }
     sup_info.EmplaceBack(TypeRef::Of(*sup_scope->LinkedTypeSymbol, *sup_scope), sup_scope);
+  };
+
+  // For a Non-generic type, read the constraints as the sup
+  // scopes of the scope representing the type.
+  if (type_sym->LinkedScope != nullptr) {
+    for (const auto sup_scope : type_sym->LinkedScope->GetSupScopes()) {
+      add_sup(sup_scope);
+    }
   }
 
-  // Compare each constraint against the concrete type and
-  // its supertypes.
+  // Otherwise, pull the constraints off of the type symbol's
+  // generic constraints vector.
+  else {
+    for (auto const &constraint : type_sym->TypeConstraints) {
+      const auto constraint_sym = constraints_owner_scope.FindTypeSymbol(constraint.get());
+      add_sup(constraint_sym != nullptr ? constraint_sym->LinkedScope : nullptr);
+    }
+  }
+
+  // Compare each constraint against the concrete type and its
+  // supertypes.
   for (auto const &constraint : constraints) {
     // Prevent a non-thread-safe type from being used when
     // thread safety is required. Instead of auto injecting
