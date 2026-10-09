@@ -108,7 +108,7 @@ jobs:
           stage: true
 
   gtest:
-    name: gtest ${{ matrix.label }}
+    name: gtest
     needs: [ build ]
     runs-on: ${{ inputs.os }}
     timeout-minutes: 60
