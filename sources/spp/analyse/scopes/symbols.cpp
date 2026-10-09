@@ -775,9 +775,8 @@ auto TypeSymbol::FqName(
       or asts::AstAs<SupPrototypeExtensionAst>(sup_node) != nullptr;
     if (ignore_dollar or not in_sup_block or Kind == TypeKind::ClosureMock) { return Name; }
 
-    // Todo: a generic owner ("sup [T] A[T]", or "sup Str" over a
-    //  defaulted "Str[A]") would need its arguments carried through
-    //  each instantiation, so it keeps the bare name.
+    // A generic owner ("sup [T] A[T]", or "sup Str" over a
+    // defaulted "Str[A]") keeps the bare name.
     const auto owner_name = AstName(sup_node);
     const auto owner_gn = owner_name->LastTypePart()->GnArgGroup.get();
     if (owner_gn != nullptr and not owner_gn->Args.IsEmpty()) { return Name; }
