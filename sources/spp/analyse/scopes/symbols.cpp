@@ -418,10 +418,9 @@ auto TypeSymbol::IsCopyable() const -> bool {
     }
   }
 
-  const auto has_generic_args = Name->GnArgGroup != nullptr
-    and not Name->GnArgGroup->Args.IsEmpty();
-
-  if (has_generic_args and LinkedScope != nullptr) {
+  // An instantiation (one of a generic class's): its "Copy" may
+  // hold only for some arguments.
+  if (InstanceOf != nullptr and LinkedScope != nullptr) {
     for (auto const *sup_scope : LinkedScope->GetSupScopes()) {
       if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
       if (not TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) { continue; }
@@ -844,12 +843,10 @@ auto TypeSymbol::FqName(
 
 auto TypeSymbol::CompArgId(
   Str const &name) const -> CompId {
-  // Off the identity, as "TypeArgRef"; anything without one reads its name's argument in its own scope.
+  // Off the identity, as "TypeArgRef".
   auto const &inst = *LinkedSymbol();
-  if (inst.LinkedScope == nullptr) { return nullptr; }
-  if (const auto id_arg = IdArgNamed(inst, name); id_arg.has_value()) { return id_arg->CompVal; }
-  auto const *arg = inst.Name->GnArgGroup->At(name.c_str());
-  return arg != nullptr and arg->IsCompArg() ? inst.LinkedScope->CompIdOf(*arg->CompVal) : nullptr;
+  const auto id_arg = IdArgNamed(inst, name);
+  return id_arg.has_value() ? id_arg->CompVal : nullptr;
 }
 
 auto TypeSymbol::TypeArgRef(

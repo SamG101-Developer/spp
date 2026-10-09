@@ -36,26 +36,6 @@ import std;
 namespace spp::analyse::utils::type_compare {
   namespace {
     /// [CHECKED]
-    /// The generic arguments on the type on a type symbol.
-    /// Handles type aliases correctly too.
-    auto SymbolArgGroup(
-      TypeSymbol const &sym) -> GenericArgumentGroupAst const& {
-      // If the type symbol holds an alias type, get the generics
-      // on an alias's resolved type.
-      if (sym.Alias != nullptr and sym.Alias->Resolved != nullptr) {
-        return *sym.Alias->Resolved->LastTypePart()->GnArgGroup;
-      }
-
-      // Otherwise, get the argument group on the type symbol's
-      // type name.
-      return *sym.Name->GnArgGroup;
-    }
-  }
-}
-
-namespace spp::analyse::utils::type_compare {
-  namespace {
-    /// [CHECKED]
     /// 2 conventions are only equal if they are the same, or if
     /// we are coalescing &mut into &
     auto ConventionTagEq(
@@ -529,24 +509,11 @@ auto spp::analyse::utils::type_compare::VariantMemberRefs(
   if (sym == nullptr) { return {}; }
 
   // Its identity lists its members, flattened and in order,
-  // each what it means; its name spells them as written where
-  // it was made, which they need not mean here.
-  if (ref.Id != nullptr and scopes::HeadOf(ref.Id).Kind == TypeKey::Tag::Variant) {
-    auto members = Vec<TypeRef>();
-    // Read straight off each member's identity, one per member:
-    // a member's index is its tag.
-    for (const auto member : scopes::HeadOf(ref.Id).Members) { members.EmplaceBack(TypeRef::Of(member, scope)); }
-    return members;
-  }
-
-  // Get the generic arguments under the variadic generic
-  // parameter "Variants".
-  const auto variants = SymbolArgGroup(*sym).At("Variants");
-  if (variants == nullptr or variants->IsCompArg()) { return {}; }
-
-  // Run the variant list through the variant flattener, removing
-  // duplicates and flattening variants into one root level type.
-  return FlattenVariants(*variants->TypeVal, scope)
-    | genex::views::transform([](auto const &x) { return x.second; })
-    | genex::to<Vec>();
+  // each what it means; anything else is not a variant.
+  if (ref.Id == nullptr or scopes::HeadOf(ref.Id).Kind != TypeKey::Tag::Variant) { return {}; }
+  auto members = Vec<TypeRef>();
+  // Read straight off each member's identity, one per member:
+  // a member's index is its tag.
+  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.EmplaceBack(TypeRef::Of(member, scope)); }
+  return members;
 }

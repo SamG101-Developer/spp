@@ -831,9 +831,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     bool ignore_dollar = false) const -> Shared<TypeAst>;
 
   /// "TypeArgRef" for a comp argument: its identity, read off the
-  /// instantiation's (no ast built), else off the argument written
-  /// on its name; null if there is none. Read a value off it with
-  /// "CompKey::AsInt"/"AsBool", or "U64Of" for a count.
+  /// instantiation's (no ast built); null if there is none. Read a
+  /// value off it with "CompKey::AsInt"/"AsBool", or "U64Of" for a
+  /// count.
   SPP_ATTR_NODISCARD auto CompArgId(Str const &name) const -> CompId;
 
   /// The type an instantiation's type argument "name" is (convention, "Self" and all), read off the identity of the
