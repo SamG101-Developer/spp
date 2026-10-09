@@ -197,17 +197,20 @@ auto TypeUnaryExpressionAst::WithConvention(
       return MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
     }
     if (Op->To<TypeUnaryExpressionOperatorBorrowAst>() != nullptr) {
-      return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)), Rhs);
+      return MakeShared<TypeUnaryExpressionAst>(
+        MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
+        Rhs);
     }
     auto inner = MakeShared<TypeUnaryExpressionAst>(Op, Rhs);
-    inner->SetWrittenTypeId(_WrittenTypeId);
-    return MakeShared<TypeUnaryExpressionAst>(MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
-                                              std::move(inner));
+    inner->StampTypeId(_StampedTypeId);
+    return MakeShared<TypeUnaryExpressionAst>(
+      MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv)),
+      std::move(inner));
   }();
 
   // A node rebuilt in place of this one names the same symbol, so it keeps the written identity; a lookup reads the outermost
   // node's first. "Rhs" handed back as it is carries its own.
-  if (result != Rhs) { result->SetWrittenTypeId(_WrittenTypeId); }
+  if (result != Rhs) { result->StampTypeId(_StampedTypeId); }
 
   // A type rebuilt in place of a written one keeps pointing at
   // what was written, whatever convention it is given. "Rhs" is
