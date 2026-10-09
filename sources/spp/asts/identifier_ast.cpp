@@ -5,10 +5,10 @@ module;
 module spp.asts.identifier_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.member_lookup;
@@ -134,7 +134,7 @@ auto IdentifierAst::Clone() const -> Unique<Ast> {
   // name mapped from a token keeps that token's length.
   auto id = Unique<IdentifierAst>(new IdentifierAst(_Pos, Str(Val), _NameId));
   id->_ForTok = _ForTok;
-  id->_WrittenCompParamId = _WrittenCompParamId;
+  id->_StampedCompId = _StampedCompId;
   return id;
 }
 
@@ -165,8 +165,9 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   const auto sym = sm->CurrentScope->FindVarSymbol(this);
 
   // A comp parameter (or a binding of one) named here is recorded, as a type parameter's name is: wherever the name
-  // is read from then, it means this parameter ("Scope::FindWrittenTypeSymbol"), not whatever its spelling finds there.
-  if (sym != nullptr) { analyse::utils::type_resolution::RecordWrittenComp(*this, *sym); }
+  // is read from then, it means this parameter ("Scope::FindBoundVarSymbolById"), not whatever its spelling finds
+  // there.
+  if (sym != nullptr) { type_resolution::StampComp(*this, *sym); }
 
   if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
     RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.identifier_ast;
+import spp.analyse.scopes.type_key;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -90,19 +91,20 @@ public:
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   /// The comp generic parameter this name resolved to where it was
-  /// written, by its identity ("ParamId"); 0 for none. A lookup of
-  /// it asks "Scope::FindWrittenTypeSymbol" what that parameter means from the
-  /// scope asking, instead of resolving the spelling again there -
-  /// which would read a caller's "w" as a callee's parameter of that
-  /// name.
-  SPP_ATTR_NODISCARD auto WrittenCompParamId() const noexcept -> std::uint64_t {
-    return _WrittenCompParamId;
+  /// written, by its identity (a "Param" comp id, "ParamCompId"),
+  /// as "TypeAst::StampedTypeId" records a type; null for none. A
+  /// lookup of it asks "Scope::FindBoundVarSymbolById" what that
+  /// parameter means from the scope asking, instead of resolving
+  /// the spelling again there - which would read a caller's "w" as
+  /// a callee's parameter of that name.
+  SPP_ATTR_NODISCARD auto StampedCompId() const noexcept -> CompId {
+    return _StampedCompId;
   }
 
   /// Record the comp parameter this name resolved to; see
-  /// "WrittenCompParamId".
-  auto SetWrittenCompParamId(const std::uint64_t param_id) const noexcept -> void {
-    _WrittenCompParamId = param_id;
+  /// "StampedCompId".
+  auto StampCompId(const analyse::scopes::CompId id) const noexcept -> void {
+    _StampedCompId = id;
   }
 
 private:
@@ -116,7 +118,7 @@ private:
 
   utils::InternedId _NameId;
 
-  mutable std::uint64_t _WrittenCompParamId = 0;
+  mutable analyse::scopes::CompId _StampedCompId = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)
