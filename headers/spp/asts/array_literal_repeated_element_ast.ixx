@@ -22,7 +22,7 @@ use(spp::asts, struct TypeAst);
 /// superimpose Copy), n amounts of times into the "Arr[T, n]"
 /// type.
 SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralRepeatedElementAst);
 
   /// The opening "[" token.

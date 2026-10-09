@@ -21,7 +21,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionAst);
 
   /// The base type on which the postfix operation is applied.

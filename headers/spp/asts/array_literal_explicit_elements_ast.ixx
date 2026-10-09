@@ -20,7 +20,7 @@ use(spp::asts, struct TypeAst);
 /// a variable number of elements. This maps to the Arr[T, n]
 /// type.
 SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralExplicitElementsAst);
 
   /// The opening "[" token.

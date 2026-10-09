@@ -22,7 +22,7 @@ use(spp::asts, struct TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionAst);
 
   /// The unary operator applied to the type.

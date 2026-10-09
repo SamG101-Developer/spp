@@ -246,7 +246,7 @@ namespace spp::analyse::scopes {
 /// abstract method that must be implemented by all derived
 /// classes.
 SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symbol> {
-  SPP_GCC_VTABLE_FIX_BASE;
+  SPP_GCC_VTABLE_FIX_BASE
 
   virtual ~Symbol();
 
@@ -270,7 +270,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::Symbol : EnableLocalSharedFromThis<Symb
 /// discovery of a nested module namespace from a given module
 /// scope.
 SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
 
   /// The name of the namespace; this will be the same as the
   /// namespace scope whom this symbol represents.
@@ -373,7 +373,7 @@ namespace spp::analyse::scopes {
 /// constants, parameters, variables, captures, etc etc. It has
 /// a host of flags for fine-tuning usage.
 SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
 
   /// The name of the symbol as the identifier ast, used for
   /// matching on a "get symbol" operation.
@@ -566,7 +566,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
 };
 
 SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
 
   /// The name of the type symbol, provided from the type it
   /// represents.

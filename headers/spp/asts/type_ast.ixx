@@ -29,7 +29,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   PrimaryExpressionAst,
   mixins::AbstractTypeAst,
   EnableLocalSharedFromThis<TypeAst> {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
 
   TypeAst();
 

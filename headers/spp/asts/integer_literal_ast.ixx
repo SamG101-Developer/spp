@@ -28,7 +28,7 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   /// ("utils::numbers::IntegerBounds").
   inline static utils::numbers::IntLimitMap const &kBounds = utils::numbers::IntegerBounds();
 
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);
 
   /// The optional sign token, either "+" or "-". No sign

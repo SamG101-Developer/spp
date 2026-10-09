@@ -22,7 +22,7 @@ use(spp::analyse::scopes, struct VariableSymbol);
 /// Either is given by keyword ("T=Str") or by position. Exactly
 /// one of "TypeVal" and "CompVal" is set.
 SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericArgumentAst);
 
   /// The "=" token separating a keyword argument's name from

@@ -22,7 +22,7 @@ use(spp::asts, struct IdentifierAst);
 /// A type expression represented by a single type name; the
 /// type analogue of the expression IdentifierAst.
 SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeIdentifierAst);
 
   /// The name of the type, such as "Str" or "Vec[BigInt]".

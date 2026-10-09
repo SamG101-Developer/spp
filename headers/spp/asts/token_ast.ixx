@@ -19,7 +19,7 @@ use(spp::asts, struct TypeIdentifierAst);
 /// calls; the end position is the start position plus the
 /// length of the associated data.
 SPP_EXP_CLS struct spp::asts::TokenAst final : Ast {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TokenAst);
 
   /// Very similar to the constructor, but required for the

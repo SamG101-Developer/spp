@@ -43,7 +43,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
     {Str("f128"), 16500}
   };
 
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
   /// The optional sign of the float literal, either "+" or "-".

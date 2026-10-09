@@ -25,7 +25,7 @@ use(spp::asts, struct TypeAst);
 /// one has a "TokEllipsis", and an optional one a default of its
 /// kind.
 SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::OrderableAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericParameterAst);
 
   /// The "cmp" token of a comp parameter. Null for a type one.

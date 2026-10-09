@@ -117,10 +117,10 @@
 #if SPP_COMPILER_GCC
 
 #define SPP_GCC_VTABLE_FIX_BASE \
-  virtual auto _spp_key_function() const -> void
+  virtual auto _spp_key_function() const -> void;
 
 #define SPP_GCC_VTABLE_FIX \
-  auto _spp_key_function() const -> void override
+  auto _spp_key_function() const -> void override;
 
 #define SPP_GCC_VTABLE_FIX_IMPL(Type)             \
   SPP_MOD_BEGIN                                   \

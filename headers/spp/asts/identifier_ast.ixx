@@ -23,7 +23,7 @@ GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::IdentifierAst final :
   PrimaryExpressionAst,
   EnableLocalSharedFromThis<IdentifierAst> {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(IdentifierAst);
 
   Str Val;

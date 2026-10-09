@@ -17,7 +17,7 @@ use(spp::analyse::scopes, struct TypeRef);
 /// The boolean literal is either "true" or "false" expressed
 /// in S++ code.
 SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(BooleanLiteralAst);
 
   /// The true/false token for the bool literal.
@@ -68,4 +68,4 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst);
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst)

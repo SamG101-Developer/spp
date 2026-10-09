@@ -17,7 +17,7 @@ use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TupleLiteralAst);
 
   /// The "(" token that starts the tuple literal.

@@ -13,7 +13,7 @@ use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionOperatorNamespaceAst final : TypeUnaryExpressionOperatorAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeUnaryExpressionOperatorNamespaceAst);
 
   /// The namespace in which the type is defined.

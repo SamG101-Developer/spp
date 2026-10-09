@@ -30,7 +30,7 @@ use(spp::asts, struct UseStatementAst);
 /// V=T, A=SecureAlloc[(K, V)]]".
 SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
   StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(TypeStatementAst);
 
   /// The annotations applied to this type statement; typically

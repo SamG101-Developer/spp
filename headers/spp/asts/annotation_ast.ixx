@@ -18,7 +18,7 @@ use(spp::asts, struct TokenAst);
 /// inside an ast, such as marking a method as virtual or
 /// a type as private, etc.
 SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(AnnotationAst);
 
   /// The ! token starting this annotation ast.

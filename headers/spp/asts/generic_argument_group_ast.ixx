@@ -18,7 +18,7 @@ use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericArgumentGroupAst);
 
   /// The "[" token that opens the generic argument group.
