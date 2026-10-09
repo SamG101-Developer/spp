@@ -81,7 +81,7 @@ CoroutinePrototypeAst::CoroutinePrototypeAst(
     std::move(return_type), std::move(impl)),
   _IsOnce(false),
   _YieldType(nullptr),
-  _SendType(nullptr),
+  _SendRef(nullptr),
   _GenOnceLowered(nullptr) {
   using lex::SppTokenType;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
@@ -129,12 +129,11 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
     marker_sups::EnforceYieldTypeWithoutGenDone(
       gen, *sm->CurrentScope, *ReturnType, "coroutine return type");
-    const auto yield_type = marker_sups::GenYieldOf(gen);
     const auto is_once = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
-    _YieldType = yield_type;
-    _SendType = is_once
-      ? generate::common_types_precompiled::VOID
-      : gen.Symbol->TypeArg("Send");
+    _YieldType = marker_sups::GenYieldOf(gen).AstIn(*sm->CurrentScope);
+    _SendRef = MakeShared<TypeRef>(is_once
+      ? TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope)
+      : gen.Symbol->TypeArgRef("Send"));
     _IsOnce = is_once;
 
     // Analyse the semantics of the function body, and move
@@ -235,7 +234,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // The generator environment holding the yield and send
   // slots, which "gen" and "res" load/store/GEP through.
   const auto llvm_yield_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*_YieldType, *sm->CurrentScope), ctx);
-  const auto llvm_send_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*_SendType, *sm->CurrentScope), ctx);
+  const auto llvm_send_ty = codegen::GetLlvmTypeOf(*_SendRef, ctx);
   const auto llvm_gen_state_ty = codegen::CreateLlvmGeneratorStateType(llvm_yield_ty, llvm_send_ty, ctx);
   const auto llvm_gen_state = ctx->Builder.CreateAlloca(
     llvm_gen_state_ty, nullptr, "coro.gen.state" + uid);
