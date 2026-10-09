@@ -30,7 +30,7 @@ use(spp::asts, struct TypeIdentifierAst);
 /// 1. What is given, in layers of precedence ("Give"): the arguments written at the use site, then whatever the
 ///    receiver, the enclosing "sup" block and a pinned "Self" bind. A name already given keeps its first binding.
 /// 2. Equations ("Unify"): what was given for a parameter or attribute against its declared type, binding the
-///    generics the declared type names, by identity ("type_unify::UnifyTypeIds"). What the declaration's own scope
+///    generics the declared type names, by identity ("scopes::UnifyTypeIds"). What the declaration's own scope
 ///    binds a parameter to already is that parameter's value.
 /// 3. "Solve": the equations, then comp values' types and the constraints, repeated until nothing new is bound; then
 ///    the defaults; then conflicts and uninferred parameters are checked, the defaults are read in the use site's

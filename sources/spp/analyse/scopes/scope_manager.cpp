@@ -13,7 +13,6 @@ import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.closure_expression_ast;
@@ -76,7 +75,6 @@ namespace spp::analyse::scopes {
       const TypeId pattern, Scope const &pattern_scope,
       GenericSubst &bindings,
       const bool check_constraints) -> bool {
-      using utils::type_unify::UnifyTypeIds;
       return type_sym.IsGn()
         ? UnifyTypeIds(pattern, type, pattern_scope, type_scope, bindings, false, check_constraints)
         : UnifyTypeIds(type, pattern, type_scope, pattern_scope, bindings, false, check_constraints);
@@ -522,7 +520,6 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
         or AstAs<SupPrototypeFunctionsAst>(scope->AstNode);
     })
     | genex::views::filter([&](auto *scope) {
-      using utils::type_unify::UnifyTypeIds;
       auto const &theirs_scope = *scope->AstNode->GetAstScope();
       const auto theirs_id = theirs_scope.TypeIdOf(*AstName(scope->AstNode));
       if (mine_id == nullptr or theirs_id == nullptr) { return false; }

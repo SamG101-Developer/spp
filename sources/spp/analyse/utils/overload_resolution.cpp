@@ -21,7 +21,6 @@ import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
-import spp.analyse.utils.type_unify;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
@@ -585,7 +584,7 @@ namespace spp::analyse::utils::overload_resolution {
       for (auto const &[candidate, candidate_scope] : candidates) {
         const auto candidate_id = candidate_scope->TypeIdOf(*candidate);
         auto inferred = scopes::GenericSubst();
-        if (candidate_id != nullptr and type_unify::UnifyTypeIds(
+        if (candidate_id != nullptr and scopes::UnifyTypeIds(
           candidate_id, pattern_id, *candidate_scope, *sup_scope, inferred, false, false)) {
           inferred = scopes::BindingsFor(inferred, *params);
           bound_by_block(inferred);
@@ -1019,7 +1018,7 @@ namespace spp::analyse::utils::overload_resolution {
           const auto p_id = fn_scope->TypeIdOf(*p_type);
           auto inferred = scopes::GenericSubst();
           const auto binds_to_match = type_compare::ConventionEq(*p_type, *a_type) and a_id != nullptr
-            and p_id != nullptr and type_unify::UnifyTypeIds(a_id, p_id, *sm->CurrentScope, *fn_scope, inferred);
+            and p_id != nullptr and scopes::UnifyTypeIds(a_id, p_id, *sm->CurrentScope, *fn_scope, inferred);
 
           // Forwarding is the last resort, tried only once the argument has failed to match any other way - so it
           // never displaces a match by binding that would have bound the parameter's generics correctly.

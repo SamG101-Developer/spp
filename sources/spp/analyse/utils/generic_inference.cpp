@@ -15,7 +15,6 @@ import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
-import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
@@ -442,7 +441,7 @@ auto GenericSolver::_Match(
   if (not _DeclaredReading.IsEmpty()) { declared = scopes::SubstituteTypeId(declared, _DeclaredReading); }
   const auto given_id = scopes::BareOf(given);
   declared = scopes::BareOf(declared);
-  const auto matched = type_unify::UnifyTypeIds(given_id, declared, scope, *_OwnerScope, inferred, true, true);
+  const auto matched = scopes::UnifyTypeIds(given_id, declared, scope, *_OwnerScope, inferred, true, true);
 
   // A value can match through a type it is superimposed with, and then that is what the generics are read from: a
   // closure is a "FunMov[(S32,), Bool]" only through its superimposition, so "f: FunMov[(S32,), U]" had nothing to
@@ -458,7 +457,7 @@ auto GenericSolver::_Match(
     const auto sup_id = scope.TypeIdOfSymbol(*sup_scope->LinkedTypeSymbol);
     if (sup_id == nullptr) { continue; }
     auto sup_inferred = scopes::GenericSubst();
-    if (type_unify::UnifyTypeIds(sup_id, declared, scope, *_OwnerScope, sup_inferred, true, true)) {
+    if (scopes::UnifyTypeIds(sup_id, declared, scope, *_OwnerScope, sup_inferred, true, true)) {
       return sup_inferred;
     }
   }
@@ -581,7 +580,7 @@ auto GenericSolver::_ReadConstraints() -> bool {
       for (auto const &[candidate, candidate_scope] : candidates) {
         if (candidate == nullptr) { continue; }
         inferred = scopes::GenericSubst();
-        if (type_unify::UnifyTypeIds(
+        if (scopes::UnifyTypeIds(
           scopes::BareOf(candidate), scopes::BareOf(declared), *candidate_scope, *_OwnerScope, inferred, true, false)) {
           matched = true;
           break;

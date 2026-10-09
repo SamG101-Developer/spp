@@ -16,7 +16,6 @@ import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
-import spp.analyse.utils.type_unify;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.class_attribute_ast;
@@ -88,8 +87,8 @@ namespace spp::asts {
         if (ext_id == nullptr) { continue; }
         auto fwd = analyse::scopes::GenericSubst();
         auto rev = analyse::scopes::GenericSubst();
-        if (type_unify::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
-          or type_unify::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
+        if (analyse::scopes::UnifyTypeIds(ext_id, name_id, *sc, check_scope, fwd, false, check_constraints)
+          or analyse::scopes::UnifyTypeIds(name_id, ext_id, check_scope, *sc, rev, false, check_constraints)) {
           return {sc, ext};
         }
       }

@@ -14,7 +14,6 @@ import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
-import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
@@ -77,7 +76,7 @@ namespace spp::analyse::utils::fn_values {
       if (a == nullptr or b == nullptr) { return false; }
       auto fwd = scopes::GenericSubst();
       auto rev = scopes::GenericSubst();
-      return type_unify::UnifyTypeIds(a, b, scope_a, scope_b, fwd) or type_unify::UnifyTypeIds(b, a, scope_b, scope_a, rev);
+      return scopes::UnifyTypeIds(a, b, scope_a, scope_b, fwd) or scopes::UnifyTypeIds(b, a, scope_b, scope_a, rev);
     }
   }
 }
@@ -186,7 +185,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
       const auto unify = [&](TypeAst const &target, TypeAst const &own) {
         const auto t = func_scope.TypeIdOf(target);
         const auto o = ext_scope->TypeIdOf(own);
-        return t != nullptr and o != nullptr and type_unify::UnifyTypeIds(t, o, func_scope, *ext_scope, inferred);
+        return t != nullptr and o != nullptr and scopes::UnifyTypeIds(t, o, func_scope, *ext_scope, inferred);
       };
       if (not unify(*target_args->TypeVal, *own_args->TypeVal) or not unify(*target_out->TypeVal, *own_out->TypeVal)) {
         continue;
@@ -323,7 +322,7 @@ namespace spp::analyse::utils::fn_values {
         const auto b_pattern = scope_b.TypeIdOf(*AstName(b_block));
         auto inferred = GenericSubst();
         if (super_id != nullptr and b_pattern != nullptr
-          and type_unify::UnifyTypeIds(BareOf(super_id), b_pattern, scope_a, scope_b, inferred, false, false)) {
+          and scopes::UnifyTypeIds(BareOf(super_id), b_pattern, scope_a, scope_b, inferred, false, false)) {
           auto self_subst = GenericSubst();
           self_subst.TypeParams.emplace_back(0, self_id);
           for (auto const &[pid, val] : inferred.TypeParams) { bind_b(pid, SubstituteTypeId(val, self_subst)); }
