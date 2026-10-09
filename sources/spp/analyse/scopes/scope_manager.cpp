@@ -6,12 +6,14 @@ module spp.analyse.scopes.scope_manager;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.monomorphization;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.closure_expression_ast;
@@ -64,17 +66,20 @@ namespace spp::analyse::scopes {
     /// Types in sup-matches are already constrained to the same
     /// base-type, to save on massive amounts of type-matching;
     /// that's the "coarse" check. The refined check includes
-    /// generics and constraints.
+    /// generics and constraints, by identity: "pattern" is keyed
+    /// where its parameters are parameters (the template block),
+    /// and its constraints are read in "pattern_scope" (the block
+    /// instantiated with what the first match bound). A generic
+    /// type ("T" itself) is what the pattern binds instead.
     auto SupPatternApplies(
-      TypeSymbol const &type_sym, TypeAst const &type, Scope const &type_scope,
-      TypeAst const &pattern, Scope const &pattern_scope,
-      utils::type_compare::GenericInferenceMap &generics,
+      TypeSymbol const &type_sym, const TypeId type, Scope const &type_scope,
+      const TypeId pattern, Scope const &pattern_scope,
+      GenericSubst &bindings,
       const bool check_constraints) -> bool {
-      // Double-sided relaxed type equality.
-      using utils::type_compare::RelaxedTypeEq;
+      using utils::type_unify::UnifyTypeIds;
       return type_sym.IsGn()
-        ? RelaxedTypeEq(pattern, type, pattern_scope, type_scope, generics, false, check_constraints)
-        : RelaxedTypeEq(type, pattern, type_scope, pattern_scope, generics, false, check_constraints);
+        ? UnifyTypeIds(pattern, type, pattern_scope, type_scope, bindings, false, check_constraints)
+        : UnifyTypeIds(type, pattern, type_scope, pattern_scope, bindings, false, check_constraints);
     }
 
     /// Helper to detect if a sup block declares a variadic generic,
@@ -234,7 +239,7 @@ auto ScopeManager::AttachSpecificSuperScopes(
   if (scope.LinkedTypeSymbol == nullptr or scope.SupsAttached) { return false; }
   if (scope.LinkedTypeSymbol->Kind == TypeKind::GnTypeParam) { return false; }
   scope.SupsAttached = true;
-  const auto non_generic_sym = TypeRef::OfKind(scope).Template();
+  const auto non_generic_sym = TypeRef::ForKindCheck(scope).Template();
 
   // Get the sup blocks for the type if there are any.
   const auto it = NormalSupBlocks.find(non_generic_sym);
@@ -321,7 +326,6 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
   Scope &scope, Vec<Scope*> const &sup_scopes,
   CompilerMetaData *meta) const -> void {
   using utils::monomorphization::CreateGnSupScope;
-  using utils::type_compare::GenericInferenceMap;
   if (sup_scopes.IsEmpty()) { return; }
 
   // Clear the sup scopes list.
@@ -334,29 +338,43 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
   const auto fq_type = scope.LinkedTypeSymbol->GnSelfName();
   auto const &cls_sym = scope.LinkedTypeSymbol;
   const auto is_mock = scope.LinkedTypeSymbol->IsMock();
+  auto const &type_scope = *scope.LinkedTypeSymbol->ScopeDefinedIn;
+  auto type_id = type_scope.TypeIdOf(*fq_type);
+  if (type_id == nullptr) { type_id = type_scope.TypeIdOfSymbol(*scope.LinkedTypeSymbol); }
 
-  // Iterate through all the super scopes and check if the name
-  // matches.
+  // Iterate through all the super scopes and check if the
+  // name matches.
   for (const auto sup_scope : sup_scopes) {
-    // Perform a relaxed comparison between the two types (allows
-    // for specializations to match bases).
-    auto scope_generics_map = GenericInferenceMap();
+    // Perform a relaxed comparison between the two types
+    // (allows for specializations to match bases).
+    auto bindings = GenericSubst();
     const auto own_mock_block = is_mock and not genex::contains(GnSupBlocks, sup_scope);
+    const auto pattern_id = sup_scope->TypeIdOf(*AstName(sup_scope->AstNode));
 
-    // Load the generics into "scope_generics_map" whilst checking that these types match in a relaxed manner.
-    // Constraint checking is disabled here.
-    if (not own_mock_block and not SupPatternApplies(
-      *scope.LinkedTypeSymbol, *fq_type, *scope.LinkedTypeSymbol->ScopeDefinedIn, *AstName(sup_scope->AstNode),
-      *sup_scope, scope_generics_map, false)) { continue; }
+    // Bind the block's generics whilst checking that the
+    // types match. Constraint checking is disabled here. A
+    // side that does not key matches nothing.
+    if (not own_mock_block and (type_id == nullptr or pattern_id == nullptr or not SupPatternApplies(
+      *scope.LinkedTypeSymbol, type_id, type_scope, pattern_id, *sup_scope, bindings, false))) { continue; }
 
-    // A block over a pack ("sup [..Items] Tup[Items]") is attached with its pack unbound, whatever the match bound it
-    // to: the block stands for every element set at once.
-    if (auto const *const params = GetSupGnParamsFromScope(*sup_scope); params != nullptr) {
-      if (auto const *const pack = params->GetVariadicParam(); pack != nullptr) {
-        scope_generics_map.erase(dynamic_shared_cast<TypeIdentifierAst>(pack->Name));
+    // Only the block's own generics are its bindings: its pattern can name others' parameters too ("sup [T]
+    // Vec[T]" matched against "Vec[Box[U]]", "U" a parameter of the type's own scope). A generic type is what the
+    // pattern binds instead, so keeps all. A block over a pack ("sup [..Items] Tup[Items]") is attached with its pack
+    // unbound, whatever the match bound it to: the block stands for every element set at once.
+    const auto sup_params = GetSupGnParamsFromScope(*sup_scope);
+    if (not scope.LinkedTypeSymbol->IsGn()) {
+      bindings = sup_params != nullptr ? BindingsFor(bindings, *sup_params) : GenericSubst();
+    }
+    if (const auto params = sup_params; params != nullptr) {
+      if (const auto pack = params->GetVariadicParam(); pack != nullptr) {
+        const auto pid = pack->ParamId();
+        std::erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
+        std::erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
+        std::erase(bindings.TypePackParams, pid);
+        std::erase(bindings.CompPackParams, pid);
       }
     }
-    auto scope_generics = GenericArgumentGroupAst::FromMap(std::move(scope_generics_map));
+    auto scope_generics = GenericArgumentGroupAst::FromBindings(bindings, type_scope);
 
     // Create a generic version of the super scope if needed.
     auto new_sup_scope = static_cast<Scope*>(nullptr);
@@ -374,10 +392,8 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
 
       // The constraint is checked here, against the constrained
       // type's super scopes - attached first if they are not yet.
-      if (auto _ = GenericInferenceMap(); not SupPatternApplies(
-        *scope.LinkedTypeSymbol, *fq_type, *scope.LinkedTypeSymbol->ScopeDefinedIn,
-        *AstName(sup_scope->AstNode), *new_sup_scope,
-        _, true)) { continue; }
+      if (auto _ = GenericSubst(); not SupPatternApplies(
+        *scope.LinkedTypeSymbol, type_id, type_scope, pattern_id, *new_sup_scope, _, true)) { continue; }
     }
     else {
       const auto sup_proto = AstAs<SupPrototypeExtensionAst>(
@@ -395,17 +411,19 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
       // for a list of types, so the match binds it to nothing,
       // while "sup [..T: Copy] Tup[T]" still constrains every
       // element it swallowed.
-      if (auto _ = GenericInferenceMap(); SupConstrainsItsParams(*sup_scope) and not SupPatternApplies(
-        *scope.LinkedTypeSymbol, *fq_type, *scope.LinkedTypeSymbol->ScopeDefinedIn, *AstName(sup_scope->AstNode),
-        *new_sup_scope, _, true)) { continue; }
+      if (auto _ = GenericSubst(); SupConstrainsItsParams(*sup_scope) and type_id != nullptr and pattern_id != nullptr
+        and not SupPatternApplies(*scope.LinkedTypeSymbol, type_id, type_scope, pattern_id, *new_sup_scope, _, true)) {
+        continue;
+      }
     }
 
     // Prevent double inheritance, cyclic inheritance and self
     // extension.
     if (const auto ext_ast = AstAs<SupPrototypeExtensionAst>(sup_scope->AstNode);
       ext_ast != nullptr and not ext_ast->Name->IsCompilerGeneratedType()) {
-      // A super class that did not resolve under this instance's arguments ("Try[.., Value=T]" with "T" bound to
-      // "Self", which is keyed by its spelling) has nothing to be cyclic with.
+      // A super class that did not resolve under this instance's
+      // arguments ("Try[.., Value=T]" with "T" bound to "Self",
+      // parameter 0, still open) has nothing to be cyclic with.
       if (sup_sym != nullptr and sup_sym->LinkedScope != nullptr) { ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope); }
       ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
       ext_ast->CheckSelfExtension(*sup_scope);
@@ -487,25 +505,31 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
   // overload-coalescing mock types.
   if (cls_sym.IsMock()) { return; }
 
-  // Every block attached before this one was checked against the others as it was attached, so only a pair involving
-  // this block is new: one declaring neither a "type" nor a "cmp" cannot conflict.
+  // Every block attached before this one was checked against
+  // the others as it was attached, so only a pair involving
+  // this block is new: one declaring neither a "type" nor a
+  // "cmp" cannot conflict.
   if (auto const &mine = SupStatementsOf(&sup_scope); mine.Types.IsEmpty() and mine.Cmps.IsEmpty()) { return; }
 
-  // Get the scopes to check for conflicts in.
-  auto dummy = utils::type_compare::GenericInferenceMap();
-
-  // The name will be the same for every block being considered.
+  // The name will be the same for every block being considered:
+  // blocks overlap when either's pattern takes the other's, by
+  // identity, each read where it is written.
   const auto mine_name = AstName(sup_scope.AstNode);
+  const auto mine_id = sup_scope.TypeIdOf(*mine_name);
   const auto existing_scopes = cls_sym.LinkedScope->DirectSupScopes
     | genex::views::filter([&](auto *scope) {
       return AstAs<SupPrototypeExtensionAst>(scope->AstNode)
         or AstAs<SupPrototypeFunctionsAst>(scope->AstNode);
     })
     | genex::views::filter([&](auto *scope) {
-      const auto theirs_name = AstName(scope->AstNode);
+      using utils::type_unify::UnifyTypeIds;
       auto const &theirs_scope = *scope->AstNode->GetAstScope();
-      return utils::type_compare::RelaxedTypeEq(*mine_name, *theirs_name, sup_scope, theirs_scope, dummy)
-        or utils::type_compare::RelaxedTypeEq(*theirs_name, *mine_name, theirs_scope, sup_scope, dummy);
+      const auto theirs_id = theirs_scope.TypeIdOf(*AstName(scope->AstNode));
+      if (mine_id == nullptr or theirs_id == nullptr) { return false; }
+      auto fwd = GenericSubst();
+      auto rev = GenericSubst();
+      return UnifyTypeIds(mine_id, theirs_id, sup_scope, theirs_scope, fwd)
+        or UnifyTypeIds(theirs_id, mine_id, theirs_scope, sup_scope, rev);
     })
     | genex::to<Vec>();
 
@@ -569,7 +593,7 @@ auto ScopeManager::AddSelfTypeSymbol(
 auto ScopeManager::Cleanup() -> void {
   // Clean up all static caches.
   utils::monomorphization::StopInstantiatingOnRead();
-  utils::comp_generics::ClearOpaqueCompValues();
+  Scope::ClearOpaqueCompValues();
   ClearGnParams();
   NormalSupBlocks.clear();
   SupStatementsCache().clear();
