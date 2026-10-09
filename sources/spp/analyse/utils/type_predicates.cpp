@@ -1,28 +1,31 @@
 module;
 #include <spp/analyse/macros.hpp>
 module spp.analyse.utils.type_predicates;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
+import spp.asts.class_prototype_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_postfix_expression_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
 import spp.utils.ptr;
 import genex;
@@ -73,9 +76,8 @@ auto spp::analyse::utils::type_predicates::AnyCompPart(
     return (lhs != nullptr and AnyCompPart(*lhs, name, owner, value))
       or (rhs != nullptr and AnyCompPart(*rhs, name, owner, value));
   }
-  if (const auto pf = expr.To<PostfixExpressionAst>(); pf != nullptr and owner != nullptr
-    and pf->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr) {
-    auto const *const type = pf->Lhs->To<TypeAst>();
+  if (owner != nullptr and asts::IsStaticMemberAccess(&expr)) {
+    auto const *const type = expr.To<PostfixExpressionAst>()->Lhs->To<TypeAst>();
     return type != nullptr and owner(*type);
   }
   const auto id = expr.To<IdentifierAst>();
@@ -149,41 +151,6 @@ auto spp::analyse::utils::type_predicates::IsTypeTry(
   return ref.KindSymbol() != nullptr and ref.IsA(*TRY, scope);
 }
 
-auto spp::analyse::utils::type_predicates::HeadKindRef(
-  TypeAst const &type, Scope const &scope) -> TypeRef {
-  // Held as written: a borrow or "!" stays one, so the same checks reject it.
-  auto *const head = type.IsNeverType() ? nullptr : scope.FindHeadSymbol(type);
-  if (head == nullptr) { return TypeRef(); }
-  auto ref = TypeRef::OfKind(*head, scope);
-  if (type.GetConvention() != nullptr) { ref.Conv = type.GetConvention()->Tag(); }
-  return ref;
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeTuple(
-  TypeAst const &type, Scope const &scope) -> bool {
-  return IsTypeTuple(HeadKindRef(type, scope), scope);
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeArray(
-  TypeAst const &type, Scope const &scope) -> bool {
-  return IsTypeArray(HeadKindRef(type, scope), scope);
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeVariant(
-  TypeAst const &type, Scope const &scope) -> bool {
-  return IsTypeVariant(HeadKindRef(type, scope), scope);
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeFunction(
-  TypeAst const &type, Scope const &scope) -> bool {
-  return IsTypeFunction(HeadKindRef(type, scope), scope);
-}
-
-auto spp::analyse::utils::type_predicates::IsTypeVoid(
-  TypeAst const &type, Scope const &scope) -> bool {
-  return IsTypeVoid(HeadKindRef(type, scope), scope);
-}
-
 auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   TypeRef const &ref) -> bool {
   // A generic template named bare stands for itself over its own parameters, which nothing has bound.
@@ -198,14 +165,16 @@ auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   // parameter: a nested argument is looked up in the instantiation's own scope, which need not have every type its
   // arguments were written in terms of in view, and reading "not found" as "still generic" would refuse perfectly good
   // instantiations.
+  // A template named with no arguments stands for itself over its own parameters - unless every parameter is a pack,
+  // which no arguments bind to the empty pack: "Tup" with none is the empty tuple, which is how "()" is named.
   auto const *const head = scope.FindHeadSymbol(type);
-  if (head != nullptr and head->IsBareTemplate() and type.LastTypePart()->GnArgGroup->Args.IsEmpty()) { return false; }
+  if (head != nullptr and head->IsBareTemplate() and type.LastTypePart()->GnArgGroup->Args.IsEmpty()) {
+    const auto all_packs = genex::all_of(head->Type->GnParamGroup->Params, [](auto const &param) {
+      return param->IsVariadic();
+    });
+    if (not all_packs) { return false; }
+  }
   return scopes::IsConcreteTypeId(scope.PartialTypeIdOf(type));
-}
-
-auto spp::analyse::utils::type_predicates::IsCompConcrete(
-  ExpressionAst const &val, Scope const &scope) -> bool {
-  return scopes::IsConcreteCompId(scope.CompIdOf(val));
 }
 
 /// [CHECKED]
@@ -238,7 +207,7 @@ auto spp::analyse::utils::type_predicates::AreAllGnArgsConcrete(
   Vec<Unique<GenericArgumentAst>> const &args, Scope const &scope) -> bool {
   return genex::all_of(args | genex::views::ptr, [&](auto const *arg) {
     if (arg->IsTypeArg()) { return IsTypeConcrete(*arg->TypeVal, scope); }
-    if (arg->IsCompArg()) { return IsCompConcrete(*arg->CompVal, scope); }
+    if (arg->IsCompArg()) { return scopes::IsConcreteCompId(scope.CompIdOf(*arg->CompVal)); }
     return true;
   });
 }

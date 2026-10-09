@@ -54,16 +54,6 @@ namespace spp::analyse::utils::type_predicates {
   SPP_EXP_FUN auto IsTypeVoid(TypeRef const &ref, Scope const &scope) -> bool;
   SPP_EXP_FUN auto IsTypeTry(TypeRef const &ref, Scope const &scope) -> bool;
 
-  /// What a written type's head names here ("Vec" for "Vec[Str]"), as its kind is read ("TypeRef::OfKind"), held as
-  /// written: no instance is looked up or made. No type for "!" or a name that does not resolve.
-  SPP_EXP_FUN auto HeadKindRef(TypeAst const &type, Scope const &scope) -> TypeRef;
-
-  /// The kind checks for a written type, read through its head ("HeadKindRef"), with the same rules as for a "TypeRef".
-  SPP_EXP_FUN auto IsTypeTuple(TypeAst const &type, Scope const &scope) -> bool;
-  SPP_EXP_FUN auto IsTypeArray(TypeAst const &type, Scope const &scope) -> bool;
-  SPP_EXP_FUN auto IsTypeVariant(TypeAst const &type, Scope const &scope) -> bool;
-  SPP_EXP_FUN auto IsTypeFunction(TypeAst const &type, Scope const &scope) -> bool;
-  SPP_EXP_FUN auto IsTypeVoid(TypeAst const &type, Scope const &scope) -> bool;
 
   /// Whether a written type is concrete where "scope" reads it: its
   /// identity names no parameter and no "Self" ("IsConcreteTypeId",
@@ -75,10 +65,6 @@ namespace spp::analyse::utils::type_predicates {
   /// "IsTypeConcrete" on a resolved type: its identity is concrete
   /// ("IsConcreteTypeId"), and it is not a bare template.
   SPP_EXP_FUN auto IsTypeConcrete(TypeRef const &ref) -> bool;
-
-  /// "IsTypeConcrete" for a comp value: its identity names no parameter ("IsConcreteCompId"); "n + 1_uz" is concrete
-  /// with "n" bound, "w" is not in the template that declares it.
-  SPP_EXP_FUN auto IsCompConcrete(ExpressionAst const &val, Scope const &scope) -> bool;
 
   /// A type is borrowed if it has a convention, or its a by-move
   /// variant that itself can contain a borrow, like "Str or &S32".
