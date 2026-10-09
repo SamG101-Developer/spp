@@ -100,10 +100,35 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
 
+  /// Resolve this alias's target now, ahead of its own stage 4:
+  /// for an instantiation in an earlier declaration's stage 4
+  /// that binds a generic to this alias, so the binding is made
+  /// to the target itself. Only for this statement's own alias
+  /// symbol (a copy made per instantiation of a generic block
+  /// is resolved where it is made), and only once.
+  auto ResolveTargetEarly(
+    TypeSymbol const &alias, ScopeManager const &sm, CompilerMetaData &meta) -> void;
+
 private:
   bool _Generated;
   bool _FromUseStatement;
   Shared<TypeSymbol> _AliasSymbol;
+
+  /// Whether the target has been resolved ("_ResolveTarget"), at
+  /// stage 4 or earlier.
+  bool _IsTargetResolved = false;
+
+  /// The target's resolution: its parameters, its analysis where
+  /// it is written, flattened by identity, and the alias linked
+  /// to it. "sm" stands in this statement's scope.
+  auto _ResolveTarget(
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Record the target as written for the resolution index, which
+  /// is what the editor navigates from. Only while indexing; nothing
+  /// else needs it.
+  auto _IndexWrittenTarget(
+    ScopeManager *sm, CompilerMetaData *meta) const -> void;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeStatementAst)

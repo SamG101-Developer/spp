@@ -31,6 +31,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import genex;
 
 SPP_MOD_BEGIN
@@ -162,8 +163,8 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
     ? AstName(enclosing)
     : nullptr;
   OldType = (sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.IsEmpty()
-    ? self_type::SubstituteSelf(*OldType, sup_name.get())
-    : self_type::SubstituteSelf(*OldType, sm->CurrentScope->FindEnclosingSelfType(*meta).get())
+    ? self_type::SubstituteSelf(*OldType, sup_name.get(), *sm->CurrentScope)
+    : self_type::SubstituteSelf(*OldType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
   )->WithSourceSpanOf(*OldType);
 
   // An alias names a type, and a borrow is not one a type can be: it is second class, so it cannot be what a name
@@ -190,7 +191,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
 
   // Its names record what they mean here now, so the target reads the same from wherever it is read before this
   // statement's own resolution flattens it (an earlier declaration's stage 4 can instantiate the alias first).
-  type_resolution::RecordTypeParts(*mapped_old_type, *sm->CurrentScope);
+  type_resolution::StampTypeParts(*mapped_old_type, *sm->CurrentScope);
 
   // An alias of "!" is "!" too, so its own name carries the
   // never flag, as the class's does.
@@ -212,6 +213,28 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
+  _ResolveTarget(sm, meta);
+  sm->MoveOutOfCurrentScope();
+}
+
+auto TypeStatementAst::ResolveTargetEarly(
+  TypeSymbol const &alias, ScopeManager const &sm, CompilerMetaData &meta) -> void {
+  // Read from a clean context, where this statement is written: whatever was being analysed when the binding was made
+  // is not what the target is read in.
+  if (_IsTargetResolved or &alias != _AliasSymbol.get()) { return; }
+  auto tm = ScopeManager(sm.GlobalScope, _Scope);
+  const auto _meta_guard = MetaGuard(&meta);
+  meta.ResetContext();
+  _ResolveTarget(&tm, &meta);
+}
+
+auto TypeStatementAst::_ResolveTarget(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Once, at stage 4 or earlier on demand ("ResolveTargetEarly"); marked first, so a request for it during its own
+  // resolution finds it under way and binds as it would have before (to the alias, waiting).
+  IMPORT_UTILS;
+  if (_IsTargetResolved) { return; }
+  _IsTargetResolved = true;
 
   // The resolved target is what every reader of this alias means by it, so it is what gets qualified and analysed
   // here. What the source wrote stays in "OldType", untouched.
@@ -228,7 +251,7 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
     GnParamGroup->Stage4_ResolveDeclarations(alias.IsParamsFromTarget ? &tm : sm, meta);
     // Recorded and analysed where its names were written - this statement's scope, not where the target class was
     // found, whose own parameters its spelling could name ("type Mine = Vec[A]" read in "Vec").
-    type_resolution::RecordTypeParts(*alias.Resolved, *sm->CurrentScope);
+    type_resolution::StampTypeParts(*alias.Resolved, *sm->CurrentScope);
     alias.Resolved->Stage7_AnalyseSemantics(sm, meta);
 
     // Then flattened by identity: an alias of an alias ("B[X]") keys as the class it ends at ("Vec[T=X]"), which is
@@ -245,10 +268,9 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
 
     // The target means what it resolved to here from wherever the alias is read, as a class's own name does
     // ("TypeSymbol::FqName"), rather than whatever its spelling names there.
-    type_resolution::RecordWrittenType(*alias.Resolved, *old_sym);
+    type_resolution::StampType(*alias.Resolved, *old_sym);
     _AliasSymbol->LinkTo(*old_sym);
   }
-  sm->MoveOutOfCurrentScope();
 }
 
 auto TypeStatementAst::Stage5_LoadSupScopes(
@@ -294,10 +316,7 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
       resolved->Stage7_AnalyseSemantics(sm, meta);
     }
 
-    const auto cls_sym = sm->CurrentScope->FindTypeSymbol(resolved.get());
-    if (cls_sym != nullptr and cls_sym->Type) {
-      generic_inference::EnforceGnConstraintsOfParams(*cls_sym, *GnParamGroup, *sm, *meta);
-    }
+    _IndexWrittenTarget(sm, meta);
 
     // Check visibility here specifically (almost always done in TypeIdentifierAst) because of the source type
     // auto expansion.
@@ -330,6 +349,28 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
   sm->Reset(current_scope, iter_copy);
   meta->CurrentStage = real_stage;
   Stage4_ResolveDeclarations(sm, meta);
+  _IndexWrittenTarget(sm, meta);
+}
+
+auto TypeStatementAst::_IndexWrittenTarget(
+  ScopeManager *sm, CompilerMetaData *meta) const -> void {
+  // The alias is analysed through rebuilt copies of its target, which are not what was written and so are not
+  // recorded; without this, the target of a "type" or "use" statement has nothing to navigate from. The written
+  // target is analysed as it was the first time, abstract types included (an alias may name one).
+  // This is only for the index, so it never raises: the alias itself was checked through the rebuilt copies, and a
+  // written target is not always a type on its own (a template named bare, "use std::option::Opt"). Resolving a
+  // namespaced name also moves the scope walk to look it up, and this is not part of the walk, so it is put back.
+  IMPORT_UTILS;
+  if (not lsp::resolution_index::IsEnabled()) { return; }
+  const auto start_scope = sm->CurrentScope;
+  const auto start_it = sm->GetCurrentIterator();
+  try {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AllowAbstractType = true;
+    Source.OriginalOldType->Stage7_AnalyseSemantics(sm, meta);
+  }
+  catch (SemanticError const &) {}
+  sm->Reset(start_scope, start_it);
 }
 
 auto TypeStatementAst::Stage8_CheckMemory(
