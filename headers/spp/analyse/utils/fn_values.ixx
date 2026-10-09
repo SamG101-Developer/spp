@@ -30,8 +30,7 @@ namespace spp::analyse::utils::fn_values {
   /// The "sup $F ext FunXXX { ... }" block an overload was
   /// lowered to, and the overload; or nullptrs.
   SPP_EXP_FUN auto FnBlockOf(
-    Scope const &scope)
-    -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*>;
+    Scope const &scope) -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*>;
 
   /// Get the actual name of a function hidden by a $Type. For
   /// regular functions and methods, this is simply converting
@@ -39,8 +38,7 @@ namespace spp::analyse::utils::fn_values {
   /// as a closure is an unnamed function by definition, so
   /// "nullptr". The scope returned is the parent of the overload.
   SPP_EXP_FUN auto GetFnValueName(
-    TypeRef const &type)
-    -> Pair<Shared<IdentifierAst>, Scope const*>;
+    TypeRef const &type) -> Pair<Shared<IdentifierAst>, Scope const*>;
 
   /// Given a mock function type like $Type, and a genuine
   /// functional type like FunMov[(), Void], extract the match
@@ -48,10 +46,8 @@ namespace spp::analyse::utils::fn_values {
   /// non-generic overloads, and handle generic functions by
   /// inferring of the "func_type".
   SPP_EXP_FUN auto MatchFnValue(
-    TypeRef const &mock,
-    TypeRef const &func,
-    Scope const &func_scope)
-    -> std::optional<FnValueMatch>;
+    TypeRef const &mock, TypeRef const &func,
+    Scope const &func_scope) -> std::optional<FnValueMatch>;
 
   /// When we pass a function value into a functional type,
   /// ie "$Type" into "FunMov[(), Void]" (arg->param, "let",
@@ -61,32 +57,27 @@ namespace spp::analyse::utils::fn_values {
   /// the analysis engine earlier, so the overload is ready
   /// by codegen-time.
   SPP_EXP_FUN auto InstantiateFnValue(
-    TypeRef const &value,
-    TypeRef const &target,
-    ScopeManager *sm,
-    meta::CompilerMetaData *meta)
-    -> void;
+    TypeRef const &value, TypeRef const &target,
+    ScopeManager *sm, meta::CompilerMetaData *meta) -> void;
 
   /// Lookup for a generic instantiation of a function based
   /// on the function's "$Type" and the function "FunMov"
   /// type.
   SPP_EXP_FUN auto FindFnValue(
-    TypeRef const &value,
-    TypeRef const &target,
-    ScopeManager const &sm)
-    -> FunctionPrototypeAst*;
+    TypeRef const &value, TypeRef const &target,
+    ScopeManager const &sm) -> FunctionPrototypeAst*;
 
   /// Check whether the new function prototype conflicts with
   /// functions of the same name but different signatures with
   /// the same owner. Two "fun f(&self) -> Void" is ambiguous.
   /// Several semantic checks in place to detect ambiguities.
+  /// The conflicting prototype and the scope it is declared in
+  /// (another module's, for a "sup" block written elsewhere);
+  /// both null for no conflict.
   SPP_EXP_FUN auto CheckForConflictingOverload(
-    Scope const &this_scope,
-    Scope const *target_scope,
-    FunctionPrototypeAst const &new_fn,
-    ScopeManager &sm,
-    meta::CompilerMetaData *meta)
-    -> FunctionPrototypeAst*;
+    Scope const &this_scope, Scope const *target_scope,
+    FunctionPrototypeAst const &new_fn, ScopeManager &sm,
+    meta::CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*>;
 
   /// The core of the override checker, checking whether "fn_a"
   /// (the override or implementation) has "fn_b"'s signature: the
@@ -94,11 +85,8 @@ namespace spp::analyse::utils::fn_values {
   /// Publicly exposed because the type_members module needs it for
   /// checking for any unimplemented abstract methods.
   SPP_EXP_FUN auto SameSignature(
-    FunctionPrototypeAst const &fn_a,
-    Scope const &scope_a,
-    FunctionPrototypeAst const &fn_b,
-    Scope const &scope_b)
-    -> bool;
+    FunctionPrototypeAst const &fn_a, Scope const &scope_a,
+    FunctionPrototypeAst const &fn_b, Scope const &scope_b) -> bool;
 
   /// Check whether the new function prototype is a genuine
   /// override of a method on a super type. This is used to
@@ -106,20 +94,13 @@ namespace spp::analyse::utils::fn_values {
   /// also used to remove overridden functions from overload
   /// selection, so we get subclass's prototype override.
   SPP_EXP_FUN auto CheckForConflictingOverride(
-    Scope const &this_scope,
-    Scope const *target_scope,
-    FunctionPrototypeAst const &new_fn,
-    ScopeManager &sm,
-    meta::CompilerMetaData *meta,
-    Scope const *exclude_scope = nullptr)
+    Scope const &this_scope, Scope const *target_scope, FunctionPrototypeAst const &new_fn,
+    ScopeManager &sm, meta::CompilerMetaData *meta, Scope const *exclude_scope = nullptr)
     -> FunctionPrototypeAst*;
 
   /// Check whether an expression is callable or not, by
   /// checking if the type is functional, or a symbol flag
   /// has been set via generic constraints.
   SPP_EXP_FUN auto IsTargetCallable(
-    ExpressionAst &expr,
-    ScopeManager &sm,
-    meta::CompilerMetaData *meta)
-    -> Shared<const TypeAst>;
+    ExpressionAst &expr, ScopeManager &sm, meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
 }

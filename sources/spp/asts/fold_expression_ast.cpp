@@ -6,7 +6,6 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 
@@ -38,13 +37,6 @@ auto FoldExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokEllipsis);
   SPP_STRING_END;
-}
-
-auto FoldExpressionAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // Fold expressions are always "Void".
-  using generate::common_types::VoidType;
-  return VoidType(PosStart());
 }
 
 auto FoldExpressionAst::InferTypeRef(

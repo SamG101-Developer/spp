@@ -24,7 +24,5 @@ SPP_EXP_CLS struct spp::asts::FoldExpressionAst final : PrimaryExpressionAst {
 
   ~FoldExpressionAst() override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

@@ -2,10 +2,11 @@ module;
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.fn_values;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.monomorphization;
@@ -13,6 +14,7 @@ import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
+import spp.analyse.utils.type_unify;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
@@ -67,13 +69,15 @@ namespace spp::analyse::utils::fn_values {
       if (sup_a == nullptr or sup_b == nullptr or sup_a == sup_b) { return true; }
 
       // Either block may hold the generic, so both orders are
-      // tried.
-      auto generics = type_compare::GenericInferenceMap();
-      auto const &a = *AstName(sup_a);
-      auto const &b = *AstName(sup_b);
-      return
-        type_compare::RelaxedTypeEq(a, b, *sup_a->GetAstScope(), *sup_b->GetAstScope(), generics) or
-        type_compare::RelaxedTypeEq(b, a, *sup_b->GetAstScope(), *sup_a->GetAstScope(), generics);
+      // tried, by identity, each read where it is written.
+      auto const &scope_a = *sup_a->GetAstScope();
+      auto const &scope_b = *sup_b->GetAstScope();
+      const auto a = scope_a.TypeIdOf(*AstName(sup_a));
+      const auto b = scope_b.TypeIdOf(*AstName(sup_b));
+      if (a == nullptr or b == nullptr) { return false; }
+      auto fwd = scopes::GenericSubst();
+      auto rev = scopes::GenericSubst();
+      return type_unify::UnifyTypeIds(a, b, scope_a, scope_b, fwd) or type_unify::UnifyTypeIds(b, a, scope_b, scope_a, rev);
     }
   }
 }
@@ -127,7 +131,6 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
   TypeRef const &mock, TypeRef const &func,
   Scope const &func_scope) -> std::optional<FnValueMatch> {
   //
-  using type_compare::RelaxedTypeEq;
   using type_compare::TypeEq;
 
   // The target has to be a function type held by value, and the
@@ -158,12 +161,12 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     // signature where the overload's own generics do.
     auto const *target_kind = func_scope.FindHeadSymbol(func_type);
     if (target_kind == nullptr) { continue; }
-    auto const *const target_tmpl = TypeRef::OfKind(*target_kind, func_scope).Template();
+    auto const *const target_tmpl = TypeRef::ForKindCheck(*target_kind, func_scope).Template();
     auto kinds = Vec<Scope const*>{kind_sym->LinkedScope};
     kinds.AppendRange(kind_sym->LinkedScope->GetSupScopes());
     if (not genex::any_of(kinds, [&](auto const *kind) {
       return kind->LinkedTypeSymbol != nullptr
-        and TypeRef::OfKind(*kind).Template() == target_tmpl;
+        and TypeRef::ForKindCheck(*kind).Template() == target_tmpl;
     })) { continue; }
 
     const auto own_generics = ext->SuperCls->LastTypePart()->GnArgGroup.get();
@@ -175,35 +178,39 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     if (own_args == nullptr or own_out == nullptr or target_args == nullptr or target_out == nullptr) { continue; }
 
     // A generic overload binds its own generics off the target,
-    // which is why its own signature is on the right. Either way
-    // the signature is then checked exactly, as the inference
-    // accepts a generic bound twice.
+    // by identity, which is why its own signature is the pattern.
+    // Either way the signature is then checked exactly.
     auto const &own_params = proto->GnParamGroup->Params;
-    auto inferred = type_compare::GenericInferenceMap();
-    if (not own_params.IsEmpty() and (
-      not RelaxedTypeEq(*target_args->TypeVal, *own_args->TypeVal, func_scope, *ext_scope, inferred)
-      or not RelaxedTypeEq(*target_out->TypeVal, *own_out->TypeVal, func_scope, *ext_scope, inferred))) { continue; }
-
-    auto own_inferred = type_compare::GenericInferenceMap();
-    for (auto const &[name, val] : inferred) {
-      if (genex::any_of(own_params, [&](auto const &p) { return *p->Name == *name; })) {
-        own_inferred.insert({name, val});
+    auto inferred = scopes::GenericSubst();
+    if (not own_params.IsEmpty()) {
+      const auto unify = [&](TypeAst const &target, TypeAst const &own) {
+        const auto t = func_scope.TypeIdOf(target);
+        const auto o = ext_scope->TypeIdOf(own);
+        return t != nullptr and o != nullptr and type_unify::UnifyTypeIds(t, o, func_scope, *ext_scope, inferred);
+      };
+      if (not unify(*target_args->TypeVal, *own_args->TypeVal) or not unify(*target_out->TypeVal, *own_out->TypeVal)) {
+        continue;
       }
     }
-    if (own_inferred.size() != own_params.Len()) { continue; }
+
+    // Only its own generics, each of which has to be bound.
+    const auto bindings = scopes::BindingsFor(inferred, *proto->GnParamGroup);
+    if (bindings.TypeParams.size() + bindings.CompParams.size() != own_params.Len()) { continue; }
 
     // Its own signature with what it inferred bound, read where the target is.
-    const auto bindings = type_resolution::BindInferred(own_inferred, *proto->GnParamGroup, func_scope);
     const auto read = [&](TypeAst const &own) { return type_resolution::ReadType(own, ExprSubst::Across(*ext_scope, bindings, func_scope)); };
-    if (not type_compare::Assignable(*read(*own_args->TypeVal), *target_args->TypeVal, func_scope, func_scope)
-      or not type_compare::Assignable(*read(*own_out->TypeVal), *target_out->TypeVal, func_scope, func_scope)) {
+    const auto assignable = [&](TypeAst const &own, TypeAst const &target) {
+      return type_compare::Assignable(
+        TypeRef::Of(*read(own), func_scope), TypeRef::Of(target, func_scope), func_scope, func_scope);
+    };
+    if (not assignable(*own_args->TypeVal, *target_args->TypeVal) or not assignable(*own_out->TypeVal, *target_out->TypeVal)) {
       continue;
     }
 
     // A non-generic overload wins outright; a generic one only if
     // none does.
     auto found = FnValueMatch{
-      .Proto = proto, .FnScope = ext_scope, .GnArgs = GenericArgumentGroupAst::FromMap(own_inferred)};
+      .Proto = proto, .FnScope = ext_scope, .GnArgs = GenericArgumentGroupAst::FromBindings(bindings, func_scope)};
     if (own_params.IsEmpty()) { return found; }
     if (not match.has_value()) { match = std::move(found); }
   }
@@ -250,7 +257,7 @@ namespace spp::analyse::utils::fn_values {
       auto const *const a_self = scope_a.FindSelfSymbol();
       auto const *const a_cls = a_self != nullptr ? a_self->AsBound() : nullptr;
       const auto self_id = a_cls != nullptr and a_cls->Type != nullptr
-        ? BareTypeId(scope_a.TypeIdOfSymbol(*a_cls, 0))
+        ? BareOf(scope_a.TypeIdOfSymbol(*a_cls))
         : nullptr;
       if (self_id != nullptr) {
         subst_a.TypeParams.emplace_back(0, self_id);
@@ -283,7 +290,7 @@ namespace spp::analyse::utils::fn_values {
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
           if (a_param == nullptr) { continue; }
-          bind_b(b_param(*own_b[i]->Name->ToUnchecked<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param, 0));
+          bind_b(b_param(*own_b[i]->Name->ToUnchecked<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param));
           continue;
         }
         auto const *const b_var = scope_b.FindVarSymbol(IdentifierAst::FromType(*own_b[i]->Name).get());
@@ -310,23 +317,24 @@ namespace spp::analyse::utils::fn_values {
       });
       auto const *const a_ext = a_ext_node != nullptr ? a_ext_node->To<SupPrototypeExtensionAst>() : nullptr;
       if (self_id != nullptr and b_block != nullptr and a_ext != nullptr) {
+        // "fn_b"'s block's generics bound off "fn_a"'s super class, "Self" in what they bind read as "fn_a"'s.
         auto const *const super_sym = TypeRef::Of(*a_ext->SuperCls, scope_a).Symbol;
-        auto inferred = type_compare::GenericInferenceMap();
-        if (super_sym != nullptr and type_compare::RelaxedTypeEq(
-          *super_sym->FqName(), *AstName(b_block), scope_a, scope_b, inferred, false, false)) {
-          for (auto const &[name, val] : inferred) {
-            auto const *const typed = val->To<TypeAst>();
-            if (typed == nullptr) { continue; }
-            bind_b(b_param(*name), typed->IsSelfType() ? self_id : scope_a.TypeIdOf(*typed));
-          }
+        const auto super_id = super_sym != nullptr ? scope_a.TypeIdOfSymbol(*super_sym) : nullptr;
+        const auto b_pattern = scope_b.TypeIdOf(*AstName(b_block));
+        auto inferred = GenericSubst();
+        if (super_id != nullptr and b_pattern != nullptr
+          and type_unify::UnifyTypeIds(BareOf(super_id), b_pattern, scope_a, scope_b, inferred, false, false)) {
+          auto self_subst = GenericSubst();
+          self_subst.TypeParams.emplace_back(0, self_id);
+          for (auto const &[pid, val] : inferred.TypeParams) { bind_b(pid, SubstituteTypeId(val, self_subst)); }
         }
       }
       if (self_id != nullptr) {
         for (auto &generic : scope_b.GetGns()) {
-          if (generic->TypeName() == nullptr or generic->IsCompArg() or not generic->TypeVal->IsSelfType()) {
+          if (generic->KeywordName() == nullptr or generic->IsCompArg() or not generic->TypeVal->IsSelfType()) {
             continue;
           }
-          bind_b(b_param(*generic->TypeName()->LastTypePart()), self_id);
+          bind_b(b_param(*generic->KeywordName()->LastTypePart()), self_id);
         }
       }
       return Pair<GenericSubst, GenericSubst>{std::move(subst_a), std::move(subst_b)};
@@ -337,7 +345,7 @@ namespace spp::analyse::utils::fn_values {
 auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
   Scope const &this_scope, Scope const *target_scope,
   FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-  meta::CompilerMetaData *meta) -> FunctionPrototypeAst* {
+  meta::CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*> {
   //
 
   // Get the methods that belong to this type, or any
@@ -413,10 +421,10 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
     if (genex::operations::empty(tmp
       | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
       | genex::to<Vec>())) {
-      return old_fn;
+      return {old_fn, old_scope};
     }
   }
-  return nullptr;
+  return {nullptr, nullptr};
 }
 
 auto spp::analyse::utils::fn_values::SameSignature(
@@ -467,7 +475,8 @@ auto spp::analyse::utils::fn_values::SameSignature(
   if (not terms.has_value()) { return false; }
   auto const &[subst_a, subst_b] = *terms;
 
-  // All parameters must have the same types: each keyed where it is written, then read in "fn_a"'s terms.
+  // All parameters must have the same types: each keyed
+  // where it is written, then read in "fn_a"'s terms.
   for (auto const &[p, q] : genex::views::zip(params_a, params_b)) {
     const auto id_a = SubstituteTypeId(scope_a.TypeIdOf(*p->Type), subst_a);
     if (id_a == nullptr or id_a != SubstituteTypeId(scope_b.TypeIdOf(*q->Type), subst_b)) { return false; }
@@ -484,16 +493,16 @@ auto spp::analyse::utils::fn_values::SameSignature(
   const auto ret_of = [&scope_a](FunctionPrototypeAst const &fn, Scope const &scope, GenericSubst const &subst) {
     auto const &ret = *fn.ReturnType;
     const auto id = scope.TypeIdOf(ret);
-    const auto ref = TypeRef::Of(id, scope, asts::ConventionTag::MOV, ret.IsNeverType());
+    const auto ref = TypeRef::Of(id, scope, ConventionTag::MOV, ret.IsNeverType());
 
-    // An identity naming no one symbol until the substitution replaces it ("Self", keyed by its spelling, or a binding
+    // An identity naming no one symbol until the substitution replaces it ("Self", parameter 0 read through the scope, or a binding
     // keyed whole, "Ret" bound to "Self") is read after it.
     // Read as a type, so an instantiation not made yet is made ("TypeRef::Of").
     if (ref.Id == nullptr and id != nullptr) {
       const auto substituted = scope_a.TypeAstOf(SubstituteTypeId(id, subst));
       return substituted != nullptr ? TypeRef::Of(*substituted, scope_a) : TypeRef();
     }
-    return ref.Substitute(subst, scope_a, true);
+    return ref.Substitute(subst, scope_a, TypeRef::OnMissing::Make);
   };
   // The same identity in "fn_a"'s terms is the same type, made or not (as the parameters are compared).
   const auto ret_id_a = SubstituteTypeId(scope_a.TypeIdOf(*fn_a.ReturnType), subst_a);
