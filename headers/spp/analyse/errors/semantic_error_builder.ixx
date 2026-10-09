@@ -14,7 +14,9 @@ import genex;
 import std;
 
 use(spp::asts, struct Ast);
+use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
@@ -23,6 +25,23 @@ namespace spp::analyse::errors {
 }
 
 namespace spp {
+  /// A resolved type given to an error in place of a type ast:
+  /// named where the error is raised ("TypeRef::AstIn") and placed
+  /// at "At", so an error that points at the type points there.
+  /// Held by value, as "ERR_ARGS" builds its arguments before the
+  /// error is. Made by "ErrTypeAt".
+  SPP_EXP_CLS template <typename R = analyse::scopes::TypeRef>
+  struct ErrType {
+    R Ref;
+    asts::Ast const *At = nullptr;
+  };
+
+  /// "ref" for an error message, placed at "at" ("ErrType").
+  SPP_EXP_FUN template <typename R>
+  auto ErrTypeAt(R const &ref, asts::Ast const &at) -> ErrType<R> {
+    return {ref, &at};
+  }
+
   /// Build the arguments tuple from the parameter pack, which
   /// will be passed into the semantic error builder.
   SPP_EXP_FUN template <typename... Args>
@@ -30,16 +49,37 @@ namespace spp {
     return {std::forward<Args>(args)...};
   }
 
+  namespace detail {
+    template <typename T>
+    constexpr auto kIsErrType = false;
+
+    template <typename R>
+    constexpr auto kIsErrType<ErrType<R>> = true;
+  }
+
   /// Raise an error with a list of scopes, a deferred argument
   /// binder, and any sub-errors.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
   SPP_ATTR_COLD SPP_ATTR_NORETURN
   auto Raise(Vec<Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
+    // A resolved type ("ErrType") is named where the error is
+    // raised, the first scope, and kept alive for the build.
+    auto named = Vec<Shared<void const>>();
+    const auto adapt = [&]<typename T>(T &&arg) -> decltype(auto) {
+      if constexpr (detail::kIsErrType<std::remove_cvref_t<T>>) {
+        auto type = arg.Ref.AstIn(*scopes[0]);
+        SPP_ASSERT(type != nullptr);
+        if (arg.At != nullptr) { type = type->WithSourceSpanAt(*arg.At); }
+        named.EmplaceBack(type);
+        return static_cast<asts::Ast const&>(*type);
+      }
+      else { return std::forward<T>(arg); }
+    };
     std::apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))
-          .WithArgs(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
+          .WithArgs(adapt(std::forward<Args2>(unpacked_args))...).raises_from_vec(scopes);
       },
       std::forward<A>(arg_binder)());
     std::unreachable();
