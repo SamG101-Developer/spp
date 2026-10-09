@@ -143,7 +143,10 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   if (Type != nullptr) {
     meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
-    if (not type_compare::Assignable(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope)) {
+    if (not type_compare::Assignable(
+      TypeRef::Of(*Type, *sm->CurrentScope),
+      TypeRef::Of(*val_type, *sm->CurrentScope),
+      *sm->CurrentScope, *sm->CurrentScope)) {
       // Shown as written, with the type it resolved to beside it where they differ ("S32 (aka ...)").
       const auto resolved = TypeRef::Of(*Type, *sm->CurrentScope).AstIn(*sm->CurrentScope);
       const auto shown = resolved != nullptr ? resolved->WithSourceSpanOf(*written_type) : Type;

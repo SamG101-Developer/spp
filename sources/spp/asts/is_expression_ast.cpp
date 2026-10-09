@@ -19,7 +19,6 @@ import spp.asts.inner_scope_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -120,14 +119,6 @@ auto IsExpressionAst::Stage11_CodeGen(
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto IsExpressionAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // Always return a boolean type (successful or failed
-  // match).
-  using generate::common_types::BooleanType;
-  return BooleanType(_MappedFn->PosStart());
-}
-
 auto IsExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // Always return a boolean type (successful or failed
@@ -137,10 +128,11 @@ auto IsExpressionAst::InferTypeRef(
 }
 
 auto IsExpressionAst::IsAllowedInDefault() const -> bool {
-  // The pattern tests and binds, and holds no control
-  // flow of its own; only the tested value is an expression.
-  // Todo: Remove nullptr guard?
-  return Lhs == nullptr or Lhs->IsAllowedInDefault();
+  // The pattern names types ("Point[T](x, y)") that a default
+  // carried to its use would read where they mean something
+  // else, and a pattern is not rewritten for it ("ReadExpr"),
+  // so it is banned, as "case" is.
+  return false;
 }
 
 SPP_MOD_END
