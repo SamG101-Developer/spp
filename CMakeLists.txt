@@ -101,6 +101,11 @@ add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (SPP_STATIC_RUNTIME)
   set(SPP_MIMALLOC_TARGET mimalloc-static)
+  # The static archive defines new/delete itself (MI_OVERRIDE),
+  # except against the Windows DLL CRT.
+  if (NOT WIN32)
+    add_compile_definitions(SPP_MIMALLOC_STATIC)
+  endif ()
 else ()
   set(SPP_MIMALLOC_TARGET mimalloc)
 endif ()
