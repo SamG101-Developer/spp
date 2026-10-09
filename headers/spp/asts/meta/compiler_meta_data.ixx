@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.meta.compiler_meta_data;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.type_key;
 import spp.codegen.llvm_coros;
 import spp.utils.ptr;
 import spp.utils.types;

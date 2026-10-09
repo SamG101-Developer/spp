@@ -65,7 +65,7 @@ namespace spp::analyse::utils::drop_utils {
       const auto superimposes_drop = genex::any_of(
         type_sym.LinkedScope->GetSupScopes(), [&](auto const *sup_scope) {
           if (sup_scope->LinkedTypeSymbol == nullptr) { return false; }
-          return TypeRef::OfKind(*sup_scope).IsA(*DROP, *sup_scope);
+          return TypeRef::ForKindCheck(*sup_scope).IsA(*DROP, *sup_scope);
         });
       if (not superimposes_drop) { return none(); }
 
@@ -258,10 +258,14 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
       if (destructor == nullptr) { continue; }
 
       // Held in a local so the view handed to the error
-      // outlives it.
+      // outlives it. The destructor is shown from the "sup"
+      // block declaring it, which can be in another file than
+      // the move.
       const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
+      auto const *const destructor_scope = FindDropOverloadInfo(*part_ref.Symbol->AsBound(), sm, meta).FnScope;
       Raise<errors::SppPartialMoveOfDestructibleValueError>(
-        {sm.CurrentScope}, ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
+        {destructor_scope != nullptr ? destructor_scope : sm.CurrentScope, sm.CurrentScope, sm.CurrentScope},
+        ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
     }
   }
 }

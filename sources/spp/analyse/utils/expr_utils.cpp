@@ -29,8 +29,8 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
   if (not options.AllowTypeAst and expr.To<asts::TypeAst>() != nullptr) {
     const auto type_sym = sm.CurrentScope->FindTypeSymbol(expr.To<asts::TypeAst>());
     return type_sym != nullptr and (type_sym->IsZeroType()
-      or (type_predicates::IsTypeTuple(TypeRef::OfKind(*type_sym, *sm.CurrentScope), *sm.CurrentScope)
-        and type_sym->TypeArgs().IsEmpty()));
+      or (type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*type_sym, *sm.CurrentScope), *sm.CurrentScope)
+        and type_sym->TypeArgRefs().IsEmpty()));
   }
 
   // Only allow tokens when they're explicit allowed,
@@ -82,6 +82,6 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   if (type == nullptr) { return; }
 
   const auto type_name = type->ToString();
-  if (IsTypeVoid(*type, *scope) or type->IsNeverType()) { return; }
+  if (IsTypeVoid(TypeRef::ForKindCheck(*type, *scope), *scope) or type->IsNeverType()) { return; }
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
 }

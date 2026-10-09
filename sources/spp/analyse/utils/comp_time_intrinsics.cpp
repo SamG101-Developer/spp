@@ -6,6 +6,7 @@ module;
 module spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -38,16 +39,15 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       // The width and signedness are the sized type's own bindings of "w" and "signed", read from the instantiation as
       // its type arguments would be - not parsed out of how its name happens to be written.
       if (sym == nullptr) { return Str(); }
-      const auto width_val = sym->CompArg("w");
-      const auto width_lit = width_val != nullptr ? width_val->To<IntegerLiteralAst>() : nullptr;
-      if (width_lit == nullptr) { return Str(); }
-      const auto width = width_lit->Val->ToString();
+      const auto width_val = scopes::U64Of(sym->CompArgId("w"));
+      if (not width_val.has_value()) { return Str(); }
+      const auto width = std::to_string(*width_val);
 
       // A floating-point type has a width and nothing else; an integer one also says whether it is signed.
-      const auto signed_val = sym->CompArg("signed");
-      if (signed_val == nullptr) { return "f" + width; }
-      const auto signed_lit = signed_val->To<BooleanLiteralAst>();
-      const auto is_signed = signed_lit != nullptr and signed_lit->CppVal();
+      const auto signed_id = sym->CompArgId("signed");
+      if (signed_id == nullptr) { return "f" + width; }
+      auto const *const signed_val = signed_id->AsBool();
+      const auto is_signed = signed_val != nullptr and *signed_val;
       return (is_signed ? "s" : "u") + width;
     }
 
