@@ -65,6 +65,29 @@ if [ "$("$cxx" -print-file-name=libstdc++.a)" = "libstdc++.a" ]; then
   exit 1
 fi
 
+# Homebrew's specs file appends "--dynamic-linker <brew>/lib/ld.so" and
+# "-rpath <brew>/lib" to every link, which ties the binaries to this
+# runner's Homebrew. Drop both (and the blank line after each, as gcc
+# rejects a run of them); the header and -L additions stay.
+specs="$(dirname "$("$cxx" -print-libgcc-file-name)")/specs"
+if [ -f "$specs" ]; then
+  awk '
+    gap && /^$/ { gap = 0; next }
+    { gap = 0 }
+    held != "" {
+      h = held; held = ""
+      if ((h == "*link:" && /^\+ --dynamic-linker /) || (h == "*homebrew_rpath:" && /^-rpath /)) { gap = 1; next }
+      print h
+    }
+    $0 == "*link:" || $0 == "*homebrew_rpath:" { held = $0; next }
+    { gsub(/ %\(homebrew_rpath\) /, " "); print }
+  ' "$specs" > "${specs}.spp" && mv "${specs}.spp" "$specs"
+  if grep -q -e '--dynamic-linker /home/linuxbrew' -e '^-rpath ' -e 'homebrew_rpath' "$specs"; then
+    echo "::error::could not strip the Homebrew rpath/loader from ${specs}" >&2
+    exit 1
+  fi
+fi
+
 {
   echo "CC=${cc}"
   echo "CXX=${cxx}"

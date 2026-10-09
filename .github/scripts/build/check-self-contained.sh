@@ -28,6 +28,18 @@ check_linux() {
     esac
   done <<< "$needed"
 
+  local interp
+  interp="$(readelf -l "$bin" | sed -n 's/.*program interpreter: \(.*\)\]/\1/p')"
+  case "$interp" in
+    /lib/* | /lib64/*) ;;
+    *) bad "${bin}: interpreter ${interp:-<none>} is not the system loader" ;;
+  esac
+
+  # Nothing is shipped beside the binary, so any RUNPATH points at the build machine.
+  local runpath
+  runpath="$(readelf -d "$bin" | sed -n 's/.*(\(RUNPATH\|RPATH\)).*\[\(.*\)\]/\2/p')"
+  [ -z "$runpath" ] || bad "${bin}: carries RUNPATH ${runpath}"
+
   while read -r lib _ path _; do
     case "$path" in
       "not") bad "${bin}: ${lib} not found on the system loader path" ;;
