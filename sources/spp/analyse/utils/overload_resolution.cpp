@@ -371,20 +371,6 @@ namespace spp::analyse::utils::overload_resolution {
     auto SignatureNamesSelf(
       FunctionPrototypeAst const &fn_proto)
       -> bool {
-      // We need this so that for example when a TcpSocket method
-      // is called that belongs to Socket, the "self=TcpSocket"
-      // IR is available, not "self=Socket" + weird slicing / owned
-      // value mismatch - for borrows it's fine because opaque ptrs.
-      // Todo: a borrowed "self" is not fine. The pointer is opaque, but the body is compiled once against the
-      //  declaring class - so its field GEPs use the base layout (which "SortMembersForSppLayout" reorders
-      //  independently of the derived one), and a call inside it resolves against the base's overload set rather
-      //  than the receiver's override. Both are only reachable when the base declares no abstract method, since
-      //  "declared_on_abstract" in "PinSelfToReceiver" otherwise mints the per-receiver copy. Red tests:
-      //  "regression::tst::codegen::test_inherited_borrowed_self_method_reads_the_derived_layout" and
-      //  "test_inherited_default_method_reaches_the_override". See "docs/dyn-dispatch-design.md".
-      const auto self_param = fn_proto.FnParamGroup->GetSelfParam();
-      if (self_param != nullptr and self_param->Conv == nullptr) { return true; }
-
       return type_predicates::DoesTypeNameSelf(*fn_proto.ReturnType)
         or genex::any_of(
           fn_proto.FnParamGroup->GetNonSelfParams(),
@@ -646,7 +632,8 @@ namespace spp::analyse::utils::overload_resolution {
       const auto declared_self_sym = fn_scope->FindTypeSymbol(declared_self.get());
       const auto declared_on_abstract = declared_self_sym != nullptr and declared_self_sym->LinkedScope != nullptr
         and not type_members::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
-      if (not SignatureNamesSelf(fn_proto) and not declared_on_abstract) { return; }
+      const auto takes_self = fn_proto.FnParamGroup->GetSelfParam() != nullptr;
+      if (not takes_self and not SignatureNamesSelf(fn_proto) and not declared_on_abstract) { return; }
 
       const auto receiver_sym = sm->CurrentScope->FindHeadSymbol(*call_self);
       if (receiver_sym == nullptr or TypeEq(
