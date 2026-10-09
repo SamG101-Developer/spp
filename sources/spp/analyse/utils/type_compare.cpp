@@ -287,12 +287,9 @@ namespace spp::analyse::utils::type_compare {
       // Different templates: a function mock against a function
       // type, or a forwarding type against its target.
       if (t.Symbol->Type != v.Symbol->Type) {
-        // The target is a $MockType, so check it against FunXXX
-        // family overload types.
-        if (t.Symbol->IsMock()) { return MockMatches(t, value, target_scope, value_scope); }
-
-        // Same as above but the other way around. Todo: Are both
-        // ways needed?
+        // The value is a $MockType (a function named as a value),
+        // so check it against the FunXXX family overload types it
+        // is superimposed with.
         if (v.Symbol->IsMock()) { return MockMatches(v, target, value_scope, target_scope); }
 
         // Otherwise, consider a forwarding check, of "Vec" to the
