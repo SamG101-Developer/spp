@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.identifier_ast;
@@ -112,6 +113,8 @@ auto spp::compiler::Compiler::Compile() -> bool {
     _Boot->Stage1_PreProcess(next_bar(), *_Modules, nullptr);
     _Boot->Stage2_GenTopLvlScopes(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage3_GenTopLvlAliases(next_bar(), *_Modules, _ScopeManager.get());
+    analyse::utils::type_resolution::StampPrecompiledTypes(*_ScopeManager->GlobalScope);
+
     _Boot->Stage4_ResolveDeclarations(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage5_LoadSupScopes(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage5_5_AttachSupScopes(next_bar(), _ScopeManager.get());
