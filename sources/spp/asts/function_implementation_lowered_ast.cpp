@@ -155,9 +155,10 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   // off from here.
   _ValidateZeroDivision(extracted_args, sm, meta);
   _ValidateShiftAmount(extracted_args, sm, meta);
-  meta->CompTimeResult = lowered_cmp_code
-                    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
-                    .Invoke(std::move(extracted_args));
+  meta->CompTimeResult =
+    lowered_cmp_code
+    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
+    .Invoke(std::move(extracted_args));
 
   // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()
   //     .with_args(*this)
@@ -171,7 +172,8 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   // lowering reads the prototype's own scope, so it runs before
   // the scope walk below moves the cursor off it.
   const auto ret_type = self_type::SubstituteSelf(
-        *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), sm, meta);
+    *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(),
+    *sm->CurrentScope, sm, meta);
 
   codegen::builtins::kBuiltinFuncs
     .at(_ScopePtr)
