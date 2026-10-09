@@ -209,7 +209,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     // A non-generic overload wins outright; a generic one only if
     // none does.
     auto found = FnValueMatch{
-      .Proto = proto, .FnScope = ext_scope, .GnArgs = GenericArgumentGroupAst::FromBindings(bindings, func_scope)};
+      .Proto = proto, .FnScope = ext_scope, .Bindings = bindings};
     if (own_params.IsEmpty()) { return found; }
     if (not match.has_value()) { match = std::move(found); }
   }
@@ -220,9 +220,10 @@ auto spp::analyse::utils::fn_values::InstantiateFnValue(
   TypeRef const &value, TypeRef const &target,
   ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
   const auto match = MatchFnValue(value, target, *sm->CurrentScope);
-  if (not match.has_value() or match->GnArgs->Args.IsEmpty()) { return; }
+  const auto args_id = match.has_value() ? scopes::ArgsIdOfBindings(match->Bindings, *sm->CurrentScope) : nullptr;
+  if (args_id == nullptr) { return; }
   auto tm = ScopeManager(sm->GlobalScope, const_cast<Scope*>(match->FnScope));
-  monomorphization::InstantiateOverload(match->Proto, match->FnScope, *match->GnArgs, &tm, meta);
+  monomorphization::InstantiateOverload(match->Proto, match->FnScope, args_id, &tm, meta);
 }
 
 auto spp::analyse::utils::fn_values::FindFnValue(
@@ -230,8 +231,9 @@ auto spp::analyse::utils::fn_values::FindFnValue(
   ScopeManager const &sm) -> FunctionPrototypeAst* {
   const auto match = MatchFnValue(value, target, *sm.CurrentScope);
   if (not match.has_value()) { return nullptr; }
-  if (match->GnArgs->Args.IsEmpty()) { return match->Proto; }
-  return monomorphization::FindInstantiatedOverload(match->Proto, *match->GnArgs, &sm);
+  const auto args_id = scopes::ArgsIdOfBindings(match->Bindings, *sm.CurrentScope);
+  if (args_id == nullptr) { return match->Proto; }
+  return monomorphization::FindInstantiatedOverload(match->Proto, args_id, &sm);
 }
 
 namespace spp::analyse::utils::fn_values {

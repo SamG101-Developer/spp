@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.fn_values;
+import spp.analyse.scopes.substitution;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -12,7 +13,6 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct FunctionPrototypeAst);
-use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TypeAst);
@@ -24,7 +24,7 @@ namespace spp::analyse::utils::fn_values {
   SPP_EXP_CLS struct FnValueMatch {
     FunctionPrototypeAst *Proto;
     Scope const *FnScope;
-    Unique<GenericArgumentGroupAst> GnArgs;
+    scopes::GenericSubst Bindings;
   };
 
   /// The "sup $F ext FunXXX { ... }" block an overload was
