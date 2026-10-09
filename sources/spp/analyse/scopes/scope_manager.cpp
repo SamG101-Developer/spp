@@ -372,20 +372,20 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
         std::erase(bindings.CompPackParams, pid);
       }
     }
-    auto scope_generics = GenericArgumentGroupAst::FromBindings(bindings, type_scope);
+    const auto scope_args_id = ArgsIdOfBindings(bindings, type_scope);
 
     // Create a generic version of the super scope if needed.
     auto new_sup_scope = static_cast<Scope*>(nullptr);
     auto new_cls_scope = static_cast<Scope*>(nullptr);
     auto sup_sym = static_cast<TypeSymbol*>(nullptr);
 
-    if ((not scope_generics->Args.IsEmpty()
+    if ((scope_args_id != nullptr
         or (SupDeclaresAPack(*sup_scope) and not AstName(sup_scope->AstNode)->IsCompilerGeneratedType()))
       and not genex::contains(GnSupBlocks, sup_scope)) {
       // Build the generic sup scope for this instantiation,
       // and get the new cls symbol.
       std::tie(new_sup_scope, new_cls_scope) = CreateGnSupScope(
-        *sup_scope, scope, *scope_generics, this, meta);
+        *sup_scope, scope, scope_args_id, this, meta);
       sup_sym = new_cls_scope ? new_cls_scope->LinkedTypeSymbol.get() : nullptr;
 
       // The constraint is checked here, against the constrained
