@@ -103,6 +103,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// from the expressions inside the function.
   Shared<TypeAst> ReturnType;
 
+  /// In an instantiation, the return type by identity: the
+  /// template's, with the bindings substituted once, which is what
+  /// a call returns. Null in a template.
+  analyse::scopes::TypeId InstanceReturnTypeId = nullptr;
+
   /// The body of the function, containing the code executed
   /// when it is called.
   Unique<FunctionImplementationAst> Impl;
