@@ -95,24 +95,24 @@ namespace spp::analyse::scopes {
     auto StableCompareNodes(
       CompKey const &lhs, CompKey const &rhs) -> std::strong_ordering {
       if (&lhs == &rhs) { return std::strong_ordering::equal; }
-      if (const auto c = lhs.Kind <=> rhs.Kind; c != 0) { return c; }
-      if (const auto c = lhs.Text <=> rhs.Text; c != 0) { return c; }
-      if (const auto c = lhs.ParamId <=> rhs.ParamId; c != 0) { return c; }
+      if (const auto c = lhs.Kind <=> rhs.Kind; std::is_neq(c)) { return c; }
+      if (const auto c = lhs.Text <=> rhs.Text; std::is_neq(c)) { return c; }
+      if (const auto c = lhs.ParamId <=> rhs.ParamId; std::is_neq(c)) { return c; }
       if (lhs.Type != rhs.Type) {
-        if (const auto c = StableCompareIds(TypeIdOfWord(lhs.Type), TypeIdOfWord(rhs.Type)); c != 0) { return c; }
+        if (const auto c = StableCompareIds(TypeIdOfWord(lhs.Type), TypeIdOfWord(rhs.Type)); std::is_neq(c)) { return c; }
       }
-      if (const auto c = lhs.Val.index() <=> rhs.Val.index(); c != 0) { return c; }
+      if (const auto c = lhs.Val.index() <=> rhs.Val.index(); std::is_neq(c)) { return c; }
       if (const auto l = lhs.AsInt(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsInt(); c != 0) { return c; }
+        if (const auto c = *l <=> *rhs.AsInt(); std::is_neq(c)) { return c; }
       }
       if (const auto l = lhs.AsFloat(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsFloat(); c != 0) { return c; }
+        if (const auto c = *l <=> *rhs.AsFloat(); std::is_neq(c)) { return c; }
       }
       if (const auto l = lhs.AsBool(); l != nullptr) {
-        if (const auto c = *l <=> *rhs.AsBool(); c != 0) { return c; }
+        if (const auto c = *l <=> *rhs.AsBool(); std::is_neq(c)) { return c; }
       }
       for (auto i = 0uz; i < lhs.Kids.size() and i < rhs.Kids.size(); ++i) {
-        if (const auto c = StableCompareNodes(*lhs.Kids[i], *rhs.Kids[i]); c != 0) { return c; }
+        if (const auto c = StableCompareNodes(*lhs.Kids[i], *rhs.Kids[i]); std::is_neq(c)) { return c; }
       }
       return lhs.Kids.size() <=> rhs.Kids.size();
     }
@@ -130,7 +130,7 @@ namespace spp::analyse::scopes {
       const auto r = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(rhs));
       const auto l_name = l->Name != nullptr ? l->Name->ToView() : StrView();
       const auto r_name = r->Name != nullptr ? r->Name->ToView() : StrView();
-      if (const auto c = l_name <=> r_name; c != 0) { return c; }
+      if (const auto c = l_name <=> r_name; std::is_neq(c)) { return c; }
       return l->Serial <=> r->Serial;
     }
 
@@ -169,12 +169,12 @@ namespace spp::analyse::scopes {
           : tag == TypeKey::Tag::TypeId
           ? StableCompareIds(TypeIdOfWord(lhs[i]), TypeIdOfWord(rhs[i]))
           : StableCompareNodes(*CompIdOfWord(lhs[i]), *CompIdOfWord(rhs[i]));
-        if (c != 0) { return c; }
+        if (std::is_neq(c)) { return c; }
       }
 
       // The shorter first, and then, as a last resort, the raw
       // words.
-      if (const auto c = lhs.size() <=> rhs.size(); c != 0) { return c; }
+      if (const auto c = lhs.size() <=> rhs.size(); std::is_neq(c)) { return c; }
       return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
   }
@@ -389,11 +389,10 @@ auto spp::analyse::scopes::DoesTypeIdNameAnyGnParams(
 /// [CHECKED]
 auto spp::analyse::scopes::StableKeyLess(
   TypeKey const &lhs, TypeKey const &rhs) -> bool {
-  // The comparison uses the "stable compare" algorithm,
-  // checking against "0".
-  return StableCompare(
+  // The comparison uses the "stable compare" algorithm.
+  return std::is_lt(StableCompare(
     {lhs.Words.data(), lhs.Words.size()},
-    {rhs.Words.data(), rhs.Words.size()}) < 0;
+    {rhs.Words.data(), rhs.Words.size()}));
 }
 
 /// [CHECKED]
