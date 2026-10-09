@@ -307,7 +307,7 @@ auto spp::parse::ParserSpp::ParseFunctionCallArgumentKeyword()
 auto spp::parse::ParserSpp::ParseGenericParameterGroup()
   -> Unique<asts::GenericParameterGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
-  PARSE_ZERO_OR_MORE(p2, ParseGenericParameter, ParseTokenComma);
+  PARSE_ONE_OR_MORE(p2, ParseGenericParameter, ParseTokenComma);
   PARSE_ONCE(p3, ParseTokenRightSquareBracket);
   return CREATE_AST(asts::GenericParameterGroupAst, p1, p2, p3);
 }
@@ -405,7 +405,7 @@ auto spp::parse::ParserSpp::ParseGenericParameterTypeConstraints()
 auto spp::parse::ParserSpp::ParseGenericArgumentGroup()
   -> Unique<asts::GenericArgumentGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
-  PARSE_ZERO_OR_MORE(p2, ParseGenericArgument, ParseTokenComma);
+  PARSE_ONE_OR_MORE(p2, ParseGenericArgument, ParseTokenComma);
   PARSE_ONCE(p3, ParseTokenRightSquareBracket);
   return CREATE_AST(asts::GenericArgumentGroupAst, p1, p2, p3);
 }
