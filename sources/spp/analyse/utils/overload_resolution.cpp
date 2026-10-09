@@ -518,7 +518,7 @@ namespace spp::analyse::utils::overload_resolution {
      */
     auto ReceiverGns(
       Scope const *fn_scope, TypeAst const *receiver,
-      ScopeManager const &sm) -> Vec<Unique<GenericArgumentAst>> {
+      ScopeManager const &sm) -> scopes::GenericSubst {
       if (receiver == nullptr or fn_scope == nullptr) { return {}; }
 
       // A method is lowered into its own "sup $F ext FunXxx" block, inside the one it was written in; the generics are
@@ -580,7 +580,7 @@ namespace spp::analyse::utils::overload_resolution {
           if (val != nullptr and val != own) { out.CompParams.emplace_back(pid, val); }
         }
       };
-      auto bound = Vec<Unique<GenericArgumentAst>>();
+      auto bound = scopes::GenericSubst();
       for (auto const &[candidate, candidate_scope] : candidates) {
         const auto candidate_id = candidate_scope->TypeIdOf(*candidate);
         auto inferred = scopes::GenericSubst();
@@ -588,7 +588,7 @@ namespace spp::analyse::utils::overload_resolution {
           candidate_id, pattern_id, *candidate_scope, *sup_scope, inferred, false, false)) {
           inferred = scopes::BindingsFor(inferred, *params);
           bound_by_block(inferred);
-          bound = std::move(GenericArgumentGroupAst::FromBindings(inferred, *candidate_scope)->Args);
+          bound = std::move(inferred);
           break;
         }
       }
@@ -795,8 +795,7 @@ namespace spp::analyse::utils::overload_resolution {
     /**
      * Solve the candidate's generics from what each parameter (except "self") is given, each pointed at where it came
      * from so a conflict names it rather than "<generated code>", against the parameter's declared type. The solver
-     * holds the solution to the generic constraints.
-     * @return The solved generic arguments.
+     * holds the solution to the generic constraints, read from it as its identity or as arguments.
      */
     auto InferAllGns(
       FunctionPrototypeAst const &fn_proto,
@@ -805,7 +804,7 @@ namespace spp::analyse::utils::overload_resolution {
       generic_inference::GenericSolver &solver,
       ScopeManager *sm,
       meta::CompilerMetaData *meta)
-      -> Unique<GenericArgumentGroupAst> {
+      -> void {
       for (auto const *param : fn_proto.FnParamGroup->GetNonSelfParams()) {
         const auto name = param->ExtractName();
         const auto slot = genex::find_if(slots, [&](auto const &s) { return s.Name->Val == name->Val; });
@@ -824,9 +823,6 @@ namespace spp::analyse::utils::overload_resolution {
       solver.Solve(
         *meta->PostfixExpressionLhs->InferType(sm, meta),
         variadic_param != nullptr ? variadic_param->ExtractName() : nullptr);
-      auto gn_args = GenericArgumentGroupAst::NewEmpty();
-      gn_args->Args = solver.TakeArgs();
-      return gn_args;
     }
 
     /**
@@ -973,12 +969,32 @@ namespace spp::analyse::utils::overload_resolution {
           continue;
         }
 
+        // An instantiation's parameter is its type by identity, looked
+        // up as it is rather than read through the instantiation's own
+        // bindings, and shown as spelled. "Self" in it is what the call
+        // decided; one nothing pins, and a variadic parameter's tuple,
+        // are read from the parameter as written.
+        auto p_sig = param->To<FunctionParameterVariadicAst>() == nullptr ? param->InstanceTypeId : nullptr;
+        if (p_sig != nullptr and p_sig->HasSelf and self_type != nullptr) {
+          auto pin = GenericSubst();
+          BindSelf(pin, *self_type, *sm->CurrentScope);
+          p_sig = SubstituteTypeId(p_sig, pin);
+        }
+        if (p_sig != nullptr and p_sig->HasSelf) { p_sig = nullptr; }
         auto p_type = fn_scope->FindTypeSymbol(param->Type.get())->FqName()->WithConvention(
           AstClone(param->Type->GetConvention()));
+        if (p_sig != nullptr) {
+          if (auto shown = sm->CurrentScope->TypeAstOf(p_sig); shown != nullptr) { p_type = std::move(shown); }
+        }
+        const auto p_ref = [&] {
+          return p_sig != nullptr
+            ? TypeRef::Of(p_sig, *fn_scope)
+            : TypeRef::Of(*p_type, *fn_scope);
+        };
         // "Self" is what the call decided it stands for ("PassedOverload::SelfType"): the owning type when the method
         // was reached by forwarding, since "&Str" calling "StrView::eq" must be handed a "StrView", not a "Str" read
         // through "StrView"'s "{ptr, length}" shape (the "Str == Str" bug).
-        if (self_type != nullptr and type_predicates::DoesTypeNameSelf(*p_type)) {
+        if (p_sig == nullptr and self_type != nullptr and type_predicates::DoesTypeNameSelf(*p_type)) {
           p_type = self_type::SubstituteSelf(*p_type, self_type, *fn_scope);
         }
         auto const &a_type = slot->Type;
@@ -1003,19 +1019,19 @@ namespace spp::analyse::utils::overload_resolution {
         // call once this overload is chosen.
         const auto forwards = [&] {
           const auto a_ref = TypeRef::Of(*a_type, *sm->CurrentScope);
-          return type_compare::TypeFwdEq(a_ref, TypeRef::Of(*p_type, *fn_scope), *sm->CurrentScope, *fn_scope)
+          return type_compare::TypeFwdEq(a_ref, p_ref(), *sm->CurrentScope, *fn_scope)
             and marker_sups::CanForward(a_ref, *sm->CurrentScope);
         };
 
         // An argument satisfies its parameter either outright, or by binding a generic the call is free to choose.
         if (not type_compare::ConventionEq(*p_type, *a_type)
           or not type_compare::Assignable(
-            TypeRef::Of(*p_type, *fn_scope), TypeRef::Of(*a_type, *sm->CurrentScope), *fn_scope, *sm->CurrentScope)) {
+            p_ref(), TypeRef::Of(*a_type, *sm->CurrentScope), *fn_scope, *sm->CurrentScope)) {
           // The argument is the given side, the parameter the pattern whose generics it binds, by identity. A
           // parameter whose generic is already fixed by a scope enclosing the caller keys as what it is fixed to, so
           // it has to match exactly.
           const auto a_id = sm->CurrentScope->TypeIdOf(*a_type);
-          const auto p_id = fn_scope->TypeIdOf(*p_type);
+          const auto p_id = p_sig != nullptr ? p_sig : fn_scope->TypeIdOf(*p_type);
           auto inferred = scopes::GenericSubst();
           const auto binds_to_match = type_compare::ConventionEq(*p_type, *a_type) and a_id != nullptr
             and p_id != nullptr and scopes::UnifyTypeIds(a_id, p_id, *sm->CurrentScope, *fn_scope, inferred);
@@ -1167,23 +1183,18 @@ namespace spp::analyse::utils::overload_resolution {
       auto solver = generic_inference::GenericSolver(*fn_proto->GnParamGroup, *fn_scope, *sm, *meta);
       solver.Give(std::move(generic_inference::NamedGnArgs(
         *fn_call.GnArgGroup, *fn_proto->GnParamGroup, *fn_scope, *fn_proto->Name, *sm, *meta)->Args));
-      solver.Give(ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : fn_owner_type, *sm));
+      solver.Give(
+        ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : fn_owner_type, *sm),
+        *sm->CurrentScope);
       solver.Give(std::move(candidate.SupGns->Args));
       const auto call_self = CallSelf(candidate, sm, meta);
       PinSelfToReceiver(*fn_proto, fn_scope, call_self, solver, sm, meta);
 
       // A default is read with what is known so far, "Self" as the call pinned it.
-      const auto known = solver.GetKnownArgs();
-      auto default_bindings = std::optional<scopes::GenericSubst>();
-      if (not known.IsEmpty()) {
-        default_bindings = scopes::BindArgs(*fn_proto->GnParamGroup, known, *sm->CurrentScope);
-        if (const auto pin = genex::find_if(known, [](auto const *arg) {
-          return arg->KeywordName() != nullptr and arg->IsTypeArg() and arg->KeywordName()->IsSelfType();
-        }); pin != known.end()) { scopes::BindSelf(*default_bindings, *(*pin)->TypeVal, *sm->CurrentScope); }
-      }
+      const auto default_bindings = solver.KnownBindings(*fn_proto->GnParamGroup);
       auto slots = BindSlots(
         fn_args, *fn_proto->FnParamGroup, default_bindings, const_cast<Scope&>(*fn_scope), sm, meta);
-      auto gn_args = InferAllGns(*fn_proto, fn_args, slots, solver, sm, meta);
+      InferAllGns(*fn_proto, fn_args, slots, solver, sm, meta);
 
       // What the variadic parameter actually receives: the tuple of the trailing arguments.
       auto variadic_pack_type = Shared<TypeAst>(nullptr);
@@ -1196,9 +1207,10 @@ namespace spp::analyse::utils::overload_resolution {
         }
       }
 
+      // Found or made from the solution's identity: no arguments are built.
       auto *const template_proto = fn_proto;
       std::tie(fn_proto, fn_scope) = monomorphization::FindOrMakeGnSubstitutedPrototype(
-        fn_proto, fn_scope, *gn_args, variadic_pack_type, sm, meta);
+        fn_proto, fn_scope, solver.SolvedArgsId(), variadic_pack_type, sm, meta);
       candidate.Proto = fn_proto;
       candidate.FnScope = fn_scope;
 
