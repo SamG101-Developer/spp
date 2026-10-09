@@ -678,8 +678,8 @@ namespace spp::analyse::utils::overload_resolution {
     auto BindSlots(
       FunctionCallArgumentGroupAst const &fn_args,
       FunctionParameterGroupAst const &fn_params,
-      std::optional<scopes::GenericSubst> const &bindings,
-      Scope *callee_scope,
+      std::optional<GenericSubst> const &bindings,
+      Scope &callee_scope,
       ScopeManager *sm,
       meta::CompilerMetaData *meta)
       -> Vec<ParamSlot> {
@@ -689,7 +689,7 @@ namespace spp::analyse::utils::overload_resolution {
       const auto all_p_names = fn_params.GetAllParams()
         | genex::views::transform([](auto *x) { return x->ExtractName(); })
         | genex::to<Vec>();
-      EnforceFnArgNamesKnown(all_p_names, a_names, fn_params, callee_scope, *sm);
+      EnforceFnArgNamesKnown(all_p_names, a_names, fn_params, &callee_scope, *sm);
 
       // Each argument, keyed by the parameter it is for. Positional arguments come before keyword ones, so the "i"th
       // argument is the "i"th positional one until they run out.
@@ -743,10 +743,10 @@ namespace spp::analyse::utils::overload_resolution {
         // Read where it is declared, whose own bindings (an instantiated "sup" block's) are in view there.
         auto default_val = not bindings.has_value()
           ? AstClone(optional_param->DefaultVal)
-          : AstClone(written->ReadExpr(ExprSubst::In(*callee_scope, *bindings)));
+          : AstClone(written->ReadExpr(ExprSubst::In(callee_scope, *bindings)));
         if (bindings.has_value()) {
           const auto outer_scope = sm->CurrentScope;
-          if (callee_scope != nullptr) { sm->CurrentScope = callee_scope; }
+          sm->CurrentScope = &callee_scope;
           default_val->Stage7_AnalyseSemantics(sm, meta);
           sm->CurrentScope = outer_scope;
         }
@@ -1182,7 +1182,7 @@ namespace spp::analyse::utils::overload_resolution {
         }); pin != known.end()) { scopes::BindSelf(*default_bindings, *(*pin)->TypeVal, *sm->CurrentScope); }
       }
       auto slots = BindSlots(
-        fn_args, *fn_proto->FnParamGroup, default_bindings, const_cast<Scope*>(fn_scope), sm, meta);
+        fn_args, *fn_proto->FnParamGroup, default_bindings, const_cast<Scope&>(*fn_scope), sm, meta);
       auto gn_args = InferAllGns(*fn_proto, fn_args, slots, solver, sm, meta);
 
       // What the variadic parameter actually receives: the tuple of the trailing arguments.
