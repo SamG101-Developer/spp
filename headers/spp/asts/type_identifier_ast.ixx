@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_identifier_ast;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.type_key;
 import spp.asts.ast_kind;
 import spp.asts.type_ast;
 import spp.codegen.llvm_ctx;
@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeIdentifierAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ConventionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
@@ -59,6 +60,8 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   SPP_ATTR_NODISCARD auto IsNeverType() const noexcept -> bool override;
 
   SPP_ATTR_NODISCARD auto IsSelfType() const noexcept -> bool override;
@@ -87,8 +90,8 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
-  /// Record the template (or alias) this name's head names wherever it is read; see "_WrittenTemplateId".
-  auto SetWrittenTemplateId(const analyse::scopes::TypeId id) const noexcept -> void { _WrittenTemplateId = id; }
+  /// Record the template (or alias) this name's head names wherever it is read; see "_StampedTemplateId".
+  auto StampTemplateId(const analyse::scopes::TypeId id) const noexcept -> void { _StampedTemplateId = id; }
 
   SPP_ATTR_NODISCARD auto SubstituteSelf(TypeAst const &with) const -> Shared<TypeAst> override;
 
@@ -160,8 +163,8 @@ private:
 
   /// The identity of the template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc"
   /// of "Alloc[T]"). Kept through "Clone", "SubstituteSelf" and "WithGns", and handed to "WithoutGns", so the stripped
-  /// name resolves to that declaration from anywhere ("Scope::FindWrittenTypeSymbol") rather than by its spelling.
-  mutable analyse::scopes::TypeId _WrittenTemplateId = nullptr;
+  /// name resolves to that declaration from anywhere ("Scope::FindBoundTypeSymbolById") rather than by its spelling.
+  mutable analyse::scopes::TypeId _StampedTemplateId = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeIdentifierAst)
