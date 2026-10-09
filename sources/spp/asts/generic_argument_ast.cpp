@@ -53,7 +53,7 @@ auto GenericArgumentAst::FromSymbol(
   RaiseIf<SppInternalCompilerError>(
     linked == &sym and sym.BoundTypeVal == nullptr, {}, ERR_ARGS(*sym.Name, "Generic argument from an unbound symbol"));
   auto value = linked != &sym
-    ? linked->FqName()->WithConvention(AstClone(sym.Convention.get()))
+    ? linked->FqName()->WithConvention(ConventionAstOf(sym.Convention))
     : AstCloneShared(sym.BoundTypeVal);
   return NewType(sym.Name, std::move(value));
 }
@@ -80,8 +80,8 @@ GenericArgumentAst::GenericArgumentAst(
   TokAssign(std::move(tok_assign)),
   TypeVal(std::move(type_val)),
   CompVal(std::move(comp_val)),
-  _TypeName(std::move(name)) {
-  if (_TypeName != nullptr) {
+  _KeywordName(std::move(name)) {
+  if (_KeywordName != nullptr) {
     SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
   }
 }
@@ -90,7 +90,7 @@ GenericArgumentAst::~GenericArgumentAst() = default;
 
 auto GenericArgumentAst::PosStart() const -> std::size_t {
   // Use the name, or the value for a positional argument.
-  return _TypeName != nullptr ? _TypeName->PosStart() : Value()->PosStart();
+  return _KeywordName != nullptr ? _KeywordName->PosStart() : Value()->PosStart();
 }
 
 auto GenericArgumentAst::PosEnd() const -> std::size_t {
@@ -101,13 +101,13 @@ auto GenericArgumentAst::PosEnd() const -> std::size_t {
 auto GenericArgumentAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenericArgumentAst>(
-    AstCloneShared(_TypeName), AstClone(TokAssign), AstCloneShared(TypeVal), AstCloneShared(CompVal));
+    AstCloneShared(_KeywordName), AstClone(TokAssign), AstCloneShared(TypeVal), AstCloneShared(CompVal));
 }
 
 auto GenericArgumentAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (_TypeName != nullptr) {
-    SPP_STRING_APPEND(_TypeName);
+  if (_KeywordName != nullptr) {
+    SPP_STRING_APPEND(_KeywordName);
     SPP_STRING_APPEND(TokAssign);
   }
   if (IsTypeArg()) { SPP_STRING_APPEND(TypeVal); }
@@ -120,8 +120,8 @@ auto GenericArgumentAst::operator==(
   // Equal when given the same way (keyword or positional),
   // under the same name, with values of the same kind that
   // are equal.
-  if ((_TypeName == nullptr) != (other._TypeName == nullptr)) { return false; }
-  if (_TypeName != nullptr and *_TypeName != *other._TypeName) { return false; }
+  if ((_KeywordName == nullptr) != (other._KeywordName == nullptr)) { return false; }
+  if (_KeywordName != nullptr and *_KeywordName != *other._KeywordName) { return false; }
   if (IsTypeArg() and other.IsTypeArg()) { return *TypeVal == *other.TypeVal; }
   return IsCompArg() and other.IsCompArg() and *CompVal == *other.CompVal;
 }
@@ -134,13 +134,13 @@ auto GenericArgumentAst::IsCompArg() const -> bool {
   return CompVal != nullptr;
 }
 
-auto GenericArgumentAst::TypeName() const -> Shared<TypeAst> const& {
-  return _TypeName;
+auto GenericArgumentAst::KeywordName() const -> Shared<TypeAst> const& {
+  return _KeywordName;
 }
 
-auto GenericArgumentAst::CompName() const -> Shared<IdentifierAst> const& {
-  if (_CompName == nullptr and _TypeName != nullptr) { _CompName = IdentifierAst::FromType(*_TypeName); }
-  return _CompName;
+auto GenericArgumentAst::CompNameAsId() const -> Shared<IdentifierAst> const& {
+  if (_CompNameAsId == nullptr and _KeywordName != nullptr) { _CompNameAsId = IdentifierAst::FromType(*_KeywordName); }
+  return _CompNameAsId;
 }
 
 auto GenericArgumentAst::Value() const -> ExpressionAst* {
@@ -149,8 +149,8 @@ auto GenericArgumentAst::Value() const -> ExpressionAst* {
 
 auto GenericArgumentAst::ViewName() const -> StrView {
   // Get the name from the keyword part.
-  if (_TypeName == nullptr) { return ""; }
-  return _TypeName->ToUnchecked<TypeIdentifierAst>()->Name;
+  if (_KeywordName == nullptr) { return ""; }
+  return _KeywordName->ToUnchecked<TypeIdentifierAst>()->Name;
 }
 
 auto GenericArgumentAst::Stage7_AnalyseSemantics(
@@ -184,11 +184,14 @@ auto GenericArgumentAst::AnalyseTypeVal(
   TypeVal->Stage7_AnalyseSemantics(sm, meta);
   auto const &scope = *sm->CurrentScope;
 
-  // An argument keeps its own node, recording what it names here ("type_resolution::RecordWrittenType"), so it is read
-  // by identity rather than by spelling. One naming a generic is not rewritten to a binding's value: that would
-  // re-bind it with an instantiation's own parameters ("Single[Arr[T]]" written inside "Single" never ends).
+  // An argument keeps its own node, recording what it names
+  // here ("type_resolution::StampType"), so it is read by
+  // identity rather than by spelling. One naming a generic
+  // is not rewritten to a binding's value: that would re-bind
+  // it with an instantiation's own parameters ("Single[Arr[T]]"
+  // written inside "Single" never ends).
   if (auto const *const val_sym = scope.FindTypeSymbol(TypeVal.get()); val_sym != nullptr) {
-    analyse::utils::type_resolution::RecordWrittenType(*TypeVal, *val_sym);
+    analyse::utils::type_resolution::StampType(*TypeVal, *val_sym);
   }
 }
 
@@ -196,7 +199,7 @@ auto GenericArgumentAst::IsCompValAnalysedInPlace(
   Scope const &scope) const -> bool {
   namespace comp_generics = analyse::utils::comp_generics;
   if (comp_generics::IsCompOperator(*CompVal)) { return false; }
-  return not comp_generics::IsCompExpression(*CompVal) or comp_generics::FoldCompExpr(*CompVal, scope) == nullptr;
+  return not comp_generics::NeedsSupScopesToType(*CompVal) or scope.FoldedCompAstOf(*CompVal) == nullptr;
 }
 
 auto GenericArgumentAst::AnalyseCompVal(
@@ -207,19 +210,19 @@ auto GenericArgumentAst::AnalyseCompVal(
   // the sup scopes of its operand's type, which are only
   // attached once stage 5 ends, so it waits until then; a
   // literal or a name needs no sup scope.
-  const auto is_expression = comp_generics::IsCompExpression(*CompVal);
-  if (is_expression and meta->CurrentStage<CompilerStage::kPreAnalyseSemantics) { return; }
+  const auto needs_sup_scopes = comp_generics::NeedsSupScopesToType(*CompVal);
+  if (needs_sup_scopes and meta->CurrentStage<CompilerStage::kPreAnalyseSemantics) { return; }
 
   // A comp expression that folds has been evaluated by the
-  // comp-time intrinsics ("comp_generics::FoldCompExpr"): its
+  // comp-time intrinsics ("Scope::FoldedCompAstOf"): its
   // value is checked against its type's bounds, and it is
   // not analysed as the operator call it desugars to.
-  if (is_expression) {
-    if (const auto folded = comp_generics::FoldCompExpr(*CompVal, *sm->CurrentScope); folded != nullptr) {
+  if (needs_sup_scopes) {
+    if (const auto folded = sm->CurrentScope->FoldedCompAstOf(*CompVal); folded != nullptr) {
       if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) {
         lit->ValidateBounds(*CompVal, *sm->CurrentScope);
       }
-      type_resolution::RecordCompParts(*CompVal, *sm->CurrentScope);
+      type_resolution::StampCompParts(*CompVal, *sm->CurrentScope);
       return;
     }
   }
@@ -248,7 +251,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   // ("n + 1") - with that parameter, so a copy of this argument
   // carried into another scope keeps naming it there, where the
   // same spelling may name another.
-  type_resolution::RecordCompParts(*CompVal, *sm->CurrentScope);
+  type_resolution::StampCompParts(*CompVal, *sm->CurrentScope);
 }
 
 SPP_MOD_END

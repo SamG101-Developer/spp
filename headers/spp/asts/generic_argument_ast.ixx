@@ -59,13 +59,13 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   SPP_ATTR_NODISCARD auto IsTypeArg() const -> bool;
   SPP_ATTR_NODISCARD auto IsCompArg() const -> bool;
 
-  /// The name of a keyword argument ("T=Str"), as a type. Null for
-  /// a positional one.
-  SPP_ATTR_NODISCARD auto TypeName() const -> Shared<TypeAst> const&;
+  /// The name of a keyword argument of either kind ("T=Str",
+  /// "n=1_uz"), held as a type. Null for a positional one.
+  SPP_ATTR_NODISCARD auto KeywordName() const -> Shared<TypeAst> const&;
 
-  /// "TypeName" as an identifier, which is what a comp argument's
+  /// "KeywordName" as an identifier, which is what a comp argument's
   /// name ("n=1_uz") means. Built once, on first read.
-  SPP_ATTR_NODISCARD auto CompName() const -> Shared<IdentifierAst> const&;
+  SPP_ATTR_NODISCARD auto CompNameAsId() const -> Shared<IdentifierAst> const&;
 
   /// The value, of whichever kind this argument is.
   SPP_ATTR_NODISCARD auto Value() const -> ExpressionAst*;
@@ -78,10 +78,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
-  /// The keyword name ("TypeName"), and the identifier it is read
-  /// as for a comp argument ("CompName"), built on first read.
-  Shared<TypeAst> _TypeName;
-  mutable Shared<IdentifierAst> _CompName;
+  /// The keyword name ("KeywordName"), and the identifier it is read
+  /// as for a comp argument ("CompNameAsId"), built on first read.
+  Shared<TypeAst> _KeywordName;
+  mutable Shared<IdentifierAst> _CompNameAsId;
 
   /// Analyse a type value and rewrite it as its qualified name,
   /// so it reads the same from a module that never imports it.
