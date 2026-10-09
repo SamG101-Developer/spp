@@ -24,93 +24,91 @@ namespace {
   using spp::analyse::scopes::TypeSymbol;
   using spp::analyse::scopes::VariableSymbol;
 
-  /// A pack is a generic symbol that is variadic: a parameter ("Ts" for "..Ts"), or the argument binding one.
-  auto IsTypePack(TypeSymbol const &sym) -> bool {
+  /// A pack is a generic symbol that is variadic: a parameter
+  // ("Ts" for "..Ts"), or the argument binding one.
+  auto IsTypePack(
+    TypeSymbol const &sym) -> bool {
     return sym.IsGn() and sym.IsVariadic;
   }
 
-  auto IsCompPack(VariableSymbol const &sym) -> bool {
+  auto IsCompPack(
+    VariableSymbol const &sym) -> bool {
     return sym.IsGn() and sym.IsVariadic;
   }
 
   /// The comp pack an identifier names, if it names one.
-  auto FindCompPack(spp::asts::ExpressionAst const &value, spp::analyse::scopes::Scope const &scope)
+  auto FindCompPack(
+    ExpressionAst const &value, Scope const &scope)
     -> VariableSymbol const* {
-    auto const *const id = value.To<spp::asts::IdentifierAst>();
+    auto const *const id = value.To<IdentifierAst>();
     auto const *const sym = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
     return sym != nullptr and IsCompPack(*sym) ? sym : nullptr;
   }
 
   /// "FindCompPack" for a type pack.
-  auto FindTypePack(spp::asts::TypeAst const &type, spp::analyse::scopes::Scope const &scope) -> TypeSymbol* {
+  auto FindTypePack(
+    TypeAst const &type, Scope const &scope) -> TypeSymbol* {
     auto *const sym = scope.FindHeadSymbol(type);
     return sym != nullptr and IsTypePack(*sym) ? sym : nullptr;
   }
 }
 
 auto spp::analyse::utils::packs::TypePackElements(
-  TypeAst const &pack)
-  -> Vec<Shared<TypeAst>> {
+  TypeAst const &pack) -> Vec<Shared<TypeAst>> {
   return pack.LastTypePart()->GnArgGroup->GetTypeArgs()
     | genex::views::transform([](auto const *arg) { return arg->TypeVal; })
     | genex::to<Vec>();
 }
 
 auto spp::analyse::utils::packs::CompPackElements(
-  ExpressionAst const &pack)
-  -> Vec<ExpressionAst*> {
+  ExpressionAst const &pack) -> Vec<ExpressionAst*> {
   return pack.ToUnchecked<asts::TupleLiteralAst>()->Elems
     | genex::views::transform([](auto const &elem) { return elem.get(); })
     | genex::to<Vec>();
 }
 
 auto spp::analyse::utils::packs::BoundTypePackElements(
-  TypeAst const &type,
-  Scope const &scope)
-  -> std::optional<Vec<Shared<TypeAst>>> {
+  TypeAst const &type, Scope const &scope) -> std::optional<Vec<Shared<TypeAst>>> {
+  //
   if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.IsEmpty()) { return std::nullopt; }
-  auto *const sym = FindTypePack(type, scope);
-  if (sym == nullptr or not type_predicates::IsTypeTuple(TypeRef::OfKind(*sym, scope), scope)) { return std::nullopt; }
+  const auto sym = FindTypePack(type, scope);
+  if (sym == nullptr or not type_predicates::IsTypeTuple(
+    TypeRef::ForKindCheck(*sym, scope), scope)) {
+    return std::nullopt;
+  }
   return TypePackElements(*sym->FqName());
 }
 
 auto spp::analyse::utils::packs::BoundCompPackElements(
-  ExpressionAst const &value,
-  Scope const &scope)
-  -> std::optional<Vec<ExpressionAst*>> {
+  ExpressionAst const &value, Scope const &scope) -> std::optional<Vec<ExpressionAst*>> {
+  //
   auto const *const sym = FindCompPack(value, scope);
-  auto const *const bound = sym != nullptr ? sym->AsBound(scope)->BoundCompVal() : nullptr;
-  if (bound == nullptr or bound->To<asts::TupleLiteralAst>() == nullptr) { return std::nullopt; }
+  auto const *const bound = sym != nullptr ? sym->AsBound()->BoundCompVal() : nullptr;
+  if (bound == nullptr or bound->To<TupleLiteralAst>() == nullptr) { return std::nullopt; }
   return CompPackElements(*bound);
 }
 
 auto spp::analyse::utils::packs::DoesTypeNameAnUnboundPack(
-  TypeAst const &type,
-  Scope const &scope)
-  -> bool {
-  auto *const sym = FindTypePack(type, scope);
+  TypeAst const &type, Scope const &scope) -> bool {
+  const auto sym = FindTypePack(type, scope);
   return sym != nullptr and sym->AsBound()->IsGn();
 }
 
 auto spp::analyse::utils::packs::DoesCompNameAnUnboundPack(
-  ExpressionAst const &value,
-  Scope const &scope)
-  -> bool {
+  ExpressionAst const &value, Scope const &scope) -> bool {
   auto const *const sym = FindCompPack(value, scope);
-  return sym != nullptr and sym->AsBound(scope)->BoundCompVal() == nullptr;
+  return sym != nullptr and sym->AsBound()->BoundCompVal() == nullptr;
 }
 
 auto spp::analyse::utils::packs::DoesArgNameAPack(
-  GenericArgumentAst const &arg,
-  Scope const &scope)
-  -> bool {
-  return arg.IsTypeArg() ? FindTypePack(*arg.TypeVal, scope) != nullptr : FindCompPack(*arg.CompVal, scope) != nullptr;
+  GenericArgumentAst const &arg, Scope const &scope) -> bool {
+  return arg.IsTypeArg()
+    ? FindTypePack(*arg.TypeVal, scope) != nullptr
+    : FindCompPack(*arg.CompVal, scope) != nullptr;
 }
 
 auto spp::analyse::utils::packs::DoesArgNameAnUnboundPack(
-  GenericArgumentAst const &arg,
-  Scope const &scope)
-  -> bool {
+  GenericArgumentAst const &arg, Scope const &scope) -> bool {
   return arg.IsTypeArg()
     ? DoesTypeNameAnUnboundPack(*arg.TypeVal, scope)
     : DoesCompNameAnUnboundPack(*arg.CompVal, scope);
