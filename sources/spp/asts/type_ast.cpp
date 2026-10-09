@@ -68,8 +68,8 @@ auto TypeAst::WithGns(
 
   // Different arguments make a different type, so the clone keeps no written identity: the one copied from this node (a
   // cached qualified name records its symbol's) would still name the old type, and a lookup would follow it there.
-  type_clone->SetWrittenTypeId(nullptr);
-  type_clone->LastTypePart()->SetWrittenTypeId(nullptr);
+  type_clone->StampTypeId(nullptr);
+  type_clone->LastTypePart()->StampTypeId(nullptr);
   return type_clone;
 }
 

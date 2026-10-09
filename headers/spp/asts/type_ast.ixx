@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.type_ast;
-import spp.analyse.scopes.instance_key;
+import spp.analyse.scopes.type_key;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
 import spp.utils.types;
@@ -12,6 +12,7 @@ SPP_AST_COMMON_FWD_DECL(TypeAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct TypeRef);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ConventionAst);
@@ -57,20 +58,20 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
     Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> override;
 
   /// The identity this type resolved to where it was written
-  /// ("WrittenTypeIdOf"), if it was resolved there
+  /// ("NameTypeIdOf"), if it was resolved there
   /// ("TypeSymbol::FqName" writes it into the names it hands out). A
   /// lookup of it reads that identity through the scope asking
-  /// ("Scope::FindWrittenTypeSymbol"), instead of resolving the spelling
+  /// ("Scope::FindBoundTypeSymbolById"), instead of resolving the spelling
   /// again there - which binds a caller's "T" to a callee's
   /// parameter of the same name.
-  SPP_ATTR_NODISCARD auto WrittenTypeId() const noexcept -> analyse::scopes::TypeId {
-    return _WrittenTypeId;
+  SPP_ATTR_NODISCARD auto StampedTypeId() const noexcept -> TypeId {
+    return _StampedTypeId;
   }
 
   /// Record the identity this type resolved to where it is
-  /// written; see "WrittenTypeId".
-  auto SetWrittenTypeId(const analyse::scopes::TypeId id) const noexcept -> void {
-    _WrittenTypeId = id;
+  /// written; see "StampedTypeId".
+  auto StampTypeId(const TypeId id) const noexcept -> void {
+    _StampedTypeId = id;
   }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
@@ -101,7 +102,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
 
 protected:
   mutable Shared<TypeAst> _CachedWithoutGns;
-  mutable analyse::scopes::TypeId _WrittenTypeId = nullptr;
+  mutable TypeId _StampedTypeId = nullptr;
   mutable Str _CachedStringification;
 
   /// Whether this type reports "_SpanStart" to "_SpanEnd" as its
