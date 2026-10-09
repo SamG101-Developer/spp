@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
-import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.utils.ptr;
@@ -11,7 +10,9 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(GenericArgumentGroupAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct ExprSubst);
+use(spp::analyse::scopes, struct GenericSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TokenAst);
@@ -34,7 +35,10 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   static auto FromParams(GenericParameterGroupAst const &generic_params) -> Unique<GenericArgumentGroupAst>;
 
-  static auto FromMap(analyse::utils::type_compare::GenericInferenceMap const &map) -> Unique<GenericArgumentGroupAst>;
+  /// The arguments "bindings" makes (a match's, "type_unify::UnifyTypeIds"), one per parameter it binds, named after
+  /// that parameter and read back from its identity in "scope". "Self" (parameter 0) is none.
+  static auto FromBindings(
+    analyse::scopes::GenericSubst const &bindings, analyse::scopes::Scope const &scope) -> Unique<GenericArgumentGroupAst>;
 
   GenericArgumentGroupAst(
     decltype(TokL) &&tok_l,

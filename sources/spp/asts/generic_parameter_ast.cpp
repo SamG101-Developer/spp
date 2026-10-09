@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
@@ -188,9 +189,9 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
     sym->IsVariadic = IsVariadic();
     RegisterGnCompParam(*sym);
 
-    // Recorded as a type parameter's is (below), so an argument built from it is matched to an occurrence of the
-    // parameter by identity ("IdentifierAst::ReadExpr").
-    Name->SetWrittenTypeId(WrittenCompIdOf(*sym));
+    // Recorded as a type parameter's is (below), in the comp side's own slot: its name is an identifier, which
+    // records its comp identity ("IdentifierAst::StampedCompId").
+    sym->Name->StampCompId(ParamCompId(*_ParamId));
     sm->CurrentScope->AddVarSymbol(std::move(sym));
     return;
   }
@@ -208,7 +209,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
   const auto sym = MakeShared<TypeSymbol>(
     AstCloneShared(Name->LastTypePart()), nullptr, dummy_scope.get(),
     sm->CurrentScope, TypeKind::GnTypeParam, false, Visibility::kPublic,
-    nullptr, TypeConstraints->Constraints);
+    ConventionTag::MOV, TypeConstraints->Constraints);
   sym->IsVariadic = IsVariadic();
   if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
   sym->OwnParamId = *_ParamId;
@@ -220,8 +221,8 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
   // both lets substitution match an occurrence to the argument
   // standing for it by identity ("ParamId"), rather than by
   // the name the two happen to share.
-  Name->SetWrittenTypeId(WrittenTypeIdOf(*sym));
-  sym->Name->SetWrittenTypeId(WrittenTypeIdOf(*sym));
+  Name->StampTypeId(NameTypeIdOf(*sym));
+  sym->Name->StampTypeId(NameTypeIdOf(*sym));
   sm->CurrentScope->AddTypeSymbol(sym);
 
   dummy_scope->LinkedTypeSymbol = sym;
@@ -236,12 +237,12 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
 
   // An optional type parameter analyses its default where it
   // is written and records what it means there
-  // ("type_resolution::RecordTypeParts"), as it is read from
+  // ("type_resolution::StampTypeParts"), as it is read from
   // wherever the parameter is bound.
   if (IsTypeParam()) {
     if (IsOptional()) {
       TypeDefault->Stage7_AnalyseSemantics(sm, meta);
-      type_resolution::RecordTypeParts(*TypeDefault, *sm->CurrentScope);
+      type_resolution::StampTypeParts(*TypeDefault, *sm->CurrentScope);
     }
     return;
   }
@@ -256,9 +257,10 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   //  in std) - GenericParameterCompGenericClass.test_valid_comp_parameter_typed_by_the_class_generic.
   CompType = type_resolution::AnalyseWrittenType(*CompType, *sm, *meta);
 
-  // The default records the comp generics it names where it is written, as a type default records its parts: it is
-  // read from wherever the parameter is bound ("type_resolution::RecordCompParts").
-  if (WrittenCompDefault != nullptr) { type_resolution::RecordCompParts(*WrittenCompDefault, *sm->CurrentScope); }
+  // The default records the comp generics it names where it
+  // is written, as a type default records its parts: it is
+  // read from wherever the parameter is bound.
+  if (WrittenCompDefault != nullptr) { type_resolution::StampCompParts(*WrittenCompDefault, *sm->CurrentScope); }
   if (not IsInherited) {
     const auto sym = sm->CurrentScope->FindVarSymbol(
       IdentifierAst::FromType(*Name).get());

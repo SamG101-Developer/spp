@@ -7,8 +7,9 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
-import spp.analyse.utils.type_compare;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_parameter_ast;
@@ -36,7 +37,7 @@ namespace spp::asts {
       // vector.
       auto names = Vec<TypeAst*>();
       for (const auto x : keyword_args) {
-        if (x->IsCompArg() == comp) { names.EmplaceBack(x->TypeName().get()); }
+        if (x->IsCompArg() == comp) { names.EmplaceBack(x->KeywordName().get()); }
       }
 
       // Grab the first set of duplicate into a new vector
@@ -82,30 +83,26 @@ auto GenericArgumentGroupAst::FromParams(
   return arg_group;
 }
 
-auto GenericArgumentGroupAst::FromMap(
-  analyse::utils::type_compare::GenericInferenceMap const &map) -> Unique<GenericArgumentGroupAst> {
-  // Create the list of arguments, initially empty.
+auto GenericArgumentGroupAst::FromBindings(
+  GenericSubst const &bindings, Scope const &scope)
+  -> Unique<GenericArgumentGroupAst> {
+  // Each binding under its parameter's name: a type read back as a type, a comp value as an expression. One whose
+  // parameter or value has no reading here is left out.
   auto mapped_args = Vec<Unique<GenericArgumentAst>>();
-
-  for (auto const &[arg_name, arg_val] : std::move(map)) {
-    // Map type ASTs to keyword type arguments.
-    if (const auto arg_val_for_type = arg_val->To<TypeAst>()) {
-      auto val = AstCloneShared(arg_val_for_type);
-      auto arg = GenericArgumentAst::NewType(arg_name, std::move(val));
-      mapped_args.EmplaceBack(std::move(arg));
-    }
-
-    // Map expression ASTs to keyword comptime arguments.
-    else if (auto *arg_val_for_comp = arg_val->To<ExpressionAst>()) {
-      auto val = AstClone(arg_val_for_comp);
-      auto arg = GenericArgumentAst::NewComp(arg_name, std::move(val));
-      mapped_args.EmplaceBack(std::move(arg));
-    }
+  for (auto const &[pid, id] : bindings.TypeParams) {
+    auto const *const param = pid != 0 ? analyse::scopes::FindGnTypeParamById(pid) : nullptr;
+    auto val = param != nullptr ? scope.TypeAstOf(id) : nullptr;
+    if (val == nullptr) { continue; }
+    mapped_args.EmplaceBack(GenericArgumentAst::NewType(AstCloneShared(param->Name), AstCloneShared(val)));
   }
-
-  // Place the arguments into a group AST.
-  return MakeUnique<GenericArgumentGroupAst>(
-    nullptr, std::move(mapped_args), nullptr);
+  for (auto const &[pid, id] : bindings.CompParams) {
+    auto const *const param = analyse::scopes::FindGnCompParamById(pid);
+    auto val = param != nullptr ? scope.CompAstOf(id) : nullptr;
+    if (val == nullptr) { continue; }
+    mapped_args.EmplaceBack(GenericArgumentAst::NewComp(
+      TypeIdentifierAst::FromIdentifier(*param->Name), Shared<ExpressionAst>(std::move(val))));
+  }
+  return MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(mapped_args), nullptr);
 }
 
 GenericArgumentGroupAst::GenericArgumentGroupAst(
@@ -213,7 +210,7 @@ auto GenericArgumentGroupAst::At(
   // Find the keyword argument with the matching key. A type and a comp parameter cannot share a name, so neither can
   // their arguments.
   for (auto const &arg : Args) {
-    if (arg->TypeName() != nullptr and arg->TypeName()->LastTypePart()->Name == key) { return arg.get(); }
+    if (arg->KeywordName() != nullptr and arg->KeywordName()->LastTypePart()->Name == key) { return arg.get(); }
   }
   return nullptr;
 }
@@ -224,11 +221,11 @@ auto GenericArgumentGroupAst::MergeArgs(
   // Append the other arguments to this argument group, checking
   // named duplicates.
   for (auto &&other_arg : std::move(other_args)) {
-    if (other_arg->TypeName() == nullptr) {
+    if (other_arg->KeywordName() == nullptr) {
       const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
       Raise<SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
     }
-    const auto *name = other_arg->TypeName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
+    const auto *name = other_arg->KeywordName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
     if (At(name) != nullptr) { continue; }
     Args.EmplaceBack(std::move(other_arg));
   }
@@ -253,7 +250,7 @@ auto GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
 auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by whether the argument is named.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->TypeName() != nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->KeywordName() != nullptr; })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }
@@ -261,7 +258,7 @@ auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*>
 auto GenericArgumentGroupAst::GetPositionalArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by whether the argument is named.
   return Args
-    | genex::views::filter([](auto const &arg) { return arg->TypeName() == nullptr; })
+    | genex::views::filter([](auto const &arg) { return arg->KeywordName() == nullptr; })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }
