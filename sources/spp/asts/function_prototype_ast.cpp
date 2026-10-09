@@ -66,6 +66,34 @@ import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import genex;
 
+namespace {
+  /// The instantiation whose body is being analysed.
+  thread_local auto analysing_gn_substitution =
+    static_cast<FunctionPrototypeAst::GenericSubstitution const*>(nullptr);
+
+  /// Marks one instantiation's body as being analysed,
+  /// for as long as it lives, then restores the outer
+  /// one.
+  struct AnalysingGnSubstitutionGuard {
+    FunctionPrototypeAst::GenericSubstitution const *Outer;
+
+    explicit AnalysingGnSubstitutionGuard(
+      FunctionPrototypeAst::GenericSubstitution const &sub) :
+      Outer(analysing_gn_substitution) {
+      analysing_gn_substitution = &sub;
+    }
+
+    ~AnalysingGnSubstitutionGuard() { analysing_gn_substitution = Outer; }
+
+    AnalysingGnSubstitutionGuard(
+      AnalysingGnSubstitutionGuard const &) = delete;
+
+    auto operator=(
+      AnalysingGnSubstitutionGuard const &)
+      -> AnalysingGnSubstitutionGuard& = delete;
+  };
+}
+
 SPP_MOD_BEGIN
 FunctionPrototypeAst::FunctionPrototypeAst(
   decltype(Annotations) &&annotations,
@@ -688,6 +716,10 @@ auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
   }
 }
 
+auto FunctionPrototypeAst::AnalysingGnSubstitution() -> GenericSubstitution const* {
+  return analysing_gn_substitution;
+}
+
 auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -721,6 +753,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = MetaGuard(meta);
+    const auto _analysing = AnalysingGnSubstitutionGuard(sub);
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 

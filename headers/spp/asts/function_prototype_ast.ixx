@@ -217,6 +217,15 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// never analysed, declared or emitted.
     bool IsRequired = false;
 
+    /// The instantiation whose body asked for it; null for code
+    /// no instantiation made.
+    GenericSubstitution const *RequestedBy = nullptr;
+
+    /// How many instantiations of its template its request passed
+    /// through, itself included: "f[T]" asking for "f[Vec[T]]" is
+    /// one deeper, however much else ran between them.
+    std::size_t Depth = 1;
+
     /// The scope to position a scope manager on before running
     /// any stage over "Proto", and the scope every symbol this
     /// instantiation bound was registered into.
@@ -262,6 +271,13 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   auto SetNonGnImpl(FunctionPrototypeAst *impl) -> void;
 
   SPP_ATTR_NODISCARD auto GetNonGnImpl() const -> FunctionPrototypeAst*;
+
+  /// The instantiation whose body is being analysed
+  /// ("AnalysePendingGnSubstitutions"), which is what requests
+  /// any instantiation made meanwhile; null for none. Instances
+  /// are drained from a queue, not nested on the stack, so this
+  /// is how a chain of them is followed ("RequestedBy").
+  SPP_ATTR_NODISCARD static auto AnalysingGnSubstitution() -> GenericSubstitution const*;
 
   auto MarkAsAnnotation() -> void;
 
