@@ -62,6 +62,44 @@ auto spp::analyse::scopes::BindArgs(
     .value_or(GenericSubst());
 }
 
+auto spp::analyse::scopes::BindingsOfArgs(
+  const TypeId args) -> GenericSubst {
+  auto subst = GenericSubst();
+  if (args == nullptr) { return subst; }
+  for (auto const &arg : ArgsOf(args)) {
+    if (not arg.Named or arg.Spelled) { continue; }
+    if (arg.TypeVal != nullptr) {
+      subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal);
+      if (auto const *const param = FindGnTypeParamById(arg.Slot); param != nullptr and param->IsVariadic) {
+        subst.TypePackParams.push_back(arg.Slot);
+      }
+    }
+    else if (arg.CompVal != nullptr) {
+      subst.CompParams.emplace_back(arg.Slot, arg.CompVal);
+      if (auto const *const param = FindGnCompParamById(arg.Slot); param != nullptr and param->IsVariadic) {
+        subst.CompPackParams.push_back(arg.Slot);
+      }
+    }
+  }
+  return subst;
+}
+
+auto spp::analyse::scopes::ArgsIdOfBindings(
+  GenericSubst const &bindings, Scope const &scope) -> TypeId {
+  auto key = TypeKey();
+  for (auto const &[pid, id] : bindings.TypeParams) {
+    if (pid == 0 or id == nullptr) { continue; }
+    key.Push(TypeKey::Tag::Arg, pid);
+    key.PushTypePart(scope.ReadIn(id));
+  }
+  for (auto const &[pid, id] : bindings.CompParams) {
+    if (id == nullptr) { continue; }
+    key.Push(TypeKey::Tag::Arg, pid);
+    key.PushCompPart(scope.ReadCompIn(id));
+  }
+  return key.Words.empty() ? nullptr : InternTypeKey(std::move(key));
+}
+
 auto spp::analyse::scopes::BindingsFor(
   GenericSubst const &bindings, GenericParameterGroupAst const &params)
   -> GenericSubst {

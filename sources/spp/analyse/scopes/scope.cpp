@@ -507,6 +507,11 @@ namespace spp::analyse::scopes {
 
       auto const *const bound = sym.AsBound();
       if (bound == &sym) {
+        // Bound to "Self" ("Rhs=Self"): "Self", as reading the parameter means here.
+        if (sym.BoundTypeVal != nullptr and sym.BoundTypeVal->IsSelfType()) {
+          out.Key.Push(Tag::TypeParam, 0);
+          return nullptr;
+        }
         out.Key.Push(Tag::TypeBound, static_cast<std::uint64_t>(sym.BindsParamId));
         if (sym.BoundTypeVal != nullptr) { out.Key.PushText(Tag::TypeBound, sym.BoundTypeVal->ToString()); }
         else { out.Key.PushText(Tag::TypeBound, sym.Name->ToView()); }
@@ -619,6 +624,18 @@ namespace spp::analyse::scopes {
       return out;
     }
 
+    /// A value no identity names, keyed as its spelling ("x.f()", or a name that is no comp generic), with the value
+    /// recorded under it, its names recording what they mean here: the only way back to it ("Scope::CompAstOf").
+    auto RecordedOpaque(ExpressionAst const &expr, Scope const &scope) -> CompKey {
+      const auto id = InternCompKey(CompKey::OfOpaque(expr.ToString()));
+      if (not OpaqueValues().contains(id)) {
+        auto recorded = AstCloneShared(&expr);
+        utils::type_resolution::StampCompParts(*recorded, scope);
+        OpaqueValues().emplace(id, std::move(recorded));
+      }
+      return *id;
+    }
+
     /// [CHECKED]
     /// An expression's identity, as a comp key: folded as it is
     /// built, as a type's key is normalised as it is built
@@ -662,7 +679,7 @@ namespace spp::analyse::scopes {
       // ("BoundCompId"), else its value keyed here.
       if (const auto id = expr.To<IdentifierAst>(); id != nullptr) {
         auto const *var = scope.FindVarSymbol(id);
-        if (var == nullptr or not var->IsGn()) { return CompKey::OfOpaque(expr.ToString()); }
+        if (var == nullptr or not var->IsGn()) { return RecordedOpaque(expr, scope); }
         var = var->AsBound();
         if (var->BoundCompId != nullptr) { return *var->BoundCompId; }
         if (const auto value = var->BoundCompVal(); value != nullptr and value->To<IdentifierAst>() == nullptr) {
@@ -708,16 +725,8 @@ namespace spp::analyse::scopes {
         }
       }
 
-      // Anything else is its spelling ("x.f()"). As no identity
-      // names it, the value is recorded under it, its names
-      // recording what they mean here ("Scope::CompAstOf").
-      const auto id = InternCompKey(CompKey::OfOpaque(expr.ToString()));
-      if (not OpaqueValues().contains(id)) {
-        auto recorded = AstCloneShared(&expr);
-        utils::type_resolution::StampCompParts(*recorded, scope);
-        OpaqueValues().emplace(id, std::move(recorded));
-      }
-      return *id;
+      // Anything else is its spelling ("x.f()").
+      return RecordedOpaque(expr, scope);
     }
   }
 }
@@ -1251,8 +1260,23 @@ auto Scope::ReadIn(const TypeId written) const -> TypeId {
   // it, then there is no changes to be made, so early return.
   if (written == nullptr) { return nullptr; }
   if (not DoesTypeIdNameAnyGnParams(written)) { return written; }
-  auto const &params = ParamsNamedBy(written);
 
+  // Given the existing type id (written), and what this scope
+  // binds the parameters it names to, call the internal
+  // substitution function.
+  return SubstituteTypeId(written, _BindingsOf(ParamsNamedBy(written)));
+}
+
+auto Scope::ReadCompIn(const CompId written) const -> CompId {
+  // The comp parameters it names, each replaced by what this scope binds it to.
+  if (written == nullptr) { return nullptr; }
+  auto params = TypeIdParams();
+  params.CompParams = ParamsNamedBy(written);
+  if (params.CompParams.empty()) { return written; }
+  return SubstituteCompId(written, _BindingsOf(params));
+}
+
+auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
   auto subst = GenericSubst();
 
   // For every type parameter, get the type symbol for each
@@ -1301,9 +1325,7 @@ auto Scope::ReadIn(const TypeId written) const -> TypeId {
     if (param->IsVariadic) { subst.CompPackParams.push_back(comp); }
   }
 
-  // Given the existing type id (written), and the overall
-  // substitution map, call the internal substitution function.
-  return SubstituteTypeId(written, subst);
+  return subst;
 }
 
 /// [CHECKED]

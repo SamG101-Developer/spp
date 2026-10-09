@@ -81,6 +81,22 @@ namespace spp::analyse::scopes {
     GenericParameterGroupAst const &params, Vec<GenericArgumentAst*> const &args,
     Scope const &scope) -> GenericSubst;
 
+  /// What the arguments whose identity is "args" ("Scope::ArgsIdOf")
+  /// bind, by the parameter each is for (packs marked); one keyed
+  /// by spelling or position binds nothing. The inverse of
+  /// "ArgsIdOfBindings".
+  SPP_EXP_FUN auto BindingsOfArgs(
+    TypeId args) -> GenericSubst;
+
+  /// The identity of "bindings" as arguments ("Scope::ArgsIdOf"
+  /// keys arguments named for the parameters they bind): each
+  /// under its parameter, types then comp values, "Self" (0)
+  /// left out, each value read where "scope" reads it (a
+  /// parameter it names that "scope" binds, as what it binds:
+  /// "Scope::ReadIn"). Null when there is nothing bound.
+  SPP_EXP_FUN auto ArgsIdOfBindings(
+    GenericSubst const &bindings, Scope const &scope) -> TypeId;
+
   /// The part of "bindings" that binds a parameter "params"
   /// declares: what a match says about one declaration's own
   /// parameters, when its pattern is read where others' are

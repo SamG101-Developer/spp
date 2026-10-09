@@ -135,6 +135,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Todo: Add higher order generic checks into the unit tests (self and generic type).
   IMPORT_UTILS;
+  auto *solved_instance = static_cast<TypeSymbol*>(nullptr);
 
   // Reject abstract types everywhere except the few positions that name a type without ever producing a value of it.
   // Only allow an abstract self if we are in the abstract class itself. For example, `Clone::clone_from` must be allowed
@@ -327,12 +328,19 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
         solver.Unify(name, std::move(source), std::move(target));
       }
       solver.Solve(*type_sym->FqName());
+
+      // The arguments are written into this name to be shown and
+      // read again, recording what they mean, so they are not
+      // analysed again; an instance made already is found by the
+      // solution's identity, so they are not keyed again either.
+      // A variant is keyed by its normalised members instead.
+      const auto is_variant = type_predicates::IsTypeVariant(
+        TypeRef::ForKindCheck(*type_sym, *sm->CurrentScope), *sm->CurrentScope);
+      if (const auto solved = solver.SolvedArgsId(); solved != nullptr and not is_variant) {
+        solved_instance = sm->CurrentScope->FindTypeSymbolById(
+          InstanceIdOfArgs(*type_sym->InstanceTemplate(), solved));
+      }
       GnArgGroup->Args = solver.TakeArgs();
-    }
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->AllowAbstractType = true;
-      GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     }
   }
   else {
@@ -368,19 +376,30 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     }
   }
 
-  // An instantiation is identified by its template and what its arguments resolve to where they are written - not by
-  // its spelling, which is all the symbol table keys on: "Box[T]" inside "sup [T] Box[T]" and inside "cls Box[T]" name
-  // different "T"s, so they are different types, and "Vec[S32]" is one type however it is written. The arguments are
-  // read from the current scope: "scope" is the namespace a qualified name ("main::Box[T=T]") is resolved in.
+  // An instantiation is identified by its template and what
+  // its arguments resolve to where they are written - not by
+  // its spelling, which is all the symbol table keys on:
+  // "Box[T]" inside "sup [T] Box[T]" and inside "cls Box[T]"
+  // name different "T"s, so they are different types, and
+  // "Vec[S32]" is one type however it is written. The
+  // arguments are read from the current scope: "scope" is
+  // the namespace a qualified name ("main::Box[T=T]") is
+  // resolved in.
   auto *instance = static_cast<TypeSymbol*>(nullptr);
   if (not GnArgGroup->Args.IsEmpty()) {
-    // Found, and made, under the identity's own template: through a "use" of a class, that is the class.
-    const auto id = sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs());
-    instance = sm->CurrentScope->FindTypeSymbolById(id);
+    // Found, and made, under the identity's own template:
+    // through a "use" of a class, that is the class. One
+    // found by the solution's identity already is that
+    // instance; anything else is keyed from its arguments.
+    instance = solved_instance;
     if (instance == nullptr) {
-      const auto *new_scope = monomorphization::CreateGnClsScope(
-        *this, type_sym->InstanceTemplate()->SharedFromThis<TypeSymbol>(), id, is_tuple, sm, meta);
-      instance = new_scope->LinkedTypeSymbol.get();
+      const auto id = sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs());
+      instance = sm->CurrentScope->FindTypeSymbolById(id);
+      if (instance == nullptr) {
+        const auto *new_scope = monomorphization::CreateGnClsScope(
+          *this, type_sym->InstanceTemplate()->SharedFromThis<TypeSymbol>(), id, is_tuple, sm, meta);
+        instance = new_scope->LinkedTypeSymbol.get();
+      }
     }
 
     // Stamped with it, so a lookup of this name from anywhere finds this instantiation, re-read through the bindings of

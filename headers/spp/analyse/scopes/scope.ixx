@@ -4,6 +4,7 @@ module;
 export module spp.analyse.scopes.scope;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope_block_name;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.type_key;
 import spp.utils.types;
@@ -326,6 +327,11 @@ public:
   SPP_ATTR_NODISCARD auto ReadIn(
     TypeId written) const -> TypeId;
 
+  /// "ReadIn" for a comp value's identity: each comp parameter it
+  /// names replaced by its bound value's identity here.
+  SPP_ATTR_NODISCARD auto ReadCompIn(
+    CompId written) const -> CompId;
+
   /// The identity of a list of generic arguments, read from this
   /// scope: each argument's name and what it resolves to - a
   /// parameter's "ParamId", a symbol, a bound or literal value -
@@ -463,6 +469,11 @@ private:
   /// What a type symbol, resolved somewhere else, means from this
   /// scope; typically for generic parameters.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto _CanonType(TypeSymbol &sym) const -> TypeSymbol*;
+
+  /// What this scope binds each of "params" to, as a substitution
+  /// ("ReadIn", "ReadCompIn"); one left unbound, or bound to itself,
+  /// is left out.
+  SPP_ATTR_NODISCARD auto _BindingsOf(TypeIdParams const &params) const -> GenericSubst;
 
   /// What a variable symbol, resolved somewhere else, means from
   /// this scope; typically for generic parameters.
