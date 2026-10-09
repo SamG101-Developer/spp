@@ -43,6 +43,7 @@ GenWithExpressionAst::GenWithExpressionAst(
     this->TokGen, SppTokenType::KW_GEN, "gen");
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
     this->TokWith, SppTokenType::KW_WITH, "with");
+  Source.OriginalPosEnd = Expr ? Expr->PosEnd() : TokWith->PosEnd();
 }
 
 GenWithExpressionAst::~GenWithExpressionAst() = default;
@@ -53,8 +54,8 @@ auto GenWithExpressionAst::PosStart() const -> std::size_t {
 }
 
 auto GenWithExpressionAst::PosEnd() const -> std::size_t {
-  // Use the expression.
-  return Expr->PosEnd();
+  // Use the expression, or where it ended once it was moved.
+  return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
 auto GenWithExpressionAst::Clone() const -> Unique<Ast> {
