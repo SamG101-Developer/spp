@@ -156,7 +156,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Replace the tuple-expansion argument with the expanded
     // arguments.
-    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgs().Len());
+    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgRefs().Len());
     for (auto j = max - 1; j > -1z; --j) {
       auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
       auto new_ast = MakeUnique<PostfixExpressionAst>(
@@ -212,9 +212,10 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   // outside the function knows it holds them.
   const auto into_return = handle != nullptr and handle->Val == "$ret";
   const auto raise_if_returned = [&](FunctionCallArgumentAst const &arg) {
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      into_return and pins_required, {sm->CurrentScope},
-      ERR_ARGS(*arg.Val, *arg.Val->InferType(sm, meta), "returned coroutine argument"));
+    if (not into_return or not pins_required) { return; }
+    const auto arg_type = arg.Val->InferType(sm, meta);
+    Raise<SppSecondClassBorrowViolationError>(
+      {sm->CurrentScope}, ERR_ARGS(*arg.Val, *arg_type, "returned coroutine argument"));
   };
 
   for (auto const &arg : Args) {
