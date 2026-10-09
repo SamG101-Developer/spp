@@ -3,7 +3,6 @@ module;
 
 module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.comp_key;
-import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.asts.generate.common_types_precompiled;
@@ -63,6 +62,15 @@ namespace spp::analyse::scopes {
     /// The elements a type pack standing as one element is
     /// spread into: the arguments of the tuple it is bound to.
     /// 0 elements for a 0-tuple, vs nullopt for not a tuple.
+    /// The "Tup" template, from the cache "StampPrecompiledTypes"
+    /// fills in stage 3 (a substitution has no scope to search).
+    auto TupTemplate() -> void const* {
+      using namespace asts::generate::common_types_precompiled;
+      if (TUP == nullptr) { return nullptr; }
+      const auto hit = TEMPLATE_SYMBOLS.find(TUP.get());
+      return hit != TEMPLATE_SYMBOLS.end() ? hit->second.second : nullptr;
+    }
+
     auto SpreadTypePack(
       const TypeId written, GenericSubst const &subst) -> std::optional<std::vector<TypeId>> {
       // Get the head, and if it is not a type parameter,
@@ -81,9 +89,7 @@ namespace spp::analyse::scopes {
       if (bound == nullptr) { return std::nullopt; }
       auto elems = std::vector<TypeId>();
       if (HeadOf(bound).Kind == TypeKey::Tag::Symbol) {
-        using asts::generate::common_types_precompiled::TUP;
-        const auto is_tup = TUP != nullptr and HeadOf(bound).Ptr == CachedPrecompiledTemplate(*TUP);
-        return is_tup ? std::optional(elems) : std::nullopt;
+        return HeadOf(bound).Ptr == TupTemplate() ? std::optional(elems) : std::nullopt;
       }
       if (HeadOf(bound).Kind != TypeKey::Tag::Inst) { return std::nullopt; }
       for (auto const &arg : ArgsOf(HeadOf(bound).Args)) {
