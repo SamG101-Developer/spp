@@ -70,7 +70,4 @@ namespace spp::analyse::utils::type_predicates {
   /// variant that itself can contain a borrow, like "Str or &S32".
   SPP_EXP_FUN auto IsTypeBorrowed(TypeAst const &type, ScopeManager const &sm, bool deep = true) -> bool;
 
-  /// Whether every generic argument is concrete ("IsTypeConcrete",
-  /// "IsCompConcrete").
-  SPP_EXP_FUN auto AreAllGnArgsConcrete(Vec<Unique<GenericArgumentAst>> const &args, Scope const &scope) -> bool;
 }

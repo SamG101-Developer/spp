@@ -202,12 +202,3 @@ auto spp::analyse::utils::type_predicates::IsTypeBorrowed(
   // Checked all depths.
   return false;
 }
-
-auto spp::analyse::utils::type_predicates::AreAllGnArgsConcrete(
-  Vec<Unique<GenericArgumentAst>> const &args, Scope const &scope) -> bool {
-  return genex::all_of(args | genex::views::ptr, [&](auto const *arg) {
-    if (arg->IsTypeArg()) { return IsTypeConcrete(*arg->TypeVal, scope); }
-    if (arg->IsCompArg()) { return scopes::IsConcreteCompId(scope.CompIdOf(*arg->CompVal)); }
-    return true;
-  });
-}
