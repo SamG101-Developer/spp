@@ -1,9 +1,9 @@
 name: PR Title
 
-# Standalone, because a title can change without the commit changing and so this has to run on `edited`: that
-# trigger on pr.yaml made every title tweak cancel the in-flight run, 90-minute CodeQL job included.
-#
-# Its own required status check - add "PR Title Format" to branch protection alongside "CI Success".
+# Standalone, because a title can change without the commit
+# changing and so this has to run on `edited`. Its own required
+# status check - add "PR Title Format" to branch protection
+# alongside "CI Success".
 
 on:
   pull_request:
@@ -11,16 +11,19 @@ on:
 
 permissions: { }
 
-# Keyed on the pull request rather than the ref: consecutive edits supersede each other, and cancelling this costs
+# Keyed on the pull request rather than the ref: consecutive
+# edits supersede each other, and cancelling this costs
 # nothing because it takes seconds.
 concurrency:
   group: pr-title-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  # Main job, checking the PR title. There is an exemption,
+  # as Dependabot's titles are capitalised, so ignore. A
+  # skipped job still satisfies the required check.
   pr-title:
     name: PR Title Format
-    # Dependabot's titles are capitalised; a skipped job still satisfies the required check.
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -37,6 +40,9 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
+      # https://github.com/amannn/action-semantic-pull-request
+      # Use this action to enforce semantic pull request titles,
+      # and a fully lowercase (uniform) description.
       - name: Check PR title
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50
         env:

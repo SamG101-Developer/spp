@@ -1,3 +1,7 @@
+# Based on which files have been modified, decide which jobs
+# need to run. Then mark certain tags as changes, like "code",
+# "cppcheck", "compile", etc. This controls what jobs are run
+# in the CI.
 name: detect-changes
 description: "Decide, per gated CI job, whether this ref changed anything that can affect that job's result."
 
@@ -49,4 +53,4 @@ runs:
       env:
         BASE_SHA: ${{ inputs.base }}
         HEAD_SHA: ${{ inputs.head }}
-      run: bash .github/scripts/detect-changes/classify.sh
+      run: python3 .github/scripts/ci/classify-changes.py

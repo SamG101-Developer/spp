@@ -1,11 +1,11 @@
 # Checksum-verified download, shared by every step that pulls an
 # artefact off the network. After a version bump the digests no
-# longer match: run .github/scripts/security/refresh-pins.sh.
+# longer match: run .github/scripts/maint/refresh-pins.sh.
 # shellcheck shell=bash
 
-# macOS ships shasum and no sha256sum; install-boost.sh runs on
-# all three platforms.
-_sha256_of() {
+# macOS ships shasum and no sha256sum. Also used on its own, to
+# hand a built binary's digest from one job to the next.
+sha256_of() {
   if command -v sha256sum > /dev/null 2>&1; then
     sha256sum "$1" | cut -d ' ' -f 1
   else
@@ -29,7 +29,7 @@ verified_fetch() {
 
   # A mismatch is a security failure, so the file goes rather than
   # being left behind.
-  got="$(_sha256_of "$dest")"
+  got="$(sha256_of "$dest")"
   if [ "$got" != "$want" ]; then
     rm -f "$dest"
     echo "::error::sha256 mismatch for ${url}"
@@ -39,4 +39,21 @@ verified_fetch() {
   fi
 
   echo "verified ${dest##*/} (sha256 ${got})"
+}
+
+# verified_install_bin <url> <sha256> <name> [tar-member]: fetch, verify and put <name> on PATH.
+verified_install_bin() {
+  local url="$1" want="$2" name="$3" member="${4:-}"
+  local bin="$HOME/.tools/bin" download="${RUNNER_TEMP}/${name}.download"
+
+  mkdir -p "$bin"
+  verified_fetch "$url" "$download" "$want"
+  if [ -n "$member" ]; then
+    tar -xzf "$download" -C "$bin" "$member"
+    [ "$member" = "$name" ] || mv "${bin}/${member}" "${bin}/${name}"
+  else
+    mv "$download" "${bin}/${name}"
+  fi
+  chmod +x "${bin}/${name}"
+  echo "$bin" >> "$GITHUB_PATH"
 }

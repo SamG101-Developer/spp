@@ -14,9 +14,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Skips the expensive jobs on changes that cannot move their result, and only those: a skipped job counts as a pass
-  # for ci-success, so anything this filter gets wrong by skipping merges without ever having been compiled. One
-  # output per gated job, because a CI-only change moves only the jobs that read the file it touched.
+  # Skips the expensive jobs on changes that cannot move their
+  # result, and only those: a skipped job counts as a pass for
+  # ci-success, so anything this filter gets wrong by skipping
+  # merges without ever having been compiled. One output per
+  # gated job, because a CI-only change moves only the jobs
+  # that read the file it touched.
   changes:
     name: Detect Code Changes
     runs-on: ubuntu-24.04
@@ -44,7 +47,9 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Full history so the base..head diff can be resolved.
+      # Full history so the base..head diff can be resolved. This
+      # allows for the detect-changes action to mark which groups
+      # of files have changed.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -58,7 +63,8 @@ jobs:
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha || github.sha }}
 
-  # Every code change ships as a release, so it has to bump VERSION and bring its changelog entry. Docs and CI-only
+  # Every code change ships as a release, so it has to bump
+  # VERSION and bring its changelog entry. Docs and CI-only
   # changes do not.
   version:
     name: Version & Changelog
@@ -81,7 +87,8 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
-      # Tags as well as history: the check refuses a version that is already released, and a tag lookup that failed
+      # Tags as well as history: the check refuses a version
+      # that is already released, and a tag lookup that failed
       # open would let one through.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -90,13 +97,17 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      # Run the check-version script, which is a shell script
+      # to check that there is a version bump and a changelog
+      # present for the new version.
       - name: Check version bump and changelog entry
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: bash .github/scripts/version-check/check-version.sh
+        run: bash .github/scripts/release/check-version.sh
 
-  # pre-commit over the whole tree. The PR title is checked by pr_title.yaml, which needs an `edited` trigger this
+  # Pre-commit over the whole tree. The PR title is checked
+  # by pr_title.yaml, which needs an `edited` trigger this
   # workflow deliberately does not have.
   lint:
     name: Lint
@@ -104,8 +115,10 @@ jobs:
       contents: read
     uses: ./.github/workflows/_lint.yaml
 
-  # Gates the builds so a dozen toolchains are not spent on code cppcheck already rejects. It does not wait on
-  # `lint`: fixing a pre-commit failure needs another commit, which re-runs this workflow from scratch anyway.
+  # Gates the builds so a dozen toolchains are not spent on
+  # code cppcheck already rejects. It does not wait on `lint`:
+  # fixing a pre-commit failure needs another commit, which
+  # re-runs this workflow from scratch anyway.
   cppcheck:
     name: Static Analysis
     needs: [ changes ]
@@ -115,10 +128,12 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # The `if` opts out of the implicit success() over `needs`, because cppcheck has its own filter and can be skipped
-  # while this runs; a skipped need would otherwise skip this too. Red cppcheck still stops the build.
-  build-test:
-    name: Build & Test
+  # The `if` opts out of the implicit success() over `needs`,
+  # because cppcheck has its own filter and can be skipped
+  # while this runs; a skipped need would otherwise skip this
+  # too. Red cppcheck still stops the build.
+  linux:
+    name: Linux GCC
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -127,20 +142,19 @@ jobs:
       && needs.changes.outputs.compile == 'true'
     permissions:
       contents: read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
 
-  # Aspirational toolchains: they run and report red on failure, but are deliberately omitted from ci-success, so
-  # they never block a merge.
-  build-test-extra:
-    name: Build & Test (non-blocking) · ${{ matrix.os }} · ${{ matrix.compiler }}
+  # Aspirational toolchains: they run and report red on
+  # failure, but are deliberately omitted from ci-success,
+  # so they never block a merge.
+  platforms:
+    name: Platforms (advisory) · ${{ matrix.os }} ${{ matrix.compiler }}
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -153,33 +167,18 @@ jobs:
           - { os: macos-15, compiler: clang }
           - { os: windows-2025, compiler: msvc }
           - { os: windows-2025, compiler: clang-cl }
-    steps:
-      # The action is Linux-only, so the Windows and macOS variants go without it.
-      - name: Harden Runner
-        if: runner.os == 'Linux'
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
-        with:
-          egress-policy: audit
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: ${{ matrix.os }}
+      compiler: ${{ matrix.compiler }}
+      modes: rel
+      shard-count: 1
 
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Build and test
-        uses: ./.github/actions/compile
-        with:
-          os: ${{ matrix.os }}
-          compiler: ${{ matrix.compiler }}
-          variant: release
-          build-type: Release
-          stl-conformance: true
-
-  # Emit for architectures unlike the host - 32-bit, big-endian, non-x86 - and check the object and the datalayout
-  # that came out. Todo: Add to ci-success once the matrix has been green for a while.
+  # Emit for architectures unlike the host - 32-bit, big-endian,
+  # non-x86 - and check the object and the datalayout that came
+  # out. Todo: Add to ci-success once more stable.
   cross-codegen:
-    name: Cross Codegen (non-blocking)
+    name: Cross codegen (advisory)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -190,15 +189,18 @@ jobs:
       contents: read
     uses: ./.github/workflows/_cross_codegen.yaml
 
-  # Independent of the compilation chain: doc breakage is worth hearing about while the build is still running.
+  # Independent of the compilation chain: doc breakage is worth
+  # hearing about while the build is still running.
   docs:
     name: Docs
     permissions:
       contents: read
     uses: ./.github/workflows/_docs.yaml
 
-  # Ungated by cppcheck: these read the tree and the dependency graph rather than building it, so there is nothing to
-  # save by making them wait, and a leaked secret is worth hearing about at once.
+  # Ungated by cppcheck: these read the tree and the dependency
+  # graph rather than building it, so there is nothing to save
+  # by making them wait, and a leaked secret is worth hearing
+  # about at once.
   security:
     name: Security
     needs: [ changes ]
@@ -209,8 +211,9 @@ jobs:
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # Behind cppcheck for the same reason as the builds: CodeQL builds the whole project under its extractor, and
-  # cppcheck rejects the same code in well under a minute.
+  # Behind cppcheck for the same reason as the builds: CodeQL
+  # builds the whole project under its extractor, and cppcheck
+  # rejects the same code in well under a minute.
   codeql:
     name: CodeQL
     needs: [ changes, cppcheck ]
@@ -226,10 +229,11 @@ jobs:
       actions: read
     uses: ./.github/workflows/_codeql.yaml
 
-  # Advisory: Sonar's scanner wraps a full build, so it sits behind cppcheck like the builds, and a red quality gate
-  # does not block a merge. Todo: Add it to the ci-success `needs` list to make it blocking.
+  # Advisory: Sonar's scanner wraps a full build, so it sits
+  # behind cppcheck like the builds, and a red quality gate
+  # does not block a merge. Todo: Add it to the ci-success.
   sonar:
-    name: Sonar (non-blocking)
+    name: Sonar (advisory)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -244,10 +248,12 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Advisory, like Sonar. There is nothing to review in a pin bump, so it sits behind `changes` to skip those rather
-  # than spend a review on a pair of SHAs.
+  # Advisory, like Sonar. There is nothing to review in a pin
+  # bump, so it sits behind `changes` to skip those rather than
+  # spend a review on a pair of SHAs
+  # Todo: Require all conversations to be resolved before merging.
   claude-review:
-    name: Claude Review (non-blocking)
+    name: Claude review (advisory)
     needs: [ changes ]
     if: |
       github.event_name == 'pull_request'
@@ -263,12 +269,14 @@ jobs:
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-  # One of the two required status checks for branch protection, the other being "PR Title Format" from
-  # pr_title.yaml. Fails if any needed job failed or was cancelled; passes when they all succeeded or were skipped.
+  # One of the two required status checks for branch protection,
+  # the other being "PR Title Format" from pr_title.yaml. Fails
+  # if any needed job failed or was cancelled; passes when they
+  # all succeeded or were skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, version, cppcheck, build-test, docs, security, codeql ] # sonar
+    needs: [ changes, lint, version, cppcheck, linux, docs, security, codeql ] # sonar, claude-review
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
@@ -283,6 +291,8 @@ jobs:
             objects.githubusercontent.com:443
             release-assets.githubusercontent.com:443
 
+      # Inline: a script would need a checkout, and this job
+      # holds no `contents: read`.
       - name: Verify all required jobs passed
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         env:

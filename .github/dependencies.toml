@@ -1,5 +1,5 @@
 # Every version, commit and digest the pipeline depends on. Loaded by .github/scripts/lib/pins.py and refreshed by
-# .github/scripts/security/refresh-pins.sh.
+# .github/scripts/maint/refresh-pins.sh.
 #
 # Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
@@ -69,17 +69,23 @@ sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
 developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
-# Prebuilt from MarkusJx/prebuilt-boost, so one digest per
+# Prebuilt from MarkusJx/prebuilt-boost, so one asset and digest per
 # runner.
 [pin.boost]
 version = "1.92.0"
 osv-ecosystem = "OSS-Fuzz"
 osv-name = "boost"
+asset-ubuntu-2404 = "ubuntu-24.04-gcc-static+shared-x86"
 sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
-sha256-ubuntu-2204-arm64 = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
+asset-ubuntu-2404-arm = "ubuntu-22.04-gcc-static+shared-aarch64"
+sha256-ubuntu-2404-arm = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
+asset-macos-15 = "macos-15-clang-static+shared-aarch64"
 sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
+asset-macos-26 = "macos-26-clang-static+shared-aarch64"
 sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
+asset-windows-2025 = "windows-2025-msvc-static-x86"
 sha256-windows-2025 = "e3db0d60785471a624c29a444b5cb42fcbd3363d8a4dd92cf12739603ebdba5e"
+asset-windows-2022 = "windows-2022-msvc-static-x86"
 sha256-windows-2022 = "1dbbd1d7ac3fcabec5e4b24d3b1bc3143cd1b57aead2436276f2c56acb48ea5d"
 
 [pin.doxygen]
@@ -110,8 +116,6 @@ sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
 version = "2.22.0"
 commit = "a436ca35ed1887bee789765122b65ed2d7a7e045"
 
-# Install prefixes, exported as SPP_<KEY>_PREFIX. {home}
-# expands at load time.
 [runner]
 linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
@@ -122,6 +126,7 @@ macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
 
+# Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
 [prefix]
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
@@ -132,9 +137,6 @@ cppcheck = "{home}/.tools/cppcheck"
 
 [cache.build]
 generation = "v3"
-
-[cache.cross]
-generation = "v1"
 
 # The header/CMake dependencies, installed in order by
 # install-small-libs.sh.

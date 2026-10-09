@@ -1,7 +1,9 @@
-name: Nightly
+# The long jobs that would conflict with pushing code: the
+# full-history scans, the Scorecard grade, and pruning the
+# caches and runs that have gone stale. Link rot is checked
+# by the lychee pre-commit hook, not here.
 
-# The long jobs that would conflict with pushing code: the full-history scans, the Scorecard grade, and pruning the
-# caches and runs that have gone stale. Link rot is checked by the lychee pre-commit hook, not here.
+name: Nightly
 
 on:
   schedule:
@@ -20,7 +22,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # A failsafe over master: covers branches that were scanned individually and are only now in combination.
+  # A failsafe over master: covers branches that were scanned
+  # individually and are only now in combination.
   security:
     name: Security (Full Scan)
     permissions:
@@ -31,7 +34,8 @@ jobs:
     with:
       full-scan: true
 
-  # Unconditional here, unlike on a pull request: master has already been through the cppcheck gate, and there is no
+  # Unconditional here, unlike on a pull request: master has
+  # already been through the cppcheck gate, and there is no
   # diff filter to read on a scheduled run.
   codeql:
     name: CodeQL (Full Scan)
@@ -43,7 +47,8 @@ jobs:
     with:
       full-scan: true
 
-  # Grades what cannot be seen from inside a workflow: token permissions, action pinning, branch protection.
+  # Grades what cannot be seen from inside a workflow: token
+  # permissions, action pinning, branch protection.
   scorecard:
     name: OpenSSF Scorecard
     runs-on: ubuntu-24.04
@@ -65,7 +70,8 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      # publish_results is off: turning it on posts the score to the public OpenSSF API, which is what backs the
+      # publish_results is off: turning it on posts the score to
+      # the public OpenSSF API, which is what backs the
       # README badge. Todo: Flip this when badge is ready.
       - name: Run Scorecard
         uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc
@@ -81,8 +87,10 @@ jobs:
           sarif_file: scorecard.sarif
           category: scorecard
 
-  # Superseded entries are never restored again but still count against the repository's 10 GB budget until they
-  # are evicted, and that budget is what decides whether master's warm build trees survive the night.
+  # Superseded entries are never restored again but still count
+  # against the repository's 10 GB budget until they are evicted,
+  # and that budget is what decides whether master's warm build
+  # trees survive the night.
   prune-caches:
     name: Prune Stale Caches
     runs-on: ubuntu-24.04
@@ -113,13 +121,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: bash .github/scripts/nightly/prune-caches.sh
+        run: bash .github/scripts/maint/prune-caches.sh
 
   prune-runs:
     name: Prune Old Workflow Runs
     runs-on: ubuntu-24.04
-    # Roughly one second per run deleted: Octokit's throttling plugin serialises the writes. A steady night is a
-    # minute, and whatever a backlog does not reach is picked up by the next night.
+    # Roughly one second per run deleted: Octokit's throttling
+    # plugin serialises the writes. A steady night is a minute,
+    # and whatever a backlog does not reach is picked up by the
+    # next night.
     timeout-minutes: 60
     permissions:
       actions: write  # list and delete the repository's workflow runs

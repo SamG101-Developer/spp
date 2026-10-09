@@ -1,6 +1,8 @@
-name: lint
+# Run the pre-commit check over the whole tree, so a
+# small issue like a formatting slip costs seconds
+# rather than a compilation.
 
-# The cheap gate: pre-commit over the whole tree, so a formatting slip costs seconds rather than a compilation.
+name: lint
 
 on:
   workflow_call: { }
@@ -27,7 +29,9 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Set up Python and load pins
+      # Set up Python for the pre-commit check (python runs
+      # the pre-commit check)
+      - name: Set up Python
         uses: ./.github/actions/setup-python
 
       - name: Run pre-commit

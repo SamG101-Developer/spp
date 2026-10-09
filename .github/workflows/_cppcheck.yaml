@@ -1,7 +1,8 @@
+# Static analysis gate, between the cheap PR checks and
+# the builds: about half a minute once cppcheck is cached,
+# against a dozen toolchains spent on code it already
+# rejects.
 name: cppcheck
-
-# Static analysis gate, between the cheap PR checks and the builds: about half a minute once cppcheck is cached,
-# against a dozen toolchains spent on code it already rejects.
 
 on:
   workflow_call: { }
@@ -17,7 +18,8 @@ jobs:
       contents: read
       security-events: write  # upload the cppcheck SARIF
     steps:
-      # Audit, not block: this job gates the builds, so an endpoint missing from the list would stop every merge.
+      # Audit, not block: this job gates the builds, so an
+      # endpoint missing from the list would stop every merge.
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
         with:
@@ -32,15 +34,17 @@ jobs:
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
-      # Keyed on the pinned commit and the script that builds it, so a change to either rebuilds.
+      # Keyed on the pinned commit and the script that builds
+      # it, so a change to either rebuilds.
       - name: Cache cppcheck
         id: cppcheck-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.tools/cppcheck
-          key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lint/install-cppcheck.sh') }}
+          key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-cppcheck.sh') }}
 
-      # Only needed to build cppcheck itself: the runner's own GCC compiles it, and no project toolchain is set up.
+      # Only needed to build cppcheck itself: the runner's own
+      # GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
@@ -48,18 +52,22 @@ jobs:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}
 
+      # Build the cppcheck binary, and cache it. This will be
+      # reused by all subsequent jobs (unless the key changes).
       - name: Build cppcheck (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        run: bash .github/scripts/lint/install-cppcheck.sh
+        run: bash .github/scripts/setup/install-cppcheck.sh
 
       - name: Expose cppcheck
         run: echo "$SPP_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
 
-      # Findings fail the job. The rule selection lives in the script and in .cppcheck-suppressions.
+      # Findings fail the job. The rule selection lives in the
+      # script and in .cppcheck-suppressions.
       - name: Run cppcheck
-        run: bash .github/scripts/lint/run-cppcheck.sh cppcheck.sarif
+        run: bash .github/scripts/scan/cppcheck.sh cppcheck.sarif
 
-      # continue-on-error: a fork's PR gets a read-only token, and the findings are in the job log either way.
+      # continue-on-error: a fork's PR gets a read-only token,
+      # and the findings are in the job log either way.
       - name: Upload cppcheck results
         if: always() && hashFiles('cppcheck.sarif') != ''
         continue-on-error: true
