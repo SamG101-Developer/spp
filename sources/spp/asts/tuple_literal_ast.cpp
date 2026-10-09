@@ -210,6 +210,14 @@ auto TupleLiteralAst::InferType(
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
+auto TupleLiteralAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The tuple type is built as syntax ("Tup[...]", "_BuildType");
+  // resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
 auto TupleLiteralAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   return TypeOfElements(Elems | genex::views::ptr | genex::to<Vec>(), PosStart(), sm, meta);
