@@ -3,9 +3,9 @@ module;
 
 export module spp.analyse.scopes.scope;
 import spp.analyse.scopes.comp_key;
-import spp.analyse.scopes.instance_key;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.symbol_table;
+import spp.analyse.scopes.type_key;
 import spp.utils.types;
 import std;
 import sys;
@@ -58,6 +58,25 @@ namespace spp::analyse::scopes {
   /// (like the scope linkage generation), or if the sup scopes
   /// change (attached during monomorphization)
   SPP_EXP_FUN auto BumpTypeStructureGeneration() -> void;
+
+  /// A scope's super scopes, as one "GetSupScopes()" answer.
+  /// It shares the list with the scope's cache, so the scope
+  /// rebuilding its cache - which any lookup made while
+  /// iterating can cause - never frees a list a caller still
+  /// holds.
+  SPP_EXP_CLS class SupScopeList {
+    Shared<Vec<Scope*> const> _List;
+
+  public:
+    explicit SupScopeList(Shared<Vec<Scope*> const> list) : _List(std::move(list)) {}
+
+    SPP_ATTR_NODISCARD auto begin() const { return _List->begin(); }
+    SPP_ATTR_NODISCARD auto end() const { return _List->end(); }
+    SPP_ATTR_NODISCARD auto size() const { return _List->size(); }
+    SPP_ATTR_NODISCARD auto IsEmpty() const { return _List->IsEmpty(); }
+
+    operator Vec<Scope*> const&() const { return *_List; }
+  };
 }
 
 SPP_EXP_CLS class spp::analyse::scopes::Scope {
@@ -129,8 +148,8 @@ public:
   /// The last "GetSupScopes()" answer and the "TypeStructureGeneration" it was computed at. The walk is the transitive
   /// super-scope graph - 29 nodes per call, measured, 4.9M node visits over a std build - and the graph only changes
   /// when a sup is attached, which bumps that generation. Left out of the copy constructor's list, so a clone starts
-  /// with none: it has a graph of its own.
-  mutable Vec<Scope*> _SupScopesCache;
+  /// with none: it has a graph of its own. Shared, so a rebuild leaves the answers already handed out intact.
+  mutable Shared<Vec<Scope*> const> _SupScopesCache;
   mutable std::uint64_t _SupScopesGen = 0;
 
   /// Called with a scope before its super scopes are read
@@ -234,19 +253,23 @@ public:
   /// Get all the namespace symbols from the internal namespace
   /// table unrolled into a vector. A namespace has no super scopes
   /// to search.
-  SPP_ATTR_NODISCARD auto GetAllNsSymbols(bool exclusive = false) const -> Vec<NamespaceSymbol*>;
+  SPP_ATTR_NODISCARD auto GetAllNsSymbols(
+    bool exclusive = false) const -> Vec<NamespaceSymbol*>;
 
   /// Check if a variable symbol with a given name is present
   /// in the internal variable symbol table.
-  SPP_ATTR_NODISCARD auto HasVarSymbol(IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
+  SPP_ATTR_NODISCARD auto HasVarSymbol(
+    IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
 
   /// Check if a type symbol with a given name is present in the
   /// internal type symbol table.
-  SPP_ATTR_NODISCARD auto HasTypeSymbol(TypeAst const *sym_name, bool exclusive = false) const -> bool;
+  SPP_ATTR_NODISCARD auto HasTypeSymbol(
+    TypeAst const *sym_name, bool exclusive = false) const -> bool;
 
   /// Check if a namespace symbol with a given name is present
   /// in the internal namespace symbol table.
-  SPP_ATTR_NODISCARD auto HasNsSymbol(IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
+  SPP_ATTR_NODISCARD auto HasNsSymbol(
+    IdentifierAst const *sym_name, bool exclusive = false) const -> bool;
 
   /// Query the internal variable symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super
@@ -254,19 +277,54 @@ public:
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindVarSymbol(
     IdentifierAst const *sym_name, bool exclusive = false, bool sup_scope_search = true) const -> VariableSymbol*;
 
+  /// "FindBoundTypeSymbolById" for a comp parameter named somewhere else ("IdentifierAst::StampedCompId"): what it
+  /// means here ("_CanonVar"). Null for an identity that is not a parameter, or one no parameter is registered under;
+  /// "FindVarSymbol" then looks the name up as it does any other variable's.
+  SPP_ATTR_NODISCARD auto FindBoundVarSymbolById(
+    CompId written) const -> VariableSymbol*;
+
+  /// Split the expression into its parts by postfix member
+  /// accessing, and move leftwards towards the outermost
+  /// part. For "a.b.c", it would be "a". Then get the symbol
+  /// for the outermost part by querying the variable table.
+  SPP_ATTR_NODISCARD auto FindVarSymbolOutermost(
+    Ast const &expr) const -> Pair<VariableSymbol*, Scope const*>;
+
   /// Query the internal type symbol table to get a symbol
   /// with a matching name, checking ancestor scopes and super
   /// scopes if configured too.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindTypeSymbol(
     TypeAst const *sym_name, bool exclusive = false, bool sup_scope_search = true) const -> TypeSymbol*;
 
-  /// The "Self" symbol this scope sees ("FindTypeSymbol" of "Self"): the class, "sup" block or alias it stands for is
-  /// behind it ("TypeSymbol::AsBound").
-  SPP_ATTR_NODISCARD auto FindSelfSymbol(bool exclusive = false) const -> TypeSymbol*;
+  /// What a type id reads as in this scope, if found. Find the
+  /// symbol normally, and canon it into this scope.
+  SPP_ATTR_NODISCARD auto FindBoundTypeSymbolById(
+    TypeId type_id) const -> TypeSymbol*;
 
-  /// "FindTypeSymbol" for a type's head, its generic arguments stripped ("Vec" for "Vec[Str]" or "&Vec[Str]"): the
-  /// template a name instantiates, or what a name without arguments names.
-  SPP_ATTR_NODISCARD auto FindHeadSymbol(TypeAst const &type, bool exclusive = false) const -> TypeSymbol*;
+  /// The "Self" symbol this scope sees ("FindTypeSymbol" of
+  /// "Self"): the class, "sup" block or alias it stands for is
+  /// behind it.
+  SPP_ATTR_NODISCARD auto FindSelfSymbol(
+    bool exclusive = false) const -> TypeSymbol*;
+
+  /// "FindTypeSymbol" for a type's head, its generic arguments
+  /// stripped ("Vec" for "Vec[Str]" or "&Vec[Str]"): the template
+  /// a name instantiates, or what a name without arguments names.
+  SPP_ATTR_NODISCARD auto FindHeadSymbol(
+    TypeAst const &type, bool exclusive = false) const -> TypeSymbol*;
+
+  /// Query the internal namespace symbol table to get a symbol
+  /// with a matching name, checking ancestor scopes and super
+  /// scopes if configured too.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindNsSymbol(
+    IdentifierAst const *sym_name, bool exclusive = false) const -> NamespaceSymbol*;
+
+  /// An identity as written, read here: each type parameter it
+  /// names replaced by what this scope binds it to (found by the
+  /// parameter's identity, "CanonType"), each comp parameter by its
+  /// bound value's identity. What this scope leaves unbound stays.
+  SPP_ATTR_NODISCARD auto ReadIn(
+    TypeId written) const -> TypeId;
 
   /// The identity of a list of generic arguments, read from this
   /// scope: each argument's name and what it resolves to - a
@@ -276,100 +334,63 @@ public:
   SPP_ATTR_NODISCARD auto ArgsIdOf(
     Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
 
-  /// The identity ("TypeId") of the instantiation of "tmpl" that
-  /// "args" ask for, read from this scope: its template and the
-  /// identity of its arguments, or for a variant the set of its
-  /// members. Instantiations are filed under it in their template's
-  /// "TypeSymbol::Instances", so one identity is one symbol however
-  /// it is spelled. Keyed even with a part that does not resolve.
+  /// Create a type id for a type and its arguments, handling
+  /// the variant case specially too. This builds an "instantiation"
+  /// for a type, as a type id.
   SPP_ATTR_NODISCARD auto InstanceIdOf(
-    TypeSymbol const &tmpl, Vec<GenericArgumentAst*> const &args,
+    TypeSymbol const &named, Vec<GenericArgumentAst*> const &args,
     GenericParameterGroupAst const *params = nullptr) const -> TypeId;
 
-  /// What a type resolves to here, interned ("TypeKey"): equal for
-  /// two types exactly when they are one type, or null when any part
-  /// of the type does not resolve. The comp twin is "CompIdOf".
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TypeIdOf(TypeAst const &type) const -> TypeId;
+  /// Get the type symbol of a type id, by getting its generic
+  /// parameter id and looking that up into a symbol.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindTypeSymbolById(TypeId id) const -> TypeSymbol*;
 
-  /// "TypeKey", interned whatever it holds: a part that does not
-  /// resolve stays one part of it ("HasUnresolved"), rather than
-  /// making it no identity as "TypeIdOf" does. What a question about
-  /// what a type names ("IsConcreteTypeId") is asked of, where a
-  /// name that does not resolve here is no answer either way.
-  SPP_ATTR_NODISCARD auto PartialTypeIdOf(TypeAst const &type) const -> TypeId;
+  /// Get the variable symbol of a comp id, by getting its generic
+  /// parameter id and looking that up into a symbol.
+  SPP_ATTR_NODISCARD auto FindVarSymbolById(CompId id) const -> VariableSymbol*;
 
-  /// The "TypeId" of a type already resolved to "sym", held under
-  /// the convention tag "conv" (0 for none) - what a "TypeRef" is
-  /// one type with.
-  SPP_ATTR_NODISCARD auto TypeIdOfSymbol(TypeSymbol const &sym, std::uint64_t conv) const -> TypeId;
-
-  /// The symbol a "TypeId" names, its convention aside: a closed
-  /// class, a parameter, an instantiation or variant already made
-  /// (found in its template's "Instances" by that identity), or
-  /// "Self" as this scope reads it. Null for anything not made yet.
-  /// A lookup: it makes nothing.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TypeSymbolOf(TypeId id) const -> TypeSymbol*;
-
-  /// "TypeSymbolOf" for a comp parameter, by its "ParamId": the parameter itself, never a binding of it.
-  SPP_ATTR_NODISCARD auto VarSymbolOf(std::uint64_t comp_param) const -> VariableSymbol*;
-
-
-  /// An identity as written, read here: each type parameter it
-  /// names replaced by what this scope binds it to (found by the
-  /// parameter's identity, "CanonType"), each comp parameter by its
-  /// bound value's identity. What this scope leaves unbound stays.
-  SPP_ATTR_NODISCARD auto ReadIn(TypeId written) const -> TypeId;
-
-
-  /// What a written identity ("WrittenTypeIdOf") names read here: the
-  /// symbol it names ("TypeSymbolOf"), as this scope means it
-  /// ("CanonType"), as "FindWrittenVarSymbol" reads a comp parameter. Null
-  /// for an instantiation not made yet (a lookup makes nothing), and
-  /// for "Self", which is looked up by name.
-  SPP_ATTR_NODISCARD auto FindWrittenTypeSymbol(TypeId written) const -> TypeSymbol*;
-
-  /// "FindWrittenTypeSymbol" for a comp parameter named somewhere else ("IdentifierAst::WrittenCompParamId"): what it
-  /// means here ("CanonVar"). Null for an identity no parameter is registered under; "FindVarSymbol" then looks the
-  /// name up as it does any other variable's.
-  SPP_ATTR_NODISCARD auto FindWrittenVarSymbol(std::uint64_t comp_param) const -> VariableSymbol*;
-
-  /// The type an identity names, as a written type: the qualified
-  /// name of the symbol filed under it where one is made, else one
-  /// built from the identity - its template and arguments, a
-  /// variant's members, a parameter, "Self" - so an instantiation
-  /// nothing has made yet can be named, and made by reading it.
-  /// Null when a part cannot be named (a comp value whose identity
-  /// was never recorded).
+  /// Get a type ast for the type id. This reverse lookup is
+  /// used after the type id has been used for comparisons,
+  /// inference, etc, and we just need the final output of what
+  /// it represents.
   SPP_ATTR_NODISCARD auto TypeAstOf(TypeId id) const -> Shared<TypeAst>;
 
-  /// "TypeAstOf" for a comp identity ("CompNodeOf"), built from the identity itself - a value as its literal, a
-  /// parameter as its name (recording it, so it is that parameter wherever it is read), a pack as a tuple, an
-  /// operation as one, a constant named through a type as that access (the type named here). An opaque part, which no
-  /// identity names, is the value recorded for it as it was keyed ("comp_generics::OpaqueCompValue"). Null when a part
-  /// cannot be named.
-  SPP_ATTR_NODISCARD auto CompAstOf(CompId id) const -> Shared<ExpressionAst>;
+  /// Get an expression ast for the comp id. This reverse lookup
+  /// is used after the comp id has been used for comparisons,
+  /// inference, etc, and we just need the final output of what
+  /// it represents.
+  SPP_ATTR_NODISCARD auto CompAstOf(CompId id) const -> Unique<ExpressionAst>;
 
-  /// "CompAstOf" for an identity already parsed.
-  SPP_ATTR_NODISCARD auto CompAstOf(CompNode const &node) const -> Unique<ExpressionAst>;
+  /// A comp value folded to its literal here ("CompIdOf", then
+  /// "CompAstOf"), when it folds to a value all the way down
+  /// ("IsValueCompId": a literal, or a pack of them, "cmp ..ns"
+  /// being a tuple of values). Null when it does not: it names
+  /// an unbound parameter, a constant that cannot be read, or
+  /// something opaque, or an operation does not fold.
+  SPP_ATTR_NODISCARD auto FoldedCompAstOf(ExpressionAst const &value) const -> Unique<ExpressionAst>;
 
-  /// "TypeIdOf" for a comp value written here: its identity ("comp_generics::CompKey"), folded where closed.
+  /// What a type, which is allowed to be unresolved, resolves
+  /// to here. TypeIdOf will return nullptr for an unresolved
+  /// type, as almost every context wants that. This is a
+  /// bypass, allowing interning over an unresolved type.
+  SPP_ATTR_NODISCARD auto PartialTypeIdOf(TypeAst const &type) const -> TypeId;
+
+  /// What a type resolves to here, interned: equal for two
+  /// types exactly when they are one type, or null when any
+  /// part of the type does not resolve.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto TypeIdOf(TypeAst const &type) const -> TypeId;
+
+  /// What an expression resolves to here, interned. Handles
+  /// comp folding to intern the expression.
   SPP_ATTR_NODISCARD auto CompIdOf(ExpressionAst const &value) const -> CompId;
 
-  /// "TypeIdOfSymbol" for a comp generic: the identity of the value it is bound to, else of the parameter itself.
+  /// The "TypeId" of a type already resolved to "sym" - what
+  /// a "TypeRef" is one type with.
+  SPP_ATTR_NODISCARD auto TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId;
+
+  /// "TypeIdOfSymbol" for a comp generic: the identity of
+  /// the value it is bound to, else of the parameter itself.
   SPP_ATTR_NODISCARD auto CompIdOfSymbol(VariableSymbol const &sym) const -> CompId;
-
-  /// Query the internal namespace symbol table to get a symbol
-  /// with a matching name, checking ancestor scopes and super
-  /// scopes if configured too.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindNsSymbol(
-    IdentifierAst const *sym_name, bool exclusive = false) const -> NamespaceSymbol*;
-
-  /// Split the expression into its parts by postfix member
-  /// accessing, and move leftwards towards the outermost
-  /// part. For "a.b.c", it would be "a". Then get the symbol
-  /// for the outermost part by querying the variable table.
-  SPP_ATTR_NODISCARD auto FindVarSymbolOutermost(
-    Ast const &expr) const -> Pair<VariableSymbol*, Scope const*>;
 
   /// The difference in depth between 2 scopes, based on how
   /// close they are in the sup-scope chain. This is not a
@@ -388,16 +409,14 @@ public:
 
   /// The parent module is the scope that is the closest module
   /// scope to the current scope, in the ancestor chain.
-  SPP_ATTR_NODISCARD auto GetParentModule() const -> Scope*;
+  SPP_ATTR_NODISCARD auto GetParentModule() -> Scope*;
+  SPP_ATTR_NODISCARD auto GetParentModule() const -> Scope const*;
 
   /// The top level parent module is the scope that is a direct
   /// child of the global scope, furthest away from this scope
-  /// in the ancestor chain.
-  SPP_ATTR_NODISCARD auto GetTopLevelParentModule() const -> Scope*;
-
-  /// The enclosing type scope is the scope that is the closest
-  /// type scope to the current scope, in the ancestor chain.
-  SPP_ATTR_NODISCARD auto FindEnclosingTypeScope(CompilerMetaData const &meta) const -> Scope*;
+  /// in the ancestor chain. Needed for "!package" checks.
+  SPP_ATTR_NODISCARD auto GetTopLevelParentModule() -> Scope*;
+  SPP_ATTR_NODISCARD auto GetTopLevelParentModule() const -> Scope const*;
 
   /// The enclosing self type is the type that "Self" represents
   /// when used in this scope.
@@ -406,62 +425,48 @@ public:
   /// A recursively searched list of sup scopes that forms the
   /// entire tree of externally applied inheritance. This includes
   /// the "cls" type scopes, and the "sup" superimposition scopes,
-  /// of all superimpositions.
-  /// The answer is the scope's own cached vector, so a caller iterating it copies nothing. It stays valid until this
-  /// scope walks its super scopes again, which no caller does while holding the reference.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetSupScopes() const -> Vec<Scope*> const&;
+  /// of all superimpositions. Uses a cache that a generation bump
+  /// can refresh.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto GetSupScopes() const -> SupScopeList;
 
-  /// A list of all the sup types that this scope has, by taking
-  /// the sup scopes, filtering them to the "cls" scopes, and
-  /// grabbing their associated (fully qualified) names.
-  SPP_ATTR_NODISCARD auto GetSupTypes() const -> Vec<Shared<TypeAst>>;
-
-  /// The namespace scope "parts" names from here ("a::b::c" as "a", "b", "c"), each part looked up in the scope the one
-  /// before it names. Null when a part names no namespace. The one namespace walk: a written type's namespace
-  /// ("FindTypeSymbol"), a postfix chain ("ConvertPostfixToNestedScope"), and a raising lookup
-  /// ("member_lookup::FindNsSymbolOrError") all go through it.
+  /// The namespace scope "parts" names from here ("a::b::c" as
+  /// "a", "b", "c"), each part looked up in the scope the one
+  /// before it names.
   SPP_ATTR_NODISCARD auto FindNsScope(Vec<IdentifierAst const*> const &parts) const -> Scope const*;
 
-  /// "FindNsScope" for a postfix chain of static member accesses ("a::b::c"), read outermost first.
-  SPP_ATTR_NODISCARD auto ConvertPostfixToNestedScope(ExpressionAst const *postfix_ast) const -> Scope const*;
+  /// "FindNsScope" for a postfix chain of static member
+  /// accesses ("a::b::c"), read outermost first.
+  SPP_ATTR_NODISCARD auto FindNsScope(ExpressionAst const *postfix_ast) const -> Scope const*;
 
-  /// Convert the name of the scope into a string, using the visitor
-  /// pattern on the possible variant member scope names.
+  /// Convert the name of the scope into a string, using the
+  /// visitor pattern on the possible variant member scope names.
   SPP_ATTR_NODISCARD auto NameAsString() const -> Str;
 
-  /// Iterate the child scopes and set their parent scope to this
-  /// scope. Recursively apply to their child scopes and so on too,
-  /// fixing the entire subtree under this scope.
+  /// Iterate the child scopes and set their parent scope to
+  /// this scope. Recursively apply to their child scopes and so
+  /// on too, fixing the entire subtree under this scope.
   auto FixChildrenToParentPointer() -> void;
+
+  /// Clear the map of opaque comp values recorded as they were
+  /// keyed. They are freed in the cleanup process.
+  static auto ClearOpaqueCompValues() -> void;
 
 private:
   /// What a type resolves to here, as a key: equal for two types
-  /// exactly when they are one type. An instantiation is its
-  /// template and the key of its arguments, read here - also one
-  /// that is not made yet, which is keyed as it would be without
-  /// making it. A variant is the set of its members. A key may
-  /// hold an unresolved part, which "TypeIdOf" turns away and
-  /// "ArgsIdOf" keeps as one part of an instantiation's key. The
-  /// comp twin is "comp_generics::CompKey".
-  SPP_ATTR_NODISCARD auto TypeKey(TypeAst const &type) const -> InstanceKey;
+  /// exactly when they are one type.
+  SPP_ATTR_NODISCARD auto _TypeKey(TypeAst const &type) const -> TypeKey;
+
+  /// What a comp resolves to here, as a key: folds and resolves
+  /// the expression, and generates a comp node from it.
+  SPP_ATTR_NODISCARD auto _CompKey(ExpressionAst const &expr) const -> CompKey;
 
   /// What a type symbol, resolved somewhere else, means from this
-  /// scope ("FindWrittenTypeSymbol" reads every written identity
-  /// through it). A generic parameter is this scope's binding of that
-  /// very parameter - matched by "ParamId", not by name - or the
-  /// parameter itself when nothing here binds it; an open
-  /// instantiation is the one its arguments name from here (none when
-  /// that is not made yet); a generic block's alias is this scope's
-  /// copy of it. Anything else (a closed class, a template, a mock)
-  /// is itself.
-  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto CanonType(TypeSymbol &sym) const -> TypeSymbol*;
+  /// scope; typically for generic parameters.
+  SPP_ATTR_NODISCARD SPP_ATTR_HOT auto _CanonType(TypeSymbol &sym) const -> TypeSymbol*;
 
-  /// "CanonType" for a comp generic ("FindWrittenVarSymbol"): this
-  /// scope's binding of that parameter, or the parameter itself when
-  /// nothing here binds it. Anything that is no comp generic (a local,
-  /// an attribute, a constant) has no answer: it has no identity to
-  /// read, and is found by its name.
-  SPP_ATTR_NODISCARD auto CanonVar(VariableSymbol &sym) const -> VariableSymbol*;
+  /// What a variable symbol, resolved somewhere else, means from
+  /// this scope; typically for generic parameters.
+  SPP_ATTR_NODISCARD auto _CanonVar(VariableSymbol &sym) const -> VariableSymbol*;
 
   /// The nullable error formatter for this scope. Uses the parent
   /// module's error formatter if this is nullptr - same token set.
