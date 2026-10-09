@@ -48,16 +48,18 @@ namespace spp::analyse::utils::monomorphization {
     TypeId id, bool is_tuple, ScopeManager *sm, meta::CompilerMetaData *meta) -> Scope*;
 
   /// Create the scope of a generic substitution of a function,
-  /// its bindings registered; the caller files it against the
-  /// base function.
+  /// bound to the arguments whose identity is "args_id"
+  /// ("Scope::ArgsIdOf"); the caller files it against the base
+  /// function.
   auto CreateGnFnScope(
-    Scope const &old_fun_scope, GenericArgumentGroupAst const &generic_args,
+    Scope const &old_fun_scope, TypeId args_id,
     ScopeManager *sm, meta::CompilerMetaData *meta) -> Unique<Scope>;
 
-  /// Create generic substitution for a superimposition, and
-  /// register it against the internal superimposition cache.
+  /// Create generic substitution for a superimposition, bound
+  /// to the arguments whose identity is "args_id", and register
+  /// it against the internal superimposition cache.
   SPP_EXP_FUN auto CreateGnSupScope(
-    Scope &old_sup_scope, Scope &new_cls_scope, GenericArgumentGroupAst const &generic_args,
+    Scope &old_sup_scope, Scope &new_cls_scope, TypeId args_id,
     ScopeManager const *sm, meta::CompilerMetaData *meta) -> Tup<Scope*, Scope*>;
 
   /// Let reading a type ("TypeRef::Of") make an instantiation not made
@@ -79,16 +81,18 @@ namespace spp::analyse::utils::monomorphization {
   SPP_EXP_FUN auto InstantiateForScope(
     TypeId id, Scope const &scope) -> TypeSymbol*;
 
-  /// The prototype a call to "fn_proto" with "combined_generics"
-  /// resolves to: the template itself when the arguments pin
-  /// nothing, otherwise its substitution, built the first time it
-  /// is reached. A call is checked against it before the call
-  /// knows which overload it makes, so it is not required
-  /// ("FunctionPrototypeAst::RequireGnSubstitution") - nothing analyses or emits it until
-  /// a call chooses it. "variadic_pack_type" is the tuple a
-  /// variadic parameter's arguments form.
+  /// The prototype a call to "fn_proto" with the arguments whose
+  /// identity is "args_id" ("Scope::ArgsIdOf", keyed at the call;
+  /// "GenericSolver::SolvedArgsId") resolves to: the template
+  /// itself when they pin nothing, otherwise its substitution,
+  /// built the first time it is reached. A call is checked against
+  /// it before the call knows which overload it makes, so it is
+  /// not required ("FunctionPrototypeAst::RequireGnSubstitution") -
+  /// nothing analyses or emits it until a call chooses it.
+  /// "variadic_pack_type" is the tuple a variadic parameter's
+  /// arguments form.
   SPP_EXP_FUN auto FindOrMakeGnSubstitutedPrototype(
-    FunctionPrototypeAst *fn_proto, Scope const *fn_scope, GenericArgumentGroupAst &combined_generics,
+    FunctionPrototypeAst *fn_proto, Scope const *fn_scope, TypeId args_id,
     Shared<TypeAst> const &variadic_pack_type, ScopeManager *sm, meta::CompilerMetaData *meta)
     -> Tup<FunctionPrototypeAst*, Scope const*>;
 
@@ -103,14 +107,14 @@ namespace spp::analyse::utils::monomorphization {
   /// the new body etc for analysis, and require it. Typically
   /// called from the fn_values wrapper.
   SPP_EXP_FUN auto InstantiateOverload(
-    FunctionPrototypeAst *fn_proto, Scope const *fn_scope, GenericArgumentGroupAst &generic_args,
+    FunctionPrototypeAst *fn_proto, Scope const *fn_scope, TypeId args_id,
     ScopeManager *sm, meta::CompilerMetaData *meta) -> FunctionPrototypeAst*;
 
   /// Find an instantiated overload, given a function prototype
-  /// and a generic argument group. Typically called from the
+  /// and the identity of its arguments. Typically called from the
   /// fn_values wrapper.
   SPP_EXP_FUN auto FindInstantiatedOverload(
-    FunctionPrototypeAst *fn_proto, GenericArgumentGroupAst &generic_args,
+    FunctionPrototypeAst *fn_proto, TypeId args_id,
     ScopeManager const *sm) -> FunctionPrototypeAst*;
 
   /// Record that a "fn_template" has a substitution needing

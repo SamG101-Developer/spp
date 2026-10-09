@@ -118,11 +118,10 @@ namespace spp::analyse::utils::drop_utils {
       // Either just find the overload or instantiate it too (this
       // will only instantiate it if it hasn't already been).
       auto tm = ScopeManager(sm.GlobalScope, sym.LinkedScope);
+      const auto args_id = tm.CurrentScope->ArgsIdOf(overload.SupGns->GetAllArgs(), nullptr);
       return instantiate
-        ? monomorphization::InstantiateOverload(
-          overload.Proto, overload.FnScope, *overload.SupGns, &tm, meta)
-        : monomorphization::FindInstantiatedOverload(
-          overload.Proto, *overload.SupGns, &tm);
+        ? monomorphization::InstantiateOverload(overload.Proto, overload.FnScope, args_id, &tm, meta)
+        : monomorphization::FindInstantiatedOverload(overload.Proto, args_id, &tm);
     }
   }
 }
