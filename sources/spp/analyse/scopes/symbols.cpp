@@ -389,7 +389,6 @@ auto spp::analyse::scopes::NameTypeIdOf(
   return InternTypeKey(std::move(key));
 }
 
-
 auto spp::analyse::scopes::NextGnParamId() -> std::uint64_t {
   // Never zero, which is what a symbol that is not a parameter
   // holds.
@@ -753,7 +752,9 @@ auto TypeSymbol::FqName(
   // argument it was given instead.
   if (Kind == TypeKind::GnTypeArg and LinkedSymbol() != this) {
     auto bound = LinkedSymbol()->FqName();
-    return Convention != ConventionTag::MOV ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention)) : bound;
+    return Convention != ConventionTag::MOV
+      ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention))
+      : bound;
   }
   if (Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr) {
     return BoundTypeVal;
@@ -1100,7 +1101,10 @@ auto spp::analyse::scopes::PrecompiledTemplate(
   // its alias target if it has one. Nullptr guard for safety.
   auto sym = scope.FindTypeSymbol(&tmpl);
   if (sym == nullptr) { return nullptr; }
-  sym = sym->AliasTarget(scope);
+
+  // Nothing is made: this backs "TypeRef::IsA", which kind
+  // checks call while the "sup" scopes attach.
+  sym = sym->AliasTarget(scope, false);
 
   // If this symbol contains a template (ie isn't a template
   // itself), then move into the template.
@@ -1115,6 +1119,13 @@ auto spp::analyse::scopes::PrecompiledTemplate(
   return sym;
 }
 
+auto spp::analyse::scopes::CachedPrecompiledTemplate(
+  TypeAst const &tmpl) -> TypeSymbol* {
+  auto const &cache = generate::common_types_precompiled::TEMPLATE_SYMBOLS;
+  const auto hit = cache.find(&tmpl);
+  return hit != cache.end() ? hit->second.second : nullptr;
+}
+
 /// [CHECKED]
 auto TypeRef::IsA(
   TypeAst const &tmpl, Scope const &scope) const -> bool {
@@ -1122,7 +1133,7 @@ auto TypeRef::IsA(
   // pointer against the precompiled template for the type
   // passed in.
   const auto mine = Template();
-  return mine != nullptr and mine == spp::analyse::scopes::PrecompiledTemplate(
+  return mine != nullptr and mine == PrecompiledTemplate(
     tmpl, scope);
 }
 
@@ -1146,7 +1157,7 @@ auto TypeRef::AstIn(
 
   // Given a convention is now guaranteed, build the convention
   // ast and add it into the type.
-  return type->WithConvention(spp::analyse::scopes::ConventionAstOf(Conv));
+  return type->WithConvention(ConventionAstOf(Conv));
 }
 
 /// [CHECKED]

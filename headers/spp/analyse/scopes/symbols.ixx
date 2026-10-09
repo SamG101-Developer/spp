@@ -235,6 +235,12 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS auto PrecompiledTemplate(
     TypeAst const &tmpl, Scope const &scope) -> TypeSymbol*;
 
+  /// "PrecompiledTemplate" read from the cache alone, for a
+  /// reader with no scope to search; null until it is filled
+  /// ("StampPrecompiledTypes" fills "Tup" and "Var").
+  SPP_EXP_CLS auto CachedPrecompiledTemplate(
+    TypeAst const &tmpl) -> TypeSymbol*;
+
   /// The convention a tag stands for, as a node of its own ("&mut" or "&"); null for "MOV", which is no convention
   /// written. The inverse of "ConventionAst::Tag": how a held type's convention is written back onto its name.
   SPP_EXP_CLS auto ConventionAstOf(
