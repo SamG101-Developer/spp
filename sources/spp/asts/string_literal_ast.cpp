@@ -121,11 +121,11 @@ auto StringLiteralAst::InferType(
   // A char literal is either a StrView or Vec[U8] type,
   // depending on the "b" byte prefix.
   // Todo: static flag to check if the type's been analysed before? only has to be done once.
-  using generate::common_types::StringViewType;
+  using generate::common_types_precompiled::StrViewAt;
   using generate::common_types::ViewU8Type;
   auto type = BytePrefix != nullptr
     ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
-    : StringViewType(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
+    : StrViewAt(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
   type->Stage7_AnalyseSemantics(sm, meta); // Todo: single analysis somewhere?
   return type;
 }
