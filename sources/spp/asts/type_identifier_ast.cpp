@@ -205,7 +205,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   if (IsSelfType() and meta->CurrentStage < CompilerStage::kAnalyseSemantics) {
     if (meta->CurrentStage >= CompilerStage::kLoadSupScopes) {
       const auto self_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-      static_cast<void>(member_lookup::FindTypeSymbolOrError(*self_scope, *this, *sm));
+      std::ignore = member_lookup::FindTypeSymbolOrError(*self_scope, *this, *sm);
     }
     _HasAnalysed = true;
     return;

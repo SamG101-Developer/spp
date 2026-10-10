@@ -234,7 +234,7 @@ auto spp::analyse::utils::type_resolution::StampTypeParts(
       StampTypeParts(*arg->TypeVal, scope);
       continue;
     }
-    static_cast<void>(type_predicates::AnyCompPart(
+    std::ignore = type_predicates::AnyCompPart(
       *arg->CompVal,
       [&scope](IdentifierAst const &name) {
         if (auto const *const sym = scope.FindVarSymbol(&name); sym != nullptr) { StampComp(name, *sym); }
@@ -243,7 +243,7 @@ auto spp::analyse::utils::type_resolution::StampTypeParts(
       [&scope](TypeAst const &owner) {
         StampTypeParts(owner, scope);
         return false;
-      }));
+      });
   }
 }
 
@@ -265,14 +265,14 @@ auto spp::analyse::utils::type_resolution::StampPrecompiledTypes(
   // compares against, read from "TEMPLATE_SYMBOLS".
   for (auto const &tmpl : {TUP, VAR}) {
     if (tmpl != nullptr) {
-      static_cast<void>(scopes::PrecompiledTemplate(*tmpl, global));
+      std::ignore = scopes::PrecompiledTemplate(*tmpl, global);
     }
   }
 }
 
 auto spp::analyse::utils::type_resolution::StampCompParts(
   ExpressionAst const &value, Scope const &scope) -> void {
-  static_cast<void>(type_predicates::AnyCompPart(
+  std::ignore = type_predicates::AnyCompPart(
     value,
     [&scope](IdentifierAst const &name) {
       if (auto const *const sym = scope.FindVarSymbol(&name); sym != nullptr) { StampComp(name, *sym); }
@@ -281,7 +281,7 @@ auto spp::analyse::utils::type_resolution::StampCompParts(
     [&scope](TypeAst const &owner) {
       StampTypeParts(owner, scope);
       return false;
-    }));
+    });
 }
 
 auto spp::analyse::utils::type_resolution::RecordedArgsFor(
