@@ -120,7 +120,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 }
 
 auto SubroutinePrototypeAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Build the function body.
   // Todo: Move all to the subroutine prototype. Given coroutine
   //  ast overrides this.
@@ -134,8 +135,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   // into it.
   if (FfiAnnotation != nullptr) {
     ctx->Builder.ClearInsertionPoint();
-    const auto ffi_final_scope = sm->CurrentScope->GetFinalChildScope();
-    while (sm->CurrentScope != ffi_final_scope) { sm->MoveToNextScope(false); }
+    std::ignore = sm->SkipPastScope(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     return nullptr;
   }
