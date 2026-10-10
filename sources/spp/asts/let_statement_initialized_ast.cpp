@@ -190,18 +190,9 @@ auto LetStatementInitializedAst::Stage8_CheckMemory(
 
 auto LetStatementInitializedAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Fix variable shadowing, where a newer version of the symbol
-  // is gotten because stage7 added it, when we are trying to use
-  // the original.
-  auto shadowed = Vec<Shared<VariableSymbol>>();
-  for (auto const &target : Var->ExtractNames()) {
-    if (auto sym = sm->CurrentScope->RemVarSymbol(target.get()); sym != nullptr) {
-      shadowed.EmplaceBack(std::move(sym));
-    }
-  }
-
+  // The value is resolved before the binding is declared (the
+  // variable declares it once the value is done).
   Val->Stage9_CompTimeResolve(sm, meta);
-  for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
   const auto _meta_guard = MetaGuard(meta);
@@ -218,10 +209,7 @@ auto LetStatementInitializedAst::Stage11_CodeGen(
   const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTarget = Var->ExtractName();
   meta->AssignmentTargetType = Type;
-  auto const *const single = Var->To<LocalVariableSingleIdentifierAst>();
-  const auto val_type = Type ? Type
-    : single != nullptr ? single->InferValueType(*Val, sm, meta)
-    : Val->InferType(sm, meta);
+  const auto val_type = Type ? Type : Val->InferType(sm, meta);
 
   meta->AssignmentTargetType = val_type;
   meta->LetStatementExplicitType = val_type;
