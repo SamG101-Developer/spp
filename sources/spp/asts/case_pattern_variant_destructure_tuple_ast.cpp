@@ -86,7 +86,8 @@ auto CasePatternVariantDestructureTupleAst::BindsByMove() const -> bool {
 
 auto CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Map the pattern to a "let" over the condition, introducing its bindings.
+  // Map the pattern to a "let" over the condition, introducing
+  // its bindings.
   AnalyseDestructure(
     meta->CaseCondition, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
