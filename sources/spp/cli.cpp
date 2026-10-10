@@ -855,7 +855,7 @@ auto spp::cli::RunCppGoogleTest(
   // Discarded on purpose: this path verifies rather than builds, and a
   // verification that fails throws out of here rather than answering.
   const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
-  static_cast<void>(c->Compile());
+  std::ignore = c->Compile();
   return c->CompTimeConstants();
 }
 
