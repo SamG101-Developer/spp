@@ -113,7 +113,7 @@ public:
   /// of the inputted "scope"'s scope tree. This is needed, so
   /// that when collecting multiple errors, we can go "this
   /// function threw", now skip past it, onto the next function.
-  auto SkipPastScope(Scope const *scope) -> bool;
+  auto SkipPastScope(Scope *scope) -> bool;
 
   /// For every type discovered up to this point, attach the
   /// designated supertypes to it, checking each generic

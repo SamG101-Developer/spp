@@ -175,8 +175,7 @@ auto ScopeManager::ExhaustScope() -> void {
 }
 
 auto ScopeManager::SkipPastScope(
-  Scope const *const scope)
-  -> bool {
+  Scope *scope) -> bool {
   // A member with no scope of its own consumed none of
   // the walk, so there is nothing to skip.
   if (scope == nullptr) { return true; }
@@ -213,7 +212,7 @@ auto ScopeManager::AttachAllSuperScopes(
     if (read.SupsAttached or read.LinkedTypeSymbol == nullptr) { return; }
     const auto _meta_guard = asts::meta::MetaGuard(meta, true);
     meta->ResetContext();
-    static_cast<void>(AttachSpecificSuperScopes(const_cast<Scope&>(read), meta));
+    std::ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), meta);
   };
 
   // The sweep creates scopes as it runs - attaching a
@@ -284,7 +283,7 @@ auto ScopeManager::CoalesceMethodMock(
   auto *const owner_scope = self_sym != nullptr ? self_sym->LinkedScope : nullptr;
   if (owner_scope != nullptr and owner_scope->LinkedTypeSymbol != nullptr
     and owner_scope->LinkedTypeSymbol->InstanceOf != nullptr) {
-    static_cast<void>(owner_scope->GetSupScopes());
+    std::ignore = owner_scope->GetSupScopes();
     for (auto *const block : owner_scope->DirectSupScopes) {
       if (AstAs<SupPrototypeFunctionsAst>(block->AstNode) != nullptr
         or AstAs<SupPrototypeExtensionAst>(block->AstNode) != nullptr) { owner_blocks.EmplaceBack(block); }
@@ -422,7 +421,9 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
       // A super class that did not resolve under this instance's
       // arguments ("Try[.., Value=T]" with "T" bound to "Self",
       // parameter 0, still open) has nothing to be cyclic with.
-      if (sup_sym != nullptr and sup_sym->LinkedScope != nullptr) { ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope); }
+      if (sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
+        ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope);
+      }
       ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
       ext_ast->CheckSelfExtension(*sup_scope);
     }
@@ -559,7 +560,7 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
   }
 }
 
-auto ScopeManager::GetCurrentIterator()-> ScopeIterator& {
+auto ScopeManager::GetCurrentIterator() -> ScopeIterator& {
   // Simple getter around the iterator.
   return _It;
 }
