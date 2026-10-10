@@ -919,7 +919,7 @@ auto TypeRef::FromId(
   if (missing == OnMissing::Make and sym == nullptr and id != nullptr
     and not id->HasSelf and open != nullptr and open->Alias == nullptr) {
     if (HeadOf(id).IsInstance()) {
-      static_cast<void>(MakeOnRead(scope, *open, id));
+      std::ignore = MakeOnRead(scope, *open, id);
       sym = scope.FindTypeSymbolById(id);
     }
   }
