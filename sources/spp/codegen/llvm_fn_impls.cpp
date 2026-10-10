@@ -799,8 +799,7 @@ auto spp::codegen::fn_impls::SimpleUnaryIntrinsicCall(
 
 auto spp::codegen::fn_impls::SimpleGetValue(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Value *val) -> void {
-  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
-  (void)fn;
+  std::ignore = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
   ctx->Builder.CreateRet(val);
 }
 
