@@ -14,6 +14,38 @@ use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 
+namespace spp::analyse::utils::regions {
+  /// One step into a place: an attribute or a tuple element
+  /// by its name, or a method called on it. A method's step
+  /// is opaque: what the call hands back can be anywhere
+  /// inside its receiver.
+  SPP_EXP_CLS struct PlaceStep {
+    spp::utils::InternedId Name;
+    bool Opaque = false;
+    auto operator==(PlaceStep const &) const -> bool = default;
+  };
+
+  /// A place by identity: the variable it hangs off, and the
+  /// steps taken into it, outermost first ("v[mut i]" is
+  /// "v.index_mut(i)": what the call hands back is derived from
+  /// "v"). A dereference takes no step.
+  SPP_EXP_CLS struct Place {
+    VariableSymbol *Root = nullptr;
+    std::vector<PlaceStep> Steps; // Interned identifier ast.
+    auto operator==(Place const &) const -> bool = default;
+  };
+
+  /// A place, kept with the expression it was taken from (what
+  /// an error points at). The place is read where the expression
+  /// is written, so it means the variable it named there,
+  /// whatever a later "let" shadows; none for an expression
+  /// naming no place.
+  SPP_EXP_CLS struct PlaceAt {
+    Ast const *Site = nullptr;
+    std::optional<Place> Of;
+  };
+}
+
 SPP_EXP_CLS enum class spp::analyse::utils::regions::MemRegionRelation {
   Disjoint, // Non overlapping regions of memory: "a" vs "b" or "a.b" vs "a.c"
   Contains, // The first place has a region containing the second: "a" vs "a.b"
