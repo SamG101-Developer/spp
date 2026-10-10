@@ -55,7 +55,7 @@ struct spp::views::cast_unique_fn {
     auto out = Vec<Unique<To>>(last);
     for (; first != last; ++first) {
       if (auto *p = dynamic_cast<To*>(first->get()); p != nullptr) {
-        (void)first->release();
+        std::ignore = first->release();
         out.EmplaceBack(Unique<To>(p));
       }
     }
@@ -67,7 +67,7 @@ struct spp::views::cast_unique_fn {
     auto out = Vec<Unique<To>>();
     for (auto &&v : rng) {
       if (auto *p = dynamic_cast<To*>(v.get()); p != nullptr) {
-        (void)v.release();
+        std::ignore = v.release();
         out.EmplaceBack(Unique<To>(p));
       }
     }
