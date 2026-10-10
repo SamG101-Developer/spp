@@ -692,11 +692,7 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
   }
 
   // Manual scope skipping.
-  const auto final_scope = sm->CurrentScope->GetFinalChildScope();
-  while (sm->CurrentScope != final_scope) {
-    sm->MoveToNextScope(false);
-  }
-
+  std::ignore = sm->SkipPastScope(sm->CurrentScope);
   return nullptr;
 }
 
