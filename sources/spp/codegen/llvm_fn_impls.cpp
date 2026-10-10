@@ -2984,6 +2984,27 @@ auto spp::codegen::fn_impls::StdMemOpsReplace(
   ctx->Builder.CreateRet(old_val);
 }
 
+auto spp::codegen::fn_impls::StdMemOpsSwap(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "a" and "b" are both "&mut T", so each slot holds an address. Both values are read before either is written, so
+  // the exchange needs no third value: no default is made to stand in, and nothing is dropped. The type handed in is
+  // the return type's, "Void" here, so "T" is read off the parameter.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto ty = GetLlvmTypeOf(TypeRef::Of(*params[0]->Type->WithoutConvention(), *sm->CurrentScope), ctx);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto ptr_of = [&](auto const &param, StrView name) {
+    const auto sym = sm->CurrentScope->FindVarSymbol(param->ExtractName().get());
+    return ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, name);
+  };
+  const auto a_ptr = ptr_of(params[0], "mem.swap.a_ptr");
+  const auto b_ptr = ptr_of(params[1], "mem.swap.b_ptr");
+  const auto a_val = ctx->Builder.CreateLoad(ty, a_ptr, "mem.swap.a");
+  const auto b_val = ctx->Builder.CreateLoad(ty, b_ptr, "mem.swap.b");
+  ctx->Builder.CreateStore(b_val, a_ptr);
+  ctx->Builder.CreateStore(a_val, b_ptr);
+  ctx->Builder.CreateRetVoid();
+}
+
 auto spp::codegen::fn_impls::StdMemOpsDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot

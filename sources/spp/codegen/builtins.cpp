@@ -95,6 +95,7 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.mem.ops.align_of", StdMemOpsAlignOf, true);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.align_of_val", StdMemOpsAlignOfVal);
   SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.replace", StdMemOpsReplace);
+  SPP_DEFINE_BUILTIN_FUNC("std.mem.ops.swap", StdMemOpsSwap);
   SPP_DEFINE_BUILTIN_FUNC_DROPS("std.mem.ops.drop", StdMemOpsDrop, "T");
   SPP_DEFINE_BUILTIN_FUNC_DROPS("std.mem.ops.drop_in_place", StdMemOpsDropInPlace, "T");
 
