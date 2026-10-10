@@ -281,8 +281,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     _ClosureDummyArgGroup->Stage8_CheckMemory(sm, meta);
   }
 
-  // Check the argument group, now the old borrows have
-  // been invalidated.
+  // Check the generic and function arguments, the latter
+  // knowing the target (whether it pins its borrows).
   GnArgGroup->Stage8_CheckMemory(sm, meta);
 
   const auto _meta_guard = MetaGuard(meta);
