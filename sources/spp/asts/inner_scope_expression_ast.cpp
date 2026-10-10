@@ -203,19 +203,8 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // At the end of a scope, every symbol declared *in* this scope dies, so the escaping borrows it holds are released
   // with it. What matters is where the container was declared, not where the borrow was established: a handle
   // declared further out ("let h: Gen[..]" and then "{ h = c(&p) }") carries the borrow on past this point.
-  for (auto const &sym : sm->CurrentScope->GetAllVarSymbols(true)) {
-    auto contained_escaping_borrows = sym->MemInfo->AstContainedEscapingBorrows;
-
-    for (auto const &ceb : contained_escaping_borrows) {
-      sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-      const auto borrow = spp::get<0>(ceb);
-      const auto borrowed_sym = sm->CurrentScope->FindVarSymbolOutermost(*borrow).first;
-      if (borrowed_sym == nullptr) { continue; }
-      borrowed_sym->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
-        [&](auto info) {
-          return *spp::get<0>(info)->template To<IdentifierAst>() == *sym->Name;
-        });
-    }
+  for (auto *const sym : sm->CurrentScope->GetAllVarSymbols(true)) {
+    std::ignore = memory_state::ReleaseEscapingBorrows(*sym);
   }
 
   sm->MoveOutOfCurrentScope();
