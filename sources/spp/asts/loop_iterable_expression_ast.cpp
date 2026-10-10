@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_resolution;
 import spp.asts.assignment_statement_ast;
 import spp.asts.boolean_literal_ast;
