@@ -216,7 +216,7 @@ namespace {
    */
   auto InitializeAllBackends()
     -> void {
-    static const auto once = [] {
+    [[maybe_unused]] static const auto once = [] {
 #if defined(SPP_ALL_TARGETS)
       // All targets, including the host. This is used for
       // the CI pipeline cross-compilation checks, and for
@@ -233,7 +233,6 @@ namespace {
 #endif
       return true;
     }();
-    (void)once;
   }
 
   /**
