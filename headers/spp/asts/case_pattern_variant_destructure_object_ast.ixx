@@ -47,6 +47,11 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
+  /// What type this object destructure is narrowing the condition
+  /// too. For example, This ast could be matching "Some" when the
+  /// condition is "Opt".
+  SPP_ATTR_NODISCARD auto NarrowsTo() const -> TypeAst const* override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -60,4 +65,8 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
 private:
   Shared<VariableSymbol> _CondSymbol;
   Shared<VariableSymbol> _FlowSymbol;
+
+  /// Put the narrowed subject under its name in the current scope.
+  /// Adds the "Some" version of the "Opt" symbol.
+  auto _DeclareFlowSymbol(ScopeManager &sm) const -> void;
 };

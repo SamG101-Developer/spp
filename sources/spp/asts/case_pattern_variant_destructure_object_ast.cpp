@@ -153,6 +153,12 @@ auto CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
+auto CasePatternVariantDestructureObjectAst::NarrowsTo() const -> TypeAst const* {
+  // The type on this destructure. For example, it could be
+  // Some, when the condition is Opt.
+  return Type.get();
+}
+
 auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -461,6 +467,17 @@ auto CasePatternVariantDestructureObjectAst::ConvToVar(
     AstCloneShared(Type), AstClone(TokL), std::move(mapped_elems), AstClone(TokR));
   var->MarkFromCasePattern();
   return var;
+}
+
+auto CasePatternVariantDestructureObjectAst::_DeclareFlowSymbol(
+  ScopeManager &sm) const -> void {
+  // Every walk declares the narrowed subject where the pattern
+  // is, as Stage 7 did: a binding of the same name after it
+  // replaced it in the table, and the bindings' own values read
+  // it (cleaned by scope endings).
+  if (_FlowSymbol != nullptr) {
+    sm.CurrentScope->AddVarSymbol(_FlowSymbol);
+  }
 }
 
 SPP_MOD_END
