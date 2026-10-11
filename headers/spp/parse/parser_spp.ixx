@@ -560,4 +560,12 @@ private:
   /// the statement into the one above it. "something\n[1]"
   /// should be identifier then array, not an index operation etc.
   auto _LineFeedAhead() const -> bool;
+
+  /// Build a T from the parsed parts, moving every argument in:
+  /// the parts are locals that are discarded once the node is
+  /// made, so the call sites need no std::move of their own.
+  template <typename T>
+  static auto _CreateAst(auto &&... args) -> Unique<T> {
+    return MakeUnique<T>(std::move(args)...);
+  }
 };
