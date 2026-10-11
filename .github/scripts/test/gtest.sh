@@ -78,11 +78,19 @@ fi
 # whichever worker reaches it first.
 "$binary" --gtest_filter=SppBootstrap.Fixture
 
+# A lane may run only some suites (the sanitizer lane, whose build is too slow for all of them).
+filter_flags=()
+if [ -n "${GTEST_FILTER:-}" ]; then
+  filter_flags=("--gtest_filter=${GTEST_FILTER}")
+  echo "filter: ${GTEST_FILTER}"
+fi
+
 status=0
 # shellcheck disable=SC2086
 python3 "$runner" \
   "$binary" \
   --output_dir="$log_dir" \
+  ${filter_flags[@]+"${filter_flags[@]}"} \
   $shard_flags || status=$?
 
 # An empty vcs/ passes the compiler's structure validation, so

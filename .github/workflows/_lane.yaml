@@ -45,6 +45,21 @@ on:
         required: false
         type: boolean
         default: false
+      cmake-flags:
+        description: "Extra CMake flags for the build, e.g. sanitizers. Give such a build its own variant."
+        required: false
+        type: string
+        default: ""
+      gtest-filter:
+        description: "A --gtest_filter pattern for the gtest jobs; every test when empty."
+        required: false
+        type: string
+        default: ""
+      asan-options:
+        description: "ASAN_OPTIONS for the gtest jobs of a sanitized build; ASan's defaults when empty."
+        required: false
+        type: string
+        default: ""
 
     # The release collects each lane's staged spp by these, after
     # the whole lane - tests included - is green.
@@ -110,6 +125,7 @@ jobs:
           compiler: ${{ inputs.compiler }}
           variant: ${{ inputs.variant }}
           build-type: ${{ inputs.build-type }}
+          cmake-flags: ${{ inputs.cmake-flags }}
           stage: true
 
   gtest:
@@ -124,6 +140,7 @@ jobs:
       matrix: ${{ fromJSON(needs.build.outputs.tests) }}
     env:
       SPP_TEST_MODE: ${{ matrix.mode }}
+      ASAN_OPTIONS: ${{ inputs.asan-options }}
     steps:
       # Installs nothing, so no sudo; egress stays on audit until its
       # endpoints are known.
@@ -155,6 +172,7 @@ jobs:
         with:
           shard-count: ${{ inputs.shard-count }}
           shard-index: ${{ matrix.shard }}
+          filter: ${{ inputs.gtest-filter }}
 
       - name: Upload test logs on failure
         if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}

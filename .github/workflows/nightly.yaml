@@ -47,6 +47,29 @@ jobs:
     with:
       full-scan: true
 
+  # The compiler under ASan, UBSan and LSan, over the suites
+  # that walk the scope and symbol machinery hardest. Too slow
+  # for a pull request: a test runs about eight times longer
+  # sanitized. Not recording an allocation stack per malloc, nor
+  # quarantining freed memory, halves that; a report still names
+  # the error, and a failure can be re-run locally with ASan's
+  # defaults.
+  sanitizers:
+    name: Sanitizers (ASan, UBSan, LSan)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: ubuntu-24.04
+      compiler: gcc
+      variant: sanitizers
+      cmake-flags: "-DSPP_SANITIZER=address,undefined,leak"
+      gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
+      asan-options: "malloc_context_size=0:quarantine_size_mb=0"
+      stl-conformance: false
+      modes: rel
+      shard-count: 4
+
   # Grades what cannot be seen from inside a workflow: token
   # permissions, action pinning, branch protection.
   scorecard:

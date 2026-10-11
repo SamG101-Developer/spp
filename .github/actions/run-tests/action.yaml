@@ -10,6 +10,10 @@ inputs:
     description: "Zero-indexed shard this job runs. Ignored unless shard-count is above 1."
     required: false
     default: "0"
+  filter:
+    description: "A --gtest_filter pattern to run only those tests; every test when empty."
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -31,4 +35,5 @@ runs:
       env:
         SHARD_COUNT: ${{ inputs.shard-count }}
         SHARD_INDEX: ${{ inputs.shard-index }}
+        GTEST_FILTER: ${{ inputs.filter }}
       run: bash .github/scripts/test/gtest.sh

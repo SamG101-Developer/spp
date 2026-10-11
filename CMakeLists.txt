@@ -75,13 +75,18 @@ set(SPP_SANITIZER
 )
 
 # Apply sanitizer flags to every target defined below.
+set(_spp_sanitized OFF)
 if (SPP_SANITIZER)
+  set(_spp_sanitized ON)
   string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
   add_compile_options(
     -fsanitize=${_SPP_SAN_LIST}
     -fno-omit-frame-pointer
     -fno-optimize-sibling-calls)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
+  if (_SPP_SAN_LIST MATCHES "undefined")
+    add_compile_options(-fno-sanitize-recover=undefined)
+  endif ()
 endif ()
 
 if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -96,7 +101,7 @@ endif ()
 # Only allow mimalloc for release, non-sanitizer, non-macOS builds.
 set(
   SPP_NO_MIMALLOC_GENEX
-  $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>,$<PLATFORM_ID:Darwin>>)
+  $<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
 if (SPP_STATIC_RUNTIME)
@@ -210,6 +215,10 @@ else ()
 
   if (SPP_WERROR)
     target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+    if (_spp_sanitized)
+      target_compile_options(
+        ${PROJECT_NAME}_lib PRIVATE -Wno-error=disabled-optimization)
+    endif ()
   endif ()
 endif ()
 
