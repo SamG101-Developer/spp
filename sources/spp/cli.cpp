@@ -5,7 +5,7 @@ module;
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
-  if (not HandleValidate(is_exe)) { return; }
+  if (not HandleValidate(is_exe)) { std::exit(1); }
 
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
   if (not HandleValidate(is_exe)) { return __VA_ARGS__; }
@@ -165,13 +165,6 @@ auto spp::cli::RunCli(
   // is provided.
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
-
-  // Declared so that it parses and shows up in the help, but read in "main" rather than here: the working directory
-  // has to be settled before any subcommand callback runs, and every one of them resolves the project from it.
-  auto project_dir = Str();
-  app.add_option(
-    "--dir", project_dir,
-    "Project directory to work in; the sample project beside this binary by default.");
 
   // One variable per subcommand, each holding its own
   // default. A single shared one takes whichever default
