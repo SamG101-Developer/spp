@@ -71,6 +71,20 @@ namespace spp::analyse::utils::visibility_utils {
         or accessing_module->GetTopLevelParentModule() == definition_module->GetTopLevelParentModule();
     }
 
+    /// The module a type member is defined in: a method's or
+    /// attribute's own scope's, which a "sup" block over a type
+    /// with no module of its own (a closure) still has; otherwise
+    /// the type's.
+    template <typename Symbol>
+    auto DefinitionModuleOf(Symbol const &sym, Scope const &type_scope) -> Scope const* {
+      if constexpr (std::same_as<Symbol, VariableSymbol>) {
+        if (sym.ScopeDefinedIn != nullptr) {
+          if (const auto module = sym.ScopeDefinedIn->GetParentModule(); module != nullptr) { return module; }
+        }
+      }
+      return type_scope.GetParentModule();
+    }
+
     /// Type-level visibility, which is one rule whatever the
     /// member is (field, method, constant, nested type). Each
     /// level widens the one above it, so the checks are
@@ -104,7 +118,7 @@ namespace spp::analyse::utils::visibility_utils {
       // Get the module owning the access, and the module owning
       // the definition, by scope, for module comparisons.
       const auto accessing_module = sm.CurrentScope->GetParentModule();
-      const auto definition_module = type_scope.GetParentModule();
+      const auto definition_module = DefinitionModuleOf(sym, type_scope);
 
       // The type the access is made from, read as the owner is:
       // what "Self" stands for there. A closure inherits the
@@ -143,7 +157,7 @@ namespace spp::analyse::utils::visibility_utils {
       // in usage from callers.
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
-        not visible, {owner_scope.GetParentModule(), sm.CurrentScope},
+        not visible, {DefinitionModuleOf(sym, owner_scope), sm.CurrentScope},
         ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
     }
   }
