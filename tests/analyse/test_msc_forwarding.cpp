@@ -100,9 +100,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestForwarding,
     test_valid_forwarding_str_equality, R"(
     fun f(s: Str) -> Void {
-        let mut b = s == Str::from("hello")
+        let hello = Str::from("hello")
+        let mut b = s == hello
         b = false
         std::mem::ops::drop(s)
+        std::mem::ops::drop(hello)
     }
 )");
 

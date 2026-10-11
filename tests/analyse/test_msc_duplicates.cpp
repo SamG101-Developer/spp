@@ -350,7 +350,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup A ext C { }
 
     fun f() -> std::void::Void {
-        let x = A().a
+        let obj = A()
+        let x = obj.a
+        std::mem::ops::drop(obj)
     }
 )");
 

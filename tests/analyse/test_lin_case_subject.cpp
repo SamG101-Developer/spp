@@ -22,7 +22,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(x: AB) -> Void {
         case x of {
             is A(v) { consume(v) }
-            else { }
+            else { std::mem::ops::drop(x) }
         }
     }
 )");
@@ -46,7 +46,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 consume(v)
                 ret
             }
-            else { }
+            else { std::mem::ops::drop(x) }
         }
     }
 )");
@@ -104,11 +104,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> Void {
         case p of {
             is Point(x, y) { }
-            else { }
         }
         case p of {
             is Point(x, y) { }
-            else { }
         }
     }
 )");
@@ -127,7 +125,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun consume(x: AB) -> Void {
         case x of {
             is A(v) { let T() = v }
-            else { }
+            else { std::mem::ops::drop(x) }
         }
     }
 
@@ -141,8 +139,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// The consumed subject is exempt by symbol, not by name: a closure parameter spelled like the subject is its own
-// value, and still owed.
+// The subject is taken by symbol, not by name: a closure parameter spelled like the subject is its own value, and
+// still owed. The "else" consumes the subject, so the parameter is the only thing left owed.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestLinearCaseSubject,
     test_invalid_closure_parameter_named_like_the_subject_is_still_owed,
@@ -163,7 +161,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
                 let c = (x: T) -> Void { }
                 c(T())
             }
-            else { }
+            else { std::mem::ops::drop(x) }
         }
     }
 )");

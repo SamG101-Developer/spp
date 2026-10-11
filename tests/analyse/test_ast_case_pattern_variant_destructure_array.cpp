@@ -83,9 +83,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureArrayAst,
   test_valid_multiple_branches, R"(
-    fun f(p: Arr[Str, 2_uz]) -> Void {
+    fun f(p: Arr[S32, 2_uz]) -> Void {
         case p of {
-            is [x, y] { }
+            is [1, y] { }
             is [x, z] { }
         }
     }
@@ -115,7 +115,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         !public y: S32
     }
     fun f(p: Arr[Point, 2_uz]) -> Void {
-        case p is [Point(x=10, y), Point(x, y=20)] { }
-        std::mem::ops::drop(p)
+        case p of {
+            is [Point(x=10, y), Point(x, y=20)] { }
+            else { std::mem::ops::drop(p) }
+        }
     }
 )");

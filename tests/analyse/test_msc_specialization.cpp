@@ -81,6 +81,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let u = MyType[Str]()
         let mut b = u.test_func_1()
 
+        std::mem::ops::drop(b)
         b = a.to_string()
         std::mem::ops::drop(b)
     }

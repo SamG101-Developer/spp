@@ -260,7 +260,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T: std::copy::Copy] Box[T] {
         !public fun get(self) -> T {
             case self is Self(v) { ret v }
-            ret self.v
         }
     }
     fun f() -> Void {

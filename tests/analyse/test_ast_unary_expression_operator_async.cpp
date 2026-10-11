@@ -94,17 +94,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let a = A()
         let mut x = async a.method()
+        std::mem::ops::drop(x)
         x = Fut[Str]()
         std::mem::ops::drop(x)
     }
 )");
 
 // "&self" borrows the receiver, so the future holds a borrow, and a future holding one cannot be thrown away before
-// it is awaited - the same as any other borrowed argument.
+// it is awaited: writing over it would discard it unconsumed.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
   test_invalid_async_overwriting_a_future_that_borrows_its_receiver,
-  SppMovingEscapingBorrowedMemoryError, R"(
+  SppLinearValueNotConsumedError, R"(
     cls A { }
     sup A {
         !public
@@ -124,6 +125,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Str { ret Str::from("hello") }
     fun g() -> Void {
         let mut x = async f()
+        std::mem::ops::drop(x)
         x = Fut[Str]()
         std::mem::ops::drop(x)
     }
@@ -135,6 +137,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(a: &StrView) -> Void { }
     fun g() -> Void {
         let mut x = async f("hello")
+        std::mem::ops::drop(x)
         x = Fut[Void]()
         std::mem::ops::drop(x)
     }
@@ -175,15 +178,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// Dropping a future waits for its task ("Fut::drop"), so the borrows it holds end with the drop: what it borrowed is
+// usable again straight after.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
-  test_invalid_dropping_a_future_that_holds_a_pinned_borrow,
-  SppMovingEscapingBorrowedMemoryError, R"(
+  test_valid_dropping_a_future_ends_its_pinned_borrow, R"(
     fun f(a: &StrView) -> Str { ret Str::from(a) }
     fun g() -> Void {
         let x = Str::from("hello")
         let future = async f(&x)
         std::mem::ops::drop(future)
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -598,7 +603,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// The awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator.
+// The awaited "Gen" still borrows "x", so the pin must outlive the await and cover the generator: resuming it after
+// "x" moved is a use of the borrow. (Only dropping it would not be: a drop frees the frame without resuming it, M9.3.)
 // FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestUnaryExpressionOperatorAsyncAst,
@@ -608,8 +614,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> Void {
         let x = Str::from("hello")
         let f = async c(&x)
-        let coro = f.await
+        let mut coro = f.await
         let y = x
+        let r = coro.res()
         std::mem::ops::drop(coro)
         std::mem::ops::drop(y)
     }

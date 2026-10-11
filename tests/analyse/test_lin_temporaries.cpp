@@ -5,9 +5,9 @@
 // named counterpart that is already caught (see test_lin_scope_exit.cpp).
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_attribute_moved_off_a_temporary,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_attribute_moved_off_a_temporary,
+  SppLinearValueNotConsumedError, R"(
     cls TmpPairA {
         !public a: Str
         !public b: Str
@@ -22,9 +22,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_copyable_attribute_read_off_a_temporary,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_copyable_attribute_read_off_a_temporary,
+  SppLinearValueNotConsumedError, R"(
     cls TmpPairB {
         !public a: S32
         !public b: Str
@@ -38,9 +38,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_borrowing_method_called_on_a_temporary,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_borrowing_method_called_on_a_temporary,
+  SppLinearValueNotConsumedError, R"(
     cls TmpPeek { !public b: Str }
 
     sup TmpPeek {
@@ -55,9 +55,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_element_taken_off_a_temporary_tuple,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_element_taken_off_a_temporary_tuple,
+  SppLinearValueNotConsumedError, R"(
     cls TmpElem { }
 
     fun eat(l: TmpElem) -> Void { let TmpElem() = l }
@@ -69,9 +69,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_temporary_passed_by_borrow,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_temporary_passed_by_borrow,
+  SppLinearValueNotConsumedError, R"(
     cls TmpBorrowed { }
 
     fun peek(l: &TmpBorrowed) -> Void { }
@@ -82,9 +82,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_temporary_case_subject,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_temporary_case_subject,
+  SppLinearValueNotConsumedError, R"(
     cls TmpSubject { }
 
     fun mk() -> TmpSubject or S32 { ret TmpSubject() }
@@ -98,17 +98,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
-    TestLinearTemporaries,
-    test_invalid_temporaries_compared,
-    SppLinearValueNotConsumedError, R"(
+  TestLinearTemporaries,
+  test_invalid_temporaries_compared,
+  SppLinearValueNotConsumedError, R"(
     fun f() -> Bool {
         ret Str::from("a") == Str::from("b")
     }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(
-    TestLinearTemporaries,
-    test_valid_temporary_consumed_by_a_chain, R"(
+  TestLinearTemporaries,
+  test_valid_temporary_consumed_by_a_chain, R"(
     cls TmpChain { }
 
     sup TmpChain {
@@ -118,5 +118,63 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         TmpChain().next().next().eat()
+    }
+)");
+
+// A branch that keeps the temporary and never finishes still drops it on the edge that leaves the branch.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearTemporaries,
+  test_invalid_temporary_case_subject_kept_by_a_branch_that_returns,
+  SppLinearValueNotConsumedError, R"(
+    cls TmpSubject { }
+
+    fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+    fun f() -> Void {
+        case mk() of {
+            is S32() { }
+            else { ret }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearTemporaries,
+  test_invalid_temporary_case_subject_kept_by_a_branch_that_exits_a_loop,
+  SppLinearValueNotConsumedError, R"(
+    cls TmpSubject { }
+
+    fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+    fun f() -> Void {
+        loop true {
+            case mk() of {
+                is S32() { }
+                else { exit }
+            }
+        }
+    }
+)");
+
+// One that never leaves at all (an abort) has no edge to drop it on; nor does an "exit" from a loop inside the branch.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestLinearTemporaries,
+  test_valid_temporary_case_subject_kept_by_a_branch_that_aborts, R"(
+    cls TmpSubject { }
+
+    fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+    fun f() -> Void {
+        case mk() of {
+            is S32() { }
+            else {
+                let mut i = 0
+                loop i < 3 {
+                    i = i + 1
+                    exit
+                }
+                std::abort::abort()
+            }
+        }
     }
 )");

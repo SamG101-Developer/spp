@@ -100,6 +100,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = B[S32]()
         b.f()
         let mut x = b.f(1)
+        std::mem::ops::drop(x)
         x = Vec[S32]()
         b.f(true, 1)
 
@@ -139,6 +140,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let mut coroutine = b.c(123)
             let v = coroutine.res(false)
+            std::mem::ops::drop(coroutine)
         }
         std::mem::ops::drop(b)
     }

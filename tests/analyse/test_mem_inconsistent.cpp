@@ -153,9 +153,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         let g = c(&p)
         case 1 of {
-            == 1 { let r = p }
+            == 1 { std::mem::ops::drop(p) }
             == 2 { }
         }
+        std::mem::ops::drop(&g)
     }
 )");
 
@@ -174,9 +175,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         let g = c(&p.x)
         case 1 of {
-            == 1 { let r = p.x }
+            == 1 { std::mem::ops::drop(p.x) }
             == 2 { }
         }
+        std::mem::ops::drop(&g)
     }
 )");
 
@@ -221,6 +223,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             == 1 { g(&p) }
             == 2 { }
         }
+        std::mem::ops::drop(&h)
     }
 )");
 
@@ -237,7 +240,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = c(&p) }
+            == 1 {
+                let x = c(&p)
+                std::mem::ops::drop(x)
+            }
             == 2 { }
         }
 
@@ -259,7 +265,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = c(&p.x) }
+            == 1 {
+                let x = c(&p.x)
+                std::mem::ops::drop(x)
+            }
             == 2 { }
         }
 
@@ -281,8 +290,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let x = c(&p.x) }
-            == 2 { let x = c(&p.y) }
+            == 1 {
+                let x = c(&p.x)
+                std::mem::ops::drop(x)
+            }
+            == 2 {
+                let x = c(&p.y)
+                std::mem::ops::drop(x)
+            }
         }
 
         let r = p
@@ -355,7 +370,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut p = Point(x=Str::from("5"), y=Str::from("5"))
         case 1 of {
-            == 1 { let h = c(&mut p) }
+            == 1 {
+                let h = c(&mut p)
+                std::mem::ops::drop(h)
+            }
             == 2 { }
         }
 
@@ -431,5 +449,91 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
 
         let r = p
+        std::mem::ops::drop(&h)
+    }
+)");
+
+// Paths are joined by place: the same part taken on every path is taken, wherever each path took it. Comparing where
+// the moves were written made two branches that each take "p.x" disagree, and "p.y" unusable after them.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_valid_memory_same_part_moved_on_every_path_then_sibling_used, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        case 1 of {
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+            else {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+        }
+
+        let y = p.y
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_same_part_moved_on_every_path_then_used,
+  SppUninitializedMemoryUseError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        case 1 of {
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+            else {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+        }
+
+        let x = p.x
+        std::mem::ops::drop(x)
+        let y = p.y
+        std::mem::ops::drop(y)
+    }
+)");
+
+// Todo: A part taken on only one path is still owned on the other, so "p.x" leaks when the "else" runs. Scope exit
+//  counts a part taken on any path as taken (see "linear_utils::IsLive"), because a "case" without an "else" keeps its
+//  entry state as a path even for a pattern that cannot fail. Fixed by the match and fall-through edges of M4.3.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_part_moved_on_one_path_leaks_on_the_other,
+  SppLinearValueNotConsumedError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    fun f() -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        case 1 of {
+            == 1 {
+                let x = p.x
+                std::mem::ops::drop(x)
+            }
+            else { }
+        }
+
+        let y = p.y
+        std::mem::ops::drop(y)
     }
 )");

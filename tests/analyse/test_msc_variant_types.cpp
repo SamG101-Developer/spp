@@ -12,6 +12,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_2, R"(
     fun f(mut a: Str or U64 or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = 123_u64
         std::mem::ops::drop(a)
     }
@@ -21,6 +22,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_3, R"(
     fun f(mut a: Str or U64 or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = true
         std::mem::ops::drop(a)
     }
@@ -30,6 +32,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_subset_variant_1, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64) -> Void {
+        std::mem::ops::drop(a)
         a = b
         std::mem::ops::drop(a)
     }
@@ -39,6 +42,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_subset_variant_2, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = b
         std::mem::ops::drop(a)
     }
@@ -48,6 +52,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_subset_variant_3, R"(
     fun f(mut a: Str or U64 or Bool, b: U64 or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = b
         std::mem::ops::drop(a)
     }
@@ -57,6 +62,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_type_assign_from_equal_variant, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = b
         std::mem::ops::drop(a)
     }
@@ -66,6 +72,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_collapse_arguments, R"(
     fun f(mut a: Str or U64 or Bool, b: Str or U64 or Bool or Bool) -> Void {
+        std::mem::ops::drop(a)
         a = b
         std::mem::ops::drop(a)
     }
@@ -194,6 +201,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_as_array_element, R"(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
+        std::mem::ops::drop(a)
         a = [true, Str::from("hello")]
         std::mem::ops::drop(a)
     }
@@ -203,6 +211,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestVariantTypes,
     test_variant_as_repeated_array_element, R"(
     fun f(mut a: [Bool or Str; 2_uz]) -> Void {
+        std::mem::ops::drop(a)
         a = [true; 2_uz]
         std::mem::ops::drop(a)
     }

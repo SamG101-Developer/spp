@@ -246,3 +246,84 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+// A "skip" starts another iteration of the loop it continues, here the inner one: the outer body always returns, so
+// it never runs twice, and "x" is moved at most once.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstMemoryLoopChecks,
+  test_valid_inner_skip_does_not_continue_the_outer_loop, R"(
+    fun f(b: Bool) -> Void {
+        let x = Str::from("a")
+        loop b {
+            loop b {
+                skip
+            }
+            std::mem::ops::drop(x)
+            ret
+        }
+        std::mem::ops::drop(x)
+    }
+)");
+
+// "exit skip" continues the outer loop, so its body can run again, with "x" already moved.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryLoopChecks,
+  test_invalid_exit_skip_continues_the_outer_loop,
+  SppUninitializedMemoryUseError, R"(
+    fun f(b: Bool) -> Void {
+        let x = Str::from("a")
+        loop b {
+            std::mem::ops::drop(x)
+            loop b {
+                exit skip
+            }
+            ret
+        }
+    }
+)");
+
+// A "let" inside the body declares its binding afresh each iteration, so its one value is given again each time.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_valid_immutable_let_declared_and_given_each_iteration, R"(
+    fun f() -> Void {
+        let mut i = 0
+        loop i < 3 {
+            let x: S32
+            x = 1
+            i = i + x
+        }
+    }
+)");
+
+// The iterator behind "loop ... in" is dropped after the loop, which ends its loans there.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_valid_iterator_loans_end_after_the_loop, R"(
+    fun f() -> Void {
+        let mut v = Vec[S32]::new()
+        v.append(1)
+        loop x in v.iter_mut() { x@ = 2 }
+        v.append(3)
+        drop(v)
+    }
+)");
+
+// Dropped on a "ret" out of the loop too, by then: what it borrows cannot be consumed while the loop still holds it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_invalid_value_dropped_inside_a_loop_borrowing_it,
+    SppMovingEscapingBorrowedMemoryError, R"(
+    fun f() -> S32 {
+        let mut v = Vec[S32]::new()
+        v.append(1)
+        loop x in v.iter_ref() {
+            case x@ == 1 {
+                drop(v)
+                ret 5
+            }
+        }
+        drop(v)
+        ret 0
+    }
+)");

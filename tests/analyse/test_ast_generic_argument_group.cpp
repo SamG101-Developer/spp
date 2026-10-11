@@ -134,6 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
+        std::mem::ops::drop(type1)
         type1 = Type[T=Bool, U=Str]()
         std::mem::ops::drop(type1)
     }
@@ -146,6 +147,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
+        std::mem::ops::drop(type1)
         type1 = Type[U=Str, T=Bool]()
         std::mem::ops::drop(type1)
     }
@@ -174,6 +176,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = g[Str]()
+        std::mem::ops::drop(x)
         x = Some(val=Str::from("hello"))
         std::mem::ops::drop(x)
     }

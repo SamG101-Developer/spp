@@ -12,6 +12,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c(&mut x)
         let coro2 = c(&mut x)
+        std::mem::ops::drop(&coro1)
     }
 )");
 
@@ -31,6 +32,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c1(&mut x)
         let coro2 = c2(&x)
+        std::mem::ops::drop(&coro1)
     }
 )");
 
@@ -50,6 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let mut x = Str::from("123")
         let coro1 = c1(&x)
         let coro2 = c2(&mut x)
+        std::mem::ops::drop(&coro1)
     }
 )");
 
@@ -65,6 +68,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         {
             let coro1 = c(&x)
             let coro2 = c(&x)
+            std::mem::ops::drop(coro1)
+            std::mem::ops::drop(coro2)
         }
         std::mem::ops::drop(x)
     }
@@ -80,6 +85,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let y = x
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
@@ -94,6 +100,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         y = x
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
@@ -111,7 +118,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let y: Str
         let x = Str::from("hello world")
         let coroutine = g(&x)
+        std::mem::ops::drop(a.a)
         a.a = x
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
@@ -127,6 +136,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         f(x)
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
@@ -144,36 +154,41 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let a = A(a=x)
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// The generator holding the borrow ends where the value leaves its scope, so it is never used after the move (M9.2).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
-  test_invalid_memory_moving_pinned_borrow_inner_scope_return,
-  SppMovingEscapingBorrowedMemoryError, R"(
+  test_valid_memory_moving_borrowed_value_as_its_holder_ends_inner_scope_return, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Void {
         let y = {
             let x = Str::from("hello world")
             let coroutine = g(&x)
+            std::mem::ops::drop(coroutine)
             x
         }
+        std::mem::ops::drop(y)
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// The generator holding the borrow ends where the value leaves its scope, so it is never used after the move (M9.2).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestAstEscapingBorrows,
-  test_invalid_memory_moving_pinned_borrow_loop_escape,
-  SppMovingEscapingBorrowedMemoryError, R"(
+  test_valid_memory_moving_borrowed_value_as_its_holder_ends_loop_escape, R"(
     cor g(a: &Str) -> Gen[Str, Bool] { }
 
     fun h() -> Void {
         let looped = loop true {
             let x = Str::from("hello world")
             let coroutine = g(&x)
+            std::mem::ops::drop(coroutine)
             exit x
         }
+        std::mem::ops::drop(looped)
     }
 )");
 
@@ -187,6 +202,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Str::from("hello world")
         let coroutine = g(&x)
         let sent = gen x
+        std::mem::ops::drop(&coroutine)
     }
 )");
 
@@ -215,6 +231,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             let coroutine = g(&x)
             let z = y
             std::mem::ops::drop(z)
+            std::mem::ops::drop(coroutine)
         }
         std::mem::ops::drop(x)
     }
@@ -229,6 +246,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = Str::from("hello world")
         {
             let coroutine = g(&x)
+            std::mem::ops::drop(coroutine)
         }
         let y = x
         std::mem::ops::drop(y)
@@ -248,6 +266,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
             coroutine = g(&x)
         }
         let y = x
+        std::mem::ops::drop(&coroutine)
     }
 )");
 

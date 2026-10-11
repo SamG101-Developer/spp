@@ -139,6 +139,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Point) -> Void {
         let mut x = p.x
+        std::mem::ops::drop(x)
         x = Str::from("hello world")
         std::mem::ops::drop(x)
     }

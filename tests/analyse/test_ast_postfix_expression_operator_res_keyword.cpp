@@ -92,9 +92,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// "b" is handed the "&mut" the generator yielded, and gives it on to "c": the generator cannot be consumed while
+// that borrow into it is held.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstPostfixExpressionOperatorResumeCoroutineAst,
-    test_valid_res_generator_object_mut, R"(
+    test_invalid_res_generator_object_mut_consumed_while_its_yield_is_held,
+    SppMovingEscapingBorrowedMemoryError, R"(
     cor g() -> Gen[Yield=&mut S32, Send=Bool] {
         let sent = gen &mut 1
     }

@@ -105,7 +105,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1, Str::from("2"))
         let ((a, mut b), mut c) = (t, (3, Str::from("4")))
+        std::mem::ops::drop(b)
         b = Str::from("5")
+        std::mem::ops::drop(c.1)
         c.1 = Str::from("6")
         std::mem::ops::drop(b)
         std::mem::ops::drop(c)

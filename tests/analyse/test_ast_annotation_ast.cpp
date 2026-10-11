@@ -1,15 +1,21 @@
 #include "../test_macros.hpp"
 
+/// A method should be able to be declared as a "virtual
+/// method". Apply it to a method on a superimposition block
+/// and expect no errors.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AnnotationAst_BuiltinVirtualMethod,
   test_valid_usage_on_method, R"(
     cls A { }
     sup A {
-        !virtual_method
-        fun f() -> Void { }
+      !virtual_method
+      fun f() -> Void { }
     }
 )");
 
+/// A free function should not be able to be declared as a
+/// virtual method. Apply it to a free function and expect
+/// an annotation error to be raised.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AnnotationAst_BuiltinVirtualMethod,
   test_invalid_usage_on_function,

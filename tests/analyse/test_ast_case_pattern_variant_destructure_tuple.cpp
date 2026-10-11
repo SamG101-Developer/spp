@@ -77,7 +77,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureTupleAst,
   test_valid_literal_before_and_after_bound_multi_skip, R"(
-    fun f(p: (S32, Str, Str, Str, Bool)) -> Void {
+    fun f(p: (S32, S32, S32, S32, Bool)) -> Void {
         case p is (1, ..b, true) { }
     }
 )");
@@ -85,9 +85,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureTupleAst,
   test_valid_multiple_branches, R"(
-    fun f(p: (Str, Str)) -> Void {
+    fun f(p: (S32, S32)) -> Void {
         case p of {
-            is (x, y) { }
+            is (1, y) { }
             is (x, z) { }
         }
     }
@@ -118,6 +118,5 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
     fun f(p: (Point, Point)) -> Void {
         case p is (Point(x as a, y as b), Point(x as c, y as d)) { }
-        std::mem::ops::drop(p)
     }
 )");

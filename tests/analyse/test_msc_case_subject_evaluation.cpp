@@ -116,7 +116,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case o of {
             is std::option::Some[S32](val) { }
             is std::option::None() { }
-            else { }
         }
     }
 )");
@@ -129,7 +128,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case v of {
             is S32() { }
             is Bool() { }
-            else { }
         }
     }
 )");

@@ -493,6 +493,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = pass_through(1, true, Str::from("hi"))
+        std::mem::ops::drop(x)
         x = (0, false, Str::from("bye"))
         std::mem::ops::drop(x)
     }

@@ -222,7 +222,6 @@ SPP_TEST_CMP_VALUES(
     ret case p of {
       is Point(x=1, y) { y }
       is Point(x, y) { x + y }
-      else { 0 }
     }
   }
 
@@ -237,7 +236,6 @@ SPP_TEST_CMP_VALUES(
     ret case a of {
       is [1, b, c] { b + c }
       is [p, q, r] { p * q * r }
-      else { 0 }
     }
   }
 

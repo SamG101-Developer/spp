@@ -165,7 +165,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(p: Point) -> Void {
         case p of {
             is Point(x, y) and x == 1 { }
-            else { }
+            else { std::mem::ops::drop(p) }
         }
     }
 )");
@@ -174,10 +174,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   CaseExpressionAst,
   test_valid_pattern_guard_with_variant_narrowing, R"(
     fun f(p: Opt[Str]) -> Void {
+        let x = Str::from("x")
         case p of {
-            is Some[Str](val) and val == Str::from("x") { }
-            else { }
+            is Some[Str](val) and val == x { }
+            else { std::mem::ops::drop(p) }
         }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -250,7 +252,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = case p of {
             is Point(x, y=10) { x }
             is Point(x=10, y) { y }
-            else { 0 }
+            else {
+                std::mem::ops::drop(p)
+                0
+            }
         }
     }
 )");
@@ -504,12 +509,59 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// The short "case x is P(..)" form binds by move without taking the subject, unlike the "of" form - so the subject
-// could be consumed again after its payload was moved out.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_short_pattern_form_that_cannot_fail_needs_no_else, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    fun f(p: Point) -> S32 {
+        ret case p is Point(x, y) { x + y }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_short_pattern_form_that_can_fail_needs_an_else,
+  SppCaseBranchMissingElseError, R"(
+    fun f(o: Opt[S32]) -> S32 {
+        ret case o is Some[S32](val) { val }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_else_after_short_pattern_form_that_cannot_fail,
+  SppCaseBranchUnreachableError, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    fun f(p: Point) -> S32 {
+        ret case p is Point(x, y) { x } else { 0 }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_short_pattern_form_chained_with_else_case, R"(
+    fun f(x: Opt[S32], y: Opt[S32]) -> S32 {
+        ret case x is Some[S32](val) { val }
+        else case y is Some[S32](val) { val }
+        else { 0 }
+    }
+)");
+
+// The short "case x is P(..)" form takes the subject on its match edge, as the "of" form does: moving the payload out
+// moves "o" on that path, and the other path leaves it whole, so using it afterwards is a use of maybe-moved memory.
+// FIXED
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CaseExpressionAst,
   test_invalid_short_pattern_form_payload_moved_then_subject_used,
-  SppUninitializedMemoryUseError, R"(
+  SppInconsistentlyInitializedMemoryUseError, R"(
     fun f(o: Opt[Str]) -> Void {
         case o is Some[Str](val) { std::mem::ops::drop(val) }
         std::mem::ops::drop(o)
@@ -615,5 +667,224 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             else { }
         }
         let GuardL3() = l
+    }
+)");
+
+// Exhaustiveness: a "case" that matches every value of its subject needs no "else" ("case_utils::CoverageOf"), and a
+// branch after every value is matched can never run, so it is an error.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_exhaustive_variant_case_as_an_expression_without_else, R"(
+    fun f(x: Opt[S32]) -> S32 {
+        let n = case x of {
+            is Some[S32](val) { val }
+            is None() { 0 }
+        }
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_variant_case_missing_a_member_without_else,
+  SppCaseBranchMissingElseError, R"(
+    cls A { }
+    cls B { }
+    cls C { }
+
+    fun f(x: A or B or C) -> S32 {
+        let n = case x of {
+            is A() { 1 }
+            is B() { 2 }
+        }
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_guarded_branch_does_not_cover,
+  SppCaseBranchMissingElseError, R"(
+    fun f(x: Opt[S32]) -> S32 {
+        let n = case x of {
+            is Some[S32](val) and val > 0 { val }
+            is None() { 0 }
+        }
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_bool_literals_cover_a_bool, R"(
+    fun f(b: Bool) -> S32 {
+        let n = case b of {
+            == true { 1 }
+            == false { 0 }
+        }
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_exhaustive_case_whose_branches_all_return_ends_the_function, R"(
+    fun f(x: Opt[S32]) -> S32 {
+        case x of {
+            is Some[S32](val) { ret val }
+            is None() { ret 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_else_after_every_member_is_matched,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: Opt[S32]) -> S32 {
+        ret case x of {
+            is Some[S32](val) { val }
+            is None() { 0 }
+            else { 1 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_branch_repeating_an_earlier_one,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: S32) -> Void {
+        case x of {
+            is S32(..) { }
+            is S32(..) { }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_else_after_both_bool_literals,
+  SppCaseBranchUnreachableError, R"(
+    fun f(b: Bool) -> S32 {
+        ret case b of {
+            == true { 1 }
+            == false { 0 }
+            else { 2 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_tuple_of_variants_covered_by_every_corner, R"(
+    fun f(x: (Opt[S32], Opt[S32])) -> S32 {
+        ret case x of {
+            is (Some[S32](val as a), Some[S32](val as b)) { a + b }
+            is (Some[S32](val), None()) { val }
+            is (None(), Some[S32](val)) { val }
+            is (None(), None()) { 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_tuple_of_variants_missing_a_corner,
+  SppCaseBranchMissingElseError, R"(
+    fun f(x: (Opt[S32], Opt[S32])) -> S32 {
+        ret case x of {
+            is (Some[S32](val as a), Some[S32](val as b)) { a + b }
+            is (Some[S32](val), None()) { val }
+            is (None(), None()) { 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_tuple_corner_already_matched,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: (Opt[S32], Opt[S32])) -> S32 {
+        ret case x of {
+            is (Some[S32](val), None()) { val }
+            is (None(), _) { 0 }
+            is (None(), None()) { 0 }
+            else { 1 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_nested_variant_covered_through_its_field, R"(
+    fun f(x: Opt[Opt[S32]]) -> S32 {
+        ret case x of {
+            is Some[Opt[S32]](val=Some[S32](val)) { val }
+            is Some[Opt[S32]](val=None()) { 0 }
+            is None() { 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_nested_variant_covered_by_refining_types, R"(
+    fun f(x: Opt[Opt[S32]]) -> S32 {
+        ret case x of {
+            is Some[Some[S32]](val) { val.val }
+            is Some[None](..) { 0 }
+            is None() { 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_refining_type_leaves_its_member_open,
+  SppCaseBranchMissingElseError, R"(
+    fun f(x: Opt[Opt[S32]]) -> S32 {
+        ret case x of {
+            is Some[Some[S32]](val) { val.val }
+            is None() { 0 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_tuple_of_bools_covered_by_literals, R"(
+    fun f(x: (Bool, Bool)) -> S32 {
+        ret case x of {
+            is (true, true) { 0 }
+            is (true, false) { 1 }
+            is (false, _) { 2 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_integer_literals_never_cover,
+  SppCaseBranchMissingElseError, R"(
+    fun f(x: (S32, Bool)) -> S32 {
+        ret case x of {
+            is (0, true) { 0 }
+            is (0, false) { 1 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_integer_literal,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: (S32, Bool)) -> S32 {
+        ret case x of {
+            is (0, _) { 0 }
+            is (0, true) { 1 }
+            else { 2 }
+        }
     }
 )");

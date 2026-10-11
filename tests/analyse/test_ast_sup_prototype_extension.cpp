@@ -311,6 +311,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [T] B[T] ext A[T] {
         fun f(mut self) -> Void {
             let Self(mut a, b) = self
+            std::mem::ops::drop(a)
             a = b
             std::mem::ops::drop(a)
         }

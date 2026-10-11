@@ -124,6 +124,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let mut x = f[U=Str](123)
+        std::mem::ops::drop(x)
         x = Str::from("hello")
         drop(x)
     }
@@ -289,6 +290,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let mut x = f(Concrete())
+        std::mem::ops::drop(x)
         x = MyUType()
         std::mem::ops::drop(x)
     }
@@ -317,6 +319,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let mut x = Container[S32]()
+        std::mem::ops::drop(x.a)
         x.a = Vec[S32]()
         std::mem::ops::drop(x)
     }
@@ -332,6 +335,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun g() -> Void {
         let mut x = f(123)
+        std::mem::ops::drop(x)
         x = Vec[S32]()
         std::mem::ops::drop(x)
     }

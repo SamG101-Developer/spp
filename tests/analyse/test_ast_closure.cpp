@@ -40,8 +40,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f() -> Void {
         let a = Str::from("x")
         let x = (caps &a) 123_u32
-        g(x)
         std::mem::ops::drop(a)
+        g(x)
     }
 )");
 
@@ -137,6 +137,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut a = 5_u32
         let x = (mut b: &mut U32 caps &mut a) { b = a }
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -158,6 +159,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let mut a = 5_u32
         let x: FunMut[(), U32] = (caps &mut a) 123_u32
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -212,6 +214,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = 5_u32
         let mut b = 6_u32
         let x: FunMut[(), U32] = (caps &a, &mut b) 123_u32
+        std::mem::ops::drop(x)
     }
 )");
 
@@ -270,6 +273,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let some_variable = Str::from("hello world")
         let x = (caps &some_variable) 123_u32
         let b = some_variable
+        std::mem::ops::drop(&x)
     }
 )");
 
@@ -353,6 +357,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let a = Str::from("x")
         let handle = hold((caps &a) 123_u32)
         std::mem::ops::drop(a)
+        std::mem::ops::drop(&handle)
     }
 )");
 
