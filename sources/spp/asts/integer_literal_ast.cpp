@@ -99,7 +99,7 @@ auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
 
 auto IntegerLiteralAst::ValidateBounds(
   Ast const &owner, Scope const &scope) const -> void {
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time maths.
@@ -174,7 +174,7 @@ auto IntegerLiteralAst::Stage11_CodeGen(
 auto IntegerLiteralAst::_PrecompiledType(
   ScopeManager *sm) const -> TypeAst const& {
   //
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
   using namespace generate::common_types_precompiled;
 
   // Map the type string literal to the correct SPP type.

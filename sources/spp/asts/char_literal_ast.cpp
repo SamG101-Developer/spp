@@ -76,7 +76,7 @@ auto CharLiteralAst::Stage7_AnalyseSemantics(
   // A byte-prefixed literal ("b'...'") must decode to a single
   // to prevent truncation by the codegen mask, instead of being
   // rejected here.
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
 
   // Exactly one character: an escape ("\n", or "\x0b"), or
   // one UTF-8 scalar, whose length its lead byte gives.

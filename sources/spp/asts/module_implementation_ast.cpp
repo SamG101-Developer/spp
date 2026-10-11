@@ -28,7 +28,7 @@ namespace {
   /// Answers whether the member ran without an error.
   template <typename F>
   auto CheckMember(Ast *const member, F &&check) -> bool {
-    IMPORT_UTILS;
+    using namespace spp::analyse::errors;
     namespace sink = diagnostic_sink;
     // Normal behaviour: run the member, an error stops execution,
     // displays the error and terminates the compiler.

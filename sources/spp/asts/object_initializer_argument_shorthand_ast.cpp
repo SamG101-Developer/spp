@@ -58,7 +58,7 @@ auto ObjectInitializerArgumentShorthandAst::ToString() const -> Str {
 
 auto ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
 
   // The parser allows Type(123) as a postfix function call
   // over a type, which is invalid as type initialization.

@@ -90,7 +90,8 @@ auto UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
 auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
+
   // Generate the top-level alias for the converted type statement.
   const auto [old_var_sym, scope] = sm->CurrentScope->FindVarSymbolOutermost(*OldVar);
   if (old_var_sym != nullptr) {

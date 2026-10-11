@@ -62,7 +62,7 @@ auto ClassImplementationAst::Stage5_LoadSupScopes(
 
 auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
 
   // Pre-analyse semantics for each member.
   for (auto const &m : Members) { m->Stage6_PreAnalyseSemantics(sm, meta); }
