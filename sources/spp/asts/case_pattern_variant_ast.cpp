@@ -34,6 +34,11 @@ auto CasePatternVariantAst::BindsByMove() const -> bool {
   return false;
 }
 
+auto CasePatternVariantAst::NarrowsTo() const -> TypeAst const* {
+  // Only a destructure naming a type selects one.
+  return nullptr;
+}
+
 auto CasePatternVariantAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Default implementation for case pattern variants

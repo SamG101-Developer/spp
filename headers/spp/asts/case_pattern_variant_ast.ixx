@@ -12,6 +12,7 @@ SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);
+use(spp::asts, struct TypeAst);
 
 /// Base class for all case pattern variants. Allows different
 /// variants in the same list, and provides the conversion
@@ -38,6 +39,10 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
   /// destructure binds if any of its elements does, so one made
   /// only of skips is a shape test and takes nothing.
   SPP_ATTR_NODISCARD virtual auto BindsByMove() const -> bool;
+
+  /// The member of a variant this pattern selects ("is Some[T](..)"),
+  /// if it names a type; nothing for a pattern that names none.
+  SPP_ATTR_NODISCARD virtual auto NarrowsTo() const -> TypeAst const*;
 
 protected:
   /// The "let" statement that case-of-patterns are converted
