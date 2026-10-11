@@ -10,7 +10,6 @@ Subcommands:
     runners     one tab-separated record per canonical runner image
     caches      one tab-separated record per build-tree cache family: name, generation, key prefix
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
-    keys TABLE  print the keys of one table by dotted path (pin.boost), for scripts that loop over a table's entries
     set PATH V  rewrite one value in place, preserving comments and layout; used by refresh-pins.sh
     check       validate the file and print what it exports
 """
@@ -215,16 +214,6 @@ def cmd_get(data: dict, name: str) -> None:
     print(values[name])
 
 
-def cmd_keys(data: dict, path: str) -> None:
-    node: object = data
-    for part in path.split("."):
-        node = node.get(part) if isinstance(node, dict) else None
-    if not isinstance(node, dict):
-        fail(f"{path} is not a table in {MANIFEST}")
-    for key in node:
-        print(key)
-
-
 def cmd_check(data: dict, quiet: bool) -> None:
     values = exports(data)
     libs = libraries(data)
@@ -301,8 +290,6 @@ def main() -> None:
     check.add_argument("-q", "--quiet", action="store_true")
     get = sub.add_parser("get")
     get.add_argument("name")
-    keys = sub.add_parser("keys")
-    keys.add_argument("table")
     setter = sub.add_parser("set")
     setter.add_argument("path")
     setter.add_argument("value")
@@ -323,8 +310,6 @@ def main() -> None:
         cmd_caches(data)
     elif args.command == "get":
         cmd_get(data, args.name)
-    elif args.command == "keys":
-        cmd_keys(data, args.table)
     else:
         cmd_check(data, args.quiet)
 

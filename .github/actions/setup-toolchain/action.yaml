@@ -99,14 +99,7 @@ runs:
       shell: bash
       run: bash .github/scripts/setup/compiler-cache.sh off
 
-    # Project dependencies. Boost and LLVM are the awkward two to build, so both come prebuilt.
-    - name: Install Boost (prebuilt)
-      if: inputs.dependencies == 'true'
-      shell: bash
-      env:
-        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
-      run: bash .github/scripts/setup/install-boost.sh
-
+    # Project dependencies. LLVM is the awkward one to build, so it comes prebuilt.
     # CMAKE_LINKER_TYPE=LLD makes GCC pass -fuse-ld=lld, and GCC only looks for a plain 'ld.lld' on PATH.
     - name: Install LLVM dev libraries and ld.lld (Linux)
       if: inputs.dependencies == 'true' && runner.os == 'Linux'

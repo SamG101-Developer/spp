@@ -46,9 +46,9 @@ namespace spp::utils::strings {
   /// there is none.
   SPP_EXP_FUN auto NormalizeFloatString(StrView s1, StrView s2, StrView exp = "") -> Str;
 
-  /// Strip every underscore from a numeric string, so the boost
-  /// constructors can be called cleanly on it, for integers or
-  /// rationals.
+  /// Strip every underscore from a numeric string, so the numex
+  /// BigInt/BigDec constructors can be called cleanly on it, for
+  /// integers or rationals.
   SPP_EXP_FUN auto NormaliseAnyString(StrView s1) -> Str;
 
   /// Decode a single-quoted char literal token (quotes

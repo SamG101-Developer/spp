@@ -40,6 +40,11 @@ on:
         required: false
         type: boolean
         default: true
+      valgrind:
+        description: "Run chosen `!test` groups under valgrind (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
 
     # The release collects each lane's staged spp by these, after
     # the whole lane - tests included - is green.
@@ -192,3 +197,58 @@ jobs:
 
       - name: s++ STL conformance
         run: bash .github/scripts/test/stl-conformance.sh
+
+  # The compiled code's memory, under valgrind, over the groups
+  # that make and drop frames, environments and buffers.
+  # Advisory until it has run clean for a while.
+  valgrind:
+    name: valgrind groups
+    needs: [ build ]
+    if: inputs.valgrind && startsWith(inputs.os, 'ubuntu')
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      # Builds valgrind into the home directory, so no sudo.
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
+
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      - name: Cache valgrind
+        id: valgrind-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.tools/valgrind
+          key: valgrind-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+
+      - name: Install valgrind (cache miss)
+        if: steps.valgrind-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-valgrind-linux.sh
+
+      - name: Expose valgrind
+        run: |
+          echo "$SPP_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_VALGRIND_PREFIX/bin/valgrind" --version
+
+      - name: s++ test groups under valgrind
+        run: bash .github/scripts/test/valgrind-groups.sh

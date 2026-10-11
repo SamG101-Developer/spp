@@ -36,7 +36,7 @@ mapfile -t families < <(python3 .github/scripts/lib/pins.py caches | cut -f3)
 # compiler and build-tree caches, which are reached through a
 # prefix restore-key that picks the newest match, and a hash
 # of the defining files for the rest.
-for spec in "spp-libs-:1" "cc-:1" "doxygen-:1" "gtest-parallel-:1" "cppcheck-:2" \
+for spec in "spp-libs-:1" "cc-:1" "doxygen-:1" "valgrind-:1" "gtest-parallel-:1" "cppcheck-:2" \
   "llvm-win-:1" "llvm-deps-win-:1" "llvm-mac-:2" "${families[@]/%/:2}"; do
   prefix="${spec%:*}"
   drop="${spec##*:}"

@@ -69,28 +69,15 @@ sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
 developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
-# Prebuilt from MarkusJx/prebuilt-boost, so one asset and digest per
-# runner.
-[pin.boost]
-version = "1.92.0"
-osv-ecosystem = "OSS-Fuzz"
-osv-name = "boost"
-asset-ubuntu-2404 = "ubuntu-24.04-gcc-static+shared-x86"
-sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
-asset-ubuntu-2404-arm = "ubuntu-22.04-gcc-static+shared-aarch64"
-sha256-ubuntu-2404-arm = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
-asset-macos-15 = "macos-15-clang-static+shared-aarch64"
-sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
-asset-macos-26 = "macos-26-clang-static+shared-aarch64"
-sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
-asset-windows-2025 = "windows-2025-msvc-static-x86"
-sha256-windows-2025 = "e3db0d60785471a624c29a444b5cb42fcbd3363d8a4dd92cf12739603ebdba5e"
-asset-windows-2022 = "windows-2022-msvc-static-x86"
-sha256-windows-2022 = "1dbbd1d7ac3fcabec5e4b24d3b1bc3143cd1b57aead2436276f2c56acb48ea5d"
-
 [pin.doxygen]
 version = "1.17.0"
 sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
+
+# Built from the release tarball: the runner's apt valgrind trails
+# upstream by years.
+[pin.valgrind]
+version = "3.27.1"
+sha256 = "5d589152eb8071c02feab8ce6ab719e431a1fbc3e2b1700f5432632a8b9264dc"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -130,6 +117,7 @@ windows-old = "windows-2022"
 [prefix]
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
+valgrind = "{home}/.tools/valgrind"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
 llvm-deps-win = "{home}/llvm-deps"

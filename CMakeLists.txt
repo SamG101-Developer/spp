@@ -121,7 +121,6 @@ if (WIN32)
   find_package(LibXml2 CONFIG REQUIRED)
   find_package(pthreads4w CONFIG REQUIRED)
 endif ()
-find_package(Boost 1.91.0 REQUIRED COMPONENTS preprocessor)
 find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
@@ -257,7 +256,6 @@ target_include_directories(
 target_link_libraries(
   ${PROJECT_NAME}_lib
   PUBLIC
-  Boost::preprocessor
   LLVMCore
   LLVMSupport
   LLVMCodeGen

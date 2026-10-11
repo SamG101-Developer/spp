@@ -10,7 +10,7 @@ if [ "$RUNNER_OS" = "Windows" ]; then
   # the targets the prebuilt LLVM exports, which the other two
   # platforms already have system copies of.
   deps_dir="$(cygpath -m "$SPP_LLVM_DEPS_WIN_PREFIX")"
-  echo "CMAKE_PREFIX_PATH=$(cygpath -m "$SPP_LOCAL_PREFIX");${llvm_dir};${BOOST_ROOT};${deps_dir}" >> "$GITHUB_ENV"
+  echo "CMAKE_PREFIX_PATH=$(cygpath -m "$SPP_LOCAL_PREFIX");${llvm_dir};${deps_dir}" >> "$GITHUB_ENV"
 else
-  echo "CMAKE_PREFIX_PATH=$SPP_LOCAL_PREFIX:${llvm_dir}:${BOOST_ROOT}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
+  echo "CMAKE_PREFIX_PATH=$SPP_LOCAL_PREFIX:${llvm_dir}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
 fi

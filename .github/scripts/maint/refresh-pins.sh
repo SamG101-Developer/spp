@@ -145,17 +145,19 @@ else
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')"
 fi
 
-# BOOST
+# VALGRIND
 echo
-echo "prebuilt Boost (${MANIFEST})"
-boost="$(pinned pin.boost.version)"
-# One digest per asset-<image> key in the manifest.
-while IFS= read -r key; do
-  image="${key#asset-}"
-  asset="$(pinned "pin.boost.${key}")"
-  set_pin "pin.boost.sha256-${image}" \
-    "$(asset_digest MarkusJx/prebuilt-boost "$boost" "boost-${boost}-${asset}.tar.gz")"
-done < <(python3 "$PINS" keys pin.boost | grep '^asset-')
+echo "valgrind (${MANIFEST})"
+valgrind_version="$(fetch https://sourceware.org/pub/valgrind/ \
+  | grep -oE 'valgrind-[0-9]+\.[0-9]+\.[0-9]+\.tar\.bz2' | sed -E 's/^valgrind-|\.tar\.bz2$//g' | sort -uV | tail -1)"
+if [ -z "$valgrind_version" ]; then
+  echo "::error::could not read the latest valgrind release"
+  status=1
+else
+  fetch -o "$tmp/valgrind.tar.bz2" "https://sourceware.org/pub/valgrind/valgrind-${valgrind_version}.tar.bz2"
+  set_pin pin.valgrind.version "$valgrind_version"
+  set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
+fi
 
 # LLVM (WINDOWS)
 echo

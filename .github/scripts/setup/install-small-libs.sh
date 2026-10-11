@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The header/CMake dependencies: check each out at a pinned
 # commit and install it into SPP_LOCAL_PREFIX, which the
-# calling step caches as one tree. LLVM and Boost come
-# prebuilt and are installed elsewhere.
+# calling step caches as one tree. LLVM comes prebuilt and is
+# installed elsewhere.
 set -euo pipefail
 source .github/scripts/lib/llvm-prefix.sh
 source .github/scripts/lib/pinned-checkout.sh
@@ -24,9 +24,9 @@ cd "${RUNNER_TEMP}/libs"
 
 if [ "$RUNNER_OS" = "Windows" ]; then
   PREFIX="$(cygpath -m "$PREFIX")"
-  export CMAKE_PREFIX_PATH="$PREFIX;${BOOST_ROOT};$llvm_dir"
+  export CMAKE_PREFIX_PATH="$PREFIX;$llvm_dir"
 else
-  export CMAKE_PREFIX_PATH="$PREFIX${BOOST_ROOT:+:$BOOST_ROOT}:$llvm_dir"
+  export CMAKE_PREFIX_PATH="$PREFIX:$llvm_dir"
 fi
 
 # One stamp per library, each holding the manifest record it was
