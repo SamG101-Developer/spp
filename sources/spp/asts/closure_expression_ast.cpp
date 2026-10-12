@@ -235,6 +235,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
     // instead, the walk stopped one short of them.
     const auto outer_scope = sm->CurrentScope;
     meta->EnclosingFnScope = outer_scope;
+    const auto _flow = memory_state::BodyFlow(*outer_scope);
 
     // Prevent the body inheriting external assignments.
     meta->AssignmentTarget = nullptr;
