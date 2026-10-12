@@ -241,8 +241,8 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // always finds it.
   const auto spp_attr_index_of = [&](IdentifierAst const &name) {
     const auto index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
-    SPP_ASSERT(index >= 0);
-    return static_cast<std::size_t>(index);
+    SPP_ASSERT(index.has_value());
+    return *index;
   };
 
   // The physical field order isn't the declaration order,
