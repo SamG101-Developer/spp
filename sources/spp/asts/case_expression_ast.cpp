@@ -70,6 +70,21 @@ CaseExpressionAst::~CaseExpressionAst() = default;
 auto CaseExpressionAst::NewNonPatternMatch(
   decltype(TokCase) &&tok_case, decltype(Cond) &&cond, Unique<InnerScopeExpressionAst> &&first,
   decltype(Branches) &&branches) -> Unique<CaseExpressionAst> {
+  // A condition that is one "is" ("case x is P { .. }") is the
+  // pattern matching "case x of { is P { .. } }", so the pattern
+  // is matched against the subject directly, and its coverage
+  // seen, rather than through a boolean.
+  if (auto is_expr = cond->To<IsExpressionAst>()) {
+    auto is_patterns = Vec<Unique<CasePatternVariantAst>>();
+    is_patterns.EmplaceBack(std::move(is_expr->Rhs));
+    branches.Insert(
+      branches.begin(),
+      MakeUnique<CaseExpressionBranchAst>(
+        std::move(is_expr->TokOp), std::move(is_patterns), nullptr, std::move(first)));
+    return MakeUnique<CaseExpressionAst>(
+      std::move(tok_case), std::move(is_expr->Lhs), nullptr, std::move(branches));
+  }
+
   // Convert consecutive if/else-if/else branches into case
   // pattern matching.
   auto patterns = Vec<Unique<CasePatternVariantAst>>(1);
