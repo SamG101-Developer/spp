@@ -80,9 +80,12 @@ auto spp::analyse::utils::marker_sups::FindFnSup(
   // looked at through an alias ("ForKindCheck" and "Of" both
   // follow one): an alias of a function type is callable as its
   // target.
-  if (not type.IsCompilerGeneratedType()
-    and type_predicates::IsTypeFunction(TypeRef::ForKindCheck(type, scope), scope)) {
-    return TypeRef::Of(type, scope);
+  // The convention is how the callable is held, not what it is:
+  // a "&FunRef" is a "FunRef", not the "FunMut" it extends.
+  const auto bare = type.WithoutConvention();
+  if (not bare->IsCompilerGeneratedType()
+    and type_predicates::IsTypeFunction(TypeRef::ForKindCheck(*bare, scope), scope)) {
+    return TypeRef::Of(*bare, scope);
   }
   for (auto const &sup : type_members::SuperClsRefs(TypeRef::ForKindCheck(*type_sym, scope), scope)) {
     if (type_predicates::IsTypeFunction(sup, scope)) { return sup; }
