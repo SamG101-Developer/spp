@@ -132,6 +132,11 @@ public:
   /// actual exit point.
   Vec<DeferStatementAst*> DeferredReached;
 
+  /// The memory state of the body this is the outermost scope of
+  /// (a function's or a closure's), while Stage 8 walks it
+  /// ("memory_state::StartFlow").
+  mutable Shared<utils::memory_state::FlowState> Flow;
+
   /// The sup-scopes directly attached to this type. Top
   /// recursively find the super scopes, use the "GetSupScopes()"
   /// method.
