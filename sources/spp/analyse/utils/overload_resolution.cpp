@@ -472,6 +472,7 @@ namespace spp::analyse::utils::overload_resolution {
       // function with self argument).
       auto [transformed_lhs, transformed_fn_call] = ConvertMethodToFnForm(
         fn_owner_type, fn_name, cast_lhs, fn_call, *sm, meta);
+      transformed_fn_call->Source.OriginalExpr = fn_call.Source.OriginalExpr;
 
       // Determine the overload based off the function
       // (uniform system).
@@ -1314,7 +1315,7 @@ auto spp::analyse::utils::overload_resolution::DetermineOverload(
   // Only now is it known which overload the call makes, so only
   // now is its instantiation required; the other candidates' were
   // built just to check the call against.
-  pass_overloads[0].Proto->RequireGnSubstitution();
+  pass_overloads[0].Proto->RequireGnSubstitution(fn_call.Source.OriginalExpr, sm->CurrentScope);
 
   // Store the closure if it was generated as part of the
   // overload resolution.
