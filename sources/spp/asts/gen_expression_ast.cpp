@@ -11,6 +11,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_resolution;
@@ -221,13 +222,15 @@ auto GenExpressionAst::Stage8_CheckMemory(
     // Immutable symbols cannot be mutated.
     RaiseIf<SppInvalidMutationError>(
       not sym->IsMutable, {sm->CurrentScope},
-      ERR_ARGS(*sym->Name, *Conv, *spp::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
+      ERR_ARGS(
+        *sym->Name, *Conv, *analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
+        "immutable symbol"));
 
     // Immutable borrows, even if their symbol is mutable,
     // cannot be mutated.
     RaiseIf<SppInvalidMutationError>(
-      spp::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
-      {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *spp::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
+      sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
+      {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
   }
 }
 

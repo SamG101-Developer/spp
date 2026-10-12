@@ -84,34 +84,66 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
   _MappedFn = case_utils::ConvertIsExprToFnCall(*this, sm, meta);
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
-  // Add the destructure symbols to the current scope.
-  // This includes the lhs symbol if it's been flow typed.
+  // Add the destructure symbols to the current scope. This
+  // includes the lhs symbol if it's been flow typed. They are
+  // recorded as the scope's bindings, as a "let"'s are, so
+  // a later walk only finds them from this "is" onwards.
+  _Exposed.Clear();
   if (AstAs<InnerScopeAst<Unique<Ast>>>(sm->CurrentScope->AstNode) == nullptr) {
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->GetAllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
-      sm->CurrentScope->AddVarSymbol(x->SharedFromThis<VariableSymbol>());
+      _Exposed.EmplaceBack(x->SharedFromThis<VariableSymbol>());
+      sm->CurrentScope->RecordLetBinding(_Exposed.Back());
+      sm->CurrentScope->AddVarSymbol(_Exposed.Back());
       if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.EmplaceBack(x); }
     }
   }
 }
 
+auto IsExpressionAst::_DeclareExposed(
+  ScopeManager &sm) const -> void {
+  // Bulk declare whatever is in the "exposed" list. Used in
+  // stages 8, 9 and 11, and expose the bindings.
+  for (auto const &x : _Exposed) {
+    sm.CurrentScope->AddVarSymbol(x);
+  }
+}
+
 auto IsExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward the memory checking to the mapped function.
+  // Forward the memory checking to the mapped function, then
+  // expose what it binds: the subject it tests is the one
+  // named before the "is", not the one it narrows.
   _MappedFn->Stage8_CheckMemory(sm, meta);
+  _DeclareExposed(*sm);
+}
+
+auto IsExpressionAst::Stage9_CompTimeResolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward the resolution to the mapped function, then expose
+  // what it binds, as stage 8 does.
+  _MappedFn->Stage9_CompTimeResolve(sm, meta);
+  _DeclareExposed(*sm);
 }
 
 auto IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  // As moving to the next scope clears ast-generated bindings
+  // in that scope, we need to redeclare them for them for
+  // narrowing analysis and codegen.
+  _DeclareExposed(*sm);
+
   // If the lhs was an identifier, the "is" causes it to get
   // flow typed, so we need to promote the original "alloca"
-  // into the flow typed symbol.
+  // into the flow typed symbol. Declared before the mapped
+  // function is generated, as code generation has always read
+  // it: the narrowed symbol shares the original's storage.
   if (_LhsAsId) {
-    const auto flow_typed_lhs_sym = sm->CurrentScope->FindVarSymbol(_LhsAsId.get(), true);
-    if (flow_typed_lhs_sym != nullptr) {
-      auto original_sym = sm->CurrentScope->Parent->FindVarSymbol(_LhsAsId.get());
-      original_sym = original_sym ? original_sym : flow_typed_lhs_sym;
-      flow_typed_lhs_sym->LlvmInfo->Alloca = original_sym->LlvmInfo->Alloca;
+    const auto narrow_sym = sm->CurrentScope->FindVarSymbol(_LhsAsId.get(), true);
+    if (narrow_sym != nullptr) {
+      auto wide_sym = sm->CurrentScope->Parent->FindVarSymbol(_LhsAsId.get());
+      wide_sym = wide_sym ? wide_sym : narrow_sym; // Todo: Remove fallback?
+      narrow_sym->LlvmInfo->Alloca = wide_sym->LlvmInfo->Alloca;
     }
   }
 
@@ -128,10 +160,10 @@ auto IsExpressionAst::InferTypeRef(
 }
 
 auto IsExpressionAst::IsAllowedInDefault() const -> bool {
-  // The pattern names types ("Point[T](x, y)") that a default
-  // carried to its use would read where they mean something
-  // else, and a pattern is not rewritten for it ("ReadExpr"),
-  // so it is banned, as "case" is.
+  // Along with "case" expressions (which an "is" maps too),
+  // the "is" expression is banned in default statements. In
+  // the future, they might get enabled, even if in a restricted
+  // way. Also depends on "case" being enabled in defaults.
   return false;
 }
 

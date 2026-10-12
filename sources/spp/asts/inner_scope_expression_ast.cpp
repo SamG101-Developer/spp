@@ -200,12 +200,14 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
       "Scope end", *sm, meta);
   }
 
-  // Variable symbols' memory info structs contain the escaping borrow containers, and the contained escaping borrows.
-  // At the end of a scope, every symbol declared *in* this scope dies, so the escaping borrows it holds are released
-  // with it. What matters is where the container was declared, not where the borrow was established: a handle
-  // declared further out ("let h: Gen[..]" and then "{ h = c(&p) }") carries the borrow on past this point.
-  for (auto *const sym : sm->CurrentScope->GetAllVarSymbols(true)) {
-    std::ignore = memory_state::ReleaseEscapingBorrows(*sym);
+  // At the end of a scope, every symbol declared *in* this
+  // scope dies, so the loans it holds end with it. What matters
+  // is where the holder was declared, not where the borrow was
+  // made: a handle declared further out ("let h: Gen[..]" and
+  // then "{ h = c(&p) }") carries the borrow on past this point.
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  for (const auto sym : sm->CurrentScope->GetAllVarSymbols(true)) {
+    memory_state::ReleaseLoans(loans, *sym);
   }
 
   sm->MoveOutOfCurrentScope();

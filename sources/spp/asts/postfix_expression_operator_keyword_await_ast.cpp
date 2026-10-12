@@ -8,6 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.fold_expression_ast;
@@ -127,24 +129,14 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   const auto handle = meta->AssignmentTarget;
   const auto handle_sym =
     handle != nullptr and type_predicates::IsTypeGenerator(InferTypeRef(sm, meta), *sm->CurrentScope)
-    ? sm->CurrentScope->FindVarSymbolOutermost(*handle).first : nullptr;
+    ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
   if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
     if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*lhs).first; sym != nullptr) {
-      const auto contained = sym->MemInfo->AstContainedEscapingBorrows;
-      for (auto const &ceb : contained) {
-        sym->MemInfo->AstContainedEscapingBorrows |= genex::actions::remove(ceb);
-        const auto borrowed = sm->CurrentScope->FindVarSymbolOutermost(*spp::get<0>(ceb)).first;
-        if (borrowed == nullptr) { continue; }
-        borrowed->MemInfo->AstContainersOfEscapingBorrows |= genex::actions::remove_if(
-          [&](auto info) {
-            const auto container = spp::get<0>(info)->template To<IdentifierAst>();
-            return container != nullptr and *container == *sym->Name;
-          });
-        if (handle_sym != nullptr) {
-          handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack(ceb);
-          borrowed->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), spp::get<0>(ceb)});
-        }
+      auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+      if (handle_sym != nullptr) {
+        memory_state::TransferLoans(loans, *sym, *handle_sym, handle_sym == meta->AssignmentTargetSymbol);
       }
+      else { memory_state::ReleaseLoans(loans, *sym); }
     }
   }
 
