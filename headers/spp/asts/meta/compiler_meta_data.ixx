@@ -13,7 +13,6 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
-use(spp::analyse::utils::memory_state, struct MemoryState);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
@@ -152,35 +151,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// their defaults is analysed. A default is copied into the
   /// calls that leave it out, so it cannot name a parameter.
   Scope const *ParameterDefaultScope = nullptr;
-
-  /// How many "skip" statements memory checking has passed. A
-  /// loop compares it across its body to learn whether anything
-  /// in the body can start another iteration early.
-  std::size_t LoopSkipsSeen = 0;
-
-  /// The innermost loop's record of what a plain "skip" left
-  /// moved, paired with the "skip" itself: those paths enter the
-  /// next iteration too, not just the one reaching the body's
-  /// end. Null outside a loop's memory check.
-  Vec<Pair<VariableSymbol*, Ast const*>> *LoopSkipMoves = nullptr;
-
-  /// For every loop being memory checked (innermost last), the
-  /// state at each "exit" that leaves it, paired with the "exit".
-  /// An "exit exit" records into the loop two back. The loop
-  /// merges these into the state after it, as they are paths out
-  /// of it just as much as its condition turning false.
-  Vec<Vec<Pair<Ast const*, Vec<Pair<Shared<VariableSymbol>, MemoryState>>>>*> LoopExitStates;
-
-  /// While a "defer" is checked at an exit it runs from
-  /// ("DeferStatementAst::CheckAtExit"): the statement, and the
-  /// exit. A value its expression uses that is gone by then is
-  /// reported against both.
-  struct DeferExitInfo {
-    Ast const *Stmt;
-    Ast const *ExitPoint;
-    StrView ExitWhat;
-  };
-  std::optional<DeferExitInfo> DeferExit;
 
   /// Every binding an "is" has introduced into its enclosing
   /// scope, in order. An "is" binding only exists where the match
