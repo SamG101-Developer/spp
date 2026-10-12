@@ -6,6 +6,7 @@ module spp.analyse.utils.regions;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.expression_ast;
@@ -18,6 +19,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.utils.ast_utils;
+import genex;
 import std;
 
 auto spp::analyse::utils::regions::PlaceOf(
@@ -175,7 +177,7 @@ auto spp::analyse::utils::regions::FirstUnaccountedPart(
   // recorded a move.
   auto unaccounted = Str();
   std::ignore = RegionConsumed(
-    region, region_ref, *region_scope, sym.MemInfo->PartialMoves,
+    region, region_ref, *region_scope, memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves,
     &unaccounted, true);
   return unaccounted;
 }
