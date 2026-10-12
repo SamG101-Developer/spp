@@ -25,6 +25,7 @@ use(spp::analyse::errors, struct SppMemberAccessNonIndexableError);
 use(spp::analyse::errors, struct SppMemberAccessOutOfBoundsError);
 use(spp::analyse::errors, struct SppCaseBranchElseNotLastError);
 use(spp::analyse::errors, struct SppCaseBranchMissingElseError);
+use(spp::analyse::errors, struct SppCaseBranchUnreachableError);
 use(spp::analyse::errors, struct SppIdentifierDuplicateError);
 use(spp::analyse::errors, struct SppRecursiveTypeError);
 use(spp::analyse::errors, struct SppGenericInstantiationDepthError);
@@ -274,6 +275,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchElseNotLastError final : S
 
 SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchMissingElseError final : SemanticError {
   explicit SppCaseBranchMissingElseError(Ast const &case_expr, Ast const &last_branch);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCaseBranchUnreachableError final : SemanticError {
+  explicit SppCaseBranchUnreachableError(Ast const &branch, Ast const &covering_branch);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierDuplicateError final : SemanticError {
@@ -705,8 +710,28 @@ SPP_EXP_CLS struct spp::analyse::errors::SppPatternGuardMovesValueError final : 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueNotConsumedError final : SemanticError {
-  explicit SppLinearValueNotConsumedError(Ast const &symbol_definition, Ast const &exit_point,
+  explicit SppLinearValueNotConsumedError(
+    Ast const &symbol_definition, Ast const &exit_point,
     StrView symbol_name, StrView type_name, StrView exit_what);
+
+  /// A linear temporary the expression making it never
+  /// consumes: "use" is where it is left with no owner.
+  explicit SppLinearValueNotConsumedError(
+    Ast const &temporary, Ast const &use, StrView type_name,
+    StrView use_what);
+
+  /// A write over a value reached through a borrow,
+  /// which cannot be moved out first, so the write
+  /// would drop it.
+  explicit SppLinearValueNotConsumedError(
+    Ast const &write, StrView type_name);
+
+  /// The same write, in a copy of a method made for
+  /// "call" (an inherited default method, a generic
+  /// one), whose template could not tell what it would
+  /// drop: the call is what chose the type.
+  explicit SppLinearValueNotConsumedError(
+    Ast const &write, Ast const &call, StrView type_name);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppDiscardedValueError final : SemanticError {

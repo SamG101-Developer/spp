@@ -1386,6 +1386,50 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
     + INLINE_HELP("let " + Str(type_name) + "(..) = " + Str(symbol_name)) + ".");
 }
 
+SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+  Ast const &temporary, Ast const &use, const StrView type_name, const StrView use_what) {
+  AddHeader(94, "Linear Value Not Consumed Error");
+  AddCtxForErr(&temporary, "Temporary of type " + INLINE_INFO(type_name) + " made here");
+  AddErr(&use, Str(use_what));
+  AddFooter(
+    "A temporary of a non-" + INLINE_NOTE("Copy") + " type has nothing to hold it once its expression is done, so "
+    "that expression must consume it.",
+    "Bind it with " + INLINE_HELP("let") + " and consume it after, or pass it by value.");
+}
+
+SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+  Ast const &write, const StrView type_name) {
+  AddHeader(94, "Linear Value Not Consumed Error");
+  AddErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
+  AddFooter(
+    "A value reached through a borrow belongs to whoever is borrowed from, and cannot be moved out first, so writing "
+    "over it would drop the old one.",
+    "Exchange it with " + INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
+}
+
+SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+  Ast const &write, Ast const &call, const StrView type_name) {
+  AddHeader(94, "Linear Value Not Consumed Error");
+  AddCtxForErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
+  AddErr(&call, "Calls a method that, for " + INLINE_INFO(type_name) + ", drops the value it writes over");
+  AddFooter(
+    "A value reached through a borrow belongs to whoever is borrowed from, and cannot be moved out first, so writing "
+    "over it would drop the old one. The method was written for any type, and this call chose one that owns something.",
+    "Override the method for " + INLINE_HELP(type_name) + " so that it exchanges the value with " +
+    INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
+}
+
+SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
+  Ast const &branch, Ast const &covering_branch) {
+  AddHeader(116, "Case Branch Unreachable Error");
+  AddCtxForErr(&covering_branch, "Everything the branch matches is matched by here");
+  AddErr(&branch, "Branch can never match");
+  AddFooter(
+    "A branch matching only what earlier branches already match (after an " + INLINE_NOTE("else") + ", a pattern "
+    "that cannot fail, every member of a variant, or the same pattern again) is never reached.",
+    "Remove the branch.");
+}
+
 SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");
