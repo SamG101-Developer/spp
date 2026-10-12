@@ -29,7 +29,7 @@ jobs:
       version: ${{ steps.filter.outputs.version }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true
@@ -77,7 +77,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: audit
           disable-sudo: true
@@ -112,7 +112,7 @@ jobs:
       version: ${{ steps.gate.outputs.version }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true
@@ -156,7 +156,7 @@ jobs:
       # The action is Linux-only, so the Windows and macOS variants go without it.
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: audit
 
@@ -188,7 +188,7 @@ jobs:
       contents: write  # create the tag, the release and its assets
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true

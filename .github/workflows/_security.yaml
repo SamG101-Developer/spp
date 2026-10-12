@@ -24,7 +24,7 @@ jobs:
       security-events: write  # upload the OSV SARIF
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: audit
           disable-sudo: true
@@ -78,7 +78,7 @@ jobs:
       security-events: write  # upload the gitleaks SARIF
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true
@@ -125,7 +125,7 @@ jobs:
       contents: read  # read the dependency graph for both sides of the diff
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true

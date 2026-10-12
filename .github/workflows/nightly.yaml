@@ -54,7 +54,7 @@ jobs:
       id-token: write         # only used when publish_results is turned on
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: audit
           disable-sudo: true
@@ -92,7 +92,7 @@ jobs:
       actions: write  # delete the repository's Actions caches
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true
@@ -125,7 +125,7 @@ jobs:
       actions: write  # list and delete the repository's workflow runs
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed
         with:
           egress-policy: block
           disable-sudo: true
