@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(IsExpressionAst);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct IdentifierAst);
@@ -45,6 +46,8 @@ SPP_EXP_CLS struct spp::asts::IsExpressionAst final : ExpressionAst {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
@@ -55,4 +58,14 @@ private:
   Shared<CaseExpressionAst> _MappedFn;
 
   Shared<IdentifierAst> _LhsAsId;
+
+  /// The bindings this "is" exposes to the scope it is written
+  /// in (its pattern's names, and the subject flow-typed by it),
+  /// as Stage 7 made them. Every later walk declares them where
+  /// the "is" stands.
+  Vec<Shared<VariableSymbol>> _Exposed;
+
+  /// Put the exposed bindings under their names in the current
+  /// scope.
+  auto _DeclareExposed(ScopeManager &sm) const -> void;
 };
