@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_resolution;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
@@ -83,16 +84,22 @@ auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
 
 auto LetStatementUninitializedAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
   // Check the variable for memory issues.
   const auto _meta_guard = MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementFromUninitialized = true;
   Var->Stage8_CheckMemory(sm, meta);
 
-  // Mark all the parts as uninitialized.
+  // Mark all the parts as uninitialized, and never given a
+  // value (a loop body's second time round declares them
+  // afresh).
   for (auto const &v : Var->ExtractNames()) {
-    sm->CurrentScope->FindVarSymbol(v.get())->MemInfo->MovedBy(
-      *this, sm->CurrentScope);
+    auto &state = memory_state::StateOf(
+      *sm->CurrentScope, *sm->CurrentScope->FindVarSymbol(v.get()));
+    state.MovedBy(*this);
+    state.Given = false;
   }
 }
 
