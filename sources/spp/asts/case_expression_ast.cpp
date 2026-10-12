@@ -165,14 +165,6 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
     Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "case"));
   }
 
-  // Every branch is analysed from the memory state the case
-  // was entered with. A branch is one alternative, not a
-  // continuation of the one before it, so initializing an
-  // immutable "let" in one branch must not read as a second
-  // initialization in the next.
-  const auto pre_branch_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
-  auto post_first_branch_state = ScopeSnapshot();
-
   // What an "is" in the condition binds only holds in the branch
   // taken when it matched - the first, for the form without "of".
   auto cond_bindings = Vec<VariableSymbol*>();
@@ -193,26 +185,13 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
       {sm->CurrentScope}, ERR_ARGS(*branch, *Branches.Back()));
 
     // Analyse the branch.
-    memory_state::RestoreSnapshot(pre_branch_state);
-
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->CaseCondition = Cond.get();
       branch->Stage7_AnalyseSemantics(sm, meta);
     }
     meta->ExpiredIsBindings.Resize(expired_before);
-
-    // Keep the first branch's resulting state as the one the
-    // code after the case continues from, matching how stage 8
-    // resolves the post-case state.
-    if (post_first_branch_state.IsEmpty()) {
-      post_first_branch_state = memory_state::SnapshotSymbols(pre_branch_state
-        | genex::views::transform([](auto const &x) { return x.first.get(); })
-        | genex::to<Vec>());
-    }
   }
-
-  memory_state::RestoreSnapshot(post_first_branch_state);
 
   // Enforce consistent branch type return values; either the
   // values are being propagated up to an identifier, or they
@@ -274,31 +253,14 @@ auto CaseExpressionAst::Stage8_CheckMemory(
   Cond->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(*Cond, *Cond, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
-  // Whether this "case" takes its subject is decided before
-  // the branches run, because a "ret" or a loop jump inside
-  // one of them is checked while they run - and by then the
-  // subject has already been given up, even though the mark
-  // itself cannot be made until the branches have bound off
-  // it.
-  //
-  // A borrowed subject is not this scope's to give away, and
-  // copying leaves the original in place, so a copyable one
-  // is never taken however its patterns bind. That second
-  // guard is the one "ValidateSymbolMemory" applies through
-  // "moves_value", repeated here because marking the move
-  // directly is what skips it.
-  //
-  // Todo: A lowered "is" ("case o is Some[Str](val) { .. }") binds "val" by move but never takes "o", so "o" can be
-  //  consumed again afterwards (CaseExpressionAst.test_invalid_short_pattern_form_payload_moved_then_subject_used).
-  //  Dropping "not LoweredFromIsExpr" here is not enough on its own.
-  const auto binds_by_move = TokOf != nullptr and not LoweredFromIsExpr and genex::any_of(
-    Branches, [](auto const &branch) {
-      return genex::any_of(branch->Patterns, [](auto const &p) { return p->BindsByMove(); });
-    });
-
-  const auto cond_ref = binds_by_move ? Cond->InferTypeRef(sm, meta) : TypeRef{};
-  const auto cond_ty_sym = cond_ref.Symbol;
-  const auto cond_sym = cond_ty_sym != nullptr and not cond_ty_sym->IsCopyable()
+  // The subject, when it is a value this "case" can take
+  // one it owns (not a borrow, which is someone else's to
+  // give away) and that is not "Copy" (copying leaves the
+  // original in place).
+  const auto cond_ref = Cond->InferTypeRef(sm, meta);
+  const auto cond_sym = cond_ref.Symbol != nullptr
+    and not cond_ref.Symbol->IsCopyable()
+    and not cond_ref.IsBorrowed()
     ? sm->CurrentScope->FindVarSymbolOutermost(*Cond).first
     : nullptr;
   auto subject = cond_sym != nullptr and cond_sym->MemInfo->AstBorrowed == nullptr
