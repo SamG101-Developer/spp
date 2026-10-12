@@ -8,6 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.case_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -141,9 +143,13 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
   // Move into the branch's scope.
   sm->MoveToNextScope();
 
-  // Check the patterns, guard and body.
+  // Check the patterns and guard, then the match edge they
+  // lead to (what the branch does with the "case" subject),
+  // then the body.
+  IMPORT_UTILS;
   for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
   if (Guard) { Guard->Stage8_CheckMemory(sm, meta); }
+  case_utils::ApplySubjectOnMatch(*this, *sm, *meta);
   Body->Stage8_CheckMemory(sm, meta);
 
   // Move out of the branch's scope.

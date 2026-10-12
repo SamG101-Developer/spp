@@ -11,6 +11,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(CaseExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::utils::case_utils, struct CaseCoverage);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
@@ -43,21 +44,12 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
 
   /// Set when this "case" was desugared from an "is" expression
   /// ("x is T(..)"), whose two branches yield "true" and
-  /// "false". It always evaluates to a boolean, but typical
-  /// usage omits the returning value when it must be caught
-  /// (e.g. a loop condition), so this flag enforces it. Needed
-  /// for the phi nodes.
-  /// Todo: is this a more general problem? Does
-  /// "loop case ... { }" fail to generate?,=
+  /// "false".
   bool LoweredFromIsExpr = false;
 
   /// Set when this "case" is the lowering of the "?" operator,
   /// whose value branch yields the operand's value and whose
-  /// "else" branch returns. The operator is an expression
-  /// wherever it is written, so the "case" always yields a
-  /// value - the surrounding codegen can't be asked, because
-  /// the lowering deliberately detaches itself from the
-  /// assignment the operator sits inside.
+  /// "else" branch returns.
   bool LoweredFromTryOperator = false;
 
   CaseExpressionAst(
@@ -91,4 +83,12 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
   /// branches can terminate, as it has to be assumed that the
   /// terminating branch will execute, to cover all bases.
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+
+  /// What this "case" matches ("case_utils::CoverageOf"): worked out
+  /// when Stage 7 analyses it, and read by every later stage.
+  auto Coverage(ScopeManager *sm, CompilerMetaData *meta) -> CaseCoverage const&;
+
+private:
+  /// See "Coverage". Not carried by "Clone": a copy is analysed afresh.
+  Shared<CaseCoverage> _Coverage;
 };

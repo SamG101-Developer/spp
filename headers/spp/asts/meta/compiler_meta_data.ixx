@@ -23,6 +23,7 @@ use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
+use(spp::asts::meta, enum class SubjectOnMatch : std::uint8_t);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
 use(spp::asts::meta, struct LlvmLoopInfo);
@@ -43,6 +44,16 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kMonomorphise, // between stages 9 and 10
   kPreCodeGen, // stage 10
   kCodeGen, // stage 11
+};
+
+/// What a "case" branch's match edge does with the subject, once
+/// its patterns (and guard) have matched: take it (a pattern binds
+/// by move off it), find it owes nothing (it is narrowed to members
+/// that are all "Copy"), or keep it owned.
+SPP_EXP_CLS enum class spp::asts::meta::SubjectOnMatch : std::uint8_t {
+  kKeep,
+  kTake,
+  kDischarge,
 };
 
 /// The LLVM blocks belonging to a single enclosing loop,
@@ -102,6 +113,14 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// sometimes has its type.
   Shared<TypeAst> AssignmentTargetType;
 
+  /// The name a "let" declares, or an assignment gives a value,
+  /// while that value is checked: the "let" declares it only once
+  /// the value is done, so it cannot be found by "AssignmentTarget"'s
+  /// name yet, and what the value lends it is pending until then
+  /// ("memory_state::Loan::Pending"). Read through
+  /// "mem_utils::AssignmentTargetSymbol".
+  VariableSymbol *AssignmentTargetSymbol = nullptr;
+
   /// There are some contexts where we allow ignoring a missing
   /// else branch, such as some basic type analysis that just
   /// needs to know the branch's returning type.
@@ -113,11 +132,16 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// condition.
   ExpressionAst *CaseCondition;
 
-  /// The subjects of the surrounding "case ... of"s that take
-  /// them, by symbol. It is stored as a vector so that nested
-  /// "case" statements work properly, moving back to the correct
-  /// case expression per case block.
-  Vec<VariableSymbol const*> CaseConsumedSubjects;
+  /// The subject of the surrounding "case", when it is a value
+  /// the "case" can take (owned, not "Copy"), and what the branch
+  /// being checked does with it on its match edge.
+  VariableSymbol *CaseSubject = nullptr;
+  SubjectOnMatch CaseSubjectOnMatch = SubjectOnMatch::kKeep;
+
+  /// Checking a value evaluated at compile time (a "cmp"'s value):
+  /// nothing it makes exists at run time, so no temporary of it is
+  /// owed to anyone.
+  bool InCompTimeValue = false;
 
   /// Whether we are currently operating within a "defer"
   /// statement's expression - different rules for analysis and

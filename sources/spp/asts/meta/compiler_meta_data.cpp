@@ -19,9 +19,12 @@ auto CompilerMetaData::ResetContext() -> void {
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
+  AssignmentTargetSymbol = nullptr;
   IgnoreMissingElseBranchForInference = false;
   CaseCondition = nullptr;
-  CaseConsumedSubjects.Clear();
+  CaseSubject = nullptr;
+  CaseSubjectOnMatch = SubjectOnMatch::kKeep;
+  InCompTimeValue = false;
   EnclosingFnScope = nullptr;
   EnclosingFnFlavour = nullptr;
   EnclosingFnRetType = {};
@@ -70,9 +73,12 @@ auto CompilerMetaData::Save() -> void {
   s.ReturnTypeOverloadResolverType = ReturnTypeOverloadResolverType;
   s.AssignmentTarget = AssignmentTarget;
   s.AssignmentTargetType = AssignmentTargetType;
+  s.AssignmentTargetSymbol = AssignmentTargetSymbol;
   s.IgnoreMissingElseBranchForInference = IgnoreMissingElseBranchForInference;
   s.CaseCondition = CaseCondition;
-  s.CaseConsumedSubjects = CaseConsumedSubjects;
+  s.CaseSubject = CaseSubject;
+  s.CaseSubjectOnMatch = CaseSubjectOnMatch;
+  s.InCompTimeValue = InCompTimeValue;
   s.WithinDeferTok = WithinDeferTok;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
   s.EnclosingFnScope = EnclosingFnScope;
@@ -131,9 +137,12 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   ReturnTypeOverloadResolverType = std::move(state.ReturnTypeOverloadResolverType);
   AssignmentTarget = std::move(state.AssignmentTarget);
   AssignmentTargetType = std::move(state.AssignmentTargetType);
+  AssignmentTargetSymbol = state.AssignmentTargetSymbol;
   IgnoreMissingElseBranchForInference = state.IgnoreMissingElseBranchForInference;
   CaseCondition = state.CaseCondition;
-  CaseConsumedSubjects = std::move(state.CaseConsumedSubjects);
+  CaseSubject = state.CaseSubject;
+  CaseSubjectOnMatch = state.CaseSubjectOnMatch;
+  InCompTimeValue = state.InCompTimeValue;
   WithinDeferTok = state.WithinDeferTok;
   if (heavy) {
     EnclosingFnScope = state.EnclosingFnScope;

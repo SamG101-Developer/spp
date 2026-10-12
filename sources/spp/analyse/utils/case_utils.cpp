@@ -8,7 +8,10 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.aliases;
 import spp.analyse.utils.control_flow;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -23,6 +26,7 @@ import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_destructure_tuple_ast;
 import spp.asts.case_pattern_variant_else_ast;
+import spp.asts.case_pattern_variant_else_case_ast;
 import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.convention_ref_ast;
@@ -59,6 +63,407 @@ import std;
 
 namespace spp::analyse::utils::case_utils {
   namespace {
+    /// A pattern as coverage reads it, in the terms of the column it
+    /// tests: anything ("Wild"); a test nothing is known to pass
+    /// ("Opaque"); one constructor of the column's type with a pattern
+    /// per field ("Ctor": a variant member by index, "false"/"true" as
+    /// 0/1, or a product type's one constructor 0); or a literal of a
+    /// type with too many values to list ("Lit").
+    struct Pat {
+      enum class Kind { Wild, Opaque, Ctor, Lit } K = Kind::Wild;
+
+      std::size_t Ctor = 0;
+      Str Lit;
+      Vec<Pat> Fields;
+    };
+
+    /// A position a pattern tests: its type, where that type reads,
+    /// and the constructors the type is made of.
+    struct Column {
+      /// The type at this position.
+      TypeRef Ref;
+
+      /// Where that type reads (field types resolve relative to it).
+      Scope const *Where = nullptr;
+
+      /// If it's a variant, the members that form the variant.
+      Vec<TypeRef> VariantMembers;
+
+      /// If it's a bool.
+      bool IsBool = false;
+    };
+
+    auto MakePat(const Pat::Kind k, const std::size_t ctor = 0, Str lit = {}, Vec<Pat> fields = {}) -> Pat {
+      auto p = Pat();
+      p.K = k;
+      p.Ctor = ctor;
+      p.Lit = std::move(lit);
+      p.Fields = std::move(fields);
+      return p;
+    }
+
+    auto OpaquePat() -> Pat { return MakePat(Pat::Kind::Opaque); }
+
+    /// [CHECKED]
+    /// The column for a value of type "ref": a variant's members (read
+    /// through an alias, "Opt[T]", to the variant it stands for), or
+    /// "Bool"'s two values; any other type has the one constructor.
+    /// Effectively: what constructors can form this pattern? For Opt,
+    /// that's "Some[T]" and "None". For bool, its "true" and "false".
+    auto ColumnOf(TypeRef const &ref, Scope const &where) -> Column {
+      // Build an empty column, and bind the type reference and the
+      // scope to it. This forms the basis of the column.
+      auto col = Column();
+      col.Ref = ref.WithoutConvention();
+      col.Where = &where;
+      if (col.Ref.Symbol == nullptr) { return col; }
+
+      // Extract the variant members from the column's newly bound
+      // type reference, and bind to the column too.
+      col.VariantMembers = type_compare::VariantMemberRefs(col.Ref, where);
+      auto through = col.Ref;
+      const auto is_alias = [](TypeRef const &r) { return r.Symbol != nullptr and r.Symbol->Alias != nullptr; };
+
+      // Move through aliases, checking for variant members, grabbing
+      // them, binding them, and then breaking out of the loop.
+      // Todo: Remove the hop limit (documented).
+      for (auto hops = 0; col.VariantMembers.IsEmpty() and is_alias(through) and hops < 8; ++hops) {
+        const auto target = aliases::InstanceTargetOf(*through.Symbol, through.Id, where);
+        if (target == nullptr) { break; }
+        through = TypeRef::Of(*target, where);
+        col.VariantMembers = type_compare::VariantMemberRefs(through, where);
+      }
+
+      // If there were no variant members, then check if the column
+      // is a bool comparison.
+      col.IsBool = col.VariantMembers.IsEmpty() and type_predicates::IsTypeBool(col.Ref, where);
+      return col;
+    }
+
+    /// [CHECKED]
+    /// The fields of constructor "ctor" of "col", as columns of
+    /// their own.
+    auto FieldsOf(Column const &col, const std::size_t ctor) -> Vec<Column> {
+      // Create the output column list. If the column is a bool or
+      // non-symbolic, return the empty list. No fields.
+      auto out = Vec<Column>();
+      if (col.IsBool or col.Ref.Symbol == nullptr) { return out; }
+
+      // If there are no variants, then use the column's type ref,
+      // otherwise the nth variant member for n=ctor.
+      const auto &of = col.VariantMembers.IsEmpty()
+        ? col.Ref
+        : col.VariantMembers[ctor];
+
+      // Create a column for each of the fields.
+      for (auto const &part : type_members::GetAllParts(of, *col.Where)) {
+        out.EmplaceBack(ColumnOf(part.Ref, part.Where != nullptr ? *part.Where : *col.Where));
+      }
+      return out;
+    }
+
+    /// [CHECKED]
+    /// Given a column and a ctor index, get the nth variant
+    /// member if we are handling variants; otherwise the col
+    /// type. Emplace every field name into the "out" vector.
+    auto FieldNamesOf(
+      Column const &col, const std::size_t ctor) -> Vec<Str> {
+      // Build the "out" vector, initially empty. If the col
+      // is considering a boolean match, return the vector.
+      auto out = Vec<Str>();
+      if (col.IsBool or col.Ref.Symbol == nullptr) { return out; }
+
+      // If we are considering variant members, get the nth
+      // variant member, otherwise use the overall ref type.
+      const auto &of = col.VariantMembers.IsEmpty()
+        ? col.Ref
+        : col.VariantMembers[ctor];
+
+      // For each part in the selected type, add the
+      // stringified field name into the list and return it.
+      for (auto const &part : type_members::GetAllParts(of, *col.Where)) {
+        out.EmplaceBack(part.Step->Val);
+      }
+      return out;
+    }
+
+    auto CtorPat(Column const &col, const std::size_t ctor) -> Pat {
+      return MakePat(Pat::Kind::Ctor, ctor, {}, Vec<Pat>(FieldsOf(col, ctor).Len(), Pat()));
+    }
+
+    /// [CHECKED]
+    /// The pattern a destructure naming "type" is, before its
+    /// elements: anything, for the column's own type; a member,
+    /// for one of the column's members; and for a type refining
+    /// a member (one more exact in its fields' types, "Some[Some[T]]"
+    /// for "Some[Opt[T]]"), that member with each differing
+    /// field refined in turn.
+    auto Refine(
+      TypeRef const &type, Scope const &type_scope, Column const &col) -> Pat {
+      // Failsafe for non-symbol types, return an opaque pattern.
+      if (type.Symbol == nullptr or col.Ref.Symbol == nullptr) { return OpaquePat(); }
+
+      // If the two types are directly equal, ie Str vs Str, then
+      // as long as the subject doesn't have variant members, return
+      // a ctor pattern over the type.
+      if (type_compare::TypeEq(col.Ref, type, *col.Where, type_scope)) {
+        return col.VariantMembers.IsEmpty() and not col.IsBool ? CtorPat(col, 0) : Pat();
+      }
+
+      // Check each variant member, and return the match if there
+      // is a direct one, in a ctor pattern again. This constructs
+      // for the inner type.
+      for (auto const &[m, member] : col.VariantMembers | genex::views::enumerate) {
+        if (type_compare::TypeEq(member, type, *col.Where, type_scope)) { return CtorPat(col, m); }
+      }
+
+      // Otherwise, we haven't had a direct match, or a member
+      // match, but we need to consider a refined match. Ie, does
+      // Some[Some[Str]] match Opt[Opt[Str]]?
+      for (auto const &[m, member] : col.VariantMembers | genex::views::enumerate) {
+        // Non-matching base templates are not refinements, so
+        // skip them.
+        if (member.Template() != type.Template()) { continue; }
+
+        // Failsafe to ensure that there are a matching number of
+        // fields. This will go when we migrate to ICE.
+        const auto type_parts = type_members::GetAllParts(type, type_scope);
+        const auto member_cols = FieldsOf(col, m);
+        if (type_parts.Len() != member_cols.Len()) { return OpaquePat(); }
+
+        // Create the ctor pattern, with "m" fields, "m" being the
+        // index of the variant member within the variant type
+        // itself.
+        auto out = CtorPat(col, m);
+        for (auto const &[f, part] : type_parts | genex::views::enumerate) {
+          auto const &part_scope = part.Where != nullptr ? *part.Where : type_scope;
+          auto const &field = member_cols[f];
+
+          // Allow for the recursive refinement to generate the
+          // patterns.
+          if (type_compare::TypeEq(field.Ref, part.Ref.WithoutConvention(), *field.Where, part_scope)) { continue; }
+          out.Fields[f] = Refine(part.Ref.WithoutConvention(), part_scope, field);
+          if (out.Fields[f].K == Pat::Kind::Opaque) { return OpaquePat(); }
+        }
+        return out;
+      }
+      return OpaquePat();
+    }
+
+    /// Two patterns for one field, as the one matching what both match:
+    /// the other, when either is anything; else nothing known.
+    auto Meet(Pat a, Pat b) -> Pat {
+      if (a.K == Pat::Kind::Wild) { return b; }
+      if (b.K == Pat::Kind::Wild) { return a; }
+      return OpaquePat();
+    }
+
+    auto ToPat(CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, bool eq_op) -> Pat;
+
+    /// [CHECKED]
+    /// A positional destructure ("(a, b)", "[a, .., z]") of a tuple or
+    /// array column: each element against the field in its position,
+    /// and a ".." as however many fields it stands for.
+    auto PositionalPat(
+      Vec<Unique<CasePatternVariantAst>> const &elems, Column const &col, Scope const &scope) -> Pat {
+      // Failsafe, should be caught earlier. Non comptime indexable
+      // types can not support ()/[] destructuring.
+      if (col.Ref.Symbol == nullptr or not type_predicates::IsTypeCompTimeIndexable(col.Ref, *col.Where)) {
+        return OpaquePat();
+      }
+
+      // Build a "ctor" kind of pattern. It has 0 constructors, unlike
+      // bool (true/false) and an object type (its variant members).
+      // Then get the fields on the column as columns themselves.
+      auto out = CtorPat(col, 0);
+      const auto fields = FieldsOf(col, 0);
+      const auto skip = genex::position(
+        elems, [](auto const &e) { return e->template To<CasePatternVariantDestructureSkipMultipleArgumentsAst>(); });
+
+      // Loop up to the number of elements within the pattern, skipping
+      // a skip pattern, creating inner patterns for the elements.
+      const auto n = elems.Len();
+      for (auto i = 0uz; i < n; ++i) {
+        if (i == skip) { continue; }
+        const auto at = skip.has_value() and i > *skip ? fields.Len() - (n - i) : i;
+        if (at >= fields.Len()) { return OpaquePat(); }
+        out.Fields[at] = ToPat(*elems[i], fields[at], scope, false);
+      }
+      return out;
+    }
+
+    /// [CHECKED]
+    /// "pattern" in the terms of the column it tests. "eq_op" says it
+    /// sits directly under an "==" branch, where a "Bool" literal
+    /// selects that value.
+    auto ToPat(
+      CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, const bool eq_op) -> Pat {
+      const auto bool_pat = [&](BooleanLiteralAst const &lit) {
+        return col.IsBool ? MakePat(Pat::Kind::Ctor, lit.IsTrue() ? 1uz : 0uz) : OpaquePat();
+      };
+
+      // For an attribute binding pattern, we need to recurse
+      // the function into the value on the binding, which might
+      // be a pattern itself.
+      if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>()) {
+        return binding->Val != nullptr ? ToPat(*binding->Val, col, scope, false) : Pat();
+      }
+
+      // For a literal pattern, if it's a boolean literal, then
+      // just check if the literal holds "true" or not. Otherwise,
+      // its 0 (non-bool ctor).
+      if (const auto lit = pattern.To<CasePatternVariantLiteralAst>()) {
+        if (const auto b = lit->Literal->To<BooleanLiteralAst>()) { return bool_pat(*b); }
+        return MakePat(Pat::Kind::Lit, 0, lit->Literal->ToString());
+      }
+
+      // Similar to above, if the expression is a boolean literal
+      // then use the helper, otherwise it's opaque.
+      if (const auto expr = pattern.To<CasePatternVariantExpressionAst>()) {
+        const auto b = expr->Expr->To<BooleanLiteralAst>();
+        return eq_op and b != nullptr ? bool_pat(*b) : OpaquePat();
+      }
+
+      // For tuples, use the positional pattern, with the tuple
+      // elements.
+      if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
+        return PositionalPat(tup->Elems, col, scope);
+      }
+
+      // For arrays, use the positional pattern, with the array
+      // elements.
+      if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
+        return PositionalPat(arr->Elems, col, scope);
+      }
+
+      // For object destructures, use the "Refine" helper to
+      // create the applicable pattern. This manages variant
+      // matching and inner refinement etc.
+      if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
+        // We either bind an element of an object by a field
+        // name (potentially aliased), or by a value match.
+        // The name is a wildcard, the value is opaque.
+        auto out = Refine(TypeRef::Of(*obj->Type, scope), scope, col);
+        if (out.K == Pat::Kind::Opaque) { return out; }
+        if (out.K == Pat::Kind::Wild) { return out; }
+
+        // Get the fields and the fields' names from the col
+        const auto names = FieldNamesOf(col, out.Ctor);
+        const auto fields = FieldsOf(col, out.Ctor);
+
+        // For each element of the object, check if that we
+        // are considering a binding, ie "Type(a=...)".
+        for (auto const &elem : obj->Elems) {
+          const auto binding = elem->To<CasePatternVariantDestructureAttributeBindingAst>();
+          if (binding == nullptr or binding->Val == nullptr) { continue; }
+          const auto f = genex::position(names, [&](auto const &n) { return n == binding->Name->Val; });
+          if (not f.has_value()) { return OpaquePat(); }
+          out.Fields[*f] = Meet(std::move(out.Fields[*f]), ToPat(*binding->Val, fields[*f], scope, false));
+          if (out.Fields[*f].K == Pat::Kind::Opaque) { return OpaquePat(); }
+        }
+        return out;
+      }
+      // A name, a skip, an "else": anything.
+      return Pat();
+    }
+
+    /// Converts each opaque part of a pattern into a wildcard
+    /// to allow the coverage to see if there is a branch can be
+    /// reached.
+    auto AsQuery(Pat p) -> Pat {
+      if (p.K == Pat::Kind::Opaque) { return Pat(); }
+      for (auto &f : p.Fields) { f = AsQuery(std::move(f)); }
+      return p;
+    }
+
+    using Row = Vec<Pat>;
+
+    /// The rows of "rows" that match "head" in their first position,
+    /// with its fields in its place.
+    auto Specialise(Vec<Row> const &rows, Pat const &head, const std::size_t arity) -> Vec<Row> {
+      auto out = Vec<Row>();
+      for (auto const &row : rows) {
+        auto const &first = row[0];
+        auto next = Row();
+
+        // If the first pattern is a wildcard, the next pattern
+
+        if (first.K == Pat::Kind::Wild) { next = Row(arity, Pat()); }
+        else if (first.K == head.K and head.K == Pat::Kind::Ctor and first.Ctor == head.Ctor) { next = first.Fields; }
+        else if (first.K == head.K and head.K == Pat::Kind::Lit and first.Lit == head.Lit) {}
+        else { continue; }
+        for (auto i = 1uz; i < row.Len(); ++i) { next.EmplaceBack(row[i]); }
+        out.EmplaceBack(std::move(next));
+      }
+      return out;
+    }
+
+    /// The implementation of Maranget's "warnings for pattern
+    /// matching", and the core of the coverage checking. It
+    /// answers: "is there a value that matches q, but none of
+    /// the rows?". the rows are the matrix; one per earlier
+    /// unguarded pattern, one per position. The query is "q"
+    /// (one per position), and the "cols" provide the type at
+    /// each position.
+    auto Useful(Vec<Row> const &rows, Row const &q, Vec<Column> const &cols) -> bool {
+      // Id "q" is empty, there is nothing left to test. Every
+      // position has been dealt with. Any surviving row matches
+      // with what "q" describes. Only "useful" when no rows
+      // are left.
+      if (q.IsEmpty()) { return rows.IsEmpty(); }
+
+      auto const &head = q[0];
+      const auto rest_cols = [&](Vec<Column> front) {
+        for (auto i = 1uz; i < cols.Len(); ++i) { front.EmplaceBack(cols[i]); }
+        return front;
+      };
+      const auto rest_q = [&](Row front) {
+        for (auto i = 1uz; i < q.Len(); ++i) { front.EmplaceBack(q[i]); }
+        return front;
+      };
+
+      // If the query names a constructor (true, Some(...), tuple/
+      // array's 1 constructor), then only rows that can match the
+      // constructor matter.
+      if (head.K == Pat::Kind::Ctor) {
+        const auto fields = FieldsOf(cols[0], head.Ctor);
+        return Useful(Specialise(rows, head, head.Fields.Len()), rest_q(head.Fields), rest_cols(fields));
+      }
+
+      // If the query names a literal (5, "abc"), then do a 0-field
+      // specialisation,
+      if (head.K == Pat::Kind::Lit) {
+        return Useful(Specialise(rows, head, 0), rest_q({}), rest_cols({}));
+      }
+
+      // If the query uses "_": when the rows name every constructor
+      // of the column, each constructor in turn; otherwise a value
+      // of a constructor none of them name reaches only the rows
+      // matching anything there.
+      auto const &col = cols[0];
+      auto named = Set<std::size_t>();
+      for (auto const &row : rows) {
+        if (row[0].K == Pat::Kind::Ctor) { named.insert(row[0].Ctor); }
+      }
+      const auto ctors = not col.VariantMembers.IsEmpty() ? col.VariantMembers.Len() : col.IsBool ? 2uz : 1uz;
+      const auto has_literals = genex::any_of(rows, [](auto const &row) { return row[0].K == Pat::Kind::Lit; });
+      if (not has_literals and not named.empty() and named.size() == ctors) {
+        for (auto c = 0uz; c < ctors; ++c) {
+          const auto ctor = CtorPat(col, c);
+          if (Useful(Specialise(rows, ctor, ctor.Fields.Len()), rest_q(ctor.Fields), rest_cols(FieldsOf(col, c)))) {
+            return true;
+          }
+        }
+        return false;
+      }
+      auto rest = Vec<Row>();
+      for (auto const &row : rows) {
+        if (row[0].K != Pat::Kind::Wild) { continue; }
+        rest.EmplaceBack(Row(row.begin() + 1, row.end()));
+      }
+      return Useful(rest, rest_q({}), rest_cols({}));
+    }
+
     /// The value of one field of an already-generated aggregate,
     /// indexed rather than rebuilt.
     auto NarrowOntoField(
@@ -355,7 +760,10 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
 
   // When every branch diverges, the ones typed "!" stand for the
   // case (it fits whatever it is assigned to); a "ret" branch's
-  // own type is "Void", which the case never produces.
+  // own type is "Void", which the case never produces. No value
+  // leaves such a case, so there is nothing for its branches to
+  // agree on with what it is assigned to.
+  const auto every_branch_diverges = valued_branches_type_info.IsEmpty();
   if (valued_branches_type_info.IsEmpty()) {
     valued_branches_type_info = branches_type_info
       | genex::views::filter([](auto const &x) { return x.second->IsNeverType(); })
@@ -419,11 +827,13 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
     })
     | genex::to<Vec>();
 
-  if (not mismatch_branches_type_info.IsEmpty()) {
+  if (not every_branch_diverges and not mismatch_branches_type_info.IsEmpty()) {
     const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
     const auto [master_branch, master_branch_type] = master_branch_type_info;
-    const auto final_member = master_branch != nullptr ? master_branch->Body->FinalMember()
-      : meta->AssignmentTarget != nullptr ? static_cast<Ast*>(meta->AssignmentTarget.get())
+    const auto final_member = master_branch != nullptr
+      ? master_branch->Body->FinalMember()
+      : meta->AssignmentTarget != nullptr
+      ? static_cast<Ast*>(meta->AssignmentTarget.get())
       : mismatch_branch->Body->FinalMember();
     Raise<SppTypeMismatchError>(
       {sm.CurrentScope},
@@ -486,4 +896,198 @@ auto spp::analyse::utils::case_utils::ConvertIsExprToFnCall(
     nullptr, std::move(is_expr.Lhs), nullptr, std::move(branches));
   case_expr->LoweredFromIsExpr = true;
   return case_expr;
+}
+
+auto spp::analyse::utils::case_utils::MemberOf(
+  CaseCoverage const &coverage, CasePatternVariantAst const &pattern,
+  Scope const &scope) -> std::optional<TypeRef> {
+  // Only a pattern naming a type selects a member, and only a
+  // member of the subject's own variant.
+  const auto type = pattern.NarrowsTo();
+  if (coverage.VariantMembers.IsEmpty() or type == nullptr) { return std::nullopt; }
+  const auto ref = TypeRef::Of(*type, scope);
+
+  // Get the member in the variant members list, that matches
+  // what the pattern narrows to.
+  for (auto const &member : coverage.VariantMembers) {
+    if (type_compare::TypeEq(member, ref, scope, scope)) { return member; }
+  }
+  return std::nullopt;
+}
+
+auto spp::analyse::utils::case_utils::IsElseBranch(
+  CaseExpressionBranchAst const &branch) -> bool {
+  // Check if either of the two "else" variations of case
+  // patterns are being used.
+  auto const &patterns = branch.Patterns;
+  return not patterns.IsEmpty()
+    and (patterns[0]->To<CasePatternVariantElseAst>() != nullptr
+      or patterns[0]->To<CasePatternVariantElseCaseAst>() != nullptr);
+}
+
+auto spp::analyse::utils::case_utils::CoverageOf(
+  Vec<CaseExpressionBranchAst*> const &branches, TypeRef const &subject,
+  Scope const &scope) -> CaseCoverage {
+  // Generate the column for the subject (type) in the scope,
+  // and put it into a list. Copy the variant members into the
+  // output coverage struct.
+  const auto col = ColumnOf(subject, scope);
+  const auto cols = Vec{col};
+  auto out = CaseCoverage();
+  out.VariantMembers = col.VariantMembers;
+
+  const auto remaining_of = [&](Vec<Row> const &rows) {
+    auto remaining = Vec<TypeRef>();
+    for (auto const &[m, member] : col.VariantMembers | genex::views::enumerate) {
+      if (Useful(rows, Row{CtorPat(col, m)}, cols)) { remaining.EmplaceBack(member); }
+    }
+    return remaining;
+  };
+
+  // A branch is reachable when some value one of its patterns
+  // matches is matched by no unguarded branch before it; one
+  // that is not is shadowed by the earliest branch that leaves
+  // it nothing.
+  auto rows = Vec<Row>();
+  auto rows_by = Vec<std::size_t>();
+  for (auto const &branch : branches) {
+    const auto eq_op = branch->Op != nullptr and branch->Op->TokenType == lex::SppTokenType::TK_EQ;
+    const auto pats = branch->Patterns
+      | genex::views::transform([&](auto const &p) { return AsQuery(ToPat(*p, col, scope, eq_op)); })
+      | genex::to<Vec>();
+
+    // Get the branches that are actually useful if a branch is
+    // not reachable, then dont include it here.
+    const auto reaches = [&](Vec<Row> const &before) {
+      return genex::any_of(pats, [&](auto const &p) { return Useful(before, Row{p}, cols); });
+    };
+
+    // Update the "remaining before", "readable" and "shadowed"
+    // parts based on the reachability results and columns.
+    out.RemainingBefore.EmplaceBack(remaining_of(rows));
+    out.Reachable.EmplaceBack(reaches(rows));
+    out.ShadowedBy.EmplaceBack(std::nullopt);
+    for (auto j = 0uz; not out.Reachable.Back() and j < rows_by.Len(); ++j) {
+      if (reaches(Vec<Row>(rows.begin(), rows.begin() + static_cast<std::ptrdiff_t>(rows_by[j])))) { continue; }
+      out.ShadowedBy.Back() = j;
+      break;
+    }
+
+    // A guard invalidates the completeness detection, because
+    // its runtime evaluating as to that the condition is
+    // preventing from making an exclusive match.
+    if (branch->Guard == nullptr) {
+      for (auto const &p : branch->Patterns) { rows.EmplaceBack(Row{ToPat(*p, col, scope, eq_op)}); }
+    }
+    rows_by.EmplaceBack(rows.Len());
+  }
+
+  // Falling through every branch leaves the members none of
+  // them matched whole.
+  out.FallsThrough = Useful(rows, Row{Pat()}, cols);
+  out.Remaining = remaining_of(rows);
+  return out;
+}
+
+auto spp::analyse::utils::case_utils::PlanSubjectEdges(
+  Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage,
+  Scope const &scope) -> SubjectEdges {
+  // Lambda to detect if every type ref in a list is copyable
+  // or not. This dictates if a subject is moved or copied on
+  // a match.
+  using meta::SubjectOnMatch;
+  const auto all_copy = [](Vec<TypeRef> const &types) {
+    const auto copyable = [](auto const &t) { return t.Symbol != nullptr and t.Symbol->IsCopyable(); };
+    return not types.IsEmpty() and genex::all_of(types, copyable);
+  };
+
+  // Each match edge: a binding by move takes the subject;
+  // narrowing it to "Copy" members alone, or an "else" left with
+  // only those, finds it owes nothing. A branch never reached
+  // does nothing to it.
+  auto out = SubjectEdges();
+  for (auto const &[i, branch] : branches | genex::views::enumerate) {
+    // If a branch is not reachable, then mark the subject as
+    // being kept - this branch can never execute. Continue.
+    auto const &patterns = branch->Patterns;
+    if (not coverage.Reachable[i]) {
+      out.OnMatch.EmplaceBack(SubjectOnMatch::kKeep);
+      continue;
+    }
+
+    //
+    auto narrowed = Vec<TypeRef>();
+    for (auto const &pattern : patterns) {
+      if (const auto member = MemberOf(coverage, *pattern, scope); member.has_value()) {
+        narrowed.EmplaceBack(*member);
+      }
+    }
+    const auto is_else = IsElseBranch(*branch);
+    const auto narrows_only_to_copy = narrowed.Len() == patterns.Len() and all_copy(narrowed);
+
+    // Take a subject where any of the patterns move the subject,
+    // discharge the subject if we are at the "else" block and
+    // all the previous branches were copying; otherwise keep it.
+    out.OnMatch.EmplaceBack(
+      genex::any_of(patterns, [](auto const &p) { return p->BindsByMove(); })
+      ? SubjectOnMatch::kTake
+      : (is_else and all_copy(coverage.RemainingBefore[i])) or (not is_else and narrows_only_to_copy)
+      ? SubjectOnMatch::kDischarge
+      : SubjectOnMatch::kKeep);
+  }
+
+  // The fall-through holds the members none of the branches matched.
+  out.OnFallThrough = coverage.FallsThrough and all_copy(coverage.Remaining)
+    ? SubjectOnMatch::kDischarge
+    : SubjectOnMatch::kKeep;
+  return out;
+}
+
+auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
+  CaseExpressionBranchAst const &branch,
+  ScopeManager &sm,
+  CompilerMetaData const &meta)
+  -> void {
+  // "case x of" takes the symbol itself; "case x.inner of"
+  // takes one region of it, a partial move like any other.
+  // Only a whole subject can be found to owe nothing: the
+  // fact is held per symbol.
+  const auto subject = meta.CaseSubject;
+  auto const *const cond = meta.CaseCondition;
+  if (subject == nullptr or cond == nullptr) { return; }
+  const auto whole = cond->To<IdentifierAst>() != nullptr;
+
+  // The patterns took it apart, so a part they left unbound
+  // would be left with no owner once it is taken.
+  if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake) {
+    const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
+    if (const auto skipped = taken.has_value() ? regions::FirstUnaccountedPart(*subject, *taken, sm) : Str();
+      not skipped.empty()) {
+      auto const *const blamed = branch.Patterns.IsEmpty()
+        ? static_cast<Ast const*>(&branch)
+        : static_cast<Ast const*>(branch.Patterns[0].get());
+      Raise<errors::SppDestructureSkipsOwnedPartError>(
+        {sm.CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
+    }
+  }
+
+  // If we are moving an identifier part, then mark the state
+  // as "moved by", so it cannot be used until initialized
+  // again.
+  if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake and whole) {
+    memory_state::StateOf(*sm.CurrentScope, *subject).MovedBy(*cond);
+  }
+
+  // If we are moving a non-identifier part, then this is a
+  // partial move, so get its place, and mark the partial
+  // move.
+  else if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake) {
+    memory_state::StateOf(*sm.CurrentScope, *subject).PartMovedBy(regions::PlaceAtOf(*cond, *sm.CurrentScope));
+  }
+
+  // If the discharge flag has been set and it is a identifier
+  // ast, then mark the "owes nothing" as true.
+  else if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kDischarge and whole) {
+    memory_state::StateOf(*sm.CurrentScope, *subject).OwesNothing = true;
+  }
 }
