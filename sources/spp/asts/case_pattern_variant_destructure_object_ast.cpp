@@ -201,12 +201,8 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol->Type = Type;
     _FlowSymbol->Kind = VariableKind::FlowNarrowing;
 
-    if (Type->GetConvention() != nullptr) {
-      const auto has_ast_scope = spp::get<1>(_CondSymbol->MemInfo->AstBorrowed);
-      const auto borrow_scope = has_ast_scope ? has_ast_scope : _CondSymbol->ScopeDefinedIn;
-      _FlowSymbol->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
-    }
-    sm->CurrentScope->AddVarSymbol(_FlowSymbol);
+    if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
+    _DeclareFlowSymbol(*sm);
   }
 
   AnalyseDestructure(mapped_cond, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
@@ -214,11 +210,19 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
 
 auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
   // Snapshot the case condition memory info into the
   // flow symbol.
   if (_FlowSymbol != nullptr and _CondSymbol != nullptr) {
-    _FlowSymbol->MemInfo->FillFromSnapshot(_CondSymbol->MemInfo->Snapshot());
+    auto cond_state = memory_state::StateOf(*sm->CurrentScope, *_CondSymbol);
+    memory_state::StateOf(*sm->CurrentScope, *_FlowSymbol) = std::move(cond_state);
   }
+
+  // The narrowed subject is declared here, before the
+  // bindings (which may reuse its name: "is Some(val)"
+  // on "val").
+  _DeclareFlowSymbol(*sm);
 
   // Forward memory checking to the mapped let statement.
   _MappedLet->Stage8_CheckMemory(sm, meta);
@@ -229,7 +233,9 @@ auto CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
   // TODO: Do a non-variant type comparison first.
   // TODO: Do not allow if the condition type is variant.
   // Match when every element does.
-  CompTimeResolveDestructure(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
+  _DeclareFlowSymbol(*sm);
+  CompTimeResolveDestructure(
+    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
 auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
@@ -364,6 +370,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     // of the enclosing function.
     _FlowSymbol->LlvmInfo = MakeShared<codegen::LlvmVarSymbolInfo>();
     _FlowSymbol->LlvmInfo->Alloca = current_ptr;
+    _DeclareFlowSymbol(*sm);
   }
 
   // A condition that is not a plain identifier has no symbol to
