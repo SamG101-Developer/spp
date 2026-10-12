@@ -96,7 +96,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
   // the rest of the scope, which is the entire point of
   // deferring it. So the walk happens, and the memory state
   // it produced is rolled back.
-  const auto saved = memory_state::SnapshotScopes(sm->CurrentScope, meta->EnclosingFnScope);
+  const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
 
   // Registered where it is reached, so an exit written above
   // this statement does not run it - which is what a "defer"
@@ -125,12 +125,16 @@ auto DeferStatementAst::CheckAtExit(
   auto tm = ScopeManager(sm.GlobalScope, _DeferScope);
   tm.Reset(_DeferScope, *_DeferPosition);
 
+  auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);
   struct DeferExitGuard {
-    CompilerMetaData *Meta;
-    std::optional<CompilerMetaData::DeferExitInfo> Outer;
-    ~DeferExitGuard() { Meta->DeferExit = Outer; }
-  } const guard{meta, meta->DeferExit};
-  meta->DeferExit = CompilerMetaData::DeferExitInfo{this, &exit_point, exit_what};
+    analyse::utils::memory_state::FlowState &Flow;
+    std::optional<analyse::utils::memory_state::DeferExit> Outer;
+    ~DeferExitGuard() { Flow.Deferring = Outer; }
+  } const guard{flow, flow.Deferring};
+
+  flow.Deferring = analyse::utils::memory_state::DeferExit{
+    .Stmt = this, .ExitPoint = &exit_point, .ExitWhat = exit_what
+  };
   Expr->Stage8_CheckMemory(&tm, meta);
 }
 
