@@ -7,6 +7,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbol_table;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.memory_state;
 import spp.utils.types;
 import std;
 import sys;
@@ -146,6 +147,10 @@ public:
   /// variable, namespace), that belong to this scope.
   SymbolTable InternalTable;
 
+  /// The bindings "let"s in this scope declare, in the order they
+  /// are written ("RecordLetBinding").
+  Vec<Shared<VariableSymbol>> LetBindings;
+
   /// Whether this scope's super scopes have been attached: they
   /// are attached once. Not carried by a copy, as a clone is a
   /// scope of its own.
@@ -237,6 +242,34 @@ public:
   /// Remove a variable symbol into the scope, deleting it from
   /// the internal variable table within the main symbol table.
   auto RemVarSymbol(IdentifierAst const *sym_name) -> Shared<VariableSymbol>;
+
+  /// Record a binding a "let" in this scope declared (Stage
+  /// 7), in the order they are written. Created from the "let"
+  /// and "is" asts, and cleared at the end of a scope.
+  auto RecordLetBinding(Shared<VariableSymbol> const &sym) -> void;
+
+  /// Take every recorded "let" binding out of the table, for a
+  /// walk entering the scope: each "let" declares its own again
+  /// where it is written, once its value is done. So a name means
+  /// the binding written before the point reading it, never one
+  /// written after ("let x = x + 1", or a "ret" above a "let").
+  auto HideLetBindings() -> void;
+
+  /// Put every recorded "let" binding back, for a walk leaving the
+  /// scope: outside a walk of it, a scope reads as Stage 7 left it,
+  /// each name meaning the binding last declared. A name something
+  /// else holds now (a symbol a later stage added) is left alone.
+  auto RevealLetBindings() -> void;
+
+  /// "RevealLetBindings" for every scope nested in this one, for a
+  /// walk skipping past them (some may have been entered by a walk
+  /// that left part-way, at a "ret").
+  auto RevealNestedLetBindings() -> void;
+
+  /// Take a binding off the record: one declared up front by what
+  /// owns the scope (a parameter, a closure's capture), through a
+  /// "let" that no walk reaches in the body, so never hidden.
+  auto UnrecordLetBinding(IdentifierAst const &name) -> void;
 
   /// Remove a type symbol into the scope, deleting it from
   /// the internal type table within the main symbol table.

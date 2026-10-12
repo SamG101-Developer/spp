@@ -465,7 +465,8 @@ namespace spp::analyse::scopes {
             written_args, *alias.Params, scope, *alias.WrittenIn);
           const auto recorded_args = recorded | genex::views::ptr | genex::to<spp::Vec>();
           if (not recorded.IsEmpty()) {
-                      if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded_args, alias.Params.get())); id != nullptr) {
+            if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded_args, alias.Params.get())); id !=
+              nullptr) {
               AppendKeyId(out, id);
               return true;
             }
@@ -965,6 +966,56 @@ auto Scope::RemVarSymbol(
   IdentifierAst const *sym_name) -> Shared<VariableSymbol> {
   // Remove a variable symbol from the symbol table.
   return InternalTable.VarTable.Rem(sym_name);
+}
+
+/// [CHECKED]
+auto Scope::RecordLetBinding(Shared<VariableSymbol> const &sym) -> void {
+  // A "let" re-analysed (a loop's second pass) records the
+  // same binding once (cleared at the end of the scope).
+  // Created from "let" and "is" statements/expressions.
+  if (not genex::contains(LetBindings, sym)) { LetBindings.EmplaceBack(sym); }
+}
+
+/// [CHECKED]
+auto Scope::HideLetBindings() -> void {
+  // Earlier shadows have already been replaced, so remove the
+  // instance from this symbol table that remains.
+  for (auto const &sym : LetBindings) {
+    if (InternalTable.VarTable.Find(sym->Name.get()) == sym.get()) {
+      InternalTable.VarTable.Rem(sym->Name.get());
+    }
+  }
+}
+
+/// [CHECKED]
+auto Scope::RevealLetBindings() -> void {
+  // Replenish the bindings, from the last binding back, so
+  // a name ends up meaning the last binding of it (and only
+  // the last binding is put back, subsequent duplicates are
+  // skipped).
+  for (auto const &sym : LetBindings | genex::views::reverse) {
+    if (InternalTable.VarTable.Find(sym->Name.get()) == nullptr) {
+      InternalTable.VarTable.Add(sym->Name.get(), sym);
+    }
+  }
+}
+
+/// [CHECKED]
+auto Scope::RevealNestedLetBindings() -> void {
+  // The same as the normal symbol revealer, but for child
+  // scopes, recursively.
+  for (auto const &child : Children) {
+    child->RevealLetBindings();
+    child->RevealNestedLetBindings();
+  }
+}
+
+/// [CHECKED]
+auto Scope::UnrecordLetBinding(IdentifierAst const &name) -> void {
+  // Remove a binding by matching it on the name. Closures use
+  // this to hide the captures post-processing.
+  LetBindings |= genex::actions::remove_if(
+    [&name](auto const &sym) { return *sym->Name == name; });
 }
 
 /// [CHECKED]
@@ -1484,7 +1535,6 @@ auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
       return hit != ptr->Instances.end() ? hit->second : nullptr;
     }
 
-
     // Unreachable state.
     default:
       return nullptr;
@@ -1529,7 +1579,6 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
           head.Kind == TypeKey::Tag::TypeParam ? bare : NameTypeIdOf(*param));
         break;
       }
-
 
       // For a generic instantiation, get each generic argument's
       // name, and reconstruct the generic argument's equivalent
@@ -1615,8 +1664,14 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
     // ("FoldCompValues"): a literal cut short would be another
     // value, so another type.
     case CompKey::Part::Value: {
-      if (auto const *const val = node.AsBool(); val != nullptr) { return BooleanLiteralAst::FromCppVal(*val); }
-      if (auto const *const val = node.AsInt(); val != nullptr) { return IntegerLiteralAst::FromBigVal(*val, node.Text); }
+      if (auto const *const val = node.AsBool(); val != nullptr) {
+        return BooleanLiteralAst::FromCppVal(*val);
+      }
+
+      if (auto const *const val = node.AsInt(); val != nullptr) {
+        return IntegerLiteralAst::FromBigVal(*val, node.Text);
+      }
+
       if (auto const *const val = node.AsFloat(); val != nullptr) {
         if (const auto places = ExactDecimalPlaces(*val); places.has_value()) {
           return FloatLiteralAst::FromBigVal(*val, node.Text, *places);
@@ -1624,7 +1679,8 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
         auto num = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetNumerator(), numex::BigInt(1)), node.Text, 0uz);
         auto den = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetDenominator(), numex::BigInt(1)), node.Text, 0uz);
         return MakeUnique<BinaryExpressionAst>(
-          std::move(num), MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DIV, lex::TokToString(lex::SppTokenType::TK_DIV)),
+          std::move(num),
+          MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DIV, lex::TokToString(lex::SppTokenType::TK_DIV)),
           std::move(den));
       }
       return nullptr;
