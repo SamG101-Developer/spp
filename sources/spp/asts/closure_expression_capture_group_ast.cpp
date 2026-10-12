@@ -8,6 +8,8 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.regions;
 import spp.asts.ast;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
@@ -96,7 +98,7 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
     if (callable_as != nullptr) { sym->CallableAsType = callable_as; }
     sym->Kind = VariableKind::Capture;
     const auto conv = cap->Conv.get();
-    sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
+    sym->MemInfo->AstBorrowed = conv;
     sym->Type = sym->Type->WithConvention(AstClone(cap->Conv));
   }
 }
