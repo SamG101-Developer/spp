@@ -12,6 +12,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -123,7 +124,8 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
     : VariableKind::Constant;
   _AliasSymbol = MakeShared<VariableSymbol>(
     Name, Type, sm->CurrentScope, kind, false, Visibility.first);
-  _AliasSymbol->MemInfo->InitializedBy(*this, sm->CurrentScope);
+  analyse::utils::memory_state::StateOf(
+    *sm->CurrentScope, *_AliasSymbol).InitializedBy(*this);
   _AliasSymbol->CompTimeValue = AstClone(Value);
   sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSymbol);
 
@@ -229,7 +231,13 @@ auto CmpStatementAst::Stage8_CheckMemory(
   IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  Value->Stage8_CheckMemory(sm, meta);
+  {
+    // Evaluated at compile time: what the value makes never
+    // exists at run time.
+    const auto _meta_guard = MetaGuard(meta);
+    meta->InCompTimeValue = true;
+    Value->Stage8_CheckMemory(sm, meta);
+  }
   mem_utils::ValidateSymbolMemory(*Value, *Value, *sm, meta);
 
   //
