@@ -233,8 +233,8 @@ auto CaseExpressionAst::Coverage(
     const auto subject = TypeRef::Of(
       *Cond->InferType(sm, meta)->WithoutConvention(), *sm->CurrentScope);
 
-    // Build the coverage struct using the helper with the branches
-    // and the subject's type.
+    // Build the coverage struct using the helper with the
+    // branches and the subject's type.
     _Coverage = MakeShared<case_utils::CaseCoverage>(case_utils::CoverageOf(
       Branches | genex::views::ptr | genex::to<Vec>(), subject, *sm->CurrentScope));
   }
@@ -251,7 +251,9 @@ auto CaseExpressionAst::Stage8_CheckMemory(
 
   // Check the memory state of the condition.
   Cond->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*Cond, *Cond, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
+  mem_utils::ValidateSymbolMemory(
+    *Cond, *Cond, *sm, meta,
+    {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
   // The subject, when it is a value this "case" can take
   // one it owns (not a borrow, which is someone else's to
@@ -263,18 +265,52 @@ auto CaseExpressionAst::Stage8_CheckMemory(
     and not cond_ref.IsBorrowed()
     ? sm->CurrentScope->FindVarSymbolOutermost(*Cond).first
     : nullptr;
-  auto subject = cond_sym != nullptr and cond_sym->MemInfo->AstBorrowed == nullptr
+
+  const auto subject = cond_sym != nullptr
+    and cond_sym->MemInfo->AstBorrowed == nullptr
     ? cond_sym
     : nullptr;
+
   const auto branches = Branches | genex::views::ptr | genex::to<Vec>();
   auto const &coverage = Coverage(sm, meta);
-  const auto edges = subject != nullptr
+  const auto temporary = subject == nullptr and linear_utils::IsLinearTemporary(*Cond, *sm, meta);
+  const auto edges = subject != nullptr or temporary
     ? std::optional(case_utils::PlanSubjectEdges(branches, coverage, *sm->CurrentScope))
     : std::nullopt;
 
-  const auto takes_subject = cond_sym != nullptr
-    and not cond_ref.IsBorrowed()
-    and spp::get<0>(cond_sym->MemInfo->AstBorrowed) == nullptr;
+  // Handle unconsumed temporaries. For example, when a linear
+  // temporary is the condition "case make_str() of {", then
+  // one branch must take ownership of it. Unless its copyable.
+  const auto flow = memory_state::FlowOf(*sm->CurrentScope);
+  const auto kept_before = flow != nullptr ? flow->KeptTemporaries.Len() : 0uz;
+  if (temporary) {
+    auto const &plan = *edges;
+    for (auto const &[i, branch] : branches | genex::views::enumerate) {
+      const auto keeps = coverage.Reachable[i] and plan.OnMatch[i] == SubjectOnMatch::kKeep;
+      if (not keeps) { continue; }
+
+      // A reachable branch that keeps the case condition temporary
+      // (does not take it) raises a linear error, unless the body
+      // of the branch diverges.
+      if (not control_flow::Diverges(*branch->Body, sm, meta)) {
+        linear_utils::RaiseTemporaryNotConsumed(
+          *Cond, *branch, "This branch keeps it, so nothing owns it after the \"case\"", *sm, meta);
+      }
+
+      // Log the temporary into the flow, against the branch that
+      // maintains it.
+      if (flow != nullptr) {
+        flow->KeptTemporaries.EmplaceBack(Cond.get(), branch);
+      }
+    }
+
+    // If the temporary falls through to the end, the same error
+    // is reported, against the case rather than the branch.
+    if (coverage.FallsThrough and plan.OnFallThrough == SubjectOnMatch::kKeep) {
+      linear_utils::RaiseTemporaryNotConsumed(
+        *Cond, *this, "Falling through keeps it, so nothing owns it after the \"case\"", *sm, meta);
+    }
+  }
 
   // Validate the memory state across all branches (also calls
   // stage 8 from within).
@@ -283,35 +319,9 @@ auto CaseExpressionAst::Stage8_CheckMemory(
     meta->CaseCondition = Cond.get();
     meta->CaseSubject = subject;
     memory_state::ValidateInconsistentMemory(
-      this, Branches | genex::views::ptr | genex::to<Vec>(), takes_subject ? cond_sym : nullptr, sm, meta);
+      this, branches, coverage, subject, subject != nullptr ? &*edges : nullptr, sm, meta);
   }
-
-  // The mark is made here, after the branches have bound off
-  // the subject and outside the per-branch snapshots
-  // "ValidateInconsistentMemory" takes. That is what keeps
-  // the branches agreeing: every one of them, "else" included,
-  // leaves the subject in the same state, because none of
-  // them is what moved it.
-  //
-  // Marked directly rather than through "ValidateSymbolMemory",
-  // whose inconsistency checks run whatever flags it is given.
-  // Those checks are exactly what must not fire here: the
-  // branches having moved different parts of the subject stops
-  // meaning anything once the whole of it is taken, because all
-  // of it is gone either way.
-  if (takes_subject) {
-    // "case x of" takes the symbol itself; "case x.inner of"
-    // takes one region of it, which is a partial move like any
-    // other.
-    if (Cond->To<IdentifierAst>() != nullptr) {
-      cond_sym->MemInfo->MovedBy(*Cond, sm->CurrentScope);
-    }
-    else {
-      cond_sym->MemInfo->AstPartialMoves.EmplaceBack(Cond.get());
-    }
-    cond_sym->MemInfo->IsInconsistentlyMoved = std::nullopt;
-    cond_sym->MemInfo->IsInconsistentlyPartiallyMoved = std::nullopt;
-  }
+  if (flow != nullptr) { flow->KeptTemporaries.Resize(kept_before); }
 
   // Move out of the case expression scope.
   sm->MoveOutOfCurrentScope();
