@@ -204,12 +204,8 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
     _FlowSymbol->Type = Type;
 
-    if (Type->GetConvention() != nullptr) {
-      const auto has_borrow_scope = spp::get<1>(_CondSymbol->MemInfo->AstBorrowed);
-      const auto borrow_scope = has_borrow_scope ? has_borrow_scope : _CondSymbol->ScopeDefinedIn;
-      _FlowSymbol->MemInfo->AstBorrowed = {Type.get(), borrow_scope};
-    }
-    sm->CurrentScope->AddVarSymbol(_FlowSymbol);
+    if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
+    _CondLet->Var->ToUnchecked<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
     effective_val = uid_name.get();
   }
 
