@@ -77,7 +77,7 @@ auto FunctionParameterSelfAst::Stage7_AnalyseSemantics(
   // value. That left "&self" and "&mut self" unregistered as borrows for the whole memory model - nothing stopped a
   // value being moved out of one.
   if (Conv != nullptr) {
-    sym->MemInfo->AstBorrowed = {Conv.get(), sm->CurrentScope};
+    sym->MemInfo->AstBorrowed = Conv.get();
   }
 }
 

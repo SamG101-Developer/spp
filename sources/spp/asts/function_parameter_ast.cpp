@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_variadic_ast;
@@ -61,13 +62,20 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   ast->Stage7_AnalyseSemantics(sm, meta);
   Var = std::move(ast->Var);
 
+  // A parameter is declared by the signature, not by a "let"
+  // a walk reaches in the body, so it is never hidden on
+  // entering the scope.
+  for (auto const &name : ExtractNames()) {
+    sm->CurrentScope->UnrecordLetBinding(*name);
+  }
+
   // Mark the symbol as initialized. A variadic parameter's symbol
   // holds a pack, as a variadic comp parameter's does.
   const auto conv = Type->GetConvention();
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
-    sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-    sym->MemInfo->AstBorrowed = {conv, sm->CurrentScope};
+    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
+    sym->MemInfo->AstBorrowed = conv;
     sym->IsVariadic = To<FunctionParameterVariadicAst>() != nullptr;
   }
 }
@@ -77,7 +85,7 @@ auto FunctionParameterAst::Stage8_CheckMemory(
   // Check the memory of each name.
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
-    sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
   }
 }
 
