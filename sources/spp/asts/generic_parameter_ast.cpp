@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -183,7 +184,8 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
       IdentifierAst::FromType(*Name), CompType, sm->CurrentScope,
       VariableKind::GnCompParam, false, Visibility::kPublic);
 
-    sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+    analyse::utils::memory_state::StateOf(
+      *sm->CurrentScope, *sym).InitializedBy(*this);
     if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
     sym->OwnParamId = *_ParamId;
     sym->IsVariadic = IsVariadic();
