@@ -74,7 +74,7 @@ auto CaseExpressionAst::NewNonPatternMatch(
   // pattern matching "case x of { is P { .. } }", so the pattern
   // is matched against the subject directly, and its coverage
   // seen, rather than through a boolean.
-  if (auto is_expr = cond->To<IsExpressionAst>()) {
+  if (const auto is_expr = cond->To<IsExpressionAst>()) {
     auto is_patterns = Vec<Unique<CasePatternVariantAst>>();
     is_patterns.EmplaceBack(std::move(is_expr->Rhs));
     branches.Insert(

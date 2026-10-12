@@ -152,6 +152,13 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
   case_utils::ApplySubjectOnMatch(*this, *sm, *meta);
   Body->Stage8_CheckMemory(sm, meta);
 
+  // The pattern's bindings end with the branch, and so do
+  // the loans they hold.
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  for (const auto sym : sm->CurrentScope->GetAllVarSymbols(true)) {
+    memory_state::ReleaseLoans(loans, *sym);
+  }
+
   // Move out of the branch's scope.
   sm->MoveOutOfCurrentScope();
 }
