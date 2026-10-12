@@ -18,8 +18,5 @@ namespace spp::analyse::utils::control_flow {
   /// when its value does. The statement must be analysed.
   /// Todo: This will be the only function left, so move file?
   SPP_EXP_FUN auto Diverges(
-    StatementAst &stmt,
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> bool;
+    StatementAst &stmt, ScopeManager *sm, CompilerMetaData *meta) -> bool;
 }
