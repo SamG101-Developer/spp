@@ -143,7 +143,9 @@ auto ScopeManager::CreateAndMoveIntoNewScope(
 }
 
 auto ScopeManager::MoveOutOfCurrentScope() -> Scope* {
-  // Exit the current scope into the parent scope.
+  // Exit the current scope into the parent scope, which reads
+  // as it did before the walk entered it.
+  CurrentScope->RevealLetBindings();
   CurrentScope = CurrentScope->Parent;
   return CurrentScope;
 }
@@ -158,6 +160,9 @@ auto ScopeManager::MoveToNextScope(
     and CurrentScope->LinkedTypeSymbol->Alias != nullptr) {
     CurrentScope = *++_It;
   }
+
+  // A walk into a scope starts with none of its "let"s declared yet.
+  CurrentScope->HideLetBindings();
   return CurrentScope;
 }
 
@@ -171,6 +176,7 @@ auto ScopeManager::ExhaustScope() -> void {
   const auto final_scope = exhausted->GetFinalChildScope();
   const auto end = ScopeIterator();
   while (_It != end and *_It != final_scope) { ++_It; }
+  exhausted->RevealNestedLetBindings();
   CurrentScope = exhausted;
 }
 
@@ -188,6 +194,7 @@ auto ScopeManager::SkipPastScope(
     if (++_It == end) { return false; }
     CurrentScope = *_It;
   }
+  scope->RevealNestedLetBindings();
   return true;
 }
 

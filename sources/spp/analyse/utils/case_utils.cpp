@@ -252,6 +252,11 @@ namespace spp::analyse::utils::case_utils {
 
     /// Two patterns for one field, as the one matching what both match:
     /// the other, when either is anything; else nothing known.
+    /// Todo: two constructor patterns give up here, so a refined type
+    ///  with a binding on the same field covers nothing (red test
+    ///  "test_valid_nested_variant_covered_by_refining_type_and_binding").
+    ///  Meet them field by field: the same constructor meets its fields,
+    ///  different constructors match nothing.
     auto Meet(Pat a, Pat b) -> Pat {
       if (a.K == Pat::Kind::Wild) { return b; }
       if (b.K == Pat::Kind::Wild) { return a; }
@@ -319,6 +324,9 @@ namespace spp::analyse::utils::case_utils {
 
       // Similar to above, if the expression is a boolean literal
       // then use the helper, otherwise it's opaque.
+      // Todo: "== 1" is a literal too, and is opaque here, so a repeated
+      //  one is never unreachable (red test "test_invalid_repeated_equality_literal").
+      //  Under "==", any literal should be a "Lit", as in a destructure.
       if (const auto expr = pattern.To<CasePatternVariantExpressionAst>()) {
         const auto b = expr->Expr->To<BooleanLiteralAst>();
         return eq_op and b != nullptr ? bool_pat(*b) : OpaquePat();

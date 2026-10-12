@@ -69,8 +69,8 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
     sm->CurrentScope->UnrecordLetBinding(*name);
   }
 
-  // Mark the symbol as initialized. A variadic parameter's symbol
-  // holds a pack, as a variadic comp parameter's does.
+  // Mark the symbol as initialized. A variadic parameter's
+  // symbol holds a pack, as a variadic comp parameter's does.
   const auto conv = Type->GetConvention();
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());

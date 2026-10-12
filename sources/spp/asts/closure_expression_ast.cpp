@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
@@ -254,7 +255,10 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
         *outer_scope, *Body, "Closure end", *sm, meta);
     }
 
-    // Set the scope back.
+    // Leave both closure scopes reading as Stage 7 left them. They
+    // are left by setting the scope back, not by moving out: the
+    // outer one's parent is the module, not the enclosing function.
+    outer_scope->RevealNestedLetBindings();
   }
   sm->CurrentScope = parent_scope;
 }
@@ -273,10 +277,13 @@ auto ClosureExpressionAst::Stage11_CodeGen(
 
   // For each capture, determine its type symbol and add it to
   // the environment's fields list. This uses a "C" layout as it
-  // is just done in order, no index map. TODO: spp layout.
+  // is just done in order, no index map. TODO: spp layout. A
+  // borrowed capture holds a pointer, typed as the body reads it
+  // back (the bare symbol gave a "&U32" a 4-byte slot for 8).
   for (auto const &capture : PcGroup->CaptureGroup->Captures) {
-    const auto cap_ty_sym = capture->InferTypeRef(sm, meta).Symbol;
-    closure_env_field_tys.EmplaceBack(codegen::GetLlvmType(*cap_ty_sym, ctx));
+    const auto cap_ty = capture->InferType(sm, meta);
+    closure_env_field_tys.EmplaceBack(
+      codegen::GetLlvmTypeOf(TypeRef::Of(*cap_ty, *sm->CurrentScope), ctx));
   }
   closure_env_ty->setBody(closure_env_field_tys.ToStdVector(), false);
 
@@ -343,6 +350,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
     meta->LlvmAssignmentTarget = nullptr;
 
     PcGroup->Stage11_CodeGen(sm, meta, ctx);
+    const auto outer_scope = sm->CurrentScope;
     sm->MoveToNextScope();
     auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
@@ -372,6 +380,10 @@ auto ClosureExpressionAst::Stage11_CodeGen(
       else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
       else { ctx->Builder.CreateUnreachable(); }
     }
+
+    // Leave both closure scopes reading as Stage 7 left them
+    // (see Stage 8).
+    outer_scope->RevealNestedLetBindings();
   }
   sm->CurrentScope = parent_scope;
 
