@@ -105,37 +105,37 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Any borrowed captures need pinning and marking as extended
   // borrows.
-  auto ass_sym = static_cast<VariableSymbol*>(nullptr);
-  if (meta->AssignmentTarget != nullptr) {
-    ass_sym = meta->CurrentLambdaOuterScope->FindVarSymbolOutermost(*meta->AssignmentTarget).first;
-  }
+  const auto ass_sym = analyse::utils::mem_utils::AssignmentTargetSymbol(
+    *meta->CurrentLambdaOuterScope, *meta);
   for (auto const &cap : Captures) {
     // The closure's own copy of the capture is initialised here,
     // as a parameter is. A loop body is checked twice against the
     // same scopes, so without this the second pass would still see
     // whatever the body did to the copy on the first.
     const auto inner_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
-    if (inner_sym != nullptr) { inner_sym->MemInfo->InitializedBy(*cap, sm->CurrentScope); }
+    if (inner_sym != nullptr) {
+      analyse::utils::memory_state::StateOf(*sm->CurrentScope, *inner_sym).InitializedBy(*cap);
+    }
 
     if (cap->Conv != nullptr) {
       // Mark the borrow on the closure's own copy of the symbol.
       const auto cap_val = cap->Val->To<IdentifierAst>();
       const auto cap_sym = sm->CurrentScope->FindVarSymbol(cap_val);
-      cap_sym->MemInfo->AstBorrowed = {cap->Conv.get(), sm->CurrentScope};
+      cap_sym->MemInfo->AstBorrowed = cap->Conv.get();
 
       // The closure object outlives the expression that created
       // it, so a borrowed capture escapes the frame in the same
-      // way a borrow passed into a coroutine call does. Bind it
-      // to the closure handle in both directions, so the captured
-      // value can't move whilst the closure holds it, and the
-      // closure itself can't move either.
+      // way a borrow passed into a coroutine call does: it is a
+      // loan held by the closure, in the body the closure is
+      // written in, so the captured value can't move whilst the
+      // closure holds it, and the closure itself can't move either.
       const auto outer_cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap_val);
       if (ass_sym != nullptr and outer_cap_sym != nullptr) {
         const auto is_mut = *cap->Conv == ConventionTag::MUT;
-        ass_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
-          {cap->Val.get(), is_mut, meta->CurrentLambdaOuterScope});
-        outer_cap_sym->MemInfo->AstContainersOfEscapingBorrows.PushBack(
-          {ass_sym->Name.get(), cap->Val.get()});
+        const auto borrowed = analyse::utils::regions::PlaceAtOf(*cap->Val, *meta->CurrentLambdaOuterScope);
+        analyse::utils::memory_state::LoansOf(*meta->CurrentLambdaOuterScope).EmplaceBack(
+          analyse::utils::memory_state::MakeLoan(
+            borrowed, is_mut, ass_sym, false, ass_sym == meta->AssignmentTargetSymbol));
       }
     }
     else {
@@ -145,7 +145,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       const auto cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
       const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Symbol;
       if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
-        cap_sym->MemInfo->MovedBy(*cap, sm->CurrentScope);
+        analyse::utils::memory_state::StateOf(*meta->CurrentLambdaOuterScope, *cap_sym).MovedBy(*cap);
       }
     }
   }
