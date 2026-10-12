@@ -39,18 +39,18 @@ namespace spp::analyse::utils::mem_utils {
   /// state of the symbol's memory information too. A range of
   /// memory-related errors can be raised.
   SPP_EXP_FUN auto ValidateSymbolMemory(
-    ExpressionAst &value_ast,
-    Ast const &move_ast,
-    ScopeManager &sm,
-    meta::CompilerMetaData *meta,
-    SymbolMemoryOptions const &options = {})
-    -> void;
+    ExpressionAst &value_ast, Ast const &move_ast,
+    ScopeManager &sm, meta::CompilerMetaData *meta,
+    SymbolMemoryOptions const &options = {}) -> void;
 
   /// Raise if the value "sym" holds has already been moved out,
   /// reported against "use", the expression reading it.
   SPP_EXP_FUN auto RaiseIfMoved(
-    VariableSymbol const &sym,
-    Ast const &use,
-    Scope const *scope)
-    -> void;
+    VariableSymbol const &sym, Ast const &use, Scope const *scope) -> void;
+
+  /// The symbol "meta.AssignmentTarget" names, read in "scope": the
+  /// binding a "let" is declaring while its value is checked (not
+  /// declared yet, so not found by name), else what the name finds.
+  SPP_EXP_FUN auto AssignmentTargetSymbol(
+    Scope const &scope, meta::CompilerMetaData const &meta) -> VariableSymbol*;
 }
