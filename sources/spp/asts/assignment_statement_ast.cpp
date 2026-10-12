@@ -11,7 +11,9 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.fn_values;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.asts.convention_ast;
@@ -127,31 +129,28 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
          Rhs | genex::views::ptr,
          lhs_syms) | genex::to<Vec>()) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
+    const auto lhs_state = [&]() -> analyse::utils::memory_state::MemoryState& {
+      return analyse::utils::memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    };
     const auto lhs_type = lhs_expr->InferType(sm, meta);
     const auto lhs_deref_ref = IsDeref(lhs_expr)
       ? lhs_expr->To<PostfixExpressionAst>()->Lhs->InferTypeRef(sm, meta)
       : TypeRef{};
 
-    // Full assignment (ie "x" = "y") requires the "x" symbol to
-    // be marked as "mut" or never initialized.
-    RaiseIf<SppInvalidMutationError>(
-      regions::IsIdentifier(lhs_expr) and not(lhs_sym->IsMutable or lhs_sym->MemInfo->InitializationCounter == 0),
-      {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
-
     // Attribute assignment (ie "x.y = z"), for a non-borrowed
     // symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
-      regions::IsAttr(lhs_expr, sm) and not(spp::get<0>(lhs_sym->MemInfo->AstBorrowed) or lhs_sym->IsMutable),
+      regions::IsAttr(lhs_expr, sm) and not(lhs_sym->MemInfo->AstBorrowed or lhs_sym->IsMutable),
       {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable outer sym"));
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *lhs_state().AstInitialization, "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol,
     // cannot be immutably borrowed.
     RaiseIf<SppInvalidMutationError>(
-      regions::IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() == ConventionTag::REF,
+      regions::IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() ==
+      ConventionTag::REF,
       {sm->CurrentScope},
-      ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable borrow"));
+      ERR_ARGS(*lhs_sym->Name, *TokAssign, *lhs_state().AstInitialization, "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a
     // borrow, so the borrow being dereferenced must be &mut.
@@ -159,12 +158,6 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
       IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
       {sm->CurrentScope},
       ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
-
-    // Prevent double initializations to immutable uninitialized
-    // let statements.
-    if (regions::IsIdentifier(lhs_expr)) {
-      lhs_sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
-    }
 
     // Ensure the lhs and rhs have the same type.
     // Compared as resolved, each where it was inferred; the written forms are only for the message.
@@ -183,7 +176,8 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
 
 auto AssignmentStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
+  using namespace spp::analyse::errors;
+  using namespace spp::analyse::utils;
 
   // For each assignment, check the memory status and resolve
   // any (partial-)moves.
@@ -194,6 +188,9 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
   for (auto const &[lhs_expr, rhs_expr, lhs_sym_and_scope] : genex::views::zip(
          Lhs | genex::views::ptr, Rhs | genex::views::ptr, lhs_syms)) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
+    const auto lhs_state = [&]() -> memory_state::MemoryState& {
+      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    };
 
     // Partially validate the memory of the right-hand-side
     // expression, if it is an attribute being set. Don't mark
@@ -203,70 +200,110 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
       *rhs_expr, *TokAssign, *sm, meta,
       {.CheckMove = regions::IsAttr(lhs_expr, sm), .CheckPartialMove = false, .MarkMoves = false});
 
+    // When we assign a replacement value, we need to release
+    // the loans that were present on the symbol. Get the loans
+    // in the scope, and remove them by comparing the holder
+    // symbol.
+    auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+    if (regions::IsIdentifier(lhs_expr) and lhs_sym != nullptr) {
+      loans |= genex::actions::remove_if([&](auto const &loan) {
+        return loan.Holder == lhs_sym and not loan.Yielded;
+      });
+    }
+
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
       meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
+      meta->AssignmentTargetSymbol = regions::IsIdentifier(lhs_expr) ? lhs_sym : nullptr;
       rhs_expr->Stage8_CheckMemory(sm, meta);
     }
 
+    // For a left-hand-side identifier (symbolic), activate any
+    // loans (escaping borrows) on it.
+    if (regions::IsIdentifier(lhs_expr) and lhs_sym != nullptr) {
+      memory_state::ActivateLoans(loans, *lhs_sym);
+    }
+
     // Fully validate the memory of the right-hand-side
-    // expression, marking the move. A value carrying escaping
-    // borrows is let through here, because the function
-    // "PreventBorrowLifetimeExtension" below weighs the
-    // destination against those borrows rather than refusing
-    // the move on sight.
+    // expression, marking the move. A value carrying loans is
+    // let through here, because "EnforceBorrowsOutliveHolder"
+    // below weighs the destination against those loans rather
+    // than refusing the move on sight.
     mem_utils::ValidateSymbolMemory(
       *rhs_expr, *TokAssign, *sm, meta, {.CheckEscapingBorrowMove = false});
 
     // Writing over a value that a live coroutine, future or
     // iterator borrows changes what that borrow points at, just
     // as moving it out would, and is refused the same way.
-    if ((regions::IsAttr(lhs_expr, sm) or regions::IsIdentifier(lhs_expr))
-      and not lhs_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
-      const auto [where_contained, _] = lhs_sym->MemInfo->AstContainersOfEscapingBorrows[0];
-      Raise<SppMovingEscapingBorrowedMemoryError>(
-        {sm->CurrentScope}, ERR_ARGS(*where_contained, *lhs_expr));
+    if (regions::IsAttr(lhs_expr, sm) or regions::IsIdentifier(lhs_expr)) {
+      for (auto &loan : loans) {
+        if (loan.Pending or not loan.Borrowed.Of.has_value() or loan.Borrowed.Of->Root != lhs_sym) { continue; }
+        borrows::ConflictWith(
+          loan, memory_state::LoanConflict{.Moved = true, .First = loan.Holder->Name.get(), .Second = lhs_expr}, *sm);
+      }
     }
 
     // For an attribute-based left-hand-side, we ensure that
     // the object is valid and mark it as being written in
     // place, to fine tune the memory error system. Resolve
-    // the partial move.
+    // the partial move. Check we are abiding by linear rules
+    // by not overwriting a linear value (not discarded).
     if (regions::IsAttr(lhs_expr, sm)) {
       mem_utils::ValidateSymbolMemory(
         *lhs_expr, *TokAssign, *sm, meta,
         {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false, .IsPlaceWritten = true});
-      lhs_sym->MemInfo->RemovePartialMoves(*lhs_expr, sm->CurrentScope);
+      linear_utils::CheckOverwritePart(*lhs_sym, *lhs_expr, *this, "Assignment", *sm, meta);
+      lhs_state().RemovePartialMoves(*lhs_expr, sm->CurrentScope);
+    }
+
+    // Writing through a dereference ("x@ = ..") writes over
+    // whatever the borrow points at, and uses the borrow.
+    else if (IsDeref(lhs_expr)) {
+      if (const auto borrow = lhs_expr->To<PostfixExpressionAst>()->Lhs->To<IdentifierAst>()) {
+        if (const auto borrow_sym = sm->CurrentScope->FindVarSymbol(borrow)) {
+          borrows::RaiseIfConflictedUse(*borrow_sym, *sm->CurrentScope);
+        }
+      }
+      linear_utils::CheckOverwriteThroughBorrow(*lhs_expr, *sm, meta);
     }
 
     // Otherwise, resolve the moved identifier's memory status
     // to the "initialised" state.
-    // Todo: The value it held is discarded here without being
-    //  consumed, so a live non-Copy value leaks
-    //  (TestLinearScopeExit.test_invalid_assign_over_live_*).
-    //  "linear_utils::CheckOverwrite(*lhs_sym, *this,
-    //  "Assignment", *sm)" here catches it, but ~40 existing
-    //  tests overwrite a live value on purpose ("let mut x =
-    //  f(1); x = 2" to check a type, and "S32 or Bool" is not
-    //  "Copy"), and so do the async overwrite tests.
     else if (regions::IsIdentifier(lhs_expr)) {
-      // An immutable may be given its value once. Stage 7 counts
-      // the assignments it sees, but a loop body is only checked
-      // for its second time round here, which is when an
-      // assignment inside it finds the value already there.
+      // An immutable may be given its value once: only if no path
+      // here has given it one yet. A value held now, on some path
+      // only, or since moved on, was a first one (a loop body's
+      // second time round included).
+      auto const &state = lhs_state();
+      const auto never_given = not state.Given
+        and state.AstInitialization == nullptr
+        and not state.MaybeInit;
+
       RaiseIf<SppInvalidMutationError>(
-        not lhs_sym->IsMutable and spp::get<0>(lhs_sym->MemInfo->AstInitialization) != nullptr,
+        not lhs_sym->IsMutable and not never_given,
         {sm->CurrentScope},
-        ERR_ARGS(*lhs_sym->Name, *TokAssign, *spp::get<0>(lhs_sym->MemInfo->AstInitialization), "immutable sym"));
-      lhs_sym->MemInfo->InitializedBy(*this, sm->CurrentScope);
+        ERR_ARGS(
+          *lhs_sym->Name, *TokAssign,
+          *(state.AstInitialization != nullptr ? state.AstInitialization : state.AstMoved), "immutable sym"));
+
+      linear_utils::CheckOverwrite(*lhs_sym, *this, "Assignment", *sm);
+      lhs_state().InitializedBy(*this);
     }
 
-    // Ensure a borrow is not increasing its lifetime.
+    // A holder moved in whole by name hands its loans to the name
+    // it is moved into.
     const auto lhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*lhs_expr).first;
     const auto rhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*rhs_expr).first;
-    borrows::PreventBorrowLifetimeExtension(
-      *rhs_expr, lhs_outermost, rhs_outermost, this, *sm);
+    if (regions::IsIdentifier(lhs_expr) and regions::IsIdentifier(rhs_expr)
+      and lhs_sym != nullptr and rhs_outermost != nullptr) {
+      memory_state::TransferLoans(loans, *rhs_outermost, *lhs_sym);
+    }
+
+    // What the value borrows has to outlive what now holds it.
+    if (lhs_outermost != nullptr) {
+      borrows::EnforceBorrowsOutliveHolder(*lhs_outermost, rhs_outermost, *this, *sm);
+    }
   }
 }
 
