@@ -19,7 +19,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let v = Vec[FunMov[(), Str]]()
         let mut x = (v[1_uz])()
+        std::mem::ops::drop(x)
         x = Str::from("hello")
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(v)
     }
 )");
 
