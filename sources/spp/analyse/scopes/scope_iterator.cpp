@@ -3,6 +3,7 @@ module;
 
 module spp.analyse.scopes.scope_iterator;
 import spp.analyse.scopes.scope;
+import gch;
 
 SPP_MOD_BEGIN
 /// [CHECKED]
@@ -14,6 +15,16 @@ ScopeIterator::ScopeIterator(
 }
 
 /// [CHECKED]
+ScopeIterator::ScopeIterator(ScopeIterator const &other) = default;
+
+ScopeIterator::ScopeIterator(ScopeIterator &&other) noexcept = default;
+
+auto ScopeIterator::operator=(ScopeIterator const &other) -> ScopeIterator& = default;
+
+auto ScopeIterator::operator=(ScopeIterator &&other) noexcept -> ScopeIterator& = default;
+
+ScopeIterator::~ScopeIterator() = default;
+
 auto ScopeIterator::operator*() -> reference {
   // Hook into the node on the frame at the back of the stack.
   return _Stack.back().Node;
