@@ -86,14 +86,23 @@ auto LoopIterableExpressionAst::PosEnd() const -> std::size_t {
 }
 
 auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<LoopIterableExpressionAst>(
+  // Clone all the members of the ast, and the lowering Stage 7
+  // built (which moved the written members into it), so a clone
+  // taken after Stage 7 is as complete as the original.
+  auto ast = MakeUnique<LoopIterableExpressionAst>(
     AstClone(TokLoop),
     AstClone(Var),
     AstClone(TokIn),
     AstClone(Iterable),
     AstClone(Body),
     AstClone(ElseBlock));
+  ast->_TransformedLet = AstClone(_TransformedLet);
+  ast->_TransformedFlagLet = AstClone(_TransformedFlagLet);
+  ast->_TransformedLoop = AstClone(_TransformedLoop);
+  ast->_IterDefer = AstClone(_IterDefer);
+  ast->_IterDrop = AstClone(_IterDrop);
+  ast->_IterableName = AstCloneShared(_IterableName);
+  return ast;
 }
 
 auto LoopIterableExpressionAst::ToString() const -> Str {

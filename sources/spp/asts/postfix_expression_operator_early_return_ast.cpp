@@ -61,7 +61,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
 auto PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<PostfixExpressionOperatorEarlyReturnAst>(
     AstClone(TokQst));
-  ast->_TransformedExpr = _TransformedExpr;
+  ast->_TransformedExpr = AstCloneShared(_TransformedExpr);
   return ast;
 }
 
