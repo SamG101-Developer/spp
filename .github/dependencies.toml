@@ -87,8 +87,8 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
 [pin.osv-scanner]
-version = "2.6.0"
-sha256 = "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108"
+version = "2.7.0"
+sha256 = "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
 
 # Keep the version in step with the gitleaks rev in
 # .pre-commit-config.yaml.
@@ -131,7 +131,7 @@ generation = "v3"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "c164976d1426d623d87b98833ff60c7263fde4e1"
+commit = "ddd49116e63be7345b448351cad153653a712fdb"
 
 [[library]]
 name = "mimalloc"
@@ -142,7 +142,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "d33068da730aa1ffa3f1acb332e36653681efa2c"
+commit = "40a62947d3e23f46cbc863afdcc6f5c933d5ed10"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -175,13 +175,13 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "eced4d837d0ab57242b1c25d03780d35bf2b0d52"
+commit = "07c9f13b15a70c367a406e1cfe2c363aa1b66894"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
 name = "range-v3"
 repo = "https://github.com/ericniebler/range-v3.git"
-commit = "108f93c279c8f9cec175dac361084983d0176e99"
+commit = "5ba39112d2eafbb3c851a16a537f29b445022998"
 cmake-flags = [
   "-DRANGE_V3_TESTS=OFF",
   "-DRANGE_V3_EXAMPLES=OFF",
@@ -201,7 +201,7 @@ commit = "badae2b5e668084412cef496283a345bd8bd9744"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "aeb9e018ac33cb336f97916eef4602ece2816f88"
+commit = "1aa173912efaf1018f0c22d795df76d9d522affc"
 
 [[library]]
 name = "NumEx"
