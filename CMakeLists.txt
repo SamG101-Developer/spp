@@ -104,6 +104,10 @@ set(
   $<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
+# Stengthen the debug and asan builds.
+add_compile_options(
+  $<$<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>>:-D_GLIBCXX_ASSERTIONS>)
+
 if (SPP_STATIC_RUNTIME)
   set(SPP_MIMALLOC_TARGET mimalloc-static)
   # The static archive defines new/delete itself (MI_OVERRIDE),
