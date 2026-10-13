@@ -39,7 +39,6 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import spp.utils.ptr;
-import gch;
 import genex;
 import std;
 
@@ -373,10 +372,10 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
     if (const auto params = sup_params; params != nullptr) {
       if (const auto pack = params->GetVariadicParam(); pack != nullptr) {
         const auto pid = pack->ParamId();
-        erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
-        erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
-        erase(bindings.TypePackParams, pid);
-        erase(bindings.CompPackParams, pid);
+        std::erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
+        std::erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
+        std::erase(bindings.TypePackParams, pid);
+        std::erase(bindings.CompPackParams, pid);
       }
     }
     const auto scope_args_id = ArgsIdOfBindings(bindings, type_scope);

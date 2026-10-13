@@ -23,7 +23,6 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.utils.ptr;
-import gch;
 import genex;
 import std;
 

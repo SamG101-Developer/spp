@@ -63,7 +63,6 @@ import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
-import gch;
 import genex;
 import sys;
 
