@@ -215,7 +215,7 @@ auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
 }
 
 auto spp::analyse::utils::regions::DescendToPart(
-  TypeRef const &root, Scope const &root_scope, Span<PlaceStep const> steps,
+  TypeRef const &root, Scope const &root_scope, Vec<PlaceStep> const &steps,
   const std::size_t count) -> Pair<TypeRef, Scope const*> {
   // Start at the root type-ref and scope, and loop from the
   // 0th element upto the provided count or the number of steps.

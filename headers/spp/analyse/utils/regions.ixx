@@ -116,7 +116,7 @@ namespace spp::analyse::utils::regions {
   /// resolves in; a count of zero is the root itself. No type when
   /// a step has no such part.
   SPP_EXP_FUN auto DescendToPart(
-    TypeRef const &root, Scope const &root_scope, Span<PlaceStep const> steps,
+    TypeRef const &root, Scope const &root_scope, Vec<PlaceStep> const &steps,
     std::size_t count) -> Pair<TypeRef, Scope const*>;
 
   /// Whether everything the place "region" owns has been
