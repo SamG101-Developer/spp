@@ -4,6 +4,7 @@ module;
 export module spp.analyse.scopes.type_key;
 import spp.utils.interner;
 import spp.utils.types;
+import gch;
 import std;
 
 use(spp::analyse::scopes, class Scope);
@@ -88,7 +89,7 @@ namespace spp::analyse::scopes {
     /// The interned parts of the instance information. This
     /// might include things like generic argument interned
     /// information.
-    Vec<Word> Words;
+    SmallVec<Word, 16> Words;
 
     /// The "intern" of this entire instantiation. This is
     /// the master value used for things like comparisons.

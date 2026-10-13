@@ -4,6 +4,7 @@ module;
 
 export module spp.utils.types;
 import ankerl;
+import gch;
 import std;
 import genex.span;
 
@@ -19,6 +20,12 @@ namespace spp {
 
   SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   using Vec = std::vector<T, A>;
+
+  /// Holds up to "N" elements inline and allocates only past them: for hot, short-lived vectors that are usually
+  /// small. "N" defaults to what fits gch's default buffer.
+  SPP_EXP_CLS template <typename T, unsigned N = gch::default_buffer_size_v<std::allocator<T>>,
+    typename A = std::allocator<T>>
+  using SmallVec = gch::small_vector<T, N, A>;
 
   SPP_EXP_CLS template <typename T, std::size_t N>
   using Arr = std::array<T, N>;

@@ -48,7 +48,7 @@ namespace {
   auto Subst(spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {}) -> GenericSubst {
     auto subst = GenericSubst();
     for (auto const &[id, value] : bound) { subst.CompParams.emplace_back(id, InternCompKey(CompKey(value))); }
-    subst.CompPackParams.assign(packs.begin(), packs.end());
+    subst.CompPackParams = std::move(packs);
     return subst;
   }
 

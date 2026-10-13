@@ -138,6 +138,7 @@ find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(stringzilla CONFIG REQUIRED)
+find_package(small_vector CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
@@ -288,6 +289,7 @@ target_link_libraries(
   nlohmann_json::nlohmann_json
   magic_enum::magic_enum
   stringzilla::header
+  gch::small_vector
   CLI11::CLI11
   ColEx::ColEx
   GenEx::GenEx
