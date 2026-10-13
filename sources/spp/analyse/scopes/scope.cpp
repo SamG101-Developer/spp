@@ -993,6 +993,9 @@ auto Scope::RevealLetBindings() -> void {
   // a name ends up meaning the last binding of it (and only
   // the last binding is put back, subsequent duplicates are
   // skipped).
+  // Todo: A name still held by an earlier "let" of this scope (a
+  //  walk that left between two shadows of it) counts as taken,
+  //  so the earlier binding stays. See next-steps N6.15.
   for (auto const &sym : LetBindings | genex::views::reverse) {
     if (InternalTable.VarTable.Find(sym->Name.get()) == nullptr) {
       InternalTable.VarTable.Add(sym->Name.get(), sym);
