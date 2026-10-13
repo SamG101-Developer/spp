@@ -38,7 +38,6 @@ import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
-import gch;
 import genex;
 
 namespace spp::analyse::utils::fn_values {
