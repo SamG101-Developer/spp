@@ -4,7 +4,6 @@ module;
 export module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.type_key;
 import spp.utils.types;
-import gch;
 import std;
 
 use(spp::analyse::scopes, class Scope);
@@ -19,10 +18,10 @@ namespace spp::analyse::scopes {
   /// "Self", which a key spells rather than identifies), each
   /// to what it is bound to.
   SPP_EXP_CLS struct GenericSubst {
-    SmallVec<Pair<std::uint64_t, TypeId>, 4> TypeParams;
-    SmallVec<Pair<std::uint64_t, CompId>, 4> CompParams;
-    SmallVec<std::uint64_t, 4> TypePackParams;
-    SmallVec<std::uint64_t, 4> CompPackParams;
+    Vec<Pair<std::uint64_t, TypeId>> TypeParams;
+    Vec<Pair<std::uint64_t, CompId>> CompParams;
+    Vec<std::uint64_t> TypePackParams;
+    Vec<std::uint64_t> CompPackParams;
 
     SPP_ATTR_NODISCARD auto IsEmpty() const -> bool {
       return TypeParams.empty() and CompParams.empty();
