@@ -9,8 +9,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.type_compare;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
@@ -107,19 +108,6 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
-namespace {
-  /// Whether a value of this type is a "&mut" borrow, directly
-  /// or as a member of a variant.
-  auto HoldsMutBorrow(TypeAst const &type, Scope const &scope) -> bool {
-    IMPORT_UTILS;
-    const auto ref = TypeRef::Of(type, scope);
-    if (ref.Conv == ConventionTag::MUT) { return true; }
-    return genex::any_of(type_compare::VariantMemberRefs(ref, scope), [](auto const &member) {
-      return member.Conv == ConventionTag::MUT;
-    });
-  }
-}
-
 auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -131,33 +119,32 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   // Resuming the generator ends every "&mut" borrow it yielded
   // before: the next yield may be the same element, and two
   // live "&mut" borrows of one element would alias. Using one
-  // afterwards reads as using memory moved by this resume.
+  // afterwards reads as using memory moved by this resume. Each
+  // is a loan on the generator, held by the binding it went to
+  // (a name rebound since is a new symbol, holding nothing).
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
   if (gen_sym != nullptr) {
-    for (auto const *holder : gen_sym->MemInfo->AstYieldedMutBorrowHolders) {
-      auto const *const holder_name = holder->To<IdentifierAst>();
-      if (holder_name == nullptr) { continue; }
-      // A name rebound since ("let x = 5") no longer holds the
-      // borrow, so only one still typed as a "&mut" (or as the
-      // "&mut T or GenDone" a resume produces) is ended.
-      auto *const holder_sym = sm->CurrentScope->FindVarSymbolOutermost(*holder_name).first;
-      if (holder_sym != nullptr and holder_sym->Type != nullptr and HoldsMutBorrow(*holder_sym->Type, *sm->CurrentScope)) {
-        holder_sym->MemInfo->MovedBy(*this, sm->CurrentScope);
-      }
-    }
-    gen_sym->MemInfo->AstYieldedMutBorrowHolders.Clear();
+    loans |= genex::actions::remove_if([&](auto const &loan) {
+      const auto ends = loan.Yielded and loan.Borrowed.Of.has_value() and loan.Borrowed.Of->Root == gen_sym;
+      if (ends) { memory_state::StateOf(*sm->CurrentScope, *loan.Holder).MovedBy(*this); }
+      return ends;
+    });
   }
 
   // Forward the memory check to the mapped function, which will check the arguments, and the function call.
   _MappedFn->Stage8_CheckMemory(sm, meta);
 
-  // A "&mut" borrow this resume yields, bound to a name, lasts
-  // until the next resume.
-  if (gen_sym != nullptr and meta->AssignmentTarget != nullptr) {
+  // A "&mut" borrow this resume yields, bound to a name, is a
+  // loan on the generator until the next resume.
+  auto holder = gen_sym != nullptr ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
+  if (holder != nullptr) {
     const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
       [&] { return meta->PostfixExpressionLhs->InferType(sm, meta); }, "resume expression", false));
     if (yield_ref.Conv == ConventionTag::MUT) {
-      gen_sym->MemInfo->AstYieldedMutBorrowHolders.EmplaceBack(meta->AssignmentTarget.get());
+      loans.EmplaceBack(memory_state::MakeLoan(
+        regions::PlaceAtOf(*meta->PostfixExpressionLhs, *sm->CurrentScope), true, holder, true,
+        holder == meta->AssignmentTargetSymbol));
     }
   }
 }
