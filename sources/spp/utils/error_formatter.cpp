@@ -226,7 +226,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
 
   // Build the source line string by concatenating raw token
   // data.
-  auto error_line_tokens = Vec(
+  auto error_line_tokens = Vec<lex::RawToken>(
     _Tokens.begin() + static_cast<sys::ssize_t>(error_line_start_pos),
     _Tokens.begin() + static_cast<sys::ssize_t>(error_line_end_pos));
   auto error_line_as_string = genex::fold_left(
