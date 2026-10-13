@@ -265,6 +265,7 @@ auto spp::cli::RunCli(
   auto test_group_filter = Str();
   auto test_libs = std::vector<Str>();
   auto test_all_libs = false;
+  auto test_runner = Str();
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
@@ -278,11 +279,14 @@ auto spp::cli::RunCli(
   test_cmd->add_flag(
     "--all-libs", test_all_libs,
     "Also run the unit tests of every [vcs] library");
+  test_cmd->add_option(
+    "--runner", test_runner,
+    "Run the test executable under this command, e.g. \"valgrind --error-exitcode=9\" (lifts the memory cap)");
 
-  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs] {
+  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner] {
     HandleTest(
       test_name_filter, test_group_filter,
-      Vec(test_libs.begin(), test_libs.end()), test_all_libs);
+      Vec(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
   });
 
   app.add_subcommand("validate", "Validate the project")
@@ -414,24 +418,21 @@ auto spp::cli::HandleVcs()
 }
 
 auto spp::cli::HandleBuild(
-  Str const &mode,
-  Str const &target,
-  const bool skip_vcs,
-  Str const &message_format,
-  const bool analyse_only,
-  Vec<Str> const &index_files,
-  const bool index_project)
-  -> bool {
+  Str const &mode, Str const &target, const bool skip_vcs,
+  Str const &message_format, const bool analyse_only,
+  Vec<Str> const &index_files, const bool index_project) -> bool {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
 
   // Choose the target before anything is compiled: every module
-  // carries the triple and the data layout it was built for, and
-  // those are resolved once, on first use.
+  // carries the triple and the data layout it was built for,
+  // and those are resolved once, on first use.
   if (not codegen::SelectTarget(target.c_str())) { return false; }
 
-  // Before anything is generated, not after: if llvm cannot spell an intrinsic name, every module holding one is
-  // rejected by the verifier with a complaint about the name, and the cause is nowhere in that message.
+  // Before anything is generated, not after: if llvm cannot
+  // spell an intrinsic name, every module holding one is rejected
+  // by the verifier with a complaint about the name, and the
+  // cause is nowhere in that message.
   codegen::AssertIntrinsicNamingIsSound();
 
   // Create the inner directory (rel or dev).
@@ -492,16 +493,14 @@ auto spp::cli::HandleBuild(
 }
 
 auto spp::cli::HandleRun(
-  Str const &mode,
-  Str const &target)
-  -> bool {
+  Str const &mode, Str const &target) -> bool {
   // Build the project first (skip VCS). Don't run the old
   // binary when the current code causes an error.
   if (not HandleBuild(mode, target, false)) { return false; }
 
-  // Nothing this machine can execute comes out of a cross build,
-  // so say that rather than reporting the missing executable as
-  // though the build had gone wrong.
+  // Nothing this machine can execute comes out of a cross
+  // build, so say that rather than reporting the missing
+  // executable as though the build had gone wrong.
   if (not codegen::TargetIsHost()) {
     std::cerr
       << "Error: Cannot run a build for '" << codegen::TargetFolderName()
@@ -546,9 +545,7 @@ auto spp::cli::HandleRun(
 }
 
 auto spp::cli::HandleClean(
-  Str const &mode,
-  Str const &target)
-  -> void {
+  Str const &mode, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
@@ -588,11 +585,9 @@ auto spp::cli::HandleClean(
 }
 
 auto spp::cli::HandleTest(
-  Str const &name_filter,
-  Str const &group_filter,
-  Vec<Str> const &libs,
-  const bool all_libs)
-  -> void {
+  Str const &name_filter, Str const &group_filter,
+  Vec<Str> const &libs, const bool all_libs,
+  Str const &runner) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
@@ -653,9 +648,13 @@ auto spp::cli::HandleTest(
   // The selector is set on the command rather than in this
   // process, so nothing has to be unset afterwards and the
   // whole-suite run is plain.
-  const auto run = [&exe](Str const &only) {
-    const auto command = only.empty() ? exe : "SPP_TEST_ONLY=" + only + " " + exe;
-    const auto status = std::system(WithMemoryLimit(command).c_str());
+  // A runner ("valgrind ...") goes in front of the executable, and
+  // takes the memory cap off: it reserves far more address space
+  // than the program it runs, and would be killed by the cap.
+  const auto run = [&exe, &runner](Str const &only) {
+    const auto target = runner.empty() ? exe : runner + " " + exe;
+    const auto command = only.empty() ? target : "SPP_TEST_ONLY=" + only + " " + target;
+    const auto status = std::system((runner.empty() ? WithMemoryLimit(command) : command).c_str());
     const auto exited_normally = (status & 0x7F) == 0;
     return exited_normally ? (status >> 8) & 0xFF : -1;
   };
@@ -692,9 +691,7 @@ auto spp::cli::HandleTest(
 }
 
 auto spp::cli::HandleValidate(
-  const bool is_exe,
-  const bool create_missing)
-  -> bool {
+  const bool is_exe, const bool create_missing) -> bool {
   using namespace std::string_literals;
 
   // Check for the key folders/files.
@@ -812,15 +809,13 @@ auto spp::cli::HandleValidate(
   return true;
 }
 
-auto spp::cli::HandleVersion()
-  -> void {
+auto spp::cli::HandleVersion() -> void {
   // Print the version information.
   std::cout << "SPP version " << SPP_VERSION << "\n";
 }
 
 auto spp::cli::CreateDefaultConfigFor(
-  Str const &project_name)
-  -> Str {
+  Str const &project_name) -> Str {
   // Inject the project name into the config template.
   auto contents = FormatDefaultFileContents(CONFIG_FILE_CONTENTS);
   const auto pos = contents.find('$');
@@ -829,9 +824,7 @@ auto spp::cli::CreateDefaultConfigFor(
 }
 
 auto spp::cli::RunCppGoogleTest(
-  Str const &mode,
-  Str &&main_code)
-  -> Map<Str, Str> {
+  Str const &mode, Str &&main_code) -> Map<Str, Str> {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
@@ -853,8 +846,7 @@ auto spp::cli::RunCppGoogleTest(
 }
 
 auto spp::cli::FormatDefaultFileContents(
-  const StrView contents)
-  -> Str {
+  const StrView contents) -> Str {
   return Str(contents);
   // // Remove the first newline, and replace "    " with "".
   // auto out = Str();

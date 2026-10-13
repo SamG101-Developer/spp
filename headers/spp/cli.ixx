@@ -12,8 +12,7 @@ namespace spp::cli {
   /// creating the default files and directories needed to
   /// build and run it. Answers false when the directory is
   /// not empty.
-  SPP_EXP_FUN auto HandleInit()
-    -> bool;
+  SPP_EXP_FUN auto HandleInit() -> bool;
 
   /// Clone or update every repository in the project's [vcs]
   /// section into the "vcs" folder. Answers false when any git
@@ -22,8 +21,7 @@ namespace spp::cli {
   /// after false: an empty "vcs" folder still passes
   /// "HandleValidate", and only shows up as every imported
   /// symbol being undefined.
-  SPP_EXP_FUN auto HandleVcs()
-    -> bool;
+  SPP_EXP_FUN auto HandleVcs() -> bool;
 
   /// Compile the project. "mode" is "dev" or "rel", selecting
   /// the optimisation pipeline and naming the folder built
@@ -34,14 +32,9 @@ namespace spp::cli {
   /// nothing to link a foreign object against. "skip_vcs"
   /// skips fetching the [vcs] dependencies first.
   SPP_EXP_FUN auto HandleBuild(
-    Str const &mode,
-    Str const &target = "",
-    bool skip_vcs = false,
-    Str const &message_format = "human",
-    bool analyse_only = false,
-    Vec<Str> const &index_files = {},
-    bool index_project = false)
-    -> bool;
+    Str const &mode, Str const &target = "", bool skip_vcs = false,
+    Str const &message_format = "human", bool analyse_only = false,
+    Vec<Str> const &index_files = {}, bool index_project = false) -> bool;
 
   /// Compile the project and run what it produced. Only a host
   /// build can be run. "mode" is "dev" or "rel", and "target"
@@ -58,9 +51,7 @@ namespace spp::cli {
   /// "target" limits the clean to that target's tree; empty
   /// cleans every target that has been built here.
   SPP_EXP_FUN auto HandleClean(
-    Str const &mode,
-    Str const &target = "")
-    -> void;
+    Str const &mode, Str const &target = "") -> void;
 
   /// Build the project together with its "tst" folder and run
   /// the unit tests it declares. "name_filter" keeps tests
@@ -68,13 +59,14 @@ namespace spp::cli {
   /// "group_filter" keeps one group; empty runs all. "libs"
   /// also runs the tests of those [vcs] libraries, named by
   /// their folder under "vcs", and "all_libs" runs every [vcs]
-  /// library's tests.
+  /// library's tests. "runner", when given, is a command the
+  /// test executable is run under ("valgrind ..."), with the
+  /// memory cap lifted, since a runner reserves far more
+  /// address space than the program it runs.
   SPP_EXP_FUN auto HandleTest(
-    Str const &name_filter = "",
-    Str const &group_filter = "",
-    Vec<Str> const &libs = {},
-    bool all_libs = false)
-    -> void;
+    Str const &name_filter = "", Str const &group_filter = "",
+    Vec<Str> const &libs = {}, bool all_libs = false,
+    Str const &runner = "") -> void;
 
   /// Check the current directory has the structure a project
   /// needs, reporting anything missing, and answer whether it
@@ -85,16 +77,12 @@ namespace spp::cli {
   /// checking someone else's project, because a dependency's
   /// checkout is not this build's to write into.
   SPP_EXP_FUN auto HandleValidate(
-    bool is_exe,
-    bool create_missing = true)
-    -> bool;
+    bool is_exe, bool create_missing = true) -> bool;
 
-  SPP_EXP_FUN auto HandleVersion()
-    -> void;
+  SPP_EXP_FUN auto HandleVersion() -> void;
 
   SPP_EXP_FUN auto CreateDefaultConfigFor(
-    Str const &project_name)
-    -> Str;
+    Str const &project_name) -> Str;
 
   /// Compile a single module of code as a throwaway project,
   /// for the test suite, in build mode "dev" or "rel". Answers
@@ -102,11 +90,8 @@ namespace spp::cli {
   /// to, by name (see "Compiler::CompTimeConstants"); empty
   /// when the module declares none.
   SPP_EXP_FUN auto RunCppGoogleTest(
-    Str const &mode,
-    Str &&main_code)
-    -> Map<Str, Str>;
+    Str const &mode, Str &&main_code) -> Map<Str, Str>;
 
   auto FormatDefaultFileContents(
-    StrView contents)
-    -> Str;
+    StrView contents) -> Str;
 }
