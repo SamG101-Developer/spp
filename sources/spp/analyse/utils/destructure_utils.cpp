@@ -230,6 +230,32 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   // a "let" always takes its value.
   const auto accounts_for_parts = destructure.BindsByMove()
     and not genex::any_of(elems, [](auto const &elem) { return elem->TakesRest(); });
+
+  // A value made on the spot ("let P(a, ..) = mk()") is held
+  // by the hidden temporary, which answers for its parts as
+  // a named value does: one the bindings left behind would be
+  // dropped with nothing to drop it. Otherwise taking every
+  // element off it takes it, so it is left moved rather than
+  // partly moved. Todo: Clean this
+  if (tmp_name != nullptr) {
+    if (accounts_for_parts and not (from_case_pattern and not destructure.BindsByMove())) {
+      if (auto *const tmp_sym = sm.CurrentScope->FindVarSymbol(tmp_name.get()); tmp_sym != nullptr) {
+        const auto region = regions::Place{.Root = tmp_sym, .Steps = {}};
+        if (auto skipped = regions::FirstUnaccountedPart(*tmp_sym, region, sm); not skipped.empty()) {
+          // Named after the value as written, not the hidden temporary holding it.
+          if (skipped.starts_with(tmp_name->Val)) {
+            skipped = meta->LetStatementValue->ToString() + skipped.substr(tmp_name->Val.size());
+          }
+          Raise<errors::SppDestructureSkipsOwnedPartError>(
+            {sm.CurrentScope},
+            ERR_ARGS(destructure, *meta->LetStatementValue, StrView(skipped)));
+        }
+      }
+    }
+    ConsumeDestructureTemp(*tmp_name, sm);
+    return;
+  }
+  if (from_case_pattern and not destructure.BindsByMove()) { return; }
   ConsumeDestructureSource(destructure, from_case_pattern, accounts_for_parts, sm, meta);
 }
 
