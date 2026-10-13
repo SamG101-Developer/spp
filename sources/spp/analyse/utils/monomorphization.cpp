@@ -150,6 +150,21 @@ namespace spp::analyse::utils::monomorphization {
           }
         }
       }
+
+      // Any other parameter written against "Self" ("source: &Self" in an inherited "clone_from") means the same
+      // receiver, so it is read with "Self" pinned too, or it stays the template's abstract "Self".
+      if (pinned_self != nullptr) {
+        for (auto const &param : new_fn_proto.FnParamGroup->Params) {
+          if (param.get() == new_fn_proto.FnParamGroup->GetSelfParam() or param->Type == nullptr) { continue; }
+          if (not type_predicates::DoesTypeNameSelf(*param->Type)) { continue; }
+          param->Type = self_type::SubstituteSelf(*param->Type, pinned_self.get(), *new_fn_scope, &tm, meta);
+          for (auto const &name : param->ExtractNames()) {
+            if (const auto sym = new_fn_scope->Children[0]->FindVarSymbol(name.get(), true); sym != nullptr) {
+              sym->Type = param->Type;
+            }
+          }
+        }
+      }
       new_fn_proto.VariadicPackType = AstClone(variadic_pack_type);
 
       // A variadic parameter declares one element but binds the
@@ -192,11 +207,15 @@ namespace spp::analyse::utils::monomorphization {
 
       // The arguments are asked the same way a class instantiation
       // asks them; a function goes on to check the signature it
-      // ended up with, which a class has no equivalent of.
-      const auto args_concrete = genex::all_of(scopes::ArgsOf(args_id), [](auto const &arg) {
+      // ended up with, which a class has no equivalent of. Each is
+      // read through the instance's own bindings first: an argument
+      // defaulted to another ("Rhs=Self" on "Eq") names that one's
+      // parameter, and is whatever the instance binds it to.
+      const auto bindings = scopes::BindingsOfArgs(args_id);
+      const auto args_concrete = genex::all_of(scopes::ArgsOf(args_id), [&](auto const &arg) {
         return arg.TypeVal != nullptr
-          ? scopes::IsConcreteTypeId(arg.TypeVal)
-          : scopes::IsConcreteCompId(arg.CompVal);
+          ? scopes::IsConcreteTypeId(scopes::SubstituteTypeId(arg.TypeVal, bindings))
+          : scopes::IsConcreteCompId(scopes::SubstituteCompId(arg.CompVal, bindings));
       });
       return args_concrete
         and type_is_concrete(*new_fn_proto.ReturnType)
