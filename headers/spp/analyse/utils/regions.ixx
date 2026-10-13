@@ -24,6 +24,7 @@ namespace spp::analyse::utils::regions {
     spp::utils::InternedId Name;
     bool Opaque = false;
     auto operator==(PlaceStep const &) const -> bool = default;
+    auto operator<=>(PlaceStep const &) const = default;
   };
 
   /// A place by identity: the variable it hangs off, and the
@@ -34,6 +35,7 @@ namespace spp::analyse::utils::regions {
     VariableSymbol *Root = nullptr;
     Vec<PlaceStep> Steps; // Interned identifier ast.
     auto operator==(Place const &) const -> bool = default;
+    auto operator<=>(Place const &) const = default;
   };
 
   /// A place, kept with the expression it was taken from (what

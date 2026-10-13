@@ -28,21 +28,23 @@ import std;
 
 namespace spp::analyse::utils::memory_state {
   namespace {
-    /// What a borrow is compared by across paths: its place, or
-    /// what it was written as if it names none. Each branch of
-    /// a "case" builds its own asts, so the same borrow written
-    /// in two branches is two pointers but one place.
-    auto BorrowText(
-      regions::PlaceAt const &borrow) -> Str {
+    /// What a borrow is compared by across paths: its place (the
+    /// root variable and steps, so a shadowed name is another
+    /// place), or what it was written as if it names none. Each
+    /// branch of a "case" builds its own asts, so the same borrow
+    /// written in two branches is two pointers but one place.
+    using BorrowKey = Variant<regions::Place, Str>;
+    auto BorrowKeyOf(
+      regions::PlaceAt const &borrow) -> BorrowKey {
       return borrow.Of.has_value()
-        ? regions::PlaceText(*borrow.Of)
-        : borrow.Site->ToString();
+        ? BorrowKey(*borrow.Of)
+        : BorrowKey(borrow.Site->ToString());
     }
 
     /// A loan, compared across paths: its holder, the place
     /// borrowed, and how.
-    auto KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, Str, bool, bool> {
-      return {loan.Holder, BorrowText(loan.Borrowed), loan.IsMut, loan.Yielded};
+    auto KeyOf(Loan const &loan) -> Tup<VariableSymbol const*, BorrowKey, bool, bool> {
+      return {loan.Holder, BorrowKeyOf(loan.Borrowed), loan.IsMut, loan.Yielded};
     }
 
     /// The loan in "loans" that is "loan", if any.
@@ -413,10 +415,10 @@ auto spp::analyse::utils::memory_state::Join(
 auto spp::analyse::utils::memory_state::SameShape(
   MemoryState const &lhs, MemoryState const &rhs) -> bool {
   const auto parts = [](auto const &list, auto const &part_of) {
-    // The stringified parts of the elements in the list,
+    // The parts of the elements in the list, by place,
     // transformed against the "part_of" extractor.
     auto out = list
-      | genex::views::transform([&](auto const &x) { return BorrowText(part_of(x)); })
+      | genex::views::transform([&](auto const &x) { return BorrowKeyOf(part_of(x)); })
       | genex::to<Vec>();
     genex::actions::sort(out);
     return out;
