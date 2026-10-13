@@ -547,7 +547,7 @@ namespace spp::analyse::utils::case_utils {
     auto MapFieldEqLiteral(
       Unique<PostfixExpressionOperatorRuntimeMemberAccessAst> &&field,
       ExpressionAst const &literal, ScopeManager *sm, CompilerMetaData *meta,
-      Function<T(Ast *)> const &mapper) -> T {
+      FuncRef<T(Ast *)> mapper) -> T {
       // Build the asts up.
       auto pf_expr = MakeUnique<PostfixExpressionAst>(
         AstClone(meta->CaseCondition), std::move(field));
@@ -574,8 +574,8 @@ namespace spp::analyse::utils::case_utils {
     template <typename T>
     auto CreateAndAnalysePatternEqFnsCore(
       Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
-      CompilerMetaData *meta, Function<T(Ast *)> &&mapper,
-      Function<void(ExpressionAst *)> &&on_nested_subject = {})
+      CompilerMetaData *meta, FuncRef<T(Ast *)> mapper,
+      Func<void(ExpressionAst *)> &&on_nested_subject = {})
       -> Vec<T> {
       auto transformed = Vec<T>();
       transformed.reserve(elems.size());
@@ -594,7 +594,7 @@ namespace spp::analyse::utils::case_utils {
       // ("cond.<i>") cannot use its raw position within "elems" - that
       // would under-count by the width of the skip and read one slot too
       // early.
-      auto skip_index = std::optional<std::size_t>{};
+      auto skip_index = Opt<std::size_t>{};
       for (auto const &[i, part] : elems | genex::views::enumerate) {
         if (part->To<CasePatternVariantDestructureSkipMultipleArgumentsAst>() != nullptr) {
           skip_index = i;
@@ -604,7 +604,7 @@ namespace spp::analyse::utils::case_utils {
 
       // Todo: move "max length" into type_resolution function, and route the
       //  "is in bounds" through that too.
-      auto num_rhs_elems = std::optional<std::size_t>{};
+      auto num_rhs_elems = Opt<std::size_t>{};
       const auto real_index = [&](const std::size_t i) -> std::size_t {
         if (not skip_index.has_value() or i <= *skip_index) { return i; }
         if (not num_rhs_elems.has_value()) {
@@ -622,7 +622,7 @@ namespace spp::analyse::utils::case_utils {
           // The element by its position: "cond.<i>.eq(&literal)".
           auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
             nullptr, MakeShared<IdentifierAst>(0uz, std::to_string(real_index(i))));
-          transformed.emplace_back(MapFieldEqLiteral(
+          transformed.emplace_back(MapFieldEqLiteral<T>(
             std::move(field), *literal->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
@@ -633,7 +633,7 @@ namespace spp::analyse::utils::case_utils {
           const auto literal_part = cast_attr->Val->To<CasePatternVariantLiteralAst>();
           auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
             nullptr, AstCloneShared(cast_attr->Name));
-          transformed.emplace_back(MapFieldEqLiteral(
+          transformed.emplace_back(MapFieldEqLiteral<T>(
             std::move(field), *literal_part->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
@@ -668,7 +668,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsLlvm(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta, LlvmCtx *ctx) -> Vec<llvm::Value*> {
   // Get the expression and map then to LLVM values.
-  Function<llvm::Value*(Ast *)> map = [&](Ast *x) {
+  const auto map = [&](Ast *x) {
     return x->Stage11_CodeGen(sm, meta, ctx);
   };
 
@@ -677,7 +677,7 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsLlvm(
   // to be analysed before it can be generated - the literal
   // branches above do the same, saving and restoring the scope
   // around it because analysis walks into the condition's own scope.
-  Function<void(ExpressionAst *)> on_nested_subject = [&](ExpressionAst *subject) {
+  Func<void(ExpressionAst *)> on_nested_subject = [&](ExpressionAst *subject) {
     // Analyse the subject, and then walk back the scope iterator,
     // as the value itself might have introduced new scopes.
     const auto current_scope = sm->CurrentScope;
@@ -720,8 +720,8 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsLlvm(
 
   // Forward the nested analysis lambda into the core checker
   // to propagate the nested checks properly.
-  auto asts = CreateAndAnalysePatternEqFnsCore(
-    elems, sm, meta, std::move(map), std::move(on_nested_subject));
+  auto asts = CreateAndAnalysePatternEqFnsCore<llvm::Value*>(
+    elems, sm, meta, map, std::move(on_nested_subject));
   return asts;
 }
 
@@ -729,12 +729,12 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta) -> Vec<Unique<ExpressionAst>> {
   // Get the expression and map then to Comptime values.
-  Function<Unique<ExpressionAst>(Ast *)> map = [&](Ast *x) {
+  const auto map = [&](Ast *x) -> Unique<ExpressionAst> {
     x->Stage9_CompTimeResolve(sm, meta);
     return std::move(meta->CompTimeResult);
   };
 
-  auto asts = CreateAndAnalysePatternEqFnsCore(elems, sm, meta, std::move(map));
+  auto asts = CreateAndAnalysePatternEqFnsCore<Unique<ExpressionAst>>(elems, sm, meta, map);
   return asts;
 }
 
@@ -742,8 +742,8 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsDummyCore(
   Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
   CompilerMetaData *meta) -> void {
   //
-  Function<std::monostate(Ast *)> noop = [](Ast *) { return std::monostate{}; };
-  CreateAndAnalysePatternEqFnsCore(elems, sm, meta, std::move(noop));
+  const auto noop = [](Ast *) { return Monostate{}; };
+  CreateAndAnalysePatternEqFnsCore<Monostate>(elems, sm, meta, noop);
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
@@ -908,11 +908,11 @@ auto spp::analyse::utils::case_utils::ConvertIsExprToFnCall(
 
 auto spp::analyse::utils::case_utils::MemberOf(
   CaseCoverage const &coverage, CasePatternVariantAst const &pattern,
-  Scope const &scope) -> std::optional<TypeRef> {
+  Scope const &scope) -> Opt<TypeRef> {
   // Only a pattern naming a type selects a member, and only a
   // member of the subject's own variant.
   const auto type = pattern.NarrowsTo();
-  if (coverage.VariantMembers.empty() or type == nullptr) { return std::nullopt; }
+  if (coverage.VariantMembers.empty() or type == nullptr) { return Nullopt; }
   const auto ref = TypeRef::Of(*type, scope);
 
   // Get the member in the variant members list, that matches
@@ -920,7 +920,7 @@ auto spp::analyse::utils::case_utils::MemberOf(
   for (auto const &member : coverage.VariantMembers) {
     if (type_compare::TypeEq(member, ref, scope, scope)) { return member; }
   }
-  return std::nullopt;
+  return Nullopt;
 }
 
 auto spp::analyse::utils::case_utils::IsElseBranch(
@@ -974,7 +974,7 @@ auto spp::analyse::utils::case_utils::CoverageOf(
     // parts based on the reachability results and columns.
     out.RemainingBefore.emplace_back(remaining_of(rows));
     out.Reachable.emplace_back(reaches(rows));
-    out.ShadowedBy.emplace_back(std::nullopt);
+    out.ShadowedBy.emplace_back(Nullopt);
     for (auto j = 0uz; not out.Reachable.back() and j < rows_by.size(); ++j) {
       if (reaches(Vec<Row>(rows.begin(), rows.begin() + static_cast<std::ptrdiff_t>(rows_by[j])))) { continue; }
       out.ShadowedBy.back() = j;

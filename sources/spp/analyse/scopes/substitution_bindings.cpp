@@ -26,14 +26,14 @@ auto spp::analyse::scopes::ParamsDeclaredBy(
 
 auto spp::analyse::scopes::BindByName(
   TypeIdParams const &params, const TypeId args,
-  const bool all) -> std::optional<GenericSubst> {
+  const bool all) -> Opt<GenericSubst> {
   // Each parameter's argument is the one keyed by its identity ("Scope::ArgsIdOf").
-  if (args == nullptr) { return std::nullopt; }
+  if (args == nullptr) { return Nullopt; }
   auto subst = GenericSubst();
   for (const auto pid : params.TypeParams) {
     const auto arg = FindArgOf(args, pid);
     if (not arg.has_value() or arg->TypeVal == nullptr) {
-      if (all) { return std::nullopt; }
+      if (all) { return Nullopt; }
       continue;
     }
     subst.TypeParams.emplace_back(pid, arg->TypeVal);
@@ -44,7 +44,7 @@ auto spp::analyse::scopes::BindByName(
   for (const auto pid : params.CompParams) {
     const auto arg = FindArgOf(args, pid);
     if (not arg.has_value() or arg->CompVal == nullptr) {
-      if (all) { return std::nullopt; }
+      if (all) { return Nullopt; }
       continue;
     }
     subst.CompParams.emplace_back(pid, arg->CompVal);

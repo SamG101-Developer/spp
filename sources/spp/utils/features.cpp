@@ -287,7 +287,7 @@ auto spp::utils::features::Schema()
 }
 
 auto spp::utils::features::Validate(
-  std::filesystem::path const &config,
+  Path const &config,
   Vec<Str> &errors)
   -> bool {
   // Check the spp toml is present. Failsafe but needed
@@ -317,7 +317,7 @@ auto spp::utils::features::Validate(
 }
 
 auto spp::utils::features::Load(
-  std::filesystem::path const &config,
+  Path const &config,
   Vec<Str> &errors)
   -> bool {
   Reset();

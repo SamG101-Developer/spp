@@ -160,7 +160,7 @@ namespace spp::lsp::resolution_index {
   /// runtime member access with a non-symbolic left-hand-side.
   SPP_EXP_FUN auto RecordExpression(
     Ast const &use, ScopeManager const &sm, CompilerMetaData const &meta,
-    std::function<Shared<TypeAst>()> const &infer) -> void;
+    FuncRef<Shared<TypeAst>()> infer) -> void;
 
   /// Record a name reached through "::" on a namespace, when
   /// what it names is another namespace rather than something

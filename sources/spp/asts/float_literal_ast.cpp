@@ -121,7 +121,7 @@ auto FloatLiteralAst::ValidateBounds(
 }
 
 auto FloatLiteralAst::FromBigVal(
-  numex::BigDec const &value, Str const &type, const std::optional<std::uint64_t> places) -> Unique<FloatLiteralAst> {
+  numex::BigDec const &value, Str const &type, const Opt<std::uint64_t> places) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
   const auto digits = (is_negative ? -value : value).Decimal(

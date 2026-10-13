@@ -403,8 +403,8 @@ public:
   auto ParseLiteralFloat() -> Unique<FloatLiteralAst>;
   auto ParseLiteralInteger() -> Unique<IntegerLiteralAst>;
   auto ParseLiteralBoolean() -> Unique<BooleanLiteralAst>;
-  auto ParseLiteralTuple(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
-  auto ParseLiteralArray(std::function<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
+  auto ParseLiteralTuple(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+  auto ParseLiteralArray(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralAst>;
 
   auto ParseLiteralFloatB10() -> Unique<FloatLiteralAst>;
   auto ParseLiteralIntegerB10() -> Unique<IntegerLiteralAst>;
@@ -417,19 +417,19 @@ public:
   auto ParseBytePrefixType() -> Unique<TokenAst>;
 
   auto ParseLiteralTuple1Element(
-    std::function<Unique<ExpressionAst>()> &&elem_parser)
+    Func<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<TupleLiteralAst>;
 
   auto ParseLiteralTupleNElements(
-    std::function<Unique<ExpressionAst>()> &&elem_parser)
+    Func<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<TupleLiteralAst>;
 
   auto ParseLiteralArrayRepeatedElement(
-    std::function<Unique<ExpressionAst>()> &&elem_parser)
+    Func<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<ArrayLiteralRepeatedElementAst>;
 
   auto ParseLiteralArrayExplicitElements(
-    std::function<Unique<ExpressionAst>()> &&elem_parser)
+    Func<Unique<ExpressionAst>()> &&elem_parser)
     -> Unique<ArrayLiteralExplicitElementsAst>;
 
   auto ParseSpecificCharacters(

@@ -355,7 +355,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppYieldedTypeMismatchError final : Sem
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppIdentifierUnknownError final : SemanticError {
-  explicit SppIdentifierUnknownError(Ast const &name, StrView what, std::optional<Str> const &closest = {});
+  explicit SppIdentifierUnknownError(Ast const &name, StrView what, Opt<Str> const &closest = {});
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppSelfIdentifierInvalidContextError final : SemanticError {

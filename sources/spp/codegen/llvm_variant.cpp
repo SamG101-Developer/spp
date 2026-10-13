@@ -140,7 +140,7 @@ auto spp::codegen::GetVariantIndexOfMember(
   analyse::scopes::TypeRef const &variant,
   analyse::scopes::TypeRef const &member,
   analyse::scopes::Scope const &scope)
-  -> std::optional<std::uint64_t> {
+  -> Opt<std::uint64_t> {
   //
   using analyse::utils::type_compare::TypeEq;
   using analyse::utils::type_compare::VariantMemberRefs;
@@ -150,7 +150,7 @@ auto spp::codegen::GetVariantIndexOfMember(
   for (auto i = 0uz; i < members.size(); ++i) {
     if (analyse::utils::type_compare::Assignable(members[i], member, scope, scope)) { return static_cast<std::uint64_t>(i); }
   }
-  return std::nullopt;
+  return Nullopt;
 }
 
 auto spp::codegen::GetVariantPayloadPtr(

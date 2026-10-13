@@ -71,7 +71,7 @@ namespace spp::analyse::scopes {
   /// words is mistaken for one. Its kind is as found: "TypeVal" or
   /// "CompVal" is set, whichever the caller wants.
   SPP_EXP_CLS auto FindArgOf(
-    TypeKey const *args, std::uint64_t param_id) -> std::optional<TypeIdArg>;
+    TypeKey const *args, std::uint64_t param_id) -> Opt<TypeIdArg>;
 
   /// The "type key" is an identity that a type instantiation
   /// is tagged as. It holds what each argument resolved to
@@ -190,7 +190,7 @@ namespace spp::analyse::scopes {
     friend auto HeadOf(TypeKey const *id) -> TypeIdHead const&;
     friend auto BareOf(TypeKey const *id) -> TypeKey const*;
     friend auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
-    friend auto FindArgOf(TypeKey const *args, std::uint64_t param_id) -> std::optional<TypeIdArg>;
+    friend auto FindArgOf(TypeKey const *args, std::uint64_t param_id) -> Opt<TypeIdArg>;
 
     /// The raw appending function, which takes the word, adds
     /// it into the vector, and updates the hash.
@@ -203,7 +203,7 @@ namespace spp::analyse::scopes {
     /// Append words already laid out as a key's, one part of
     /// another key copied as it stands: "unresolved" says whether
     /// they name something that did not resolve. Loop and append.
-    auto _AppendWords(const std::span<const Word> words, const bool unresolved, const bool self = false) -> void {
+    auto _AppendWords(const Span<const Word> words, const bool unresolved, const bool self = false) -> void {
       HasUnresolved = HasUnresolved or unresolved;
       HasSelf = HasSelf or self;
       for (const auto word : words) { _Append(word); }
@@ -219,12 +219,12 @@ namespace spp::analyse::scopes {
 
     /// Extract some part of this type key's "words" into its
     /// own type key. Effectively the inverse of "PushTypePart".
-    static auto _DecodePart(std::span<const Word> words, std::size_t &taken) -> TypeKey const*;
+    static auto _DecodePart(Span<const Word> words, std::size_t &taken) -> TypeKey const*;
 
     /// Decode the argument at the front of an arguments key's
     /// "words" into "arg", and move "words" past it; false at
     /// the end, or on words cut short.
-    static auto _DecodeArg(std::span<const Word> &words, TypeIdArg &arg) -> bool;
+    static auto _DecodeArg(Span<const Word> &words, TypeIdArg &arg) -> bool;
   };
 
   /// A key hashes as the hash it accumulated while it was built.

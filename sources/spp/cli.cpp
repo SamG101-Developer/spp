@@ -64,7 +64,7 @@ namespace spp::cli {
     /// folders are only created inside this project, so a
     /// dependency legitimately has none of them and walking one
     /// must not throw.
-    auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
+    auto SafeDirectoryIterator(Path const &dir) -> std::filesystem::directory_iterator {
       return std::filesystem::exists(dir)
         ? std::filesystem::directory_iterator(dir)
         : std::filesystem::directory_iterator();
@@ -841,7 +841,7 @@ auto spp::cli::RunCppGoogleTest(
   // Discarded on purpose: this path verifies rather than builds, and a
   // verification that fails throws out of here rather than answering.
   const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
-  std::ignore = c->Compile();
+  ignore = c->Compile();
   return c->CompTimeConstants();
 }
 

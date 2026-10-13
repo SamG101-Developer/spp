@@ -23,8 +23,8 @@ namespace spp::analyse::utils::type_predicates {
   /// named through are walked as types. Walks the ast in place, with no list of parts built.
   SPP_EXP_FUN auto AnyTypePart(
     TypeAst const &type,
-    std::function<bool(TypeIdentifierAst const &)> const &part,
-    std::function<bool(IdentifierAst const &)> const &comp_name = nullptr)
+    FuncRef<bool(TypeIdentifierAst const &)> part,
+    Func<bool(IdentifierAst const &)> const &comp_name = nullptr)
     -> bool;
 
   /// Whether any part of a comp expression satisfies a predicate, walking an operation's operands, a parenthesis and a
@@ -33,9 +33,9 @@ namespace spp::analyse::utils::type_predicates {
   /// "AnyTypePart".
   SPP_EXP_FUN auto AnyCompPart(
     ExpressionAst const &expr,
-    std::function<bool(IdentifierAst const &)> const &name,
-    std::function<bool(TypeAst const &)> const &owner = nullptr,
-    std::function<bool(ExpressionAst const &)> const &value = nullptr) -> bool;
+    Func<bool(IdentifierAst const &)> const &name,
+    Func<bool(TypeAst const &)> const &owner = nullptr,
+    Func<bool(ExpressionAst const &)> const &value = nullptr) -> bool;
 
   /// Check if "Self" appears anywhere in a type, at any depth
   /// ("Opt[Self]", "&Self"), not only as the whole type.

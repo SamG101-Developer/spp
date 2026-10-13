@@ -26,11 +26,11 @@ namespace spp::analyse::utils::packs {
   /// The elements a type naming a bound type pack stands for, followed through its bindings to other generics, to be
   /// spread where a pack's elements are listed. Nothing for anything else (an unbound pack, or one bound to another).
   SPP_EXP_FUN auto BoundTypePackElements(
-    TypeAst const &type, Scope const &scope) -> std::optional<Vec<Shared<TypeAst>>>;
+    TypeAst const &type, Scope const &scope) -> Opt<Vec<Shared<TypeAst>>>;
 
   /// "BoundTypePackElements" for an identifier naming a bound comp pack.
   SPP_EXP_FUN auto BoundCompPackElements(
-    ExpressionAst const &value, Scope const &scope) -> std::optional<Vec<ExpressionAst*>>;
+    ExpressionAst const &value, Scope const &scope) -> Opt<Vec<ExpressionAst*>>;
 
   /// Whether a type names a pack still unbound where it is read: followed through its bindings to other generics, it
   /// is bound to nothing ("Rest" for "..Rest", or an argument bound to it), so it takes whatever is left of the list

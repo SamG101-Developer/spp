@@ -41,9 +41,9 @@ protected:
 
   /// Helper method type.
   template <typename T>
-  using parser_method_t = std::function<Unique<T>()>;
+  using parser_method_t = Func<Unique<T>()>;
 
   /// Helper method type.
   template <typename T>
-  using parser_method_alt_t = std::function<T()>;
+  using parser_method_alt_t = Func<T()>;
 };

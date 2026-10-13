@@ -354,7 +354,7 @@ auto GenericParameterAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto GenericParameterAst::GetDummyScopes() const -> std::span<Scope* const> {
+auto GenericParameterAst::GetDummyScopes() const -> Span<Scope* const> {
   // View the dummy scope vector.
   return _DummyScopes;
 }

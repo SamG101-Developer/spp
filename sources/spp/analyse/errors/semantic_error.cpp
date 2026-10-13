@@ -523,7 +523,7 @@ SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
 }
 
 SppIdentifierUnknownError::SppIdentifierUnknownError(
-  Ast const &name, const StrView what, std::optional<Str> const &closest) {
+  Ast const &name, const StrView what, Opt<Str> const &closest) {
   const auto extra = closest ? " (did you mean '" + *closest + "'?)" : "";
   AddHeader(26, "Identifier Unknown Error");
   AddErr(&name, "Unknown " + INLINE_INFO(what) + " introduced here" + extra);

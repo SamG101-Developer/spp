@@ -32,6 +32,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.utils.interner;
+import gch;
 import genex;
 
 namespace spp::analyse::utils::generic_inference {
@@ -130,8 +131,8 @@ namespace spp::analyse::utils::generic_inference {
       Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Scope const &params_scope,
       Ast const &owner, ScopeManager &sm,
       meta::CompilerMetaData &meta,
-      Function<void(GenericArgumentAst &, Vec<GenericArgumentAst*> const &, bool)> const &pack,
-      Function<void(GenericArgumentAst &, GenericArgumentAst const &)> const &bind) -> void {
+      FuncRef<void(GenericArgumentAst &, Vec<GenericArgumentAst*> const &, bool)> pack,
+      FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
       const auto keyword_args = args
         | genex::views::ptr
         | genex::views::filter([](auto const *x) { return x->KeywordName() != nullptr; })
@@ -434,10 +435,10 @@ auto GenericSolver::ReadDeclaredWith(
 }
 
 auto GenericSolver::KnownBindings(
-  GenericParameterGroupAst const &params) const -> std::optional<GenericSubst> {
+  GenericParameterGroupAst const &params) const -> Opt<GenericSubst> {
   // What was given, by the parameter each binds ("BindByName"'s rule over the given layers), packs marked; and "Self"
   // where it is pinned.
-  if (not _AnyGiven) { return std::nullopt; }
+  if (not _AnyGiven) { return Nullopt; }
   const auto declared = scopes::ParamsDeclaredBy(params);
   auto out = GenericSubst();
   for (auto const &entry : _Entries) {
@@ -487,8 +488,8 @@ auto GenericSolver::_EntryTypeId(
 }
 
 auto GenericSolver::_OfferAll(
-  scopes::GenericSubst const &inferred, Shared<TypeAst> const &site, Function<bool(_Entry const &)> const &skip,
-  Function<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type) -> bool {
+  scopes::GenericSubst const &inferred, Shared<TypeAst> const &site, FuncRef<bool(_Entry const &)> skip,
+  Func<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type) -> bool {
   // Each parameter of this declaration that a match bound is offered what it was bound to, by "ParamId"; a parameter
   // of anything else the match named (a class's, read through) is not this solve's.
   auto newly_bound = false;

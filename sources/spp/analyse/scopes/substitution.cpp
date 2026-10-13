@@ -43,7 +43,7 @@ namespace spp::analyse::scopes {
     /// Find the TypeId from the type map within the "subst",
     /// indexed by "param" (if one exists).
     auto BoundTypeOf(GenericSubst const &subst, const std::uint64_t param) -> TypeId {
-      const auto it = genex::find(subst.TypeParams, param, &std::pair<std::uint64_t, TypeId>::first);
+      const auto it = genex::find(subst.TypeParams, param, &Pair<std::uint64_t, TypeId>::first);
       return it != subst.TypeParams.end() ? it->second : nullptr;
     }
 
@@ -51,7 +51,7 @@ namespace spp::analyse::scopes {
     /// Find the TypeId from the comp map within the "subst",
     /// indexed by "param" (if one exists).
     auto BoundCompOf(GenericSubst const &subst, const std::uint64_t param) -> CompId {
-      const auto it = genex::find(subst.CompParams, param, &std::pair<std::uint64_t, CompId>::first);
+      const auto it = genex::find(subst.CompParams, param, &Pair<std::uint64_t, CompId>::first);
       return it != subst.CompParams.end() ? it->second : nullptr;
     }
 
@@ -72,28 +72,28 @@ namespace spp::analyse::scopes {
     }
 
     auto SpreadTypePack(
-      const TypeId written, GenericSubst const &subst) -> std::optional<Vec<TypeId>> {
+      const TypeId written, GenericSubst const &subst) -> Opt<Vec<TypeId>> {
       // Get the head, and if it is not a type parameter,
       // if it has a convention, or not in the known packs,
       // then return nullopt.
       auto const &head = HeadOf(written);
       if (head.Kind != TypeKey::Tag::TypeParam or head.Conv != 0 or not
         genex::contains(subst.TypePackParams, head.TypeParamId)) {
-        return std::nullopt;
+        return Nullopt;
       }
 
       // Read what the pack is bound to by its head: bare "Tup"
       // spreads into no elements, an "Inst" into its arguments,
       // and anything else (another class) is not a tuple.
       const auto bound = BoundTypeOf(subst, head.TypeParamId);
-      if (bound == nullptr) { return std::nullopt; }
+      if (bound == nullptr) { return Nullopt; }
       auto elems = Vec<TypeId>();
       if (HeadOf(bound).Kind == TypeKey::Tag::Symbol) {
-        return HeadOf(bound).Ptr == TupTemplate() ? std::optional(elems) : std::nullopt;
+        return HeadOf(bound).Ptr == TupTemplate() ? Opt(elems) : Nullopt;
       }
-      if (HeadOf(bound).Kind != TypeKey::Tag::Inst) { return std::nullopt; }
+      if (HeadOf(bound).Kind != TypeKey::Tag::Inst) { return Nullopt; }
       for (auto const &arg : ArgsOf(HeadOf(bound).Args)) {
-        if (arg.Named or arg.TypeVal == nullptr) { return std::nullopt; }
+        if (arg.Named or arg.TypeVal == nullptr) { return Nullopt; }
         elems.push_back(arg.TypeVal);
       }
       return elems;

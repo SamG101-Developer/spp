@@ -10,7 +10,7 @@ import std;
 
 SPP_MOD_BEGIN
 spp::compiler::Module::Module(
-  std::filesystem::path path,
+  spp::Path path,
   Str code,
   Vec<lex::RawToken> tokens,
   Unique<asts::ModulePrototypeAst> module_ast,
@@ -21,12 +21,12 @@ spp::compiler::Module::Module(
   ModuleAst(std::move(module_ast)),
   Formatter(std::move(error_formatter)) {}
 
-auto spp::compiler::Module::FromPath(std::filesystem::path const &path) {
+auto spp::compiler::Module::FromPath(spp::Path const &path) {
   return MakeUnique<Module>(path, "", Vec<lex::RawToken>{}, nullptr, nullptr);
 }
 
 auto spp::compiler::Module::TestHarness(
-  std::filesystem::path const &tst_root)
+  spp::Path const &tst_root)
   -> Unique<Module> {
   auto mod = MakeUnique<Module>(tst_root / "main.spp", "", Vec<lex::RawToken>{}, nullptr, nullptr);
   mod->IsTestHarness = true;
@@ -34,7 +34,7 @@ auto spp::compiler::Module::TestHarness(
 }
 
 spp::compiler::ModuleTree::ModuleTree(
-  std::filesystem::path path,
+  spp::Path path,
   Str mode,
   TestScope const &tests) {
   // Get all the spp module files from the src path.
@@ -51,7 +51,7 @@ spp::compiler::ModuleTree::ModuleTree(
   _TstPath = _Root / "tst";
 
   // The libraries under "vcs", by folder name, and the source roots every module is measured against.
-  auto vcs_libs = Vec<Pair<Str, std::filesystem::path>>();
+  auto vcs_libs = Vec<Pair<Str, Path>>();
   if (std::filesystem::exists(_VcsPath)) {
     for (auto const &entry : std::filesystem::directory_iterator(_VcsPath)) {
       if (not entry.is_directory()) { continue; }
@@ -91,7 +91,7 @@ spp::compiler::ModuleTree::ModuleTree(
   for (auto &&m : vcs_modules) {
     auto relative_path = std::filesystem::relative(m->Path, _VcsPath);
     const auto lib_name = spp::utils::files::NativeString(*relative_path.begin());
-    auto inner_path = std::filesystem::path();
+    auto inner_path = Path();
 
     relative_path = relative_path.lexically_relative(*relative_path.begin()); // strip first component.
     for (auto const &part : relative_path) {
@@ -100,12 +100,12 @@ spp::compiler::ModuleTree::ModuleTree(
 
     // Compare the leading component rather than a string prefix: the native
     // separator is a wchar_t on Windows, so it cannot be spliced onto a Str.
-    const auto top = inner_path.empty() ? std::filesystem::path() : *inner_path.begin();
+    const auto top = inner_path.empty() ? Path() : *inner_path.begin();
     const auto is_ffi = top == "ffi";
     const auto is_tst = top == "tst";
-    const auto keep_tst = tests.WantsLib(lib_name) and inner_path != std::filesystem::path("tst/main.spp");
+    const auto keep_tst = tests.WantsLib(lib_name) and inner_path != Path("tst/main.spp");
 
-    if (inner_path != std::filesystem::path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
+    if (inner_path != Path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
       filtered_vcs_modules.emplace_back(std::move(m));
     }
   }
@@ -143,13 +143,13 @@ spp::compiler::ModuleTree::ModuleTree(
 }
 
 auto spp::compiler::ModuleTree::NamespaceOf(
-  std::filesystem::path const &module_path) const
+  Path const &module_path) const
   -> Vec<Str> {
   // The longest root the module sits under is the one that
   // produced it: "vcs/std/src" beats nothing, and a nested
   // "src" inside a package never wins over the real root
   // above it because it is not in the list at all.
-  auto best_rel = std::filesystem::path();
+  auto best_rel = Path();
   auto best_len = 0uz;
   auto best_is_tst = false;
   for (auto const &root : _SourceRoots) {
@@ -176,7 +176,7 @@ auto spp::compiler::ModuleTree::NamespaceOf(
 }
 
 auto spp::compiler::ModuleTree::ForCppGoogleTest(
-  std::filesystem::path path,
+  spp::Path path,
   Str mode,
   Str &&main_code)
   -> Unique<ModuleTree> {
@@ -211,7 +211,7 @@ auto spp::compiler::ModuleTree::GetModules()
 }
 
 auto spp::compiler::ModuleTree::RootPath() const
-  -> std::filesystem::path {
+  -> Path {
   return _Root;
 }
 
@@ -221,17 +221,17 @@ auto spp::compiler::ModuleTree::Out() const
 }
 
 auto spp::compiler::ModuleTree::LlvmOutPathFor(
-  std::filesystem::path const &module_path) const
-  -> std::filesystem::path {
+  Path const &module_path) const
+  -> Path {
   const auto out_root = _Out.LlvmRoot();
 
   // The project's own sources lose their "src" prefix, so
   // "<root>/src/a/b.spp" mirrors to "<root>/out/<mode>/llvm/a/b.ll".
-  const auto roots = Vec<Pair<std::filesystem::path, std::filesystem::path>>{
-    {_SrcPath, std::filesystem::path()},
-    {_VcsPath, std::filesystem::path("vcs")},
-    {_FfiPath, std::filesystem::path("ffi")},
-    {_TstPath, std::filesystem::path("tst")}
+  const auto roots = Vec<Pair<Path, Path>>{
+    {_SrcPath, Path()},
+    {_VcsPath, Path("vcs")},
+    {_FfiPath, Path("ffi")},
+    {_TstPath, Path("tst")}
   };
 
   for (auto const &[root, prefix] : roots) {

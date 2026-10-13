@@ -34,8 +34,8 @@ import std;
 /// [CHECKED]
 auto spp::analyse::utils::type_predicates::AnyTypePart(
   TypeAst const &type,
-  std::function<bool(TypeIdentifierAst const &)> const &part,
-  std::function<bool(IdentifierAst const &)> const &comp_name)
+  FuncRef<bool(TypeIdentifierAst const &)> part,
+  Func<bool(IdentifierAst const &)> const &comp_name)
   -> bool {
   // A convention or a nested name is walked through to the name it is on: "&T" is "T"; "A::B" is its left-hand side.
   if (auto const *const unary = type.To<TypeUnaryExpressionAst>(); unary != nullptr) {
@@ -60,9 +60,9 @@ auto spp::analyse::utils::type_predicates::AnyTypePart(
 
 auto spp::analyse::utils::type_predicates::AnyCompPart(
   ExpressionAst const &expr,
-  std::function<bool(IdentifierAst const &)> const &name,
-  std::function<bool(TypeAst const &)> const &owner,
-  std::function<bool(ExpressionAst const &)> const &value) -> bool {
+  Func<bool(IdentifierAst const &)> const &name,
+  Func<bool(TypeAst const &)> const &owner,
+  Func<bool(ExpressionAst const &)> const &value) -> bool {
   // A pack is its elements, each asked on its own.
   if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
     return genex::any_of(tup->Elems, [&](auto const &elem) { return AnyCompPart(*elem, name, owner, value); });

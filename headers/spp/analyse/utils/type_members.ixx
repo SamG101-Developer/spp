@@ -128,7 +128,7 @@ namespace spp::analyse::utils::type_members {
   /// behind "RawBuf"'s pointer). No type when nothing matches.
   SPP_EXP_FUN auto FindHeldByValue(
     TypeRef const &ref, Scope const &scope,
-    std::function<bool(TypeRef const &)> const &matches) -> TypeRef;
+    FuncRef<bool(TypeRef const &)> matches) -> TypeRef;
 
   /// Detect if a type is recursive by checking all the fields
   /// of the type recursively, and making sure a look in the

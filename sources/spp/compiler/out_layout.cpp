@@ -7,37 +7,37 @@ import std;
 
 SPP_MOD_BEGIN
 auto spp::compiler::OutLayout::AllTargetsRoot() const
-  -> std::filesystem::path {
+  -> Path {
   return Root / "out";
 }
 
 auto spp::compiler::OutLayout::OutRoot() const
-  -> std::filesystem::path {
+  -> Path {
   return AllTargetsRoot() / Target / Mode;
 }
 
 auto spp::compiler::OutLayout::LlvmRoot() const
-  -> std::filesystem::path {
+  -> Path {
   return OutRoot() / "llvm";
 }
 
 auto spp::compiler::OutLayout::LibRoot() const
-  -> std::filesystem::path {
+  -> Path {
   return OutRoot() / "lib";
 }
 
 auto spp::compiler::OutLayout::LtoIrFile() const
-  -> std::filesystem::path {
+  -> Path {
   return LlvmRoot() / "lto.ll";
 }
 
 auto spp::compiler::OutLayout::ObjectFile() const
-  -> std::filesystem::path {
+  -> Path {
   return LlvmRoot() / "spp.o";
 }
 
 auto spp::compiler::OutLayout::ExecutablePath() const
-  -> std::filesystem::path {
+  -> Path {
   return OutRoot() / ExecutableName();
 }
 

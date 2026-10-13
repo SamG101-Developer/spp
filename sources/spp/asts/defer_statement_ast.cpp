@@ -128,7 +128,7 @@ auto DeferStatementAst::CheckAtExit(
   auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);
   struct DeferExitGuard {
     analyse::utils::memory_state::FlowState &Flow;
-    std::optional<analyse::utils::memory_state::DeferExit> Outer;
+    Opt<analyse::utils::memory_state::DeferExit> Outer;
     ~DeferExitGuard() { Flow.Deferring = Outer; }
   } const guard{flow, flow.Deferring};
 

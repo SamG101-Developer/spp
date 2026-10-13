@@ -31,7 +31,7 @@ use(spp::compiler, struct Module);
 use(spp::utils::errors, class ErrorFormatter);
 
 namespace spp::analyse::scopes {
-  SPP_EXP_CLS using ScopeName = std::variant<
+  SPP_EXP_CLS using ScopeName = Variant<
     ScopeIdentifierName,
     ScopeTypeIdentifierName,
     ScopeBlockName>;
@@ -97,7 +97,7 @@ public:
   /// The child scopes. These are owned by the parent scope,
   /// and stored as unique pointers to enforce ownership.
   /// Provides an easy way to traverse a scope.
-  Vec<std::unique_ptr<Scope>> Children;
+  Vec<Unique<Scope>> Children;
 
   /// Top level scopes register their associated ast with the
   /// scope, for error reporting. Typically used by functions,
@@ -108,13 +108,13 @@ public:
   /// If this is a scope for a type, then the symbol for that
   /// type will be linked into this scope here. This is nullptr
   /// for all other scopes (modules, functions, blocks, etc)
-  std::shared_ptr<TypeSymbol> LinkedTypeSymbol;
+  Shared<TypeSymbol> LinkedTypeSymbol;
 
   /// If this is a scope for a module, then the symbol for that
   /// module (namespace) will be linked into this scope here.
   /// This is nullptr for all other scopes (types, functions,
   /// blocks, etc)
-  std::shared_ptr<NamespaceSymbol> LinkedNamespaceSymbol;
+  Shared<NamespaceSymbol> LinkedNamespaceSymbol;
 
   /// The scope representing the non-generic version of this
   /// scope. If this scope isn't a generic substitution, then it
@@ -171,7 +171,7 @@ public:
   /// a lookup inside a qualified name), so it starts from a clean
   /// context of its own. Unset outside the sweep, where every scope's
   /// super scopes are attached already.
-  inline static std::function<void(Scope const &)> OnSupScopesRead;
+  inline static Func<void(Scope const &)> OnSupScopesRead;
 
   /// "DirectSupScopes", attached first while the sweep runs
   /// ("OnSupScopesRead"): what every read of the super-scope graph

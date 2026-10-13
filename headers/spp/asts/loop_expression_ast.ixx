@@ -16,7 +16,7 @@ use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
 protected:
-  std::optional<Tup<ExpressionAst*, Shared<TypeAst>, Scope*>> _LoopExitTypeInfo;
+  Opt<Tup<ExpressionAst*, Shared<TypeAst>, Scope*>> _LoopExitTypeInfo;
 
 public:
   /// The "loop" token starting the loop expression.

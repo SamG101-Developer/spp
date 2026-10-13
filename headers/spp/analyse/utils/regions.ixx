@@ -43,7 +43,7 @@ namespace spp::analyse::utils::regions {
   /// naming no place.
   SPP_EXP_CLS struct PlaceAt {
     Ast const *Site = nullptr;
-    std::optional<Place> Of;
+    Opt<Place> Of;
   };
 }
 
@@ -60,7 +60,7 @@ namespace spp::analyse::utils::regions {
   /// then a step per attribute or method called. Nothing for
   /// a value that names no place: a temporary or a literal.
   SPP_EXP_FUN auto PlaceOf(
-    Ast const &ast, Scope const &scope) -> std::optional<Place>;
+    Ast const &ast, Scope const &scope) -> Opt<Place>;
 
   /// How two places relate: disjoint unless they hang off the
   /// same variable and one's steps begin with the other's; then
@@ -116,7 +116,7 @@ namespace spp::analyse::utils::regions {
   /// resolves in; a count of zero is the root itself. No type when
   /// a step has no such part.
   SPP_EXP_FUN auto DescendToPart(
-    TypeRef const &root, Scope const &root_scope, Vec<PlaceStep> const &steps,
+    TypeRef const &root, Scope const &root_scope, Span<PlaceStep const> steps,
     std::size_t count) -> Pair<TypeRef, Scope const*>;
 
   /// Whether everything the place "region" owns has been

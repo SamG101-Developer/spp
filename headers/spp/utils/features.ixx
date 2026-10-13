@@ -54,12 +54,12 @@ namespace spp::utils::features {
   /// found, all the valid section names are reported. If,
   /// within a valid section, an invalid key is found, then all
   /// the valid keys for that section are reported.
-  SPP_EXP_FUN auto Validate(std::filesystem::path const &config, Vec<Str> &errors) -> bool;
+  SPP_EXP_FUN auto Validate(Path const &config, Vec<Str> &errors) -> bool;
 
   /// Load a config and load the values from the toml settings
   /// into the feature system within C++. This is a single
   /// place to dynamically set all the feature values.
-  SPP_EXP_FUN auto Load(std::filesystem::path const &config, Vec<Str> &errors) -> bool;
+  SPP_EXP_FUN auto Load(Path const &config, Vec<Str> &errors) -> bool;
 
   /// Check whether a feature is enabled, either from the
   /// defaults, or the config overrides.

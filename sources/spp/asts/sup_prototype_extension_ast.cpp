@@ -49,10 +49,10 @@ namespace spp::asts {
     /// The package a scope belongs to. This is the library folder
     /// that is a direct child of the "vcs" folder, or "" for the
     /// project's modules.
-    auto PackageOfScope(Scope const *const scope) -> std::optional<Str> {
+    auto PackageOfScope(Scope const *const scope) -> Opt<Str> {
       const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
       const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
-      if (mod_ast == nullptr) { return std::nullopt; }
+      if (mod_ast == nullptr) { return Nullopt; }
 
       auto const &path = mod_ast->FilePath;
       for (auto it = path.begin(); it != path.end(); ++it) {
@@ -257,7 +257,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
     // A blanket "sup [T] T ext Copy" names a generic parameter
     // rather than a type, so no package declares what it marks,
     // and it marks every type there is.
-    auto owner_package = std::optional<Str>();
+    auto owner_package = Opt<Str>();
     if (is_marker and base_cls_sym->Kind != TypeKind::GnTypeParam) {
       owner_package = PackageOfScope(base_cls_sym->LinkedScope);
     }

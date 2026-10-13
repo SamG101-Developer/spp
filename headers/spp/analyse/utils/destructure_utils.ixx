@@ -47,13 +47,13 @@ namespace spp::analyse::utils::destructure_utils {
   /// "DestructureSequenceStage7": the only parts the two kinds do differently.
   SPP_EXP_CLS struct SequenceShape {
     /// Check the value is of the kind (raising the kind's own error), and answer its element count.
-    std::function<std::size_t(ExpressionAst const &val, Shared<TypeAst> const &val_type)> CheckAndCount;
+    Func<std::size_t(ExpressionAst const &val, Shared<TypeAst> const &val_type)> CheckAndCount;
 
     /// Raise the kind's size-mismatch error: "lhs" elements written against a value of "rhs".
-    std::function<void(std::size_t lhs, ExpressionAst const &val, std::size_t rhs)> RaiseSizeMismatch;
+    Func<void(std::size_t lhs, ExpressionAst const &val, std::size_t rhs)> RaiseSizeMismatch;
 
     /// The literal a bound ".." collects its elements into.
-    std::function<Unique<ExpressionAst>(Vec<Unique<ExpressionAst>> &&elems)> MakeRest;
+    Func<Unique<ExpressionAst>(Vec<Unique<ExpressionAst>> &&elems)> MakeRest;
   };
 
   /// Stage 7 of an array or tuple destructure: at most one "..", the value of the destructure's kind and size, bound

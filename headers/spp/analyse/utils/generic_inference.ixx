@@ -75,7 +75,7 @@ public:
   /// declares, and of "Self" (0) where it is pinned; nothing when
   /// nothing was given.
   SPP_ATTR_NODISCARD auto KnownBindings(GenericParameterGroupAst const &params) const
-    -> std::optional<GenericSubst>;
+    -> Opt<GenericSubst>;
 
   /// Solve, raising on a conflict, an uninferred parameter, a comp
   /// argument of the wrong type or an unsatisfied constraint. "variadic_fn_param" names a
@@ -119,8 +119,8 @@ private:
   auto _AstOf(_TypeVal const &val) const -> Shared<TypeAst>;
   auto _Bindings(_Entry const *except = nullptr) const -> scopes::GenericSubst;
   auto _OfferAll(scopes::GenericSubst const &inferred, Shared<TypeAst> const &site,
-    Function<bool(_Entry const &)> const &skip,
-    Function<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type = nullptr) -> bool;
+    FuncRef<bool(_Entry const &)> skip,
+    Func<scopes::TypeId(_Entry const &, scopes::TypeId)> const &adjust_type = nullptr) -> bool;
   auto _Match(TypeAst const &source, TypeAst const &target) const -> scopes::GenericSubst;
   auto _SeedFromOwner() -> void;
   auto _ReadCompValues() -> bool;

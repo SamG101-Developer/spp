@@ -110,7 +110,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  SPP_ATTR_NODISCARD auto GetDummyScopes() const -> std::span<Scope* const>;
+  SPP_ATTR_NODISCARD auto GetDummyScopes() const -> Span<Scope* const>;
 
   static auto ClearDummyScopes() -> void;
 

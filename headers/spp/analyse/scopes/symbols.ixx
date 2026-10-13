@@ -100,7 +100,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
   /// Use it when the symbol is in hand and the type ast is not,
   /// or would only be rebuilt to resolve it again.
   static auto Of(
-    TypeSymbol &sym, Scope const &scope, std::optional<ConventionTag> conv = std::nullopt,
+    TypeSymbol &sym, Scope const &scope, Opt<ConventionTag> conv = Nullopt,
     OnMissing missing = OnMissing::Make) -> TypeRef;
 
   /// Looks up the symbol filed under an identity, where "scope"
@@ -117,8 +117,8 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
   /// a scope, or to make what is missing, use "ReadIn" or
   /// "Substitute" on a "TypeRef" instead.
   static auto Of(
-    TypeId id, Scope const &scope, std::optional<ConventionTag> conv = std::nullopt,
-    std::optional<bool> never = std::nullopt) -> TypeRef;
+    TypeId id, Scope const &scope, Opt<ConventionTag> conv = Nullopt,
+    Opt<bool> never = Nullopt) -> TypeRef;
 
   /// Wraps "sym" for a question about what kind of type it is
   /// ("IsA", "Template", "type_predicates::IsType*"), not for

@@ -39,7 +39,7 @@ namespace spp::analyse::utils::type_members {
     auto FindHeldByValueImpl(
       TypeRef const &ref,
       Scope const &scope,
-      std::function<bool(TypeRef const &)> const &matches,
+      FuncRef<bool(TypeRef const &)> matches,
       Set<TypeSymbol const*> &seen)
       -> TypeRef {
       if (ref.Symbol == nullptr or ref.IsBorrowed() or ref.IsNever) { return TypeRef(); }
@@ -73,11 +73,11 @@ namespace spp::analyse::utils::type_members {
     auto IndexableLen(
       TypeRef const &ref,
       Scope const &scope)
-      -> std::optional<std::size_t> {
+      -> Opt<std::size_t> {
       if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().size(); }
-      if (not type_predicates::IsTypeArray(ref, scope)) { return std::nullopt; }
+      if (not type_predicates::IsTypeArray(ref, scope)) { return Nullopt; }
       const auto size = U64Of(ref.Symbol->CompArgId("n"));
-      return size.has_value() ? std::optional(static_cast<std::size_t>(*size)) : std::nullopt;
+      return size.has_value() ? Opt(static_cast<std::size_t>(*size)) : Nullopt;
     }
 
     /** The type of a tuple's or array's element "index": per element for a tuple, the one "T" for an array; read off
@@ -440,7 +440,7 @@ auto spp::analyse::utils::type_members::GetSuperimposedFatPointerFieldCount(
 auto spp::analyse::utils::type_members::FindHeldByValue(
   TypeRef const &ref,
   Scope const &scope,
-  std::function<bool(TypeRef const &)> const &matches)
+  FuncRef<bool(TypeRef const &)> matches)
   -> TypeRef {
   auto seen = Set<TypeSymbol const*>();
   return FindHeldByValueImpl(ref, scope, matches, seen);

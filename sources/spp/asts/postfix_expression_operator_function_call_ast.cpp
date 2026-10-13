@@ -76,7 +76,7 @@ PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallA
   GnArgGroup(std::move(generic_arg_group)),
   FnArgGroup(std::move(arg_group)),
   Fold(std::move(fold)),
-  _OverloadInfo(std::nullopt),
+  _OverloadInfo(Nullopt),
   _TransformedLhs(nullptr),
   _ClosureDummyArgGroup(nullptr),
   _ClosureDummyArg(nullptr),
@@ -784,7 +784,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
       if (ret_sym != nullptr and ret_sym->Kind == TypeKind::Cls and ret_sym->Alias == nullptr
         and ret_sym->Convention == ConventionTag::MOV) {
         // Read in once, and no symbol when nothing is filed under it here (not the callee's, "Open" would keep).
-        const auto read = TypeRef::Of(*ret_sym, *sm->CurrentScope, std::nullopt, TypeRef::OnMissing::Null);
+        const auto read = TypeRef::Of(*ret_sym, *sm->CurrentScope, Nullopt, TypeRef::OnMissing::Null);
         if (read.Symbol != nullptr) { return read; }
       }
     }

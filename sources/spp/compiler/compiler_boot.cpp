@@ -542,14 +542,14 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 }
 
 auto spp::compiler::CompilerBoot::_FfiLibraries(
-  std::filesystem::path const &project_root)
-  -> Vec<std::filesystem::path> {
+  Path const &project_root)
+  -> Vec<Path> {
   // "<package>/ffi/<name>/lib<name>.so" is what a package ships
   // its native code as, beside the stub that declares it, both
   // for the project itself and for anything it has vendored, so
   // the whole tree is swept for that shape rather than any one
   // place being named.
-  auto libraries = Vec<std::filesystem::path>();
+  auto libraries = Vec<Path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
   // What counts as a library is the host's own extension, not
@@ -581,7 +581,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
   const auto main_call = INJECT_CODE("main()", ParseExpression);
   auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
   for (auto const &top_level_child : sm->GlobalScope->Children) {
-    const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
+    const auto n = get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
     if (n and n->Name->Val == "main") {
       main_scope = top_level_child.get();
       break;

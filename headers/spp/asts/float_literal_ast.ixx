@@ -103,7 +103,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// to the type's own precision.
   static auto FromBigVal(
     numex::BigDec const &value, Str const &type,
-    std::optional<std::uint64_t> places = std::nullopt) -> Unique<FloatLiteralAst>;
+    Opt<std::uint64_t> places = Nullopt) -> Unique<FloatLiteralAst>;
 
   /// Raise if this literal's value is one its type cannot hold. A
   /// written literal is checked when it is analysed; one that

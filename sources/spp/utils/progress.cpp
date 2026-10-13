@@ -109,7 +109,7 @@ auto spp::utils::ProgressBar::Draw(
   // Build the whole line into a buffer, so it can be
   // compared against the last one and written in one
   // shot.
-  auto line = std::string();
+  auto line = Str();
   line.reserve(kBarWidth * 3 + 96);
   line += std::format("{:<20} ", _Label.c_str());
   line += fill_col;
@@ -134,7 +134,7 @@ auto spp::utils::ProgressBar::DrawIndeterminate(
   const auto phase = (1.0 - std::cos(2.0 * std::numbers::pi * elapsed / kMarqueePeriod)) / 2.0;
   const auto head = static_cast<int>(phase * (kBarWidth - kMarqueeWidth) + 0.5);
 
-  auto line = std::string();
+  auto line = Str();
   line.reserve(kBarWidth * 3 + 96);
   line += std::format("{:<20} ", _Label.c_str());
   line += track_col;

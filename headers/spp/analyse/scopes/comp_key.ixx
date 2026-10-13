@@ -48,7 +48,7 @@ namespace spp::analyse::scopes {
     /// are the only 3 literals that will fill a cmp raw. Todo:
     /// future support for arrays? Currently they are opaque,
     /// but [2] is the same as [1 + 1].
-    std::variant<numex::BigInt, numex::BigDec, bool> Val;
+    Variant<numex::BigInt, numex::BigDec, bool> Val;
 
     /// Create a comp key part for an integer literal, using its
     /// big int internal value, and type suffix.
@@ -102,30 +102,30 @@ namespace spp::analyse::scopes {
     /// The reverse integer creator - extract the integer value
     /// from a node.
     SPP_ATTR_NODISCARD auto AsInt() const -> numex::BigInt const* {
-      return Kind == Part::Value ? std::get_if<numex::BigInt>(&Val) : nullptr;
+      return Kind == Part::Value ? get_if<numex::BigInt>(&Val) : nullptr;
     }
 
     /// The reverse float creator - extract the float value from
     /// a node.
     SPP_ATTR_NODISCARD auto AsFloat() const -> numex::BigDec const* {
-      return Kind == Part::Value ? std::get_if<numex::BigDec>(&Val) : nullptr;
+      return Kind == Part::Value ? get_if<numex::BigDec>(&Val) : nullptr;
     }
 
     /// The reverse boolean creator - extract the boolean value
     /// from a node.
     SPP_ATTR_NODISCARD auto AsBool() const -> bool const* {
-      return Kind == Part::Value ? std::get_if<bool>(&Val) : nullptr;
+      return Kind == Part::Value ? get_if<bool>(&Val) : nullptr;
     }
 
     /// Whether this node or any node below it satisfies "pred",
     /// parents before their parts.
-    SPP_ATTR_NODISCARD auto Any(std::function<bool(CompKey const &)> const &pred) const -> bool {
+    SPP_ATTR_NODISCARD auto Any(FuncRef<bool(CompKey const &)> pred) const -> bool {
       return pred(*this) or genex::any_of(Kids, [&pred](CompKey const *kid) { return kid->Any(pred); });
     }
 
     /// Visit this node and every node below it, parents before
     /// their parts.
-    auto Visit(std::function<void(CompKey const &)> const &visit) const -> void {
+    auto Visit(FuncRef<void(CompKey const &)> visit) const -> void {
       visit(*this);
       for (auto const *kid : Kids) { kid->Visit(visit); }
     }
@@ -181,7 +181,7 @@ namespace spp::analyse::scopes {
   /// operations are computable in isolation. Allows for
   /// A[1 + 2] to be the same type as A[3] etc.
   SPP_EXP_FUN auto FoldCompValues(
-    StrView op, CompKey const &lhs, CompKey const &rhs) -> std::optional<CompKey>;
+    StrView op, CompKey const &lhs, CompKey const &rhs) -> Opt<CompKey>;
 
   /// The comp parameters an identity names ("Param" parts),
   /// by "ParamId", in order; none inside an opaque spelling,
@@ -193,7 +193,7 @@ namespace spp::analyse::scopes {
   /// The constants an identity names through types ("Member"
   /// parts): each type's "TypeId" word and the name, in order.
   SPP_EXP_FUN auto MembersNamedBy(
-    CompId id) -> Vec<std::pair<std::uint64_t, Str>>;
+    CompId id) -> Vec<Pair<std::uint64_t, Str>>;
 
   /// Whether an identity is a value all the way down: a value,
   /// or a pack of comp values (recursive check). Anything
@@ -208,7 +208,7 @@ namespace spp::analyse::scopes {
   /// or one out of range. How a comp argument such as "Arr"'s
   /// "n" is read as a count.
   SPP_EXP_FUN auto U64Of(
-    CompId id) -> std::optional<std::uint64_t>;
+    CompId id) -> Opt<std::uint64_t>;
 
   /// "DoesTypeIdNameAnyGnParams" for a comp value: a comp
   /// parameter of its own ("ParamsNamedBy"), or a parameter of a

@@ -75,7 +75,7 @@ namespace spp {
       }
       else { return std::forward<T>(arg); }
     };
-    std::apply(
+    apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))
@@ -140,7 +140,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     // beneath the main error.
     auto i = 1;
     for (auto const &msg : _SubErrors) {
-      auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
+      auto header = Str(50, '-') + colex::st_underline + Str("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
       cast_error->Messages.emplace_back(header + msg);
       ++i;

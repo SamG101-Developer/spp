@@ -23,7 +23,7 @@ import genex;
 import std;
 
 auto spp::analyse::utils::regions::PlaceOf(
-  Ast const &ast, Scope const &scope) -> std::optional<Place> {
+  Ast const &ast, Scope const &scope) -> Opt<Place> {
   // Walk in from the outermost step: an attribute, or a
   // method called on a place, is a step; a dereference is
   // none. A call of anything else (a function, a value)
@@ -55,7 +55,7 @@ auto spp::analyse::utils::regions::PlaceOf(
 
       // If this is not a static or runtime member being
       // called as a function, then it is a free function.
-      if (not IsStaticMemberAccess(form) and not IsRuntimeMemberAccess(form)) { return std::nullopt; }
+      if (not IsStaticMemberAccess(form) and not IsRuntimeMemberAccess(form)) { return Nullopt; }
 
       // Get the "receiver" of the call, which is either
       // the "self" argument of the function form, or the
@@ -68,7 +68,7 @@ auto spp::analyse::utils::regions::PlaceOf(
       if (receiver == nullptr and IsRuntimeMemberAccess(form)) {
         receiver = form->ToUnchecked<PostfixExpressionAst>()->Lhs.get();
       }
-      if (receiver == nullptr) { return std::nullopt; }
+      if (receiver == nullptr) { return Nullopt; }
 
       // Get the operator from the postfix left-hand-side
       // of the function call operation. Add the part into
@@ -91,7 +91,7 @@ auto spp::analyse::utils::regions::PlaceOf(
   const auto root = cur->To<IdentifierAst>() != nullptr or IsStaticMemberAccess(cur)
     ? scope.FindVarSymbolOutermost(*cur).first
     : nullptr;
-  if (root == nullptr) { return std::nullopt; }
+  if (root == nullptr) { return Nullopt; }
 
   // Reverse the steps (they were built in reverse order).
   // and bind the root into the "Place" instance.
@@ -176,7 +176,7 @@ auto spp::analyse::utils::regions::FirstUnaccountedPart(
   // apart, so its parts are walked whether or not any of them
   // recorded a move.
   auto unaccounted = Str();
-  std::ignore = RegionConsumed(
+  ignore = RegionConsumed(
     region, region_ref, *region_scope, memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves,
     &unaccounted, true);
   return unaccounted;
@@ -215,7 +215,7 @@ auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
 }
 
 auto spp::analyse::utils::regions::DescendToPart(
-  TypeRef const &root, Scope const &root_scope, Vec<PlaceStep> const &steps,
+  TypeRef const &root, Scope const &root_scope, Span<PlaceStep const> steps,
   const std::size_t count) -> Pair<TypeRef, Scope const*> {
   // Start at the root type-ref and scope, and loop from the
   // 0th element upto the provided count or the number of steps.

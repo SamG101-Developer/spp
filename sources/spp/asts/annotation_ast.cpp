@@ -41,8 +41,8 @@ namespace spp::asts {
 
     /// Simple utility method to convert a visibility-oriented
     /// annotation tag into a genuine visibility tag. Returns
-    /// std::nullopt if the annotation is not a visibility tag.
-    auto VisibilityOf(Str const &fq_name) -> std::optional<Visibility> {
+    /// Nullopt if the annotation is not a visibility tag.
+    auto VisibilityOf(Str const &fq_name) -> Opt<Visibility> {
       IMPORT_UTILS;
       // Declare enums to cast between.
       using A = annotation_utils::BuiltinAnnotations;
@@ -54,7 +54,7 @@ namespace spp::asts {
       if (fq_name == A::kPackage) { return V::kPackage; }
       if (fq_name == A::kProtected) { return V::kProtected; }
       if (fq_name == A::kPrivate) { return V::kPrivate; }
-      return std::nullopt;
+      return Nullopt;
     }
   }
 }

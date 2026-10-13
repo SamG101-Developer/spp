@@ -38,6 +38,7 @@ import spp.utils.algorithms;
 import spp.utils.interner;
 import spp.utils.ptr;
 import spp.utils.types;
+import gch;
 import genex;
 
 namespace spp::analyse::utils::fn_values {
@@ -128,7 +129,7 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
 
 auto spp::analyse::utils::fn_values::MatchFnValue(
   TypeRef const &mock, TypeRef const &func,
-  Scope const &func_scope) -> std::optional<FnValueMatch> {
+  Scope const &func_scope) -> Opt<FnValueMatch> {
   //
   using type_compare::TypeEq;
 
@@ -137,7 +138,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
   if (func.Symbol == nullptr or func.IsBorrowed() or func.Symbol->IsMock()
     or not type_predicates::IsTypeFunction(func, func_scope)
     or GetFnValueName(mock).first == nullptr) {
-    return std::nullopt;
+    return Nullopt;
   }
 
   // The mock carries the superimposed function type of each overload.
@@ -148,7 +149,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
   // Each overload attaches its own "sup $F ext FunXxx { fun ... }"
   // block to the mock. Its function type is compared along with the
   // ones above it, as a "FunRef" is also a "FunMut" and a "FunMov".
-  auto match = std::optional<FnValueMatch>();
+  auto match = Opt<FnValueMatch>();
   for (auto const *ext_scope : mock_sym->LinkedScope->DirectSupScopes) {
     const auto [ext, proto] = FnBlockOf(*ext_scope);
     const auto kind_sym = proto != nullptr
@@ -251,7 +252,7 @@ namespace spp::analyse::utils::fn_values {
     auto IdTermsOf(
       FunctionPrototypeAst const &fn_a, Scope const &scope_a,
       FunctionPrototypeAst const &fn_b, Scope const &scope_b)
-      -> std::optional<Pair<GenericSubst, GenericSubst>> {
+      -> Opt<Pair<GenericSubst, GenericSubst>> {
       auto subst_a = GenericSubst();
       auto subst_b = GenericSubst();
 
@@ -287,7 +288,7 @@ namespace spp::analyse::utils::fn_values {
       const auto own_a = own_params(fn_a);
       const auto own_b = own_params(fn_b);
       for (auto i = 0uz; i < own_a.size() and i < own_b.size(); ++i) {
-        if (own_a[i]->IsTypeParam() != own_b[i]->IsTypeParam()) { return std::nullopt; }
+        if (own_a[i]->IsTypeParam() != own_b[i]->IsTypeParam()) { return Nullopt; }
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
           if (a_param == nullptr) { continue; }

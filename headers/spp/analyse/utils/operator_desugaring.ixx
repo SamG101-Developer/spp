@@ -42,7 +42,7 @@ namespace spp::analyse::utils::operator_desugaring {
   /// The list of binary comparison operators, used during
   /// comparison collapsing. Limited to the standard 6
   /// "<, >, <=, >=, ==, !=".
-  SPP_EXP_CLS constexpr auto kBinComparisonOps = std::array{
+  SPP_EXP_CLS constexpr auto kBinComparisonOps = Arr{
     lex::SppTokenType::TK_EQ,
     lex::SppTokenType::TK_NE,
     lex::SppTokenType::TK_LT,

@@ -314,7 +314,7 @@ static auto IsStdNeverModule(
   // same parts "FqName" qualifies with, innermost first.
   auto names = spp::Vec<spp::Str>();
   for (auto const *s = &scope; s != nullptr and s->Parent != nullptr; s = s->Parent) {
-    if (const auto id = std::get_if<ScopeIdentifierName>(&s->Name); id != nullptr) {
+    if (const auto id = get_if<ScopeIdentifierName>(&s->Name); id != nullptr) {
       names.emplace_back(id->Name->Val);
     }
   }

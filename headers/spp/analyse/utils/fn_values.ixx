@@ -47,7 +47,7 @@ namespace spp::analyse::utils::fn_values {
   /// inferring of the "func_type".
   SPP_EXP_FUN auto MatchFnValue(
     TypeRef const &mock, TypeRef const &func,
-    Scope const &func_scope) -> std::optional<FnValueMatch>;
+    Scope const &func_scope) -> Opt<FnValueMatch>;
 
   /// When we pass a function value into a functional type,
   /// ie "$Type" into "FunMov[(), Void]" (arg->param, "let",

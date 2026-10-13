@@ -13,7 +13,7 @@ import std;
 
 namespace spp::analyse::scopes {
   namespace {
-    using Words = std::span<std::uint64_t const>;
+    using Words = Span<std::uint64_t const>;
 
     /// [CHECKED]
     auto TagOf(const std::uint64_t word) -> TypeKey::Tag {
@@ -75,15 +75,15 @@ namespace spp::analyse::scopes {
 
     /// [CHECKED]
     auto StableCompare(
-      Words lhs, Words rhs) -> std::strong_ordering;
+      Words lhs, Words rhs) -> Ordering;
 
     /// [CHECKED]
     /// "StableKeyLess" for two interned types, and for two type
     /// words.
     auto StableCompareIds(
-      const TypeId lhs, const TypeId rhs) -> std::strong_ordering {
+      const TypeId lhs, const TypeId rhs) -> Ordering {
       return lhs == rhs
-        ? std::strong_ordering::equal
+        ? Ordering::equal
         : StableCompare(WordsOf(lhs), WordsOf(rhs));
     }
 
@@ -93,8 +93,8 @@ namespace spp::analyse::scopes {
     /// order. Interned, so two that are alike in all of that
     /// are one node, unless a type in them ties on its name.
     auto StableCompareNodes(
-      CompKey const &lhs, CompKey const &rhs) -> std::strong_ordering {
-      if (&lhs == &rhs) { return std::strong_ordering::equal; }
+      CompKey const &lhs, CompKey const &rhs) -> Ordering {
+      if (&lhs == &rhs) { return Ordering::equal; }
       if (const auto c = lhs.Kind <=> rhs.Kind; std::is_neq(c)) { return c; }
       if (const auto c = lhs.Text <=> rhs.Text; std::is_neq(c)) { return c; }
       if (const auto c = lhs.ParamId <=> rhs.ParamId; std::is_neq(c)) { return c; }
@@ -125,7 +125,7 @@ namespace spp::analyse::scopes {
     /// identities. Every pointer a key holds after "Symbol" is
     /// a type symbol's.
     auto StableCompareSymbols(
-      const std::uint64_t lhs, const std::uint64_t rhs) -> std::strong_ordering {
+      const std::uint64_t lhs, const std::uint64_t rhs) -> Ordering {
       const auto l = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(lhs));
       const auto r = reinterpret_cast<TypeSymbol const*>(static_cast<std::uintptr_t>(rhs));
       const auto l_name = l->Name != nullptr ? l->Name->ToView() : StrView();
@@ -137,7 +137,7 @@ namespace spp::analyse::scopes {
     /// [CHECKED]
     /// Stable comparison for the words (list of interned words),
     /// which maps into the other two stable sorting functions.
-    auto StableCompare(const Words lhs, const Words rhs) -> std::strong_ordering {
+    auto StableCompare(const Words lhs, const Words rhs) -> Ordering {
       // The two keys are walked together while they are alike,
       // so their raw words line up: a pointer follows only a
       // "Symbol", "TypeId" or "CompId" tag.
@@ -454,20 +454,20 @@ auto spp::analyse::scopes::ArgsOf(
 
 /// [CHECKED]
 auto spp::analyse::scopes::FindArgOf(
-  const TypeId args, const std::uint64_t param_id) -> std::optional<TypeIdArg> {
+  const TypeId args, const std::uint64_t param_id) -> Opt<TypeIdArg> {
   // Decode the arguments one at a time, stopping at the first
   // one for the parameter.
-  if (args == nullptr) { return std::nullopt; }
+  if (args == nullptr) { return Nullopt; }
   auto words = WordsOf(args);
   for (auto arg = TypeIdArg(); TypeKey::_DecodeArg(words, arg); arg = TypeIdArg()) {
     if (arg.Named and not arg.Spelled and arg.Slot == param_id) { return arg; }
   }
-  return std::nullopt;
+  return Nullopt;
 }
 
 /// [CHECKED]
 auto spp::analyse::scopes::TypeKey::_DecodeArg(
-  std::span<const Word> &words, TypeIdArg &arg) -> bool {
+  Span<const Word> &words, TypeIdArg &arg) -> bool {
   // The parameter (or spelled name, or position) word, then the
   // value. Cut short after the name, nothing is decoded.
   if (words.empty()) { return false; }
@@ -515,7 +515,7 @@ auto spp::analyse::scopes::TypeKey::PushCompPart(
 
 /// [CHECKED]
 auto spp::analyse::scopes::TypeKey::_DecodePart(
-  const std::span<const Word> words,
+  const Span<const Word> words,
   std::size_t &taken) -> TypeKey const* {
   // If we are looking at a type id, update the mutable
   // reference and return the type key found there.

@@ -127,7 +127,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   // generator's type is read off its value.
   // Translated: "let $_iter = <iterable>".
   auto iterable_let = [&] {
-    auto mut = std::make_unique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
+    auto mut = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
     auto iterable_val = std::move(Iterable);
     return MakeUnique<LetStatementInitializedAst>(

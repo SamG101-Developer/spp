@@ -127,7 +127,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // No value => nothing to check, only the binding to declare.
   IMPORT_UTILS;
   if (meta->LetStatementFromUninitialized) {
-    std::ignore = _Declare(sm);
+    ignore = _Declare(sm);
     return;
   }
 
@@ -261,7 +261,7 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   }
 
   // Declare the binding, now its value is in place.
-  std::ignore = _Declare(sm);
+  ignore = _Declare(sm);
 
   // Alloca already added; return nullptr.
   return nullptr;

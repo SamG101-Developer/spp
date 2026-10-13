@@ -4,6 +4,7 @@ module;
 export module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.type_key;
 import spp.utils.types;
+import gch;
 import std;
 
 use(spp::analyse::scopes, class Scope);
@@ -18,10 +19,10 @@ namespace spp::analyse::scopes {
   /// "Self", which a key spells rather than identifies), each
   /// to what it is bound to.
   SPP_EXP_CLS struct GenericSubst {
-    Vec<std::pair<std::uint64_t, TypeId>> TypeParams;
-    Vec<std::pair<std::uint64_t, CompId>> CompParams;
-    Vec<std::uint64_t> TypePackParams;
-    Vec<std::uint64_t> CompPackParams;
+    SmallVec<Pair<std::uint64_t, TypeId>, 4> TypeParams;
+    SmallVec<Pair<std::uint64_t, CompId>, 4> CompParams;
+    SmallVec<std::uint64_t, 4> TypePackParams;
+    SmallVec<std::uint64_t, 4> CompPackParams;
 
     SPP_ATTR_NODISCARD auto IsEmpty() const -> bool {
       return TypeParams.empty() and CompParams.empty();
@@ -72,7 +73,7 @@ namespace spp::analyse::scopes {
   /// arguments name the parameters of what it instantiates. With
   /// "all", nothing unless every one is bound; otherwise a
   /// parameter with no argument of its name is left out.
-  SPP_EXP_FUN auto BindByName(TypeIdParams const &params, TypeId args, bool all) -> std::optional<GenericSubst>;
+  SPP_EXP_FUN auto BindByName(TypeIdParams const &params, TypeId args, bool all) -> Opt<GenericSubst>;
 
   /// "BindByName" for the named arguments "args", each read in
   /// "scope": what a type written in the terms of "params" is read

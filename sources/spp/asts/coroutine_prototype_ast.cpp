@@ -211,7 +211,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
   if (llvm_func_target == nullptr) {
-    std::ignore = sm->SkipPastScope(sm->CurrentScope);
+    ignore = sm->SkipPastScope(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;

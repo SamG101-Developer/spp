@@ -80,7 +80,7 @@ auto spp::utils::strings::SnakeToPascal(Str const &str) -> Str {
 }
 
 auto spp::utils::strings::ClosestMatch(
-  const StrView query, Vec<Str> const &choices) -> std::optional<Str> {
+  const StrView query, Vec<Str> const &choices) -> Opt<Str> {
   auto match_found = false;
   auto best_score = 0.0;
   auto best_match = Str();
@@ -94,7 +94,7 @@ auto spp::utils::strings::ClosestMatch(
     }
   }
 
-  return match_found ? std::make_optional(best_match) : std::nullopt;
+  return match_found ? std::make_optional(best_match) : Nullopt;
 }
 
 auto spp::utils::strings::Levenshtein(

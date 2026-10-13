@@ -135,7 +135,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   // into it.
   if (FfiAnnotation != nullptr) {
     ctx->Builder.ClearInsertionPoint();
-    std::ignore = sm->SkipPastScope(sm->CurrentScope);
+    ignore = sm->SkipPastScope(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     return nullptr;
   }

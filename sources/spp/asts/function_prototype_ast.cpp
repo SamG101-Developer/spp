@@ -700,7 +700,7 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
   }
 
   // Manual scope skipping.
-  std::ignore = sm->SkipPastScope(sm->CurrentScope);
+  ignore = sm->SkipPastScope(sm->CurrentScope);
   return nullptr;
 }
 

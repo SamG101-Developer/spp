@@ -81,11 +81,11 @@ auto spp::utils::numbers::FloatBounds() -> FloatLimitMap const& {
 auto spp::utils::numbers::WrapToInteger(
   numex::BigInt const &value,
   Str const &type)
-  -> std::optional<numex::BigInt> {
+  -> Opt<numex::BigInt> {
   // If the type doesn't match, then return nullopt, otherwise
   // take the bounds from the map, keyed or the type.
   const auto bounds = IntegerBounds().find(type);
-  if (bounds == IntegerBounds().end()) { return std::nullopt; }
+  if (bounds == IntegerBounds().end()) { return Nullopt; }
   auto const &[lower, upper] = bounds->second;
 
   // Calculate the modulus against the range of the integer
@@ -101,10 +101,10 @@ auto spp::utils::numbers::WrapToInteger(
 /// [CHECKED]
 auto spp::utils::numbers::ToU64(
   numex::BigInt const &value)
-  -> std::optional<std::uint64_t> {
+  -> Opt<std::uint64_t> {
   // Within the "u64" range, read back through its text (the
   // big integer has no native conversion).
   auto const &[lower, upper] = IntegerBounds().at("u64");
-  if (value < lower or value > upper) { return std::nullopt; }
+  if (value < lower or value > upper) { return Nullopt; }
   return static_cast<std::uint64_t>(std::stoull(value.ToString()));
 }

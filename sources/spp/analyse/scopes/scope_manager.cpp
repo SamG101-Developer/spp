@@ -39,6 +39,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
 import spp.utils.error_formatter;
 import spp.utils.ptr;
+import gch;
 import genex;
 import std;
 
@@ -120,7 +121,7 @@ ScopeManager::ScopeManager(
 ScopeManager::~ScopeManager() = default;
 
 auto ScopeManager::Reset(
-  Scope *scope, std::optional<ScopeIterator> iterator) -> void {
+  Scope *scope, Opt<ScopeIterator> iterator) -> void {
   // Set the current scope to the provided scope or global
   // scope.
   CurrentScope = scope ? scope : GlobalScope.get();
@@ -219,7 +220,7 @@ auto ScopeManager::AttachAllSuperScopes(
     if (read.SupsAttached or read.LinkedTypeSymbol == nullptr) { return; }
     const auto _meta_guard = asts::meta::MetaGuard(meta, true);
     meta->ResetContext();
-    std::ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), meta);
+    ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), meta);
   };
 
   // The sweep creates scopes as it runs - attaching a
@@ -290,7 +291,7 @@ auto ScopeManager::CoalesceMethodMock(
   auto *const owner_scope = self_sym != nullptr ? self_sym->LinkedScope : nullptr;
   if (owner_scope != nullptr and owner_scope->LinkedTypeSymbol != nullptr
     and owner_scope->LinkedTypeSymbol->InstanceOf != nullptr) {
-    std::ignore = owner_scope->GetSupScopes();
+    ignore = owner_scope->GetSupScopes();
     for (auto *const block : owner_scope->DirectSupScopes) {
       if (AstAs<SupPrototypeFunctionsAst>(block->AstNode) != nullptr
         or AstAs<SupPrototypeExtensionAst>(block->AstNode) != nullptr) { owner_blocks.emplace_back(block); }
@@ -372,10 +373,10 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
     if (const auto params = sup_params; params != nullptr) {
       if (const auto pack = params->GetVariadicParam(); pack != nullptr) {
         const auto pid = pack->ParamId();
-        std::erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
-        std::erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
-        std::erase(bindings.TypePackParams, pid);
-        std::erase(bindings.CompPackParams, pid);
+        erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
+        erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
+        erase(bindings.TypePackParams, pid);
+        erase(bindings.CompPackParams, pid);
       }
     }
     const auto scope_args_id = ArgsIdOfBindings(bindings, type_scope);
@@ -390,7 +391,7 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
       and not genex::contains(GnSupBlocks, sup_scope)) {
       // Build the generic sup scope for this instantiation,
       // and get the new cls symbol.
-      std::tie(new_sup_scope, new_cls_scope) = CreateGnSupScope(
+      tie(new_sup_scope, new_cls_scope) = CreateGnSupScope(
         *sup_scope, scope, scope_args_id, this, meta);
       sup_sym = new_cls_scope ? new_cls_scope->LinkedTypeSymbol.get() : nullptr;
 

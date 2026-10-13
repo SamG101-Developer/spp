@@ -365,7 +365,7 @@ namespace spp::analyse::utils::monomorphization {
           if (arg.TypeVal == scopes::ParamTypeId(arg.Slot)) { return true; }
           auto *const bound = callee_scope.FindTypeSymbol(BindingTypeName(arg).get());
           return bound != nullptr and bound->Kind == TypeKind::GnTypeArg and bound->BindsParamId == arg.Slot
-            and TypeRef::Of(*bound, callee_scope, std::nullopt, TypeRef::OnMissing::Null).Id == arg.TypeVal;
+            and TypeRef::Of(*bound, callee_scope, Nullopt, TypeRef::OnMissing::Null).Id == arg.TypeVal;
         }
         if (arg.CompVal == scopes::ParamCompId(arg.Slot)) { return true; }
         auto const *const bound = callee_scope.FindVarSymbol(BindingCompName(arg).get());
@@ -1375,7 +1375,7 @@ auto spp::analyse::utils::monomorphization::InstantiateOverload(
   -> FunctionPrototypeAst* {
   // The arguments arrive already named - they are read off a "sup" block that has bound them - so there is nothing
   // here for inference to do, and the substitution itself is the whole of what a call site would reach.
-  auto *const instance = std::get<0>(FindOrMakeGnSubstitutedPrototype(
+  auto *const instance = get<0>(FindOrMakeGnSubstitutedPrototype(
     fn_proto, fn_scope, args_id, nullptr, sm, meta));
   instance->RequireGnSubstitution();
   return instance;

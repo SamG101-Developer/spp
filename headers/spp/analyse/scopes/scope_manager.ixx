@@ -77,7 +77,7 @@ public:
   /// iterator can be provided in the case that we want to
   /// start from a designated scope.
   /// Todo: Check all callers and decide on signature.
-  auto Reset(Scope *scope = nullptr, std::optional<ScopeIterator> iterator = std::nullopt) -> void;
+  auto Reset(Scope *scope = nullptr, Opt<ScopeIterator> iterator = Nullopt) -> void;
 
   /// Create a new scope and move into it. It will be the child
   /// of the current scope, and the internal iterator will

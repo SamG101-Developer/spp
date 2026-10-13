@@ -150,7 +150,7 @@ namespace {
     const llvm::Intrinsic::IndependentIntrinsics intrinsic,
     llvm::Type *const ty)
     -> llvm::Function* {
-    auto op = std::string_view();
+    auto op = spp::StrView();
     switch (intrinsic) {
       case llvm::Intrinsic::sadd_with_overflow: op = "sadd";
         break;
@@ -197,7 +197,7 @@ namespace {
     const spp::codegen::fn_impls::BinOp op,
     llvm::Value *const a,
     llvm::Value *const b)
-    -> std::pair<llvm::Value*, llvm::Value*> {
+    -> spp::Pair<llvm::Value*, llvm::Value*> {
     using BinOp = spp::codegen::fn_impls::BinOp;
     const auto uid = "." + spp::utils::Uid();
 
@@ -799,7 +799,7 @@ auto spp::codegen::fn_impls::SimpleUnaryIntrinsicCall(
 
 auto spp::codegen::fn_impls::SimpleGetValue(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Value *val) -> void {
-  std::ignore = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
+  ignore = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
   ctx->Builder.CreateRet(val);
 }
 
@@ -2305,7 +2305,7 @@ auto spp::codegen::fn_impls::StdIntrinsicsFpclass(
   const auto other_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.other" + uid, fn);
   const auto sw = ctx->Builder.CreateSwitch(flag_arg, other_bb, kClassCount);
 
-  auto incoming = Vec<std::pair<llvm::Value*, llvm::BasicBlock*>>();
+  auto incoming = Vec<Pair<llvm::Value*, llvm::BasicBlock*>>();
   for (auto i = 0u; i < kClassCount; ++i) {
     const auto case_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.c" + std::to_string(i) + uid, fn);
     sw->addCase(llvm::cast<llvm::ConstantInt>(llvm::ConstantInt::get(i32_ty, i)), case_bb);

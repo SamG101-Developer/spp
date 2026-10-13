@@ -500,11 +500,11 @@ auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
     bool IsIs;
   };
 
-  auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> std::optional<BinOpInfo> {
+  auto try_tok = [this](auto fn, const std::uint8_t prec, const bool is_is = false) -> Opt<BinOpInfo> {
     const auto pos = _Pos;
     if (auto tok = fn()) return BinOpInfo{std::move(tok), prec, is_is};
     _Pos = pos;
-    return std::nullopt;
+    return Nullopt;
   };
 
   auto try_bin_op = [&]() -> BinOpInfo {
@@ -1553,11 +1553,11 @@ auto spp::parse::ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_pre
     std::uint8_t Prec;
   };
 
-  auto try_tok = [this](auto fn, const std::uint8_t prec) -> std::optional<BinOpInfo> {
+  auto try_tok = [this](auto fn, const std::uint8_t prec) -> Opt<BinOpInfo> {
     const auto pos = _Pos;
     if (auto tok = fn()) return BinOpInfo{std::move(tok), prec};
     _Pos = pos;
-    return std::nullopt;
+    return Nullopt;
   };
 
   auto try_bin_op = [&]() -> BinOpInfo {
@@ -1841,7 +1841,7 @@ auto spp::parse::ParserSpp::ParseLiteralBoolean()
 }
 
 auto spp::parse::ParserSpp::ParseLiteralTuple(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::TupleLiteralAst> {
   auto parser_1 = [elem_parser, this] mutable { return ParseLiteralTuple1Element(std::move(elem_parser)); };
   auto parser_n = [elem_parser, this] mutable { return ParseLiteralTupleNElements(std::move(elem_parser)); };
@@ -1850,7 +1850,7 @@ auto spp::parse::ParserSpp::ParseLiteralTuple(
 }
 
 auto spp::parse::ParserSpp::ParseLiteralArray(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::ArrayLiteralAst> {
   auto parser_e = [elem_parser, this] mutable { return ParseLiteralArrayExplicitElements(std::move(elem_parser)); };
   auto parser_r = [elem_parser, this] mutable { return ParseLiteralArrayRepeatedElement(std::move(elem_parser)); };
@@ -1949,7 +1949,7 @@ auto spp::parse::ParserSpp::ParseBytePrefixType()
 }
 
 auto spp::parse::ParserSpp::ParseLiteralTuple1Element(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::TupleLiteralAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, std::move(elem_parser));
@@ -1962,7 +1962,7 @@ auto spp::parse::ParserSpp::ParseLiteralTuple1Element(
 }
 
 auto spp::parse::ParserSpp::ParseLiteralTupleNElements(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::TupleLiteralAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_TWO_OR_MORE(p2, elem_parser, ParseTokenComma);
@@ -1971,7 +1971,7 @@ auto spp::parse::ParserSpp::ParseLiteralTupleNElements(
 }
 
 auto spp::parse::ParserSpp::ParseLiteralArrayRepeatedElement(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::ArrayLiteralRepeatedElementAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ONCE(p2, elem_parser);
@@ -1982,7 +1982,7 @@ auto spp::parse::ParserSpp::ParseLiteralArrayRepeatedElement(
 }
 
 auto spp::parse::ParserSpp::ParseLiteralArrayExplicitElements(
-  std::function<Unique<asts::ExpressionAst>()> &&elem_parser)
+  Func<Unique<asts::ExpressionAst>()> &&elem_parser)
   -> Unique<asts::ArrayLiteralExplicitElementsAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ONE_OR_MORE(p2, elem_parser, ParseTokenComma);

@@ -98,7 +98,7 @@ auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
 
   // One cursor per kind ([0] type, [1] comp): a positional
   // argument binds the next parameter of its own kind.
-  auto next = std::array<std::size_t, 2>{0, 0};
+  auto next = Arr<std::size_t, 2>{0, 0};
   auto out = Vec<GenericParameterAst*>();
   for (const auto arg : args) {
     if (arg->KeywordName() != nullptr) {
@@ -234,7 +234,7 @@ auto spp::analyse::utils::type_resolution::StampTypeParts(
       StampTypeParts(*arg->TypeVal, scope);
       continue;
     }
-    std::ignore = type_predicates::AnyCompPart(
+    ignore = type_predicates::AnyCompPart(
       *arg->CompVal,
       [&scope](IdentifierAst const &name) {
         if (auto const *const sym = scope.FindVarSymbol(&name); sym != nullptr) { StampComp(name, *sym); }
@@ -265,14 +265,14 @@ auto spp::analyse::utils::type_resolution::StampPrecompiledTypes(
   // compares against, read from "TEMPLATE_SYMBOLS".
   for (auto const &tmpl : {TUP, VAR}) {
     if (tmpl != nullptr) {
-      std::ignore = scopes::PrecompiledTemplate(*tmpl, global);
+      ignore = scopes::PrecompiledTemplate(*tmpl, global);
     }
   }
 }
 
 auto spp::analyse::utils::type_resolution::StampCompParts(
   ExpressionAst const &value, Scope const &scope) -> void {
-  std::ignore = type_predicates::AnyCompPart(
+  ignore = type_predicates::AnyCompPart(
     value,
     [&scope](IdentifierAst const &name) {
       if (auto const *const sym = scope.FindVarSymbol(&name); sym != nullptr) { StampComp(name, *sym); }

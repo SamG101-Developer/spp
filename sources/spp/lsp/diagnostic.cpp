@@ -248,10 +248,10 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
     const auto position_of = [](Diagnostic const &d) {
       for (auto const &label : d.Labels) {
         if (label.Primary) {
-          return std::make_tuple(label.Span.File, label.Span.StartLine, label.Span.StartCol);
+          return MakeTuple(label.Span.File, label.Span.StartLine, label.Span.StartCol);
         }
       }
-      return std::make_tuple(Str(), 0uz, 0uz);
+      return MakeTuple(Str(), 0uz, 0uz);
     };
     genex::actions::sort(diagnostics, {}, position_of);
 

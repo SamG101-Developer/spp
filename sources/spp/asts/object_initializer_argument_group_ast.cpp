@@ -145,7 +145,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // only known through them: "a: T" in "MyType[T=Str]" is "Str",
   // but in "MyType(..)" it is whatever the arguments infer - so
   // an overloaded call there has nothing to resolve against.
-  auto bindings = std::optional<GenericSubst>();
+  auto bindings = Opt<GenericSubst>();
   auto const &written_group = meta->ObjectInitType->LastTypePart()->GnArgGroup;
   const auto instance = written_group != nullptr and not written_group->Args.empty()
     ? TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope)

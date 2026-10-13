@@ -7,10 +7,10 @@ import std;
 
 namespace spp::utils::files {
   /// Read the contents of a file into a string.
-  SPP_EXP_FUN auto ReadFile(std::filesystem::path const &path) -> Str;
+  SPP_EXP_FUN auto ReadFile(Path const &path) -> Str;
 
   /// Write a string to a file.
-  SPP_EXP_FUN auto WriteFile(std::filesystem::path const &path, Str const &content) -> void;
+  SPP_EXP_FUN auto WriteFile(Path const &path, Str const &content) -> void;
 
   /// Convert a path to a string for human presentation, using
   /// the right member for the standard library version:
@@ -19,7 +19,7 @@ namespace spp::utils::files {
   /// be lossily transcoded, so only use it for logs, error
   /// messages and other display output - never to reopen the
   /// path.
-  SPP_EXP_FUN auto DisplayString(std::filesystem::path const &path) -> Str;
+  SPP_EXP_FUN auto DisplayString(Path const &path) -> Str;
 
   /// Convert a path to its native-encoded string, using the
   /// right member for the standard library version:
@@ -29,11 +29,11 @@ namespace spp::utils::files {
   /// when the string goes back to the OS or shell, reopens the
   /// file, or is compared against native path components (e.g.
   /// "preferred_separator").
-  SPP_EXP_FUN auto NativeString(std::filesystem::path const &path) -> Str;
+  SPP_EXP_FUN auto NativeString(Path const &path) -> Str;
 
   /// Recursively walk a directory, collecting every ".spp"
   /// file under it.
-  SPP_EXP_FUN auto GlobSpp(std::filesystem::path const &path) -> Vec<std::filesystem::path>;
+  SPP_EXP_FUN auto GlobSpp(Path const &path) -> Vec<Path>;
 
   /// The extension a shared library carries on this host,
   /// without the leading dot: "so", "dylib" or "dll".
@@ -62,7 +62,7 @@ namespace spp::utils::files {
     /// it, waiting for as long as another holder has it. An
     /// exclusive lock is a writer's, otherwise a reader's.
     /// Answers whether the lock was taken.
-    auto Acquire(std::filesystem::path const &path, bool exclusive) -> bool;
+    auto Acquire(Path const &path, bool exclusive) -> bool;
 
   public:
     FileLock() = default;
@@ -89,11 +89,11 @@ namespace spp::utils::files {
 
     /// Take a shared lock (n readers) on the file. Answers
     /// whether the lock was taken.
-    auto LockShared(std::filesystem::path const &path) -> bool;
+    auto LockShared(Path const &path) -> bool;
 
     /// Take an exclusive lock (1 writer) on the file. Answers
     /// whether the lock was taken.
-    auto LockExclusive(std::filesystem::path const &path) -> bool;
+    auto LockExclusive(Path const &path) -> bool;
 
     /// Release the lock and close the file.
     auto Unlock() -> void;

@@ -15,7 +15,7 @@ namespace spp::compiler {
   SPP_EXP_CLS struct CompilerBoot;
 }
 
-inline constexpr auto kCompilerStageNames = std::array{
+inline constexpr auto kCompilerStageNames = spp::Arr{
   "Lexing......................... ",
   "Parsing........................ ",
   "Pre-processing................. ",
@@ -42,7 +42,7 @@ public:
   SPP_ATTR_NODISCARD static auto ModeName(Mode mode) -> Str;
 
 private:
-  std::filesystem::path _Path;
+  Path _Path;
 
   Unique<ModuleTree> _Modules;
 

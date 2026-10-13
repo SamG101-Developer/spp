@@ -63,6 +63,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
 import spp.utils.ptr;
 import spp.utils.types;
+import gch;
 import genex;
 import sys;
 
@@ -666,7 +667,7 @@ namespace spp::analyse::utils::overload_resolution {
     auto BindSlots(
       FunctionCallArgumentGroupAst const &fn_args,
       FunctionParameterGroupAst const &fn_params,
-      std::optional<GenericSubst> const &bindings,
+      Opt<GenericSubst> const &bindings,
       Scope &callee_scope,
       ScopeManager *sm,
       meta::CompilerMetaData *meta)
@@ -1197,7 +1198,7 @@ namespace spp::analyse::utils::overload_resolution {
 
       // Found or made from the solution's identity: no arguments are built.
       auto *const template_proto = fn_proto;
-      std::tie(fn_proto, fn_scope) = monomorphization::FindOrMakeGnSubstitutedPrototype(
+      tie(fn_proto, fn_scope) = monomorphization::FindOrMakeGnSubstitutedPrototype(
         fn_proto, fn_scope, solver.SolvedArgsId(), variadic_pack_type, sm, meta);
       candidate.Proto = fn_proto;
       candidate.FnScope = fn_scope;

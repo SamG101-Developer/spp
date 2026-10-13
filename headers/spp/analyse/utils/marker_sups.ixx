@@ -32,7 +32,7 @@ namespace spp::analyse::utils::marker_sups {
     TypeRef const &ref,
     Scope const &scope,
     ExpressionAst const &expr,
-    std::function<Shared<TypeAst>()> const &spell,
+    FuncRef<Shared<TypeAst>()> spell,
     StrView what,
     bool raise = true)
     -> TypeRef;
@@ -63,7 +63,7 @@ namespace spp::analyse::utils::marker_sups {
   SPP_EXP_FUN auto FindTrySup(
     TypeRef const &ref,
     ExpressionAst const &expr,
-    std::function<Shared<TypeAst>()> const &spell,
+    FuncRef<Shared<TypeAst>()> spell,
     ScopeManager const &sm,
     StrView what,
     bool raise = true)

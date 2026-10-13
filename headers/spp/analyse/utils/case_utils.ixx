@@ -39,7 +39,7 @@ namespace spp::analyse::utils::case_utils {
 
     /// For each branch that cannot, the earliest branch by which
     /// everything it matches is matched.
-    Vec<std::optional<std::size_t>> ShadowedBy;
+    Vec<Opt<std::size_t>> ShadowedBy;
 
     /// Whether control can fall through every branch, and the members
     /// it is left holding if so.
@@ -53,7 +53,7 @@ namespace spp::analyse::utils::case_utils {
   /// this will likely get cleaned away in tidy-ups.
   SPP_EXP_FUN auto MemberOf(
     CaseCoverage const &coverage, CasePatternVariantAst const &pattern,
-    Scope const &scope) -> std::optional<TypeRef>;
+    Scope const &scope) -> Opt<TypeRef>;
 
   /// Whether a branch's patterns are an "else" ("else" or "else
   /// case"), which matches whatever reaches it.

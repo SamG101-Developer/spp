@@ -68,23 +68,23 @@ auto spp::analyse::utils::packs::CompPackElements(
 }
 
 auto spp::analyse::utils::packs::BoundTypePackElements(
-  TypeAst const &type, Scope const &scope) -> std::optional<Vec<Shared<TypeAst>>> {
+  TypeAst const &type, Scope const &scope) -> Opt<Vec<Shared<TypeAst>>> {
   //
-  if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.empty()) { return std::nullopt; }
+  if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.empty()) { return Nullopt; }
   const auto sym = FindTypePack(type, scope);
   if (sym == nullptr or not type_predicates::IsTypeTuple(
     TypeRef::ForKindCheck(*sym, scope), scope)) {
-    return std::nullopt;
+    return Nullopt;
   }
   return TypePackElements(*sym->FqName());
 }
 
 auto spp::analyse::utils::packs::BoundCompPackElements(
-  ExpressionAst const &value, Scope const &scope) -> std::optional<Vec<ExpressionAst*>> {
+  ExpressionAst const &value, Scope const &scope) -> Opt<Vec<ExpressionAst*>> {
   //
   auto const *const sym = FindCompPack(value, scope);
   auto const *const bound = sym != nullptr ? sym->AsBound()->BoundCompVal() : nullptr;
-  if (bound == nullptr or bound->To<TupleLiteralAst>() == nullptr) { return std::nullopt; }
+  if (bound == nullptr or bound->To<TupleLiteralAst>() == nullptr) { return Nullopt; }
   return CompPackElements(*bound);
 }
 

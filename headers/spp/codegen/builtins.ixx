@@ -18,7 +18,7 @@ use(spp::codegen::builtins, struct LoweredFnImpl);
 /// written with LLVM IR directly. Typically this is to use
 /// intrinsic functions, or non s++ expressible logic.
 SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
-  Function<void(
+  Func<void(
     ScopeManager *,
     FunctionPrototypeAst const *,
     meta::CompilerMetaData *,

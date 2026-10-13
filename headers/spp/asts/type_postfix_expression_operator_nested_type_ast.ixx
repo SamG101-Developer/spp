@@ -17,11 +17,11 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorNestedTypeAst final :
   SPP_AST_KEY_FUNCTIONS(TypePostfixExpressionOperatorNestedTypeAst);
 
   /// The "::" namespace operator token.
-  std::unique_ptr<TokenAst> TokSep;
+  Unique<TokenAst> TokSep;
 
   /// The nested type identifier being accessed within the
   /// outer type.
-  std::shared_ptr<TypeIdentifierAst> Name;
+  Shared<TypeIdentifierAst> Name;
 
   TypePostfixExpressionOperatorNestedTypeAst(
     decltype(TokSep) &&tok_sep,

@@ -71,7 +71,7 @@ namespace spp::analyse::scopes {
     template <typename S>
     auto ParentModuleOf(S *scope) -> S* {
       for (; scope != nullptr; scope = scope->Parent) {
-        if (std::holds_alternative<ScopeIdentifierName>(scope->Name)) { return scope; }
+        if (holds_alternative<ScopeIdentifierName>(scope->Name)) { return scope; }
       }
       return nullptr;
     }
@@ -121,7 +121,7 @@ namespace spp::analyse::scopes {
 
     /// The decimal places "value" needs to print exactly, or none when its decimal does not terminate: its denominator
     /// (in lowest terms) has a prime factor other than 2 and 5.
-    auto ExactDecimalPlaces(numex::BigDec const &value) -> std::optional<std::uint64_t> {
+    auto ExactDecimalPlaces(numex::BigDec const &value) -> Opt<std::uint64_t> {
       auto den = value.GetDenominator();
       auto twos = static_cast<std::uint64_t>(0);
       auto fives = static_cast<std::uint64_t>(0);
@@ -133,7 +133,7 @@ namespace spp::analyse::scopes {
         den /= numex::BigInt(5);
         ++fives;
       }
-      return den == numex::BigInt(1) ? std::optional(std::max(twos, fives)) : std::nullopt;
+      return den == numex::BigInt(1) ? Opt(std::max(twos, fives)) : Nullopt;
     }
 
     /// The binding a scope gives a generic parameter, by the parameter's identity
@@ -265,7 +265,7 @@ namespace {
   /// The binary operator a comp identity's operation spells ("+", "<<"), as the token a written one carries.
   auto CompOperatorToken(
     const spp::StrView op)
-    -> std::optional<spp::lex::SppTokenType> {
+    -> spp::Opt<spp::lex::SppTokenType> {
     using spp::lex::SppTokenType;
     for (const auto tok : {
            SppTokenType::TK_ADD, SppTokenType::TK_SUB, SppTokenType::TK_MUL, SppTokenType::TK_DIV, SppTokenType::TK_REM,
@@ -275,7 +275,7 @@ namespace {
          }) {
       if (spp::lex::TokToString(tok) == op) { return tok; }
     }
-    return std::nullopt;
+    return spp::Nullopt;
   }
 
   /// The template a name with arguments instantiates, found
@@ -1862,7 +1862,7 @@ auto Scope::FindEnclosingSelfType(
   // If we are already in a module scope, there is no self
   // type. Easy shortcut (and downstream error prevention).
   auto current_scope = this;
-  if (std::holds_alternative<ScopeIdentifierName>(current_scope->Name)) {
+  if (holds_alternative<ScopeIdentifierName>(current_scope->Name)) {
     return nullptr;
   }
 
@@ -1903,7 +1903,7 @@ auto Scope::FindEnclosingSelfType(
     if (current_scope->Parent == nullptr) { return nullptr; }
 
     // Only get a scope right under the module scope.
-    if (not std::holds_alternative<ScopeIdentifierName>(current_scope->Parent->Name)) {
+    if (not holds_alternative<ScopeIdentifierName>(current_scope->Parent->Name)) {
       current_scope = current_scope->Parent;
       continue;
     }
@@ -1946,7 +1946,7 @@ auto Scope::GetSupScopes() const -> SupScopeList {
   // Cache the result given we didn't use the cache if we reach
   // this point. A new list replaces the old one rather than
   // overwriting it, so the answers handed out stay intact.
-  _SupScopesCache = std::make_shared<Vec<Scope*> const>(std::move(scopes));
+  _SupScopesCache = MakeShared<Vec<Scope*> const>(std::move(scopes));
   _SupScopesGen = TypeStructureGeneration() == generation ? generation : 0;
   return SupScopeList(_SupScopesCache);
 }
@@ -1994,21 +1994,21 @@ auto Scope::FindNsScope(
 auto Scope::NameAsString() const -> Str {
   // Identifier based scope name (get the "std::string"
   // field via the "ToString()" call).
-  if (std::holds_alternative<ScopeIdentifierName>(Name)) {
-    auto const name_as_id = std::get<ScopeIdentifierName>(Name).Name;
+  if (holds_alternative<ScopeIdentifierName>(Name)) {
+    auto const name_as_id = get<ScopeIdentifierName>(Name).Name;
     return name_as_id->ToString();
   }
 
   // TypeIdentifier based scope name (get the "std::string"
   // creation from the "ToString()" call).
-  if (std::holds_alternative<ScopeTypeIdentifierName>(Name)) {
-    auto const name_as_type = std::get<ScopeTypeIdentifierName>(Name).Name;
+  if (holds_alternative<ScopeTypeIdentifierName>(Name)) {
+    auto const name_as_type = get<ScopeTypeIdentifierName>(Name).Name;
     return name_as_type->ToString();
   }
 
   // Block name (already contains a std::string), so copy
   // it out.
-  auto const name_as_block_name = std::get<ScopeBlockName>(Name).Name;
+  auto const name_as_block_name = get<ScopeBlockName>(Name).Name;
   return name_as_block_name;
 }
 

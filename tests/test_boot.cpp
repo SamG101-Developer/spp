@@ -86,7 +86,7 @@ namespace {
  * @return The values the module's compile-time constants resolved to, by name. Reading a "cmp" back is the only way a
  * test can check what comp-time resolution computed rather than merely that it finished; see SPP_TEST_CMP_VALUES.
  */
-auto build_temp_project(std::string code, const bool add_main) -> spp::Map<spp::Str, spp::Str> {
+auto build_temp_project(spp::Str code, const bool add_main) -> spp::Map<spp::Str, spp::Str> {
   const auto cwd = std::filesystem::current_path();
   constexpr auto fp = "../../tests/test_outputs";
 

@@ -30,10 +30,10 @@ namespace spp::utils::numbers {
   /// (its literal suffix), as the same bits read back.
   /// Nothing for an unknown type.
   SPP_EXP_FUN auto WrapToInteger(
-    numex::BigInt const &value, Str const &type) -> std::optional<numex::BigInt>;
+    numex::BigInt const &value, Str const &type) -> Opt<numex::BigInt>;
 
   /// The "value" as a "u64", when it is one: nothing when
   /// it is negative or past the top of the range.
   SPP_EXP_FUN auto ToU64(
-    numex::BigInt const &value) -> std::optional<std::uint64_t>;
+    numex::BigInt const &value) -> Opt<std::uint64_t>;
 }

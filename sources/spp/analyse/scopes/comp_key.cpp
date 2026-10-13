@@ -12,9 +12,9 @@ namespace spp::analyse::scopes {
   namespace {
     /// [CHECKED]
     /// A shift count, as the shift intrinsics read one.
-    auto ShiftCount(numex::BigInt const &count) -> std::optional<std::uint32_t> {
+    auto ShiftCount(numex::BigInt const &count) -> Opt<std::uint32_t> {
       const auto value = spp::utils::numbers::ToU64(count);
-      return value.has_value() ? std::optional(static_cast<std::uint32_t>(*value)) : std::nullopt;
+      return value.has_value() ? Opt(static_cast<std::uint32_t>(*value)) : Nullopt;
     }
 
     /// Whether a constant named through the "type" (a "TypeId"'s
@@ -37,16 +37,16 @@ auto spp::analyse::scopes::FoldCompValues(
   const StrView op,
   CompKey const &lhs,
   CompKey const &rhs)
-  -> std::optional<CompKey> {
+  -> Opt<CompKey> {
   // Two bools compare for equality, and nothing else.
   // Todo: "and" & "or" for bools?
   const auto lhs_bool = lhs.AsBool();
   const auto rhs_bool = rhs.AsBool();
   if (lhs_bool != nullptr or rhs_bool != nullptr) {
-    if (lhs_bool == nullptr or rhs_bool == nullptr) { return std::nullopt; }
+    if (lhs_bool == nullptr or rhs_bool == nullptr) { return Nullopt; }
     if (op == "==") { return CompKey::OfBool(*lhs_bool == *rhs_bool); }
     if (op == "!=") { return CompKey::OfBool(*lhs_bool != *rhs_bool); }
-    return std::nullopt;
+    return Nullopt;
   }
 
   // Two floats fold exactly, by the four operations and the
@@ -55,21 +55,21 @@ auto spp::analyse::scopes::FoldCompValues(
   const auto lf = lhs.AsFloat();
   const auto rf = rhs.AsFloat();
   if (lf != nullptr or rf != nullptr) {
-    if (lf == nullptr or rf == nullptr) { return std::nullopt; }
-    if (not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return std::nullopt; }
+    if (lf == nullptr or rf == nullptr) { return Nullopt; }
+    if (not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return Nullopt; }
     auto const &type = not lhs.Text.empty() ? lhs.Text : rhs.Text;
-    const auto of = [&type](numex::BigDec value) { return std::optional(CompKey::OfFloat(std::move(value), type)); };
+    const auto of = [&type](numex::BigDec value) { return Opt(CompKey::OfFloat(std::move(value), type)); };
     if (op == "+") { return of(*lf + *rf); }
     if (op == "-") { return of(*lf - *rf); }
     if (op == "*") { return of(*lf * *rf); }
-    if (op == "/") { return *rf == numex::BigDec(0) ? std::nullopt : of(*lf / *rf); }
+    if (op == "/") { return *rf == numex::BigDec(0) ? Nullopt : of(*lf / *rf); }
     if (op == "==") { return CompKey::OfBool(*lf == *rf); }
     if (op == "!=") { return CompKey::OfBool(*lf != *rf); }
     if (op == "<") { return CompKey::OfBool(*lf < *rf); }
     if (op == "<=") { return CompKey::OfBool(*lf <= *rf); }
     if (op == ">") { return CompKey::OfBool(*lf > *rf); }
     if (op == ">=") { return CompKey::OfBool(*lf >= *rf); }
-    return std::nullopt;
+    return Nullopt;
   }
 
   // An unsuffixed integer takes the other side's type, as it
@@ -78,33 +78,33 @@ auto spp::analyse::scopes::FoldCompValues(
   // type ("U32"), so a shift is typed by the value shifted alone.
   const auto l = lhs.AsInt();
   const auto r = rhs.AsInt();
-  if (l == nullptr or r == nullptr) { return std::nullopt; }
+  if (l == nullptr or r == nullptr) { return Nullopt; }
   auto const &a = *l;
   auto const &b = *r;
   auto const &l_type = lhs.Text;
   auto const &r_type = rhs.Text;
   const auto is_shift = op == "<<" or op == ">>";
-  if (not is_shift and not l_type.empty() and not r_type.empty() and l_type != r_type) { return std::nullopt; }
+  if (not is_shift and not l_type.empty() and not r_type.empty() and l_type != r_type) { return Nullopt; }
   const auto type = is_shift or not l_type.empty() ? l_type : r_type;
   const auto by_zero = b == numex::BigInt(0);
-  const auto of = [&type](numex::BigInt value) { return std::optional(CompKey::OfInt(std::move(value), type)); };
+  const auto of = [&type](numex::BigInt value) { return Opt(CompKey::OfInt(std::move(value), type)); };
 
   if (op == "+") { return of(a + b); }
   if (op == "-") { return of(a - b); }
   if (op == "*") { return of(a * b); }
-  if (op == "/") { return by_zero ? std::nullopt : of(a / b); }
-  if (op == "%") { return by_zero ? std::nullopt : of(a % b); }
+  if (op == "/") { return by_zero ? Nullopt : of(a / b); }
+  if (op == "%") { return by_zero ? Nullopt : of(a % b); }
   if (op == "|") { return of(a | b); }
   if (op == "&") { return of(a & b); }
   if (op == "^") { return of(a ^ b); }
   if (op == "<<") {
     const auto count = ShiftCount(b);
-    auto wrapped = count.has_value() ? spp::utils::numbers::WrapToInteger(a << *count, type) : std::nullopt;
-    return wrapped.has_value() ? of(std::move(*wrapped)) : std::nullopt;
+    auto wrapped = count.has_value() ? spp::utils::numbers::WrapToInteger(a << *count, type) : Nullopt;
+    return wrapped.has_value() ? of(std::move(*wrapped)) : Nullopt;
   }
   if (op == ">>") {
     const auto count = ShiftCount(b);
-    return count.has_value() ? of(a >> *count) : std::nullopt;
+    return count.has_value() ? of(a >> *count) : Nullopt;
   }
   if (op == "==") { return CompKey::OfBool(a == b); }
   if (op == "!=") { return CompKey::OfBool(a != b); }
@@ -112,7 +112,7 @@ auto spp::analyse::scopes::FoldCompValues(
   if (op == "<=") { return CompKey::OfBool(a <= b); }
   if (op == ">") { return CompKey::OfBool(a > b); }
   if (op == ">=") { return CompKey::OfBool(a >= b); }
-  return std::nullopt;
+  return Nullopt;
 }
 
 /// [CHECKED]
@@ -130,10 +130,10 @@ auto spp::analyse::scopes::ParamsNamedBy(
 
 /// [CHECKED]
 auto spp::analyse::scopes::MembersNamedBy(
-  const CompId id) -> Vec<std::pair<std::uint64_t, Str>> {
+  const CompId id) -> Vec<Pair<std::uint64_t, Str>> {
   // Collect all the parts of the comp key that are "Member"
   // parts, and push them into one collection.
-  auto out = Vec<std::pair<std::uint64_t, Str>>();
+  auto out = Vec<Pair<std::uint64_t, Str>>();
   if (id == nullptr) { return out; }
   id->Visit([&out](CompKey const &part) {
     if (part.Kind == CompKey::Part::Member) { out.emplace_back(part.Type, part.Text); }
@@ -153,12 +153,12 @@ auto spp::analyse::scopes::IsValueCompId(
 
 /// [CHECKED]
 auto spp::analyse::scopes::U64Of(
-  const CompId id) -> std::optional<std::uint64_t> {
+  const CompId id) -> Opt<std::uint64_t> {
   // Check the comp id is (internally) holding an integer, and
   // if so, cast it into a U64. Used for array sizes, atomics
   // in the llvm manual lowering, etc.
   const auto value = id != nullptr ? id->AsInt() : nullptr;
-  return value != nullptr ? spp::utils::numbers::ToU64(*value) : std::nullopt;
+  return value != nullptr ? spp::utils::numbers::ToU64(*value) : Nullopt;
 }
 
 /// [CHECKED]

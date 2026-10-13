@@ -99,7 +99,7 @@ private:
     Shared<TypeAst> SelfType;
   };
 
-  std::optional<_OInfo> _OverloadInfo;
+  Opt<_OInfo> _OverloadInfo;
   Unique<PostfixExpressionAst> _TransformedLhs;
   Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
   Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;

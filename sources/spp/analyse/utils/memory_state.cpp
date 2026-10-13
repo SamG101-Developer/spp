@@ -23,6 +23,7 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.utils.ptr;
+import gch;
 import genex;
 import std;
 
@@ -95,7 +96,7 @@ auto MemoryState::InitializedBy(
   // Clear the "maybe init" flag, nothing is owed as this is
   // a fresh value, and there are no partial moves.
   // Todo: PartialMoves.clear()?
-  MaybeInit = std::nullopt;
+  MaybeInit = Nullopt;
   OwesNothing = false;
   MaybePartialMoves.clear();
 }
@@ -110,7 +111,7 @@ auto MemoryState::MovedBy(
   // Clear the partial moves, the "maybe init" and the "maybe
   // partial moves" too.
   PartialMoves.clear();
-  MaybeInit = std::nullopt;
+  MaybeInit = Nullopt;
   MaybePartialMoves.clear();
 }
 
@@ -135,7 +136,7 @@ auto MemoryState::RemovePartialMoves(
   // region cannot be completed => nullopt.
   const auto written = scope != nullptr
     ? regions::PlaceOf(ast, *scope)
-    : std::nullopt;
+    : Nullopt;
 
   // A "place at an ast" is considered "written" if the place
   // exists, and the move's place is the written place.

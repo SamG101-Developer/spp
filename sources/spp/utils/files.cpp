@@ -18,7 +18,7 @@ import genex;
 import std;
 
 auto spp::utils::files::DisplayString(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
 #if _GLIBCXX_RELEASE >= 17
   return path.display_string();
@@ -28,7 +28,7 @@ auto spp::utils::files::DisplayString(
 }
 
 auto spp::utils::files::NativeString(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
 #if _GLIBCXX_RELEASE >= 17
   return path.native_encoded_string();
@@ -38,7 +38,7 @@ auto spp::utils::files::NativeString(
 }
 
 auto spp::utils::files::ReadFile(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
   // Create an input file stream.
   auto in = std::ifstream(path, std::ios::in);
@@ -48,7 +48,7 @@ auto spp::utils::files::ReadFile(
 }
 
 auto spp::utils::files::WriteFile(
-  std::filesystem::path const &path,
+  Path const &path,
   Str const &content)
   -> void {
   // Create an output file stream.
@@ -62,7 +62,7 @@ spp::utils::files::FileLock::~FileLock() {
 }
 
 auto spp::utils::files::FileLock::Acquire(
-  std::filesystem::path const &path,
+  Path const &path,
   const bool exclusive)
   -> bool {
   // A second lock from the same object would leak the first
@@ -107,13 +107,13 @@ auto spp::utils::files::FileLock::Acquire(
 }
 
 auto spp::utils::files::FileLock::LockShared(
-  std::filesystem::path const &path)
+  Path const &path)
   -> bool {
   return Acquire(path, false);
 }
 
 auto spp::utils::files::FileLock::LockExclusive(
-  std::filesystem::path const &path)
+  Path const &path)
   -> bool {
   return Acquire(path, true);
 }
@@ -138,11 +138,11 @@ auto spp::utils::files::FileLock::Unlock()
 SPP_MOD_END
 
 auto spp::utils::files::GlobSpp(
-  std::filesystem::path const &path)
-  -> Vec<std::filesystem::path> {
+  Path const &path)
+  -> Vec<Path> {
   // Use the filesystem iterator to recursively walk the path,
   // finding all ".spp" files.
-  auto paths = Vec<std::filesystem::path>();
+  auto paths = Vec<Path>();
   for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
     if (not entry.is_regular_file()) { continue; }
     if (entry.path().extension() != ".spp") { continue; }

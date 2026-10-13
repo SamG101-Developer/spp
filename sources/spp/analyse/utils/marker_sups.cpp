@@ -46,7 +46,7 @@ namespace spp::analyse::utils::marker_sups {
     auto FindMarkerSups(
       TypeRef const &ref,
       Scope const &scope,
-      std::function<bool(TypeRef const&)> const &is_marker)
+      FuncRef<bool(TypeRef const&)> is_marker)
       -> Vec<TypeRef> {
       auto found = Vec<TypeRef>();
       if (is_marker(ref)) { found.emplace_back(ref); }
@@ -98,7 +98,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   TypeRef const &ref,
   Scope const &scope,
   ExpressionAst const &expr,
-  std::function<Shared<TypeAst>()> const &spell,
+  FuncRef<Shared<TypeAst>()> spell,
   StrView what,
   const bool raise)
   -> TypeRef {
@@ -192,7 +192,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
 auto spp::analyse::utils::marker_sups::FindTrySup(
   TypeRef const &ref,
   ExpressionAst const &expr,
-  std::function<Shared<TypeAst>()> const &spell,
+  FuncRef<Shared<TypeAst>()> spell,
   ScopeManager const &sm,
   StrView what,
   const bool raise)

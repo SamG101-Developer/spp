@@ -623,7 +623,7 @@ auto spp::lsp::resolution_index::RecordIdentifier(
 
 auto spp::lsp::resolution_index::RecordExpression(
   Ast const &use, ScopeManager const &sm, CompilerMetaData const &meta,
-  std::function<Shared<TypeAst>()> const &infer) -> void {
+  FuncRef<Shared<TypeAst>()> infer) -> void {
   // If we are not bothered about this scope, then return early;
   // no work needs to be done here.
   auto const &use_scope = *sm.CurrentScope;

@@ -75,20 +75,20 @@ namespace {
   /// one argument is its value. The kind is as found, so a caller reads the field it wants, and gets null from a name
   /// of the other kind (each parameter's name has one kind).
   auto IdArgNamed(
-    TypeSymbol const &inst, spp::Str const &name) -> std::optional<TypeIdArg> {
+    TypeSymbol const &inst, spp::Str const &name) -> spp::Opt<TypeIdArg> {
     using namespace spp::analyse::scopes;
     if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) {
-      return std::nullopt;
+      return spp::Nullopt;
     }
     auto const *const tmpl = HeadOf(inst.Id).Symbol();
     auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
-    if (params == nullptr) { return std::nullopt; }
+    if (params == nullptr) { return spp::Nullopt; }
     for (auto const *param : params->GetAllParams()) {
       if (param->Name->ToString() == name and param->ParamId() != 0) {
         return FindArgOf(HeadOf(inst.Id).Args, param->ParamId());
       }
     }
-    return std::nullopt;
+    return spp::Nullopt;
   }
 
   /// What a written type names here ("Scope::FindTypeSymbol");
@@ -430,7 +430,7 @@ auto TypeSymbol::IsCopyable() const -> bool {
       // are all copyable: copying "P[Str]" would copy the "Str",
       // which is then destroyed twice. Such an instance is linear.
       return genex::all_of(utils::type_members::GetAllAttrs(*this), [](auto const &attr) {
-        auto const *const attr_sym = std::get<1>(attr).Symbol;
+        auto const *const attr_sym = get<1>(attr).Symbol;
         return attr_sym == nullptr or attr_sym->IsCopyable();
       });
     }
@@ -518,7 +518,7 @@ auto VariableSymbol::FqName() const -> Shared<ExpressionAst> {
   auto scopes = Vec<Scope*>();
 
   while (qualifier_scope->Parent != nullptr) {
-    while (std::holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
+    while (holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;
     }
     scopes.emplace_back(qualifier_scope);
@@ -526,9 +526,9 @@ auto VariableSymbol::FqName() const -> Shared<ExpressionAst> {
   }
 
   auto qualified_name = Unique<ExpressionAst>(nullptr);
-  qualified_name = AstClone(std::get<ScopeIdentifierName>(scopes.back()->Name).Name);
+  qualified_name = AstClone(get<ScopeIdentifierName>(scopes.back()->Name).Name);
   for (auto qualifier_scope : scopes | genex::views::reverse | genex::views::drop(1)) {
-    const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
+    const auto raw_ns_name = get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
     auto ns_name = MakeShared<IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
     auto ns_op = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(nullptr, std::move(ns_name));
     qualified_name = MakeUnique<PostfixExpressionAst>(std::move(qualified_name), std::move(ns_op));
@@ -809,10 +809,10 @@ auto TypeSymbol::FqName(
   auto qualifier_scope = LinkedScope->Parent;
   auto qualified_name = records_id ? AstCloneShared(Name) : dynamic_shared_cast<TypeAst>(Name);
   while (qualifier_scope->Parent != nullptr) {
-    while (std::holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
+    while (holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;
     }
-    const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
+    const auto raw_ns_name = get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
     auto ns_name = MakeShared<IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
     auto ns_op = MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(std::move(ns_name), nullptr);
     qualified_name = MakeShared<TypeUnaryExpressionAst>(std::move(ns_op), std::move(qualified_name));
@@ -919,7 +919,7 @@ auto TypeRef::FromId(
   if (missing == OnMissing::Make and sym == nullptr and id != nullptr
     and not id->HasSelf and open != nullptr and open->Alias == nullptr) {
     if (HeadOf(id).IsInstance()) {
-      std::ignore = MakeOnRead(scope, *open, id);
+      ignore = MakeOnRead(scope, *open, id);
       sym = scope.FindTypeSymbolById(id);
     }
   }
@@ -950,7 +950,7 @@ auto TypeRef::Of(
 /// [CHECKED]
 auto TypeRef::Of(
   TypeSymbol &sym, Scope const &scope,
-  const std::optional<ConventionTag> conv,
+  const Opt<ConventionTag> conv,
   const OnMissing missing) -> TypeRef {
   // Get the id of the type symbol, and get the "bare" id
   // version of it.
@@ -971,8 +971,8 @@ auto TypeRef::Of(
 /// [CHECKED]
 auto TypeRef::Of(
   const TypeId id, Scope const &scope,
-  const std::optional<ConventionTag> conv,
-  const std::optional<bool> never) -> TypeRef {
+  const Opt<ConventionTag> conv,
+  const Opt<bool> never) -> TypeRef {
   // An identity carries its convention, and "!" is the
   // "Never" class by identity. This is the main function
   // to create a type ref.
@@ -1108,7 +1108,7 @@ auto spp::analyse::scopes::PrecompiledTemplate(
   // the cache map. Return the symbol.
   if (auto held = static_shared_cast<TypeAst const>(
     tmpl.weak_from_this().lock()); held != nullptr) {
-    cache.emplace(&tmpl, std::make_pair(std::move(held), sym));
+    cache.emplace(&tmpl, MakePair(std::move(held), sym));
   }
   return sym;
 }

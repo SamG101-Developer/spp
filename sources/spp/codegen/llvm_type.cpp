@@ -81,13 +81,13 @@ namespace spp::codegen {
       analyse::scopes::TypeSymbol const &sym,
       analyse::scopes::Scope const &scope,
       LlvmCtx const *ctx)
-      -> std::optional<Vec<llvm::Type*>> {
+      -> Opt<Vec<llvm::Type*>> {
       using analyse::utils::type_predicates::IsTypeFunction;
       const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
       if (IsTypeFunction(analyse::scopes::TypeRef::ForKindCheck(sym, scope), scope)) {
         return Vec<llvm::Type*>{ptr_ty, ptr_ty};
       }
-      return std::nullopt;
+      return Nullopt;
     }
   }
 }

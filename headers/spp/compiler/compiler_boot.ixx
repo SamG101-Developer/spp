@@ -190,8 +190,8 @@ private:
    * @param[in] project_root The directory to sweep.
    */
   SPP_ATTR_NODISCARD static auto _FfiLibraries(
-    std::filesystem::path const &project_root)
-    -> Vec<std::filesystem::path>;
+    Path const &project_root)
+    -> Vec<Path>;
 
   /**
    * The source of the entry point a test build is run through: a "main" that calls every discovered unit test in turn,

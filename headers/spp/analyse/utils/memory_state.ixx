@@ -72,7 +72,7 @@ namespace spp::analyse::utils::memory_state {
     /// Held on only some of the paths that met, and which. So
     /// when one path creates the escaping borrow and another
     /// doesn't, leaving an inconsistent state.
-    std::optional<PathsDisagree> Maybe;
+    Opt<PathsDisagree> Maybe;
 
     /// Made for a binding still being declared ("let h = c(&x)"):
     /// until it is ("ActivateLoans"), the expression making it is
@@ -81,7 +81,7 @@ namespace spp::analyse::utils::memory_state {
 
     /// A conflict met while it was held by a holder that acts
     /// only when used, waiting on the holder's next use.
-    std::optional<LoanConflict> Conflict;
+    Opt<LoanConflict> Conflict;
 
     /// The holder, a borrow binding, was passed on somewhere that
     /// is not tracked (a block's or a branch's result): whatever
@@ -116,7 +116,7 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::MemoryState {
   /// others (initialized on one, moved or never given a value on
   /// another). "AstInitialization" and "AstMoved" are the first
   /// path's.
-  std::optional<PathsDisagree> MaybeInit;
+  Opt<PathsDisagree> MaybeInit;
 
   /// What the symbol still holds on every path is "Copy", so
   /// it is owed to nobody: a "case" subject narrowed to "None",
@@ -246,7 +246,7 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::FlowState {
   Vec<LoopFrame> Loops;
 
   /// The "defer" being checked at an exit, if one is.
-  std::optional<DeferExit> Deferring;
+  Opt<DeferExit> Deferring;
 
   /// The temporaries kept by the "case" branches being checked.
   Vec<KeptTemporary> KeptTemporaries;
