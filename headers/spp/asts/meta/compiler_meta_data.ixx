@@ -26,6 +26,7 @@ use(spp::asts::meta, enum class SubjectOnMatch : std::uint8_t);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
 use(spp::asts::meta, struct LlvmLoopInfo);
+use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
 use(spp::codegen, struct LlvmCtx);
 
@@ -156,13 +157,17 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// scope, in order. An "is" binding only exists where the match
   /// is known to have succeeded - on the right of an "and", in the
   /// branch it conditions - so the users of "is" move the ones
-  /// they no longer cover into "ExpiredIsBindings".
+  /// they no longer cover into "ExpiredIsBindings". Not restored
+  /// by "MetaGuard": it carries bindings up to the "case", "and"
+  /// or block reading them, each slicing off what was added after
+  /// the length it noted. A function body bounds it instead
+  /// ("IsBindingsScope").
   Vec<VariableSymbol*> AddedIsBindings;
 
   /// "is" bindings no longer in force: an identifier resolving to
   /// one is reported as unknown. They stay in their scope, as
   /// later stages still find them by name for the code that could
-  /// use them.
+  /// use them. Carried up and bounded as "AddedIsBindings" is.
   Vec<VariableSymbol*> ExpiredIsBindings;
 
   /// The actual "current scope" of the program, which has been
@@ -308,6 +313,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
   Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
   Unique<ExpressionAst> CompTimeResult;
+
+  /// Whether a comp-time "ret" has run, so the blocks and loops
+  /// around it stop. Carried up, as "CompTimeResult" is, so no
+  /// guard restores it; a comp-time function call is its own
+  /// frame and saves and restores it around its body.
   bool CompTimeReturned = false;
 
   /// The outermost call a comp-time evaluation started from, and
@@ -329,7 +339,9 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// Track whether we are in a S++ test harness ie is the module
   /// in the "tst" folder not "src". Used to prevent certain
-  /// actions.
+  /// actions. Not context: it is set per module as each is booted
+  /// (and when a module's pending defaults are analysed), so no
+  /// guard restores it and "ResetContext" leaves it alone.
   bool IsTestHarness = false;
 
   /// Whitelist contexts where abstract types are allows to appear,
@@ -411,4 +423,22 @@ private:
 
   /// Whether to restore the "heavy" fields too.
   bool _Heavy;
+};
+
+/// Bounds the "is" binding lists ("AddedIsBindings",
+/// "ExpiredIsBindings") to a function body: no "is" binding
+/// outlives the function it is written in. Both are cut back to
+/// their lengths at construction when this is destroyed - on an
+/// error too, so a body abandoned midway leaves nothing behind.
+SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
+  explicit IsBindingsScope(CompilerMetaData *meta);
+  ~IsBindingsScope();
+
+  IsBindingsScope(IsBindingsScope const &) = delete;
+  auto operator=(IsBindingsScope const &) -> IsBindingsScope& = delete;
+
+private:
+  meta::CompilerMetaData *_Meta;
+  std::size_t _Added;
+  std::size_t _Expired;
 };

@@ -121,7 +121,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
     meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
     meta->EnclosingFnScope = sm->CurrentScope;
-    Impl->Stage7_AnalyseSemantics(sm, meta);
+    {
+      const auto _is_bindings = IsBindingsScope(meta);
+      Impl->Stage7_AnalyseSemantics(sm, meta);
+    }
 
     // Check the return type superimposes the generator type.
     const auto gen = marker_sups::FindGenSup(

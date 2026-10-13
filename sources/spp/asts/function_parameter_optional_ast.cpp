@@ -14,6 +14,7 @@ import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
@@ -88,9 +89,11 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
 
   // Standard ast shape check on what's valid as a primary
   // expression.
-  meta->ParameterDefaultScope = sm->CurrentScope;
-  DefaultVal->Stage7_AnalyseSemantics(sm, meta);
-  meta->ParameterDefaultScope = nullptr;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->ParameterDefaultScope = sm->CurrentScope;
+    DefaultVal->Stage7_AnalyseSemantics(sm, meta);
+  }
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*DefaultVal, *sm),
     {sm->CurrentScope}, ERR_ARGS(*DefaultVal));

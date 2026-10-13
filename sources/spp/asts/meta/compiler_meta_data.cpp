@@ -58,6 +58,7 @@ auto CompilerMetaData::ResetContext() -> void {
   AllowAbstractType = false;
   CompTimeCallSite = nullptr;
   CompTimeCallSiteScope = nullptr;
+  ParameterDefaultScope = nullptr;
 }
 
 auto CompilerMetaData::Save() -> void {
@@ -123,6 +124,7 @@ auto CompilerMetaData::Save() -> void {
   s.AllowAbstractType = AllowAbstractType;
   s.CompTimeCallSite = CompTimeCallSite;
   s.CompTimeCallSiteScope = CompTimeCallSiteScope;
+  s.ParameterDefaultScope = ParameterDefaultScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
@@ -186,6 +188,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   AllowAbstractType = state.AllowAbstractType;
   CompTimeCallSite = state.CompTimeCallSite;
   CompTimeCallSiteScope = state.CompTimeCallSiteScope;
+  ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
@@ -206,6 +209,18 @@ MetaGuard::MetaGuard(
 
 MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
+}
+
+IsBindingsScope::IsBindingsScope(
+  CompilerMetaData *const meta) :
+  _Meta(meta),
+  _Added(meta->AddedIsBindings.size()),
+  _Expired(meta->ExpiredIsBindings.size()) {
+}
+
+IsBindingsScope::~IsBindingsScope() {
+  _Meta->AddedIsBindings.resize(_Added);
+  _Meta->ExpiredIsBindings.resize(_Expired);
 }
 
 SPP_MOD_END

@@ -82,7 +82,10 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
   meta->EnclosingFnScope = sm->CurrentScope;
   meta->EnclosingFnCmp = TokCmp.get();
-  Impl->Stage7_AnalyseSemantics(sm, meta);
+  {
+    const auto _is_bindings = IsBindingsScope(meta);
+    Impl->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Check for a void return type.
   const auto is_void = type_compare::TypeEq(
