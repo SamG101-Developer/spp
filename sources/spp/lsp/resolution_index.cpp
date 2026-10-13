@@ -204,11 +204,9 @@ namespace spp::lsp::resolution_index {
       TypeSymbol const &sym,
       const bool generics)
       -> bool {
-      // Check the flags on the symbol, the name as a failsafe,
-      // the generic state vs whether generics are allowed, and
-      // the symbol kind.
+      // Check the flags on the symbol, the generic state vs
+      // whether generics are allowed, and the symbol kind.
       if (sym.Name == nullptr or sym.InstanceOf != nullptr or sym.IsMock() or sym.IsSelf()) { return false; }
-      if (sym.Name->ToString().starts_with("$")) { return false; }
       if (sym.IsGn()) { return generics; }
       return sym.Kind == TypeKind::Cls or sym.Kind == TypeKind::Alias;
     }
@@ -219,9 +217,8 @@ namespace spp::lsp::resolution_index {
     auto IsWritableVarName(
       VariableSymbol const &sym)
       -> bool {
-      // Check the flags on the symbol, and the name as a failsafe.
-      if (sym.Name == nullptr or sym.Kind == VariableKind::Temporary) { return false; }
-      return not sym.Name->ToString().starts_with("$");
+      // Every "$" variable is declared "Temporary".
+      return sym.Name != nullptr and sym.Kind != VariableKind::Temporary;
     }
 
     /// The uniform key creation function the the "seen" tables.

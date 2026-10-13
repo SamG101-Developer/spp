@@ -131,9 +131,9 @@ namespace spp::codegen {
       return ScalarLayout(sizeof(std::size_t));
     }
 
-    // A "$" mock is a function used as a value, so it shares
-    // a function value's shape.
-    if (IsTypeFunction(ref, scope) or sym.Name->IsCompilerGeneratedType()) {
+    // A mock is a function used as a value, so it shares a
+    // function value's shape.
+    if (IsTypeFunction(ref, scope) or sym.IsMock()) {
       return kFatPointerLayout;
     }
 
