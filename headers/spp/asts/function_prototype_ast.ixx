@@ -221,6 +221,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// no instantiation made.
     GenericSubstitution const *RequestedBy = nullptr;
 
+    /// The call that first required it, and the scope it was
+    /// written in; null when it was required other than by a call.
+    Ast const *RequiredAt = nullptr;
+    Scope *RequiredIn = nullptr;
+
     /// How many instantiations of its template its request passed
     /// through, itself included: "f[T]" asking for "f[Vec[T]]" is
     /// one deeper, however much else ran between them.
@@ -247,7 +252,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// Mark this prototype required when it is a substitution of a generic function ("GenericSubstitution::IsRequired"),
   /// and queue its template for the monomorphisation stage the first time. Called on whatever a call resolved to:
   /// nothing for a prototype that is no substitution.
-  auto RequireGnSubstitution() const -> void;
+  auto RequireGnSubstitution(Ast const *at = nullptr, Scope *in = nullptr) const -> void;
 
   /// Find the substitution of this prototype whose arguments have
   /// this identity ("GenericSubstitution::ArgsId"), required

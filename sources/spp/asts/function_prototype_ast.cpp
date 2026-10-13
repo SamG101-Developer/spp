@@ -16,6 +16,7 @@ import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
@@ -638,6 +639,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->EnclosingFnScope = sm->CurrentScope;
+    const auto _flow = memory_state::BodyFlow(*sm->CurrentScope);
     FnParamGroup->Stage8_CheckMemory(sm, meta);
     Impl->Stage8_CheckMemory(sm, meta);
 
@@ -773,6 +775,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     tm.Reset(sub.WalkScope());
     tm.MoveToNextScope();
     meta->EnclosingFnScope = tm.CurrentScope;
+    const auto _flow = memory_state::BodyFlow(*tm.CurrentScope);
 
     // A parameter stripped for being "Void" is still named by the
     // body, and still holds the template's own analysis, so every
@@ -780,7 +783,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     for (auto const &param : FnParamGroup->Params) {
       for (auto const &name : param->ExtractNames()) {
         if (const auto sym = tm.CurrentScope->FindVarSymbol(name.get()); sym != nullptr) {
-          sym->MemInfo->InitializedBy(*param, tm.CurrentScope);
+          analyse::utils::memory_state::StateOf(*tm.CurrentScope, *sym).InitializedBy(*param);
         }
       }
     }
@@ -903,13 +906,15 @@ auto FunctionPrototypeAst::AddGnSubstitution(
   return _GnSubstitutions.emplace_back(std::move(sub));
 }
 
-auto FunctionPrototypeAst::RequireGnSubstitution() const -> void {
+auto FunctionPrototypeAst::RequireGnSubstitution(Ast const *at, Scope *in) const -> void {
   IMPORT_UTILS;
   auto *const tmpl = GetNonGnImpl();
   if (tmpl == nullptr) { return; }
   for (auto &sub : tmpl->_GnSubstitutions) {
     if (sub.Proto.get() != this or sub.IsRequired) { continue; }
     sub.IsRequired = true;
+    sub.RequiredAt = at;
+    sub.RequiredIn = in;
 
     // The instantiation's body has not been analysed yet, and
     // nothing walks the ast to find it - a substitution is
