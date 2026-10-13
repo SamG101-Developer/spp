@@ -81,16 +81,23 @@ auto PatternGuardAst::Stage8_CheckMemory(
   // Check the memory of the expression. A guard may read and
   // borrow, but not move: it runs before its branch is chosen,
   // so a move it makes would also have happened on the path
-  // into the next branch when it answers false.
-  const auto before = sm->CurrentScope->GetAllVarSymbols()
-    | genex::views::transform([](auto *sym) { return MakePair(sym, spp::get<0>(sym->MemInfo->AstMoved)); })
-    | genex::to<Vec>();
+  // into the next branch when it answers false. Every symbol
+  // the body's flow holds is compared, not only the ones
+  // visible here: a shadowed one can still be moved.
+  const auto before = memory_state::SnapshotFlow(*sm->CurrentScope);
   Expr->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
-  for (auto const &[sym, moved_before] : before) {
+  const auto check = [&](VariableSymbol const &sym) {
     RaiseIf<SppPatternGuardMovesValueError>(
-      moved_before == nullptr and spp::get<0>(sym->MemInfo->AstMoved) != nullptr and sym->Name != nullptr,
-      {sm->CurrentScope}, ERR_ARGS(*Expr, *sym->Name));
+      memory_state::StateIn(before, sym).AstMoved == nullptr
+      and memory_state::StateOf(*sm->CurrentScope, sym).AstMoved != nullptr and sym.Name != nullptr,
+      {sm->CurrentScope}, ERR_ARGS(*Expr, *sym.Name));
+  };
+  if (const auto flow = memory_state::FlowOf(*sm->CurrentScope); flow != nullptr) {
+    for (auto const &[sym, _] : flow->States) { check(*sym); }
+  }
+  else {
+    for (auto const &[sym, _] : before.Symbols) { check(*sym); }
   }
 }
 
