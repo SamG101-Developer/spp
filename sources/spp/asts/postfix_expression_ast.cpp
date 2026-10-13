@@ -9,7 +9,9 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.identifier_ast;
@@ -164,6 +166,28 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
   if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
   meta->AssignmentTarget = saved_assignment_target;
+
+  // An attribute read off a linear temporary takes that attribute and leaves the rest with no owner, unless the
+  // attribute is the one owned part there is ("mk().a" on a value whose other parts are all "Copy").
+  // Todo: CLEAN
+  if (auto const *const field = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>(); field != nullptr
+    and Lhs != nullptr and linear_utils::IsLinearTemporary(*Lhs, *sm, meta)) {
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
+    auto is_part = false;
+    auto leaves_owned = false;
+    for (auto const &[step, _, type, ref, where] : type_members::GetAllParts(lhs_ref, *sm->CurrentScope)) {
+      const auto owned = ref.Symbol != nullptr and not ref.Symbol->IsCopyable();
+      if (step->NameId() == field->Name->NameId()) {
+        is_part = true;
+        leaves_owned |= not owned;
+      }
+      else { leaves_owned |= owned; }
+    }
+    if (is_part and leaves_owned) {
+      linear_utils::RaiseTemporaryNotConsumed(
+        *Lhs, *this, "A part is read off it here, leaving the rest with no owner", *sm, meta);
+    }
+  }
 
   const auto _meta_guard = MetaGuard(meta);
   meta->PostfixExpressionLhs = Lhs.get();
