@@ -187,12 +187,22 @@ namespace spp::analyse::utils::type_compare {
     /// the 3 FunXXX types, generically instantiated.
     auto MockMatches(
       TypeRef const &mock, TypeRef const &func, Scope const &mock_scope, Scope const &func_scope) -> bool {
+      // A closure borrowed as a function type ("&c" for a
+      // "&FunMut[..]" parameter) is that type's fat pointer
+      // already, so its superimposed types are compared with the
+      // target's convention dropped: the caller has matched the
+      // conventions. A named function has no storage to borrow,
+      // so it keeps the convention (and fails a borrowed target).
+      const auto target = mock.Symbol->Kind == scopes::TypeKind::ClosureMock
+        ? func.WithoutConvention()
+        : func;
+
       // Iterate every super class of the mock type (this gets
       // the list of FunXXX overloads), and check the type
       // against the "func" type.
       for (auto const &sup : type_members::SuperClsRefs(mock, mock_scope)) {
         if (type_predicates::IsTypeFunction(sup, mock_scope)
-          and AssignableCore(sup, func, mock_scope, func_scope, true)) {
+          and AssignableCore(sup, target, mock_scope, func_scope, true)) {
           return true;
         }
       }
