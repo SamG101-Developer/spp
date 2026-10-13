@@ -15,7 +15,7 @@ namespace {
   using spp::analyse::scopes::TypeSymbol;
 
   /// A class symbol named "name". Never freed: an interned key holds its address for the rest of the process.
-  auto Cls(std::string const &name) -> TypeSymbol const& {
+  auto Cls(spp::Str const &name) -> TypeSymbol const& {
     return *new TypeSymbol(spp::asts::TypeIdentifierAst::FromString(name), nullptr, nullptr, nullptr, TypeKind::Cls);
   }
 

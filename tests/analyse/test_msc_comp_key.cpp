@@ -18,16 +18,16 @@ namespace {
   using spp::analyse::scopes::InternCompKey;
   using spp::analyse::scopes::SubstituteCompId;
   using Kind = CompKey::Part;
-  using Node = std::optional<CompKey>;
+  using Node = spp::Opt<CompKey>;
 
-  auto Int(const std::int64_t value, std::string const &suffix) -> CompKey {
+  auto Int(const std::int64_t value, spp::Str const &suffix) -> CompKey {
     return CompKey::OfInt(numex::BigInt(value), suffix);
   }
 
   auto Bool(const bool value) -> CompKey { return CompKey::OfBool(value); }
 
   /// A float value "num / den" (an exact rational), of the type "suffix" spells.
-  auto Float(const std::int64_t num, const std::int64_t den, std::string const &suffix) -> CompKey {
+  auto Float(const std::int64_t num, const std::int64_t den, spp::Str const &suffix) -> CompKey {
     return CompKey::OfFloat(numex::BigDec(numex::BigInt(num), numex::BigInt(den)), suffix);
   }
 
@@ -40,7 +40,7 @@ namespace {
     return CompKey::OfPack(std::move(kids));
   }
 
-  auto Op(CompKey const &lhs, std::string const &op, CompKey const &rhs) -> CompKey {
+  auto Op(CompKey const &lhs, spp::Str const &op, CompKey const &rhs) -> CompKey {
     return CompKey::OfOp(op, InternCompKey(CompKey(lhs)), InternCompKey(CompKey(rhs)));
   }
 
@@ -48,7 +48,7 @@ namespace {
   auto Subst(spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {}) -> GenericSubst {
     auto subst = GenericSubst();
     for (auto const &[id, value] : bound) { subst.CompParams.emplace_back(id, InternCompKey(CompKey(value))); }
-    subst.CompPackParams = std::move(packs);
+    subst.CompPackParams.assign(packs.begin(), packs.end());
     return subst;
   }
 
@@ -97,16 +97,16 @@ TEST(TestCompKey, test_fold_values) {
   EXPECT_EQ(FoldCompValues("+", Int(2, "uz"), Int(3, "uz")), Int(5, "uz"));
   EXPECT_EQ(FoldCompValues("-", Int(2, "s32"), Int(3, "s32")), Int(-1, "s32"));
   EXPECT_EQ(FoldCompValues("*", Int(2, ""), Int(3, "uz")), Int(6, "uz"));
-  EXPECT_EQ(FoldCompValues("+", Int(2, "u8"), Int(3, "uz")), std::nullopt);
-  EXPECT_EQ(FoldCompValues("/", Int(2, "uz"), Int(0, "uz")), std::nullopt);
+  EXPECT_EQ(FoldCompValues("+", Int(2, "u8"), Int(3, "uz")), spp::Nullopt);
+  EXPECT_EQ(FoldCompValues("/", Int(2, "uz"), Int(0, "uz")), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("%", Int(7, "uz"), Int(4, "uz")), Int(3, "uz"));
   EXPECT_EQ(FoldCompValues("<<", Int(1, "u8"), Int(8, "u8")), Int(0, "u8"));
   EXPECT_EQ(FoldCompValues("<<", Int(3, "uz"), Int(2, "u32")), Int(12, "uz"));
   EXPECT_EQ(FoldCompValues(">>", Int(8, "uz"), Int(2, "uz")), Int(2, "uz"));
   EXPECT_EQ(FoldCompValues("<", Int(1, "uz"), Int(2, "uz")), Bool(true));
   EXPECT_EQ(FoldCompValues("==", Bool(true), Bool(false)), Bool(false));
-  EXPECT_EQ(FoldCompValues("+", Bool(true), Bool(false)), std::nullopt);
-  EXPECT_EQ(FoldCompValues("==", Bool(true), Int(1, "")), std::nullopt);
+  EXPECT_EQ(FoldCompValues("+", Bool(true), Bool(false)), spp::Nullopt);
+  EXPECT_EQ(FoldCompValues("==", Bool(true), Int(1, "")), spp::Nullopt);
 
   // Past 64 bits, as a "BigInt" holds it.
   const auto big = numex::BigInt("18446744073709551616");
@@ -135,13 +135,13 @@ TEST(TestCompKey, test_fold_float_values) {
   EXPECT_EQ(FoldCompValues("*", Float(1, 3, "f64"), Float(3, 1, "f64")), Float(1, 1, "f64"));
   EXPECT_EQ(FoldCompValues("+", Float(1, 10, "f64"), Float(2, 10, "f64")), Float(3, 10, "f64"));
   EXPECT_EQ(FoldCompValues("-", Float(1, 2, "f32"), Float(3, 4, "f32")), Float(-1, 4, "f32"));
-  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(0, 1, "f64")), std::nullopt);
+  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(0, 1, "f64")), spp::Nullopt);
 
   // An unsuffixed side takes the other side's type; two types do not mix, nor do a float and an integer.
   EXPECT_EQ(FoldCompValues("*", Float(3, 2, "f64"), Float(2, 1, "")), Float(3, 1, "f64"));
-  EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f32"), Float(1, 1, "f64")), std::nullopt);
-  EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f64"), Int(1, "")), std::nullopt);
-  EXPECT_EQ(FoldCompValues("%", Float(7, 1, "f64"), Float(2, 1, "f64")), std::nullopt);
+  EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f32"), Float(1, 1, "f64")), spp::Nullopt);
+  EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f64"), Int(1, "")), spp::Nullopt);
+  EXPECT_EQ(FoldCompValues("%", Float(7, 1, "f64"), Float(2, 1, "f64")), spp::Nullopt);
 
   // Comparisons fold to bools, on the exact values.
   EXPECT_EQ(FoldCompValues("<", Float(1, 3, "f64"), Float(34, 100, "f64")), Bool(true));

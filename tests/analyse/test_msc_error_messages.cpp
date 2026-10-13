@@ -3,7 +3,7 @@
 namespace {
   /// Compile "code", expect a type mismatch, and answer its
   /// message as plain text (empty, and a failure, if none).
-  auto TypeMismatchText(std::string code) -> std::string {
+  auto TypeMismatchText(spp::Str code) -> spp::Str {
     try {
       build_temp_project(std::move(code));
     }
@@ -83,7 +83,7 @@ TEST(TestErrorMessages, test_self_generic_argument_shown_as_written) {
 // Re-importing a name the prelude already brings in shows only the author's "use", never the prelude's.
 
 TEST(TestErrorMessages, test_reimporting_a_prelude_name_points_at_the_authors_import) {
-  auto text = std::string();
+  auto text = spp::Str();
   try {
     build_temp_project(R"(
     use std::annotations::abstract_method
@@ -102,7 +102,7 @@ TEST(TestErrorMessages, test_reimporting_a_prelude_name_points_at_the_authors_im
 // An error's context blocks come before its own block, and the note and help close it.
 
 TEST(TestErrorMessages, test_move_from_borrowed_memory_shows_the_borrow_before_the_note) {
-  auto text = std::string();
+  auto text = spp::Str();
   try {
     build_temp_project(R"(
     cls T { }

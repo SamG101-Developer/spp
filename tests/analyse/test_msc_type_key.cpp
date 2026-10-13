@@ -36,7 +36,7 @@ namespace {
   }
 
   /// A type of its own, interned: distinct words for each distinct text.
-  auto NamedType(const std::string_view text) -> TypeId {
+  auto NamedType(const spp::StrView text) -> TypeId {
     auto key = TypeKey();
     key.PushText(Tag::Name, text);
     return InternTypeKey(std::move(key));

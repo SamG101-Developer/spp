@@ -198,7 +198,7 @@ sup Derived ext Base {
 }
 )");
 
-  auto found = spp::Vec<std::pair<spp::Str, std::size_t>>();
+  auto found = spp::Vec<spp::Pair<spp::Str, std::size_t>>();
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
     const auto diagnostic = spp::lsp::DiagnosticFrom(error);
     for (auto const &label : diagnostic.Labels) {
@@ -208,9 +208,9 @@ sup Derived ext Base {
 
   found |= genex::actions::sort;
   ASSERT_EQ(found.size(), 3u);
-  EXPECT_EQ(found[0], std::make_pair(spp::Str("E45"), 10uz));
-  EXPECT_EQ(found[1], std::make_pair(spp::Str("E45"), 12uz));
-  EXPECT_EQ(found[2], std::make_pair(spp::Str("E62"), 25uz));
+  EXPECT_EQ(found[0], spp::MakePair(spp::Str("E45"), 10uz));
+  EXPECT_EQ(found[1], spp::MakePair(spp::Str("E45"), 12uz));
+  EXPECT_EQ(found[2], spp::MakePair(spp::Str("E62"), 25uz));
 }
 
 TEST(MscJsonDiagnostics, test_recovery_does_not_repeat_a_failed_override_as_abstract_uses) {
@@ -297,7 +297,7 @@ fun second(flag: Bool) -> Res[Handle, Bool] {
 }
 )");
 
-  auto found = spp::Vec<std::pair<spp::Str, std::size_t>>();
+  auto found = spp::Vec<spp::Pair<spp::Str, std::size_t>>();
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
     const auto diagnostic = spp::lsp::DiagnosticFrom(error);
     for (auto const &label : diagnostic.Labels) {

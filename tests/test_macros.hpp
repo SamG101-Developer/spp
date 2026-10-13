@@ -11,8 +11,8 @@ import spp.analyse.errors.semantic_error;
 namespace spp_test {
   /// The error formatter colours its output; strip the escapes
   /// so a block can be read as plain text.
-  inline auto StripAnsi(std::string const &s) -> std::string {
-    auto out = std::string();
+  inline auto StripAnsi(spp::Str const &s) -> spp::Str {
+    auto out = spp::Str();
     out.reserve(s.size());
     for (auto i = 0uz; i < s.size(); ++i) {
       if (s[i] == '\x1b' and i + 1 < s.size() and s[i + 1] == '[') {
@@ -28,8 +28,8 @@ namespace spp_test {
   /// quoted source line that sit above a "^". The source row is
   /// "N | code" and the caret row below it lines up column for
   /// column. Empty when the block quotes no source.
-  inline auto Underlined(std::string const &block) -> std::string {
-    auto lines = spp::Vec<std::string>();
+  inline auto Underlined(spp::Str const &block) -> spp::Str {
+    auto lines = spp::Vec<spp::Str>();
     for (auto start = 0uz; start <= block.size();) {
       const auto end = block.find('\n', start);
       lines.push_back(block.substr(start, end == std::string::npos ? std::string::npos : end - start));
@@ -44,7 +44,7 @@ namespace spp_test {
       const auto number = code.substr(0, bar);
       if (number.find_first_not_of(' ') == std::string::npos
         or number.find_first_not_of(" 0123456789") != std::string::npos) { continue; }
-      auto out = std::string();
+      auto out = spp::Str();
       for (auto c = 0uz; c < carets.size() and c < code.size(); ++c) {
         if (carets[c] == '^') { out += code[c]; }
       }
@@ -64,7 +64,7 @@ namespace spp_test {
   auto CheckErrorLocations(Messages const &messages, char const *underline) -> void {
     auto primary_seen = false;
     for (auto const &raw : messages) {
-      const auto block = StripAnsi(std::string(raw));
+      const auto block = StripAnsi(spp::Str(raw));
 
       // A candidate's own error (under "no valid signatures") points at that candidate, in whatever file it is in, but
       // never past the end of a file: a block formatted against the wrong file's text lands there.
@@ -89,7 +89,7 @@ namespace spp_test {
       EXPECT_TRUE(path.ends_with("/src/main.spp"))
         << "An error block points outside the test's own source:\n" << block;
       if (underline != nullptr and not primary_seen) {
-        EXPECT_EQ(Underlined(block), std::string(underline))
+        EXPECT_EQ(Underlined(block), spp::Str(underline))
           << "The error block underlines the wrong code:\n" << block;
       }
       primary_seen = true;
@@ -103,7 +103,7 @@ namespace spp_test {
   /// error points (see "CheckErrorLocations").
   template <typename E>
   auto ExpectSemanticError(
-    std::string code, const bool add_main, char const *error_name, char const *underline) -> void {
+    spp::Str code, const bool add_main, char const *error_name, char const *underline) -> void {
     try {
       build_temp_project(std::move(code), add_main);
     }
