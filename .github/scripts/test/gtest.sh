@@ -103,7 +103,9 @@ if [ -z "$(find vcs -name '*.spp' -print -quit 2>/dev/null)" ]; then
 fi
 
 # Counted from the log directories: a crash leaves a log in failed/ but no FAILED line.
-count() { find "${log_dir}/$1" -name '*.log' 2> /dev/null | wc -l | tr -d ' '; }
+# gtest-parallel nests its passed/, failed/ and interrupted/ under gtest-parallel-logs/.
+results_dir="${log_dir}/gtest-parallel-logs"
+count() { find "${results_dir}/$1" -name '*.log' 2> /dev/null | wc -l | tr -d ' '; }
 {
   echo "### gtest · ${SPP_TEST_MODE:-rel} · shard $((shard_index + 1)) of ${shard_count}"
   echo
@@ -112,7 +114,7 @@ count() { find "${log_dir}/$1" -name '*.log' 2> /dev/null | wc -l | tr -d ' '; }
     echo
     echo '<details><summary>failed tests</summary>'
     echo
-    find "${log_dir}/failed" -name '*.log' | sed 's|.*/[^-]*-||; s|-[0-9]*\.log$||' | sort | head -200 | sed 's/^/- /'
+    find "${results_dir}/failed" -name '*.log' | sed 's|.*/[^-]*-||; s|-[0-9]*\.log$||' | sort | head -200 | sed 's/^/- /'
     echo
     echo '</details>'
   fi
