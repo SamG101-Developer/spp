@@ -489,16 +489,41 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     const auto closure_fn_ty = llvm::FunctionType::get(
       closure_ret_ty, closure_param_tys.ToStdVector(), false);
 
+    // Calling a "FunMov" held by value consumes it, so nothing
+    // drops it afterwards: its environment is released here, as
+    // "FunMov::drop" would. A "FunMov" that is not a "FunMut"
+    // captures by value (or by "&mut"), so its environment is
+    // on the heap, or null when it captures nothing.
+    const auto consumes_closure = [&] {
+      using generate::common_types_precompiled::FUN_MOV;
+      using generate::common_types_precompiled::FUN_MUT;
+      if (closure_val->getType()->isPointerTy()) { return false; }
+      const auto callable = fn_values::IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
+      if (callable == nullptr) { return false; }
+      const auto head = TypeRef::ForKindCheck(*callable, *sm->CurrentScope);
+      return head.KindSymbol() != nullptr and head.IsA(*FUN_MOV, *sm->CurrentScope)
+        and not head.IsA(*FUN_MUT, *sm->CurrentScope);
+    }();
+    const auto release_env = [&] {
+      if (not consumes_closure or ctx->Builder.GetInsertBlock()->hasTerminator()) { return; }
+      const auto llvm_free = codegen::GetEmissionModule(*ctx)->getOrInsertFunction(
+        "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
+      ctx->Builder.CreateCall(llvm_free, {env_ptr});
+    };
+
     // A call returning Void cannot be given a name (llvm forbids
     // naming void values).
     if (closure_ret_ty->isVoidTy()) {
-      return ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector());
+      const auto void_call = ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args.ToStdVector());
+      release_env();
+      return void_call;
     }
 
     // Build the proper (named) call and then do the variant
     // coercion.
     const auto closure_call = ctx->Builder.CreateCall(
       closure_fn_ty, fn_ptr, closure_args.ToStdVector(), "closure.call" + closure_uid);
+    release_env();
     return codegen::CoerceToVariant(
       closure_call, expected_ret_ref, actual_ret_ref, *sm->CurrentScope,
       "closure.ret" + closure_uid, ctx);
