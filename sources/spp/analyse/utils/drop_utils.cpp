@@ -267,7 +267,6 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
     // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
     // it, and only taking something from inside a value strands the value's own. That is what stops the last
     // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-    if (not move.Of.has_value()) { continue; }
     auto const &path = move.Of->Steps;
 
     for (auto i = 0uz; i < path.size(); ++i) {

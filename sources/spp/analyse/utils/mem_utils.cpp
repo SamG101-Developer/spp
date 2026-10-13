@@ -132,7 +132,7 @@ namespace spp::analyse::utils::mem_utils {
       for (auto const &[part, paths] : options.CheckPartialMove
            ? state.MaybePartialMoves
            : Vec<memory_state::MaybeMovedPart>()) {
-        const auto reaches = not used.Of.has_value() or not part.Of.has_value()
+        const auto reaches = not used.Of.has_value()
           or regions::Relate(*used.Of, *part.Of) != regions::MemRegionRelation::Disjoint;
         RaiseIf<errors::SppInconsistentlyInitializedMemoryUseError>(
           reaches, {scope}, ERR_ARGS(usage, *paths.First, *paths.Other, "partially moved"));
@@ -231,7 +231,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     const auto place = regions::PlaceOf(value_ast, *sm.CurrentScope);
     const auto overlaps = state.PartialMoves
       | genex::views::filter([&](auto const &x) {
-        return place.has_value() and x.Of.has_value()
+        return place.has_value()
           and regions::Relate(*x.Of, *place) == regions::MemRegionRelation::Contains
           and (not options.IsPlaceWritten or x.Of->Steps.size() < place->Steps.size());
       })

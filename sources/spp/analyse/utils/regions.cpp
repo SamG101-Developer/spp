@@ -251,7 +251,6 @@ auto spp::analyse::utils::regions::RegionConsumed(
   // region.
   auto touched = false;
   for (auto const &move : moves) {
-    if (not move.Of.has_value()) { continue; }
     const auto relation = Relate(*move.Of, region);
     if (relation == MemRegionRelation::Contains) { return true; }
     if (relation == MemRegionRelation::ContainedBy) { touched = true; }
