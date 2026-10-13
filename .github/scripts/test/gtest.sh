@@ -79,10 +79,11 @@ fi
 "$binary" --gtest_filter=SppBootstrap.Fixture
 
 # A lane may run only some suites (the sanitizer lane, whose build is too slow for all of them).
+# Not GTEST_FILTER: gtest reads that from the environment, and an empty one matches no tests.
 filter_flags=()
-if [ -n "${GTEST_FILTER:-}" ]; then
-  filter_flags=("--gtest_filter=${GTEST_FILTER}")
-  echo "filter: ${GTEST_FILTER}"
+if [ -n "${SPP_GTEST_FILTER:-}" ]; then
+  filter_flags=("--gtest_filter=${SPP_GTEST_FILTER}")
+  echo "filter: ${SPP_GTEST_FILTER}"
 fi
 
 status=0
@@ -116,5 +117,11 @@ count() { find "${log_dir}/$1" -name '*.log' 2> /dev/null | wc -l | tr -d ' '; }
     echo '</details>'
   fi
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+# gtest-parallel exits 0 when it finds nothing to run.
+if [ "$(( $(count passed) + $(count failed) + $(count interrupted) ))" -eq 0 ]; then
+  echo "::error::no tests ran in this shard; check the filter and the binary's --gtest_list_tests output"
+  exit 1
+fi
 
 exit "$status"

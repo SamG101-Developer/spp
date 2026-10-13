@@ -35,5 +35,5 @@ runs:
       env:
         SHARD_COUNT: ${{ inputs.shard-count }}
         SHARD_INDEX: ${{ inputs.shard-index }}
-        GTEST_FILTER: ${{ inputs.filter }}
+        SPP_GTEST_FILTER: ${{ inputs.filter }}
       run: bash .github/scripts/test/gtest.sh
