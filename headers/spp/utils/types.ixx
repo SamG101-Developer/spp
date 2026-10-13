@@ -1,25 +1,11 @@
 module;
 #include <spp/macros.hpp>
+#include <version>
 
 export module spp.utils.types;
 import ankerl;
 import std;
-
-export namespace std {
-  template <typename T> requires std::integral<T>
-  struct bit_shl {
-    constexpr auto operator()(T lhs, T rhs) const -> T {
-      return static_cast<T>(lhs << rhs);
-    }
-  };
-
-  template <typename T> requires std::integral<T>
-  struct bit_shr {
-    constexpr auto operator()(T lhs, T rhs) const -> T {
-      return static_cast<T>(lhs >> rhs);
-    }
-  };
-}
+import genex.span;
 
 namespace spp {
   SPP_EXP_CLS template <typename T>
