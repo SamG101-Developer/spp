@@ -240,8 +240,7 @@ auto GenericParameterGroupAst::Stage9_CompTimeResolve(
   for (auto const &p : Params) {
     if (not p->IsCompParam() or not p->IsOptional()) { continue; }
     if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*p->WrittenCompDefault))) { continue; }
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
-    tm.Reset(sm->CurrentScope);
+    auto tm = sm->NewManagerAt(sm->CurrentScope);
     p->CompDefault->Stage9_CompTimeResolve(&tm, meta);
     meta->CompTimeResult = nullptr;
   }

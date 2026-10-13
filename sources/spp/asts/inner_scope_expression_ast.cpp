@@ -277,8 +277,7 @@ auto InnerScopeExpressionAst::InferType(
   // If there are any members, return the last member's
   // inferred type.
   if (not this->Members.empty()) {
-    auto tm = ScopeManager(
-      sm->GlobalScope, GetAstScope());
+    auto tm = sm->NewManagerAt(GetAstScope());
     return this->Members.back()->InferType(&tm, meta);
   }
 
@@ -289,8 +288,7 @@ auto InnerScopeExpressionAst::InferType(
 auto InnerScopeExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   if (not this->Members.empty()) {
-    auto tm = ScopeManager(
-      sm->GlobalScope, GetAstScope());
+    auto tm = sm->NewManagerAt(GetAstScope());
     return this->Members.back()->InferTypeRef(&tm, meta);
   }
   return TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope);

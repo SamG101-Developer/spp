@@ -222,7 +222,7 @@ auto TypeStatementAst::ResolveTargetEarly(
   // Read from a clean context, where this statement is written: whatever was being analysed when the binding was made
   // is not what the target is read in.
   if (_IsTargetResolved or &alias != _AliasSymbol.get()) { return; }
-  auto tm = ScopeManager(sm.GlobalScope, _Scope);
+  auto tm = sm.NewManagerAt(_Scope);
   const auto _meta_guard = MetaGuard(&meta);
   meta.ResetContext();
   _ResolveTarget(&tm, &meta);
@@ -241,13 +241,13 @@ auto TypeStatementAst::_ResolveTarget(
   auto const &alias = *_AliasSymbol->Alias;
 
   // Add the "Self" symbol into the scope, mirroring class/sup prototype logic.
-  sm->AddSelfTypeSymbol(_AliasSymbol->LinkedScope, NewType->PosStart());
+  self_type::AddSelfTypeSymbol(
+    *sm->CurrentScope, _AliasSymbol->LinkedScope, NewType->PosStart());
 
   // Get the resolved type's symbol, without generics.
   const auto stripped_old_sym = sm->CurrentScope->FindHeadSymbol(*alias.Resolved);
   if (not stripped_old_sym->IsGn()) {
-    auto tm = ScopeManager(
-      sm->GlobalScope, alias.TrackingScope);
+    auto tm = sm->NewManagerAt(alias.TrackingScope);
     GnParamGroup->Stage4_ResolveDeclarations(alias.IsParamsFromTarget ? &tm : sm, meta);
     // Recorded and analysed where its names were written - this statement's scope, not where the target class was
     // found, whose own parameters its spelling could name ("type Mine = Vec[A]" read in "Vec").
@@ -331,22 +331,19 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
   }
 
   // Otherwise, run all generation steps.
-  const auto current_scope = sm->CurrentScope;
-  auto iter_copy = sm->GetCurrentIterator();
+  // Each stage starts from where the walk stands now.
+  const auto start = sm->Position();
   const auto _meta_guard = MetaGuard(meta);
   const auto real_stage = meta->CurrentStage;
 
-  sm->Reset(current_scope, iter_copy);
-  iter_copy = sm->GetCurrentIterator();
   meta->CurrentStage = spp::asts::meta::CompilerStage::kGenTopLvlScopes;
   Stage2_GenTopLvlScopes(sm, meta);
 
-  sm->Reset(current_scope, iter_copy);
-  iter_copy = sm->GetCurrentIterator();
+  sm->ReturnTo(start);
   meta->CurrentStage = spp::asts::meta::CompilerStage::kGenTopLvlAliases;
   Stage3_GenTopLvlAliases(sm, meta);
 
-  sm->Reset(current_scope, iter_copy);
+  sm->ReturnTo(start);
   meta->CurrentStage = real_stage;
   Stage4_ResolveDeclarations(sm, meta);
   _IndexWrittenTarget(sm, meta);
@@ -362,15 +359,13 @@ auto TypeStatementAst::_IndexWrittenTarget(
   // namespaced name also moves the scope walk to look it up, and this is not part of the walk, so it is put back.
   IMPORT_UTILS;
   if (not lsp::resolution_index::IsEnabled()) { return; }
-  const auto start_scope = sm->CurrentScope;
-  const auto start_it = sm->GetCurrentIterator();
+  const auto _back = ScopePositionGuard(*sm);
   try {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
     Source.OriginalOldType->Stage7_AnalyseSemantics(sm, meta);
   }
   catch (SemanticError const &) {}
-  sm->Reset(start_scope, start_it);
 }
 
 auto TypeStatementAst::Stage8_CheckMemory(

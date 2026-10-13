@@ -596,10 +596,10 @@ namespace spp::analyse::utils::case_utils {
         std::move(eq_pf_expr), std::move(eq_call));
 
       // Analyse and walk back the scope.
-      const auto current_scope = sm->CurrentScope;
-      const auto current_scope_iter = sm->GetCurrentIterator();
-      eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
-      sm->Reset(current_scope, current_scope_iter);
+      {
+        const auto _back = ScopePositionGuard(*sm);
+        eq_call_expr->Stage7_AnalyseSemantics(sm, meta);
+      }
       return mapper(eq_call_expr.get());
     }
 
@@ -712,10 +712,10 @@ auto spp::analyse::utils::case_utils::CreateAndAnalysePatternEqFnsLlvm(
   Func<void(ExpressionAst *)> on_nested_subject = [&](ExpressionAst *subject) {
     // Analyse the subject, and then walk back the scope iterator,
     // as the value itself might have introduced new scopes.
-    const auto current_scope = sm->CurrentScope;
-    const auto current_scope_iter = sm->GetCurrentIterator();
-    subject->Stage7_AnalyseSemantics(sm, meta);
-    sm->Reset(current_scope, current_scope_iter);
+    {
+      const auto _back = ScopePositionGuard(*sm);
+      subject->Stage7_AnalyseSemantics(sm, meta);
+    }
 
     // If the subject is a postfix expression, extract the runtime
     // member access as the operator (otherwise nullptr).

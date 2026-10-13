@@ -339,7 +339,7 @@ namespace spp::analyse::scopes {
 
 
   /// Forget every registered parameter, of both kinds: they belong to one compilation's scopes, which are freed
-  /// after it ("ScopeManager::Cleanup"). Ids are not reused, so nothing later asks for one.
+  /// after it ("ScopeTree"). Ids are not reused, so nothing later asks for one.
   SPP_EXP_CLS auto ClearGnParams() -> void;
 
   /// As "RegisterGnTypeParam", for a comp parameter.

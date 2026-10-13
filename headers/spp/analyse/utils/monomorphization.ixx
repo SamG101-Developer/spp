@@ -10,6 +10,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct ScopeTree);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct GenericArgumentGroupAst);
@@ -63,12 +64,12 @@ namespace spp::analyse::utils::monomorphization {
     ScopeManager const *sm, meta::CompilerMetaData *meta) -> Tup<Scope*, Scope*>;
 
   /// Let reading a type ("TypeRef::Of") make an instantiation not made
-  /// yet ("InstantiateForScope"), made through "global_scope" as
+  /// yet ("InstantiateForScope"), made through "tree" as
   /// "stage" makes one, until "StopInstantiatingOnRead". Only the
   /// analysis stages can make one ("CompilerBoot"): one made after
   /// them would never be generated.
   SPP_EXP_FUN auto StartInstantiatingOnRead(
-    Shared<Scope> global_scope, meta::CompilerStage stage) -> void;
+    ScopeTree &tree, meta::CompilerStage stage) -> void;
 
   SPP_EXP_FUN auto StopInstantiatingOnRead() -> void;
 

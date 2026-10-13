@@ -88,10 +88,10 @@ auto TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
   // Analyse the RHS type.
   if (const auto op_ns = Op->To<TypeUnaryExpressionOperatorNamespaceAst>()) {
-    const auto tm = ScopeManager(
-      sm->GlobalScope,
+    const auto tm = sm->NewManagerAt(
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
-    const auto type_scope = member_lookup::FindNsSymbolOrError(*tm.CurrentScope, *op_ns->Ns, *sm)->LinkedScope;
+    const auto type_scope = member_lookup::FindNsSymbolOrError(
+      *tm.CurrentScope, *op_ns->Ns, *sm)->LinkedScope;
     const auto _meta_guard = MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);

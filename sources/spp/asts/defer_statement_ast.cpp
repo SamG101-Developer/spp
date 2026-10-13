@@ -108,7 +108,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
   // Each exit replays the walk from here (see "CheckAtExit").
   _DeferScope = sm->CurrentScope;
-  _DeferPosition = sm->GetCurrentIterator();
+  _DeferPosition = sm->Position();
 
   Expr->Stage8_CheckMemory(sm, meta);
   memory_state::RestoreSnapshot(saved);
@@ -122,15 +122,14 @@ auto DeferStatementAst::CheckAtExit(
   // state the exit is reached with. Its names mean what they do
   // where it is written, so the walk is replayed from there.
   if (_DeferScope == nullptr) { return; }
-  auto tm = ScopeManager(sm.GlobalScope, _DeferScope);
-  tm.Reset(_DeferScope, *_DeferPosition);
+  auto tm = sm.NewManagerAt(*_DeferPosition);
 
   auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);
   struct DeferExitGuard {
     analyse::utils::memory_state::FlowState &Flow;
     Opt<analyse::utils::memory_state::DeferExit> Outer;
     ~DeferExitGuard() { Flow.Deferring = Outer; }
-  } const guard{flow, flow.Deferring};
+  } const guard{.Flow = flow, .Outer = flow.Deferring};
 
   flow.Deferring = analyse::utils::memory_state::DeferExit{
     .Stmt = this, .ExitPoint = &exit_point, .ExitWhat = exit_what

@@ -181,7 +181,7 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
 
   // Skip scopes to get back to the parent scope (skipping inner
   // scopes on the lowered function - `!intrinsic` etc).
-  ignore = sm->SkipPastScope(sm->CurrentScope);
+  ignore = sm->SkipSubtree(sm->CurrentScope);
   return nullptr;
 }
 

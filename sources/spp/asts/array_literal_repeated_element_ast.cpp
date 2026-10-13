@@ -100,7 +100,7 @@ auto ArrayLiteralRepeatedElementAst::SkipSizeScope(
   if (_SizeScope == nullptr) { return; }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _SizeScope);
-  sm->ExhaustScope();
+  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -165,8 +165,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   // Otherwise, the size must be a constant: it is folded with its
   // own walk over the size's scope, as a "cmp" statement's value
   // is, and becomes the literal it folds to.
-  auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
-  tm.Reset(_SizeScope);
+  auto tm = sm->NewManagerAt(_SizeScope);
   _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
   RaiseIf<SppCompTimeConstantError>(
     meta->CompTimeResult == nullptr,
@@ -197,7 +196,7 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
     _AnalysedSize->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(
       *_AnalysedSize, *TokSemicolon, *sm, meta, {.MarkMoves = false});
-    sm->ExhaustScope();
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
   }
 }

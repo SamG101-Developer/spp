@@ -384,9 +384,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     meta->CompTimeArgs = std::move(fn_arg_map);
     meta->CompTimeGnTypeArgs = std::move(gn_arg_type_map);
     meta->CompTimeGnCompArgs = std::move(gn_arg_comp_map);
-    auto tm = ScopeManager(
-      sm->GlobalScope, fn_proto->GetAstScope());
-    tm.Reset(not tm.CurrentScope->Children.empty() ? tm.CurrentScope->Children[0].get() : tm.CurrentScope);
+    auto *const fn_scope = fn_proto->GetAstScope();
+    auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
   }
 
@@ -552,9 +551,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // For generically converted function prototypes, generate
   // their llvm declaration in-walk if it is still missing.
   if (Target()->GetLlvmFn() == nullptr) {
-    auto tm = ScopeManager(
-      sm->GlobalScope, const_cast<Scope*>(_OverloadInfo->OverloadScope));
-    tm.Reset(tm.CurrentScope);
+    auto tm = sm->NewManagerAt(const_cast<Scope*>(_OverloadInfo->OverloadScope));
     const auto owner_ctx = Target()->OwnerCtx();
     Target()->GenerateLlvmDeclaration(
       &tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);

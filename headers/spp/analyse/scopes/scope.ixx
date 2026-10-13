@@ -23,6 +23,7 @@ use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct ScopeTree);
 use(spp::analyse::scopes, struct Symbol);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct NamespaceSymbol);
@@ -115,6 +116,13 @@ public:
   /// This is nullptr for all other scopes (types, functions,
   /// blocks, etc)
   Shared<NamespaceSymbol> LinkedNamespaceSymbol;
+
+  /// The tree a global scope is the root of (set by "ScopeTree");
+  /// null on every other scope, which reaches it through "Tree".
+  ScopeTree *OwningTree = nullptr;
+
+  /// The tree this scope is part of: its global scope's.
+  SPP_ATTR_NODISCARD auto Tree() const -> ScopeTree*;
 
   /// The scope representing the non-generic version of this
   /// scope. If this scope isn't a generic substitution, then it

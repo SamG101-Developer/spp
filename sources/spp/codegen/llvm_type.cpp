@@ -237,8 +237,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     // they are measured from the variant's own scope rather
     // than from wherever the registration walk happens to
     // be.
-    const auto member_sm = ScopeManager(
-      sm.GlobalScope, const_cast<Scope*>(scope));
+    const auto member_sm = sm.NewManagerAt(const_cast<Scope*>(scope));
 
     const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym, *scope);
     for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(variant_ref, *scope)) {

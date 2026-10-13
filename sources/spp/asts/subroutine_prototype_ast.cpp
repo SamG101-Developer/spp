@@ -138,7 +138,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   // into it.
   if (FfiAnnotation != nullptr) {
     ctx->Builder.ClearInsertionPoint();
-    ignore = sm->SkipPastScope(sm->CurrentScope);
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     return nullptr;
   }
@@ -151,7 +151,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   // template's return type need not even satisfy. Only its
   // instantiations have bodies, and those are emitted below.
   if (llvm_func_target == nullptr) {
-    sm->ExhaustScope();
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;

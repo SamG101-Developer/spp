@@ -1066,7 +1066,7 @@ namespace spp::analyse::utils::overload_resolution {
       auto return_matches = Vec<PassedOverload>();
       for (auto &&matched : pass_overloads) {
         auto ret = AstCloneShared(matched.Proto->ReturnType);
-        auto tm = ScopeManager(sm->GlobalScope, const_cast<Scope*>(matched.FnScope));
+        auto tm = sm->NewManagerAt(const_cast<Scope*>(matched.FnScope));
         ret = self_type::SubstituteSelf(*ret, matched.SelfType.get(), *matched.FnScope);
         ret = self_type::SubstituteSelf(
           *ret, matched.FnScope->FindEnclosingSelfType(*meta).get(), *matched.FnScope, &tm, meta);

@@ -6,7 +6,9 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -50,7 +52,7 @@ auto spp::analyse::utils::sup_blocks::RegisterSelf(
   // the end of the alias's chain (which only links the template).
   auto *sym = sm.CurrentScope->FindTypeSymbol(&name);
   if (sym->Alias != nullptr) { sym = sym->AliasTarget(*sm.CurrentScope); }
-  sm.AddSelfTypeSymbol(sym->LinkedScope, name.PosStart());
+  self_type::AddSelfTypeSymbol(*sm.CurrentScope, sym->LinkedScope, name.PosStart());
 }
 
 auto spp::analyse::utils::sup_blocks::RegisterProvisionalSelf(
@@ -59,7 +61,7 @@ auto spp::analyse::utils::sup_blocks::RegisterProvisionalSelf(
   -> void {
   if (name.IsCompilerGeneratedType()) { return; }
   if (const auto base_sym = sm.CurrentScope->FindHeadSymbol(name)) {
-    sm.AddSelfTypeSymbol(base_sym->LinkedScope, name.PosStart());
+    self_type::AddSelfTypeSymbol(*sm.CurrentScope, base_sym->LinkedScope, name.PosStart());
   }
 }
 
@@ -86,8 +88,8 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
   const auto base_sym = sm.CurrentScope->FindHeadSymbol(*name);
   if (sm.CurrentScope->Parent == sm.CurrentScope->GetParentModule()
     or (files_nested_mock and name->IsCompilerGeneratedType())) {
-    if (not base_sym->IsGn()) { ScopeManager::NormalSupBlocks[base_sym].emplace_back(sm.CurrentScope); }
-    else { ScopeManager::GnSupBlocks.emplace_back(sm.CurrentScope); }
+    if (not base_sym->IsGn()) { sm.Tree().NormalSupBlocks[base_sym].emplace_back(sm.CurrentScope); }
+    else { sm.Tree().GnSupBlocks.emplace_back(sm.CurrentScope); }
   }
 
   RegisterSelf(*name, sm);

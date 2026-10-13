@@ -179,7 +179,7 @@ auto CoroutinePrototypeAst::Stage10_PreCodeGen(
       if (sub_coro->_GenOnceLowered != nullptr) { sub_target = sub_coro->_GenOnceLowered.get(); }
     }
 
-    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    auto tm = sm->NewManagerAt(sub.WalkScope());
     sub_target->GenerateLlvmDeclaration(&tm, meta, ctx);
     if (const auto sub_coro = sub.Proto->To<CoroutinePrototypeAst>();
       sub_coro != nullptr and sub_coro->_GenOnceLowered != nullptr) {
@@ -214,7 +214,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   const auto llvm_func_target = llvm_func != nullptr ? llvm_func->Target : nullptr;
 
   if (llvm_func_target == nullptr) {
-    ignore = sm->SkipPastScope(sm->CurrentScope);
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
     _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;

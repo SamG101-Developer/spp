@@ -57,5 +57,5 @@ private:
   /// just before the expression's own scopes. Each exit replays
   /// the walk from here.
   analyse::scopes::Scope *_DeferScope = nullptr;
-  Opt<analyse::scopes::ScopeIterator> _DeferPosition;
+  Opt<analyse::scopes::ScopePosition> _DeferPosition;
 };

@@ -70,8 +70,7 @@ namespace spp::analyse::utils::generic_inference {
       for (auto const &[param, arg, shown] : args) {
         auto const *const arg_sym = TypeRef::Of(arg, scope).Symbol;
         if (arg_sym == nullptr) { continue; }
-        auto con_sm = ScopeManager(
-          sm.GlobalScope, arg_sym->LinkedScope != nullptr ? arg_sym->LinkedScope : sm.CurrentScope);
+        auto con_sm = sm.NewManagerAt(arg_sym->LinkedScope != nullptr ? arg_sym->LinkedScope : sm.CurrentScope);
 
         // This parameter's constraints, with the arguments bound.
         auto p_cons = Vec<Shared<TypeAst>>();

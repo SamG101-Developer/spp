@@ -222,7 +222,7 @@ auto spp::analyse::utils::fn_values::InstantiateFnValue(
   const auto match = MatchFnValue(value, target, *sm->CurrentScope);
   const auto args_id = match.has_value() ? scopes::ArgsIdOfBindings(match->Bindings, *sm->CurrentScope) : nullptr;
   if (args_id == nullptr) { return; }
-  auto tm = ScopeManager(sm->GlobalScope, const_cast<Scope*>(match->FnScope));
+  auto tm = sm->NewManagerAt(const_cast<Scope*>(match->FnScope));
   monomorphization::InstantiateOverload(match->Proto, match->FnScope, args_id, &tm, meta);
 }
 

@@ -344,7 +344,7 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   const auto annotation_scope_name = INJECT_CODE("std::annotations", ParseExpression);
   const auto annotation_scope = const_cast<Scope*>(
     sm->CurrentScope->FindNsScope(annotation_scope_name.get()));
-  auto tm = ScopeManager(sm->GlobalScope, annotation_scope);
+  auto tm = sm->NewManagerAt(annotation_scope);
 
   const auto allowed_ctx = [&] {
     const auto _meta_guard = MetaGuard(meta);

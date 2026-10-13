@@ -74,11 +74,10 @@ namespace {
   /// all still ahead.
   template <typename F>
   auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
-    const auto start_scope = sm->CurrentScope;
-    const auto start_it = sm->GetCurrentIterator();
+    const auto start = sm->Position();
     if (not CheckMember(member, std::forward<F>(stage))) {
-      sm->Reset(start_scope, start_it);
-      if (OwnsScope(*member, *start_scope)) { sm->SkipPastScope(member->GetAstScope()); }
+      sm->ReturnTo(start);
+      if (OwnsScope(*member, *start.At)) { spp::ignore = sm->SkipSubtree(member->GetAstScope()); }
     }
   }
 }

@@ -9,12 +9,14 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.aliases;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.self_type;
+import spp.analyse.utils.sup_attachment;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -816,9 +818,9 @@ namespace {
       {sm.CurrentScope}, ERR_ARGS(*tmpl.Name));
   }
 
-  /// What a read makes an instantiation through, while it can ("StartInstantiatingOnRead"): no global scope is none.
+  /// What a read makes an instantiation through, while it can ("StartInstantiatingOnRead"): no tree is none.
   struct InstantiatingOnRead {
-    spp::Shared<spp::analyse::scopes::Scope> GlobalScope;
+    spp::analyse::scopes::ScopeTree *Tree = nullptr;
     spp::asts::meta::CompilerStage Stage = spp::asts::meta::CompilerStage::kPreAnalyseSemantics;
   };
 
@@ -845,9 +847,9 @@ spp::analyse::utils::monomorphization::InstantiationDepth::~InstantiationDepth()
 SPP_MOD_END
 
 auto spp::analyse::utils::monomorphization::StartInstantiatingOnRead(
-  Shared<Scope> global_scope, const meta::CompilerStage stage)
+  ScopeTree &tree, const meta::CompilerStage stage)
   -> void {
-  OnRead() = InstantiatingOnRead{.GlobalScope = std::move(global_scope), .Stage = stage};
+  OnRead() = InstantiatingOnRead{.Tree = &tree, .Stage = stage};
 }
 
 auto spp::analyse::utils::monomorphization::StopInstantiatingOnRead()
@@ -859,7 +861,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
   const TypeId id, Scope const &scope)
   -> TypeSymbol* {
   auto const &on_read = OnRead();
-  if (on_read.GlobalScope == nullptr) { return nullptr; }
+  if (on_read.Tree == nullptr) { return nullptr; }
 
   // Made already under that identity: nothing to make.
   if (const auto made = scope.FindTypeSymbolById(id); made != nullptr) { return made; }
@@ -868,7 +870,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
   // it would make it.
   const auto type = scope.TypeAstOf(id);
   if (type == nullptr) { return nullptr; }
-  auto tm = ScopeManager(on_read.GlobalScope, on_read.GlobalScope.get());
+  auto tm = ScopeManager::ForTree(*on_read.Tree);
   auto stage_meta = meta::CompilerMetaData();
   stage_meta.CurrentStage = on_read.Stage;
   auto *const meta = &stage_meta;
@@ -906,7 +908,7 @@ auto spp::analyse::utils::monomorphization::MonomorphiseToFixedPoint(
   while (const auto fn_template = PopInstantiation()) {
     fn_template->AnalysePendingGnSubstitutions(sm, meta);
   }
-  sm->Reset();
+  sm->RestartWalk();
 }
 
 auto spp::analyse::utils::monomorphization::CreateGnClsScope(
@@ -1021,7 +1023,7 @@ auto spp::analyse::utils::monomorphization::CreateGnClsScope(
   }
 
   if (meta->CurrentStage >= meta::CompilerStage::kAttachSupScopes) {
-    sm->AttachSpecificSuperScopes(*new_cls_scope_ptr, meta);
+    sup_attachment::AttachSpecificSuperScopes(*new_cls_scope_ptr, *sm, meta);
   }
 
   // Register the instantiation's own ast against the template. Its parameter list is emptied, which is what marks it as
@@ -1061,14 +1063,14 @@ auto spp::analyse::utils::monomorphization::CreateGnClsScope(
       RegisterGnSymbols(sm->CurrentScope->ArgsIdOf(target_arg_ptrs, nullptr), new_cls_scope_ptr, sm, meta);
     }
   }
-  new_cls_scope_ptr->AddTypeSymbol(ScopeManager::MakeSelfTypeSymbol(new_cls_scope_ptr, new_cls_scope_ptr, 0));
+  new_cls_scope_ptr->AddTypeSymbol(self_type::MakeSelfTypeSymbol(new_cls_scope_ptr, new_cls_scope_ptr, 0));
 
   // 4. Read what the clone inherited through the bindings: the attribute symbols, and the attribute asts they came
   // from.
   // Todo: an aliased instantiation arguably wants its substituted types read through the scope the alias maps onto,
   //  rather than its own. The branch that did that was dead (it tested a unique_ptr that had already been moved into
   //  the symbol), so it is left out here rather than silently switched on.
-  auto tm = ScopeManager(sm->GlobalScope, new_cls_scope_ptr);
+  auto tm = sm->NewManagerAt(new_cls_scope_ptr);
   // "Self" is the instantiation by its identity: its spelled name reads its arguments as written, not as bound here.
   const auto self_type = new_cls_scope_ptr->TypeAstOf(args_id);
   ReadVarSymbolTypes(
@@ -1106,7 +1108,7 @@ auto spp::analyse::utils::monomorphization::CreateGnFnScope(
   GiveScopeOwnSymbols(*new_fun_scope_ptr, old_fun_scope, true);
 
   // 2. Bind the generic parameters, against the instantiation itself.
-  auto tm = ScopeManager(sm->GlobalScope, new_fun_scope_ptr);
+  auto tm = sm->NewManagerAt(new_fun_scope_ptr);
   RegisterGnSymbols(args_id, new_fun_scope_ptr, &tm, meta);
 
   // 3. Read what the clone inherited through the bindings, over the whole subtree. "Self" means one thing across the
@@ -1147,7 +1149,7 @@ auto spp::analyse::utils::monomorphization::CreateGnFnScope(
       }
     }
 
-    auto stm = ScopeManager(sm->GlobalScope, scope);
+    auto stm = sm->NewManagerAt(scope);
     ReadVarSymbolTypes(*scope, &stm, meta, self_type.get());
     for (auto const &child : scope->Children) { self(self, child.get(), false); }
   };
@@ -1198,7 +1200,7 @@ auto spp::analyse::utils::monomorphization::CreateGnSupScope(
     if (ext == nullptr or not ext->Name->IsCompilerGeneratedType()) { continue; }
     if (auto *const mock = child->FindTypeSymbol(ext->Name.get()); mock != nullptr and mock->LinkedScope != nullptr
       and mock->LinkedScope->Parent == new_sup_scope_ptr) {
-      ScopeManager::NormalSupBlocks[mock].emplace_back(child.get());
+      sm->Tree().NormalSupBlocks[mock].emplace_back(child.get());
     }
   }
 
@@ -1206,9 +1208,9 @@ auto spp::analyse::utils::monomorphization::CreateGnSupScope(
   old_sup_scope.Parent->Children.emplace_back(std::move(new_sup_scope));
 
   // 3. Bind the generic parameters, against the instantiation itself.
-  auto tm = ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
+  auto tm = sm->NewManagerAt(new_sup_scope_ptr);
   RegisterGnSymbols(args_id, new_sup_scope_ptr, &tm, meta);
-  new_sup_scope_ptr->AddTypeSymbol(ScopeManager::MakeSelfTypeSymbol(&new_cls_scope, new_sup_scope_ptr, 0));
+  new_sup_scope_ptr->AddTypeSymbol(self_type::MakeSelfTypeSymbol(&new_cls_scope, new_sup_scope_ptr, 0));
 
   // 4. Substitute the bindings into what the clone inherited: the block's "type" aliases and its "cmp" constants.
   for (auto const &scoped_sym : new_sup_scope_ptr->GetAllTypeSymbols(true)) {
@@ -1285,7 +1287,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeGnSubstitutedPrototype(
     // Create the new function scope for the generic implementation.
     auto new_fn_scope_owned = CreateGnFnScope(*fn_scope, id, sm, meta);
     const auto new_fn_scope = new_fn_scope_owned.get();
-    auto tm = ScopeManager(sm->GlobalScope, new_fn_scope);
+    auto tm = sm->NewManagerAt(new_fn_scope);
 
     // What "Self" is in the instantiation, read once for everything below that retypes by it: what it pins "Self" to
     // (a call's receiver), and what "Self" then means in its scope - the pin, else the owner.

@@ -134,7 +134,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   // Where the body's walk starts, for each pass after the first.
-  const auto body_start = sm->GetCurrentIterator();
+  const auto body_start = sm->Position();
 
   mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, meta);
 
@@ -187,8 +187,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
     constexpr auto max_iterations = 8;
     for (auto iteration = 1; iteration < max_iterations; ++iteration) {
       const auto entry = memory_state::SnapshotSymbols(outer_syms, *sm->CurrentScope);
-      auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
-      tm.Reset(sm->CurrentScope, body_start);
+      auto tm = sm->NewManagerAt(body_start);
       run_iteration(tm);
       const auto settled = genex::all_of(entry.Symbols, [sm](auto const &x) {
         return memory_state::SameShape(x.second, memory_state::StateOf(*sm->CurrentScope, *x.first));

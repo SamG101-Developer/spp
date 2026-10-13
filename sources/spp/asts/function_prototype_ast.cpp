@@ -672,7 +672,7 @@ auto FunctionPrototypeAst::Stage9_CompTimeResolve(
   sm->MoveToNextScope();
   for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
   GnParamGroup->Stage9_CompTimeResolve(sm, meta);
-  sm->ExhaustScope();
+  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -695,12 +695,12 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
   for (auto const &sub : _GnSubstitutions) {
     if (not sub.IsRequired or not sub.IsConcrete) { continue; }
     sub.Proto->_OwnerCtx = ctx;
-    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
+    auto tm = sm->NewManagerAt(sub.WalkScope());
     sub.Proto->GenerateLlvmDeclaration(&tm, meta, ctx);
   }
 
   // Manual scope skipping.
-  ignore = sm->SkipPastScope(sm->CurrentScope);
+  ignore = sm->SkipSubtree(sm->CurrentScope);
   return nullptr;
 }
 
@@ -713,8 +713,7 @@ auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
   // after the module owning its template had already been walked past.
   for (auto const &sub : _GnSubstitutions) {
     if (not sub.IsRequired or not sub.IsConcrete) { continue; }
-    auto tm = ScopeManager(sm->GlobalScope, sub.WalkScope());
-    tm.Reset(tm.CurrentScope);
+    auto tm = sm->NewManagerAt(sub.WalkScope());
     GnParamGroup->Stage11_CodeGen(&tm, meta, ctx);
     sub.Proto->Stage11_CodeGen(&tm, meta, ctx);
   }
@@ -739,8 +738,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     // (see "GenericSubstitution::IsRequired").
     if (sub.IsBodyAnalysed or not sub.IsRequired) { continue; }
     sub.IsBodyAnalysed = true;
-    auto tm = ScopeManager(
-      sm->GlobalScope, sub.WalkScope());
+    auto tm = sm->NewManagerAt(sub.WalkScope());
     if (not sub.IsConcrete) { continue; }
 
     // Discard the scopes the template's own body analysis left
@@ -749,7 +747,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     // place.
     sub.ProtoScope()->Children.clear();
     sub.WalkScope()->FixChildrenToParentPointer();
-    tm.Reset(tm.CurrentScope);
+    tm.RestartWalk(tm.CurrentScope);
 
     // The instantiation was built from the signature alone, so the
     // body it holds is still the template's, un-analysed.
@@ -772,7 +770,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     meta->AllowAbstractType = true;
     sub.Proto->Stage7_AnalyseSemantics(&tm, meta);
 
-    tm.Reset(sub.WalkScope());
+    tm.RestartWalk(sub.WalkScope());
     tm.MoveToNextScope();
     meta->EnclosingFnScope = tm.CurrentScope;
     const auto _flow = memory_state::BodyFlow(*tm.CurrentScope);
@@ -1068,7 +1066,7 @@ auto FunctionPrototypeAst::AnalysePendingDefaults(
   auto pending = std::move(_PendingDefaults);
   _PendingDefaults.clear();
   for (auto const &[proto, is_test_harness] : pending) {
-    auto tm = ScopeManager(sm->GlobalScope, proto->GetAstScope());
+    auto tm = sm->NewManagerAt(proto->GetAstScope());
     auto meta = CompilerMetaData();
     meta.CurrentStage = CompilerStage::kAnalyseSemantics;
     meta.IsTestHarness = is_test_harness;

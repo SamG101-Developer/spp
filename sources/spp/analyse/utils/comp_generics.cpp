@@ -2,6 +2,7 @@ module spp.analyse.utils.comp_generics;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.member_lookup;
@@ -66,7 +67,8 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
   }
   if (var == nullptr) {
     auto *const base = TypeRef::ForKindCheck(*sym, *sym->LinkedScope).Template();
-    if (const auto blocks = ScopeManager::NormalSupBlocks.find(base); blocks != ScopeManager::NormalSupBlocks.end()) {
+    auto const &normal_blocks = sym->LinkedScope->Tree()->NormalSupBlocks;
+    if (const auto blocks = normal_blocks.find(base); blocks != normal_blocks.end()) {
       for (auto const *block : blocks->second) {
         if (auto const *const found = block->FindVarSymbol(id.get(), true); found != nullptr) {
           var = found;

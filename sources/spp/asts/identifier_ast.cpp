@@ -217,8 +217,7 @@ auto IdentifierAst::Stage9_CompTimeResolve(
   // Extract the value from the symbol table and return
   // it.
   const auto var_sym = sm->CurrentScope->FindVarSymbol(this);
-  auto tm = ScopeManager(
-    sm->GlobalScope, var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
+  auto tm = sm->NewManagerAt(var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
 
   // An unbound comp generic has no value yet, and stands for
   // itself - as it does in a template's signature.

@@ -786,6 +786,13 @@ auto Scope::NewGlobal(Module const &mod)
   return glob_scope;
 }
 
+auto Scope::Tree() const -> ScopeTree* {
+  // Up to the global scope, which knows its tree.
+  auto const *scope = this;
+  while (scope->Parent != nullptr) { scope = scope->Parent; }
+  return scope->OwningTree;
+}
+
 /// [CHECKED]
 auto Scope::GetErrorFormatter() const -> ErrorFormatter* {
   // Return this scope's error formatter, or the parent's if

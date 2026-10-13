@@ -77,7 +77,7 @@ auto spp::codegen::EmitDrop(
     // Declared from its own scope, where its signature's names ("self: Self", a substitution's bindings) resolve.
     if (drop_proto->GetLlvmFn() == nullptr) {
       const auto owner_ctx = drop_proto->OwnerCtx();
-      auto tm = analyse::scopes::ScopeManager(sm->GlobalScope, drop_proto->GetDeclarationScope());
+      auto tm = sm->NewManagerAt(drop_proto->GetDeclarationScope());
       drop_proto->GenerateLlvmDeclaration(&tm, meta, owner_ctx != nullptr ? owner_ctx : ctx);
     }
 

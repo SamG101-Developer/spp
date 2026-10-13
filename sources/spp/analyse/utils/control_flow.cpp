@@ -32,7 +32,7 @@ auto spp::analyse::utils::control_flow::Diverges(
   // bound to a "!" value, which is typed "Void".
   if (const auto block = stmt.To<asts::InnerScopeExpressionAst>(); block != nullptr) {
     if (block->Members.empty()) { return false; }
-    auto tm = ScopeManager(sm->GlobalScope, block->GetAstScope());
+    auto tm = sm->NewManagerAt(block->GetAstScope());
     return Diverges(*block->Members.back(), &tm, meta);
   }
 

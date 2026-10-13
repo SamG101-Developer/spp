@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -133,7 +134,7 @@ auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   if (not Name->IsCompilerGeneratedType()) {
-    sm->AddSelfTypeSymbol(sm->CurrentScope, Name->PosStart());
+    analyse::utils::self_type::AddSelfTypeSymbol(*sm->CurrentScope, sm->CurrentScope, Name->PosStart());
   }
   sm->MoveOutOfCurrentScope();
 }

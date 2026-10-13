@@ -263,7 +263,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
     const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
     if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value))) {
       var_sym->CompTimeValue = AstClone(Value);
-      sm->ExhaustScope();
+      ignore = sm->SkipSubtree(sm->CurrentScope);
       sm->MoveOutOfCurrentScope();
       return;
     }
@@ -273,8 +273,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
     // scopes as unwalked, meaning that the tree becomes non-synced.
     // Use a new scope manager to unsync, then exhaust the scope
     // in the main manager afterwards.
-    auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
-    tm.Reset(sm->CurrentScope);
+    auto tm = sm->NewManagerAt(sm->CurrentScope);
     Value->Stage9_CompTimeResolve(&tm, meta);
     Value = AstClone(meta->CompTimeResult);
     var_sym->CompTimeValue = std::move(meta->CompTimeResult);
@@ -284,7 +283,7 @@ auto CmpStatementAst::Stage9_CompTimeResolve(
     lsp::resolution_index::RecordCompTimeValue(
       *Name, *sm, *meta, Value != nullptr ? Value->ToString() : Str());
   }
-  sm->ExhaustScope();
+  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -315,7 +314,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     or not type_predicates::IsTypeConcrete(*Type, *sm->CurrentScope)
     or (Value != nullptr and not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value)))) {
     if (owns_scope) {
-      sm->ExhaustScope();
+      ignore = sm->SkipSubtree(sm->CurrentScope);
       sm->MoveOutOfCurrentScope();
     }
     return nullptr;
@@ -349,8 +348,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     // "cmp m") names another constant, which may be a comp generic
     // with no storage at all - so it is folded, not generated.
     if (generic_val != nullptr or bound_val->To<IdentifierAst>() != nullptr) {
-      auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
-      tm.Reset(sm->CurrentScope);
+      auto tm = sm->NewManagerAt(sm->CurrentScope);
       bound_val->Stage9_CompTimeResolve(&tm, meta);
       if (const auto folded = std::move(meta->CompTimeResult); folded != nullptr and folded->To<IdentifierAst>() ==
         nullptr) {
@@ -377,7 +375,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
   // value owns are stepped over rather than walked.
   var_sym->LlvmInfo->Alloca = llvm_global_var;
   if (owns_scope) {
-    sm->ExhaustScope();
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
   }
   return nullptr;
@@ -392,7 +390,7 @@ auto CmpStatementAst::Stage11_CodeGen(
   if (_Scope != nullptr) {
     sm->MoveToNextScope();
     SPP_ASSERT(sm->CurrentScope == _Scope);
-    sm->ExhaustScope();
+    ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
   }
   return nullptr;

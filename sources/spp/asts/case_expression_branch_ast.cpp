@@ -184,7 +184,7 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
     // Determine if this branch is not a match (false).
     const auto cmp_pat_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
     if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
-      sm->ExhaustScope();
+      ignore = sm->SkipSubtree(sm->CurrentScope);
       continue;
     }
 
@@ -193,7 +193,7 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
       Guard->Stage9_CompTimeResolve(sm, meta);
       const auto cmp_guard_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
       if (not cmp_guard_bool or not cmp_guard_bool->IsTrue()) {
-        sm->ExhaustScope();
+        ignore = sm->SkipSubtree(sm->CurrentScope);
         continue;
       }
     }

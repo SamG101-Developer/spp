@@ -197,8 +197,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
     }
     const auto sym = analyse::utils::member_lookup::MemberOf(
       *_LhsTypeSymbol->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
-    auto tm = ScopeManager(
-      sm->GlobalScope, _LhsTypeSymbol->LinkedScope);
+    auto tm = sm->NewManagerAt(_LhsTypeSymbol->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CompTimeResult = AstClone(meta->CompTimeResult);
     return;

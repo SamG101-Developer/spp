@@ -14,6 +14,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.sup_attachment;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.expression_ast;
@@ -120,7 +121,7 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlScopes);
     mod->Stage2_GenTopLvlScopes(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -135,7 +136,7 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlAliases);
     mod->Stage3_GenTopLvlAliases(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -150,7 +151,7 @@ auto spp::compiler::CompilerBoot::Stage4_ResolveDeclarations(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kResolveDeclarations);
     mod->Stage4_ResolveDeclarations(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -165,7 +166,7 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kLoadSupScopes);
     mod->Stage5_LoadSupScopes(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -182,8 +183,8 @@ auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kAttachSupScopes);
-  sm->AttachAllSuperScopes(&meta);
+    sm->Tree(), asts::meta::CompilerStage::kAttachSupScopes);
+  analyse::utils::sup_attachment::AttachAllSuperScopes(*sm, &meta);
   bar.Finish();
 }
 
@@ -194,7 +195,7 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   -> void {
   // Pre-analyse semantics stage.
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kPreAnalyseSemantics);
+    sm->Tree(), asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
 
   // Every extension block's members are checked against its
@@ -204,13 +205,13 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Impl->CheckExtensionMembers(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
   }
 
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
@@ -225,11 +226,11 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   -> void {
   // Analyse semantics stage.
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kAnalyseSemantics);
+    sm->Tree(), asts::meta::CompilerStage::kAnalyseSemantics);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -245,11 +246,11 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   -> void {
   // Check memory stage.
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kCheckMemory);
+    sm->Tree(), asts::meta::CompilerStage::kCheckMemory);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -269,11 +270,11 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   -> void {
   // Comptime resolution stage.
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kCompTimeResolve);
+    sm->Tree(), asts::meta::CompilerStage::kCompTimeResolve);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -293,7 +294,7 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
   analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->GlobalScope, asts::meta::CompilerStage::kMonomorphise);
+    sm->Tree(), asts::meta::CompilerStage::kMonomorphise);
   monomorphization::MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
@@ -310,7 +311,7 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);
     mod->Stage10_PreCodeGen(sm, &meta, ctx);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -326,7 +327,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
     mod->Stage11_CodeGen(sm, &meta, ctx);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -580,14 +581,14 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
   // signature: `fun main()`.
   const auto main_call = INJECT_CODE("main()", ParseExpression);
   auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
-  for (auto const &top_level_child : sm->GlobalScope->Children) {
+  for (auto const &top_level_child : sm->GlobalScope()->Children) {
     const auto n = get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
     if (n and n->Name->Val == "main") {
       main_scope = top_level_child.get();
       break;
     }
   }
-  sm->Reset(main_scope);
+  sm->RestartWalk(main_scope);
 
   try {
     auto meta = asts::meta::CompilerMetaData();
@@ -606,15 +607,15 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
   // Check that the "main" function exists,
   catch (analyse::errors::SppIdentifierUnknownError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope()}, ERR_ARGS());
   }
 
   // Check that if the "main" function exists, the signature is compatible.
   catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope()}, ERR_ARGS());
   }
 
-  sm->Reset();
+  sm->RestartWalk();
 }
 
 auto spp::compiler::CompilerBoot::_GenerateTestHarness(
@@ -706,7 +707,7 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     if (const auto quick_ns_sym = sm->CurrentScope->FindNsSymbol(identifier_part.get(), true);
       quick_ns_sym != nullptr) {
       const auto ns_scope = quick_ns_sym->LinkedScope;
-      sm->Reset(ns_scope);
+      sm->RestartWalk(ns_scope);
     }
 
     // Otherwise, create a new scope and move into it.

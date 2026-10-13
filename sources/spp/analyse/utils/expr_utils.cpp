@@ -73,7 +73,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
 
   // Inferred against the scope the statement was written in, which
   // is not necessarily the one the walk is currently sitting in.
-  auto tm = ScopeManager(sm.GlobalScope, scope);
+  auto tm = sm.NewManagerAt(scope);
   const auto type = [&] {
     const auto _meta_guard = MetaGuard(meta);
     meta->IgnoreMissingElseBranchForInference = true;

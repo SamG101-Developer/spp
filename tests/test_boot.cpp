@@ -104,21 +104,17 @@ auto build_temp_project(spp::Str code, const bool add_main) -> spp::Map<spp::Str
   }
   catch (const spp::analyse::errors::SemanticError &e) {
     std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
     throw;
   }
   catch (const spp::parse::errors::SppSyntaxError &e) {
     std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
     throw;
   }
   catch (const std::exception &e) {
     std::cout << e.what() << std::endl;
-    spp::analyse::scopes::ScopeManager::Cleanup();
     throw;
   }
 
-  spp::analyse::scopes::ScopeManager::Cleanup();
   std::filesystem::current_path(cwd);
   return comp_time_constants;
 }

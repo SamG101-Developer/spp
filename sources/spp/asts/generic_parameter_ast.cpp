@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
@@ -229,7 +230,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
 
   dummy_scope->LinkedTypeSymbol = sym;
   _DummyScopes.emplace_back(dummy_scope.get());
-  ScopeManager::TempScopes.emplace_back(
+  sm->Tree().TempScopes.emplace_back(
     std::move(dummy_scope));
 }
 

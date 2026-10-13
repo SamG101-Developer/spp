@@ -83,7 +83,7 @@ namespace spp::codegen {
     // binding. Not by template, which every sized integer
     // shares.
     const auto IsScalar = [&sm, &sym](asts::TypeAst const &name) {
-      const auto name_sym = sm.GlobalScope->FindTypeSymbol(&name);
+      const auto name_sym = sm.GlobalScope()->FindTypeSymbol(&name);
       return name_sym != nullptr and sym.LinkedScope != nullptr and sym.LinkedScope == name_sym->LinkedScope;
     };
 

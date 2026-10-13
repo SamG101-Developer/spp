@@ -6,6 +6,7 @@ module spp.compiler.compiler;
 import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_resolution;
@@ -106,14 +107,17 @@ auto spp::compiler::Compiler::Compile() -> bool {
     _Boot->Parse(next_bar(), *_Modules);
     _TestCount = _Boot->TestCount;
     _TestNames = _Boot->TestNames;
+    _ScopeManager = nullptr;
+    _ScopeTree = MakeUnique<analyse::scopes::ScopeTree>(
+      analyse::scopes::Scope::NewGlobal(*_Modules->GetModules()[0]));
     _ScopeManager = MakeUnique<analyse::scopes::ScopeManager>(
-      analyse::scopes::Scope::NewGlobal(*_Modules->GetModules()[0]), nullptr);
+      analyse::scopes::ScopeManager::ForTree(*_ScopeTree));
     asts::generate::common_types_precompiled::InitTypes();
 
     _Boot->Stage1_PreProcess(next_bar(), *_Modules, nullptr);
     _Boot->Stage2_GenTopLvlScopes(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage3_GenTopLvlAliases(next_bar(), *_Modules, _ScopeManager.get());
-    analyse::utils::type_resolution::StampPrecompiledTypes(*_ScopeManager->GlobalScope);
+    analyse::utils::type_resolution::StampPrecompiledTypes(*_ScopeManager->GlobalScope());
 
     _Boot->Stage4_ResolveDeclarations(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage5_LoadSupScopes(next_bar(), *_Modules, _ScopeManager.get());
@@ -208,7 +212,6 @@ auto spp::compiler::Compiler::CompTimeConstants() const
 
 auto spp::compiler::Compiler::Cleanup() -> void {
   asts::generate::common_types_precompiled::ClearTypes();
-  analyse::scopes::ScopeManager::Cleanup();
   analyse::utils::monomorphization::ClearInstantiations();
 }
 

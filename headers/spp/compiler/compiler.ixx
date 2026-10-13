@@ -8,6 +8,7 @@ import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class ScopeManager;
+  SPP_EXP_CLS struct ScopeTree;
 }
 
 namespace spp::compiler {
@@ -51,6 +52,10 @@ private:
   BuildType _BuildType = BuildType::EXE;
 
   Unique<CompilerBoot> _Boot;
+
+  /// The compile's scopes; declared before the manager over them,
+  /// so it outlives it.
+  Unique<analyse::scopes::ScopeTree> _ScopeTree;
 
   Unique<analyse::scopes::ScopeManager> _ScopeManager;
 

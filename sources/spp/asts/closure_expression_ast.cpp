@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
@@ -531,7 +532,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // Registered globally rather than against the frame or the
   // module the closure was written in. A closure handed to a
   // generic is resolved again inside that generic's own scope.
-  const auto mod_scope = sm->GlobalScope.get();
+  const auto mod_scope = sm->GlobalScope();
   auto mock_name = MakeShared<TypeIdentifierAst>(
     PosStart(), Str("$closure") + Uid(), nullptr);
   auto mock_ast = MakeUnique<ClassPrototypeAst>(
@@ -575,7 +576,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // then scope into the temp scopes for persistence.
   mod_scope->AddTypeSymbol(mock_sym);
   _MockAsts.emplace_back(std::move(mock_ast));
-  ScopeManager::TempScopes.emplace_back(
+  sm->Tree().TempScopes.emplace_back(
     std::move(mock_scope));
   return mock_name;
 }
