@@ -34,6 +34,17 @@ namespace spp {
   SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   using Vec = std::vector<T, A>;
 
+  SPP_EXP_CLS template <typename T, std::size_t N>
+  using Arr = std::array<T, N>;
+
+  SPP_EXP_CLS template <typename T>
+  using Opt = std::optional<T>;
+
+  SPP_EXP_CON inline constexpr auto Nullopt = std::nullopt;
+
+  SPP_EXP_CLS
+  using Path = std::filesystem::path;
+
   SPP_EXP_CLS template <typename T, typename Enable = void>
   using Hash = ankerl::unordered_dense::hash<T, Enable>;
 
@@ -79,13 +90,49 @@ namespace spp {
   template <typename Sig>
   concept IsFunctionSignature = _IsFunctionSignature<Sig>::value;
 
-  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
-  using Function = std::function<Sig>;
+  template <typename Sig>
+  struct _FuncOf;
 
-  SPP_EXP_FUN template <std::size_t N, typename... Ts>
-  auto get(Tup<Ts...> const &tup) -> decltype(auto) {
-    return std::get<N>(tup);
-  }
+  template <typename R, typename... Args>
+  struct _FuncOf<R(Args...)> {
+#if defined(__cpp_lib_copyable_function)
+    using type = std::copyable_function<R(Args...) const>;
+#else
+    using type = std::function<R(Args...)>;
+#endif
+  };
+
+  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
+  using Func = typename _FuncOf<Sig>::type;
+
+  SPP_EXP_CLS template <typename Sig> requires IsFunctionSignature<Sig>
+#if defined(__cpp_lib_function_ref)
+  using FuncRef = std::function_ref<Sig>;
+#else
+  using FuncRef = Func<Sig>;
+#endif
+
+  SPP_EXP_CLS template <typename T>
+  using Span = genex::span<T>;
+
+  SPP_EXP_CLS template <typename... Ts>
+  using Variant = std::variant<Ts...>;
+
+  SPP_EXP_CLS
+  using Monostate = std::monostate;
+
+  // The standard functions over tuples and variants, under their
+  // own names, so call sites name "spp" and not "std".
+  SPP_EXP_FUN using std::get;
+  SPP_EXP_FUN using std::get_if;
+  SPP_EXP_FUN using std::holds_alternative;
+  SPP_EXP_FUN using std::visit;
+  SPP_EXP_FUN using std::apply;
+  SPP_EXP_FUN using std::tie;
+  SPP_EXP_FUN using std::tuple_cat;
+  SPP_EXP_FUN using std::forward_as_tuple;
+  SPP_EXP_FUN using std::make_from_tuple;
+  SPP_EXP_FUN using std::ignore;
 
   SPP_EXP_FUN template <typename K, typename V>
   SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto MakePair(
