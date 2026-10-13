@@ -840,9 +840,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: a refined type and a binding on the same field. "Some[Some[S32]]" refines "val" to "Some(_)", and the binding
-// "val=Some[S32](val)" says "Some(_)" again; "Meet" gives up on two constructor patterns and makes the whole pattern
-// opaque, so it covers nothing and this exhaustive "case" asks for an "else" (case_utils.cpp, "Meet").
+// A refined type and a binding on the same field. "Some[Some[S32]]" refines "val" to "Some(_)", and the binding
+// "val=Some[S32](val)" says "Some(_)" again; "Meet" meets the two constructor patterns field by field (N1.8).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CaseExpressionAst,
   test_valid_nested_variant_covered_by_refining_type_and_binding, R"(
@@ -851,6 +850,35 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
             is Some[Some[S32]](val=Some[S32](val)) { val }
             is Some[None](..) { 0 }
             is None() { 0 }
+        }
+    }
+)");
+
+// The same, a level deeper: the binding refines the refined field again.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_doubly_nested_variant_covered_by_refining_type_and_binding, R"(
+    fun f(x: Opt[Opt[Opt[S32]]]) -> S32 {
+        ret case x of {
+            is Some[Some[Opt[S32]]](val=Some[Opt[S32]](val=Some[S32](val))) { val }
+            is Some[Some[Opt[S32]]](val=Some[Opt[S32]](val=None())) { 1 }
+            is Some[None](..) { 2 }
+            is None() { 3 }
+        }
+    }
+)");
+
+// Once the refined pattern covers its member, an "else" after the rest is unreachable.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_else_after_nested_variant_covered_by_refining_type_and_binding,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: Opt[Opt[S32]]) -> S32 {
+        ret case x of {
+            is Some[Some[S32]](val=Some[S32](val)) { val }
+            is Some[None](..) { 0 }
+            is None() { 0 }
+            else { 1 }
         }
     }
 )");
@@ -965,8 +993,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: a comparing branch's literal is an expression pattern, which coverage reads as opaque, so a repeated "== 1"
-// is not found unreachable, though "is (1, _)" repeated is (case_utils.cpp, "ToPat").
+// A comparing branch's literal is the value it names, as a destructure's literal is: a repeated "== 1" is unreachable,
+// as "is (1, _)" repeated is (N1.9).
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CaseExpressionAst,
   test_invalid_repeated_equality_literal,
@@ -975,6 +1003,44 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret case x of {
             == 1 { 1 }
             == 1 { 2 }
+            else { 3 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_equality_literal_spelled_in_hex,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: S32) -> S32 {
+        ret case x of {
+            == 16 { 1 }
+            == 0x10 { 2 }
+            else { 3 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_distinct_equality_literals, R"(
+    fun f(x: S32) -> S32 {
+        ret case x of {
+            == 1 { 1 }
+            == 2 { 2 }
+            else { 3 }
+        }
+    }
+)");
+
+// Comparing with anything but a literal tests something coverage cannot read, so it is never shadowed by one.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_equality_with_a_variable_after_a_literal, R"(
+    fun f(x: S32, y: S32) -> S32 {
+        ret case x of {
+            == 1 { 1 }
+            == y { 2 }
             else { 3 }
         }
     }
