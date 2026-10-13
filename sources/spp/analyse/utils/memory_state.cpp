@@ -55,10 +55,9 @@ namespace spp::analyse::utils::memory_state {
     }
 
     /// Whether two partial moves took the same part: the same
-    // place, or, naming none, written the same.
+    /// place ("PartMovedBy" records none without one).
     auto SamePart(regions::PlaceAt const &lhs, regions::PlaceAt const &rhs) -> bool {
-      if (lhs.Of.has_value() and rhs.Of.has_value()) { return *lhs.Of == *rhs.Of; }
-      return lhs.Of.has_value() == rhs.Of.has_value() and lhs.Site->ToString() == rhs.Site->ToString();
+      return *lhs.Of == *rhs.Of;
     }
 
     /// [CHECKED]
@@ -116,14 +115,17 @@ auto MemoryState::MovedBy(
 
 auto MemoryState::PartMovedBy(
   regions::PlaceAt const &part) -> void {
+  // A partial move is of an attribute chain rooted at a symbol,
+  // which always has a place: one without is a bug upstream.
+  RaiseIf<errors::SppInternalCompilerError>(
+    not part.Of.has_value(), {},
+    ERR_ARGS(*part.Site, "a partial move with no place"));
+
   // Taken on every path from here, so whatever the paths
   // before took inside it no longer matters.
-  if (part.Of.has_value()) {
-    MaybePartialMoves |= genex::actions::remove_if([&](auto const &maybe) {
-      return maybe.Part.Of.has_value()
-        and regions::Relate(*part.Of, *maybe.Part.Of) == regions::MemRegionRelation::Contains;
-    });
-  }
+  MaybePartialMoves |= genex::actions::remove_if([&](auto const &maybe) {
+    return regions::Relate(*part.Of, *maybe.Part.Of) == regions::MemRegionRelation::Contains;
+  });
   PartialMoves.emplace_back(part);
 }
 
@@ -137,12 +139,11 @@ auto MemoryState::RemovePartialMoves(
     ? regions::PlaceOf(ast, *scope)
     : Nullopt;
 
-  // A "place at an ast" is considered "written" if the place
-  // exists, and the move's place is the written place.
+  // A partial move is written over if what is written is its
+  // place. Writing something that is no place (a temporary's
+  // attribute) puts nothing back.
   const auto is_written = [&](regions::PlaceAt const &move) {
-    return written.has_value() and move.Of.has_value()
-      ? *move.Of == *written
-      : move.Site->ToString() == ast.ToString();
+    return written.has_value() and *move.Of == *written;
   };
 
   // Filter off the partial moves that are written. Do the
