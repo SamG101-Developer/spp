@@ -26,7 +26,6 @@ import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.lsp.resolution_index;
 import spp.utils.interner;
-import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -335,11 +334,11 @@ auto IdentifierAst::InferTypeRef(
 }
 
 auto IdentifierAst::ToFnIdentifier() const -> Unique<IdentifierAst> {
-  // Convert the identifier into pascal case and wrap it with
-  // the compiler-only "$" prefix (the lexer has no "$" token,
-  // so it cannot be written); "func_name" becomes "$FuncName".
-  return MakeUnique<IdentifierAst>(
-    _Pos, "$" + spp::utils::strings::SnakeToPascal(Val));
+  // The name as written behind the compiler-only "$" prefix
+  // (the lexer has no "$" token, so it cannot be written):
+  // "func_name" becomes "$func_name". Kept verbatim, so each
+  // function name has its own mock.
+  return MakeUnique<IdentifierAst>(_Pos, "$" + Val);
 }
 
 auto IdentifierAst::AnkerlHash() const -> std::size_t {

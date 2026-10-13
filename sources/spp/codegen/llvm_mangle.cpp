@@ -160,7 +160,7 @@ namespace spp::codegen::mangle {
 
       // A closure's type is named after an address, which
       // reads as noise and changes every build.
-      if (last->Name.starts_with("$closure")) { return out + "{closure}"; }
+      if (last->Name.starts_with("$closure$")) { return out + "{closure}"; }
       out += last->Name;
       return args.empty() ? out : out + "[" + join(args, ", ") + "]";
     }

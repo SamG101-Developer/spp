@@ -599,7 +599,7 @@ TypeSymbol::~TypeSymbol() = default;
 
 auto TypeSymbol::NeedsDeepCopy() const -> bool {
   // An alias is rewritten per instantiation, and a method's "$" mock is the instantiation's own: its function type is
-  // read with the block's bindings ("Box[S32]::$Get" is a "FunRef[(&Box[S32],), S32]"), so it is not the template's.
+  // read with the block's bindings ("Box[S32]::$get" is a "FunRef[(&Box[S32],), S32]"), so it is not the template's.
   return Alias != nullptr or Kind == TypeKind::FnMock;
 }
 

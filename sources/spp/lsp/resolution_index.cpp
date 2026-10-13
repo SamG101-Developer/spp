@@ -77,7 +77,7 @@ namespace spp::lsp::resolution_index {
       if (sym.Type == nullptr) { return signatures; }
 
       // Get the mock function type for the function symbol. This
-      // will take the function "func" and get "$Type". This holds
+      // will take the function "func" and get "$func". This holds
       // the overloads via the sup scopes.
       const auto mock = scope.FindTypeSymbol(sym.Type.get());
       if (mock == nullptr or mock->LinkedScope == nullptr) { return signatures; }

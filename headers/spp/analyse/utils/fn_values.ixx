@@ -32,9 +32,9 @@ namespace spp::analyse::utils::fn_values {
   SPP_EXP_FUN auto FnBlockOf(
     Scope const &scope) -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*>;
 
-  /// Get the actual name of a function hidden by a $Type. For
-  /// regular functions and methods, this is simply converting
-  /// "$Type" back to "type". For closures, there is no name,
+  /// Get the actual name of a function hidden by a $type. For
+  /// regular functions and methods, this is the name of the
+  /// prototype the mock extends. For closures, there is no name,
   /// as a closure is an unnamed function by definition, so
   /// "nullptr". The scope returned is the parent of the overload.
   SPP_EXP_FUN auto GetFnValueName(

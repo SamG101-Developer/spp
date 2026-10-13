@@ -59,26 +59,6 @@ auto spp::utils::strings::IsAlNum(const char c) -> bool {
     or (c == '_');
 }
 
-auto spp::utils::strings::SnakeToPascal(Str const &str) -> Str {
-  auto out = Str();
-  auto caps = true;
-  for (auto i = 0uz; i < str.length(); ++i) {
-    const auto c = str[i];
-    if (c == '_') {
-      caps = true;
-      continue;
-    }
-    if (caps) {
-      out.push_back(static_cast<char>(std::toupper(c)));
-      caps = false;
-    }
-    else {
-      out.push_back(static_cast<char>(std::tolower(c)));
-    }
-  }
-  return out;
-}
-
 auto spp::utils::strings::ClosestMatch(
   const StrView query, Vec<Str> const &choices) -> Opt<Str> {
   auto match_found = false;

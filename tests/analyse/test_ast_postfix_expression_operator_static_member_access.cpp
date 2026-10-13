@@ -317,7 +317,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A method value on a generic owner is named through the instantiated owner ("Box[S32]::$Get").
+// A method value on a generic owner is named through the instantiated owner ("Box[S32]::$get").
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_method_as_value_on_a_generic_owner, R"(
@@ -337,7 +337,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Each instantiation of the owner has its own mock, typed in its own terms: "Box[S32]::$Get" and "Box[Bool]::$Get"
+// Each instantiation of the owner has its own mock, typed in its own terms: "Box[S32]::$get" and "Box[Bool]::$get"
 // are two types.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
@@ -410,7 +410,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // Overloads written in two "sup" blocks get a mock each, and each mock is given the other's overloads, so naming
-// "Counter::$Make" reaches both - through a function type, and through a generic parameter (called via the owner).
+// "Counter::$make" reaches both - through a function type, and through a generic parameter (called via the owner).
 // FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,

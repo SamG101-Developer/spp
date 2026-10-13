@@ -354,3 +354,46 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f[T](a: T) -> Void { std::mem::ops::drop(a) }
     fun f[T](a: &T) -> Void { }
 )");
+
+// A function's mock is "$" + its name as written, so names differing only by "_" or case are separate overload sets.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverloads_FreeFuncs,
+  test_invalid_name_differing_by_an_underscore_is_another_function,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun foo1(x: S32) -> Void { }
+    fun foo_1(x: Bool) -> Void { }
+
+    fun f() -> Void {
+        foo1(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverloads_FreeFuncs,
+  test_valid_names_differing_by_case_are_not_ambiguous, R"(
+    fun fooBar() -> S32 { ret 1_s32 }
+    fun foobar() -> Bool { ret true }
+
+    fun f() -> Void {
+        let a = fooBar()
+        let b = foobar()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverloads_SupBlocks,
+  test_invalid_method_name_differing_by_an_underscore_is_another_method,
+  SppFunctionCallNoValidSignaturesError, R"(
+    cls A { }
+
+    sup A {
+        !public fun m1(&self, x: S32) -> Void { }
+        !public fun m_1(&self, x: Bool) -> Void { }
+    }
+
+    fun f() -> Void {
+        let x = A()
+        x.m1(true)
+        std::mem::ops::drop(x)
+    }
+)");

@@ -10,9 +10,6 @@ namespace spp::utils::strings {
   /// an underscore.
   SPP_EXP_FUN auto IsAlNum(char c) -> bool;
 
-  /// Convert a string from snake_case to PascalCase.
-  SPP_EXP_FUN auto SnakeToPascal(Str const &) -> Str;
-
   /// Find the closest match to "query" among "choices", or
   /// "Nullopt" if nothing matches.
   SPP_EXP_FUN SPP_ATTR_COLD auto ClosestMatch(StrView query, Vec<Str> const &choices) -> Opt<Str>;

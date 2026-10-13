@@ -1453,7 +1453,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
   if (target_fn_name.Val.empty() or target_scope == nullptr) { return {}; }
 
   // Get the function-type name from the function: "func()"
-  // => "$Func".
+  // => "$func".
   const auto mapped_name = target_fn_name.ToFnIdentifier();
   auto overload_scopes = Vec<FnOverload>();
 
