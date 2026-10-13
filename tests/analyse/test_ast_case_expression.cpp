@@ -904,6 +904,67 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// A literal is keyed by its value, not its spelling: "16" and "0x10" are one value, and so are "5" and "5_s32" in an
+// "S32" column (every literal in one column has the column's type).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_integer_literal_spelled_in_hex,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: (S32, Bool)) -> S32 {
+        ret case x of {
+            is (16, _) { 0 }
+            is (0x10, true) { 1 }
+            else { 2 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_integer_literal_with_and_without_suffix,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: (S32, Bool)) -> S32 {
+        ret case x of {
+            is (5, _) { 0 }
+            is (5_s32, true) { 1 }
+            else { 2 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_attribute_literal_spelled_differently,
+  SppCaseBranchUnreachableError, R"(
+    cls LitPoint {
+        !public x: S32
+        !public y: S32
+    }
+
+    sup LitPoint ext std::copy::Copy { }
+
+    fun f(p: LitPoint) -> S32 {
+        ret case p of {
+            is LitPoint(x=0, ..) { 0 }
+            is LitPoint(x=0x0, ..) { 1 }
+            else { 2 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_distinct_integer_literals, R"(
+    fun f(x: (S32, Bool)) -> S32 {
+        ret case x of {
+            is (5, _) { 0 }
+            is (6, _) { 1 }
+            is (0x7, _) { 2 }
+            else { 3 }
+        }
+    }
+)");
+
 // Red: a comparing branch's literal is an expression pattern, which coverage reads as opaque, so a repeated "== 1"
 // is not found unreachable, though "is (1, _)" repeated is (case_utils.cpp, "ToPat").
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
