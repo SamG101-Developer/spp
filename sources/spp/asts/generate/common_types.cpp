@@ -363,199 +363,163 @@ auto generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type
 }
 
 auto generate::common_types::GenOnceType(std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst> {
-  // Todo: MAcro these!
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(yield_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(yield_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("GenOnce"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("generator")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("GenOnce")
+  ADD_NAMESPACE("generator")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(elem_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(elem_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexMut"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("IndexMut")
+  ADD_NAMESPACE("idx")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(elem_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(elem_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("IndexRef"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("IndexRef")
+  ADD_NAMESPACE("idx")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(elem_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(elem_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceMut"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("SliceMut")
+  ADD_NAMESPACE("idx")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(elem_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(elem_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("SliceRef"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("idx")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("SliceRef")
+  ADD_NAMESPACE("idx")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(param_types));
-  generics_lst[1] = GenericArgumentAst::NewType(nullptr, std::move(ret_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(param_types))
+  ADD_TYPE_GENERIC(std::move(ret_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunRef"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("FunRef")
+  ADD_NAMESPACE("function")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(param_types));
-  generics_lst[1] = GenericArgumentAst::NewType(nullptr, std::move(ret_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(param_types))
+  ADD_TYPE_GENERIC(std::move(ret_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMut"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("FunMut")
+  ADD_NAMESPACE("function")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(2);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(param_types));
-  generics_lst[1] = GenericArgumentAst::NewType(nullptr, std::move(ret_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(param_types))
+  ADD_TYPE_GENERIC(std::move(ret_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FunMov"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("function")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("FunMov")
+  ADD_NAMESPACE("function")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::ForwardRefType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(inner_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(inner_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdRef"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("FwdRef")
+  ADD_NAMESPACE("fwd")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::NonNullType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(inner_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(inner_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("NonNull"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("pointer")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("mem")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("NonNull")
+  ADD_NAMESPACE("pointer")
+  ADD_NAMESPACE("mem")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
+}
+
+auto generate::common_types::SizedIntegerType(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("SizedInteger");
+  ADD_NAMESPACE("sized_integer");
+  ADD_NAMESPACE("num");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
+}
+
+auto generate::common_types::SizedFloatType(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("SizedFloatingPoint");
+  ADD_NAMESPACE("sized_floating_point");
+  ADD_NAMESPACE("num");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
+}
+
+auto generate::common_types::GeneratedType(std::size_t pos) -> Shared<TypeAst> {
+  MAKE_TYPE("Generated");
+  ADD_NAMESPACE("generator");
+  ADD_NAMESPACE("std");
+  FINISH_TYPE();
 }
 
 auto generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
-  auto generics_lst = Vec<Unique<GenericArgumentAst>>(1);
-  generics_lst[0] = GenericArgumentAst::NewType(nullptr, std::move(inner_type));
-  auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_lst), nullptr);
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(inner_type))
+  FINISH_GENERICS()
 
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("FwdMut"), std::move(generics));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("fwd")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("ops")), nullptr),
-    std::move(type));
-  type = MakeShared<TypeUnaryExpressionAst>(
-    MakeShared<TypeUnaryExpressionOperatorNamespaceAst>(MakeShared<IdentifierAst>(pos, Str("std")), nullptr),
-    std::move(type));
-  return type;
+  MAKE_TYPE_WITH_GN("FwdMut")
+  ADD_NAMESPACE("fwd")
+  ADD_NAMESPACE("ops")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
 }
 
 auto generate::common_types::SelfType(std::size_t pos) -> Shared<TypeAst> {
-  Shared<TypeAst> type = MakeShared<TypeIdentifierAst>(pos, Str("Self"), nullptr);
-  return type;
+  MAKE_TYPE("Self");
+  FINISH_TYPE();
 }

@@ -34,17 +34,6 @@ import genex;
 import llvm;
 import std;
 
-const spp::Vec<spp::Str> kVoidParts = {"std", "void", "Void"};
-const spp::Vec<spp::Str> kBoolParts = {"std", "boolean", "Bool"};
-const spp::Vec<spp::Str> kSizedIntegerParts = {"std", "num", "sized_integer", "SizedInteger"};
-const spp::Vec<spp::Str> kSizedFloatParts = {"std", "num", "sized_floating_point", "SizedFloatingPoint"};
-const spp::Vec<spp::Str> kArrParts = {"std", "array", "Arr"};
-const spp::Vec<spp::Str> kGeneratedParts = {"std", "generator", "Generated"};
-const spp::Vec<spp::Str> kGenParts = {"std", "generator", "Gen"};
-const spp::Vec<spp::Str> kGenOnceParts = {"std", "generator", "GenOnce"};
-const spp::Vec<spp::Str> kVarParts = {"std", "variant", "Var"};
-const spp::Vec<spp::Str> kNonNullParts = {"std", "mem", "pointer", "NonNull"};
-
 // Largest alignment a variant payload buffer will be built out of. Anything needing more than a 16 byte alignment is
 // vector/extended precision territory, which the layout code does not model either.
 constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
@@ -130,32 +119,30 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   }
 
   // For compiler known types, specialize the llvm type symbols.
-  const auto parts = scope->GetAncestors()
-    | genex::views::drop_last(1)
-    | genex::views::transform([](auto *x) { return x->NonGnScope->NameAsString(); })
-    | genex::views::reverse
-    | genex::to<Vec>();
+  using namespace asts::generate::common_types_precompiled;
+  const auto cls_ref = analyse::scopes::TypeRef::Of(*cls_sym, *scope);
+  const auto is = [&](TypeAst const &tmpl) { return cls_ref.IsA(tmpl, *scope); };
 
   // Lower S++ "Void" to the llvm "void" type.
-  if (parts == kVoidParts) {
+  if (is(*VOID)) {
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getVoidTy(*ctx->Context);
     return;
   }
 
   // Lower S++ "Bool" to the llvm "i1" type.
-  if (parts == kBoolParts) {
+  if (is(*BOOL)) {
     cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt1Ty(*ctx->Context);
     return;
   }
 
   // Lower S++ "NonNull[T]" to a bare llvm pointer.
-  if (parts == kNonNullParts) {
+  if (is(*NON_NULL)) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }
 
   // Lower S++ "S/U[8|16|32|64|128]" to the llvm "i[8|16|32|64|128]" type (llvm integers carry no signedness).
-  if (parts == kSizedIntegerParts) {
+  if (is(*SIZED_INTEGER)) {
     const auto bit_width = U64Of(scope->LinkedTypeSymbol->CompArgId("w"));
     if (not bit_width.has_value()) { return; }
     const auto w = static_cast<unsigned>(*bit_width);
@@ -164,7 +151,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   }
 
   // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
-  if (parts == kSizedFloatParts) {
+  if (is(*SIZED_FLOAT)) {
     const auto bit_width = U64Of(scope->LinkedTypeSymbol->CompArgId("w"));
     if (not bit_width.has_value()) { return; }
     const auto w = static_cast<unsigned>(*bit_width);
@@ -173,7 +160,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   }
 
   // Lower S++ Arr" to the llvm "[T * n]" type.
-  if (parts == kArrParts) {
+  if (is(*ARR)) {
     // The template ("Arr", named as written) has no layout; only an instantiation carries its element type and length.
     if (not cls_sym->IsConcrete or cls_sym->InstanceOf == nullptr) { return; }
     const auto length = analyse::scopes::U64Of(cls_sym->CompArgId("n"));
@@ -192,9 +179,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // "Generated[Yield]" ("send"'s return type) shares the { ptr, ptr }
   // shape too, but it is a private, compiler-internal type nothing
-  // ever superimposes, so it's handled directly here by name rather
-  // than through "GetFatPointerFields".
-  if (parts == kGeneratedParts) {
+  // ever superimposes, so it's handled directly here rather than
+  // through "GetFatPointerFields".
+  if (is(*GENERATED)) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
     return;
@@ -202,7 +189,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
 
   // A generator is the bare "llvm.coro.begin" handle, one pointer
   // wide.
-  if (parts == kGenParts or parts == kGenOnceParts) {
+  if (is(*GEN) or is(*GEN_ONCE)) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }
@@ -225,7 +212,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // Lower S++ "Var" (the "A or B" variant type) to a
   // { tag, payload } pair. This includes all sorts of
   // internal processing for tag setup.
-  if (parts == kVarParts) {
+  if (is(*VAR)) {
     const auto struct_type = llvm::StructType::create(*ctx->Context, mangle::MangleTypeName(*cls_sym));
     cls_sym->LlvmInfo->LlvmType = struct_type;
 
@@ -239,8 +226,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     // be.
     const auto member_sm = sm.NewManagerAt(const_cast<Scope*>(scope));
 
-    const auto variant_ref = analyse::scopes::TypeRef::Of(*cls_sym, *scope);
-    for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(variant_ref, *scope)) {
+    for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(cls_ref, *scope)) {
       const auto member_sym = member.Symbol;
       if (member_sym == nullptr) { continue; }
 
