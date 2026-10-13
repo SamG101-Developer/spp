@@ -286,7 +286,7 @@ auto spp::cli::RunCli(
   test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner] {
     HandleTest(
       test_name_filter, test_group_filter,
-      Vec(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
+      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
   });
 
   app.add_subcommand("validate", "Validate the project")
