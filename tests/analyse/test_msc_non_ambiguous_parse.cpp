@@ -17,7 +17,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestNonAmbiguousParse,
   test_valid_indexing_vector_of_callables, R"(
     fun g() -> Void {
-        let v = Vec[FunMov[(), Str]]()
+        let v = Vec[FunRef[(), Str]]()
         let mut x = (v[1_uz])()
         std::mem::ops::drop(x)
         x = Str::from("hello")
