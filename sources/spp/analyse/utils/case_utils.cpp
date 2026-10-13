@@ -31,6 +31,7 @@ import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.case_pattern_variant_literal_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
+import spp.asts.float_literal_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_positional_ast;
@@ -68,12 +69,13 @@ namespace spp::analyse::utils::case_utils {
     /// ("Opaque"); one constructor of the column's type with a pattern
     /// per field ("Ctor": a variant member by index, "false"/"true" as
     /// 0/1, or a product type's one constructor 0); or a literal of a
-    /// type with too many values to list ("Lit").
+    /// type with too many values to list ("Lit", by its value's
+    /// interned identity, so "16" and "0x10" are one value).
     struct Pat {
       enum class Kind { Wild, Opaque, Ctor, Lit } K = Kind::Wild;
 
       std::size_t Ctor = 0;
-      Str Lit;
+      scopes::CompId Lit = nullptr;
       Vec<Pat> Fields;
     };
 
@@ -93,16 +95,18 @@ namespace spp::analyse::utils::case_utils {
       bool IsBool = false;
     };
 
-    auto MakePat(const Pat::Kind k, const std::size_t ctor = 0, Str lit = {}, Vec<Pat> fields = {}) -> Pat {
+    auto LitPat(const scopes::CompId value) -> Pat {
       auto p = Pat();
-      p.K = k;
-      p.Ctor = ctor;
-      p.Lit = std::move(lit);
-      p.Fields = std::move(fields);
+      p.K = Pat::Kind::Lit;
+      p.Lit = value;
       return p;
     }
 
-    auto OpaquePat() -> Pat { return MakePat(Pat::Kind::Opaque); }
+    auto OpaquePat() -> Pat {
+      auto p = Pat();
+      p.K = Pat::Kind::Opaque;
+      return p;
+    }
 
     /// [CHECKED]
     /// The column for a value of type "ref": a variant's members (read
@@ -188,7 +192,21 @@ namespace spp::analyse::utils::case_utils {
     }
 
     auto CtorPat(Column const &col, const std::size_t ctor) -> Pat {
-      return MakePat(Pat::Kind::Ctor, ctor, {}, Vec<Pat>(FieldsOf(col, ctor).size(), Pat()));
+      auto p = Pat();
+      p.K = Pat::Kind::Ctor;
+      p.Ctor = ctor;
+      p.Fields = Vec<Pat>(FieldsOf(col, ctor).size(), Pat());
+      return p;
+    }
+
+    /// The value a literal pattern tests. Every literal in one column
+    /// has the column's type, so a number is its value alone: "5" and
+    /// "5_s32" are one value in an "S32" column. Anything else is
+    /// keyed as a comp value ("Scope::CompIdOf").
+    auto LiteralValue(LiteralAst const &lit, Scope const &scope) -> scopes::CompId {
+      if (const auto i = lit.To<IntegerLiteralAst>()) { return InternCompKey(scopes::CompKey::OfInt(i->BigVal(), "")); }
+      if (const auto f = lit.To<FloatLiteralAst>()) { return InternCompKey(scopes::CompKey::OfFloat(f->BigVal(), "")); }
+      return scope.CompIdOf(lit);
     }
 
     /// [CHECKED]
@@ -304,7 +322,7 @@ namespace spp::analyse::utils::case_utils {
     auto ToPat(
       CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, const bool eq_op) -> Pat {
       const auto bool_pat = [&](BooleanLiteralAst const &lit) {
-        return col.IsBool ? MakePat(Pat::Kind::Ctor, lit.IsTrue() ? 1uz : 0uz) : OpaquePat();
+        return col.IsBool ? CtorPat(col, lit.IsTrue() ? 1uz : 0uz) : OpaquePat();
       };
 
       // For an attribute binding pattern, we need to recurse
@@ -316,10 +334,10 @@ namespace spp::analyse::utils::case_utils {
 
       // For a literal pattern, if it's a boolean literal, then
       // just check if the literal holds "true" or not. Otherwise,
-      // its 0 (non-bool ctor).
+      // it is keyed by its value.
       if (const auto lit = pattern.To<CasePatternVariantLiteralAst>()) {
         if (const auto b = lit->Literal->To<BooleanLiteralAst>()) { return bool_pat(*b); }
-        return MakePat(Pat::Kind::Lit, 0, lit->Literal->ToString());
+        return LitPat(LiteralValue(*lit->Literal, scope));
       }
 
       // Similar to above, if the expression is a boolean literal
