@@ -485,7 +485,6 @@ public:
   auto ParseTokenSemicolon() -> Unique<TokenAst>;
   auto ParseTokenSingleQuote() -> Unique<TokenAst>;
   auto ParseTokenDoubleQuote() -> Unique<TokenAst>;
-  auto ParseTokenDollar() -> Unique<TokenAst>;
   auto ParseTokenArrowRight() -> Unique<TokenAst>;
   auto ParseTokenDoubleDot() -> Unique<TokenAst>;
   auto ParseTokenDoubleColon() -> Unique<TokenAst>;

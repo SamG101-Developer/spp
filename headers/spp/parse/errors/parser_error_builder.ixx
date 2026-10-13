@@ -27,10 +27,6 @@ namespace spp::parse::errors {
     const lex::SppTokenType token)
     -> Str {
     switch (token) {
-      // Special case - compiler injected so needed, but not
-      // user-writable so don't offer it as an alternative.
-      case lex::SppTokenType::TK_DOLLAR: return {};
-
       case lex::SppTokenType::LX_IDENTIFIER: return "an identifier";
       case lex::SppTokenType::LX_NUMBER: return "a number";
       case lex::SppTokenType::LX_STRING: return "a string";

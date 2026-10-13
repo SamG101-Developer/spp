@@ -535,7 +535,8 @@ auto TypeIdentifierAst::WithGns(
 }
 
 auto TypeIdentifierAst::IsCompilerGeneratedType() const -> bool {
-  // Types starting with "$" are compiler generated (not parsable).
+  // Types starting with "$" are compiler generated: the
+  // lexer has no "$" token, so no written name has one.
   return Name[0] == '$';
 }
 

@@ -2167,9 +2167,6 @@ auto spp::parse::ParserSpp::ParseLexemeIdentifier()
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
 
-  PARSE_OPTIONAL(p1, ParseTokenDollar);
-  if (p1 != nullptr) { out->TokenData += p1->TokenData; }
-
   PARSE_ONCE(p2, ParseLexemeCharacter);
   if (std::isupper(p2->TokenData[0])) { return nullptr; }
   out->TokenData += p2->TokenData;
@@ -2189,9 +2186,6 @@ auto spp::parse::ParserSpp::ParseLexemeUpperIdentifier()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
-
-  PARSE_OPTIONAL(p1, ParseTokenDollar);
-  if (p1 != nullptr) { out->TokenData += p1->TokenData; }
 
   PARSE_ONCE(p2, ParseLexemeCharacter);
   if (std::islower(p2->TokenData[0])) { return nullptr; }
@@ -2408,12 +2402,6 @@ auto spp::parse::ParserSpp::ParseTokenDoubleQuote()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_QUOTATION_MARK, lex::SppTokenType::TK_QUOTATION_MARK); });
-  return FORWARD_AST(p1);
-}
-
-auto spp::parse::ParserSpp::ParseTokenDollar()
-  -> Unique<asts::TokenAst> {
-  PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_DOLLAR_SIGN, lex::SppTokenType::TK_DOLLAR); });
   return FORWARD_AST(p1);
 }
 

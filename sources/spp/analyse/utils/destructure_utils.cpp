@@ -51,8 +51,8 @@ auto spp::analyse::utils::destructure_utils::UnmatchableSingleIdentifier(
 auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   ExpressionAst *val, Shared<TypeAst> const &val_type,
   ScopeManager &sm) -> Shared<IdentifierAst> {
-  // The "$" prefix cannot be written in user code, so the
-  // temporary can never collide with a real binding.
+  // The lexer has no "$" token, so no written name starts with
+  // one, and the temporary can never collide with a real binding.
   auto name = MakeShared<IdentifierAst>(val->PosEnd(), "$_dst_" + spp::utils::Uid());
 
   // Mirror the symbol an initialized single-identifier "let"

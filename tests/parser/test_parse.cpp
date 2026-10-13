@@ -1124,3 +1124,23 @@ SPP_TEST_SHOULD_PASS_SYNTACTIC(
         let my_closure = (a: S32, ..b: S32) { a }
     }
 )");
+
+// "$" names are made by the compiler (function mocks, desugaring temporaries), never parsed: written, it is no token.
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(
+  parse_dollar_class_name, R"(
+    cls $Foo { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(
+  parse_dollar_variable_name, R"(
+    fun my_function() -> Void {
+        let $x = 1
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SYNTACTIC(
+  parse_dollar_static_member, R"(
+    fun my_function() -> Void {
+        let f = Foo::$Bar
+    }
+)");

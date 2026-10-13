@@ -236,11 +236,6 @@ auto spp::lex::Lexer::Lex()
         ++i;
         continue;
       }
-      case '$': {
-        tokens.emplace_back(RawTokenType::TK_DOLLAR_SIGN, "$");
-        ++i;
-        continue;
-      }
       case ' ': {
         tokens.emplace_back(RawTokenType::TK_SPACE, " ");
         ++i;

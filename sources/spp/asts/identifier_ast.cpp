@@ -336,8 +336,8 @@ auto IdentifierAst::InferTypeRef(
 
 auto IdentifierAst::ToFnIdentifier() const -> Unique<IdentifierAst> {
   // Convert the identifier into pascal case and wrap it with
-  // the compiler-type "$" token; for example, "func_name"
-  // becomes "$FuncName".
+  // the compiler-only "$" prefix (the lexer has no "$" token,
+  // so it cannot be written); "func_name" becomes "$FuncName".
   return MakeUnique<IdentifierAst>(
     _Pos, "$" + spp::utils::strings::SnakeToPascal(Val));
 }
