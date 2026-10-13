@@ -68,7 +68,7 @@ namespace spp::analyse::scopes {
   /// parameter "param_id", decoded as "ArgsOf" decodes it; read in
   /// place, stopping at the match. Only an argument for a parameter
   /// matches: a positional one (a pack's element, or one past the
-  /// parameters) or a spelled one has no parameter, so none of its
+  /// parameters) has no parameter, so none of its
   /// words is mistaken for one. Its kind is as found: "TypeVal" or
   /// "CompVal" is set, whichever the caller wants.
   SPP_EXP_CLS auto FindArgOf(
@@ -81,7 +81,7 @@ namespace spp::analyse::scopes {
     /// A large set of possible types of a type, which might
     /// require certain behaviour and handling.
     enum class Tag : std::uint8_t {
-      Name, Pos, Conv, Unresolved, TypeBound, TypeParam,
+      Pos, Conv, Unresolved, TypeBound, TypeParam,
       Symbol, CompId, Inst, Variant, Len, TypeId, CompParam,
       TypePack, CompPack, Arg
     };
@@ -376,17 +376,12 @@ namespace spp::analyse::scopes {
   /// ("TypeIdHead::Args"): for a parameter (by its "ParamId",
   /// "Arg"), or positional (by its index, "Pos": a pack's element,
   /// or one past the parameters), then a type or a comp value's
-  /// interned identity. A keyword naming no parameter of the group
-  /// is the one argument spelled ("Name"), an error the analysis
-  /// reports.
+  /// interned identity.
   SPP_EXP_CLS struct TypeIdArg {
-    /// For a parameter, or spelled: not positional.
+    /// For a parameter: not positional.
     bool Named = false;
 
-    /// Named by spelling rather than by a parameter.
-    bool Spelled = false;
-
-    /// The "ParamId" (for a parameter), the interned name (spelled), or the index (positional).
+    /// The "ParamId" (for a parameter), or the index (positional).
     std::uint64_t Slot = 0;
 
     TypeId TypeVal = nullptr;

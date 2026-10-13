@@ -147,7 +147,7 @@ namespace spp::analyse::scopes {
         // text if they are both spellable, otherwise the original
         // number comparison.
         if (lhs[i] != rhs[i]) {
-          const auto spelled = tag == TypeKey::Tag::Name or tag == TypeKey::Tag::Unresolved or tag == TypeKey::Tag::TypeBound;
+          const auto spelled = tag == TypeKey::Tag::Unresolved or tag == TypeKey::Tag::TypeBound;
           if (spelled and TagOf(rhs[i]) == tag) {
             return TextOfWord(PayloadOf(lhs[i])) <=> TextOfWord(PayloadOf(rhs[i]));
           }
@@ -460,7 +460,7 @@ auto spp::analyse::scopes::FindArgOf(
   if (args == nullptr) { return Nullopt; }
   auto words = WordsOf(args);
   for (auto arg = TypeIdArg(); TypeKey::_DecodeArg(words, arg); arg = TypeIdArg()) {
-    if (arg.Named and not arg.Spelled and arg.Slot == param_id) { return arg; }
+    if (arg.Named and arg.Slot == param_id) { return arg; }
   }
   return Nullopt;
 }
@@ -468,11 +468,10 @@ auto spp::analyse::scopes::FindArgOf(
 /// [CHECKED]
 auto spp::analyse::scopes::TypeKey::_DecodeArg(
   Span<const Word> &words, TypeIdArg &arg) -> bool {
-  // The parameter (or spelled name, or position) word, then the
-  // value. Cut short after the name, nothing is decoded.
+  // The parameter (or position) word, then the value. Cut short
+  // after the parameter, nothing is decoded.
   if (words.empty()) { return false; }
-  arg.Named = TagOf(words[0]) == Tag::Arg or TagOf(words[0]) == Tag::Name;
-  arg.Spelled = TagOf(words[0]) == Tag::Name;
+  arg.Named = TagOf(words[0]) == Tag::Arg;
   arg.Slot = PayloadOf(words[0]);
   words = words.subspan(1);
   if (words.empty()) { return false; }

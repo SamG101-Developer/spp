@@ -120,7 +120,7 @@ namespace {
       auto const &d = declared_args[i];
 
       // For a parameter: the given argument for the same one; a bare template's own parameter is that parameter.
-      if (d.Named and not d.Spelled) {
+      if (d.Named) {
         if (bare) {
           if (d.TypeVal != nullptr and not UnifyType(sc::ParamTypeId(d.Slot), d.TypeVal, ctx)) { return false; }
           if (d.CompVal != nullptr and not spp::analyse::scopes::UnifyCompIds(

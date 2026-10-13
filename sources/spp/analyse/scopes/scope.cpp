@@ -1401,7 +1401,7 @@ auto Scope::ArgsIdOf(
   // parameter's own name, "FromParams", or a variadic pack's, "GnPackParamId"), else by the parameter of that name in
   // "params", the group it is written against, and "Self" as parameter 0; a positional argument by the parameter it
   // binds ("ParamsBoundByArgs"). A pack's elements, and anything past the parameters, stay positional. A keyword naming
-  // no parameter of the group is the one argument spelled, an error the analysis reports. A comp argument is its
+  // no parameter is rejected before anything is keyed (E46), so reaching one here is a bug. A comp argument is its
   // value's identity: folded where closed, its parameters by identity where not.
   const auto targets = params != nullptr
     ? utils::type_resolution::ParamsBoundByArgs(args, params->GetAllParams())
@@ -1422,20 +1422,21 @@ auto Scope::ArgsIdOf(
     const auto arg = args[i];
     const auto param = arg->KeywordName() == nullptr and i < targets.size() ? targets[i] : nullptr;
 
-    // A keyword: the parameter it names, "Self" as 0, else spelled.
+    // A keyword: the parameter it names, "Self" as 0.
     if (arg->KeywordName() != nullptr) {
       auto const &name = *arg->KeywordName()->ToUnchecked<TypeIdentifierAst>();
       if (const auto id = param_named(name); id != 0) { key.Push(TypeKey::Tag::Arg, id); }
       else if (name.ToView() == "Self") { key.Push(TypeKey::Tag::Arg, 0); }
-      else { key.PushText(TypeKey::Tag::Name, name.ToView()); }
+      else { Raise<errors::SppInternalCompilerError>({this}, ERR_ARGS(name, "generic argument names no parameter")); }
     }
 
     // A positional argument binding a parameter (not a pack, whose
-    // elements stay positional): that parameter, or its name before
-    // it has an identity.
+    // elements stay positional): that parameter, declared (stage 2)
+    // before anything is keyed.
     else if (param != nullptr and not param->IsVariadic()) {
-      if (param->ParamId() != 0) { key.Push(TypeKey::Tag::Arg, param->ParamId()); }
-      else { key.PushText(TypeKey::Tag::Name, param->Name->ToUnchecked<TypeIdentifierAst>()->ToView()); }
+      RaiseIf<errors::SppInternalCompilerError>(
+        param->ParamId() == 0, {this}, ERR_ARGS(*param, "generic parameter keyed before it is declared"));
+      key.Push(TypeKey::Tag::Arg, param->ParamId());
     }
 
     // Otherwise we have a genuinely positional argument, so push

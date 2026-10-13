@@ -313,13 +313,13 @@ namespace spp::analyse::utils::monomorphization {
 
     /**
      * The name an argument of an arguments' identity ("Scope::ArgsIdOf") binds under: its parameter's own name, else
-     * one spelled from its identity ("ArgNameOf": "Self", a variadic pack's, or a name that is no parameter), which a
-     * parameter's records the identity of, as the parameter's own name does.
+     * one spelled from its identity ("ArgNameOf": "Self", or a variadic pack's), which a parameter's records the
+     * identity of, as the parameter's own name does.
      */
     auto BindingTypeName(
       scopes::TypeIdArg const &arg)
       -> Shared<TypeIdentifierAst> {
-      const auto by_param = arg.Named and not arg.Spelled and arg.Slot != 0;
+      const auto by_param = arg.Named and arg.Slot != 0;
       if (by_param) {
         if (auto const *const param = scopes::FindGnTypeParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
@@ -334,7 +334,7 @@ namespace spp::analyse::utils::monomorphization {
     auto BindingCompName(
       scopes::TypeIdArg const &arg)
       -> Shared<IdentifierAst> {
-      if (arg.Named and not arg.Spelled and arg.Slot != 0) {
+      if (arg.Named and arg.Slot != 0) {
         if (auto const *const param = scopes::FindGnCompParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
       return MakeShared<IdentifierAst>(0, scopes::ArgNameOf(arg));
@@ -362,7 +362,7 @@ namespace spp::analyse::utils::monomorphization {
       Scope const &scope)
       -> TypeId {
       const auto restates_own_param = [&](scopes::TypeIdArg const &arg) {
-        if (not arg.Named or arg.Spelled or arg.Slot == 0) { return false; }
+        if (not arg.Named or arg.Slot == 0) { return false; }
         if (arg.TypeVal != nullptr) {
           if (arg.TypeVal == scopes::ParamTypeId(arg.Slot)) { return true; }
           auto *const bound = callee_scope.FindTypeSymbol(BindingTypeName(arg).get());
@@ -379,11 +379,7 @@ namespace spp::analyse::utils::monomorphization {
       if (args_id != nullptr) {
         for (auto const &arg : scopes::ArgsOf(args_id)) {
           if (restates_own_param(arg)) { continue; }
-          const auto tag = arg.Named and not arg.Spelled
-            ? scopes::TypeKey::Tag::Arg
-            : arg.Named
-            ? scopes::TypeKey::Tag::Name
-            : scopes::TypeKey::Tag::Pos;
+          const auto tag = arg.Named ? scopes::TypeKey::Tag::Arg : scopes::TypeKey::Tag::Pos;
           key.Push(tag, arg.Slot);
           if (arg.TypeVal != nullptr) { key.PushTypePart(arg.TypeVal); }
           if (arg.CompVal != nullptr) { key.PushCompPart(arg.CompVal); }
@@ -1055,9 +1051,18 @@ auto spp::analyse::utils::monomorphization::CreateGnClsScope(
   // An alias's arguments bind the alias's own parameters; the class it names has its own, bound by the alias's target
   // ("MyVec[ZZ=Bool]" is "Vec[T=Bool, A=GlobalAlloc]"), which is what its members' types name.
   // A tuple's arguments stay positional, and name no parameter to bind.
+  // An instance target's identity carries those arguments by parameter already (a tuple's stay positional, binding
+  // nothing); a variant's ("Var[Variants=..]") is keyed by its members, so its written argument is keyed instead.
   if (auto const &alias = new_cls_sym->Alias; alias != nullptr and not is_tuple and alias->Resolved != nullptr) {
-    auto const &target_args = alias->Resolved->LastTypePart()->GnArgGroup->Args;
-    if (genex::all_of(target_args, [](auto const &arg) { return arg->KeywordName() != nullptr; })) {
+    const auto target_id = alias->Resolved->LastTypePart()->StampedTypeId();
+    if (target_id != nullptr and scopes::HeadOf(target_id).Kind == TypeKey::Tag::Inst) {
+      const auto args = scopes::HeadOf(target_id).Args;
+      if (genex::all_of(scopes::ArgsOf(args), [](auto const &arg) { return arg.Named; })) {
+        RegisterGnSymbols(args, new_cls_scope_ptr, sm, meta);
+      }
+    }
+    else if (auto const &target_args = alias->Resolved->LastTypePart()->GnArgGroup->Args;
+      genex::all_of(target_args, [](auto const &arg) { return arg->KeywordName() != nullptr; })) {
       const auto target_arg_ptrs = target_args | genex::views::transform([](auto const &a) { return a.get(); }) |
         genex::to<Vec>();
       RegisterGnSymbols(sm->CurrentScope->ArgsIdOf(target_arg_ptrs, nullptr), new_cls_scope_ptr, sm, meta);

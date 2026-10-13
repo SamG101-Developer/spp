@@ -38,7 +38,7 @@ namespace {
   /// A type of its own, interned: distinct words for each distinct text.
   auto NamedType(const spp::StrView text) -> TypeId {
     auto key = TypeKey();
-    key.PushText(Tag::Name, text);
+    key.PushText(Tag::Unresolved, text);
     return InternTypeKey(std::move(key));
   }
 
@@ -99,7 +99,6 @@ TEST(TestTypeKey, test_find_arg_of_finds_a_type_argument) {
   const auto arg = FindArgOf(MixedArgs(), kParamT);
   ASSERT_TRUE(arg.has_value());
   EXPECT_TRUE(arg->Named);
-  EXPECT_FALSE(arg->Spelled);
   EXPECT_EQ(arg->TypeVal, NamedType("test_find_arg_of_b"));
   EXPECT_EQ(arg->CompVal, nullptr);
 }
@@ -122,17 +121,6 @@ TEST(TestTypeKey, test_find_arg_of_skips_positional_arguments) {
   EXPECT_FALSE(FindArgOf(id, kParamT).has_value());
   EXPECT_FALSE(FindArgOf(id, kParamN).has_value());
   EXPECT_EQ(ArgsOf(id).size(), 2uz);
-}
-
-TEST(TestTypeKey, test_find_arg_of_skips_a_spelled_argument) {
-  // A keyword naming no parameter is spelled; its interned name is no parameter's identity, even when equal to one.
-  auto args = TypeKey();
-  args.Push(Tag::Name, kParamT);
-  args.PushTypePart(NamedType("test_find_arg_of_a"));
-  const auto id = InternTypeKey(std::move(args));
-  EXPECT_FALSE(FindArgOf(id, kParamT).has_value());
-  ASSERT_EQ(ArgsOf(id).size(), 1uz);
-  EXPECT_TRUE(ArgsOf(id)[0].Named and ArgsOf(id)[0].Spelled);
 }
 
 TEST(TestTypeKey, test_find_arg_of_misses_an_absent_parameter) {

@@ -365,7 +365,7 @@ auto spp::analyse::scopes::GnPackParamId(
 auto spp::analyse::scopes::ArgNameOf(
   TypeIdArg const &arg) -> Str {
   if (not arg.Named) { return Str(); }
-  return arg.Spelled ? Str(TextOfWord(arg.Slot)) : ParamNameOf(arg.Slot);
+  return ParamNameOf(arg.Slot);
 }
 
 auto spp::analyse::scopes::ParamNameOf(

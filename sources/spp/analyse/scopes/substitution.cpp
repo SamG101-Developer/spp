@@ -109,7 +109,7 @@ namespace spp::analyse::scopes {
       // From the interned type id of the args, pull the type
       // id args out and iterate them.
       for (auto const &arg : ArgsOf(args)) {
-        const auto tag = not arg.Named ? TypeKey::Tag::Pos : arg.Spelled ? TypeKey::Tag::Name : TypeKey::Tag::Arg;
+        const auto tag = arg.Named ? TypeKey::Tag::Arg : TypeKey::Tag::Pos;
         const auto at = arg.Named ? arg.Slot : arg.Slot + shift;
 
         // For a generic comp arg, rewrite the comp id, and

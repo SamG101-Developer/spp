@@ -67,7 +67,7 @@ auto spp::analyse::scopes::BindingsOfArgs(
   auto subst = GenericSubst();
   if (args == nullptr) { return subst; }
   for (auto const &arg : ArgsOf(args)) {
-    if (not arg.Named or arg.Spelled) { continue; }
+    if (not arg.Named) { continue; }
     if (arg.TypeVal != nullptr) {
       subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal);
       if (auto const *const param = FindGnTypeParamById(arg.Slot); param != nullptr and param->IsVariadic) {

@@ -931,8 +931,8 @@ auto GenericSolver::Solve(
 }
 
 auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
-  // As "Scope::ArgsIdOf" keys a keyword argument: the parameter its name stamps, else the entry's, "Self" as 0, else
-  // the name as spelled; then the value's identity, a comp value keyed where the call is.
+  // As "Scope::ArgsIdOf" keys a keyword argument: the parameter its name stamps, else the entry's, "Self" as 0; then
+  // the value's identity, a comp value keyed where the call is.
   using scopes::TypeKey;
 
   // Nothing was solved, so the given arguments are the answer as given, keyed as written.
@@ -947,7 +947,10 @@ auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
     const auto id = _EntryParamId(*entry);
     if (id != 0) { key.Push(TypeKey::Tag::Arg, id); }
     else if (entry->Name->ToView() == "Self") { key.Push(TypeKey::Tag::Arg, 0); }
-    else { key.PushText(TypeKey::Tag::Name, entry->Name->ToView()); }
+    else {
+      Raise<errors::SppInternalCompilerError>(
+        {_Sm->CurrentScope}, ERR_ARGS(*entry->Name, "solved generic argument names no parameter"));
+    }
 
     if (not entry->TypeVals.empty()) {
       const auto type_id = _EntryTypeId(*entry);
