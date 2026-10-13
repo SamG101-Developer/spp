@@ -9,11 +9,16 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.regions;
 import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
+import spp.asts.closure_expression_capture_ast;
+import spp.asts.closure_expression_capture_group_ast;
+import spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
 import spp.asts.expression_ast;
@@ -191,21 +196,15 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     meta->TargetCallFnPrototype->To<CoroutinePrototypeAst>() != nullptr;
   const auto pins_required = meta->TargetCallWasFnAsync or is_target_coro;
 
-  // Define the borrow sets to maintain the law of exclusivity.
-  auto borrows_ref = Vec<Ast const*>();
-  auto borrows_mut = Vec<Ast const*>();
-
-  // Load pre-existing escaping borrows into the vectors.
-  const auto all_syms = sm->CurrentScope->GetAllVarSymbols();
-  for (auto const &sym : all_syms) {
-    for (auto const &[borrow, is_mut, _] : sym->MemInfo->AstContainedEscapingBorrows) {
-      (is_mut ? borrows_mut : borrows_ref).EmplaceBack(borrow);
-    }
-  }
+  // The law of exclusivity: the borrows the arguments make are held by the call while it runs ("call_loans"), and
+  // are checked against each other and against every loan already held in the body.
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  auto call_loans = memory_state::LoanSet();
 
   // Get potential handle to bind escaping borrows to.
   const auto handle = meta->AssignmentTarget;
-  const auto handle_sym = handle ? sm->CurrentScope->FindVarSymbolOutermost(*handle).first : nullptr;
+  const auto handle_sym = mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta);
+  const auto handle_pending = handle_sym != nullptr and handle_sym == meta->AssignmentTargetSymbol;
 
   // A coroutine or future created straight into a "ret" leaves
   // the function with every borrow it was given, and nothing
@@ -219,33 +218,16 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   };
 
   for (auto const &arg : Args) {
-    // Get the outermost part of the argument as a symbol. If the argument is non-symbolic then there is no need to
-    // track borrows to it, as it is a temporary value.
+    // A drop ends the value it is given, and with it every loan the value holds ("drop_utils::EndsArgument"). They end
+    // before the argument is read: dropping frees a frame or an environment without using what it borrowed, so a
+    // conflict recorded on one of those loans is not a use, and the holder, holding nothing, can be moved into it.
+    if (meta->TargetCallFnPrototype != nullptr and arg->Val->To<IdentifierAst>() != nullptr
+      and drop_utils::EndsArgument(*meta->TargetCallFnPrototype, *arg, *sm, meta)) {
+      if (auto *const held = sm->CurrentScope->FindVarSymbol(arg->Val->To<IdentifierAst>()); held != nullptr) {
+        memory_state::ReleaseLoans(loans, *held);
+      }
+    }
 
-    // When an argument is consumed by value, any escaping borrows established during its evaluation (e.g. from an
-    // inner coroutine call like "self.chars()") are released when the argument is consumed. Clear the assignment
-    // target so that those inner borrows are not incorrectly attributed to the outer handle.
-    //
-    // The same applies when this call itself does not propagate escaping borrows (not a coroutine/async call, i.e.
-    // "not pins_required"): only such calls carry a borrow through to the handle. A non-propagating call like
-    // "self.buf[i] == byte" (which lowers to "eq(&self.buf[i], byte)" returning a Bool) consumes any borrows made
-    // while evaluating its arguments, so an inner coroutine (e.g. "self.buf[i]" -> "index_ref") must not attribute
-    // its escaping borrow to the outer handle ("found" here).
-    //
-    // A closure that captured a borrow is the exception to both of those, and
-    // the reasoning above is what misses it. Such a closure is passed by
-    // value, and the call taking it need not propagate anything - yet the
-    // borrow outlives the call regardless, because the closure carries it into
-    // whatever ends up holding the closure. So the handle is exactly what the
-    // borrow has to be bound to, and clearing it here records nothing at all:
-    // the borrowed value is then free to move while something still borrows
-    // it.
-    //
-    // Nothing about that is specific to any one caller. It is a property of
-    // handing a borrowed capture to a function, and holds for any function
-    // that gives a handle back. "async" is simply the shape that exposed it,
-    // because its lowering wraps the call in a closure and hands it to a
-    // future.
     const auto closure_arg = arg->Val != nullptr
       ? arg->Val->To<ClosureExpressionAst>()
       : nullptr;
@@ -257,6 +239,20 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     }
     arg->Stage8_CheckMemory(sm, meta);
     meta->AssignmentTarget = saved_assignment_target;
+
+    // A closure written as an argument holds its borrowed captures while the call runs, as the call holds its other
+    // arguments' borrows: a captured "&mut x" beside an argument "&mut x" is two ways to one place. Checked against
+    // the call's own borrows only: the captures were checked against the body's loans as they were captured.
+    if (closure_arg != nullptr) {
+      for (auto const &cap : closure_arg->PcGroup->CaptureGroup->Captures) {
+        if (cap->Conv == nullptr) { continue; }
+        const auto is_mut = *cap->Conv == ConventionTag::MUT;
+        const auto borrowed = regions::PlaceAtOf(*cap->Val, *sm->CurrentScope);
+        auto none = memory_state::LoanSet();
+        borrows::CheckAgainstLoans(borrowed, is_mut, none, call_loans, *cap->Val, *sm);
+        call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, is_mut));
+      }
+    }
 
     auto [sym, _] = sm->CurrentScope->FindVarSymbolOutermost(*arg->Val);
 
@@ -271,8 +267,8 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
         and receiver.Symbol != nullptr and not receiver.Symbol->IsCopyable()) {
-        auto const *where_borrow = sym != nullptr and spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr
-          ? spp::get<0>(sym->MemInfo->AstBorrowed)
+        auto const *where_borrow = sym != nullptr and sym->MemInfo->AstBorrowed != nullptr
+          ? sym->MemInfo->AstBorrowed
           : static_cast<Ast const*>(arg->Val.get());
         Raise<SppMoveFromBorrowedMemoryError>(
           {sm->CurrentScope}, ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
@@ -282,7 +278,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
     // outermost symbol, and so is invisible to all three branches below. "v[mut i]" is the shape; see the note on
     // "ValidateUnnamedArgumentBorrow" for why it arrives that way and why nothing else catches it.
-    borrows::ValidateUnnamedArgumentBorrow(*arg, sym, borrows_ref, borrows_mut, *sm, meta);
+    borrows::ValidateUnnamedArgumentBorrow(*arg, sym, call_loans, *sm, meta);
 
     // An argument with no outermost symbol is a temporary, so
     // the borrow bookkeeping below has nothing to key on. But
@@ -300,6 +296,15 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       *arg->Val, *arg, *sm, meta,
       {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
 
+    // An argument rooted at a holder of loans (a borrow binding passed on, a closure or generator given or borrowed)
+    // hands the callee the ways to what those loans borrow: the call holds them beside its other arguments' borrows,
+    // so two ways to one place never reach a call together, whatever the holder's later uses.
+    for (auto const *held : memory_state::LoansHeldBy(loans, *sym)) {
+      auto none = memory_state::LoanSet();
+      borrows::CheckAgainstLoans(held->Borrowed, held->IsMut, none, call_loans, *arg->Val, *sm);
+      call_loans.EmplaceBack(memory_state::MakeLoan(held->Borrowed, held->IsMut));
+    }
+
     if (arg->Conv == nullptr) {
       // Ensure that attributes aren't being moved off of a borrowed value. Mark the move or partial move of the
       // argument. Function calls can only imply an inner scope, so it is guaranteed that lifetimes aren't being
@@ -311,9 +316,9 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       if (const auto arg_ref = arg->Val->InferTypeRef(sm, meta); pins_required and arg_ref.IsBorrowed()) {
         raise_if_returned(*arg);
         if (handle_sym != nullptr) {
-          handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack(
-            {arg->Val.get(), arg_ref.Conv == ConventionTag::MUT, sm->CurrentScope});
-          sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
+          loans.EmplaceBack(memory_state::MakeLoan(
+            regions::PlaceAtOf(*arg->Val, *sm->CurrentScope), arg_ref.Conv == ConventionTag::MUT, handle_sym, false,
+            handle_pending));
         }
       }
 
@@ -321,37 +326,22 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // because the first argument requires the owned object to outlive the function call, and moving it as the
       // second argument breaks this. Doesn't apply to copyable types.
       if (not arg->Val->InferTypeRef(sm, meta).Symbol->IsCopyable()) {
-        auto overlaps = (genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>())
-          | genex::views::filter([&arg](auto const &x) { return regions::MemRegionOverlap(*x, *arg->Val); })
-          | genex::to<Vec>();
-
-        RaiseIf<SppMemoryOverlapUsageError>(
-          not overlaps.IsEmpty(), {sm->CurrentScope},
-          ERR_ARGS(*overlaps[0], *arg->Val));
+        borrows::CheckAgainstLoans(
+          regions::PlaceAtOf(*arg->Val, *sm->CurrentScope), true, loans, call_loans, *arg->Val, *sm);
       }
     }
 
     else if (arg->Conv and *arg->Conv == ConventionTag::REF) {
-      // Generate the list of overlapping borrows for immutable borrows.
-      auto overlaps = borrows_mut
-        | genex::views::filter([&arg](auto const &x) { return regions::MemRegionOverlap(*x, *arg->Val); })
-        | genex::to<Vec>();
+      // An immutable borrow cannot overlap a mutable one.
+      const auto borrowed = regions::PlaceAtOf(*arg->Val, *sm->CurrentScope);
+      borrows::CheckAgainstLoans(borrowed, false, loans, call_loans, *arg->Val, *sm);
 
-      // Check the immutable borrow doesn't overlap with any other mutable borrows in the same scope.
-      RaiseIf<SppMemoryOverlapUsageError>(
-        not overlaps.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*overlaps[0], *arg->Val));
-
-      // Save any escaping borrows into the handle's memory info.
+      // A coroutine or future holds the borrow past the call; the call holds it while it runs.
       raise_if_returned(*arg);
       if (handle_sym != nullptr and pins_required) {
-        // TODO: Test suite needs to take handle/lack of handle into account
-        handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), false, sm->CurrentScope});
-        sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
+        loans.EmplaceBack(memory_state::MakeLoan(borrowed, false, handle_sym, false, handle_pending));
       }
-
-      // Add the immutable borrow to the immutable borrow set.
-      borrows_ref.EmplaceBack(arg->Val.get());
+      call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, false));
     }
 
     else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
@@ -361,34 +351,26 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
       RaiseIf<SppInvalidMutationError>(
         not is_sym_mutable, {sm->CurrentScope},
-        ERR_ARGS(*sym->Name, *arg->Conv, *spp::get<0>(sym->MemInfo->AstInitialization), "immutable symbol"));
+        ERR_ARGS(
+          *sym->Name, *arg->Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
+          "immutable symbol"));
 
       // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
       RaiseIf<SppInvalidMutationError>(
-        spp::get<0>(sym->MemInfo->AstBorrowed) and *sym->Type->GetConvention() == ConventionTag::REF,
+        sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
         {sm->CurrentScope},
-        ERR_ARGS(*sym->Name, *arg->Conv, *spp::get<0>(sym->MemInfo->AstBorrowed), "immutable borrow"));
+        ERR_ARGS(*sym->Name, *arg->Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
 
-      // Generate the list of overlapping borrows for mutable borrows.
-      auto overlaps = genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
-        | genex::views::filter([&arg](auto &&x) { return regions::MemRegionOverlap(*x, *arg->Val); })
-        | genex::to<Vec>();
+      // A mutable borrow cannot overlap any other borrow.
+      const auto borrowed = regions::PlaceAtOf(*arg->Val, *sm->CurrentScope);
+      borrows::CheckAgainstLoans(borrowed, true, loans, call_loans, *arg->Val, *sm);
 
-      // Check the mutable borrow doesn't overlap with any other borrows in the same scope.
-      RaiseIf<SppMemoryOverlapUsageError>(
-        not overlaps.IsEmpty(), {sm->CurrentScope},
-        ERR_ARGS(*overlaps[0], *arg->Val));
-
-      // Save any escaping borrows into the handle's memory info.
+      // A coroutine or future holds the borrow past the call; the call holds it while it runs.
       raise_if_returned(*arg);
       if (handle_sym != nullptr and pins_required) {
-        // TODO: Test suite needs to take handle/lack of handle into account
-        handle_sym->MemInfo->AstContainedEscapingBorrows.PushBack({arg->Val.get(), true, sm->CurrentScope});
-        sym->MemInfo->AstContainersOfEscapingBorrows.PushBack({handle_sym->Name.get(), arg->Val.get()});
+        loans.EmplaceBack(memory_state::MakeLoan(borrowed, true, handle_sym, false, handle_pending));
       }
-
-      // Add the mutable borrow to the mutable borrow set.
-      borrows_mut.EmplaceBack(arg->Val.get());
+      call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, true));
     }
   }
 }
