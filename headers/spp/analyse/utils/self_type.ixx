@@ -9,6 +9,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::self_type {
@@ -23,4 +24,15 @@ namespace spp::analyse::utils::self_type {
   SPP_EXP_FUN auto SubstituteSelf(
     TypeAst const &type, TypeAst const *self, Scope const &scope,
     ScopeManager *sm = nullptr, meta::CompilerMetaData *meta = nullptr) -> Shared<TypeAst>;
+
+  /// The symbol for the special "Self" type, defined in
+  /// "defined_in" and standing for the type "linked_scope" is.
+  SPP_EXP_FUN auto MakeSelfTypeSymbol(
+    Scope *linked_scope, Scope *defined_in, std::size_t pos) -> Shared<TypeSymbol>;
+
+  /// Add a "Self" symbol to "defined_in", standing for the type
+  /// "linked_scope" is (nothing if it is null). Done as early as
+  /// possible, making "Self" resolvable.
+  SPP_EXP_FUN auto AddSelfTypeSymbol(
+    Scope &defined_in, Scope *linked_scope, std::size_t pos) -> void;
 }

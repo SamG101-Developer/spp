@@ -4,19 +4,14 @@ module;
 export module spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_iterator;
+import spp.analyse.scopes.scope_tree;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct ScopePositionGuard);
 use(spp::asts, struct Ast);
-use(spp::asts, struct ClassPrototypeAst);
-use(spp::asts, struct LoopExpressionAst);
-use(spp::asts, struct ModulePrototypeAst);
-use(spp::asts, struct TypeAst);
-use(spp::asts, struct TypeStatementAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use(spp::utils::errors, class ErrorFormatter);
 
 /// The scope manager type is the most critical structure of
@@ -26,58 +21,58 @@ use(spp::utils::errors, class ErrorFormatter);
 /// scope iteration capability (depth-first).
 SPP_EXP_CLS class spp::analyse::scopes::ScopeManager {
   /// The current iterator state. This is a customised
-  /// iterator for depth-first searching. Use the "reset"
-  /// method to push the iterator back to a specific scope,
-  /// or nullptr for the root scope.
+  /// iterator for depth-first searching, always positioned at
+  /// the current scope when a manager is made.
   ScopeIterator _It;
 
-  /// The "Self" type symbol, which is a special type
+  /// The tree this manager walks: one compile's scopes, shared by
+  /// every manager over it.
+  ScopeTree *_Tree;
+
+  /// Over "tree", standing at "current_scope" (the global scope
+  /// if null). Managers come from "ForTree" or another manager's
+  /// "NewManagerAt".
+  explicit ScopeManager(ScopeTree &tree, Scope *current_scope = nullptr);
 
 public:
-  /// The static list of sup blocks that have been processed.
-  /// This field is defined as static so that all the scope
-  /// managers (including the temporary ones) can share it.
-  inline static Map<TypeSymbol*, Vec<Scope*>> NormalSupBlocks = {};
-
-  /// The generic sup blocks are sup blocks that will be
-  /// applied to all types, and have some special handling
-  /// required. Example: "sup [T] T { ... }" and "ext" too.
-  /// Todo: Do constraints work with this?
-  inline static Vec<Scope*> GnSupBlocks = {};
-
-  /// The temp scopes are a holder of scopes that are generated
-  /// for certain things (closures, generic parameter types)
-  /// and just need somewhere to live.
-  /// Todo: Should look at being able to pop from this during
-  /// the compilation (when a temp scope is no longer needed etc).
-  inline static Vec<Unique<Scope>> TempScopes = {};
-
-  /// The master root global scope, the root of the entire
-  /// compilation tree. This is shared into temp scope managers.
-  Shared<Scope> GlobalScope;
-
   /// The current scope is the scope that has been iterated
   /// to, and stays consistent with the ast it is being used
   /// for between stages of the compiler.
   Scope *CurrentScope = nullptr;
 
-  /// Create a new scope manager, providing a global scope and
-  /// an optional current scope. A nullptr current scope sets
-  /// the current scope to the global scope.
-  explicit ScopeManager(
-    Shared<Scope> const &global_scope,
-    Scope *current_scope = nullptr);
+  /// The root manager of a compile, walking "tree" from its
+  /// global scope.
+  SPP_ATTR_NODISCARD static auto ForTree(ScopeTree &tree) -> ScopeManager;
+
+  /// The tree this manager walks.
+  SPP_ATTR_NODISCARD auto Tree() const -> ScopeTree&;
+
+  /// The root of that tree.
+  SPP_ATTR_NODISCARD auto GlobalScope() const -> Scope*;
 
   /// Default destructor logic.
   ~ScopeManager();
 
-  /// Reset the scope manager to the provided scope. If the
-  /// scope it nullptr, then it will reset to the global scope.
-  /// The internal iterator is reset too. A partially iterated
-  /// iterator can be provided in the case that we want to
-  /// start from a designated scope.
-  /// Todo: Check all callers and decide on signature.
-  auto Reset(Scope *scope = nullptr, Opt<ScopeIterator> iterator = Nullopt) -> void;
+  /// A new manager standing at "scope", to read there or to walk
+  /// its subtree: the first "MoveToNextScope" enters its first
+  /// child. Positioning allocates nothing ("ScopeIterator").
+  SPP_ATTR_NODISCARD auto NewManagerAt(Scope *scope) const -> ScopeManager;
+
+  /// A new manager resuming a walk where "pos" stood (replaying
+  /// a "defer", walking a loop body again).
+  SPP_ATTR_NODISCARD auto NewManagerAt(ScopePosition const &pos) const -> ScopeManager;
+
+  /// Where this manager's walk stands: its scope and iterator.
+  SPP_ATTR_NODISCARD auto Position() const -> ScopePosition;
+
+  /// Put this manager's walk back where "pos" stood. For a detour
+  /// that has to come back, "ScopePositionGuard" does this on
+  /// leaving; this is for a return made explicitly, from a catch.
+  auto ReturnTo(ScopePosition const &pos) -> void;
+
+  /// Start a whole walk again from "scope" (the global scope by
+  /// default): each compiler stage begins with one.
+  auto RestartWalk(Scope *scope = nullptr) -> void;
 
   /// Create a new scope and move into it. It will be the child
   /// of the current scope, and the internal iterator will
@@ -99,78 +94,30 @@ public:
   /// Iterate into the next scope without creating a new scope.
   /// This just increments the iterator, and skips alias class
   /// scopes so that each ast sync properly.
-  auto MoveToNextScope(bool ignore_alias_class_scopes = true) -> Scope*;
+  auto MoveToNextScope() -> Scope*;
 
-  /// Advance the iterator past every scope that's a descendant
-  /// of the current scope, up to its "GetFinalChildScope", from
-  /// wherever in that subtree the walk has got to. One more
-  /// iteration and the immediate sibling to this scope will be
-  /// reached. The current scope stays the one exhausted, so that
-  /// "MoveOutOfCurrentScope" leaves it for its own parent.
-  auto ExhaustScope() -> void;
+  /// Skip "scope"'s subtree: advance the walk to its final
+  /// descendant ("GetFinalChildScope"), from wherever in the
+  /// subtree it has got to, leaving the current scope on "scope"
+  /// itself - so a following "MoveOutOfCurrentScope" reaches its
+  /// parent, and one more "MoveToNextScope" its next sibling.
+  /// False if the walk ran out first. A null "scope" (a member
+  /// with no scope of its own) skips nothing.
+  auto SkipSubtree(Scope *scope) -> bool;
+};
 
-  /// Iterate the tree walker until we are on the last scope
-  /// of the inputted "scope"'s scope tree. This is needed, so
-  /// that when collecting multiple errors, we can go "this
-  /// function threw", now skip past it, onto the next function.
-  auto SkipPastScope(Scope *scope) -> bool;
+/// A detour on a manager: stand anywhere, walk anywhere, and on
+/// leaving - an error included - the manager is back where it
+/// was. For analysing an expression built on the fly, or reading
+/// from another scope on the same manager.
+SPP_EXP_CLS struct spp::analyse::scopes::ScopePositionGuard {
+  explicit ScopePositionGuard(ScopeManager &sm);
+  ~ScopePositionGuard();
 
-  /// For every type discovered up to this point, attach the
-  /// designated supertypes to it, checking each generic
-  /// constraint as it is attached. A constraint is checked
-  /// against the constrained type's own supertypes, which may
-  /// not be attached yet, so reading a scope's supertypes during
-  /// the sweep attaches them first ("Scope::OnSupScopesRead").
-  auto AttachAllSuperScopes(CompilerMetaData *meta) -> void;
-
-  /// The public method to attach all the super scopes to an
-  /// individual type, once ("Scope::SupsAttached"), returning
-  /// whether it attached them now. Called by the attach all
-  /// super scopes function, and individually when a generic
-  /// class is instantiated.
-  auto AttachSpecificSuperScopes(
-    Scope &scope,
-    CompilerMetaData *meta) const
-    -> bool;
+  ScopePositionGuard(ScopePositionGuard const &) = delete;
+  auto operator=(ScopePositionGuard const &) -> ScopePositionGuard& = delete;
 
 private:
-  /// Given a method's "$", coalesce the overloads to this type,
-  /// say "$MyFunc" from all the different sup blocks containing
-  /// an overload of "my_func" for a specific type, so they all
-  /// see the full set of overloads.
-  auto CoalesceMethodMock(Scope &scope) const -> void;
-
-  /// The implementation logic for the sup scope attachment
-  /// onto a type scope. This is separated out so the public
-  /// api can so some logic on class vs alias scopes.
-  auto AttachSpecificSuperScopesImpl(
-    Scope &scope,
-    Vec<Scope*> const &sup_scopes,
-    CompilerMetaData *meta) const
-    -> void;
-
-  /// Once a super-scope has been registered against a scope,
-  /// there are some post-attachment steps that need to be run.
-  /// There can be no conflicting cmp or type statements with
-  /// existing definitions on the existing super types of the
-  /// type.
-  static auto CheckConflictingTypeOrCmpStatements(TypeSymbol const &cls_sym, Scope const &sup_scope) -> void;
-
-public:
-  /// Get the current iterator, generally for copying into a
-  /// scope manager clone.
-  auto GetCurrentIterator() -> ScopeIterator&;
-
-  /// Build the symbol for the special "Self" type, linked to the
-  /// scope of the type it names and defined in "defined_in".
-  static auto MakeSelfTypeSymbol(Scope *linked_scope, Scope *defined_in, std::size_t pos) -> Shared<TypeSymbol>;
-
-  /// Add the symbol for the special "Self" type, providing
-  /// the linked scope for it to map against. Done as early
-  /// as possible, making "Self" resolvable.
-  auto AddSelfTypeSymbol(Scope *linked_scope, std::size_t pos) const -> void;
-
-  /// Clear the static caches on the scope manager for general
-  /// cleanup. Called at the end of a compilation.
-  static auto Cleanup() -> void;
+  ScopeManager &_Sm;
+  ScopePosition _Was;
 };
