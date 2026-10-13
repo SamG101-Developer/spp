@@ -246,10 +246,9 @@ auto GenExpressionAst::Stage11_CodeGen(
       return nullptr;
     }
 
-    // Todo: Just CreateRet here?
-    const auto mock_ret_statement = MakeUnique<RetStatementAst>(
-      nullptr, std::move(Expr));
-    return mock_ret_statement->Stage11_CodeGen(sm, meta, ctx);
+    // A "gen" in a lowered "GenOnce" reads as the return. "Expr"
+    // stays where it is, so the node can be generated again.
+    return RetStatementAst::EmitReturn(Expr.get(), nullptr, *this, sm, meta, ctx);
   }
 
   // The three-step operation for the "gen" expression is

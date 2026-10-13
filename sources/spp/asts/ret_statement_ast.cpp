@@ -193,6 +193,12 @@ auto RetStatementAst::Stage9_CompTimeResolve(
 
 auto RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+}
+
+auto RetStatementAst::EmitReturn(
+  ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
+  CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // A "GenOnce" is lowered into an ordinary subroutine, where
   // a "gen" reads as the return. A "ret" written after one is
@@ -217,7 +223,7 @@ auto RetStatementAst::Stage11_CodeGen(
   }
 
   // Use the return void instruction if there is no return value.
-  if (Expr == nullptr) {
+  if (expr == nullptr) {
     codegen::EmitDeferredUnwind(
       *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
 
@@ -230,7 +236,7 @@ auto RetStatementAst::Stage11_CodeGen(
     const auto block = ctx->Builder.GetInsertBlock();
     RaiseIf<SppGenOnceFinishesWithoutYieldingError>(
       block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
-      {sm->CurrentScope}, ERR_ARGS(*this));
+      {sm->CurrentScope}, ERR_ARGS(site));
 
     ctx->Builder.CreateRetVoid();
     return nullptr;
@@ -239,8 +245,8 @@ auto RetStatementAst::Stage11_CodeGen(
   // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
   // coerced into the return variant before it leaves the function.
   const auto uid = "." + Uid();
-  const auto ret_type = _RetType != nullptr
-    ? _RetType
+  const auto ret_type = ret_type_written != nullptr
+    ? ret_type_written
     : meta->EnclosingFnRetType.empty()
     ? nullptr
     : meta->EnclosingFnRetType.back();
@@ -248,22 +254,22 @@ auto RetStatementAst::Stage11_CodeGen(
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
     const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
-    const auto expr_ref = Expr->InferTypeRef(sm, meta);
+    const auto expr_ref = expr->InferTypeRef(sm, meta);
     llvm_ret_val = codegen::CoerceToFnValue(llvm_ret_val, ret_ref, expr_ref, *sm, ctx);
     return codegen::CoerceToVariant(
       llvm_ret_val, ret_ref, expr_ref, *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTargetType = _RetType;
+  meta->AssignmentTargetType = ret_type_written;
   if (meta->AssignmentTarget == nullptr) {
-    meta->AssignmentTarget = MakeShared<IdentifierAst>(PosStart(), "$ret");
+    meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
   }
 
   // The expression is always code-generated, even when its value
   // is discarded below, because it may have side effects that
   // have to happen before the function returns.
-  const auto llvm_ret_val = Expr->Stage11_CodeGen(sm, meta, ctx);
+  const auto llvm_ret_val = expr->Stage11_CodeGen(sm, meta, ctx);
 
   // The returned value is produced first, then every scope between here and the function's own runs what it deferred,
   // then control leaves.
