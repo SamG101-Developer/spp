@@ -356,6 +356,9 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
           "immutable symbol"));
 
       // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
+      // Todo: Only the root symbol is checked, so an argument that is itself a "&" borrow ("v[i]", a "&T" whatever
+      //  "v" is) can be mutably borrowed; and it never gets here, being a temporary with no symbol. See next-steps
+      //  N1.11 and the red tests in test_mem_move_from_borrowed_ctx.cpp.
       RaiseIf<SppInvalidMutationError>(
         sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
         {sm->CurrentScope},

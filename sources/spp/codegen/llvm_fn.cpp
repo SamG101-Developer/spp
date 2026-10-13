@@ -7,6 +7,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
+import spp.codegen.llvm_alloca;
 import spp.utils.types;
 import std;
 
@@ -112,4 +113,66 @@ auto spp::codegen::GetEmissionModule(
   const auto insert_bb = ctx.Builder.GetInsertBlock();
   if (insert_bb == nullptr or insert_bb->getParent() == nullptr) { return ctx.Module.get(); }
   return insert_bb->getParent()->getParent();
+}
+
+auto spp::codegen::ClosureEnvType(
+  Vec<llvm::Type*> const &capture_tys, const StrView name, LlvmCtx *ctx) -> llvm::StructType* {
+  // The ownership header first, then the captures in order.
+  auto fields = Vec<llvm::Type*>{llvm::Type::getInt8Ty(*ctx->Context)};
+  fields.append_range(capture_tys);
+  return llvm::StructType::create(*ctx->Context, fields, name, false);
+}
+
+auto spp::codegen::EmitNewClosureEnv(
+  llvm::StructType *const env_ty, const bool on_heap, const StrView name, LlvmCtx *ctx) -> llvm::Value* {
+  // The stack, unless the environment may outlive this frame.
+  auto env = static_cast<llvm::Value*>(nullptr);
+  if (not on_heap) {
+    env = LlvmEntryAlloca(env_ty, Str(name) + ".alloca", ctx);
+  }
+  else {
+    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto malloc_fn = GetEmissionModule(*ctx)->getOrInsertFunction(
+      "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {size_ty}, false));
+    const auto size = GetEmissionModule(*ctx)->getDataLayout().getTypeAllocSize(env_ty).getFixedValue();
+    env = ctx->Builder.CreateCall(malloc_fn, {llvm::ConstantInt::get(size_ty, size)}, Str(name) + ".heap");
+  }
+
+  // Record where it lives, once: whatever frees a closure's
+  // environment reads it there ("EmitReleaseClosureEnv").
+  ctx->Builder.CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), on_heap ? 1 : 0), env);
+  return env;
+}
+
+auto spp::codegen::ClosureEnvCaptureIndex(
+  const std::size_t i) -> unsigned {
+  // Past the ownership header.
+  return static_cast<unsigned>(i + 1);
+}
+
+auto spp::codegen::EmitReleaseClosureEnv(
+  llvm::Value *const env, LlvmCtx *ctx) -> void {
+  // A closure capturing nothing has no environment; one whose
+  // environment is on the stack does not own it. Only the rest
+  // are freed. The header is the first byte, so this needs no
+  // knowledge of which closure the environment belongs to.
+  auto &builder = ctx->Builder;
+  const auto fn = builder.GetInsertBlock()->getParent();
+  const auto check_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.check", fn);
+  const auto free_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.free", fn);
+  const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.done", fn);
+  builder.CreateCondBr(builder.CreateIsNull(env), done_bb, check_bb);
+
+  builder.SetInsertPoint(check_bb);
+  const auto owned = builder.CreateLoad(llvm::Type::getInt8Ty(*ctx->Context), env, "closure.env.owned");
+  builder.CreateCondBr(builder.CreateIsNotNull(owned), free_bb, done_bb);
+
+  builder.SetInsertPoint(free_bb);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto llvm_free = GetEmissionModule(*ctx)->getOrInsertFunction(
+    "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
+  builder.CreateCall(llvm_free, {env});
+  builder.CreateBr(done_bb);
+
+  builder.SetInsertPoint(done_bb);
 }

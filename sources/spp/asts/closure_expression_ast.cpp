@@ -271,9 +271,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // by semantic analysis.
   // Todo: Add LLVM attributes to pointer types for optimizations (unique, nonnull, etc).
   const auto uid = "." + Uid();
-  const auto closure_env_ty = llvm::StructType::create(
-    *ctx->Context, "closure.env_type." + uid);
-  auto closure_env_field_tys = Vec<llvm::Type*>{};
+  auto capture_tys = Vec<llvm::Type*>{};
 
   // For each capture, determine its type symbol and add it to
   // the environment's fields list. This uses a "C" layout as it
@@ -282,10 +280,11 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // back (the bare symbol gave a "&U32" a 4-byte slot for 8).
   for (auto const &capture : PcGroup->CaptureGroup->Captures) {
     const auto cap_ty = capture->InferType(sm, meta);
-    closure_env_field_tys.emplace_back(
+    capture_tys.emplace_back(
       codegen::GetLlvmTypeOf(TypeRef::Of(*cap_ty, *sm->CurrentScope), ctx));
   }
-  closure_env_ty->setBody(closure_env_field_tys, false);
+  const auto closure_env_ty = codegen::ClosureEnvType(
+    capture_tys, "closure.env_type." + uid, ctx);
 
   // Build a new function that the body of the closure is built into.
   // It needs a variable binding at the top (ie allow "let a = env.a";
@@ -398,44 +397,21 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // Todo: Manage the moved captures' destruction properly,
   // currently they all leak. The env pointer is freed, but
   // not its contents. Check this more carefully.
-  const auto env_outlives_frame = genex::any_of(
+  // An environment holding a capture by value or by "&mut" may
+  // outlive this frame (the closure is moved out of it), so it
+  // goes on the heap; one holding only "&" borrows cannot outlive
+  // what it borrows, so it stays on the stack. A closure capturing
+  // nothing has no environment.
+  const auto on_heap = genex::any_of(
     PcGroup->CaptureGroup->Captures,
     [](auto const &c) { return c->Conv == nullptr or *c->Conv == ConventionTag::MUT; });
-
-  const auto env_alloca = [&]() -> llvm::Value* {
-    // No captures means we don't even need to allocate
-    // an env pointer. This is also safe to free, so no
-    // special logic needed there.
-    if (PcGroup->CaptureGroup->Captures.empty()) {
-      return llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0));
-    }
-
-    // Easy alloca for the closure's environment pointer,
-    // as no additional lifetime logic is needed. Use the
-    // stack.
-    if (not env_outlives_frame) {
-      return codegen::LlvmEntryAlloca(closure_env_ty, "closure.env.alloca." + uid, ctx);
-    }
-
-    // Use the heap, because of escaping borrows. This needs
-    // more investigation as I'd rather not use the heap at
-    // all here.
-    const auto llvm_size_ty = llvm::Type::getInt64Ty(*ctx->Context);
-    const auto llvm_malloc = codegen::GetEmissionModule(*ctx)->getOrInsertFunction(
-      "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {llvm_size_ty}, false));
-    const auto env_size = codegen::GetEmissionModule(
-      *ctx)->getDataLayout().getTypeAllocSize(closure_env_ty).getFixedValue();
-    return ctx->Builder.CreateCall(
-      llvm_malloc, {llvm::ConstantInt::get(llvm_size_ty, env_size)}, "closure.env.heap." + uid);
-  }();
+  const auto env = PcGroup->CaptureGroup->Captures.empty()
+    ? static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0)))
+    : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, "closure.env" + uid, ctx);
 
   for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
-    const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
-    const auto capture_index = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
-
-    const auto field_ptr = ctx->Builder.CreateInBoundsGEP(
-      closure_env_ty, env_alloca, {zero, capture_index},
-      "closure.env.gep." + std::to_string(i));
+    const auto field_ptr = ctx->Builder.CreateStructGEP(
+      closure_env_ty, env, codegen::ClosureEnvCaptureIndex(i), "closure.env.gep." + std::to_string(i));
 
     // For a borrowed capture (&x / &mut x) the env field is a
     // pointer to what is captured; for a by-value (mov) capture,
@@ -461,7 +437,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
     llvm_fn, ctx->Builder.CreateStructGEP(llvm_closure_ty, closure_alloca, 0));
 
   ctx->Builder.CreateStore(
-    env_alloca, ctx->Builder.CreateStructGEP(llvm_closure_ty, closure_alloca, 1));
+    env, ctx->Builder.CreateStructGEP(llvm_closure_ty, closure_alloca, 1));
 
   // Return the generated closure.
   return ctx->Builder.CreateLoad(llvm_closure_ty, closure_alloca, "load.closure.obj." + uid);

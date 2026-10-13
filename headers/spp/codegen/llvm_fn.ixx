@@ -3,7 +3,9 @@ module;
 
 export module spp.codegen.llvm_fn;
 import spp.codegen.llvm_ctx;
+import spp.utils.types;
 import llvm;
+import std;
 
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
@@ -67,4 +69,26 @@ namespace spp::codegen {
     ScopeManager const &sm,
     LlvmCtx *ctx)
     -> llvm::Value*;
+
+  /// A closure's environment: a leading "i8" saying whether the
+  /// environment owns its storage (heap, 1) or not (stack, 0),
+  /// then one field per capture. Where it lives is recorded here
+  /// once, when it is made, because nothing later can work it
+  /// out: every closure of one signature shares its type, and a
+  /// "FunRef" passed as a "FunMov" is freed as one.
+  SPP_EXP_FUN auto ClosureEnvType(
+    Vec<llvm::Type*> const &capture_tys, StrView name, LlvmCtx *ctx) -> llvm::StructType*;
+
+  /// Make a closure's environment of type "env_ty" - on the heap
+  /// when it may outlive the frame making it, else on the stack -
+  /// and record which in its header.
+  SPP_EXP_FUN auto EmitNewClosureEnv(
+    llvm::StructType *env_ty, bool on_heap, StrView name, LlvmCtx *ctx) -> llvm::Value*;
+
+  /// The field of a closure's environment holding capture "i".
+  SPP_EXP_FUN auto ClosureEnvCaptureIndex(std::size_t i) -> unsigned;
+
+  /// Free a closure's environment, if it has one and it owns its
+  /// storage: what consuming or dropping a "FunMov" does.
+  SPP_EXP_FUN auto EmitReleaseClosureEnv(llvm::Value *env, LlvmCtx *ctx) -> void;
 }

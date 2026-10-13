@@ -185,6 +185,22 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       dummy_self_arg->Conv = MakeUnique<ConventionRefAst>(nullptr);
       dummy_self_arg->Conv->To<ConventionRefAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
     }
+
+    // A "FunMov" (that is not a "FunMut") is called by value, so
+    // calling one held through a borrow ("v[i]", a "&FunMov"
+    // parameter) moves it out of the borrow - the rule a method
+    // taking "self" by value has (see "FunctionCallArgumentGroupAst"
+    // ::Stage8_CheckMemory). The callable type above has its
+    // borrow stripped, so the expression's own type is read.
+    if (const auto callee = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+      not is_fun(FUN_MUT) and callee.IsBorrowed() and callee.Symbol != nullptr and not callee.Symbol->IsCopyable()) {
+      auto const &lhs = *meta->PostfixExpressionLhs;
+      const auto [lhs_sym, _] = sm->CurrentScope->FindVarSymbolOutermost(lhs);
+      auto const &borrowed_at = lhs_sym != nullptr and lhs_sym->MemInfo->AstBorrowed != nullptr
+        ? *lhs_sym->MemInfo->AstBorrowed
+        : static_cast<Ast const&>(lhs);
+      Raise<SppMoveFromBorrowedMemoryError>({sm->CurrentScope}, ERR_ARGS(lhs, borrowed_at, borrowed_at));
+    }
     _ClosureDummyArg = std::move(dummy_self_arg);
   }
 
@@ -491,9 +507,9 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
     // Calling a "FunMov" held by value consumes it, so nothing
     // drops it afterwards: its environment is released here, as
-    // "FunMov::drop" would. A "FunMov" that is not a "FunMut"
-    // captures by value (or by "&mut"), so its environment is
-    // on the heap, or null when it captures nothing.
+    // "FunMov::drop" would. Whether there is storage to free is
+    // read from the environment itself: a "FunRef" passed as a
+    // "FunMov" still has its environment on the caller's stack.
     const auto consumes_closure = [&] {
       using generate::common_types_precompiled::FUN_MOV;
       using generate::common_types_precompiled::FUN_MUT;
@@ -506,9 +522,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     }();
     const auto release_env = [&] {
       if (not consumes_closure or ctx->Builder.GetInsertBlock()->hasTerminator()) { return; }
-      const auto llvm_free = codegen::GetEmissionModule(*ctx)->getOrInsertFunction(
-        "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
-      ctx->Builder.CreateCall(llvm_free, {env_ptr});
+      codegen::EmitReleaseClosureEnv(env_ptr, ctx);
     };
 
     // A call returning Void cannot be given a name (llvm forbids

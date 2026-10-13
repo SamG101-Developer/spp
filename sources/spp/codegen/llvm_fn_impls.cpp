@@ -2481,8 +2481,10 @@ auto spp::codegen::fn_impls::StdCffiCClosureFrom(
 auto spp::codegen::fn_impls::StdFunctionFunMovDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // A closure that captures anything it can carry away holds its environment on the heap, because it may outlive the
-  // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it. The
-  // value is the "{fn, env}" pair, so the environment is the second field.
+  // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it; the
+  // environment's own header says whether there is storage to free ("EmitReleaseClosureEnv"), because a "FunRef"
+  // dropped as a "FunMov" has its environment on a stack. The value is the "{fn, env}" pair, so the environment is
+  // the second field.
   //
   // The captures inside it are not destroyed, only the storage holding them. Doing better needs the closure's type to
   // say what it captured, and it does not: every closure with the same signature has the same type, so there is no
@@ -2495,10 +2497,7 @@ auto spp::codegen::fn_impls::StdFunctionFunMovDrop(
 
   const auto pair = ctx->Builder.CreateLoad(pair_ty, self_sym->LlvmInfo->Alloca, "fun_mov.drop.pair" + uid);
   const auto env = ctx->Builder.CreateExtractValue(pair, {1}, "fun_mov.drop.env" + uid);
-
-  const auto llvm_free = GetEmissionModule(*ctx)->getOrInsertFunction(
-    "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
-  ctx->Builder.CreateCall(llvm_free, {env});
+  EmitReleaseClosureEnv(env, ctx);
   ctx->Builder.CreateRetVoid();
 }
 

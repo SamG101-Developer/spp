@@ -26,6 +26,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -167,8 +168,6 @@ auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   // get loaded from the environment struct.
   const auto uid = "." + Uid();
   for (auto const &[i, capture] : Captures | genex::views::ptr | genex::views::enumerate) {
-    const auto zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), 0);
-    const auto idx = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), i);
 
     // For the capture x, mock "let x = env.x".
     const auto cap_val = capture->Val->To<IdentifierAst>();
@@ -179,10 +178,10 @@ auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
     const auto alloca = codegen::LlvmEntryAlloca(
       cap_llvm_type, "capture.alloca." + uid, ctx);
 
-    const auto gep = ctx->Builder.CreateInBoundsGEP(
+    const auto gep = ctx->Builder.CreateStructGEP(
       ctx->CurrentClosureType,
       AstAs<ClosureExpressionAst>(ctx->CurrentClosureScope->AstNode)->GetLlvmFn()->Target->getArg(0),
-      Vec<llvm::Value*>{zero, idx});
+      codegen::ClosureEnvCaptureIndex(i));
 
     const auto load = ctx->Builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);
     ctx->Builder.CreateStore(load, alloca);
