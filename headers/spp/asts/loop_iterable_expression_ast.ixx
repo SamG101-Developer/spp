@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(LoopIterableExpressionAst);
+use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);
@@ -71,9 +72,17 @@ private:
 
   Unique<LoopConditionalExpressionAst> _TransformedLoop;
 
-  /// The name of the desugared iterator variable
-  /// ("$_iter_..."). Stored so the memory checker can release
-  /// any escaping borrows the iterator holds (e.g. "&mut v"
-  /// from "v.iter_mut()") once the loop is over.
+  /// "defer std::mem::ops::drop($_iter_...)", registered in the
+  /// enclosing scope only while the loop runs: every way out of
+  /// the loop that also leaves that scope ("ret", "exit exit")
+  /// drops the iterator.
+  Unique<DeferStatementAst> _IterDefer;
+
+  /// "std::mem::ops::drop($_iter_...)" after the loop, on every
+  /// other way out of it (its condition, its "else", an "exit" of
+  /// this loop). It ends the iterator's loans there.
+  Unique<ExpressionAst> _IterDrop;
+
+  /// The name of the desugared iterator variable ("$_iter_...").
   Shared<IdentifierAst> _IterableName;
 };

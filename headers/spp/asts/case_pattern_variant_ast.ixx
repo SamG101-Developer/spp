@@ -52,16 +52,17 @@ protected:
   /// Stage 7 for a destructuring pattern: map it to a "let" over @p cond introducing its bindings, analysed here, then
   /// analyse the checks its literal elements generate. The nested elements are analysed by the "let".
   auto AnalyseDestructure(
-    ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta)
-    -> void;
+    ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Stage 9 for a destructuring pattern: resolve its "let", and match exactly when every element does.
   auto CompTimeResolveDestructure(
-    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta) const -> void;
+    Vec<CasePatternVariantAst*> const &elems,
+    ScopeManager *sm, CompilerMetaData *meta) const -> void;
 
   /// Stage 11 for a destructuring pattern: run its "let" over the case condition, introducing the bindings, and answer
   /// whether every element matches (true for none).
   auto CodeGenDestructure(
-    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx)
-    -> llvm::Value*;
+    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
+    CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };

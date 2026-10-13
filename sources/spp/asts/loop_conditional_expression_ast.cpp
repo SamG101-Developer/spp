@@ -126,57 +126,79 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-  using memory_state::MemoryInfoSnapshot;
+  using memory_state::MemoryState;
   using memory_state::ScopeSnapshot;
 
   // Move into the loop scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Check twice so that invalidation fails on the second loop.
-  // Todo: use the "reset" on "sm" like in TypeStatementAst?
-  auto tm = ScopeManager(
-    sm->GlobalScope, sm->CurrentScope);
-  tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
+  // Where the body's walk starts, for each pass after the first.
+  const auto body_start = sm->GetCurrentIterator();
 
   mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, meta);
 
   // The state the loop was entered with, for the path that
   // never runs the body.
-  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
+  const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols(), *sm->CurrentScope);
 
-  // The second pass is the next iteration seeing what the first
-  // left behind. A body that never reaches its end (it always
-  // leaves by "exit"/"ret", or is "!") has no next iteration
-  // unless a "skip" starts one.
-  const auto skips_before = meta->LoopSkipsSeen;
-  auto exit_states = Vec<Pair<Ast const*, ScopeSnapshot>>();
-  meta->LoopExitStates.EmplaceBack(&exit_states);
-  auto skip_moves = Vec<Pair<VariableSymbol*, Ast const*>>();
-  auto *const outer_skip_moves = meta->LoopSkipMoves;
-  meta->LoopSkipMoves = &skip_moves;
-  Cond->Stage8_CheckMemory(sm, meta);
-  Body->Stage8_CheckMemory(sm, meta);
-  meta->LoopSkipMoves = outer_skip_moves;
+  // What lives outside the loop: the symbols visible at it, and every one the body's flow had touched by then (hidden
+  // by a shadowing "let" or not). These are the states joined after it.
+  auto outer_syms = Vec<VariableSymbol*>();
+  auto seen = Set<VariableSymbol const*>();
+  for (auto const &[sym, _] : pre_loop_state.Symbols) {
+    if (seen.insert(sym.get()).second) { outer_syms.EmplaceBack(sym.get()); }
+  }
+  for (auto const &[sym, _] : pre_loop_state.States) {
+    if (seen.insert(sym).second) { outer_syms.EmplaceBack(const_cast<VariableSymbol*>(sym)); }
+  }
 
-  // What a "skip" left moved is how the next iteration can begin
-  // too, even if the body's end puts it back. Only for what lives
-  // outside the loop: a "let" in the body is declared afresh.
-  for (auto const &[sym, skip] : skip_moves) {
-    const auto outer = genex::any_of(pre_loop_state, [sym](auto const &entry) { return entry.first.get() == sym; });
-    if (outer and spp::get<0>(sym->MemInfo->AstMoved) == nullptr) {
-      sym->MemInfo->IsInconsistentlyMoved = {const_cast<Ast*>(skip), this};
+  // This loop's frame in the body's flow, by position: a loop nested in the body pushes its own after it.
+  auto &flow = *memory_state::FlowOf(*sm->CurrentScope);
+  const auto frame_at = flow.Loops.Len();
+  flow.Loops.EmplaceBack();
+
+  // One pass over the condition and body: one iteration, from the
+  // state the symbols are in now.
+  const auto run_iteration = [&](ScopeManager &walk) {
+    Cond->Stage8_CheckMemory(&walk, meta);
+    Body->Stage8_CheckMemory(&walk, meta);
+
+    // What a "skip" left moved is how the next iteration can begin
+    // too, even if the body's end puts it back. Only for what lives
+    // outside the loop: a "let" in the body is declared afresh.
+    for (auto const &[sym, skip] : flow.Loops[frame_at].SkipMoves) {
+      auto &state = memory_state::StateOf(*sm->CurrentScope, *sym);
+      if (seen.contains(sym) and state.AstMoved == nullptr) {
+        state.MaybeInit = memory_state::PathsDisagree{.First = const_cast<Ast*>(skip), .Other = this};
+      }
+    }
+  };
+  run_iteration(*sm);
+
+  // Each next iteration begins with what the one before left behind,
+  // until that stops changing: then every iteration has been seen. A
+  // body that never reaches its end (it always leaves by "exit" or
+  // "ret", or is "!") has no next iteration unless a "skip" starts
+  // one. The bound only guards against a state that never settles;
+  // each pass has checked another iteration by then.
+  const auto body_diverges = control_flow::Diverges(*Body, sm, meta);
+  if (not body_diverges or flow.Loops[frame_at].Skips != 0) {
+    constexpr auto max_iterations = 8;
+    for (auto iteration = 1; iteration < max_iterations; ++iteration) {
+      const auto entry = memory_state::SnapshotSymbols(outer_syms, *sm->CurrentScope);
+      auto tm = ScopeManager(sm->GlobalScope, sm->CurrentScope);
+      tm.Reset(sm->CurrentScope, body_start);
+      run_iteration(tm);
+      const auto settled = genex::all_of(entry.Symbols, [sm](auto const &x) {
+        return memory_state::SameShape(x.second, memory_state::StateOf(*sm->CurrentScope, *x.first));
+      }) and memory_state::SameLoans(entry.Loans, memory_state::LoansOf(*sm->CurrentScope));
+      if (settled) { break; }
     }
   }
-  const auto body_diverges = control_flow::Diverges(*Body, sm, meta);
-  if (not body_diverges or meta->LoopSkipsSeen != skips_before) {
-    meta->LoopSkipMoves = &skip_moves;
-    Cond->Stage8_CheckMemory(&tm, meta);
-    Body->Stage8_CheckMemory(&tm, meta);
-    meta->LoopSkipMoves = outer_skip_moves;
-  }
 
-  meta->LoopExitStates.PopBack();
+  const auto frame = std::move(flow.Loops[frame_at]);
+  flow.Loops.PopBack();
 
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
@@ -192,7 +214,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // path out too, with the state it was reached in.
   const auto cond_bool = Cond->To<BooleanLiteralAst>();
   const auto cond_can_end = cond_bool == nullptr or not cond_bool->IsTrue();
-  const auto body_end_reached = not body_diverges or meta->LoopSkipsSeen != skips_before;
+  const auto body_end_reached = not body_diverges or frame.Skips != 0;
 
   // Each path's state for one symbol: "nullptr" is the state it
   // is in now, which needs no restoring.
@@ -202,42 +224,40 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
     if (body_end_reached) { paths.EmplaceBack(Body.get(), nullptr); }
     paths.EmplaceBack(TokLoop.get(), &pre_loop_state);
   }
-  for (auto const &[exit_tok, state] : exit_states) { paths.EmplaceBack(exit_tok, &state); }
+  for (auto const &[exit_tok, state] : frame.ExitStates) { paths.EmplaceBack(exit_tok, &state); }
 
   // A loop nothing leaves ("loop true { }") has no state after it.
   if (paths.IsEmpty()) {
     sm->MoveOutOfCurrentScope();
     return;
   }
-  for (auto const &[sym, _] : pre_loop_state) {
-    const auto state_on = [&](auto const &path) -> MemoryInfoSnapshot {
-      if (path.second == nullptr) { return sym->MemInfo->Snapshot(); }
-      for (auto const &[s, snapshot] : *path.second) { if (s == sym) { return snapshot; } }
-      return sym->MemInfo->Snapshot();
+  for (auto *const sym : outer_syms) {
+    const auto state_on = [&](auto const &path) -> MemoryState {
+      if (path.second == nullptr) { return memory_state::StateOf(*sm->CurrentScope, *sym); }
+      return memory_state::StateIn(*path.second, *sym);
     };
 
-    // The first path's state is the one carried on; the rest have
-    // to agree with it about what is initialized and moved. An
-    // "exit" leaves the body's scopes without reaching their ends,
-    // which is where a symbol declared in them releases the borrows
-    // it holds, so those are released here: nothing inside the loop
-    // outlives it.
-    const auto released = [&](MemoryInfoSnapshot state) {
-      state.AstContainersOfEscapingBorrows |= genex::actions::remove_if([&](auto const &entry) {
-        auto const *const container = spp::get<0>(entry)->template To<IdentifierAst>();
-        return container != nullptr and not genex::any_of(pre_loop_state, [&](auto const &outer) {
-          return *outer.first->Name == *container;
-        });
-      });
-      return state;
+    // Every path's state, joined. An "exit" released what the
+    // scopes it left held, on its own edge.
+    const auto settled = [&](auto const &path) {
+      return memory_state::SettleFullyTaken(state_on(path), *sym, *sm->CurrentScope);
     };
-    const auto first = released(state_on(paths[0]));
-    sym->MemInfo->FillFromSnapshot(first);
+    auto joined = settled(paths[0]);
     for (auto const &path : paths | genex::views::drop(1)) {
-      memory_state::MarkInconsistentPaths(
-        *sym, first, released(state_on(path)), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
+      memory_state::Join(joined, settled(path), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
     }
+    memory_state::StateOf(*sm->CurrentScope, *sym) = joined;
   }
+
+  // The loans held after the loop: every path's out of it, joined, as for the symbols.
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  const auto loans_on = [&](auto const &path) { return path.second == nullptr ? loans : path.second->Loans; };
+  auto joined_loans = loans_on(paths[0]);
+  for (auto const &path : paths | genex::views::drop(1)) {
+    memory_state::JoinLoans(
+      joined_loans, loans_on(path), const_cast<Ast*>(paths[0].first), const_cast<Ast*>(path.first));
+  }
+  loans = std::move(joined_loans);
 
   // Exit the loop scope.
   sm->MoveOutOfCurrentScope();

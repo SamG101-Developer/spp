@@ -7,24 +7,30 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.regions;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
+import spp.asts.annotation_ast;
+import spp.asts.ast;
+import spp.asts.expression_ast;
+import spp.asts.function_call_argument_ast;
+import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.string_literal_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import genex;
 
 namespace spp::analyse::utils::drop_utils {
   namespace {
-
     using overload_resolution::FnOverload;
 
     /// Find an overload for a types destructor, rather than
@@ -133,6 +139,23 @@ auto spp::analyse::utils::drop_utils::FindDropOverload(
   return DropProtoFor(type_sym, sm, meta, false);
 }
 
+auto spp::analyse::utils::drop_utils::EndsArgument(
+  FunctionPrototypeAst const &proto, FunctionCallArgumentAst const &arg,
+  ScopeManager &sm, CompilerMetaData *meta) -> bool {
+  // Only a value given as it is can be ended, not a borrow of one.
+  if (arg.Conv != nullptr) { return false; }
+  if (auto const *const builtin = proto.BuiltinAnnotation; builtin != nullptr) {
+    const auto name = builtin->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    if (name == "std.mem.ops.drop") { return true; }
+  }
+  if (arg.GetSelfType() == nullptr) { return false; }
+  const auto receiver = arg.Val->InferTypeRef(&sm, meta);
+  if (receiver.Symbol == nullptr or receiver.IsBorrowed()) { return false; }
+  const auto own_drop = FindDropOverload(*receiver.Symbol, sm, meta);
+  return own_drop != nullptr and (own_drop == &proto
+    or (own_drop->BuiltinAnnotation != nullptr and own_drop->BuiltinAnnotation == proto.BuiltinAnnotation));
+}
+
 auto spp::analyse::utils::drop_utils::NeedsDrop(
   TypeRef const &type, ScopeManager &sm,
   CompilerMetaData *meta) -> bool {
@@ -226,30 +249,28 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
  * @param meta Associated metadata, for resolving the destructor overload.
  */
 auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
-  VariableSymbol const &sym,
-  Ast const &exit_point,
-  ScopeManager &sm,
-  meta::CompilerMetaData *const meta)
-  -> void {
+  VariableSymbol const &sym, Ast const &exit_point,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
-  if (sym.MemInfo->AstPartialMoves.IsEmpty()) { return; }
+  if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.IsEmpty()) { return; }
   if (sym.Type == nullptr) { return; }
 
   // A borrow does not own what it points at, so the value
   // behind it is not this scope's to destroy.
-  if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return; }
+  if (sym.MemInfo->AstBorrowed != nullptr) { return; }
   if (sym.Type->GetConvention() != nullptr) { return; }
 
   const auto root = TypeRef::Of(*sym.Type, *sm.CurrentScope);
-  for (auto const *move : sym.MemInfo->AstPartialMoves) {
+  for (auto const &move : memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves) {
     // A move leaves a hole in every place it reached *through*, so each of those is asked in turn: the symbol's
     // own type first, then one step further in for each name the path passes on its way. The place the move
     // landed on is not one of them - taking a whole field out hands that field's destructor to whoever received
     // it, and only taking something from inside a value strands the value's own. That is what stops the last
     // step being walked, and what makes "let x = o.inner" fine where "let x = o.inner.val" is not.
-    const auto path = regions::RegionPath(*move);
+    if (not move.Of.has_value()) { continue; }
+    auto const &path = move.Of->Steps;
 
-    for (auto i = 0uz; i + 1 < path.Len(); ++i) {
+    for (auto i = 0uz; i < path.size(); ++i) {
       const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, path, i);
       if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
 
@@ -264,7 +285,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
       auto const *const destructor_scope = FindDropOverloadInfo(*part_ref.Symbol->AsBound(), sm, meta).FnScope;
       Raise<errors::SppPartialMoveOfDestructibleValueError>(
         {destructor_scope != nullptr ? destructor_scope : sm.CurrentScope, sm.CurrentScope, sm.CurrentScope},
-        ERR_ARGS(exit_point, *move, *destructor->Name, StrView(owner_name)));
+        ERR_ARGS(exit_point, *move.Site, *destructor->Name, StrView(owner_name)));
     }
   }
 }

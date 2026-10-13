@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/parse/macros.hpp>
 
 module spp.asts.loop_iterable_expression_ast;
 import spp.analyse.errors.semantic_error;
@@ -21,9 +22,13 @@ import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_skip_multiple_arguments_ast;
 import spp.asts.case_pattern_variant_else_ast;
+import spp.asts.defer_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_call_argument_positional_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
@@ -34,13 +39,16 @@ import spp.asts.loop_conditional_expression_ast;
 import spp.asts.loop_else_statement_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.lex.lexer;
 import spp.lex.tokens;
+import spp.parse.parser_spp;
 import spp.utils.uid;
 import genex;
 
@@ -59,6 +67,8 @@ LoopIterableExpressionAst::LoopIterableExpressionAst(
   _TransformedLet(nullptr),
   _TransformedFlagLet(nullptr),
   _TransformedLoop(nullptr),
+  _IterDefer(nullptr),
+  _IterDrop(nullptr),
   _IterableName(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokIn, lex::SppTokenType::KW_IN, "in");
 }
@@ -112,22 +122,9 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   auto flag_name = MakeShared<IdentifierAst>(PosStart(), "$_ok" + uid);
   _IterableName = iterable_name;
 
-  // Grab the generator's inner type.
-  const auto gen = [&] {
-    const auto clone_expr = AstClone(Iterable);
-    auto tm = ScopeManager(
-      sm->GlobalScope, sm->CurrentScope);
-    tm.Reset(sm->CurrentScope, sm->GetCurrentIterator());
-    clone_expr->Stage7_AnalyseSemantics(&tm, meta);
-    return marker_sups::FindGenSup(
-      clone_expr->InferTypeRef(&tm, meta), *tm.CurrentScope, *Iterable,
-      [&] { return clone_expr->InferType(&tm, meta); }, "loop iterable");
-  }();
-  marker_sups::EnforceYieldTypeWithoutGenDone(gen, *sm->CurrentScope, *Iterable, "loop iterable");
-  const auto yield_type = marker_sups::GenYieldOf(gen).AstIn(*sm->CurrentScope);
-
   // Create the initial let statement to materialize the
-  // condition being iterated.
+  // condition being iterated, and analyse it first: the
+  // generator's type is read off its value.
   // Translated: "let $_iter = <iterable>".
   auto iterable_let = [&] {
     auto mut = std::make_unique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
@@ -136,6 +133,16 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     return MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
   }();
+  iterable_let->Stage7_AnalyseSemantics(sm, meta);
+
+  // Grab the generator's inner type.
+  auto &iterable = *iterable_let->Val;
+  const auto gen = marker_sups::FindGenSup(
+    iterable.InferTypeRef(sm, meta), *sm->CurrentScope, iterable,
+    [&] { return iterable.InferType(sm, meta); }, "loop iterable");
+  marker_sups::EnforceYieldTypeWithoutGenDone(
+    gen, *sm->CurrentScope, iterable, "loop iterable");
+  const auto yield_type = marker_sups::GenYieldOf(gen).AstIn(*sm->CurrentScope);
 
   // Create the let statement holding the loop's continuation
   // flag, to control entering the else block.
@@ -226,35 +233,62 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   loop_new->MarkAsIterDesugar();
   _TransformedLoop = std::move(loop_new);
 
-  // Analyse the initial let statements.
-  iterable_let->Stage7_AnalyseSemantics(sm, meta);
+  // The iterator is consumed on every way out of the loop:
+  // by a "defer" while the loop runs (the ways that also
+  // leave this scope), then by a drop after it (the rest).
+  // Translated: "defer std::mem::ops::drop($_iter)" /
+  // "std::mem::ops::drop($_iter)".
+  const auto drop_iter = [&]() -> Unique<ExpressionAst> {
+    auto args = Vec<Unique<FunctionCallArgumentAst>>();
+    args.EmplaceBack(MakeUnique<FunctionCallArgumentPositionalAst>(
+      nullptr, nullptr, AstClone(iterable_name)));
+    auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+      nullptr, MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);
+    return MakeUnique<PostfixExpressionAst>(
+      INJECT_CODE("std::mem::ops::drop", ParseExpression), std::move(call));
+  };
+  _IterDefer = MakeUnique<DeferStatementAst>(nullptr, drop_iter());
+  _IterDrop = drop_iter();
+
+  // Analyse the other initial let statement.
   _TransformedLet = std::move(iterable_let);
+  _IterDefer->Stage7_AnalyseSemantics(sm, meta);
   flag_let->Stage7_AnalyseSemantics(sm, meta);
   _TransformedFlagLet = std::move(flag_let);
   _TransformedLoop->Stage7_AnalyseSemantics(sm, meta);
+  _IterDrop->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto LoopIterableExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Call the memory check on the transformed loop.
   _TransformedLet->Stage8_CheckMemory(sm, meta);
+  _IterDefer->Stage8_CheckMemory(sm, meta);
   _TransformedFlagLet->Stage8_CheckMemory(sm, meta);
   _TransformedLoop->Stage8_CheckMemory(sm, meta);
 
-  // The desugared iterator ("$_iter") is a hidden temporary
-  // whose lifetime ends with the loop. Release any escaping
-  // borrows it holds (e.g. the "&mut v" established by
+  // The "defer" covers the loop only; after it, the drop
+  // ends the iterator and its loans (the "&mut v" of
   // "v.iter_mut()").
-  const auto iter_sym = sm->CurrentScope->FindVarSymbol(_IterableName.get());
-  std::ignore = analyse::utils::memory_state::ReleaseEscapingBorrows(*iter_sym);
+  auto &deferred = sm->CurrentScope->Deferred;
+  deferred |= genex::actions::remove_if([this](auto const *d) { return d == _IterDefer.get(); });
+  _IterDrop->Stage8_CheckMemory(sm, meta);
 }
 
 auto LoopIterableExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the code for the transformed loop.
   _TransformedLet->Stage11_CodeGen(sm, meta, ctx);
+  _IterDefer->Stage11_CodeGen(sm, meta, ctx);
   _TransformedFlagLet->Stage11_CodeGen(sm, meta, ctx);
-  return _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
+  const auto loop_val = _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
+
+  // As in stage 8: the "defer" covers the loop only, and the drop
+  // follows it, where the loop can be left at all.
+  auto &reached = sm->CurrentScope->DeferredReached;
+  reached |= genex::actions::remove_if([this](auto const *d) { return d == _IterDefer.get(); });
+  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) { _IterDrop->Stage11_CodeGen(sm, meta, ctx); }
+  return loop_val;
 }
 
 auto LoopIterableExpressionAst::InferType(

@@ -13,7 +13,9 @@ import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
+import spp.asts.ast;
 import spp.asts.expression_ast;
+import spp.asts.loop_conditional_expression_ast;
 import spp.asts.loop_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -133,11 +135,18 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
-  if (TokSkip != nullptr) {
-    ++meta->LoopSkipsSeen;
-    if (TokSeqExit.IsEmpty() and meta->LoopSkipMoves != nullptr) {
-      for (auto *sym : sm->CurrentScope->GetAllVarSymbols()) {
-        if (spp::get<0>(sym->MemInfo->AstMoved) != nullptr) { meta->LoopSkipMoves->EmplaceBack(sym, this); }
+  auto &loops = memory_state::FlowOf(*sm->CurrentScope)->Loops;
+
+  // A "skip" starts another iteration of the loop it continues:
+  // the innermost, or with "exit"s before it, the one after
+  // the loops they leave. A plain "skip" also records what it
+  // left moved: those paths begin the next iteration.
+  if (TokSkip != nullptr and TokSeqExit.Len() < loops.Len()) {
+    auto &continued = loops[loops.Len() - 1 - TokSeqExit.Len()];
+    continued.Skips += 1;
+    if (TokSeqExit.IsEmpty()) {
+      for (auto const &[sym, state] : memory_state::FlowOf(*sm->CurrentScope)->States) {
+        if (state.AstMoved != nullptr) { continued.SkipMoves.EmplaceBack(const_cast<VariableSymbol*>(sym), this); }
       }
     }
   }
@@ -154,10 +163,24 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   // An "exit" (with no "skip") is a path out of the loop it
   // targets, and what memory looks like here is what that loop
   // leaves behind on it. "exit exit" targets the loop two back.
-  if (TokSkip == nullptr and not TokSeqExit.IsEmpty() and TokSeqExit.Len() <= meta->LoopExitStates.Len()) {
-    auto state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols());
-    meta->LoopExitStates[meta->LoopExitStates.Len() - TokSeqExit.Len()]->EmplaceBack(
-      TokSeqExit.Back().get(), std::move(state));
+  // It leaves the loop's inner scopes without reaching their
+  // ends, so what their symbols hold is released on this edge,
+  // as each end would; the loop's own scope outlives the "exit".
+  // The walk carries on past this statement, so its state is
+  // put back.
+  if (TokSkip == nullptr and not TokSeqExit.IsEmpty() and TokSeqExit.Len() <= loops.Len()) {
+    const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
+    auto loops_seen = 0uz;
+    for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
+      const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+      if (is_loop and ++loops_seen == TokSeqExit.Len()) { break; }
+      for (const auto sym : scope->GetAllVarSymbols(true)) {
+        memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
+      }
+    }
+    auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
+    memory_state::RestoreSnapshot(saved);
+    loops[loops.Len() - TokSeqExit.Len()].ExitStates.EmplaceBack(TokSeqExit.Back().get(), std::move(state));
   }
 
   // Like a "ret", this leaves several scopes at once, so their

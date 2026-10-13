@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.borrows;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.member_lookup;
@@ -197,6 +198,16 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   // Use the hook to record information for the resolution and
   // completion plugin.
   lsp::resolution_index::RecordIdentifier(*this, *sm, *meta, sym);
+}
+
+auto IdentifierAst::Stage8_CheckMemory(
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  // A name evaluated as a value uses what it names: a holder
+  // used again after a conflict with one of its loans means the
+  // loan was live then.
+  if (const auto sym = sm->CurrentScope->FindVarSymbol(this); sym != nullptr) {
+    analyse::utils::borrows::RaiseIfConflictedUse(*sym, *sm->CurrentScope);
+  }
 }
 
 auto IdentifierAst::Stage9_CompTimeResolve(

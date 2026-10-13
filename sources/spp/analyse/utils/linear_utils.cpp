@@ -11,8 +11,11 @@ import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.defer_statement_ast;
+import spp.asts.expression_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
 import spp.asts.type_ast;
@@ -31,19 +34,12 @@ namespace spp::analyse::utils::linear_utils {
      * @return Whether the symbol still owns an unconsumed value.
      */
     auto IsLive(
-      VariableSymbol const &sym,
-      ScopeManager const &sm)
-      -> bool {
+      VariableSymbol const &sym, ScopeManager const &sm) -> bool {
       // Only a local owns a value it has to answer for. A generic or a constant has no runtime existence, a
       // flow-narrowing symbol is a view of another symbol's value (which keeps the obligation), and a capture belongs
       // to the closure's environment, which is read again on every call - it is the closure value that is held to
-      // being consumed.
-      //
-      // Todo: A "$" temporary is exempted too - the iterator behind a "loop ... in", the subject a destructure was
-      //  bound to, the slot an early return writes through - since reporting it blames code nobody can fix. That is a
-      //  real gap rather than a nicety: "$_iter" holds an iterator that genuinely goes unconsumed. The desugarings
-      //  have to be made linear-correct, and then "Temporary" is checked here too.
-      if (sym.Kind != VariableKind::Local) { return false; }
+      // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
+      if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
 
       // A "!" value never exists: the code binding it cannot finish.
@@ -51,32 +47,23 @@ namespace spp::analyse::utils::linear_utils {
 
       // A borrow points at a value that belongs to someone else, so
       // consuming it is not this scope's job.
-      if (spp::get<0>(sym.MemInfo->AstBorrowed) != nullptr) { return false; }
+      if (sym.MemInfo->AstBorrowed != nullptr) { return false; }
       if (sym.Type->GetConvention() != nullptr) { return false; }
 
-      // Consumed on some branches of a "case" and not on others. The state carried on past the "case" is only the
-      // first branch's, so it can read as consumed while another path still owns the value. The partial-move flag is
-      // not used: it compares the move sites themselves, so two branches that each take the same attribute differ.
-      const auto owned_on_some_path =
-        sym.MemInfo->IsInconsistentlyMoved.has_value() or
-        sym.MemInfo->IsInconsistentlyInitialized.has_value();
+      // What it holds on every path is "Copy" (a "case" narrowed it to "None"), or it was moved on the others.
+      auto const &state = memory_state::StateOf(*sm.CurrentScope, sym);
+      if (state.OwesNothing) { return false; }
+
+      // Consumed on some of the paths that met and not on others, whole or in part: a path that did not take a part
+      // still owns it. The witnesses kept are the first path's, so the value can read as consumed while another path
+      // still owns it.
+      const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.IsEmpty();
 
       // The value already left, whole.
-      if (spp::get<0>(sym.MemInfo->AstInitialization) == nullptr and not owned_on_some_path) { return false; }
+      if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
 
-      // A symbol holding escaping borrows cannot be moved at all:
-      // the borrow rules forbid it, so that the borrow cannot
-      // outlive what it points at. Asking linearity to consume
-      // it would demand a move the language prohibits, which
-      // leaves no way to write the value at all. It owns nothing
-      // to account for in any case - what it holds is borrows,
-      // and those belong to whoever they point at. A
-      // "&mut"-capturing closure is the usual shape.
-      //
-      // Todo: A generator handle is a container of escaping borrows too, and it *does* own its coroutine frame, so this
-      //  exempts a real leak. Frames are not reachable through the lexical scope ends anyway, and need their own
-      //  answer.
-      if (not sym.MemInfo->AstContainedEscapingBorrows.IsEmpty()) { return false; }
+      // A holder of loans (a "&mut"-capturing closure, a borrowing generator or future) is owed like any other
+      // value: it owns its environment or frame. It cannot be moved away, but a drop ends it and its loans together.
 
       // Copying leaves the original in place, so a copyable value
       // is never owed to anyone.
@@ -88,20 +75,17 @@ namespace spp::analyse::utils::linear_utils {
       // and a case pattern's destructure only ever records the parts
       // it bound, never the value itself, so the parts are all there
       // is to go on.
-      if (sym.MemInfo->AstPartialMoves.IsEmpty() or owned_on_some_path) { return true; }
+      if (state.PartialMoves.IsEmpty() or owned_on_some_path) { return true; }
       return not regions::RegionConsumed(
-        Vec<IdentifierAst*>{sym.Name.get()}, type, *sm.CurrentScope, sym.MemInfo->AstPartialMoves);
+        regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
+        state.PartialMoves);
     }
   }
 }
 
 auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
-  Scope const &scope,
-  Ast const &exit_point,
-  const StrView exit_what,
-  ScopeManager &sm,
-  CompilerMetaData *meta)
-  -> void {
+  Scope const &scope, Ast const &exit_point, const StrView exit_what,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Reverse order: the statements run last-registered-first,
   // so a value deferred after another is released first.
   for (auto i = scope.Deferred.Len(); i > 0uz; --i) {
@@ -110,36 +94,12 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
 }
 
 auto spp::analyse::utils::linear_utils::CheckScopeExit(
-  Scope const &scope,
-  Ast const &exit_point,
-  const StrView exit_what,
-  ScopeManager &sm,
-  CompilerMetaData *meta)
-  -> void {
+  Scope const &scope, Ast const &exit_point, const StrView exit_what,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
   //
   using errors::SppLinearValueNotConsumedError;
 
   for (auto const *sym : scope.GetAllVarSymbols(true)) {
-    // The subject of a surrounding "case ... of" that takes it has already been given up by the time a branch runs,
-    // even though the mark itself is not made until the branches are done. Leaving a branch early is not what
-    // abandoned it.
-    //
-    // A pattern that narrows the subject adds a flow-typed symbol of its own to the branch scope - same name, same
-    // storage, narrower type - and that one is what a check inside the branch actually finds, so a symbol narrowing
-    // the subject is the subject too. Matched by symbol, not name: anything else spelled the same (a closure's
-    // parameter) is a different value that is still owed.
-    const auto is_subject = [&](VariableSymbol const *subject) {
-      for (auto const *s = sym; s != nullptr; s = s->NarrowsSymbol.get()) { if (s == subject) { return true; } }
-      return false;
-    };
-    if (meta != nullptr and genex::any_of(meta->CaseConsumedSubjects, is_subject)) { continue; }
-
-    // A symbol declared after the point control leaves from does not hold anything yet: a "ret" part-way through a
-    // scope is reached before the "let"s below it ever run. Stage 7 fills the initialization ast in for every symbol
-    // in the scope up front, well before any of that is known, so the two are told apart by where they are written.
-    // A closing brace sits after everything in its scope, so this never excludes anything from an ordinary scope end.
-    if (sym->Name != nullptr and sym->Name->PosStart() > exit_point.PosStart()) { continue; }
-
     // A destructor needs the whole value to form the "self"
     // it is given, so one that has had a part taken out of
     // it and never put back can no longer be destroyed. It
@@ -150,12 +110,14 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     if (not IsLive(*sym, sm)) { continue; }
 
     // Marked against the symbol's own name rather than against
-    // whatever initialized it. A parameter is initialized by the
-    // whole "name: Type" ast, so pointing at that underlines the
-    // type as well, which reads as though the type were at fault.
+    // whatever initialized it. A parameter is initialized by
+    // the whole "name: Type" ast, so pointing at that underlines
+    // the type as well, which reads as though the type were at
+    // fault.
     const auto def = static_cast<Ast const*>(sym->Name.get());
 
-    // Held in locals so the views handed to the error outlive it.
+    // Held in locals so the views handed to the error outlive
+    // it.
     const auto sym_name = sym->Name->ToString();
     const auto type_name = sym->Type->WithoutGns()->ToString();
     Raise<SppLinearValueNotConsumedError>(
@@ -163,56 +125,70 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
   }
 }
 
+auto spp::analyse::utils::linear_utils::CheckKeptTemporaries(
+  Scope const &scope, Ast const &exit_point,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Leaving the scope of a branch that keeps a "case"'s
+  // temporary leaves the "case" with it unconsumed.
+  auto const *const flow = memory_state::FlowOf(scope);
+  if (flow == nullptr) { return; }
+  for (auto const &kept : flow->KeptTemporaries) {
+    if (scope.AstNode != kept.Branch) { continue; }
+    RaiseTemporaryNotConsumed(
+      *kept.Temporary, exit_point, "This branch keeps it and leaves here, so nothing owns it after", sm, meta);
+  }
+}
+
 auto spp::analyse::utils::linear_utils::CheckLiveUpToFn(
-  Ast const &exit_point,
-  const StrView exit_what,
-  ScopeManager &sm,
-  CompilerMetaData *meta)
-  -> void {
-  // Outside a function there is no linear obligation to discharge:
-  // a module-level constant outlives every scope that reads it.
+  Ast const &exit_point, const StrView exit_what,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Outside a function there is no linear obligation to
+  // discharge: a module-level constant outlives every scope
+  // that reads it.
   if (meta->EnclosingFnScope == nullptr) { return; }
 
-  // Running a scope's deferred statements marks what they take, which is right for the path being left but wrong for
-  // everything after it: stage 8 walks statements in order rather than following branches, so the state is put back
-  // once the exit is checked, or the code after the branch a "ret" sits in would read as though the deferred releases
-  // had already happened.
-  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFnScope);
+  // Running a scope's deferred statements marks what they
+  // take, which is right for the path being left but wrong
+  // for everything after it: stage 8 walks statements in
+  // order rather than following branches, so the state is
+  // put back once the exit is checked, or the code after
+  // the branch a "ret" sits in would read as though the
+  // deferred releases had already happened.
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
     CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
+    CheckKeptTemporaries(*scope, exit_point, sm, meta);
     if (scope == meta->EnclosingFnScope) { break; }
   }
   memory_state::RestoreSnapshot(saved);
 }
 
 auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
-  Ast const &exit_point,
-  const StrView exit_what,
-  const std::size_t num_exits,
-  const bool has_skip,
-  ScopeManager &sm,
-  CompilerMetaData *meta)
-  -> void {
+  Ast const &exit_point, const StrView exit_what, const std::size_t num_exits,
+  const bool has_skip, ScopeManager &sm, CompilerMetaData *meta) -> void {
   //
   auto loops_seen = 0uz;
-  const auto saved = memory_state::SnapshotScopes(sm.CurrentScope, meta->EnclosingFnScope);
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
 
   for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
-    // An iterable loop is rewritten into a conditional one before
-    // this stage, so matching the conditional form covers both.
+    // An iterable loop is rewritten into a conditional one
+    // before this stage, so matching the conditional form
+    // covers both.
     const auto is_loop = scope->AstNode != nullptr
       and AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
 
     if (is_loop) {
-      // The loop after the ones being exited is the one a trailing
-      // "skip" continues, so its own scope survives this statement.
+      // The loop after the ones being exited is the one a
+      // trailing "skip" continues, so its own scope survives
+      // this statement.
       loops_seen += 1;
       if (loops_seen > num_exits) { break; }
     }
 
     CheckDeferredForScope(*scope, exit_point, exit_what, sm, meta);
     CheckScopeExit(*scope, exit_point, exit_what, sm, meta);
+    CheckKeptTemporaries(*scope, exit_point, sm, meta);
     if (is_loop and loops_seen == num_exits and not has_skip) { break; }
     if (scope == meta->EnclosingFnScope) { break; }
   }
@@ -221,18 +197,111 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
 }
 
 auto spp::analyse::utils::linear_utils::CheckOverwrite(
-  VariableSymbol const &sym,
-  Ast const &site,
-  const StrView site_what,
-  ScopeManager &sm)
-  -> void {
+  VariableSymbol const &sym, Ast const &site,
+  const StrView site_what, ScopeManager &sm) -> void {
   //
   using errors::SppLinearValueNotConsumedError;
   if (not IsLive(sym, sm)) { return; }
 
-  // Held in locals so the views handed to the error outlive it.
+  // Held in locals so the views handed to the error outlive
+  // it.
   const auto sym_name = sym.Name->ToString();
   const auto type_name = sym.Type->WithoutGns()->ToString();
   Raise<SppLinearValueNotConsumedError>(
     {sm.CurrentScope}, ERR_ARGS(*sym.Name, site, StrView(sym_name), StrView(type_name), site_what));
+}
+
+auto spp::analyse::utils::linear_utils::CheckOverwritePart(
+  VariableSymbol const &sym, ExpressionAst &part, Ast const &site,
+  const StrView site_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  //
+  using errors::SppLinearValueNotConsumedError;
+
+  // A "Copy" part is never owed.
+  if (sym.MemInfo == nullptr or sym.Type == nullptr) { return; }
+  const auto part_ref = part.InferTypeRef(&sm, meta);
+  if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { return; }
+
+  // Through a borrow ("self.name = .." with "&mut self"),
+  // see "CheckOverwriteThroughBorrow".
+  if (sym.MemInfo->AstBorrowed != nullptr or sym.Type->GetConvention() != nullptr) {
+    CheckOverwriteThroughBorrow(part, sm, meta);
+    return;
+  }
+  const auto part_name = part.ToString();
+  const auto type_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
+
+  // Of a value this scope owns, only a part still standing
+  // is owed (writing into a moved value is refused where it
+  // is checked), unless the moves taken off the value on
+  // every path account for it.
+  auto const &state = memory_state::StateOf(*sm.CurrentScope, sym);
+  if (sym.Kind != VariableKind::Local or state.AstInitialization == nullptr) { return; }
+  const auto place = regions::PlaceOf(part, *sm.CurrentScope);
+  if (not place.has_value()) { return; }
+  if (regions::RegionConsumed(*place, part_ref, *sm.CurrentScope, state.PartialMoves)) { return; }
+  Raise<SppLinearValueNotConsumedError>(
+    {sm.CurrentScope}, ERR_ARGS(part, site, StrView(part_name), StrView(type_name), site_what));
+}
+
+auto spp::analyse::utils::linear_utils::IsLinearTemporary(
+  ExpressionAst &expr, ScopeManager &sm,
+  CompilerMetaData *meta) -> bool {
+  // A value naming a place belongs to that place; a borrow
+  // belongs to whatever it borrows; a value made at compile
+  // time never exists at run time.
+  if (meta != nullptr and meta->InCompTimeValue) { return false; }
+  if (regions::PlaceOf(expr, *sm.CurrentScope).has_value()) { return false; }
+  const auto ref = expr.InferTypeRef(&sm, meta);
+  return not ref.IsNever and not ref.IsBorrowed() and ref.Symbol != nullptr and not ref.Symbol->IsCopyable();
+}
+
+auto spp::analyse::utils::linear_utils::RaiseTemporaryNotConsumed(
+  ExpressionAst &temp, Ast const &site, const StrView site_what,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  //
+  using errors::SppLinearValueNotConsumedError;
+
+  // Held in a local so the view handed to the error outlives
+  // it.
+  const auto type_name = temp.InferTypeRef(&sm, meta).Symbol->FqName()->WithoutGns()->ToString();
+  Raise<SppLinearValueNotConsumedError>({sm.CurrentScope}, ERR_ARGS(temp, site, StrView(type_name), site_what));
+}
+
+auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
+  ExpressionAst &part, ScopeManager &sm,
+  CompilerMetaData *meta) -> void {
+  // The value written over belongs to whoever is borrowed
+  // from, and cannot be taken first - moving out of a borrow
+  // is refused - so writing over a non-"Copy" one always drops
+  // it. It has to be exchanged instead, which hands the old
+  // value back ("std::mem::ops::replace").
+  using errors::SppLinearValueNotConsumedError;
+  const auto part_ref = part.InferTypeRef(&sm, meta);
+  if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { return; }
+
+  // An abstract type ("Self" in a default method:
+  // "self@ = source.clone()" in "Clone::clone_from") says
+  // nothing about what is dropped until a class is chosen,
+  // so the template is let through. Each class that inherits
+  // the method gets a copy with "Self" pinned to it, checked
+  // here like any other body: it is that class's value that
+  // is dropped.
+  auto const *const part_scope = part_ref.Symbol->LinkedScope;
+  if (part_scope != nullptr and not type_members::GetUnimplementedAbstractMethods(*part_scope).IsEmpty()) { return; }
+  const auto type_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
+
+  // In a copy made for a call, the template let this through,
+  // so it is the call that chose a type to drop: reported
+  // there, the outermost call to reach it, with the write
+  // as context.
+  auto const *sub = asts::FunctionPrototypeAst::AnalysingGnSubstitution();
+  while (sub != nullptr and sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
+    sub = sub->RequestedBy;
+  }
+  if (sub != nullptr and sub->RequiredAt != nullptr and sub->RequiredIn != nullptr) {
+    Raise<SppLinearValueNotConsumedError>(
+      {sm.CurrentScope, sub->RequiredIn}, ERR_ARGS(part, *sub->RequiredAt, StrView(type_name)));
+  }
+  Raise<SppLinearValueNotConsumedError>({sm.CurrentScope}, ERR_ARGS(part, StrView(type_name)));
 }

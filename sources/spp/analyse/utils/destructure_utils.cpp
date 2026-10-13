@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
 import spp.asts.ast;
 import spp.asts.expression_ast;
@@ -58,14 +59,13 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
   // would create.
   const auto sym = MakeShared<VariableSymbol>(
     name, val_type, sm.CurrentScope, VariableKind::Temporary, true);
-  sym->MemInfo->AstInitialization = {name.get(), sm.CurrentScope};
-  sym->MemInfo->AstInitializationOrigin = {name.get(), sm.CurrentScope};
-  sym->MemInfo->InitializationCounter = 1;
+  memory_state::StateOf(*sm.CurrentScope, *sym).AstInitialization = name.get();
+  memory_state::StateOf(*sm.CurrentScope, *sym).AstInitializationOrigin = name.get();
 
   // Carry the value's convention over, so that destructuring
   // a borrow yields borrowed elements.
   if (val_type->GetConvention() != nullptr) {
-    sym->MemInfo->AstBorrowed = {val, sm.CurrentScope};
+    sym->MemInfo->AstBorrowed = val;
   }
 
   sm.CurrentScope->AddVarSymbol(sym);
@@ -75,10 +75,10 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
 auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
   Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
   ScopeManager &sm, CompilerMetaData const *meta) -> void {
-  // If the destructure is not from a case pattern, then
-  // nothing is consumed. The case ast must've also specified
-  // that the condition is meant to be consumed.
-  if (from_case_pattern and meta->CaseConsumedSubjects.IsEmpty()) { return; }
+  // A case pattern only answers for the parts of a subject its
+  // "case" can take ("meta->CaseSubject"); the "case" itself takes
+  // the subject, on the branch's match edge.
+  if (from_case_pattern and meta->CaseSubject == nullptr) { return; }
 
   // If this is for a let statement + local variable destructure
   // (not a case pattern), then there must be a value, and it
@@ -93,7 +93,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
 
   // Destructuring a borrow reads through it. The value behind
   // it belongs to someone else, so it is not consumed here.
-  if (spp::get<0>(sym->MemInfo->AstBorrowed) != nullptr) { return; }
+  if (sym->MemInfo->AstBorrowed != nullptr) { return; }
   if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
 
   // The value has to still be there to be taken apart. Each
@@ -110,23 +110,28 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
     // Get the region path of the value, and check if any parts
     // have not been considered by the destructure. These cannot
     // be left unbound, because they would silently drop.
-    const auto region = regions::RegionPath(*val);
+    const auto region = regions::PlaceOf(*val, *sm.CurrentScope);
 
-    if (const auto skipped = regions::FirstUnaccountedPart(*sym, region, sm); not skipped.empty()) {
+    if (const auto skipped = region.has_value() ? regions::FirstUnaccountedPart(*sym, *region, sm) : Str();
+      not skipped.empty()) {
       Raise<errors::SppDestructureSkipsOwnedPartError>(
         {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
     }
   }
 
-  // "let Self(x) = self" takes the symbol itself, so the
-  // symbol is moved. "let Self(x) = self.inner" takes one
-  // region of it, which is a partial move like any other.
+  // The "case" subject itself is taken on the branch's
+  // match edge; a part nested inside it is taken here. The
+  // pattern's "let" holds a copy of the condition, so the
+  // two are compared by the place they name.
+  if (from_case_pattern and meta->CaseCondition != nullptr
+    and regions::PlaceOf(*val, *sm.CurrentScope) == regions::PlaceOf(*meta->CaseCondition, *sm.CurrentScope)) {
+    return;
+  }
   if (val->To<IdentifierAst>() != nullptr) {
-    if (from_case_pattern) { return; }
-    sym->MemInfo->MovedBy(owner, sm.CurrentScope);
+    memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(owner);
   }
   else {
-    sym->MemInfo->AstPartialMoves.EmplaceBack(val);
+    memory_state::StateOf(*sm.CurrentScope, *sym).PartMovedBy(regions::PlaceAtOf(*val, *sm.CurrentScope));
   }
 }
 
@@ -136,7 +141,7 @@ auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
   // between them they took all of it.
   const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
   if (sym == nullptr) { return; }
-  sym->MemInfo->MovedBy(tmp_name, sm.CurrentScope);
+  memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(tmp_name);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
@@ -153,7 +158,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
 
   // Mark the temporary as initialized by the value.
   const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
-  sym->MemInfo->InitializedBy(tmp_name, sm.CurrentScope);
+  memory_state::StateOf(*sm.CurrentScope, *sym).InitializedBy(tmp_name);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
@@ -217,17 +222,12 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   // whole value moved once they are done.
   for (auto const &x : new_asts) { x->Stage8_CheckMemory(&sm, meta); }
 
-  // Taking every element off a value takes the value, so the
-  // symbol holding it is left moved rather than partly moved.
-  if (tmp_name != nullptr) {
-    ConsumeDestructureTemp(*tmp_name, sm);
-    return;
-  }
-
   // A pattern that takes something apart has to account for
   // every owned part of what it took; one that only tests
   // the shape, or that binds the rest into a name of its own,
-  // has nothing left over to answer for.
+  // has nothing left over to answer for. A case pattern binding
+  // nothing by move is a test of the shape, and takes nothing;
+  // a "let" always takes its value.
   const auto accounts_for_parts = destructure.BindsByMove()
     and not genex::any_of(elems, [](auto const &elem) { return elem->TakesRest(); });
   ConsumeDestructureSource(destructure, from_case_pattern, accounts_for_parts, sm, meta);
@@ -295,9 +295,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // (there are "num_lhs_elems - skip_index - 1" of them), not forward from "num_lhs_elems", which would over-count by
   // the (unindexed) skip slot itself.
   const auto skip_index = not multi_arg_skips.IsEmpty()
-    ? static_cast<std::size_t>(genex::position(elems | genex::views::ptr, [&](auto const &x) {
-      return x == multi_arg_skips[0];
-    }))
+    ? genex::position(elems | genex::views::ptr, [&](auto const &x) { return x == multi_arg_skips[0]; }).value()
     : elems.Len() - 1;
 
   // A bound ".." ("let [a, ..b, c] = t") collects what it skips.
