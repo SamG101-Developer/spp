@@ -173,6 +173,15 @@ cmake-flags = [
 ]
 
 [[library]]
+name = "small_vector"
+repo = "https://github.com/gharveymn/small_vector.git"
+commit = "efcab60e5360b699f45d2a44dcb9a79bba40c356"
+cmake-flags = [
+  "-DGCH_SMALL_VECTOR_ENABLE_TESTS=OFF",
+  "-DGCH_SMALL_VECTOR_ENABLE_BENCHMARKS=OFF",
+]
+
+[[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
 commit = "07c9f13b15a70c367a406e1cfe2c363aa1b66894"
@@ -201,7 +210,7 @@ commit = "badae2b5e668084412cef496283a345bd8bd9744"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "1aa173912efaf1018f0c22d795df76d9d522affc"
+commit = "3a267d801cb7a2b647256ffa93bd203c7083dae0"
 
 [[library]]
 name = "NumEx"
