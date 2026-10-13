@@ -110,7 +110,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppObjectInitializerMultipleAutofillArgumentsError>(
-    af_args.Len() > 1, {sm->CurrentScope},
+    af_args.size() > 1, {sm->CurrentScope},
     ERR_ARGS(*af_args[0], *af_args[1]));
 
   // Ensure there are no duplicate member names. This needs to
@@ -123,7 +123,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicates.IsEmpty(), {sm->CurrentScope},
+    not duplicates.empty(), {sm->CurrentScope},
     ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer argument"));
 
   // Check there are no invalidly named arguments.
@@ -137,7 +137,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppArgumentNameInvalidError>(
-    not invalid_args.IsEmpty(), {sm->CurrentScope},
+    not invalid_args.empty(), {sm->CurrentScope},
     ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
 
   // The generic arguments written on the type, named after the
@@ -147,7 +147,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // an overloaded call there has nothing to resolve against.
   auto bindings = std::optional<GenericSubst>();
   auto const &written_group = meta->ObjectInitType->LastTypePart()->GnArgGroup;
-  const auto instance = written_group != nullptr and not written_group->Args.IsEmpty()
+  const auto instance = written_group != nullptr and not written_group->Args.empty()
     ? TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope)
     : TypeRef();
   const auto own_params = cls_sym->Type != nullptr ? cls_sym->Type->GnParamGroup.get() : nullptr;
@@ -155,7 +155,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     and instance.Symbol->Alias == nullptr) {
     bindings = InstanceBindings(instance);
   }
-  else if (own_params != nullptr and written_group != nullptr and not written_group->Args.IsEmpty()) {
+  else if (own_params != nullptr and written_group != nullptr and not written_group->Args.empty()) {
     const auto written_args = generic_inference::NamedGnArgs(
       *written_group, *own_params, cls_sym->LinkedScope != nullptr ? *cls_sym->LinkedScope : *sm->CurrentScope,
       *meta->ObjectInitType, *sm, *meta);
@@ -176,7 +176,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
         auto attrs = all_attrs
           | genex::views::filter([kw_arg](auto const &x) { return *spp::get<0>(x) == *kw_arg->Name; })
           | genex::to<Vec>();
-        if (attrs.Len() > 1) { continue; }
+        if (attrs.size() > 1) { continue; }
 
         // Use the type off the single matching attribute, with the
         // written generic arguments bound ("Opt[T]" is "Opt[Str]").
@@ -222,8 +222,8 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Each attribute is shown from the class that declares it, which
     // can be in another file than the initializer.
     RaiseIf<SppAmbiguousMemberAccessError>(
-      matching_attrs.Len() > 1,
-      matching_attrs.Len() > 1
+      matching_attrs.size() > 1,
+      matching_attrs.size() > 1
         ? Vec<Scope const*>{spp::get<2>(matching_attrs[0]), spp::get<2>(matching_attrs[1]), sm->CurrentScope}
         : Vec<Scope const*>{sm->CurrentScope},
       ERR_ARGS(*spp::get<0>(matching_attrs[0]), *spp::get<0>(matching_attrs[1]), *this));
@@ -274,7 +274,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::views::transform([](auto const &x) { return x->Name; })
     | genex::to<Vec>();
 
-  for (auto i = 0uz; i < all_attrs.Len(); ++i) {
+  for (auto i = 0uz; i < all_attrs.size(); ++i) {
     auto const &[attr_name, attr_ref, attr_parent_scope] = all_attrs[i];
 
     // Todo: this will fail when multiple bases classes have same attr name
@@ -319,7 +319,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Add the compiler generated argument.
     auto arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(val));
     arg->IsCompilerGenerated = true;
-    Args.EmplaceBack(std::move(arg));
+    Args.emplace_back(std::move(arg));
   }
 
   // The autofill argument has been expanded into one argument per
@@ -349,7 +349,7 @@ auto ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArg
     | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
     | genex::views::filter([](auto const &x) { return x != nullptr and x->TokEllipsis != nullptr; })
     | genex::to<Vec>();
-  return filtered.IsEmpty() ? nullptr : filtered[0];
+  return filtered.empty() ? nullptr : filtered[0];
 }
 
 auto ObjectInitializerArgumentGroupAst::GetNonAutoFillArgs() -> Vec<ObjectInitializerArgumentAst*> {

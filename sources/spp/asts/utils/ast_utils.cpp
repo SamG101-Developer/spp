@@ -107,7 +107,7 @@ auto spp::asts::BindLocal(
   const auto uid = spp::utils::Uid();
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(pos, Str(uid)), nullptr);
-  prelude.EmplaceBack(MakeUnique<LetStatementInitializedAst>(
+  prelude.emplace_back(MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(var), nullptr, nullptr, std::move(slot)));
   slot = MakeUnique<IdentifierAst>(pos, Str(uid));
   return MakeUnique<IdentifierAst>(pos, Str(uid));

@@ -248,7 +248,7 @@ namespace {
     fq_type.TypePartsInto(type_parts);
     // The namespace parts first ("FindNsScope"): a part naming no namespace names no type.
     auto shifted_scope = scope.FindNsScope(ns_parts);
-    if (shifted_scope == nullptr) { return {nullptr, type_parts.Back()}; }
+    if (shifted_scope == nullptr) { return {nullptr, type_parts.back()}; }
 
     // Iterate through the type parts (except the final one) next.
     for (auto const *type_part : type_parts | genex::views::drop_last(1)) {
@@ -258,7 +258,7 @@ namespace {
     }
 
     // Return the type scope, and the final type part.
-    auto const *final = type_parts.Back();
+    auto const *final = type_parts.back();
     return {shifted_scope, final};
   }
 
@@ -306,7 +306,7 @@ namespace {
 
   /// The aliases being keyed through their targets: a target that names its own alias (directly or down a chain) is keyed
   /// as the alias inside itself rather than expanded without end.
-  thread_local auto keying_aliases = std::vector<spp::analyse::scopes::TypeSymbol const*>();
+  thread_local auto keying_aliases = Vec<spp::analyse::scopes::TypeSymbol const*>();
 
   /// "alias" marked as being keyed through its target ("keying_aliases") for as long as this lives, unless it already
   /// is: only the outermost keying of an alias ("Active") may expand it.
@@ -342,7 +342,7 @@ namespace spp::analyse::scopes {
       out.Key.PushSpliced(*id);
       auto const &head = HeadOf(id);
       if (head.Kind == TypeKey::Tag::Variant and head.Conv == 0) {
-        for (const auto m : head.Members) { out.Members.EmplaceBack(TypeKey(*m)); }
+        for (const auto m : head.Members) { out.Members.emplace_back(TypeKey(*m)); }
       }
     }
 
@@ -464,7 +464,7 @@ namespace spp::analyse::scopes {
           const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
             written_args, *alias.Params, scope, *alias.WrittenIn);
           const auto recorded_args = recorded | genex::views::ptr | genex::to<spp::Vec>();
-          if (not recorded.IsEmpty()) {
+          if (not recorded.empty()) {
             if (const auto id = named->AliasTargetId(scope.ArgsIdOf(recorded_args, alias.Params.get())); id !=
               nullptr) {
               AppendKeyId(out, id);
@@ -486,7 +486,7 @@ namespace spp::analyse::scopes {
       }
       const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
         written_args, *head->Type->GnParamGroup, scope, *head->LinkedScope);
-      if (recorded.IsEmpty()) { return false; }
+      if (recorded.empty()) { return false; }
       AppendKeyId(out, scope.InstanceIdOf(*head, recorded | genex::views::ptr | genex::to<spp::Vec>()));
       return true;
     }
@@ -559,9 +559,9 @@ namespace spp::analyse::scopes {
       auto out = TypeKeyParts();
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
-        auto flat = parts.Members.IsEmpty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
+        auto flat = parts.Members.empty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
         for (auto &m : flat) {
-          if (not genex::contains(out.Members, m)) { out.Members.EmplaceBack(std::move(m)); }
+          if (not genex::contains(out.Members, m)) { out.Members.emplace_back(std::move(m)); }
         }
       }
       out.Members |= genex::actions::sort([](auto const &a, auto const &b) { return StableKeyLess(a, b); });
@@ -598,7 +598,7 @@ namespace spp::analyse::scopes {
       // links, which for one still waiting on an alias's target is only that target's template.
       auto const *sym = given != nullptr ? given : stamped.Sym;
       if (sym == nullptr and t != nullptr and stamped.How == StampKeying::ByName) { sym = scope.FindTypeSymbol(t); }
-      if (sym == nullptr and t != nullptr and not t->LastTypePart()->GnArgGroup->Args.IsEmpty()
+      if (sym == nullptr and t != nullptr and not t->LastTypePart()->GnArgGroup->Args.empty()
         and KeyUnmade(out, scope, *t)) { return out; }
       if (sym == nullptr) {
         out.Key.PushText(TypeKey::Tag::Unresolved, t->ToString());
@@ -663,7 +663,7 @@ namespace spp::analyse::scopes {
       // Create a pack from a tuple of elements, recursively
       // interning the inner elements.
       if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
-        auto elems = std::vector<CompId>();
+        auto elems = Vec<CompId>();
         for (auto const &elem : tup->Elems) { elems.push_back(InternCompKey(RawCompKey(*elem, scope))); }
         return CompKey::OfPack(std::move(elems));
       }
@@ -759,7 +759,7 @@ Scope::Scope(Scope const &other) :
   for (auto const &child_scope : other.Children) {
     auto child_copy = MakeUnique<Scope>(*child_scope);
     child_copy->Parent = this;
-    Children.EmplaceBack(std::move(child_copy));
+    Children.emplace_back(std::move(child_copy));
   }
 }
 
@@ -830,15 +830,15 @@ auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
       if (t->Kind == TypeKind::GnTypeParam) { continue; }
       if (t->LinkedSymbol() == t and t->BoundTypeVal == nullptr) { continue; }
       if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
-      syms.EmplaceBack(GenericArgumentAst::FromSymbol(*t));
-      type_names.EmplaceBack(t->Name);
+      syms.emplace_back(GenericArgumentAst::FromSymbol(*t));
+      type_names.emplace_back(t->Name);
     }
 
     for (auto const &v : all_comp_syms) {
       if (genex::contains(comp_names, *v->Name, genex::meta::deref)) { continue; }
       if (v->Kind == VariableKind::GnCompParam or v->BoundCompVal() == nullptr) { continue; }
-      syms.EmplaceBack(GenericArgumentAst::FromSymbol(*v));
-      comp_names.EmplaceBack(v->Name);
+      syms.emplace_back(GenericArgumentAst::FromSymbol(*v));
+      comp_names.emplace_back(v->Name);
     }
   }
 
@@ -973,7 +973,7 @@ auto Scope::RecordLetBinding(Shared<VariableSymbol> const &sym) -> void {
   // A "let" re-analysed (a loop's second pass) records the
   // same binding once (cleared at the end of the scope).
   // Created from "let" and "is" statements/expressions.
-  if (not genex::contains(LetBindings, sym)) { LetBindings.EmplaceBack(sym); }
+  if (not genex::contains(LetBindings, sym)) { LetBindings.emplace_back(sym); }
 }
 
 /// [CHECKED]
@@ -1044,14 +1044,14 @@ auto Scope::GetAllVarSymbols(
   // For non-exclusive searches where a parent is present,
   // get the variable symbols from the parent scope too.
   if (not exclusive and Parent != nullptr) {
-    syms.AppendRange(Parent->GetAllVarSymbols(exclusive, sup_scope_search));
+    syms.append_range(Parent->GetAllVarSymbols(exclusive, sup_scope_search));
   }
 
   // For sup-allowed searches, for each sup scope get the,
   // variable symbols from the sup scopes too.
   if (sup_scope_search) {
     for (auto const *sup_scope : GetSupScopes()) {
-      syms.AppendRange(sup_scope->GetAllVarSymbols(true, false));
+      syms.append_range(sup_scope->GetAllVarSymbols(true, false));
     }
   }
 
@@ -1067,14 +1067,14 @@ auto Scope::GetAllTypeSymbols(
   // For non-exclusive searches where a parent is present,
   // get the type symbols from the parent scope too.
   if (not exclusive and Parent != nullptr) {
-    syms.AppendRange(Parent->GetAllTypeSymbols(exclusive, sup_scope_search));
+    syms.append_range(Parent->GetAllTypeSymbols(exclusive, sup_scope_search));
   }
 
   // For sup-allowed searches, for each sup scope get the,
   // type symbols from the sup scopes too.
   if (sup_scope_search) {
     for (const auto sup_scope : GetSupScopes()) {
-      syms.AppendRange(sup_scope->GetAllTypeSymbols(true, false));
+      syms.append_range(sup_scope->GetAllTypeSymbols(true, false));
     }
   }
 
@@ -1090,7 +1090,7 @@ auto Scope::GetAllNsSymbols(
   // For non-exclusive searches where a parent is present,
   // get the namespace symbols from the parent scope too.
   if (not exclusive and Parent != nullptr) {
-    syms.AppendRange(Parent->GetAllNsSymbols(exclusive));
+    syms.append_range(Parent->GetAllNsSymbols(exclusive));
   }
   return syms;
 }
@@ -1244,7 +1244,7 @@ auto Scope::FindTypeSymbol(
   // An instantiation is answered by identity alone: its template
   // and what its arguments resolve to from here, filed in the
   // template's instances, or nothing when it is not made yet.
-  if (not sym_name_extracted->GnArgGroup->Args.IsEmpty()) {
+  if (not sym_name_extracted->GnArgGroup->Args.empty()) {
     const auto [tmpl, id] = NamedInstance(*scope, *sym_name_extracted);
     if (id == nullptr) { return nullptr; }
     const auto hit = tmpl->Instances.find(id);
@@ -1411,9 +1411,9 @@ auto Scope::ArgsIdOf(
     return 0;
   };
 
-  for (auto i = 0uz; i < args.Len(); ++i) {
+  for (auto i = 0uz; i < args.size(); ++i) {
     const auto arg = args[i];
-    const auto param = arg->KeywordName() == nullptr and i < targets.Len() ? targets[i] : nullptr;
+    const auto param = arg->KeywordName() == nullptr and i < targets.size() ? targets[i] : nullptr;
 
     // A keyword: the parameter it names, "Self" as 0, else spelled.
     if (arg->KeywordName() != nullptr) {
@@ -1467,7 +1467,7 @@ auto Scope::InstanceIdOf(
   // template is the variant type template (Var).
   if (head.Alias == nullptr and tmpl == PrecompiledTemplate(*VAR, *this)) {
     // Read the variants off of the "..Variants" generic type pack.
-    const auto variants = args.Len() == 1 and args[0]->KeywordName() != nullptr and args[0]->ViewName() == "Variants"
+    const auto variants = args.size() == 1 and args[0]->KeywordName() != nullptr and args[0]->ViewName() == "Variants"
       ? args[0]
       : nullptr;
     auto members = Vec<TypeAst const*>();
@@ -1477,12 +1477,12 @@ auto Scope::InstanceIdOf(
     // there ("Var[Variants]" in its own block) is the member that
     // stands for all of them, as a pattern binds it.
     if (variants != nullptr and variants->IsTypeArg()) {
-      if (variants->TypeVal->LastTypePart()->GnArgGroup->Args.IsEmpty()
+      if (variants->TypeVal->LastTypePart()->GnArgGroup->Args.empty()
         and utils::packs::DoesTypeNameAnUnboundPack(*variants->TypeVal, *this)) {
-        members.EmplaceBack(variants->TypeVal.get());
+        members.emplace_back(variants->TypeVal.get());
       }
       for (const auto member : variants->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        members.EmplaceBack(member->TypeVal.get());
+        members.emplace_back(member->TypeVal.get());
       }
     }
 
@@ -1490,7 +1490,7 @@ auto Scope::InstanceIdOf(
     // members.
     else {
       for (const auto arg : args) {
-        if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.EmplaceBack(arg->TypeVal.get()); }
+        if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.emplace_back(arg->TypeVal.get()); }
       }
     }
 
@@ -1596,12 +1596,12 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
           if (arg.TypeVal != nullptr) {
             auto type = TypeAstOf(arg.TypeVal);
             if (type == nullptr) { return nullptr; }
-            group->Args.EmplaceBack(GenericArgumentAst::NewType(std::move(name), std::move(type)));
+            group->Args.emplace_back(GenericArgumentAst::NewType(std::move(name), std::move(type)));
             continue;
           }
           auto value = CompAstOf(arg.CompVal);
           if (value == nullptr) { return nullptr; }
-          group->Args.EmplaceBack(GenericArgumentAst::NewComp(std::move(name), std::move(value)));
+          group->Args.emplace_back(GenericArgumentAst::NewComp(std::move(name), std::move(value)));
         }
 
         auto head = tmpl->Alias != nullptr ? AstCloneShared(tmpl->Name.get()) : tmpl->FqName()->WithoutGns();
@@ -1619,11 +1619,11 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
         for (const auto member : head.Members) {
           auto type = TypeAstOf(member);
           if (type == nullptr) { return nullptr; }
-          unordered.EmplaceBack(std::move(type), FindTypeSymbolById(BareOf(member)));
+          unordered.emplace_back(std::move(type), FindTypeSymbolById(BareOf(member)));
         }
         auto members = utils::type_compare::OrderVariantMembers(std::move(unordered));
         out = generate::common_types::VariantType(0, {});
-        out->LastTypePart()->GnArgGroup->Args.EmplaceBack(GenericArgumentAst::NewType(
+        out->LastTypePart()->GnArgGroup->Args.emplace_back(GenericArgumentAst::NewType(
           TypeIdentifierAst::FromString("Variants"), generate::common_types::TupleType(0, std::move(members))));
         if (IsStampableTypeId(bare)) {
           out->LastTypePart()->StampTypeId(bare);
@@ -1708,7 +1708,7 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
       for (const auto elem : node.Kids) {
         auto value = CompAstOf(elem);
         if (value == nullptr) { return nullptr; }
-        values.EmplaceBack(std::move(value));
+        values.emplace_back(std::move(value));
       }
       return MakeUnique<TupleLiteralAst>(nullptr, std::move(values), nullptr);
     }
@@ -1822,9 +1822,9 @@ auto Scope::GetFinalChildScope() const -> Scope const* {
   // If there are no children, return this scope (base case
   // for the recursion). Otherwise, return the final child
   // scope (recursively searching).
-  return Children.IsEmpty()
+  return Children.empty()
     ? this
-    : Children.Back()->GetFinalChildScope();
+    : Children.back()->GetFinalChildScope();
 }
 
 /// [CHECKED]
@@ -1833,7 +1833,7 @@ auto Scope::GetAncestors() const -> Vec<Scope const*> {
   // global scope.
   auto scopes = Vec<Scope const*>();
   for (auto scope = this; scope != nullptr; scope = scope->Parent) {
-    scopes.EmplaceBack(scope);
+    scopes.emplace_back(scope);
   }
   return scopes;
 }
@@ -1974,14 +1974,14 @@ auto Scope::FindNsScope(
   auto parts = Vec<IdentifierAst const*>();
   auto lhs = postfix_ast;
   while (const auto postfix_lhs = lhs->To<PostfixExpressionAst>()) {
-    parts.EmplaceBack(postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()->Name.get());
+    parts.emplace_back(postfix_lhs->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>()->Name.get());
     lhs = postfix_lhs->Lhs.get();
   }
 
   // The final part isn't a postfix, but it is an identifier, so
   // add it to the end of the list ("a").
   if (const auto lhs_as_ident = lhs->To<IdentifierAst>(); lhs_as_ident != nullptr) {
-    parts.EmplaceBack(lhs_as_ident);
+    parts.emplace_back(lhs_as_ident);
   }
 
   // Reverse the list into the actual order "a", "b", "c", and then

@@ -42,12 +42,12 @@ LocalVariableDestructureArrayAst::~LocalVariableDestructureArrayAst() = default;
 
 auto LocalVariableDestructureArrayAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Elems.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Elems.front()->PosStart();
 }
 
 auto LocalVariableDestructureArrayAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Elems.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Elems.back()->PosEnd();
 }
 
 auto LocalVariableDestructureArrayAst::Clone() const -> Unique<Ast> {

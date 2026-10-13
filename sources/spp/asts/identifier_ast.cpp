@@ -44,9 +44,9 @@ namespace {
   /// stack claiming a resolution is still in progress.
   struct ResolvingCompTimeSymbolGuard {
     explicit ResolvingCompTimeSymbolGuard(
-      VariableSymbol const *const sym) { _ResolvingCompTimeSymbols.EmplaceBack(sym); }
+      VariableSymbol const *const sym) { _ResolvingCompTimeSymbols.emplace_back(sym); }
 
-    ~ResolvingCompTimeSymbolGuard() { _ResolvingCompTimeSymbols.PopBack(); }
+    ~ResolvingCompTimeSymbolGuard() { _ResolvingCompTimeSymbols.pop_back(); }
 
     ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard const &) = delete;
     ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard &&) = delete;

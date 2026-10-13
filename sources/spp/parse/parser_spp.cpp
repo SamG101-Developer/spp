@@ -816,11 +816,11 @@ auto spp::parse::ParserSpp::ParseCaseExpressionBranchElseCase()
   auto temp_1 = Vec<Unique<asts::StatementAst>>();
   auto ptr = dynamic_unique_cast<asts::StatementAst>(
     std::move(dynamic_unique_cast<asts::CasePatternVariantElseCaseAst>(std::move(p1))->CaseExpr));
-  temp_1.EmplaceBack(std::move(ptr));
+  temp_1.emplace_back(std::move(ptr));
 
   auto else_case_body = _CreateAst<asts::InnerScopeExpressionAst>(nullptr, std::move(temp_1), nullptr);
   auto temp_2 = Vec<decltype(else_pattern)>();
-  temp_2.EmplaceBack(std::move(else_pattern));
+  temp_2.emplace_back(std::move(else_pattern));
   return _CreateAst<asts::CaseExpressionBranchAst>(nullptr, temp_2, nullptr, else_case_body);
 }
 
@@ -1606,7 +1606,7 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpression()
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
   PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
   if (p1 != nullptr) {
-    p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+    p2.insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
   return utils::algorithms::move_accumulate(
     p2.rbegin(), p2.rend(), std::move(p3),
@@ -1699,7 +1699,7 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpressionSimple()
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
   PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
   if (p1 != nullptr) {
-    p2.Insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+    p2.insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
   return utils::algorithms::move_accumulate(
     p2.rbegin(), p2.rend(), std::move(p3),
@@ -1750,7 +1750,7 @@ auto spp::parse::ParserSpp::ParseTypeTuple1Types()
   PARSE_ONCE(p4, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<asts::TypeAst>>();
-  temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
+  temp.emplace_back(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
   return _CreateAst<asts::TypeTupleShorthandAst>(p1, temp, p4)->Convert();
 }
 
@@ -1761,7 +1761,7 @@ auto spp::parse::ParserSpp::ParseTypeTupleNTypes()
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<asts::TypeAst>>();
-  for (auto &&x : p2) { temp.EmplaceBack(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
+  for (auto &&x : p2) { temp.emplace_back(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
   return _CreateAst<asts::TypeTupleShorthandAst>(p1, temp, p3)->Convert();
 }
 
@@ -1957,7 +1957,7 @@ auto spp::parse::ParserSpp::ParseLiteralTuple1Element(
   PARSE_ONCE(p4, ParseTokenRightParenthesis);
 
   auto temp = Vec<decltype(p2)>();
-  temp.EmplaceBack(std::move(p2));
+  temp.emplace_back(std::move(p2));
   return _CreateAst<asts::TupleLiteralAst>(p1, temp, p3);
 }
 
@@ -2807,7 +2807,7 @@ auto spp::parse::ParserSpp::ParseKeywordCaps()
 
 auto spp::parse::ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppTokenType mapped_tok)
   -> Unique<asts::TokenAst> {
-  if (_Pos > _Tokens.Len()) {
+  if (_Pos > _Tokens.size()) {
     return nullptr;
   }
 

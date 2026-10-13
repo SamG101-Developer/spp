@@ -78,7 +78,7 @@ auto spp::compiler::CompilerBoot::Parse(
   for (auto const &mod : tree) {
     if (mod->IsTestHarness) { continue; }
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
-    _Modules.EmplaceBack(mod->ModuleAst.get());
+    _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
 
@@ -90,7 +90,7 @@ auto spp::compiler::CompilerBoot::Parse(
     mod->Formatter = MakeUnique<utils::errors::ErrorFormatter>(
       mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
-    _Modules.EmplaceBack(mod->ModuleAst.get());
+    _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
   bar.Finish();
@@ -258,7 +258,7 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   for (auto const &mod : _Modules) {
     auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath);
     ctx->Sm = sm;
-    _LlvmCtxs.EmplaceBack(std::move(ctx));
+    _LlvmCtxs.emplace_back(std::move(ctx));
   }
 }
 
@@ -352,7 +352,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     const auto verify = [&](Str const &when) {
       if (not llvm::verifyModule(*ctx->Module, &llvm::errs())) { return true; }
       llvm::errs() << "Invalid module" << when << ": " << ctx->Module->getName() << "\n";
-      invalid_modules.EmplaceBack(ctx->Module->getName().str());
+      invalid_modules.emplace_back(ctx->Module->getName().str());
       return false;
     };
 
@@ -380,11 +380,11 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
   // Report on all the modules now that they have been built.
   // All invalid modules are reported before aborting.
-  if (not invalid_modules.IsEmpty()) {
-    llvm::errs() << invalid_modules.Len() << " invalid module(s):\n";
+  if (not invalid_modules.empty()) {
+    llvm::errs() << invalid_modules.size() << " invalid module(s):\n";
     for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
     if (VerifyOnly) {
-      throw std::runtime_error(std::to_string(invalid_modules.Len()) + " invalid module(s), see the verifier above");
+      throw std::runtime_error(std::to_string(invalid_modules.size()) + " invalid module(s), see the verifier above");
     }
     std::abort();
   }
@@ -407,7 +407,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   const unsigned opt_level)
   -> bool {
   // Guard.
-  if (_LlvmCtxs.IsEmpty()) { return true; }
+  if (_LlvmCtxs.empty()) { return true; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
   codegen::ApplyTargetToModule(lto_module.get());
@@ -568,7 +568,7 @@ auto spp::compiler::CompilerBoot::_FfiLibraries(
     const auto already_found = genex::any_of(libraries, [&](auto const &found) {
       return found.filename() == entry.path().filename();
     });
-    if (not already_found) { libraries.EmplaceBack(entry.path()); }
+    if (not already_found) { libraries.emplace_back(entry.path()); }
   }
   return libraries;
 }
@@ -650,14 +650,14 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
 
   auto body = Str();
   auto count = 0uz;
-  TestNames.Clear();
+  TestNames.clear();
   for (auto const &mod : tree) {
     if (mod->IsTestHarness or mod->ModuleAst == nullptr) { continue; }
 
     auto const &ns_parts = mod->NsParts;
     auto ns = Str();
     for (auto const &part : ns_parts) { ns += part + "::"; }
-    const auto module_group = ns_parts.IsEmpty() ? Str() : ns_parts.Back();
+    const auto module_group = ns_parts.empty() ? Str() : ns_parts.back();
 
     for (auto *member : asts::AstBody(mod->ModuleAst.get())) {
       const auto fun = member->To<asts::FunctionPrototypeAst>();
@@ -676,7 +676,7 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
       body += "    " + fq_name + "()\n";
       body += "    std::console::println(\"[  OK ] " + group + " :: " + fq_name + "\")\n";
       body += "  }\n";
-      TestNames.EmplaceBack(fq_name);
+      TestNames.emplace_back(fq_name);
       ++count;
     }
   }

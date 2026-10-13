@@ -109,8 +109,8 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
 
   // The bounds written, in order, are the method's arguments.
   auto args = Vec<Unique<ExpressionAst>>();
-  if (ExprLBound != nullptr) { args.EmplaceBack(std::move(ExprLBound)); }
-  if (ExprRBound != nullptr) { args.EmplaceBack(std::move(ExprRBound)); }
+  if (ExprLBound != nullptr) { args.emplace_back(std::move(ExprLBound)); }
+  if (ExprRBound != nullptr) { args.emplace_back(std::move(ExprRBound)); }
   _MappedFn = operator_desugaring::MapToMethodCall(*this, PosStart(), func_name, std::move(args), sm, meta);
 }
 

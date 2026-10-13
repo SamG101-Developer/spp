@@ -90,7 +90,7 @@ auto TypeStatementAst::Clone() const -> Unique<Ast> {
 auto TypeStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokType).append(" ");
   SPP_STRING_APPEND(NewType);
   SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -162,7 +162,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
     and (enclosing->To<SupPrototypeFunctionsAst>() != nullptr or enclosing->To<SupPrototypeExtensionAst>() != nullptr)
     ? AstName(enclosing)
     : nullptr;
-  OldType = (sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.IsEmpty()
+  OldType = (sup_name != nullptr and not sup_name->LastTypePart()->GnArgGroup->Args.empty()
     ? self_type::SubstituteSelf(*OldType, sup_name.get(), *sm->CurrentScope)
     : self_type::SubstituteSelf(*OldType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
   )->WithSourceSpanOf(*OldType);
@@ -197,7 +197,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   // never flag, as the class's does.
   if (mapped_old_type->IsNeverType()) { NewType->MarkNeverType(); }
 
-  if (attach_generics != nullptr and not attach_generics->Params.IsEmpty()) {
+  if (attach_generics != nullptr and not attach_generics->Params.empty()) {
     GnParamGroup = attach_generics;
     GnParamGroup->Stage2_GenTopLvlScopes(sm, meta);
     _AliasSymbol->Alias->Params = GnParamGroup;

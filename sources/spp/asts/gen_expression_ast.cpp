@@ -105,7 +105,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   auto expr_type = VoidAt(PosStart());
   if (Expr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
-    if (not meta->EnclosingFnRetType.IsEmpty()) {
+    if (not meta->EnclosingFnRetType.empty()) {
       auto const &ret_type = meta->EnclosingFnRetType[0];
       const auto yield_type = marker_sups::GenYieldOf(marker_sups::FindGenSup(
         TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *ret_type,
@@ -137,15 +137,15 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
   // Functions provide the return type, closures require
   // inference; handle the inference.
-  if (meta->EnclosingFnRetType.IsEmpty()) {
+  if (meta->EnclosingFnRetType.empty()) {
     _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
     _GenType->Stage7_AnalyseSemantics(sm, meta);
-    meta->EnclosingFnRetType.EmplaceBack(_GenType);
-    meta->EnclosingFnSourceRetType.EmplaceBack(expr_type);
+    meta->EnclosingFnRetType.emplace_back(_GenType);
+    meta->EnclosingFnSourceRetType.emplace_back(expr_type);
   }
   else {
-    // Todo - this list isn't getting cleared, so [0] != [last] (using .Back() hides the bug - TEMP FIX).
-    _GenType = meta->EnclosingFnRetType.Back();
+    // Todo - this list isn't getting cleared, so [0] != [last] (using .back() hides the bug - TEMP FIX).
+    _GenType = meta->EnclosingFnRetType.back();
   }
 
   // Determine the "Yield" type of the enclosing function
@@ -182,8 +182,8 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
   // The yield type is read off the generator's identity, shared by every spelling of it, so the error points at the
   // return type this coroutine wrote (else at this "gen").
-  auto const &yield_at = not meta->EnclosingFnSourceRetType.IsEmpty() and meta->EnclosingFnSourceRetType.Back() != nullptr
-    ? *meta->EnclosingFnSourceRetType.Back()->To<Ast>()
+  auto const &yield_at = not meta->EnclosingFnSourceRetType.empty() and meta->EnclosingFnSourceRetType.back() != nullptr
+    ? *meta->EnclosingFnSourceRetType.back()->To<Ast>()
     : *To<Ast>();
   RaiseIf<SppYieldedTypeMismatchError>(
     not direct_match, {sm->CurrentScope},

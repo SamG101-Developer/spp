@@ -70,7 +70,7 @@ auto spp::analyse::utils::packs::CompPackElements(
 auto spp::analyse::utils::packs::BoundTypePackElements(
   TypeAst const &type, Scope const &scope) -> std::optional<Vec<Shared<TypeAst>>> {
   //
-  if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.IsEmpty()) { return std::nullopt; }
+  if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.empty()) { return std::nullopt; }
   const auto sym = FindTypePack(type, scope);
   if (sym == nullptr or not type_predicates::IsTypeTuple(
     TypeRef::ForKindCheck(*sym, scope), scope)) {

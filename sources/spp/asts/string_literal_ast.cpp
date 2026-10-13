@@ -107,7 +107,7 @@ auto StringLiteralAst::Stage11_CodeGen(
     llvm_view_type->getElementType(length_idx), bytes.size());
 
   const auto llvm_view = llvm::ConstantStruct::get(
-    llvm_view_type, llvm_fields.ToStdVector());
+    llvm_view_type, llvm_fields);
   const auto llvm_global_view = new llvm::GlobalVariable(
     *emission_module, llvm_view_type, true, llvm::GlobalValue::PrivateLinkage, llvm_view, "string_literal.view");
 

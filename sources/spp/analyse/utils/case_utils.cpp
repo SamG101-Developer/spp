@@ -127,7 +127,7 @@ namespace spp::analyse::utils::case_utils {
       // Move through aliases, checking for variant members, grabbing
       // them, binding them, and then breaking out of the loop.
       // Todo: Remove the hop limit (documented).
-      for (auto hops = 0; col.VariantMembers.IsEmpty() and is_alias(through) and hops < 8; ++hops) {
+      for (auto hops = 0; col.VariantMembers.empty() and is_alias(through) and hops < 8; ++hops) {
         const auto target = aliases::InstanceTargetOf(*through.Symbol, through.Id, where);
         if (target == nullptr) { break; }
         through = TypeRef::Of(*target, where);
@@ -136,7 +136,7 @@ namespace spp::analyse::utils::case_utils {
 
       // If there were no variant members, then check if the column
       // is a bool comparison.
-      col.IsBool = col.VariantMembers.IsEmpty() and type_predicates::IsTypeBool(col.Ref, where);
+      col.IsBool = col.VariantMembers.empty() and type_predicates::IsTypeBool(col.Ref, where);
       return col;
     }
 
@@ -151,13 +151,13 @@ namespace spp::analyse::utils::case_utils {
 
       // If there are no variants, then use the column's type ref,
       // otherwise the nth variant member for n=ctor.
-      const auto &of = col.VariantMembers.IsEmpty()
+      const auto &of = col.VariantMembers.empty()
         ? col.Ref
         : col.VariantMembers[ctor];
 
       // Create a column for each of the fields.
       for (auto const &part : type_members::GetAllParts(of, *col.Where)) {
-        out.EmplaceBack(ColumnOf(part.Ref, part.Where != nullptr ? *part.Where : *col.Where));
+        out.emplace_back(ColumnOf(part.Ref, part.Where != nullptr ? *part.Where : *col.Where));
       }
       return out;
     }
@@ -175,20 +175,20 @@ namespace spp::analyse::utils::case_utils {
 
       // If we are considering variant members, get the nth
       // variant member, otherwise use the overall ref type.
-      const auto &of = col.VariantMembers.IsEmpty()
+      const auto &of = col.VariantMembers.empty()
         ? col.Ref
         : col.VariantMembers[ctor];
 
       // For each part in the selected type, add the
       // stringified field name into the list and return it.
       for (auto const &part : type_members::GetAllParts(of, *col.Where)) {
-        out.EmplaceBack(part.Step->Val);
+        out.emplace_back(part.Step->Val);
       }
       return out;
     }
 
     auto CtorPat(Column const &col, const std::size_t ctor) -> Pat {
-      return MakePat(Pat::Kind::Ctor, ctor, {}, Vec<Pat>(FieldsOf(col, ctor).Len(), Pat()));
+      return MakePat(Pat::Kind::Ctor, ctor, {}, Vec<Pat>(FieldsOf(col, ctor).size(), Pat()));
     }
 
     /// [CHECKED]
@@ -207,7 +207,7 @@ namespace spp::analyse::utils::case_utils {
       // as long as the subject doesn't have variant members, return
       // a ctor pattern over the type.
       if (type_compare::TypeEq(col.Ref, type, *col.Where, type_scope)) {
-        return col.VariantMembers.IsEmpty() and not col.IsBool ? CtorPat(col, 0) : Pat();
+        return col.VariantMembers.empty() and not col.IsBool ? CtorPat(col, 0) : Pat();
       }
 
       // Check each variant member, and return the match if there
@@ -229,7 +229,7 @@ namespace spp::analyse::utils::case_utils {
         // fields. This will go when we migrate to ICE.
         const auto type_parts = type_members::GetAllParts(type, type_scope);
         const auto member_cols = FieldsOf(col, m);
-        if (type_parts.Len() != member_cols.Len()) { return OpaquePat(); }
+        if (type_parts.size() != member_cols.size()) { return OpaquePat(); }
 
         // Create the ctor pattern, with "m" fields, "m" being the
         // index of the variant member within the variant type
@@ -287,11 +287,11 @@ namespace spp::analyse::utils::case_utils {
 
       // Loop up to the number of elements within the pattern, skipping
       // a skip pattern, creating inner patterns for the elements.
-      const auto n = elems.Len();
+      const auto n = elems.size();
       for (auto i = 0uz; i < n; ++i) {
         if (i == skip) { continue; }
-        const auto at = skip.has_value() and i > *skip ? fields.Len() - (n - i) : i;
-        if (at >= fields.Len()) { return OpaquePat(); }
+        const auto at = skip.has_value() and i > *skip ? fields.size() - (n - i) : i;
+        if (at >= fields.size()) { return OpaquePat(); }
         out.Fields[at] = ToPat(*elems[i], fields[at], scope, false);
       }
       return out;
@@ -400,8 +400,8 @@ namespace spp::analyse::utils::case_utils {
         else if (first.K == head.K and head.K == Pat::Kind::Ctor and first.Ctor == head.Ctor) { next = first.Fields; }
         else if (first.K == head.K and head.K == Pat::Kind::Lit and first.Lit == head.Lit) {}
         else { continue; }
-        for (auto i = 1uz; i < row.Len(); ++i) { next.EmplaceBack(row[i]); }
-        out.EmplaceBack(std::move(next));
+        for (auto i = 1uz; i < row.size(); ++i) { next.emplace_back(row[i]); }
+        out.emplace_back(std::move(next));
       }
       return out;
     }
@@ -418,15 +418,15 @@ namespace spp::analyse::utils::case_utils {
       // position has been dealt with. Any surviving row matches
       // with what "q" describes. Only "useful" when no rows
       // are left.
-      if (q.IsEmpty()) { return rows.IsEmpty(); }
+      if (q.empty()) { return rows.empty(); }
 
       auto const &head = q[0];
       const auto rest_cols = [&](Vec<Column> front) {
-        for (auto i = 1uz; i < cols.Len(); ++i) { front.EmplaceBack(cols[i]); }
+        for (auto i = 1uz; i < cols.size(); ++i) { front.emplace_back(cols[i]); }
         return front;
       };
       const auto rest_q = [&](Row front) {
-        for (auto i = 1uz; i < q.Len(); ++i) { front.EmplaceBack(q[i]); }
+        for (auto i = 1uz; i < q.size(); ++i) { front.emplace_back(q[i]); }
         return front;
       };
 
@@ -435,7 +435,7 @@ namespace spp::analyse::utils::case_utils {
       // constructor matter.
       if (head.K == Pat::Kind::Ctor) {
         const auto fields = FieldsOf(cols[0], head.Ctor);
-        return Useful(Specialise(rows, head, head.Fields.Len()), rest_q(head.Fields), rest_cols(fields));
+        return Useful(Specialise(rows, head, head.Fields.size()), rest_q(head.Fields), rest_cols(fields));
       }
 
       // If the query names a literal (5, "abc"), then do a 0-field
@@ -453,12 +453,12 @@ namespace spp::analyse::utils::case_utils {
       for (auto const &row : rows) {
         if (row[0].K == Pat::Kind::Ctor) { named.insert(row[0].Ctor); }
       }
-      const auto ctors = not col.VariantMembers.IsEmpty() ? col.VariantMembers.Len() : col.IsBool ? 2uz : 1uz;
+      const auto ctors = not col.VariantMembers.empty() ? col.VariantMembers.size() : col.IsBool ? 2uz : 1uz;
       const auto has_literals = genex::any_of(rows, [](auto const &row) { return row[0].K == Pat::Kind::Lit; });
       if (not has_literals and not named.empty() and named.size() == ctors) {
         for (auto c = 0uz; c < ctors; ++c) {
           const auto ctor = CtorPat(col, c);
-          if (Useful(Specialise(rows, ctor, ctor.Fields.Len()), rest_q(ctor.Fields), rest_cols(FieldsOf(col, c)))) {
+          if (Useful(Specialise(rows, ctor, ctor.Fields.size()), rest_q(ctor.Fields), rest_cols(FieldsOf(col, c)))) {
             return true;
           }
         }
@@ -467,7 +467,7 @@ namespace spp::analyse::utils::case_utils {
       auto rest = Vec<Row>();
       for (auto const &row : rows) {
         if (row[0].K != Pat::Kind::Wild) { continue; }
-        rest.EmplaceBack(Row(row.begin() + 1, row.end()));
+        rest.emplace_back(Row(row.begin() + 1, row.end()));
       }
       return Useful(rest, rest_q({}), rest_cols({}));
     }
@@ -559,7 +559,7 @@ namespace spp::analyse::utils::case_utils {
         std::move(pf_expr), std::move(eq_field));
       auto eq_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
         nullptr, nullptr, nullptr);
-      eq_call->FnArgGroup->Args.EmplaceBack(std::move(eq_arg));
+      eq_call->FnArgGroup->Args.emplace_back(std::move(eq_arg));
       const auto eq_call_expr = MakeUnique<PostfixExpressionAst>(
         std::move(eq_pf_expr), std::move(eq_call));
 
@@ -578,13 +578,13 @@ namespace spp::analyse::utils::case_utils {
       Function<void(ExpressionAst *)> &&on_nested_subject = {})
       -> Vec<T> {
       auto transformed = Vec<T>();
-      transformed.reserve(elems.Len());
+      transformed.reserve(elems.size());
 
-      if (not elems.IsEmpty() and elems[0]->To<CasePatternVariantExpressionAst>()) {
+      if (not elems.empty() and elems[0]->To<CasePatternVariantExpressionAst>()) {
         // For expression patterns, just generate the expression once.
         const auto expr_part = elems[0]->To<CasePatternVariantExpressionAst>();
         auto transform = mapper(expr_part->Expr.get());
-        transformed.EmplaceBack(std::move(transform));
+        transformed.emplace_back(std::move(transform));
         return transformed;
       }
 
@@ -611,9 +611,9 @@ namespace spp::analyse::utils::case_utils {
           const auto cond_ref = meta->CaseCondition->InferTypeRef(sm, meta).WithoutConvention();
           num_rhs_elems = type_predicates::IsTypeArray(cond_ref, *sm->CurrentScope)
             ? static_cast<std::size_t>(U64Of(cond_ref.Symbol->CompArgId("n")).value())
-            : cond_ref.Symbol->TypeArgRefs().Len();
+            : cond_ref.Symbol->TypeArgRefs().size();
         }
-        return *num_rhs_elems - (elems.Len() - i);
+        return *num_rhs_elems - (elems.size() - i);
       };
 
       for (auto const &[i, part] : elems | genex::views::enumerate) {
@@ -622,7 +622,7 @@ namespace spp::analyse::utils::case_utils {
           // The element by its position: "cond.<i>.eq(&literal)".
           auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
             nullptr, MakeShared<IdentifierAst>(0uz, std::to_string(real_index(i))));
-          transformed.EmplaceBack(MapFieldEqLiteral(
+          transformed.emplace_back(MapFieldEqLiteral(
             std::move(field), *literal->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
@@ -633,7 +633,7 @@ namespace spp::analyse::utils::case_utils {
           const auto literal_part = cast_attr->Val->To<CasePatternVariantLiteralAst>();
           auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
             nullptr, AstCloneShared(cast_attr->Name));
-          transformed.EmplaceBack(MapFieldEqLiteral(
+          transformed.emplace_back(MapFieldEqLiteral(
             std::move(field), *literal_part->Literal->To<ExpressionAst>(), sm, meta, mapper));
         }
 
@@ -655,7 +655,7 @@ namespace spp::analyse::utils::case_utils {
 
           // Combine the result.
           auto transform = mapper(part);
-          transformed.EmplaceBack(std::move(transform));
+          transformed.emplace_back(std::move(transform));
         }
       }
 
@@ -771,13 +771,13 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // own type is "Void", which the case never produces. No value
   // leaves such a case, so there is nothing for its branches to
   // agree on with what it is assigned to.
-  const auto every_branch_diverges = valued_branches_type_info.IsEmpty();
-  if (valued_branches_type_info.IsEmpty()) {
+  const auto every_branch_diverges = valued_branches_type_info.empty();
+  if (valued_branches_type_info.empty()) {
     valued_branches_type_info = branches_type_info
       | genex::views::filter([](auto const &x) { return x.second->IsNeverType(); })
       | genex::to<Vec>();
   }
-  if (valued_branches_type_info.IsEmpty()) { valued_branches_type_info = branches_type_info; }
+  if (valued_branches_type_info.empty()) { valued_branches_type_info = branches_type_info; }
 
   // Filter the branch types down to variant types for custom
   // analysis.
@@ -799,7 +799,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
       break;
     }
   }
-  if (master_branch_type_info.first == nullptr and not valued_branches_type_info.IsEmpty()) {
+  if (master_branch_type_info.first == nullptr and not valued_branches_type_info.empty()) {
     master_branch_type_info = MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second);
   }
   if (meta->AssignmentTargetType != nullptr) {
@@ -808,11 +808,11 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
 
   // Otherwise, if there are variant branches, use the most
   // variant type as the master branch type.
-  else if (not variant_branches_type_info.IsEmpty()) {
+  else if (not variant_branches_type_info.empty()) {
     auto most_inner_types = 0uz;
     for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
       const auto variant_size = type_compare::VariantMemberRefs(
-        TypeRef::Of(*variant_type, *sm.CurrentScope), *sm.CurrentScope).Len();
+        TypeRef::Of(*variant_type, *sm.CurrentScope), *sm.CurrentScope).size();
       if (variant_size > most_inner_types) {
         master_branch_type_info = {variant_branch, variant_type};
         most_inner_types = variant_size;
@@ -835,7 +835,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
     })
     | genex::to<Vec>();
 
-  if (not every_branch_diverges and not mismatch_branches_type_info.IsEmpty()) {
+  if (not every_branch_diverges and not mismatch_branches_type_info.empty()) {
     const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
     const auto [master_branch, master_branch_type] = master_branch_type_info;
     const auto final_member = master_branch != nullptr
@@ -872,32 +872,32 @@ auto spp::analyse::utils::case_utils::ConvertIsExprToFnCall(
   // right-hand-side of the "x is Type".
   auto pattern = std::move(is_expr.Rhs);
   auto patterns = Vec<Unique<CasePatternVariantAst>>();
-  patterns.EmplaceBack(std::move(pattern));
+  patterns.emplace_back(std::move(pattern));
 
   // Construct the case expression branch that contains the
   // pattern, yielding "true", and an "else" branch yielding
   // "false".
   const auto pos = is_expr.PosStart();
   auto match_members = Vec<Unique<StatementAst>>();
-  match_members.EmplaceBack(BooleanLiteralAst::True(pos));
+  match_members.emplace_back(BooleanLiteralAst::True(pos));
   auto match_body = MakeUnique<InnerScopeExpressionAst>(
     nullptr, std::move(match_members), nullptr);
 
   auto no_match_members = Vec<Unique<StatementAst>>();
-  no_match_members.EmplaceBack(BooleanLiteralAst::False(pos));
+  no_match_members.emplace_back(BooleanLiteralAst::False(pos));
   auto no_match_body = MakeUnique<InnerScopeExpressionAst>(
     nullptr, std::move(no_match_members), nullptr);
 
   auto else_patterns = Vec<Unique<CasePatternVariantAst>>();
-  else_patterns.EmplaceBack(MakeUnique<CasePatternVariantElseAst>(nullptr));
+  else_patterns.emplace_back(MakeUnique<CasePatternVariantElseAst>(nullptr));
 
   auto branch = MakeUnique<CaseExpressionBranchAst>(
     std::move(is_expr.TokOp), std::move(patterns), nullptr, std::move(match_body));
   auto else_branch = MakeUnique<CaseExpressionBranchAst>(
     nullptr, std::move(else_patterns), nullptr, std::move(no_match_body));
   auto branches = Vec<Unique<CaseExpressionBranchAst>>();
-  branches.EmplaceBack(std::move(branch));
-  branches.EmplaceBack(std::move(else_branch));
+  branches.emplace_back(std::move(branch));
+  branches.emplace_back(std::move(else_branch));
 
   // Construct and return the case expression AST.
   auto case_expr = MakeUnique<CaseExpressionAst>(
@@ -912,7 +912,7 @@ auto spp::analyse::utils::case_utils::MemberOf(
   // Only a pattern naming a type selects a member, and only a
   // member of the subject's own variant.
   const auto type = pattern.NarrowsTo();
-  if (coverage.VariantMembers.IsEmpty() or type == nullptr) { return std::nullopt; }
+  if (coverage.VariantMembers.empty() or type == nullptr) { return std::nullopt; }
   const auto ref = TypeRef::Of(*type, scope);
 
   // Get the member in the variant members list, that matches
@@ -928,7 +928,7 @@ auto spp::analyse::utils::case_utils::IsElseBranch(
   // Check if either of the two "else" variations of case
   // patterns are being used.
   auto const &patterns = branch.Patterns;
-  return not patterns.IsEmpty()
+  return not patterns.empty()
     and (patterns[0]->To<CasePatternVariantElseAst>() != nullptr
       or patterns[0]->To<CasePatternVariantElseCaseAst>() != nullptr);
 }
@@ -947,7 +947,7 @@ auto spp::analyse::utils::case_utils::CoverageOf(
   const auto remaining_of = [&](Vec<Row> const &rows) {
     auto remaining = Vec<TypeRef>();
     for (auto const &[m, member] : col.VariantMembers | genex::views::enumerate) {
-      if (Useful(rows, Row{CtorPat(col, m)}, cols)) { remaining.EmplaceBack(member); }
+      if (Useful(rows, Row{CtorPat(col, m)}, cols)) { remaining.emplace_back(member); }
     }
     return remaining;
   };
@@ -972,12 +972,12 @@ auto spp::analyse::utils::case_utils::CoverageOf(
 
     // Update the "remaining before", "readable" and "shadowed"
     // parts based on the reachability results and columns.
-    out.RemainingBefore.EmplaceBack(remaining_of(rows));
-    out.Reachable.EmplaceBack(reaches(rows));
-    out.ShadowedBy.EmplaceBack(std::nullopt);
-    for (auto j = 0uz; not out.Reachable.Back() and j < rows_by.Len(); ++j) {
+    out.RemainingBefore.emplace_back(remaining_of(rows));
+    out.Reachable.emplace_back(reaches(rows));
+    out.ShadowedBy.emplace_back(std::nullopt);
+    for (auto j = 0uz; not out.Reachable.back() and j < rows_by.size(); ++j) {
       if (reaches(Vec<Row>(rows.begin(), rows.begin() + static_cast<std::ptrdiff_t>(rows_by[j])))) { continue; }
-      out.ShadowedBy.Back() = j;
+      out.ShadowedBy.back() = j;
       break;
     }
 
@@ -985,9 +985,9 @@ auto spp::analyse::utils::case_utils::CoverageOf(
     // its runtime evaluating as to that the condition is
     // preventing from making an exclusive match.
     if (branch->Guard == nullptr) {
-      for (auto const &p : branch->Patterns) { rows.EmplaceBack(Row{ToPat(*p, col, scope, eq_op)}); }
+      for (auto const &p : branch->Patterns) { rows.emplace_back(Row{ToPat(*p, col, scope, eq_op)}); }
     }
-    rows_by.EmplaceBack(rows.Len());
+    rows_by.emplace_back(rows.size());
   }
 
   // Falling through every branch leaves the members none of
@@ -1006,7 +1006,7 @@ auto spp::analyse::utils::case_utils::PlanSubjectEdges(
   using meta::SubjectOnMatch;
   const auto all_copy = [](Vec<TypeRef> const &types) {
     const auto copyable = [](auto const &t) { return t.Symbol != nullptr and t.Symbol->IsCopyable(); };
-    return not types.IsEmpty() and genex::all_of(types, copyable);
+    return not types.empty() and genex::all_of(types, copyable);
   };
 
   // Each match edge: a binding by move takes the subject;
@@ -1019,7 +1019,7 @@ auto spp::analyse::utils::case_utils::PlanSubjectEdges(
     // being kept - this branch can never execute. Continue.
     auto const &patterns = branch->Patterns;
     if (not coverage.Reachable[i]) {
-      out.OnMatch.EmplaceBack(SubjectOnMatch::kKeep);
+      out.OnMatch.emplace_back(SubjectOnMatch::kKeep);
       continue;
     }
 
@@ -1027,16 +1027,16 @@ auto spp::analyse::utils::case_utils::PlanSubjectEdges(
     auto narrowed = Vec<TypeRef>();
     for (auto const &pattern : patterns) {
       if (const auto member = MemberOf(coverage, *pattern, scope); member.has_value()) {
-        narrowed.EmplaceBack(*member);
+        narrowed.emplace_back(*member);
       }
     }
     const auto is_else = IsElseBranch(*branch);
-    const auto narrows_only_to_copy = narrowed.Len() == patterns.Len() and all_copy(narrowed);
+    const auto narrows_only_to_copy = narrowed.size() == patterns.size() and all_copy(narrowed);
 
     // Take a subject where any of the patterns move the subject,
     // discharge the subject if we are at the "else" block and
     // all the previous branches were copying; otherwise keep it.
-    out.OnMatch.EmplaceBack(
+    out.OnMatch.emplace_back(
       genex::any_of(patterns, [](auto const &p) { return p->BindsByMove(); })
       ? SubjectOnMatch::kTake
       : (is_else and all_copy(coverage.RemainingBefore[i])) or (not is_else and narrows_only_to_copy)
@@ -1071,7 +1071,7 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
     const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
     if (const auto skipped = taken.has_value() ? regions::FirstUnaccountedPart(*subject, *taken, sm) : Str();
       not skipped.empty()) {
-      auto const *const blamed = branch.Patterns.IsEmpty()
+      auto const *const blamed = branch.Patterns.empty()
         ? static_cast<Ast const*>(&branch)
         : static_cast<Ast const*>(branch.Patterns[0].get());
       Raise<errors::SppDestructureSkipsOwnedPartError>(

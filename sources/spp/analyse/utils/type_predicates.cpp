@@ -168,7 +168,7 @@ auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   // A template named with no arguments stands for itself over its own parameters - unless every parameter is a pack,
   // which no arguments bind to the empty pack: "Tup" with none is the empty tuple, which is how "()" is named.
   auto const *const head = scope.FindHeadSymbol(type);
-  if (head != nullptr and head->IsBareTemplate() and type.LastTypePart()->GnArgGroup->Args.IsEmpty()) {
+  if (head != nullptr and head->IsBareTemplate() and type.LastTypePart()->GnArgGroup->Args.empty()) {
     const auto all_packs = genex::all_of(head->Type->GnParamGroup->Params, [](auto const &param) {
       return param->IsVariadic();
     });

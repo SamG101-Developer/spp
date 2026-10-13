@@ -207,9 +207,9 @@ namespace {
       auto const &head = HeadOf(sym->Id);
       auto arg_ids = spp::Vec<TypeId>();
       if (head.Kind == TypeKey::Tag::Inst) {
-        for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.EmplaceBack(arg.TypeVal); } }
+        for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
       }
-      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.AppendRange(head.Members); }
+      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.Members); }
       for (const auto arg_id : arg_ids) {
         if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
       }
@@ -467,7 +467,7 @@ auto TypeSymbol::IsSelf() const -> bool {
 
 auto TypeSymbol::IsBareTemplate() const -> bool {
   return Kind == TypeKind::Cls and InstanceOf == nullptr and Alias == nullptr and Type != nullptr
-    and not Type->GnParamGroup->Params.IsEmpty();
+    and not Type->GnParamGroup->Params.empty();
 }
 
 auto TypeSymbol::IsThreadSafe() const -> bool {
@@ -521,12 +521,12 @@ auto VariableSymbol::FqName() const -> Shared<ExpressionAst> {
     while (std::holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;
     }
-    scopes.EmplaceBack(qualifier_scope);
+    scopes.emplace_back(qualifier_scope);
     qualifier_scope = qualifier_scope->Parent;
   }
 
   auto qualified_name = Unique<ExpressionAst>(nullptr);
-  qualified_name = AstClone(std::get<ScopeIdentifierName>(scopes.Back()->Name).Name);
+  qualified_name = AstClone(std::get<ScopeIdentifierName>(scopes.back()->Name).Name);
   for (auto qualifier_scope : scopes | genex::views::reverse | genex::views::drop(1)) {
     const auto raw_ns_name = std::get<ScopeIdentifierName>(qualifier_scope->Name).Name.get();
     auto ns_name = MakeShared<IdentifierAst>(raw_ns_name->PosStart(), raw_ns_name->Val);
@@ -779,11 +779,11 @@ auto TypeSymbol::FqName(
     // defaulted "Str[A]") keeps the bare name.
     const auto owner_name = AstName(sup_node);
     const auto owner_gn = owner_name->LastTypePart()->GnArgGroup.get();
-    if (owner_gn != nullptr and not owner_gn->Args.IsEmpty()) { return Name; }
+    if (owner_gn != nullptr and not owner_gn->Args.empty()) { return Name; }
     const auto owner_sym = LinkedScope->Parent->FindHeadSymbol(*owner_name);
     if (owner_sym == nullptr or owner_sym == this or owner_sym->IsGn()
       or owner_sym->IsMock()
-      or (owner_sym->Type != nullptr and not owner_sym->Type->GnParamGroup->Params.IsEmpty())) { return Name; }
+      or (owner_sym->Type != nullptr and not owner_sym->Type->GnParamGroup->Params.empty())) { return Name; }
     // Built from copies: the owner's name is its shared cached
     // one, and analysing this type would mark that as analysed
     // for every other use of it (skipping, say, its abstract-type
@@ -876,7 +876,7 @@ auto TypeSymbol::TypeArgRefs() const -> Vec<TypeRef> {
   // identity), and keep the type args only, as refs.
   for (auto const &arg : ArgsOf(HeadOf(inst.Id).Args)) {
     if (arg.TypeVal != nullptr) {
-      types.EmplaceBack(TypeRef::Of(arg.TypeVal, *inst.LinkedScope));
+      types.emplace_back(TypeRef::Of(arg.TypeVal, *inst.LinkedScope));
     }
   }
   return types;

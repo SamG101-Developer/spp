@@ -213,16 +213,16 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // Check the symbol doesn't have any outstanding partial
   // moved (moving a partially moved object).
   auto const &state = memory_state::StateOf(*sm.CurrentScope, *var_sym);
-  if (options.CheckPartialMove and not state.PartialMoves.IsEmpty() and value_ast.To<IdentifierAst>() != nullptr) {
+  if (options.CheckPartialMove and not state.PartialMoves.empty() and value_ast.To<IdentifierAst>() != nullptr) {
     const auto where_init = state.AstInitializationOrigin;
-    auto const *const where_pm = state.PartialMoves.Front().Site;
+    auto const *const where_pm = state.PartialMoves.front().Site;
     Raise<errors::SppPartiallyInitializedMemoryUseError>(
       {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
   }
 
   // Check the symbol doesn't have any outstanding partial
   // moves (directly moving a partial move).
-  if (options.CheckPartialMove and not state.PartialMoves.IsEmpty() and value_ast.To<IdentifierAst>() == nullptr) {
+  if (options.CheckPartialMove and not state.PartialMoves.empty() and value_ast.To<IdentifierAst>() == nullptr) {
     // "Contains" covers the move naming the place exactly
     // as well as the move naming something the place sits
     // inside of. Writing "o.inner.val" puts the first back
@@ -236,9 +236,9 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
           and (not options.IsPlaceWritten or x.Of->Steps.size() < place->Steps.size());
       })
       | genex::to<Vec>();
-    if (not overlaps.IsEmpty()) {
+    if (not overlaps.empty()) {
       const auto where_init = state.AstInitializationOrigin;
-      auto const *const where_pm = overlaps.Front().Site;
+      auto const *const where_pm = overlaps.front().Site;
       Raise<errors::SppUninitializedMemoryUseError>(
         {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
     }

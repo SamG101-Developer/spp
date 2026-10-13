@@ -303,7 +303,7 @@ auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const&
   // Define an empty bare to fill, and the "words" which is
   // the pair [id-words-data, id-words-size].
   auto out = TypeIdParams();
-  const auto add = [](std::vector<std::uint64_t> &into, const std::uint64_t x) {
+  const auto add = [](Vec<std::uint64_t> &into, const std::uint64_t x) {
     if (not genex::contains(into, x)) { into.push_back(x); }
   };
 
@@ -440,10 +440,10 @@ auto spp::analyse::scopes::IsClosedTypeId(
 SPP_MOD_BEGIN
 /// [CHECKED]
 auto spp::analyse::scopes::ArgsOf(
-  const TypeId args) -> std::vector<TypeIdArg> {
+  const TypeId args) -> Vec<TypeIdArg> {
   // Create the empty list of what the arg ids will fill
   // up, then decode each argument in turn.
-  auto out = std::vector<TypeIdArg>();
+  auto out = Vec<TypeIdArg>();
   if (args == nullptr) { return out; }
   auto words = WordsOf(args);
   for (auto arg = TypeIdArg(); TypeKey::_DecodeArg(words, arg); arg = TypeIdArg()) {

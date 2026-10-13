@@ -103,7 +103,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
   // means. Guarded against repeats in case the scope is walked
   // again without being re-entered.
   if (not genex::contains(sm->CurrentScope->Deferred, this)) {
-    sm->CurrentScope->Deferred.EmplaceBack(this);
+    sm->CurrentScope->Deferred.emplace_back(this);
   }
 
   // Each exit replays the walk from here (see "CheckAtExit").
@@ -161,7 +161,7 @@ auto DeferStatementAst::Stage11_CodeGen(
   // with "Scope::Deferred". Guarded against repeats because a
   // loop body is walked twice against the same scope.
   if (not genex::contains(sm->CurrentScope->DeferredReached, this)) {
-    sm->CurrentScope->DeferredReached.EmplaceBack(this);
+    sm->CurrentScope->DeferredReached.emplace_back(this);
   }
   return nullptr;
 }

@@ -52,12 +52,12 @@ ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
 
 auto ClosureExpressionCaptureGroupAst::PosStart() const -> std::size_t {
   // Use the "caps" token.
-  return TokCaps != nullptr ? TokCaps->PosStart() : Captures.IsEmpty() ? 0 : Captures.Front()->PosStart();
+  return TokCaps != nullptr ? TokCaps->PosStart() : Captures.empty() ? 0 : Captures.front()->PosStart();
 }
 
 auto ClosureExpressionCaptureGroupAst::PosEnd() const -> std::size_t {
   // Use the final capture.
-  return not Captures.IsEmpty() ? Captures.Back()->PosEnd() : TokCaps != nullptr ? TokCaps->PosEnd() : 0;
+  return not Captures.empty() ? Captures.back()->PosEnd() : TokCaps != nullptr ? TokCaps->PosEnd() : 0;
 }
 
 auto ClosureExpressionCaptureGroupAst::Clone() const -> Unique<Ast> {
@@ -141,7 +141,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       if (ass_sym != nullptr and outer_cap_sym != nullptr) {
         const auto is_mut = *cap->Conv == ConventionTag::MUT;
         const auto borrowed = analyse::utils::regions::PlaceAtOf(*cap->Val, *meta->CurrentLambdaOuterScope);
-        analyse::utils::memory_state::LoansOf(*meta->CurrentLambdaOuterScope).EmplaceBack(
+        analyse::utils::memory_state::LoansOf(*meta->CurrentLambdaOuterScope).emplace_back(
           analyse::utils::memory_state::MakeLoan(
             borrowed, is_mut, ass_sym, false, ass_sym == meta->AssignmentTargetSymbol));
       }
@@ -182,7 +182,7 @@ auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
     const auto gep = ctx->Builder.CreateInBoundsGEP(
       ctx->CurrentClosureType,
       AstAs<ClosureExpressionAst>(ctx->CurrentClosureScope->AstNode)->GetLlvmFn()->Target->getArg(0),
-      Vec<llvm::Value*>{zero, idx}.ToStdVector());
+      Vec<llvm::Value*>{zero, idx});
 
     const auto load = ctx->Builder.CreateLoad(cap_llvm_type, gep, "capture.load." + uid);
     ctx->Builder.CreateStore(load, alloca);

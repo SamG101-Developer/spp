@@ -165,7 +165,7 @@ namespace spp::analyse::errors {
 auto SemanticError::AddHeader(
   const std::size_t err_code, Str &&msg) -> void {
   // Add a header to the error.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = static_cast<Ast const*>(nullptr),
     .Kind = ErrorInformationKind::HEADER,
     .Tag = std::move(msg),
@@ -176,7 +176,7 @@ auto SemanticError::AddHeader(
 auto SemanticError::AddErr(
   Ast const *ast, Str &&tag) -> void {
   // Add an error information entry for the given AST and tag.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = UnwrapFunctionCallAst(ast),
     .Kind = ErrorInformationKind::ERROR,
     .Tag = std::move(tag),
@@ -188,7 +188,7 @@ auto SemanticError::AddErrExact(
   Ast const *ast, Str &&tag) -> void {
   // Add an error information entry for the given AST and tag,
   // without narrowing a call to its argument group.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = ast,
     .Kind = ErrorInformationKind::ERROR,
     .Tag = std::move(tag),
@@ -199,7 +199,7 @@ auto SemanticError::AddErrExact(
 auto SemanticError::AddCtxForErr(
   Ast const *ast, Str &&tag) -> void {
   // Add a context information entry for the given AST and tag.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = UnwrapFunctionCallAst(ast),
     .Kind = ErrorInformationKind::CONTEXT,
     .Tag = std::move(tag),
@@ -211,7 +211,7 @@ auto SemanticError::AddFooter(
   Str &&note, Str &&help) -> void {
   // Add a footer to the error with the given note and help
   // message.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = static_cast<Ast const*>(nullptr),
     .Kind = ErrorInformationKind::FOOTER,
     .Tag = std::move(note),
@@ -222,7 +222,7 @@ auto SemanticError::AddFooter(
 auto SemanticError::AddWrapped(
   Str &&msg) -> void {
   // Add a wrapped error information entry.
-  ErrorInfo.PushBack({
+  ErrorInfo.push_back({
     .Ast = static_cast<Ast const*>(nullptr),
     .Kind = ErrorInformationKind::WRAPPED,
     .Tag = std::move(msg),

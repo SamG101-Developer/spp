@@ -56,7 +56,7 @@ struct spp::views::cast_unique_fn {
     for (; first != last; ++first) {
       if (auto *p = dynamic_cast<To*>(first->get()); p != nullptr) {
         std::ignore = first->release();
-        out.EmplaceBack(Unique<To>(p));
+        out.emplace_back(Unique<To>(p));
       }
     }
     return out;
@@ -68,7 +68,7 @@ struct spp::views::cast_unique_fn {
     for (auto &&v : rng) {
       if (auto *p = dynamic_cast<To*>(v.get()); p != nullptr) {
         std::ignore = v.release();
-        out.EmplaceBack(Unique<To>(p));
+        out.emplace_back(Unique<To>(p));
       }
     }
     return out;

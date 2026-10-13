@@ -29,7 +29,7 @@ namespace spp_test {
   /// "N | code" and the caret row below it lines up column for
   /// column. Empty when the block quotes no source.
   inline auto Underlined(std::string const &block) -> std::string {
-    auto lines = std::vector<std::string>();
+    auto lines = spp::Vec<std::string>();
     for (auto start = 0uz; start <= block.size();) {
       const auto end = block.find('\n', start);
       lines.push_back(block.substr(start, end == std::string::npos ? std::string::npos : end - start));

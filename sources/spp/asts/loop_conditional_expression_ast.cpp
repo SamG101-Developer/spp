@@ -147,16 +147,16 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   auto outer_syms = Vec<VariableSymbol*>();
   auto seen = Set<VariableSymbol const*>();
   for (auto const &[sym, _] : pre_loop_state.Symbols) {
-    if (seen.insert(sym.get()).second) { outer_syms.EmplaceBack(sym.get()); }
+    if (seen.insert(sym.get()).second) { outer_syms.emplace_back(sym.get()); }
   }
   for (auto const &[sym, _] : pre_loop_state.States) {
-    if (seen.insert(sym).second) { outer_syms.EmplaceBack(const_cast<VariableSymbol*>(sym)); }
+    if (seen.insert(sym).second) { outer_syms.emplace_back(const_cast<VariableSymbol*>(sym)); }
   }
 
   // This loop's frame in the body's flow, by position: a loop nested in the body pushes its own after it.
   auto &flow = *memory_state::FlowOf(*sm->CurrentScope);
-  const auto frame_at = flow.Loops.Len();
-  flow.Loops.EmplaceBack();
+  const auto frame_at = flow.Loops.size();
+  flow.Loops.emplace_back();
 
   // One pass over the condition and body: one iteration, from the
   // state the symbols are in now.
@@ -198,7 +198,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   }
 
   const auto frame = std::move(flow.Loops[frame_at]);
-  flow.Loops.PopBack();
+  flow.Loops.pop_back();
 
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
@@ -219,15 +219,15 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // Each path's state for one symbol: "nullptr" is the state it
   // is in now, which needs no restoring.
   auto paths = Vec<Pair<Ast const*, ScopeSnapshot const*>>();
-  if (cond_can_end and ElseBlock != nullptr) { paths.EmplaceBack(ElseBlock.get(), nullptr); }
+  if (cond_can_end and ElseBlock != nullptr) { paths.emplace_back(ElseBlock.get(), nullptr); }
   if (cond_can_end and ElseBlock == nullptr) {
-    if (body_end_reached) { paths.EmplaceBack(Body.get(), nullptr); }
-    paths.EmplaceBack(TokLoop.get(), &pre_loop_state);
+    if (body_end_reached) { paths.emplace_back(Body.get(), nullptr); }
+    paths.emplace_back(TokLoop.get(), &pre_loop_state);
   }
-  for (auto const &[exit_tok, state] : frame.ExitStates) { paths.EmplaceBack(exit_tok, &state); }
+  for (auto const &[exit_tok, state] : frame.ExitStates) { paths.emplace_back(exit_tok, &state); }
 
   // A loop nothing leaves ("loop true { }") has no state after it.
-  if (paths.IsEmpty()) {
+  if (paths.empty()) {
     sm->MoveOutOfCurrentScope();
     return;
   }
@@ -332,7 +332,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
     const auto _meta_guard = MetaGuard(meta);
     meta->LlvmEndBB = loop_end_bb;
     meta->LlvmPhi = phi;
-    meta->LlvmLoopStack.EmplaceBack(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
+    meta->LlvmLoopStack.emplace_back(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
     meta->AssignmentTargetType = ret_type;
 
     // Generate the condition. This block is branched back to

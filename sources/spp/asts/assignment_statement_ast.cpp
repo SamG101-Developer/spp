@@ -52,12 +52,12 @@ AssignmentStatementAst::~AssignmentStatementAst() = default;
 
 auto AssignmentStatementAst::PosStart() const -> std::size_t {
   // Use the leftmost assignment target.
-  return Lhs.Front()->PosStart();
+  return Lhs.front()->PosStart();
 }
 
 auto AssignmentStatementAst::PosEnd() const -> std::size_t {
   // Use the rightmost assignment value.
-  return Rhs.Back()->PosEnd();
+  return Rhs.back()->PosEnd();
 }
 
 auto AssignmentStatementAst::Clone() const -> Unique<Ast> {
@@ -313,7 +313,7 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
 
   // Wrap the rhs value and move it into the value of the
   // variable symbol.
-  for (auto i = 0uz; i < Lhs.Len(); ++i) {
+  for (auto i = 0uz; i < Lhs.size(); ++i) {
     Rhs[i]->Stage9_CompTimeResolve(sm, meta);
     const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
 
@@ -345,8 +345,8 @@ auto AssignmentStatementAst::Stage11_CodeGen(
   // and doesn't clobber the values being reused. Firstly generate
   // all the right-hand-side values into llvm ir.
   auto llvm_rhs_vals = Vec<llvm::Value*>{};
-  llvm_rhs_vals.Reserve(Rhs.Len());
-  for (auto i = 0uz; i < Rhs.Len(); ++i) {
+  llvm_rhs_vals.reserve(Rhs.size());
+  for (auto i = 0uz; i < Rhs.size(); ++i) {
     auto llvm_rhs = [&] {
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
@@ -377,14 +377,14 @@ auto AssignmentStatementAst::Stage11_CodeGen(
 
       return value;
     }();
-    llvm_rhs_vals.EmplaceBack(llvm_rhs);
+    llvm_rhs_vals.emplace_back(llvm_rhs);
   }
 
   // Resolve every LHS store location, still before any stores happen.
   // This finalizes the expression swapping support.
   auto llvm_lhs_locs = Vec<llvm::Value*>{};
-  llvm_lhs_locs.Reserve(Lhs.Len());
-  for (auto i = 0uz; i < Lhs.Len(); ++i) {
+  llvm_lhs_locs.reserve(Lhs.size());
+  for (auto i = 0uz; i < Lhs.size(); ++i) {
     auto llvm_lhs = static_cast<llvm::Value*>(nullptr);
 
     // The statement "x@ = v" writes through a borrow: the target is
@@ -411,12 +411,12 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       llvm_lhs = Lhs[i]->Stage11_CodeGen(sm, meta, ctx);
     }
 
-    llvm_lhs_locs.EmplaceBack(llvm_lhs);
+    llvm_lhs_locs.emplace_back(llvm_lhs);
   }
 
   // Now that every value and location has been computed off the
   // (pre-assignment) state, commit the stores.
-  for (auto i = 0uz; i < Lhs.Len(); ++i) {
+  for (auto i = 0uz; i < Lhs.size(); ++i) {
     if (llvm_lhs_locs[i] == nullptr and llvm_rhs_vals[i] == nullptr) { continue; }
     SPP_ASSERT(llvm_lhs_locs[i] != nullptr and llvm_rhs_vals[i] != nullptr);
     ctx->Builder.CreateStore(llvm_rhs_vals[i], llvm_lhs_locs[i]);

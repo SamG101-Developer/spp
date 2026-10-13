@@ -172,7 +172,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // A binding that borrows its value ("is A(&mut n, ..)") holds a loan of the place it names, to its last use.
   if (Conv != nullptr) {
     sym->MemInfo->AstBorrowed = Conv.get();
-    loans.EmplaceBack(memory_state::MakeLoan(
+    loans.emplace_back(memory_state::MakeLoan(
       regions::PlaceAtOf(*meta->LetStatementValue, *sm->CurrentScope), *Conv == ConventionTag::MUT, sym));
   }
 }

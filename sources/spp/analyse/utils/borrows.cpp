@@ -143,7 +143,7 @@ auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
   const auto borrowed = regions::PlaceAtOf(*arg.Val, *sm.CurrentScope);
   CheckAgainstLoans(
     borrowed, is_mut, memory_state::LoansOf(*sm.CurrentScope), call_loans, *arg.Val, sm);
-  call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, is_mut));
+  call_loans.emplace_back(memory_state::MakeLoan(borrowed, is_mut));
 }
 
 auto spp::analyse::utils::borrows::EnforceBorrowsOutliveHolder(
@@ -154,7 +154,7 @@ auto spp::analyse::utils::borrows::EnforceBorrowsOutliveHolder(
   // "holder" symbol and the "from" symbol (combined).
   auto const &loans = memory_state::LoansOf(*sm.CurrentScope);
   auto carried = memory_state::LoansHeldBy(loans, holder);
-  if (from != nullptr) { carried.AppendRange(memory_state::LoansHeldBy(loans, *from)); }
+  if (from != nullptr) { carried.append_range(memory_state::LoansHeldBy(loans, *from)); }
 
   // For each loan in the carried list, check that the
   // borrow definition scope is strictly inside the scope
@@ -170,7 +170,7 @@ auto spp::analyse::utils::borrows::EnforceBorrowsOutliveHolder(
   // (a pattern's "&val", a parameter) is valid no longer
   // than itself, so the holder may not outlive it either.
   if (from == nullptr or from->MemInfo->AstBorrowed == nullptr) { return; }
-  if (not memory_state::LoansHeldBy(loans, *from).IsEmpty()) { return; }
+  if (not memory_state::LoansHeldBy(loans, *from).empty()) { return; }
   RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
     StrictlyInside(from->ScopeDefinedIn, holder.ScopeDefinedIn), {sm.CurrentScope},
     ERR_ARGS(owner, *holder.Name, *from->MemInfo->AstBorrowed));

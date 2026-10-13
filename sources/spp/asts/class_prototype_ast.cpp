@@ -86,7 +86,7 @@ auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
 auto ClassPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokCls).append(" ");
   SPP_STRING_APPEND(Name);
   SPP_STRING_APPEND(GnParamGroup).append(" ");
@@ -230,9 +230,9 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   // state of its own. Being zero-sized says nothing about
   // copying: a marker is still linear unless it is "Copy".
   RaiseIf<SppEmptyBodyRequiredError>(
-    ZeroTypeAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    ZeroTypeAnnotation != nullptr and not Impl->Members.empty(),
     {sm->CurrentScope}, ERR_ARGS(
-      *ZeroTypeAnnotation, *Impl->Members.Front(), "a '!zero_type' class",
+      *ZeroTypeAnnotation, *Impl->Members.front(), "a '!zero_type' class",
       "the type is guaranteed to occupy no storage, and an attribute would give it a size"));
 
   Impl->Stage7_AnalyseSemantics(sm, meta);
@@ -315,10 +315,10 @@ static auto IsStdNeverModule(
   auto names = spp::Vec<spp::Str>();
   for (auto const *s = &scope; s != nullptr and s->Parent != nullptr; s = s->Parent) {
     if (const auto id = std::get_if<ScopeIdentifierName>(&s->Name); id != nullptr) {
-      names.EmplaceBack(id->Name->Val);
+      names.emplace_back(id->Name->Val);
     }
   }
-  return names.Len() == 2 and names[0] == "never" and names[1] == "std";
+  return names.size() == 2 and names[0] == "never" and names[1] == "std";
 }
 
 auto ClassPrototypeAst::_GenerateSymbols(
@@ -356,7 +356,7 @@ auto ClassPrototypeAst::_GenerateSymbols(
   // of names that stand for nothing yet, so there is no size to
   // give and nothing that can be built against it. Only its
   // instantiations are real types.
-  symbol_1->IsConcrete = GnParamGroup->Params.IsEmpty();
+  symbol_1->IsConcrete = GnParamGroup->Params.empty();
 
   return _ClsSymbol.get();
 }
@@ -380,18 +380,18 @@ static auto ApplyStructLayout(
   const auto kept = spp::codegen::DropValuelessFields(field_types);
   auto kept_types = spp::Vec<llvm::Type*>();
   auto kept_map = spp::Map<std::size_t, std::size_t>();
-  for (auto new_idx = 0uz; new_idx < kept.Len(); ++new_idx) {
-    kept_types.EmplaceBack(field_types[kept[new_idx]]);
+  for (auto new_idx = 0uz; new_idx < kept.size(); ++new_idx) {
+    kept_types.emplace_back(field_types[kept[new_idx]]);
     kept_map[kept[new_idx]] = new_idx;
   }
-  const auto dropped_any = kept.Len() != field_types.Len();
+  const auto dropped_any = kept.size() != field_types.size();
 
   switch (layout) {
     case spp::codegen::StructLayout::C: {
       // Keep declaration order, with natural alignment padding.
       // This mirrors the C language / specifications. Seen in the
       // FFI structs.
-      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), false); }
+      if (needs_body) { struct_type->setBody(kept_types, false); }
       // An empty map means the declaration order was preserved outright, which it only is when nothing was dropped.
       if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
       else { sym_info->FieldIndexMap.clear(); }
@@ -399,7 +399,7 @@ static auto ApplyStructLayout(
     }
     case spp::codegen::StructLayout::Packed: {
       // Keep declaration order, but remove all inter-field padding.
-      if (needs_body) { struct_type->setBody(kept_types.ToStdVector(), true); }
+      if (needs_body) { struct_type->setBody(kept_types, true); }
       if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
       else { sym_info->FieldIndexMap.clear(); }
       break;
@@ -409,7 +409,7 @@ static auto ApplyStructLayout(
       // each declared attribute ended up, so that codegen can map
       // a declaration index to its physical field index.
       auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
-      if (needs_body) { struct_type->setBody(sorted_types.ToStdVector(), false); }
+      if (needs_body) { struct_type->setBody(sorted_types, false); }
       sym_info->FieldIndexMap = std::move(index_map);
       break;
     }
@@ -435,7 +435,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
   }
 
   const auto is_empty_pack = type_sym->InstanceOf == nullptr and type_sym->Type != nullptr
-    and type_sym->Type->GnParamGroup->Params.Len() == 1 and type_sym->Type->GnParamGroup->GetVariadicParam() !=
+    and type_sym->Type->GnParamGroup->Params.size() == 1 and type_sym->Type->GnParamGroup->GetVariadicParam() !=
     nullptr;
   if (not type_sym->IsConcrete and not is_empty_pack) { return; }
 
@@ -480,7 +480,7 @@ auto ClassPrototypeAst::FillLlvmLayout(
   if (fat_pointer_field_count > 0) {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     auto prefixed = Vec<llvm::Type*>(fat_pointer_field_count, ptr_ty);
-    prefixed.AppendRange(types);
+    prefixed.append_range(types);
     types = std::move(prefixed);
   }
 

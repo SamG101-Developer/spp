@@ -196,7 +196,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     tok(lex::SppTokenType::TK_LEFT_PARENTHESIS),
     Vec<Unique<FunctionParameterAst>>(),
     tok(lex::SppTokenType::TK_RIGHT_PARENTHESIS));
-  auto capture_group = captures.IsEmpty()
+  auto capture_group = captures.empty()
     ? nullptr
     : MakeUnique<ClosureExpressionCaptureGroupAst>(
       tok(lex::SppTokenType::KW_CAPS), std::move(captures));
@@ -215,7 +215,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
     std::move(fut_type), std::move(static_member));
 
   auto spawn_args = Vec<Unique<FunctionCallArgumentAst>>();
-  spawn_args.EmplaceBack(MakeUnique<FunctionCallArgumentPositionalAst>(
+  spawn_args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
     nullptr, nullptr, std::move(closure)));
   auto spawn_arg_group = MakeUnique<FunctionCallArgumentGroupAst>(
     tok(lex::SppTokenType::TK_LEFT_PARENTHESIS),
@@ -229,11 +229,11 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // The prelude and the call are one scope: the locals are bound,
   // then the future is built from them, and the scope's value is
   // the future.
-  if (prelude.IsEmpty()) {
+  if (prelude.empty()) {
     _TransformedFn = std::move(mapped);
   }
   else {
-    prelude.EmplaceBack(std::move(mapped));
+    prelude.emplace_back(std::move(mapped));
     _TransformedFn = MakeUnique<InnerScopeExpressionAst>(
       tok(lex::SppTokenType::TK_LEFT_CURLY_BRACE), std::move(prelude),
       tok(lex::SppTokenType::TK_RIGHT_CURLY_BRACE));

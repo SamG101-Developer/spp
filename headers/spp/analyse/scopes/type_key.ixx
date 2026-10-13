@@ -61,7 +61,7 @@ namespace spp::analyse::scopes {
   /// The arguments an instantiation's arguments key lists,
   /// in order.
   SPP_EXP_CLS auto ArgsOf(
-    TypeKey const *args) -> std::vector<TypeIdArg>;
+    TypeKey const *args) -> Vec<TypeIdArg>;
 
   /// The argument an instantiation's arguments key holds for the
   /// parameter "param_id", decoded as "ArgsOf" decodes it; read in
@@ -88,7 +88,7 @@ namespace spp::analyse::scopes {
     /// The interned parts of the instance information. This
     /// might include things like generic argument interned
     /// information.
-    std::vector<Word> Words;
+    Vec<Word> Words;
 
     /// The "intern" of this entire instantiation. This is
     /// the master value used for things like comparisons.
@@ -189,7 +189,7 @@ namespace spp::analyse::scopes {
   private:
     friend auto HeadOf(TypeKey const *id) -> TypeIdHead const&;
     friend auto BareOf(TypeKey const *id) -> TypeKey const*;
-    friend auto ArgsOf(TypeKey const *args) -> std::vector<TypeIdArg>;
+    friend auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
     friend auto FindArgOf(TypeKey const *args, std::uint64_t param_id) -> std::optional<TypeIdArg>;
 
     /// The raw appending function, which takes the word, adds
@@ -329,7 +329,7 @@ namespace spp::analyse::scopes {
     TypeId Args = nullptr;
 
     /// "Variant": the members, in their canonical order.
-    std::vector<TypeId> Members;
+    Vec<TypeId> Members;
 
     /// "Ptr" as the symbol it is: the class ("Symbol"), the
     /// template ("Inst") or the variant template ("Variant").
@@ -344,8 +344,8 @@ namespace spp::analyse::scopes {
   /// The type and comp params interned to their symbols' param
   /// ids.
   SPP_EXP_CLS struct TypeIdParams {
-    std::vector<std::uint64_t> TypeParams;
-    std::vector<std::uint64_t> CompParams;
+    Vec<std::uint64_t> TypeParams;
+    Vec<std::uint64_t> CompParams;
   };
 
   /// The type and comp params, as their param ids from their

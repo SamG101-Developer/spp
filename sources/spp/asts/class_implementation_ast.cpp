@@ -78,7 +78,7 @@ auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicates.IsEmpty(),
+    not duplicates.empty(),
     {sm->CurrentScope}, ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
 }
 

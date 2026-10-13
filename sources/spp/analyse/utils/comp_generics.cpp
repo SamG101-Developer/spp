@@ -36,7 +36,7 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
   // Constants defined through each other ("cmp a = Self::b",
   // "cmp b = Self::a") stay members: a constant asked for
   // again while it is being read is its member identity.
-  thread_local auto reading = std::vector<Pair<TypeId, Str>>();
+  thread_local auto reading = Vec<Pair<TypeId, Str>>();
   if (genex::any_of(reading, [&](auto const &r) { return r.first == owner and r.second == name; })) { return member; }
   reading.emplace_back(owner, Str(name));
   struct Leave {

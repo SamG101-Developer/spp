@@ -32,7 +32,7 @@ GenericParameterTypeConstraintsAst::GenericParameterTypeConstraintsAst(
   TokColon(std::move(tok_colon)) {
   for (auto &&constraint : std::move(constraints)) {
     // Todo: tidy this up (simple assignment preferably).
-    this->Constraints.EmplaceBack(Shared(std::move(constraint)));
+    this->Constraints.emplace_back(Shared(std::move(constraint)));
   }
 }
 
@@ -40,12 +40,12 @@ GenericParameterTypeConstraintsAst::~GenericParameterTypeConstraintsAst() = defa
 
 auto GenericParameterTypeConstraintsAst::PosStart() const -> std::size_t {
   // Use the ":" token.
-  return TokColon != nullptr ? TokColon->PosStart() : Constraints.IsEmpty() ? 0 : Constraints.Front()->PosStart();
+  return TokColon != nullptr ? TokColon->PosStart() : Constraints.empty() ? 0 : Constraints.front()->PosStart();
 }
 
 auto GenericParameterTypeConstraintsAst::PosEnd() const -> std::size_t {
   // Use the last constraint.
-  return not Constraints.IsEmpty() ? Constraints.Back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
+  return not Constraints.empty() ? Constraints.back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
 }
 
 auto GenericParameterTypeConstraintsAst::Clone() const -> Unique<Ast> {

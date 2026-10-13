@@ -103,7 +103,7 @@ namespace spp::analyse::scopes {
 
       // Check if any of the generics have constraints.
       return genex::any_of(params->GetTypeParams(), [](auto const *p) {
-        return not p->TypeConstraints->Constraints.IsEmpty();
+        return not p->TypeConstraints->Constraints.empty();
       });
     }
   }
@@ -133,12 +133,12 @@ auto ScopeManager::CreateAndMoveIntoNewScope(
   // Create a new scope, using the current scope as the parent
   // scope.
   auto scope = MakeUnique<Scope>(name, CurrentScope, ast, error_formatter);
-  CurrentScope->Children.EmplaceBack(std::move(scope));
+  CurrentScope->Children.emplace_back(std::move(scope));
   ++_It;
 
   // Set the new scope as the current scope, and advance the
   // iterator to match.
-  CurrentScope = CurrentScope->Children.Back().get();
+  CurrentScope = CurrentScope->Children.back().get();
   return CurrentScope;
 }
 
@@ -255,12 +255,12 @@ auto ScopeManager::AttachSpecificSuperScopes(
   // applies to every one of them and has to be merged in.
   // There are usually none at all, and then the stored list
   // is handed over as it stands.
-  if (GnSupBlocks.IsEmpty()) {
+  if (GnSupBlocks.empty()) {
     if (normal != nullptr) { AttachSpecificSuperScopesImpl(scope, *normal, meta); }
   }
   else {
     auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
-    scopes.AppendRange(GnSupBlocks);
+    scopes.append_range(GnSupBlocks);
     AttachSpecificSuperScopesImpl(scope, scopes, meta);
   }
 
@@ -293,14 +293,14 @@ auto ScopeManager::CoalesceMethodMock(
     std::ignore = owner_scope->GetSupScopes();
     for (auto *const block : owner_scope->DirectSupScopes) {
       if (AstAs<SupPrototypeFunctionsAst>(block->AstNode) != nullptr
-        or AstAs<SupPrototypeExtensionAst>(block->AstNode) != nullptr) { owner_blocks.EmplaceBack(block); }
+        or AstAs<SupPrototypeExtensionAst>(block->AstNode) != nullptr) { owner_blocks.emplace_back(block); }
     }
   }
   else if (const auto owner_sym = scope.Parent->FindHeadSymbol(*AstName(sup_node));
     owner_sym != nullptr) {
     if (const auto it = NormalSupBlocks.find(owner_sym); it != NormalSupBlocks.end()) { owner_blocks = it->second; }
   }
-  if (owner_blocks.IsEmpty()) { return; }
+  if (owner_blocks.empty()) { return; }
 
   // Get the mock name, like $MockType for "fun mock_type()"
   // overloads, and begin iterating the matching sup blocks.
@@ -316,11 +316,11 @@ auto ScopeManager::CoalesceMethodMock(
       const auto ext = AstAs<SupPrototypeExtensionAst>(ext_scope->AstNode);
       if (ext == nullptr or genex::contains(scope.DirectSupScopes, ext_scope)) { continue; }
       BumpTypeStructureGeneration();
-      scope.DirectSupScopes.EmplaceBack(ext_scope);
+      scope.DirectSupScopes.emplace_back(ext_scope);
       if (const auto fn_sym = ext_scope->FindTypeSymbol(ext->SuperCls.get());
         fn_sym != nullptr and fn_sym->LinkedScope != nullptr
         and not genex::contains(scope.DirectSupScopes, fn_sym->LinkedScope)) {
-        scope.DirectSupScopes.EmplaceBack(fn_sym->LinkedScope);
+        scope.DirectSupScopes.emplace_back(fn_sym->LinkedScope);
       }
     }
   }
@@ -330,11 +330,11 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
   Scope &scope, Vec<Scope*> const &sup_scopes,
   CompilerMetaData *meta) const -> void {
   using utils::monomorphization::CreateGnSupScope;
-  if (sup_scopes.IsEmpty()) { return; }
+  if (sup_scopes.empty()) { return; }
 
   // Clear the sup scopes list.
   BumpTypeStructureGeneration();
-  scope.DirectSupScopes.Clear();
+  scope.DirectSupScopes.clear();
 
   // Matched as a pattern: a template as itself over its own
   // parameters. For example, from Vec, get Vec[T=T]. Grab
@@ -437,7 +437,7 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
 
     // Register the super scope against the current scope.
     BumpTypeStructureGeneration();
-    scope.DirectSupScopes.EmplaceBack(new_sup_scope);
+    scope.DirectSupScopes.emplace_back(new_sup_scope);
 
     // Register the super scope's class scope against the current
     // scope, if it is different. This "difference" check ensures
@@ -445,7 +445,7 @@ auto ScopeManager::AttachSpecificSuperScopesImpl(
     const auto cls_scope_attached = new_cls_scope and scope.LinkedTypeSymbol != new_cls_scope->LinkedTypeSymbol;
     if (cls_scope_attached) {
       BumpTypeStructureGeneration();
-      scope.DirectSupScopes.EmplaceBack(new_cls_scope);
+      scope.DirectSupScopes.emplace_back(new_cls_scope);
     }
 
     // Check for conflicting "cmp" or "type" statements in the super
@@ -489,11 +489,11 @@ namespace spp::analyse::scopes {
       for (const auto member : AstBody(scope->AstNode)) {
         if (const auto type_stmt = member->To<TypeStatementAst>();
           type_stmt != nullptr) {
-          found.Types.EmplaceBack(type_stmt);
+          found.Types.emplace_back(type_stmt);
         }
         else if (const auto cmp_stmt = member->To<CmpStatementAst>();
           cmp_stmt != nullptr and not cmp_stmt->Type->IsCompilerGeneratedType()) {
-          found.Cmps.EmplaceBack(cmp_stmt);
+          found.Cmps.emplace_back(cmp_stmt);
         }
       }
 
@@ -515,7 +515,7 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
   // the others as it was attached, so only a pair involving
   // this block is new: one declaring neither a "type" nor a
   // "cmp" cannot conflict.
-  if (auto const &mine = SupStatementsOf(&sup_scope); mine.Types.IsEmpty() and mine.Cmps.IsEmpty()) { return; }
+  if (auto const &mine = SupStatementsOf(&sup_scope); mine.Types.empty() and mine.Cmps.empty()) { return; }
 
   // The name will be the same for every block being considered:
   // blocks overlap when either's pattern takes the other's, by
@@ -549,7 +549,7 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
           *new_type == *type_stmt->NewType, {new_type_scope, scope},
           ERR_ARGS(*new_type, *type_stmt->NewType, "associated type"));
       }
-      new_types.EmplaceBack(type_stmt->NewType, scope);
+      new_types.emplace_back(type_stmt->NewType, scope);
     }
   }
 
@@ -562,7 +562,7 @@ auto ScopeManager::CheckConflictingTypeOrCmpStatements(
           *new_cmp == *cmp_stmt->Name, {new_cmp_scope, scope},
           ERR_ARGS(*new_cmp, *cmp_stmt->Name, "comptime constant"));
       }
-      new_cmps.EmplaceBack(cmp_stmt->Name, scope);
+      new_cmps.emplace_back(cmp_stmt->Name, scope);
     }
   }
 }
@@ -603,8 +603,8 @@ auto ScopeManager::Cleanup() -> void {
   NormalSupBlocks.clear();
   SupStatementsCache().clear();
   utils::type_members::ClearUnimplementedAbstractMethodsCache();
-  GnSupBlocks.Clear();
-  TempScopes.Clear();
+  GnSupBlocks.clear();
+  TempScopes.clear();
   GenericParameterAst::ClearDummyScopes();
   ClosureExpressionAst::ClearMockAsts();
 }

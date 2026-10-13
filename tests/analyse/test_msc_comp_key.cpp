@@ -34,8 +34,8 @@ namespace {
   auto Param(const std::uint64_t id) -> CompKey { return CompKey::OfParam(id); }
 
   /// A pack and an operation, their parts interned as a node's are.
-  auto Pack(std::vector<CompKey> const &elems) -> CompKey {
-    auto kids = std::vector<CompId>();
+  auto Pack(spp::Vec<CompKey> const &elems) -> CompKey {
+    auto kids = spp::Vec<CompId>();
     for (auto const &elem : elems) { kids.push_back(InternCompKey(CompKey(elem))); }
     return CompKey::OfPack(std::move(kids));
   }
@@ -45,7 +45,7 @@ namespace {
   }
 
   /// A substitution binding each comp parameter in "bound" ("CompParams"), the ones in "packs" as packs.
-  auto Subst(spp::Map<std::uint64_t, CompKey> const &bound, std::vector<std::uint64_t> packs = {}) -> GenericSubst {
+  auto Subst(spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {}) -> GenericSubst {
     auto subst = GenericSubst();
     for (auto const &[id, value] : bound) { subst.CompParams.emplace_back(id, InternCompKey(CompKey(value))); }
     subst.CompPackParams = std::move(packs);
@@ -57,7 +57,7 @@ namespace {
 
   /// "node"'s identity with each parameter in "bound" replaced ("SubstituteCompId"), those in "packs" spread.
   auto Rewrite(
-    CompKey const &node, spp::Map<std::uint64_t, CompKey> const &bound, std::vector<std::uint64_t> packs = {})
+    CompKey const &node, spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {})
     -> CompId {
     return SubstituteCompId(Id(node), Subst(bound, std::move(packs)));
   }

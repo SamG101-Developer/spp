@@ -63,12 +63,12 @@ FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
 
 auto FunctionCallArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Args.IsEmpty() ? 0 : Args.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Args.empty() ? 0 : Args.front()->PosStart();
 }
 
 auto FunctionCallArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Args.IsEmpty() ? 0 : Args.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Args.empty() ? 0 : Args.back()->PosEnd();
 }
 
 auto FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
@@ -91,7 +91,7 @@ auto FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumen
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentAst*>();
   for (auto const &arg : Args) {
-    out.EmplaceBack(arg.get());
+    out.emplace_back(arg.get());
   }
   return out;
 }
@@ -101,7 +101,7 @@ auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArg
   auto out = Vec<FunctionCallArgumentKeywordAst*>();
   for (auto const &arg : Args) {
     if (auto *kw_arg = arg->To<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
-      out.EmplaceBack(kw_arg);
+      out.emplace_back(kw_arg);
     }
   }
   return out;
@@ -112,7 +112,7 @@ auto FunctionCallArgumentGroupAst::GetPositionalArgs() const -> Vec<FunctionCall
   auto out = Vec<FunctionCallArgumentPositionalAst*>();
   for (auto const &arg : Args) {
     if (auto *pos_arg = arg->To<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
-      out.EmplaceBack(pos_arg);
+      out.emplace_back(pos_arg);
     }
   }
   return out;
@@ -131,7 +131,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not arg_names.IsEmpty(), {sm->CurrentScope},
+    not arg_names.empty(), {sm->CurrentScope},
     ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
   // Check the arguments are in the correct order.
@@ -141,7 +141,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(
-    not unordered_args.IsEmpty(), {sm->CurrentScope},
+    not unordered_args.empty(), {sm->CurrentScope},
     ERR_ARGS(unordered_args[1].first, *unordered_args[1].second, unordered_args[0].first, *unordered_args[0].second));
 
   // Expand tuple-expansion arguments ("..tuple" =>
@@ -161,14 +161,14 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // Replace the tuple-expansion argument with the expanded
     // arguments.
-    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgRefs().Len());
+    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgRefs().size());
     for (auto j = max - 1; j > -1z; --j) {
       auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
       auto new_ast = MakeUnique<PostfixExpressionAst>(
         AstClone(arg->Val),
         MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
       auto new_arg = MakeUnique<FunctionCallArgumentPositionalAst>(AstClone(arg->Conv), nullptr, std::move(new_ast));
-      Args.Insert(Args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
+      Args.insert(Args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
     }
     genex::actions::erase(Args, Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
   }
@@ -180,7 +180,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate) {
     const auto _meta_guard = MetaGuard(meta);
     SPP_RETURN_TYPE_OVERLOAD_HELPER(arg->Val.get()) {
-      meta->ReturnTypeOverloadResolverType = i < ExpectedTypes.Len() ? ExpectedTypes[i] : nullptr;
+      meta->ReturnTypeOverloadResolverType = i < ExpectedTypes.size() ? ExpectedTypes[i] : nullptr;
     }
     arg->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -250,7 +250,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         const auto borrowed = regions::PlaceAtOf(*cap->Val, *sm->CurrentScope);
         auto none = memory_state::LoanSet();
         borrows::CheckAgainstLoans(borrowed, is_mut, none, call_loans, *cap->Val, *sm);
-        call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, is_mut));
+        call_loans.emplace_back(memory_state::MakeLoan(borrowed, is_mut));
       }
     }
 
@@ -302,7 +302,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     for (auto const *held : memory_state::LoansHeldBy(loans, *sym)) {
       auto none = memory_state::LoanSet();
       borrows::CheckAgainstLoans(held->Borrowed, held->IsMut, none, call_loans, *arg->Val, *sm);
-      call_loans.EmplaceBack(memory_state::MakeLoan(held->Borrowed, held->IsMut));
+      call_loans.emplace_back(memory_state::MakeLoan(held->Borrowed, held->IsMut));
     }
 
     if (arg->Conv == nullptr) {
@@ -316,7 +316,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       if (const auto arg_ref = arg->Val->InferTypeRef(sm, meta); pins_required and arg_ref.IsBorrowed()) {
         raise_if_returned(*arg);
         if (handle_sym != nullptr) {
-          loans.EmplaceBack(memory_state::MakeLoan(
+          loans.emplace_back(memory_state::MakeLoan(
             regions::PlaceAtOf(*arg->Val, *sm->CurrentScope), arg_ref.Conv == ConventionTag::MUT, handle_sym, false,
             handle_pending));
         }
@@ -339,9 +339,9 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // A coroutine or future holds the borrow past the call; the call holds it while it runs.
       raise_if_returned(*arg);
       if (handle_sym != nullptr and pins_required) {
-        loans.EmplaceBack(memory_state::MakeLoan(borrowed, false, handle_sym, false, handle_pending));
+        loans.emplace_back(memory_state::MakeLoan(borrowed, false, handle_sym, false, handle_pending));
       }
-      call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, false));
+      call_loans.emplace_back(memory_state::MakeLoan(borrowed, false));
     }
 
     else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
@@ -368,9 +368,9 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       // A coroutine or future holds the borrow past the call; the call holds it while it runs.
       raise_if_returned(*arg);
       if (handle_sym != nullptr and pins_required) {
-        loans.EmplaceBack(memory_state::MakeLoan(borrowed, true, handle_sym, false, handle_pending));
+        loans.emplace_back(memory_state::MakeLoan(borrowed, true, handle_sym, false, handle_pending));
       }
-      call_loans.EmplaceBack(memory_state::MakeLoan(borrowed, true));
+      call_loans.emplace_back(memory_state::MakeLoan(borrowed, true));
     }
   }
 }

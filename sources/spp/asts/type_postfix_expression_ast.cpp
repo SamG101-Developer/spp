@@ -162,7 +162,7 @@ auto TypePostfixExpressionAst::NsParts() const -> Vec<IdentifierAst const*> {
 auto TypePostfixExpressionAst::NsParts() -> Vec<IdentifierAst*> {
   // Concatenate the lhs and rhs namespace parts.
   auto parts = Lhs->NsParts();
-  parts.AppendRange(TokOp->NsParts());
+  parts.append_range(TokOp->NsParts());
   return parts;
 }
 
@@ -176,7 +176,7 @@ auto TypePostfixExpressionAst::TypeParts() const -> Vec<TypeIdentifierAst const*
 auto TypePostfixExpressionAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   // Concatenate the lhs and rhs type parts.
   auto parts = Lhs->TypeParts();
-  parts.AppendRange(TokOp->TypeParts());
+  parts.append_range(TokOp->TypeParts());
   return parts;
 }
 

@@ -18,10 +18,10 @@ namespace spp::analyse::scopes {
   /// "Self", which a key spells rather than identifies), each
   /// to what it is bound to.
   SPP_EXP_CLS struct GenericSubst {
-    std::vector<std::pair<std::uint64_t, TypeId>> TypeParams;
-    std::vector<std::pair<std::uint64_t, CompId>> CompParams;
-    std::vector<std::uint64_t> TypePackParams;
-    std::vector<std::uint64_t> CompPackParams;
+    Vec<std::pair<std::uint64_t, TypeId>> TypeParams;
+    Vec<std::pair<std::uint64_t, CompId>> CompParams;
+    Vec<std::uint64_t> TypePackParams;
+    Vec<std::uint64_t> CompPackParams;
 
     SPP_ATTR_NODISCARD auto IsEmpty() const -> bool {
       return TypeParams.empty() and CompParams.empty();

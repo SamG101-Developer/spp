@@ -49,11 +49,11 @@ auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   ArrayLiteralExplicitElementsAst const &other) const -> Ordering {
   // If two explicit array asts don't have the same size, they
   // cannot be equal.
-  if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
+  if (Elems.size() != other.Elems.size()) { return Ordering::less; }
 
   // Ensure each element of the two array literals are equal.
   // The length checks prevents trailing elements.
-  for (auto i = 0uz; i < Elems.Len(); ++i) {
+  for (auto i = 0uz; i < Elems.size(); ++i) {
     if (*Elems[i] != *other.Elems[i]) { return Ordering::less; }
   }
   return Ordering::equal;
@@ -67,12 +67,12 @@ auto ArrayLiteralExplicitElementsAst::Equals(
 
 auto ArrayLiteralExplicitElementsAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Elems.IsEmpty() ? 0 : Elems.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
 auto ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Elems.IsEmpty() ? 0 : Elems.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
 auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
@@ -165,7 +165,7 @@ auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
     Elems[i] = AstClone(meta->CompTimeResult);
-    cmp_elems.EmplaceBack(std::move(meta->CompTimeResult));
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
   }
 
   // Wrap the comp-time array value, in the translated
@@ -186,11 +186,11 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // Collect the llvm generated versions of the elements,
     // ensuring the validity of each element (debug only).
     auto llvm_rt_elems = Vec<llvm::Value*>{};
-    llvm_rt_elems.Reserve(Elems.Len());
+    llvm_rt_elems.reserve(Elems.size());
     for (auto const &spp_elem : Elems) {
       const auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
       SPP_ASSERT(llvm_rt_elem != nullptr);
-      llvm_rt_elems.EmplaceBack(llvm_rt_elem);
+      llvm_rt_elems.emplace_back(llvm_rt_elem);
     }
 
     // Create the array type. The array type wraps the llvm
@@ -199,7 +199,7 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // type.
     const auto llvm_rt_elem_ty = llvm_rt_elems[0]->getType();
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
-      llvm_rt_elem_ty, llvm_rt_elems.Len());
+      llvm_rt_elem_ty, llvm_rt_elems.size());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
     // If every element came back a constant then so is the
@@ -211,15 +211,15 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 
     if (all_elems_constant) {
       auto llvm_ct_elems = Vec<llvm::Constant*>{};
-      llvm_ct_elems.Reserve(llvm_rt_elems.Len());
+      llvm_ct_elems.reserve(llvm_rt_elems.size());
       for (auto *llvm_rt_elem : llvm_rt_elems) {
         const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
           llvm_rt_elem);
         SPP_ASSERT(llvm_ct_elem != nullptr);
-        llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+        llvm_ct_elems.emplace_back(llvm_ct_elem);
       }
       return llvm::ConstantArray::get(
-        llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
+        llvm_rt_arr_ty, llvm_ct_elems);
     }
 
     // Allocate the array into the enclosing function using
@@ -230,7 +230,7 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 
     // Finally, place the runtime generated elements in the
     // array allocation, using the GEP and store commands.
-    for (auto i = 0uz; i < llvm_rt_elems.Len(); ++i) {
+    for (auto i = 0uz; i < llvm_rt_elems.size(); ++i) {
       const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
       const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
       const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
@@ -253,12 +253,12 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // ensuring the validity of each element after a constant
     // cast (debug only).
     auto llvm_ct_elems = Vec<llvm::Constant*>{};
-    llvm_ct_elems.Reserve(Elems.Len());
+    llvm_ct_elems.reserve(Elems.size());
     for (auto const &spp_elem : Elems) {
       const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
         spp_elem->Stage11_CodeGen(sm, meta, ctx));
       SPP_ASSERT(llvm_ct_elem != nullptr);
-      llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+      llvm_ct_elems.emplace_back(llvm_ct_elem);
     }
 
     // Create the array type. The array type wraps the llvm
@@ -267,13 +267,13 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // [T * n] type.
     const auto llvm_ct_elem_ty = llvm_ct_elems[0]->getType();
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(
-      llvm_ct_elem_ty, llvm_ct_elems.Len());
+      llvm_ct_elem_ty, llvm_ct_elems.size());
     SPP_ASSERT(llvm_ct_arr_ty != nullptr);
 
     // Allocate the array into the enclosing function using
     // the llvm constant array creation.
     const auto arr_alloc = llvm::ConstantArray::get(
-      llvm_ct_arr_ty, llvm_ct_elems.ToStdVector());
+      llvm_ct_arr_ty, llvm_ct_elems);
     return arr_alloc;
   }
 }
@@ -303,7 +303,7 @@ auto ArrayLiteralExplicitElementsAst::_BuildType(
   // inferred type.
   auto size_tok = MakeUnique<TokenAst>(
     TokL->PosStart(), lex::SppTokenType::LX_NUMBER,
-    std::to_string(Elems.Len()));
+    std::to_string(Elems.size()));
   auto size_gen = MakeUnique<IntegerLiteralAst>(
     nullptr, std::move(size_tok), "uz");
 
@@ -323,9 +323,9 @@ auto ArrayLiteralExplicitElementsAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
-  elems.Reserve(Elems.Len());
+  elems.reserve(Elems.size());
   for (auto const &elem : Elems) {
-    elems.EmplaceBack(AstClone(elem->ReadExpr(sub)));
+    elems.emplace_back(AstClone(elem->ReadExpr(sub)));
   }
   return MakeShared<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL), std::move(elems), AstClone(TokR));

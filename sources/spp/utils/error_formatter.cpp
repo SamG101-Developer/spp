@@ -174,7 +174,7 @@ auto spp::utils::errors::ErrorFormatter::SpanOfWholeFile() const
   // Every line the author wrote: the prelude appended behind
   // them is not part of the file anyone is looking at.
   auto lines = 0uz;
-  for (auto i = 0uz; i < _Tokens.Len() and not IsPastUserSource(i); ++i) {
+  for (auto i = 0uz; i < _Tokens.size() and not IsPastUserSource(i); ++i) {
     if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++lines; }
   }
   return SourceSpan{.File = _FilePath, .EndLine = lines, .Generated = false};
@@ -190,7 +190,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // never actually hit this. When we do fuzzing, convert this
   // into an error and check it never throws.
   ast_size = ast_size > 1000 ? 1 : ast_size;
-  ast_start_pos = ast_start_pos > _Tokens.Len() ? _Tokens.Len() - 1 : ast_start_pos;
+  ast_start_pos = ast_start_pos > _Tokens.size() ? _Tokens.size() - 1 : ast_start_pos;
 
   // Synthetic/generated ASTs have no real source position
   // (pos == 0 is the lexer's prepended newline sentinel),
@@ -216,8 +216,8 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
 
   // Find the end too: the first newline after it, or the end
   // of the file
-  auto error_line_end_pos = _Tokens.Len();
-  for (auto i = ast_start_pos; i < _Tokens.Len(); ++i) {
+  auto error_line_end_pos = _Tokens.size();
+  for (auto i = ast_start_pos; i < _Tokens.size(); ++i) {
     if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) {
       error_line_end_pos = i;
       break;
@@ -246,7 +246,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // between the line start and the error token. This correctly handles keywords (one multi-char
   // raw token) and multi-character identifiers (one single-char raw token per letter).
   auto char_offset = 0uz;
-  for (auto i = error_line_start_pos; i < ast_start_pos && i < _Tokens.Len(); ++i) {
+  for (auto i = error_line_start_pos; i < ast_start_pos && i < _Tokens.size(); ++i) {
     char_offset += _Tokens[i].Data.length();
   }
 
@@ -255,7 +255,7 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   // Clip to the end of the current line to avoid spanning newlines.
   auto char_span = 0uz;
   const auto span_end = std::min(ast_start_pos + ast_size, error_line_end_pos);
-  for (auto i = ast_start_pos; i < span_end && i < _Tokens.Len(); ++i) {
+  for (auto i = ast_start_pos; i < span_end && i < _Tokens.size(); ++i) {
     char_span += _Tokens[i].Data.length();
   }
   if (char_span < 1) char_span = 1;

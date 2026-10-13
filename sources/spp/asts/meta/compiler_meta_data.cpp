@@ -65,7 +65,7 @@ auto CompilerMetaData::Save() -> void {
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
   // storage persists across cycles. `CompTimeArgs` is moved (the guarded scope rebuilds it); `CompTimeResult` is not
   // tracked.
-  if (_Depth == _History.size()) { _History.EmplaceBack(); }
+  if (_Depth == _History.size()) { _History.emplace_back(); }
   auto &s = _History[_Depth];
   ++_Depth;
 
@@ -114,10 +114,10 @@ auto CompilerMetaData::Save() -> void {
   // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
   CompTimeArgs.swap(s.CompTimeArgs);
   CompTimeArgs.clear();
-  CompTimeGnTypeArgs.Swap(s.CompTimeGnTypeArgs);
-  CompTimeGnTypeArgs.Clear();
-  CompTimeGnCompArgs.Swap(s.CompTimeGnCompArgs);
-  CompTimeGnCompArgs.Clear();
+  CompTimeGnTypeArgs.swap(s.CompTimeGnTypeArgs);
+  CompTimeGnTypeArgs.clear();
+  CompTimeGnCompArgs.swap(s.CompTimeGnCompArgs);
+  CompTimeGnCompArgs.clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
@@ -176,10 +176,10 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmLoopStack = std::move(state.LlvmLoopStack);
   CompTimeArgs.swap(state.CompTimeArgs);
   state.CompTimeArgs.clear();
-  CompTimeGnTypeArgs.Swap(state.CompTimeGnTypeArgs);
-  state.CompTimeGnTypeArgs.Clear();
-  CompTimeGnCompArgs.Swap(state.CompTimeGnCompArgs);
-  state.CompTimeGnCompArgs.Clear();
+  CompTimeGnTypeArgs.swap(state.CompTimeGnTypeArgs);
+  state.CompTimeGnTypeArgs.clear();
+  CompTimeGnCompArgs.swap(state.CompTimeGnCompArgs);
+  state.CompTimeGnCompArgs.clear();
   // Note: CompTimeResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;

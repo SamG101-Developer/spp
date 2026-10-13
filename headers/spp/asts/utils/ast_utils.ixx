@@ -67,9 +67,9 @@ namespace spp::asts {
   SPP_ATTR_ALWAYS_INLINE
   inline auto AstCloneVec(Vec<T*> const &asts) -> Vec<Unique<T>> {
     Vec<Unique<T>> cloned_asts;
-    cloned_asts.Reserve(asts.Len());
+    cloned_asts.reserve(asts.size());
     for (auto const *x : asts) {
-      cloned_asts.EmplaceBack(AstClone(x));
+      cloned_asts.emplace_back(AstClone(x));
     }
     return cloned_asts;
   }
@@ -78,9 +78,9 @@ namespace spp::asts {
   SPP_ATTR_ALWAYS_INLINE
   inline auto AstCloneVec(Vec<Unique<T>> const &asts) -> Vec<Unique<T>> {
     Vec<Unique<T>> cloned_asts;
-    cloned_asts.Reserve(asts.Len());
+    cloned_asts.reserve(asts.size());
     for (auto const &x : asts) {
-      cloned_asts.EmplaceBack(AstClone(x));
+      cloned_asts.emplace_back(AstClone(x));
     }
     return cloned_asts;
   }
@@ -89,9 +89,9 @@ namespace spp::asts {
   SPP_ATTR_ALWAYS_INLINE
   inline auto AstCloneVec(Vec<Shared<T>> const &asts) -> Vec<Unique<T>> {
     Vec<Unique<T>> cloned_asts;
-    cloned_asts.Reserve(asts.Len());
+    cloned_asts.reserve(asts.size());
     for (auto const &x : asts) {
-      cloned_asts.EmplaceBack(AstClone(x));
+      cloned_asts.emplace_back(AstClone(x));
     }
     return cloned_asts;
   }
@@ -100,9 +100,9 @@ namespace spp::asts {
   SPP_ATTR_ALWAYS_INLINE
   inline auto AstCloneVecShared(Vec<Shared<T>> const &asts) -> Vec<Shared<T>> {
     Vec<Shared<T>> cloned_asts;
-    cloned_asts.reserve(asts.Len());
+    cloned_asts.reserve(asts.size());
     for (auto const &x : asts) {
-      cloned_asts.EmplaceBack(x);
+      cloned_asts.emplace_back(x);
     }
     return cloned_asts;
   }

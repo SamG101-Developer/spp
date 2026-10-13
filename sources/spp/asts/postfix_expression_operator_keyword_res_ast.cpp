@@ -142,7 +142,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
       meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
       [&] { return meta->PostfixExpressionLhs->InferType(sm, meta); }, "resume expression", false));
     if (yield_ref.Conv == ConventionTag::MUT) {
-      loans.EmplaceBack(memory_state::MakeLoan(
+      loans.emplace_back(memory_state::MakeLoan(
         regions::PlaceAtOf(*meta->PostfixExpressionLhs, *sm->CurrentScope), true, holder, true,
         holder == meta->AssignmentTargetSymbol));
     }

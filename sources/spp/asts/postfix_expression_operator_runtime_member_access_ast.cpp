@@ -222,18 +222,18 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Use the hook to record information for the resolution and
     // completion plugin.
-    if (not fn_scopes_and_syms.IsEmpty()) {
+    if (not fn_scopes_and_syms.empty()) {
       lsp::resolution_index::RecordVariable(
-        *Name, *sm, *meta, fn_scopes_and_syms.Back().Symbol);
+        *Name, *sm, *meta, fn_scopes_and_syms.back().Symbol);
     }
 
-    if (not fn_scopes_and_syms.IsEmpty()) {
+    if (not fn_scopes_and_syms.empty()) {
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGnScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
         return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
       });
       if (not any_visible) {
-        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.Back().Symbol, *Name, *cls_scope, *sm, *meta);
+        visibility_utils::CheckTypeMemberVisibility(*fn_scopes_and_syms.back().Symbol, *Name, *cls_scope, *sm, *meta);
       }
     }
 
@@ -250,15 +250,15 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // a constant of the same name: the two are different members,
     // and only how the access is written says which one was meant.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
-      runtime_members.IsEmpty() and not members.IsEmpty(), {sm->CurrentScope},
+      runtime_members.empty() and not members.empty(), {sm->CurrentScope},
       ERR_ARGS(*Name, *TokDot, "constant"));
 
     // If we only have functional types, just return.
-    if (runtime_members.Len() < 1) { return; }
+    if (runtime_members.size() < 1) { return; }
     const auto closest = member_lookup::ClosestScopes(runtime_members);
 
     // Enforce visibility on the accessed member.
-    if (not closest.IsEmpty()) {
+    if (not closest.empty()) {
       const auto scope = closest[0].Where->NonGnScope;
       const auto member_sym = scope->FindVarSymbol(Name.get(), true);
       visibility_utils::CheckTypeMemberVisibility(*member_sym, *Name, *scope, *sm, *meta);

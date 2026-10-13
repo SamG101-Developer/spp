@@ -33,7 +33,7 @@ SPP_EXP_CLS struct spp::compiler::TestScope {
   /** Include the "tst" folder of these libraries, named as their folder under "vcs". */
   Vec<Str> Libs;
 
-  SPP_ATTR_NODISCARD auto Any() const -> bool { return Project or AllLibs or not Libs.IsEmpty(); }
+  SPP_ATTR_NODISCARD auto Any() const -> bool { return Project or AllLibs or not Libs.empty(); }
 
   SPP_ATTR_NODISCARD auto WantsLib(Str const &lib) const -> bool {
     return AllLibs or genex::contains(Libs, lib);

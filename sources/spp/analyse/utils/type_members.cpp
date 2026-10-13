@@ -74,7 +74,7 @@ namespace spp::analyse::utils::type_members {
       TypeRef const &ref,
       Scope const &scope)
       -> std::optional<std::size_t> {
-      if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().Len(); }
+      if (type_predicates::IsTypeTuple(ref, scope)) { return ref.Symbol->TypeArgRefs().size(); }
       if (not type_predicates::IsTypeArray(ref, scope)) { return std::nullopt; }
       const auto size = U64Of(ref.Symbol->CompArgId("n"));
       return size.has_value() ? std::optional(static_cast<std::size_t>(*size)) : std::nullopt;
@@ -89,7 +89,7 @@ namespace spp::analyse::utils::type_members {
       -> TypeRef {
       const auto args = ref.Symbol->TypeArgRefs();
       const auto at = type_predicates::IsTypeArray(ref, scope) ? 0uz : index;
-      return at < args.Len() ? args[at] : TypeRef();
+      return at < args.size() ? args[at] : TypeRef();
     }
 
     /// A type's unimplemented abstract methods, with what the answer was read off: the generation it was last known
@@ -128,14 +128,14 @@ namespace spp::analyse::utils::type_members {
       TypeSymbol const &cls_sym)
       -> Vec<Pair<Scope*, VariableSymbol*>> {
       auto all_scopes = Vec{cls_sym.LinkedScope};
-      all_scopes.AppendRange(cls_sym.LinkedScope->GetSupScopes());
+      all_scopes.append_range(cls_sym.LinkedScope->GetSupScopes());
 
       auto attrs = Vec<Pair<Scope*, VariableSymbol*>>{};
       for (auto *sup_scope : all_scopes) {
         if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
         for (auto *sym : sup_scope->GetAllVarSymbols(true)) {
           if (sym->Kind != VariableKind::Attribute) { continue; }
-          attrs.PushBack(MakePair(sup_scope, sym));
+          attrs.push_back(MakePair(sup_scope, sym));
         }
       }
       return attrs;
@@ -165,7 +165,7 @@ auto spp::analyse::utils::type_members::GetAllParts(
     for (auto i = 0uz; i < elems; ++i) {
       auto elem_ref = IndexableElem(value, scope, i);
       auto elem_type = elem_ref.AstIn(scope);
-      parts.EmplaceBack(MakeShared<IdentifierAst>(0uz, std::to_string(i)), i, std::move(elem_type), elem_ref, &scope);
+      parts.emplace_back(MakeShared<IdentifierAst>(0uz, std::to_string(i)), i, std::move(elem_type), elem_ref, &scope);
     }
     return parts;
   }
@@ -177,7 +177,7 @@ auto spp::analyse::utils::type_members::GetAllParts(
   // spelling, which would mean another type wherever the part is read.
   for (auto const &[name, attr_ref, attr_scope] : GetAllAttrs(*ref.Symbol->AsBound())) {
     auto type = attr_ref.AstIn(*attr_scope);
-    parts.EmplaceBack(name, index++, std::move(type), attr_ref, attr_scope);
+    parts.emplace_back(name, index++, std::move(type), attr_ref, attr_scope);
   }
   return parts;
 }
@@ -187,7 +187,7 @@ auto spp::analyse::utils::type_members::GetAllAttrs(
   -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> {
   auto extended_syms = Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>{};
   for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
-    extended_syms.PushBack({sym->Name, sym->TypeRefIn(*sup_scope), sup_scope});
+    extended_syms.push_back({sym->Name, sym->TypeRefIn(*sup_scope), sup_scope});
   }
 
   return extended_syms;
@@ -253,7 +253,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   const auto hit = cache.find(&type_scope);
   if (hit != cache.end() and hit->second.Generation == generation) { return hit->second.Methods; }
   const auto sups = type_scope.GetSupScopes();
-  if (hit != cache.end() and hit->second.Sups == sups) {
+  if (hit != cache.end() and genex::equals(hit->second.Sups, sups)) {
     hit->second.Generation = generation;
     return hit->second.Methods;
   }
@@ -273,7 +273,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   // Gather every method visible on the type, from the type's own scope and from all of its super scopes, each tagged
   // with the scope that resolves the types in its signature.
   auto all_scopes = Vec<Scope const*>{&type_scope};
-  all_scopes.AppendRange(sups);
+  all_scopes.append_range(sups);
 
   auto methods = Vec<Pair<Scope const*, FunctionPrototypeAst const*>>();
   for (auto const *scope : all_scopes) {
@@ -282,7 +282,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
     const auto impl = AstAs<ClassPrototypeAst>(scope->AstNode) == nullptr
       ? AstBody(scope->AstNode)
       : Vec<Ast*>{};
-    if (impl.IsEmpty()) { continue; }
+    if (impl.empty()) { continue; }
 
     for (const auto member : impl) {
       const auto fn = SupMemberAsMethod(member);
@@ -292,7 +292,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
         scope->Children, [member](auto const &child) { return child->AstNode == member; });
       if (method_scope == scope->Children.end()) { continue; }
 
-      methods.EmplaceBack(method_scope->get(), fn);
+      methods.emplace_back(method_scope->get(), fn);
     }
   }
 
@@ -304,7 +304,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
     spp::utils::InternedId, Vec<Pair<Scope const*, FunctionPrototypeAst const*>>>();
   for (auto const &entry : methods) {
     if (entry.second->AbstractAnnotation != nullptr) { continue; }
-    concrete_by_name[entry.second->Name->NameId()].EmplaceBack(entry);
+    concrete_by_name[entry.second->Name->NameId()].emplace_back(entry);
   }
 
   auto unimplemented = Vec<FunctionPrototypeAst const*>();
@@ -317,7 +317,7 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
         return SameSignature(*other.second, *other.first, *abs_fn, *abs_scope);
       });
 
-    if (not is_implemented) { unimplemented.EmplaceBack(abs_fn); }
+    if (not is_implemented) { unimplemented.emplace_back(abs_fn); }
   }
 
   return remember(std::move(unimplemented));
@@ -367,7 +367,7 @@ auto spp::analyse::utils::type_members::GetAllAttrAsts(
     // Pushed even when nothing matched, so that a symbol with
     // no written attribute shortens neither list and the index
     // alignment holds regardless.
-    attr_asts.EmplaceBack(found);
+    attr_asts.emplace_back(found);
   }
 
   return attr_asts;
@@ -387,13 +387,13 @@ auto spp::analyse::utils::type_members::GetFieldIndexInType(
   const auto all_attrs = GetAllAttrs(type_sym);
 
   // Find the field index.
-  for (auto index = 0uz; index < all_attrs.Len(); ++index) {
+  for (auto index = 0uz; index < all_attrs.size(); ++index) {
     if (*spp::get<0>(all_attrs[index]) == field_name) {
       return base + index;
     }
   }
 
-  return base + all_attrs.Len();
+  return base + all_attrs.size();
 }
 
 auto spp::analyse::utils::type_members::SuperClsRefs(
@@ -405,7 +405,7 @@ auto spp::analyse::utils::type_members::SuperClsRefs(
   for (auto const *sup_scope : ref.Symbol->LinkedScope->GetSupScopes()) {
     if (sup_scope->LinkedTypeSymbol == nullptr
       or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    out.EmplaceBack(TypeRef::Of(*sup_scope->LinkedTypeSymbol, scope));
+    out.emplace_back(TypeRef::Of(*sup_scope->LinkedTypeSymbol, scope));
   }
   return out;
 }
@@ -417,7 +417,7 @@ auto spp::analyse::utils::type_members::SuperClsNames(
   for (auto const *sup_scope : sup_scopes) {
     if (sup_scope->LinkedTypeSymbol == nullptr
       or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
-    out.EmplaceBack(sup_scope->LinkedTypeSymbol->FqName(), sup_scope);
+    out.emplace_back(sup_scope->LinkedTypeSymbol->FqName(), sup_scope);
   }
   return out;
 }

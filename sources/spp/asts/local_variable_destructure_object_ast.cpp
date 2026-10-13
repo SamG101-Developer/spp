@@ -158,18 +158,18 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
 
   // Only 1 "multi-skip" allowed in a destructure.
   RaiseIf<SppMultipleRestPatternsError>(
-    multi_arg_skips.Len() > 1,
+    multi_arg_skips.size() > 1,
     {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
   // Multi skips cannot be bound.
   RaiseIf<SppVariableObjectDestructureWithBoundRestPatternError>(
-    not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr,
+    not multi_arg_skips.empty() and multi_arg_skips[0]->Binding != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0]));
 
   // Check all attributes are provided unless there is a multi-skip. The attribute is shown from its class, which can be
   // in another file than the destructure.
   RaiseIf<SppArgumentMissingError>(
-    not missing_attributes.IsEmpty() and multi_arg_skips.IsEmpty(),
+    not missing_attributes.empty() and multi_arg_skips.empty(),
     {cls_sym->LinkedScope != nullptr ? cls_sym->LinkedScope : sm->CurrentScope, sm->CurrentScope},
     ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
@@ -224,7 +224,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         LetStatementInitializedAst>(nullptr, AstClone(elem), nullptr, nullptr, std::move(pstfx));
       if (_FromCasePattern) { new_ast->Var->MarkFromCasePattern(); }
       new_ast->Stage7_AnalyseSemantics(sm, meta);
-      _NewAsts.EmplaceBack(std::move(new_ast));
+      _NewAsts.emplace_back(std::move(new_ast));
     }
 
     // Handle and other nested destructure or single identifier.
@@ -235,7 +235,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
         nullptr, AstClone(cast_elem_2->Val), nullptr, nullptr, std::move(pstfx));
       if (_FromCasePattern) { new_ast->Var->MarkFromCasePattern(); }
       new_ast->Stage7_AnalyseSemantics(sm, meta);
-      _NewAsts.EmplaceBack(std::move(new_ast));
+      _NewAsts.emplace_back(std::move(new_ast));
     }
   }
 }

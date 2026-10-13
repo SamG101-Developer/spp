@@ -55,7 +55,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       ScopeManager const &sm, Vec<Shared<TypeRef>> const &types, const bool is_float) -> Str {
       // Get the type suffix for this integer or float
       // type, and check that it is known.
-      SPP_ASSERT(not types.IsEmpty());
+      SPP_ASSERT(not types.empty());
       const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
       const auto known = is_float
         ? FloatLiteralAst::kBounds.contains(name)
@@ -135,13 +135,13 @@ auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
   // value is replaced, or added if it is missing.
   auto const *current = object;
   auto current_sym = sm->CurrentScope->FindTypeSymbol(object->Type.get());
-  for (auto i = 0uz; i < attr_path.Len(); ++i) {
+  for (auto i = 0uz; i < attr_path.size(); ++i) {
     auto const &attr_name = attr_path[i];
     auto *const arg = FindNamedArg(*current, *attr_name);
-    if (i + 1 == attr_path.Len()) {
+    if (i + 1 == attr_path.size()) {
       if (arg != nullptr) { arg->Val = std::move(value); }
       else {
-        current->ArgGroup->Args.EmplaceBack(MakeUnique<ObjectInitializerArgumentKeywordAst>(
+        current->ArgGroup->Args.emplace_back(MakeUnique<ObjectInitializerArgumentKeywordAst>(
           AstCloneShared(attr_name), nullptr, std::move(value)));
       }
       return;
@@ -157,12 +157,12 @@ auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
     auto new_init = MakeUnique<ObjectInitializerAst>(current_sym->FqName(), nullptr);
     const auto new_init_ptr = new_init.get();
     if (arg != nullptr) {
-      new_init->ArgGroup->Args.EmplaceBack(
+      new_init->ArgGroup->Args.emplace_back(
         ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(std::move(arg->Val)));
       arg->Val = std::move(new_init);
     }
     else {
-      current->ArgGroup->Args.EmplaceBack(MakeUnique<ObjectInitializerArgumentKeywordAst>(
+      current->ArgGroup->Args.emplace_back(MakeUnique<ObjectInitializerArgumentKeywordAst>(
         AstCloneShared(attr_name), nullptr, std::move(new_init)));
     }
     current = new_init_ptr;

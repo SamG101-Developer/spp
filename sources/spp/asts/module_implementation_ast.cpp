@@ -92,12 +92,12 @@ ModuleImplementationAst::~ModuleImplementationAst() = default;
 
 auto ModuleImplementationAst::PosStart() const -> std::size_t {
   // Use the first member.
-  return Members.IsEmpty() ? 0 : Members.Front()->PosStart();
+  return Members.empty() ? 0 : Members.front()->PosStart();
 }
 
 auto ModuleImplementationAst::PosEnd() const -> std::size_t {
   // Use the last member.
-  return Members.IsEmpty() ? 0 : Members.Back()->PosEnd();
+  return Members.empty() ? 0 : Members.back()->PosEnd();
 }
 
 auto ModuleImplementationAst::Clone() const -> Unique<Ast> {

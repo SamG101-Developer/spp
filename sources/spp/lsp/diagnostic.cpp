@@ -81,7 +81,7 @@ namespace spp::lsp {
       Vec<lsp::resolution_index::Member> const &members)
       -> Str {
       auto out = Str("[");
-      for (auto i = 0uz; i < members.Len(); ++i) {
+      for (auto i = 0uz; i < members.size(); ++i) {
         auto const &member = members[i];
         out += i > 0 ? "," : "";
         out += "{\"name\":" + JsonString(member.Name);
@@ -91,7 +91,7 @@ namespace spp::lsp {
         if (not member.Visibility.empty()) { out += ",\"visibility\":" + JsonString(member.Visibility); }
 
         out += ",\"signatures\":[";
-        for (auto j = 0uz; j < member.Signatures.Len(); ++j) {
+        for (auto j = 0uz; j < member.Signatures.size(); ++j) {
           out += (j > 0 ? "," : "") + JsonString(member.Signatures[j]);
         }
         out += "]}";
@@ -122,7 +122,7 @@ auto spp::lsp::DiagnosticFrom(
       // diagnostic label to the list of labels on the diagnostic,
       // copying the span over.
       case ErrorInformationKind::ERROR: {
-        diagnostic.Labels.EmplaceBack(
+        diagnostic.Labels.emplace_back(
           DiagnosticLabel{.Span = info.Span, .Message = StripAnsi(info.Tag), .Primary = true});
         break;
       }
@@ -131,7 +131,7 @@ auto spp::lsp::DiagnosticFrom(
       // non-primary diagnostic label to the list of labels on the
       // diagnostic, copying the span over.
       case ErrorInformationKind::CONTEXT: {
-        diagnostic.Labels.EmplaceBack(
+        diagnostic.Labels.emplace_back(
           DiagnosticLabel{.Span = info.Span, .Message = StripAnsi(info.Tag), .Primary = false});
         break;
       }
@@ -145,7 +145,7 @@ auto spp::lsp::DiagnosticFrom(
       }
 
       case ErrorInformationKind::WRAPPED: {
-        diagnostic.Wrapped.EmplaceBack(StripAnsi(info.Tag));
+        diagnostic.Wrapped.emplace_back(StripAnsi(info.Tag));
         break;
       }
 
@@ -164,7 +164,7 @@ auto spp::lsp::DiagnosticFrom(
   auto diagnostic = Diagnostic();
   diagnostic.Code = "E0";
   diagnostic.Title = "Syntax Error";
-  diagnostic.Labels.EmplaceBack(DiagnosticLabel{
+  diagnostic.Labels.emplace_back(DiagnosticLabel{
     .Span = error.Span,
     .Message = error.Message.empty() ? StripAnsi(error.Header) : StripAnsi(error.Message),
     .Primary = true
@@ -178,7 +178,7 @@ auto spp::lsp::ToJson(Diagnostic const &diagnostic) -> Str {
   out += ",\"title\":" + JsonString(diagnostic.Title);
 
   out += ",\"labels\":[";
-  for (auto i = 0uz; i < diagnostic.Labels.Len(); ++i) {
+  for (auto i = 0uz; i < diagnostic.Labels.size(); ++i) {
     out += (i > 0 ? "," : "") + JsonLabel(diagnostic.Labels[i]);
   }
   out += "]";
@@ -187,7 +187,7 @@ auto spp::lsp::ToJson(Diagnostic const &diagnostic) -> Str {
   out += ",\"help\":" + JsonString(diagnostic.Help);
 
   out += ",\"wrapped\":[";
-  for (auto i = 0uz; i < diagnostic.Wrapped.Len(); ++i) {
+  for (auto i = 0uz; i < diagnostic.Wrapped.size(); ++i) {
     out += (i > 0 ? "," : "") + JsonString(diagnostic.Wrapped[i]);
   }
   return out + "]}";

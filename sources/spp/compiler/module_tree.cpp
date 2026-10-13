@@ -55,14 +55,14 @@ spp::compiler::ModuleTree::ModuleTree(
   if (std::filesystem::exists(_VcsPath)) {
     for (auto const &entry : std::filesystem::directory_iterator(_VcsPath)) {
       if (not entry.is_directory()) { continue; }
-      vcs_libs.EmplaceBack(spp::utils::files::NativeString(entry.path().filename()), entry.path());
+      vcs_libs.emplace_back(spp::utils::files::NativeString(entry.path().filename()), entry.path());
     }
   }
 
   _SourceRoots = Vec{_SrcPath, _TstPath};
   for (auto const &[_, lib_path] : vcs_libs) {
-    _SourceRoots.EmplaceBack(lib_path / "src");
-    _SourceRoots.EmplaceBack(lib_path / "tst");
+    _SourceRoots.emplace_back(lib_path / "src");
+    _SourceRoots.emplace_back(lib_path / "tst");
   }
 
   // Get all the modules from the src and vcs path.
@@ -106,7 +106,7 @@ spp::compiler::ModuleTree::ModuleTree(
     const auto keep_tst = tests.WantsLib(lib_name) and inner_path != std::filesystem::path("tst/main.spp");
 
     if (inner_path != std::filesystem::path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
-      filtered_vcs_modules.EmplaceBack(std::move(m));
+      filtered_vcs_modules.emplace_back(std::move(m));
     }
   }
   vcs_modules = std::move(filtered_vcs_modules);
@@ -118,14 +118,14 @@ spp::compiler::ModuleTree::ModuleTree(
   if (tests.Any()) {
     src_modules |= genex::actions::remove_if(
       [this](auto const &m) { return m->Path == _SrcPath / "main.spp"; });
-    tst_modules.EmplaceBack(Module::TestHarness(_TstPath));
+    tst_modules.emplace_back(Module::TestHarness(_TstPath));
   }
 
   // Merge the src, vcs and ffi modules together.
   auto all_modules = std::move(src_modules);
-  all_modules.AppendRange(std::move(vcs_modules));
-  all_modules.AppendRange(std::move(ffi_modules));
-  all_modules.AppendRange(std::move(tst_modules));
+  all_modules.append_range(genex::views::move(vcs_modules));
+  all_modules.append_range(genex::views::move(ffi_modules));
+  all_modules.append_range(genex::views::move(tst_modules));
   _Modules = std::move(all_modules);
 
   // Measure every module's namespace now that all the roots
@@ -169,9 +169,9 @@ auto spp::compiler::ModuleTree::NamespaceOf(
     return Vec<Str>{spp::utils::files::NativeString(module_path.parent_path().filename())};
   }
 
-  for (auto const &part : best_rel) { parts.EmplaceBack(spp::utils::files::NativeString(part)); }
-  parts.Back().erase(parts.Back().length() - 4);
-  if (best_is_tst) { parts.Insert(parts.begin() + (parts.IsEmpty() ? 0z : 1z), Str("tst")); }
+  for (auto const &part : best_rel) { parts.emplace_back(spp::utils::files::NativeString(part)); }
+  parts.back().erase(parts.back().length() - 4);
+  if (best_is_tst) { parts.insert(parts.begin() + (parts.empty() ? 0z : 1z), Str("tst")); }
   return parts;
 }
 

@@ -59,7 +59,7 @@ auto UseStatementVariableAst::Clone() const -> Unique<Ast> {
 auto UseStatementVariableAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokUse).append(" ");
   SPP_STRING_APPEND(OldVar);
   SPP_STRING_END;
@@ -80,7 +80,7 @@ auto UseStatementVariableAst::Stage2_GenTopLvlScopes(
 
   // Create the conversion.
   // Todo: Error based on ordering. move this into stage 3?
-  auto identifier = AstCloneShared(OldVar->ExprParts().Back());
+  auto identifier = AstCloneShared(OldVar->ExprParts().back());
   _Conversion = MakeUnique<CmpStatementAst>(
     std::move(Annotations), nullptr, std::move(identifier), nullptr, nullptr, nullptr, AstClone(OldVar));
   _Conversion->MarkFromUseStatement();

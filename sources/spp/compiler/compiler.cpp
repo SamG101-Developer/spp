@@ -66,7 +66,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
   // tree, and every stage below walks that tree, so an empty
   // one has nothing to compile and nowhere to put it. Error
   // here to prevent empty vector reads later on.
-  if (_Modules->GetModules().IsEmpty()) {
+  if (_Modules->GetModules().empty()) {
     std::cerr
       << "Error: No modules found. A project needs at least one '.spp' file under 'src'.\n";
     return false;
@@ -74,7 +74,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
 
   const auto is_exe = _BuildType == BuildType::EXE;
   auto num_modules = static_cast<std::uint32_t>(
-    _Modules->GetModules().Len());
+    _Modules->GetModules().size());
 
   // One bar at a time: each is created as its stage begins and
   // torn down as the next one replaces it, because a bar animates

@@ -34,7 +34,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
     auto out = GenericParameterGroupAst::NewEmptyShared();
     const auto name_of = [](auto const *param) { return param->Name->LastTypePart()->Name.c_str(); };
     for (auto const &param : pg.Params) {
-      if (ag.At(name_of(param.get())) == nullptr) { out->Params.EmplaceBack(AstClone(param)); }
+      if (ag.At(name_of(param.get())) == nullptr) { out->Params.emplace_back(AstClone(param)); }
     }
     return out;
   };
@@ -92,7 +92,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
   auto attach = carrier->Alias != nullptr and not carrier->Alias->IsFromUseStmt
     ? filter_params(*carrier->Alias->Params, *named)
     : GenericParameterGroupAst::NewEmptyShared();
-  for (auto &&arg : GenericArgumentGroupAst::FromParams(*attach)->Args) { named->Args.EmplaceBack(std::move(arg)); }
+  for (auto &&arg : GenericArgumentGroupAst::FromParams(*attach)->Args) { named->Args.emplace_back(std::move(arg)); }
   old_type = old_type->WithGns(std::move(named));
 
   // The chain is followed only to reject a cycle and to find the class at its end, which the alias links and whose
@@ -109,7 +109,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
       genex::contains(followed_aliases, final_sym->Alias->Stmt),
       {sm->CurrentScope, closing_scope != nullptr ? closing_scope : sm->CurrentScope},
       ERR_ARGS(alias_stmt, *final_sym->Alias->Stmt));
-    followed_aliases.EmplaceBack(final_sym->Alias->Stmt);
+    followed_aliases.emplace_back(final_sym->Alias->Stmt);
     tracking_scope = final_sym->ScopeDefinedIn;
     final_sym = lookup(*final_sym->Alias->Written);
   }

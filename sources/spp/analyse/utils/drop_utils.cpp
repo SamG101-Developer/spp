@@ -97,7 +97,7 @@ namespace spp::analyse::utils::drop_utils {
         // unrelated method that happens to share the name.
         const auto self_param = overload.Proto->FnParamGroup->GetSelfParam();
         if (self_param == nullptr or self_param->Conv != nullptr) { continue; }
-        if (not overload.Proto->FnParamGroup->GetNonSelfParams().IsEmpty()) { continue; }
+        if (not overload.Proto->FnParamGroup->GetNonSelfParams().empty()) { continue; }
         return std::move(overload);
       }
 
@@ -252,7 +252,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
   VariableSymbol const &sym, Ast const &exit_point,
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
-  if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.IsEmpty()) { return; }
+  if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.empty()) { return; }
   if (sym.Type == nullptr) { return; }
 
   // A borrow does not own what it points at, so the value

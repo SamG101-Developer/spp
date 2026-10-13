@@ -52,12 +52,12 @@ InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
 
 auto InnerScopeExpressionAst::PosStart() const -> std::size_t {
   // Use the "{" token.
-  return TokL != nullptr ? TokL->PosStart() : Members.IsEmpty() ? 0 : Members.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Members.empty() ? 0 : Members.front()->PosStart();
 }
 
 auto InnerScopeExpressionAst::PosEnd() const -> std::size_t {
   // Use the "}" token.
-  return TokR != nullptr ? TokR->PosEnd() : Members.IsEmpty() ? 0 : Members.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Members.empty() ? 0 : Members.back()->PosEnd();
 }
 
 auto InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
@@ -73,9 +73,9 @@ auto InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
 auto InnerScopeExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("{");
-  SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Members.empty() ? "\n" : "");
   SPP_STRING_EXTEND(Members, "\n");
-  SPP_STRING_APPEND_RAW(not Members.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Members.empty() ? "\n" : "");
   SPP_STRING_APPEND_RAW("}");
   SPP_STRING_END;
 }
@@ -103,14 +103,14 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   for (auto const &[i, x] : this->Members | genex::views::ptr | genex::views::enumerate) {
     // What an "is" in this statement bound does not outlive the
     // statement ("let b = o is Some(val)" leaves no "val").
-    const auto bound_before = meta->AddedIsBindings.Len();
+    const auto bound_before = meta->AddedIsBindings.size();
     const auto expire_is_bindings = [&] {
-      for (auto j = bound_before; j < meta->AddedIsBindings.Len(); ++j) {
-        meta->ExpiredIsBindings.EmplaceBack(meta->AddedIsBindings[j]);
+      for (auto j = bound_before; j < meta->AddedIsBindings.size(); ++j) {
+        meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[j]);
       }
     };
 
-    if (i + 1 == Members.Len()) {
+    if (i + 1 == Members.size()) {
       x->Stage7_AnalyseSemantics(sm, meta);
       expire_is_bindings();
       continue;
@@ -132,8 +132,8 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   // one is what this scope hands out, so whether it is discarded is
   // decided by whoever receives it. A function body is the case
   // where nobody does, which "DiscardsFinalMember" reports.
-  if (not Members.IsEmpty()) {
-    const auto discarded = DiscardsFinalMember() ? Members.Len() : Members.Len() - 1;
+  if (not Members.empty()) {
+    const auto discarded = DiscardsFinalMember() ? Members.size() : Members.size() - 1;
     for (auto const &[i, m] : Members | genex::views::ptr | genex::views::enumerate) {
       if (i >= discarded) { break; }
       expr_utils::ValidateDiscardedValue(*m, sm->CurrentScope, *sm, meta);
@@ -162,7 +162,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // because a loop body is checked twice against the same scope,
   // and the first pass's registrations would otherwise run at an
   // exit written above the "defer" on the second.
-  sm->CurrentScope->Deferred.Clear();
+  sm->CurrentScope->Deferred.clear();
 
   // Check the memory of each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
@@ -175,7 +175,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // never recorded the move of "x", which then read as a value
   // still owed at the closing brace even though it had just
   // been returned.
-  if (not Members.IsEmpty() and not DiscardsFinalMember()) {
+  if (not Members.empty() and not DiscardsFinalMember()) {
     if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
       const auto move = meta->AssignmentTarget != nullptr
         ? static_cast<Ast const*>(meta->AssignmentTarget.get())
@@ -236,7 +236,7 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
   // rather than left from a previous walk, because a generic
   // base and its instantiations share this scope object across
   // separate codegen passes.
-  sm->CurrentScope->DeferredReached.Clear();
+  sm->CurrentScope->DeferredReached.clear();
 
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects
@@ -247,7 +247,7 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
   // stage 7).
   auto ret_val = static_cast<llvm::Value*>(nullptr);
   for (auto const &[i, m] : this->Members | genex::views::ptr | genex::views::enumerate) {
-    if (i + 1 == Members.Len()) {
+    if (i + 1 == Members.size()) {
       ret_val = m->Stage11_CodeGen(sm, meta, ctx);
       continue;
     }
@@ -276,10 +276,10 @@ auto InnerScopeExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // If there are any members, return the last member's
   // inferred type.
-  if (not this->Members.IsEmpty()) {
+  if (not this->Members.empty()) {
     auto tm = ScopeManager(
       sm->GlobalScope, GetAstScope());
-    return this->Members.Back()->InferType(&tm, meta);
+    return this->Members.back()->InferType(&tm, meta);
   }
 
   // Otherwise, return the void type.
@@ -288,10 +288,10 @@ auto InnerScopeExpressionAst::InferType(
 
 auto InnerScopeExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  if (not this->Members.IsEmpty()) {
+  if (not this->Members.empty()) {
     auto tm = ScopeManager(
       sm->GlobalScope, GetAstScope());
-    return this->Members.Back()->InferTypeRef(&tm, meta);
+    return this->Members.back()->InferTypeRef(&tm, meta);
   }
   return TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope);
 }
@@ -299,12 +299,12 @@ auto InnerScopeExpressionAst::InferTypeRef(
 auto InnerScopeExpressionAst::Terminates() const -> bool {
   // The inner scope expression only terminates if the
   // last member terminates.
-  if (this->Members.IsEmpty()) { return false; }
-  return this->Members.Back()->Terminates();
+  if (this->Members.empty()) { return false; }
+  return this->Members.back()->Terminates();
 }
 
 auto InnerScopeExpressionAst::FinalMember() const -> Ast* {
-  return Members.IsEmpty() ? TokR->To<Ast>() : Members.Back()->template To<Ast>();
+  return Members.empty() ? TokR->To<Ast>() : Members.back()->template To<Ast>();
 }
 
 auto InnerScopeExpressionAst::IsAllowedInDefault() const -> bool {

@@ -72,15 +72,15 @@ namespace spp::codegen {
       // types.
       const auto target_attrs = GetAllAttrs(*target_sym);
       const auto source_attrs = GetAllAttrs(*source_sym);
-      if (target_attrs.IsEmpty() or target_attrs.Len() != source_attrs.Len()) { return nullptr; }
+      if (target_attrs.empty() or target_attrs.size() != source_attrs.size()) { return nullptr; }
 
       // A class whose lowered struct carries more than
       // its own attributes (the fat-pointer fields a
       // "Gen"/"Fun" superimposition prepends) shifts every
       // declared index by an amount this does not track,
       // so leave it alone.
-      if (target_llvm_type->getNumElements() != target_attrs.Len()
-        or source_llvm_type->getNumElements() != source_attrs.Len()) { return nullptr; }
+      if (target_llvm_type->getNumElements() != target_attrs.size()
+        or source_llvm_type->getNumElements() != source_attrs.size()) { return nullptr; }
 
       const auto llvm_index = [](LlvmTypeSymbolInfo const &info, const std::size_t spp_index) {
         const auto it = info.FieldIndexMap.find(spp_index);
@@ -92,7 +92,7 @@ namespace spp::codegen {
       const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".widen.to", ctx);
       ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
 
-      for (auto i = 0uz; i < target_attrs.Len(); ++i) {
+      for (auto i = 0uz; i < target_attrs.size(); ++i) {
         const auto target_index = llvm_index(*target_sym->LlvmInfo, i);
         const auto source_index = llvm_index(*source_sym->LlvmInfo, i);
         const auto field_uid = name + ".widen." + std::to_string(i);
@@ -147,7 +147,7 @@ auto spp::codegen::GetVariantIndexOfMember(
 
   // Index the type in the list of member types of the variant.
   const auto members = VariantMemberRefs(variant, scope);
-  for (auto i = 0uz; i < members.Len(); ++i) {
+  for (auto i = 0uz; i < members.size(); ++i) {
     if (analyse::utils::type_compare::Assignable(members[i], member, scope, scope)) { return static_cast<std::uint64_t>(i); }
   }
   return std::nullopt;
@@ -242,9 +242,9 @@ auto spp::codegen::CoerceToVariant(
     const auto target_llvm_type = GetLlvmTypeOf(target, ctx);
     const auto source_llvm_type = GetLlvmTypeOf(source, ctx);
     if (target_llvm_type != nullptr and source_llvm_type != nullptr and target_llvm_type != source_llvm_type
-      and target_args.Len() == source_args.Len()) {
+      and target_args.size() == source_args.size()) {
       auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
-      for (auto i = 0uz; i < target_args.Len(); ++i) {
+      for (auto i = 0uz; i < target_args.size(); ++i) {
         const auto elem_name = name + ".tup." + std::to_string(i);
         auto elem = ctx->Builder.CreateExtractValue(
           llvm_val, {GetPhysicalFieldIndex(*source.Symbol->LlvmInfo, i)}, elem_name + ".from");
@@ -280,7 +280,7 @@ auto spp::codegen::CoerceToVariant(
     // alternative's belong, and the variant reads back as neither. The lowered types say whether that happened.
     auto *member_val = llvm_val;
     const auto members = VariantMemberRefs(target, scope);
-    if (const auto member_sym = *tag < members.Len() ? members[*tag].Symbol : nullptr;
+    if (const auto member_sym = *tag < members.size() ? members[*tag].Symbol : nullptr;
       member_sym != nullptr and member_sym->LlvmInfo->LlvmType != llvm_val->getType()) {
       if (const auto rebuilt = CoerceStructurally(
         llvm_val, members[*tag], source, scope, name, ctx); rebuilt != nullptr) {
@@ -299,11 +299,11 @@ auto spp::codegen::CoerceToVariant(
   auto tag_map = Vec<std::uint64_t>();
   auto is_identity_map = true;
   const auto source_members = VariantMemberRefs(source, scope);
-  for (auto i = 0uz; i < source_members.Len(); ++i) {
+  for (auto i = 0uz; i < source_members.size(); ++i) {
     const auto target_tag = GetVariantIndexOfMember(target, source_members[i], scope);
     if (not target_tag.has_value()) { return llvm_val; }
     is_identity_map = is_identity_map and *target_tag == static_cast<std::uint64_t>(i);
-    tag_map.EmplaceBack(*target_tag);
+    tag_map.emplace_back(*target_tag);
   }
 
   // Spill the source to memory, because the payload is copied
@@ -319,8 +319,8 @@ auto spp::codegen::CoerceToVariant(
   const auto tag_type = GetVariantTagType(ctx);
   auto target_tag = static_cast<llvm::Value*>(source_tag);
   if (not is_identity_map) {
-    target_tag = llvm::ConstantInt::get(tag_type, tag_map.Back());
-    for (auto i = tag_map.Len() - 1; i > 0; --i) {
+    target_tag = llvm::ConstantInt::get(tag_type, tag_map.back());
+    for (auto i = tag_map.size() - 1; i > 0; --i) {
       const auto matches = ctx->Builder.CreateICmpEQ(
         source_tag, llvm::ConstantInt::get(tag_type, i - 1), name + ".from.is");
       target_tag = ctx->Builder.CreateSelect(
@@ -373,9 +373,9 @@ auto spp::codegen::NarrowVariant(
   for (auto const &member : VariantMemberRefs(target, scope)) {
     const auto source_tag = GetVariantIndexOfMember(source, member, scope);
     if (not source_tag.has_value()) { return {nullptr, nullptr}; }
-    source_tags.EmplaceBack(*source_tag);
+    source_tags.emplace_back(*source_tag);
   }
-  if (source_tags.IsEmpty()) { return {nullptr, nullptr}; }
+  if (source_tags.empty()) { return {nullptr, nullptr}; }
 
   // The source holds the target when its tag is any of those.
   // The target's own tag is picked by the same comparisons, as a
@@ -383,12 +383,12 @@ auto spp::codegen::NarrowVariant(
   const auto tag_type = GetVariantTagType(ctx);
   const auto source_tag = LoadVariantTag(source_ptr, source_llvm_type, name + ".from.tag", ctx);
   auto is_member = static_cast<llvm::Value*>(nullptr);
-  auto target_tag = static_cast<llvm::Value*>(llvm::ConstantInt::get(tag_type, source_tags.Len() - 1));
-  for (auto i = source_tags.Len(); i > 0; --i) {
+  auto target_tag = static_cast<llvm::Value*>(llvm::ConstantInt::get(tag_type, source_tags.size() - 1));
+  for (auto i = source_tags.size(); i > 0; --i) {
     const auto matches = ctx->Builder.CreateICmpEQ(
       source_tag, llvm::ConstantInt::get(tag_type, source_tags[i - 1]), name + ".from.is");
     is_member = is_member == nullptr ? matches : ctx->Builder.CreateOr(is_member, matches, name + ".is.any");
-    if (i < source_tags.Len()) {
+    if (i < source_tags.size()) {
       target_tag = ctx->Builder.CreateSelect(
         matches, llvm::ConstantInt::get(tag_type, i - 1), target_tag, name + ".to.tag");
     }

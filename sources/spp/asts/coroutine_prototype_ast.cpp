@@ -118,8 +118,8 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
+    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
     meta->EnclosingFnScope = sm->CurrentScope;
     Impl->Stage7_AnalyseSemantics(sm, meta);
 
@@ -329,8 +329,8 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
+    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code. Generic
@@ -512,7 +512,7 @@ auto CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
   auto allocas = Vec<llvm::AllocaInst*>();
   for (auto &inst : entry) {
     if (auto *const alloca = llvm::dyn_cast<llvm::AllocaInst>(&inst); alloca != nullptr) {
-      allocas.EmplaceBack(alloca);
+      allocas.emplace_back(alloca);
     }
   }
 

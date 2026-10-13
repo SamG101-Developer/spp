@@ -82,11 +82,11 @@ namespace spp::analyse::utils::overload_resolution {
       -> void {
       for (auto const *arg_name : arg_names) {
         if (genex::any_of(param_names, [arg_name](auto const &p) { return *p == *arg_name; })) { continue; }
-        auto const &param_ctx = params.Params.IsEmpty()
+        auto const &param_ctx = params.Params.empty()
           ? static_cast<Ast const&>(*arg_name)
           : static_cast<Ast const&>(*params.Params[0]);
         Raise<errors::SppArgumentNameInvalidError>(
-          {params.Params.IsEmpty() ? sm.CurrentScope : fn_scope, sm.CurrentScope},
+          {params.Params.empty() ? sm.CurrentScope : fn_scope, sm.CurrentScope},
           ERR_ARGS(param_ctx, StrView("fn param"), *arg_name, StrView("fn arg")));
       }
     }
@@ -156,7 +156,7 @@ namespace spp::analyse::utils::overload_resolution {
             | genex::views::ptr
             | genex::views::filter(is_valid_ext_scope)
             | genex::to<Vec>();
-          if (not blocks.IsEmpty()) { owning_block = blocks[0]; }
+          if (not blocks.empty()) { owning_block = blocks[0]; }
         }
         if (owning_block != nullptr) { info.FnScope = owning_block; }
       }
@@ -309,7 +309,7 @@ namespace spp::analyse::utils::overload_resolution {
       auto self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
         nullptr, nullptr, std::move(self_arg_val));
       auto fn_args = std::move(fn_call.FnArgGroup->Args);
-      fn_args.Insert(fn_args.begin(), std::move(self_arg));
+      fn_args.insert(fn_args.begin(), std::move(self_arg));
 
       // Create the function call with the new arguments.
       auto new_fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
@@ -407,7 +407,7 @@ namespace spp::analyse::utils::overload_resolution {
       auto all_overloads = fn_name != nullptr and fn_owner_scope != nullptr
         ? overload_resolution::GetAllFnScopes(*fn_name, fn_owner_scope, *sm, meta)
         : Vec<overload_resolution::FnOverload>{};
-      if (not all_overloads.IsEmpty()) {
+      if (not all_overloads.empty()) {
         return OverloadCandidates{false, nullptr, std::move(all_overloads)};
       }
 
@@ -417,7 +417,7 @@ namespace spp::analyse::utils::overload_resolution {
       if (auto closure_fn_proto = closure_fn_type != nullptr
         ? CreateCallablePrototype(*closure_fn_type)
         : nullptr; closure_fn_proto != nullptr) {
-        all_overloads.EmplaceBack(overload_resolution::FnOverload{
+        all_overloads.emplace_back(overload_resolution::FnOverload{
           .FnScope = sm->CurrentScope,
           .Proto = closure_fn_proto.get(),
           .SupGns = GenericArgumentGroupAst::NewEmpty(),
@@ -529,7 +529,7 @@ namespace spp::analyse::utils::overload_resolution {
       auto candidates = Vec<Pair<Shared<TypeAst>, Scope const*>>{{receiver_type, sm.CurrentScope}};
       if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
         receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
-        candidates.AppendRange(type_members::SuperClsNames(receiver_sym->LinkedScope->GetSupScopes()));
+        candidates.append_range(type_members::SuperClsNames(receiver_sym->LinkedScope->GetSupScopes()));
       }
 
       // An instantiated block binds some of its generics already, and only a class that agrees with them is its
@@ -632,7 +632,7 @@ namespace spp::analyse::utils::overload_resolution {
       if (call_self == nullptr or declared_self == nullptr) { return; }
       const auto declared_self_sym = fn_scope->FindTypeSymbol(declared_self.get());
       const auto declared_on_abstract = declared_self_sym != nullptr and declared_self_sym->LinkedScope != nullptr
-        and not type_members::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).IsEmpty();
+        and not type_members::GetUnimplementedAbstractMethods(*declared_self_sym->LinkedScope).empty();
       const auto takes_self = fn_proto.FnParamGroup->GetSelfParam() != nullptr;
       if (not takes_self and not SignatureNamesSelf(fn_proto) and not declared_on_abstract) { return; }
 
@@ -642,7 +642,7 @@ namespace spp::analyse::utils::overload_resolution {
         *sm->CurrentScope)) { return; }
       const auto concrete = not call_self->IsSelfType() and not receiver_sym->IsGn();
       auto self_arg = Vec<Unique<GenericArgumentAst>>();
-      self_arg.EmplaceBack(GenericArgumentAst::NewType(generate::common_types::SelfType(0), AstCloneShared(call_self)));
+      self_arg.emplace_back(GenericArgumentAst::NewType(generate::common_types::SelfType(0), AstCloneShared(call_self)));
       solver.Give(std::move(self_arg), concrete);
     }
 
@@ -694,18 +694,18 @@ namespace spp::analyse::utils::overload_resolution {
       auto taken = Vec<ParamSlot>();
       for (auto const &[i, arg] : fn_args.Args | genex::views::ptr | genex::views::enumerate) {
         if (auto const *const kw_arg = arg->To<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
-          taken.EmplaceBack(make_slot(kw_arg->Name, {i}, false));
+          taken.emplace_back(make_slot(kw_arg->Name, {i}, false));
           continue;
         }
-        auto name = MakeShared<IdentifierAst>(arg->PosStart(), Str(p_names.Front()->Val));
+        auto name = MakeShared<IdentifierAst>(arg->PosStart(), Str(p_names.front()->Val));
         p_names |= genex::actions::pop_front();
-        if (p_names.IsEmpty() and fn_params.GetVariadicParam() != nullptr) {
+        if (p_names.empty() and fn_params.GetVariadicParam() != nullptr) {
           auto rest = Vec<std::size_t>();
-          for (auto j = i; j < fn_args.Args.Len(); ++j) { rest.EmplaceBack(j); }
-          taken.EmplaceBack(make_slot(std::move(name), std::move(rest), true));
+          for (auto j = i; j < fn_args.Args.size(); ++j) { rest.emplace_back(j); }
+          taken.emplace_back(make_slot(std::move(name), std::move(rest), true));
           break;
         }
-        taken.EmplaceBack(make_slot(std::move(name), {i}, false));
+        taken.emplace_back(make_slot(std::move(name), {i}, false));
       }
 
       auto slots = Vec<ParamSlot>();
@@ -715,11 +715,11 @@ namespace spp::analyse::utils::overload_resolution {
           return slot.Name != nullptr and slot.Name->Val == param_name->Val;
         });
         if (given != taken.end()) {
-          slots.EmplaceBack(std::move(*given));
+          slots.emplace_back(std::move(*given));
           continue;
         }
         if (param->To<FunctionParameterVariadicAst>() != nullptr) {
-          slots.EmplaceBack(make_slot(param_name, {}, true));
+          slots.emplace_back(make_slot(param_name, {}, true));
           continue;
         }
 
@@ -738,8 +738,8 @@ namespace spp::analyse::utils::overload_resolution {
           default_val->Stage7_AnalyseSemantics(sm, meta);
           sm->CurrentScope = outer_scope;
         }
-        slots.EmplaceBack(make_slot(param_name, {}, false));
-        slots.Back().Default = std::move(default_val);
+        slots.emplace_back(make_slot(param_name, {}, false));
+        slots.back().Default = std::move(default_val);
       }
 
       // Type each slot as what it is given: the argument (with its convention, or the receiver's type for an injected
@@ -750,7 +750,7 @@ namespace spp::analyse::utils::overload_resolution {
           const auto vals = slot.Args
             | genex::views::transform([&](auto i) { return fn_args.Args[i]->Val.get(); })
             | genex::to<Vec>();
-          slot.Type = TupleLiteralAst::TypeOfElements(vals, vals.IsEmpty() ? 0uz : vals[0]->PosStart(), sm, meta);
+          slot.Type = TupleLiteralAst::TypeOfElements(vals, vals.empty() ? 0uz : vals[0]->PosStart(), sm, meta);
         }
         else { slot.Type = fn_args.Args[slot.Args[0]]->InferType(sm, meta); }
       }
@@ -766,7 +766,7 @@ namespace spp::analyse::utils::overload_resolution {
       FunctionCallArgumentGroupAst const &fn_args)
       -> Ast const& {
       if (slot.Default != nullptr) { return *slot.Default; }
-      return slot.Args.IsEmpty() ? static_cast<Ast const&>(*slot.Name) : *fn_args.Args[slot.Args[0]];
+      return slot.Args.empty() ? static_cast<Ast const&>(*slot.Name) : *fn_args.Args[slot.Args[0]];
     }
 
     /**
@@ -777,7 +777,7 @@ namespace spp::analyse::utils::overload_resolution {
       FunctionCallArgumentGroupAst const &fn_args)
       -> ExpressionAst const* {
       if (slot.Default != nullptr) { return slot.Default.get(); }
-      return slot.Args.IsEmpty() ? nullptr : fn_args.Args[slot.Args[0]]->Val.get();
+      return slot.Args.empty() ? nullptr : fn_args.Args[slot.Args[0]]->Val.get();
     }
 
     /**
@@ -825,7 +825,7 @@ namespace spp::analyse::utils::overload_resolution {
       Scope const *fn_scope)
       -> void {
       auto &params = fn_proto.FnParamGroup->Params;
-      for (auto i = params.Len(); i > 0uz; --i) {
+      for (auto i = params.size(); i > 0uz; --i) {
         if (type_predicates::IsTypeVoid(TypeRef::ForKindCheck(*params[i - 1uz]->Type, *fn_scope), *fn_scope)) {
           genex::actions::erase(params, params.begin() + static_cast<sys::ssize_t>(i - 1uz));
         }
@@ -861,7 +861,7 @@ namespace spp::analyse::utils::overload_resolution {
         | genex::views::not_in(func_arg_names, genex::meta::deref, genex::meta::deref)
         | genex::to<Vec>();
       RaiseIf<SppArgumentMissingError>(
-        not missing_params.IsEmpty(), {fn_scope, sm->CurrentScope},
+        not missing_params.empty(), {fn_scope, sm->CurrentScope},
         ERR_ARGS(*missing_params[0], "parameter", fn_call, "argument"));
     }
 
@@ -902,7 +902,7 @@ namespace spp::analyse::utils::overload_resolution {
       };
       auto given = Vec<ParamSlot*>();
       for (auto &slot : slots) {
-        if (not slot_is_void(slot)) { given.EmplaceBack(&slot); }
+        if (not slot_is_void(slot)) { given.emplace_back(&slot); }
       }
 
       // "self" is required too: a runtime call injects it, but "Type::method()" has to pass it, or there is no receiver.
@@ -914,7 +914,7 @@ namespace spp::analyse::utils::overload_resolution {
         | genex::views::transform([](auto &&x) { return x->ExtractName(); })
         | genex::to<Vec>();
       if (const auto self_param = func_params->GetSelfParam(); self_param != nullptr) {
-        func_param_names_req.Insert(func_param_names_req.begin(), self_param->ExtractName());
+        func_param_names_req.insert(func_param_names_req.begin(), self_param->ExtractName());
       }
       const auto func_arg_names = given
         | genex::views::transform([](auto const *slot) { return slot->Name.get(); })
@@ -997,7 +997,7 @@ namespace spp::analyse::utils::overload_resolution {
           // "..a: T" takes a tuple of "T"s, one per element the call passed; "..a: Ts" (a variadic generic) is that
           // tuple itself.
           if (not is_variadic_generic_type) {
-            auto ts = Vec(packs::TypePackElements(*a_type).Len(), p_type);
+            auto ts = Vec(packs::TypePackElements(*a_type).size(), p_type);
             p_type = generate::common_types::TupleType(param->PosStart(), std::move(ts));
             p_type->Stage7_AnalyseSemantics(sm, meta);
           }
@@ -1074,11 +1074,11 @@ namespace spp::analyse::utils::overload_resolution {
         const auto ret_ref = TypeRef::Of(*ret, *matched.FnScope);
         if (type_compare::Assignable(
           ret_ref, *meta->ReturnTypeOverloadResolverType, *matched.FnScope, *sm->CurrentScope)) {
-          return_matches.EmplaceBack(std::move(matched));
+          return_matches.emplace_back(std::move(matched));
         }
       }
 
-      if (return_matches.Len() == 1) { pass_overloads = std::move(return_matches); }
+      if (return_matches.size() == 1) { pass_overloads = std::move(return_matches); }
     }
 
     auto ManageMatchedOverloads(
@@ -1102,7 +1102,7 @@ namespace spp::analyse::utils::overload_resolution {
       };
 
       // If there are no pass overloads, raise an error.
-      if (pass_overloads.IsEmpty()) {
+      if (pass_overloads.empty()) {
         auto failed_signatures_and_errors = "\n" + (fail_overloads
           | genex::views::transform([](auto const &f) {
             return "    - "s + f.Proto->PrintSignature("") + ": "s + f.Reason;
@@ -1121,7 +1121,7 @@ namespace spp::analyse::utils::overload_resolution {
       }
 
       // If there are multiple pass overloads, raise an error.
-      if (pass_overloads.Len() > 1) {
+      if (pass_overloads.size() > 1) {
         auto signatures = "\n" + (pass_overloads
           | genex::views::transform([](auto const &x) { return "    - "s + x.Proto->PrintSignature(""); })
           | genex::views::intersperse("\n"_str)
@@ -1162,8 +1162,8 @@ namespace spp::analyse::utils::overload_resolution {
       // Cannot check for "too few" arguments here because of potential "T=Void" + "x: T" removal. Check if there are
       // too many arguments (for a non-variadic function).
       RaiseIf<SppFunctionCallTooManyArgumentsError>(
-        fn_args.Args.Len() > fn_proto->FnParamGroup->Params.Len() and not is_variadic_fn, {fn_scope, sm->CurrentScope},
-        ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.Len(), fn_call, fn_args.Args.Len()));
+        fn_args.Args.size() > fn_proto->FnParamGroup->Params.size() and not is_variadic_fn, {fn_scope, sm->CurrentScope},
+        ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.size(), fn_call, fn_args.Args.size()));
 
       // Every generic argument this call is resolved with, in layers. Precedence runs highest first: what the call
       // wrote, then what the owner type (or the forwarding type it was reached through) pins, then what the enclosing
@@ -1243,7 +1243,7 @@ namespace spp::analyse::utils::overload_resolution {
 
 #define SPP_FN_RES_ERR_WRAPPER(error_type, message)                          \
   catch (error_type const &e) {                                              \
-    fail_overloads.EmplaceBack(FailedOverload{fn_proto, e.what(), message}); \
+    fail_overloads.emplace_back(FailedOverload{fn_proto, e.what(), message}); \
     while (meta->Depth() > original_meta_depth) { meta->Restore(); }         \
   }
 
@@ -1292,7 +1292,7 @@ auto spp::analyse::utils::overload_resolution::DetermineOverload(
   for (auto &candidate : candidates.Overloads) {
     auto *const &fn_proto = candidate.Proto;
     try {
-      pass_overloads.EmplaceBack(CheckCandidate(fn_call, candidate, fn_owner_type.get(), sm, meta));
+      pass_overloads.emplace_back(CheckCandidate(fn_call, candidate, fn_owner_type.get(), sm, meta));
     }
 
     SPP_FN_RES_ERR_WRAPPER(analyse::errors::SppFunctionCallAbstractFunctionError, "calling an abstract function")
@@ -1334,7 +1334,7 @@ auto spp::analyse::utils::overload_resolution::ElaborateCall(
   // The values are moved out of the written arguments into one keyword argument per slot. Nothing analysed is
   // dropped: the scopes an argument's analysis created (a loop's, a closure's) name its value as their "AstNode".
   auto written = std::move(args.Args);
-  args.Args.Clear();
+  args.Args.clear();
   for (auto &slot : overload.Slots) {
     auto conv = Unique<ConventionAst>(nullptr);
     auto self_type = Shared<TypeAst>(nullptr);
@@ -1372,7 +1372,7 @@ auto spp::analyse::utils::overload_resolution::ElaborateCall(
 
     auto kw_arg = MakeUnique<FunctionCallArgumentKeywordAst>(slot.Name, nullptr, std::move(conv), std::move(val));
     kw_arg->SetSelfType(std::move(self_type));
-    args.Args.EmplaceBack(std::move(kw_arg));
+    args.Args.emplace_back(std::move(kw_arg));
   }
 }
 
@@ -1383,7 +1383,7 @@ auto spp::analyse::utils::overload_resolution::ExpectedArgTypes(
   -> Vec<Shared<TypeRef>> {
   //
   using type_compare::TypeEq;
-  auto out = Vec<Shared<TypeRef>>(fn_call.FnArgGroup->Args.Len());
+  auto out = Vec<Shared<TypeRef>>(fn_call.FnArgGroup->Args.size());
 
   // An expansion ("..t") has not been unpacked yet, so argument
   // positions do not yet line up with parameters.
@@ -1401,7 +1401,7 @@ auto spp::analyse::utils::overload_resolution::ExpectedArgTypes(
     const auto [fn_owner_type, fn_owner_scope, fn_name] = GetFnOwnerTypeAndFnName(*lhs, *sm, meta);
     const auto is_method = fn_owner_type != nullptr and fn_name != nullptr and IsRuntimeMemberAccess(lhs);
     const auto candidates = RetrieveAllOverloads(fn_name.get(), fn_owner_scope, sm, meta);
-    if (candidates.Overloads.IsEmpty()) { return out; }
+    if (candidates.Overloads.empty()) { return out; }
 
     for (auto const &[i, arg] : fn_call.FnArgGroup->Args | genex::views::ptr | genex::views::enumerate) {
       auto const *const kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
@@ -1415,7 +1415,7 @@ auto spp::analyse::utils::overload_resolution::ExpectedArgTypes(
           ? candidate.Proto->FnParamGroup->GetNonSelfParams()
           : candidate.Proto->FnParamGroup->GetAllParams();
         auto const *param = static_cast<FunctionParameterAst const*>(nullptr);
-        if (kw_arg == nullptr) { param = i < params.Len() ? params[i] : nullptr; }
+        if (kw_arg == nullptr) { param = i < params.size() ? params[i] : nullptr; }
         else { for (auto *p : params) { if (*p->ExtractName() == *kw_arg->Name) { param = p; } } }
 
         // No parameter here, a pack, a generic or a "Self": what the
@@ -1439,7 +1439,7 @@ auto spp::analyse::utils::overload_resolution::ExpectedArgTypes(
     }
   }
   catch (errors::SemanticError const &) {
-    return Vec<Shared<TypeRef>>(fn_call.FnArgGroup->Args.Len());
+    return Vec<Shared<TypeRef>>(fn_call.FnArgGroup->Args.size());
   }
   return out;
 }
@@ -1472,7 +1472,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
       for (auto const *sup_scope : ancestor_scope->Children
            | genex::views::ptr
            | genex::views::filter(is_valid_ext_scope)) {
-        overload_scopes.EmplaceBack(FnOverload{
+        overload_scopes.emplace_back(FnOverload{
           .FnScope = sup_scope,
           .Proto = fn_values::FnBlockOf(*sup_scope).second,
           .SupGns = GenericArgumentGroupAst::NewEmpty(),
@@ -1495,7 +1495,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
       for (auto *sup_ast : AstBody(sup_scope->AstNode)
            | genex::views::cast_dynamic<SupPrototypeExtensionAst*>()) {
         if (sup_ast->Name->ToUnchecked<TypeIdentifierAst>()->Name == mapped_name->Val) {
-          overload_scopes.EmplaceBack(FnOverload{
+          overload_scopes.emplace_back(FnOverload{
             .FnScope = sup_scope,
             .Proto = AstBody(sup_ast)[0]->To<FunctionPrototypeAst>(),
             .SupGns = MakeUnique<GenericArgumentGroupAst>(nullptr, sup_scope->GetGns(), nullptr),
@@ -1526,7 +1526,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
   // (eg "NonNull[Str]" -> "&Str" -> "&StrView") sees both
   // "fwd_ref" overloads and the forwarding call is ambiguous.
   if (target_scope->LinkedTypeSymbol != nullptr and meta->CurrentStage >= meta::CompilerStage::kAnalyseSemantics and
-    overload_scopes.IsEmpty()) {
+    overload_scopes.empty()) {
     // Either forwarding type carries the methods. "FwdMut" was bound and then never read, so a type superimposing only
     // "FwdMut" got no forwarded methods here, while "BuildFwdCall" would happily build a "fwd_mut()" call for it in
     // argument position - the two forwarding paths disagreed.
@@ -1542,7 +1542,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
       for (auto &i : inner_scopes) {
         i.FwdType = AstCloneShared(inner_sym->FqName());
       }
-      overload_scopes.AppendRange(std::move(inner_scopes));
+      overload_scopes.append_range(genex::views::move(inner_scopes));
     }
   }
 
@@ -1553,7 +1553,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
     const auto already_seen = genex::any_of(unique_overloads, [&info](auto const &seen) {
       return seen.Proto == info.Proto and seen.FnScope == info.FnScope;
     });
-    if (not already_seen) { unique_overloads.EmplaceBack(std::move(info)); }
+    if (not already_seen) { unique_overloads.emplace_back(std::move(info)); }
   }
 
   // Return all the found function scopes.

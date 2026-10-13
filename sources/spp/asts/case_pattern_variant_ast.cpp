@@ -132,7 +132,7 @@ auto CasePatternVariantAst::CodeGenDestructure(
     elems, sm, meta, ctx);
 
   const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
-  const auto llvm_master_transform = llvm_transforms.IsEmpty()
+  const auto llvm_master_transform = llvm_transforms.empty()
     ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
     : genex::fold_left_first(llvm_transforms, std::move(AND));
 

@@ -72,7 +72,7 @@ namespace spp::analyse::scopes {
     }
 
     auto SpreadTypePack(
-      const TypeId written, GenericSubst const &subst) -> std::optional<std::vector<TypeId>> {
+      const TypeId written, GenericSubst const &subst) -> std::optional<Vec<TypeId>> {
       // Get the head, and if it is not a type parameter,
       // if it has a convention, or not in the known packs,
       // then return nullopt.
@@ -87,7 +87,7 @@ namespace spp::analyse::scopes {
       // and anything else (another class) is not a tuple.
       const auto bound = BoundTypeOf(subst, head.TypeParamId);
       if (bound == nullptr) { return std::nullopt; }
-      auto elems = std::vector<TypeId>();
+      auto elems = Vec<TypeId>();
       if (HeadOf(bound).Kind == TypeKey::Tag::Symbol) {
         return HeadOf(bound).Ptr == TupTemplate() ? std::optional(elems) : std::nullopt;
       }
@@ -206,7 +206,7 @@ namespace spp::analyse::scopes {
           // are flattened, deduplicated and stable-sorted.
           case TypeKey::Tag::Variant: {
             if (head.Symbol() == nullptr) { return nullptr; }
-            auto members = std::vector<TypeId>();
+            auto members = Vec<TypeId>();
             for (const auto written : head.Members) {
               const auto member = RewriteTypeId(written, subst, subst_id);
               if (member == nullptr) { return nullptr; }
@@ -218,7 +218,7 @@ namespace spp::analyse::scopes {
                 and genex::contains(subst.TypePackParams, written_head.TypeParamId);
               auto flat = member_head.Kind == TypeKey::Tag::Variant and member_head.Conv == 0
                 ? member_head.Members
-                : std::vector{member};
+                : Vec{member};
               if (is_pack and member != written) {
                 flat.clear();
                 if (member_head.Args != nullptr) {
@@ -296,7 +296,7 @@ namespace spp::analyse::scopes {
           // For packs, recursively iterate through the pack's
           // elements and rewrite them.
           case CompKey::Part::Pack: {
-            auto elems = std::vector<CompId>();
+            auto elems = Vec<CompId>();
             for (const auto elem : id->Kids) {
               const auto value = RewriteCompId(elem, subst, subst_id);
               if (value == nullptr) { return nullptr; }

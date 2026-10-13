@@ -41,12 +41,12 @@ LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
 
 auto LoopControlFlowStatementAst::PosStart() const -> std::size_t {
   // Use the first "exit" or "skip".
-  return TokSeqExit.IsEmpty() ? TokSkip->PosStart() : TokSeqExit.Front()->PosStart();
+  return TokSeqExit.empty() ? TokSkip->PosStart() : TokSeqExit.front()->PosStart();
 }
 
 auto LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
   // Use expression or "skip" or last "exit".
-  return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.Back()->PosEnd();
+  return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.back()->PosEnd();
 }
 
 auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
@@ -77,7 +77,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   // Get the number of control flow statements, and the
   // loop's nesting level.
   const auto has_skip = TokSkip != nullptr;
-  const auto num_controls = TokSeqExit.Len() + (has_skip ? 1 : 0);
+  const auto num_controls = TokSeqExit.size() + (has_skip ? 1 : 0);
   const auto nested_loop_depth = meta->LoopCurrentDepth;
 
   // Check the depth of the loop is greater than or equal
@@ -141,12 +141,12 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   // the innermost, or with "exit"s before it, the one after
   // the loops they leave. A plain "skip" also records what it
   // left moved: those paths begin the next iteration.
-  if (TokSkip != nullptr and TokSeqExit.Len() < loops.Len()) {
-    auto &continued = loops[loops.Len() - 1 - TokSeqExit.Len()];
+  if (TokSkip != nullptr and TokSeqExit.size() < loops.size()) {
+    auto &continued = loops[loops.size() - 1 - TokSeqExit.size()];
     continued.Skips += 1;
-    if (TokSeqExit.IsEmpty()) {
+    if (TokSeqExit.empty()) {
       for (auto const &[sym, state] : memory_state::FlowOf(*sm->CurrentScope)->States) {
-        if (state.AstMoved != nullptr) { continued.SkipMoves.EmplaceBack(const_cast<VariableSymbol*>(sym), this); }
+        if (state.AstMoved != nullptr) { continued.SkipMoves.emplace_back(const_cast<VariableSymbol*>(sym), this); }
       }
     }
   }
@@ -157,7 +157,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   if (Expr != nullptr) {
     Expr->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(
-      *Expr, *TokSeqExit.Back(), *sm, meta);
+      *Expr, *TokSeqExit.back(), *sm, meta);
   }
 
   // An "exit" (with no "skip") is a path out of the loop it
@@ -168,30 +168,30 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   // as each end would; the loop's own scope outlives the "exit".
   // The walk carries on past this statement, so its state is
   // put back.
-  if (TokSkip == nullptr and not TokSeqExit.IsEmpty() and TokSeqExit.Len() <= loops.Len()) {
+  if (TokSkip == nullptr and not TokSeqExit.empty() and TokSeqExit.size() <= loops.size()) {
     const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
     auto loops_seen = 0uz;
     for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
       const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
-      if (is_loop and ++loops_seen == TokSeqExit.Len()) { break; }
+      if (is_loop and ++loops_seen == TokSeqExit.size()) { break; }
       for (const auto sym : scope->GetAllVarSymbols(true)) {
         memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
       }
     }
     auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
     memory_state::RestoreSnapshot(saved);
-    loops[loops.Len() - TokSeqExit.Len()].ExitStates.EmplaceBack(TokSeqExit.Back().get(), std::move(state));
+    loops[loops.size() - TokSeqExit.size()].ExitStates.emplace_back(TokSeqExit.back().get(), std::move(state));
   }
 
   // Like a "ret", this leaves several scopes at once, so their
   // closing braces are never reached on this path and their own
   // checks never see it.
-  const auto exit_point = TokSeqExit.IsEmpty()
+  const auto exit_point = TokSeqExit.empty()
     ? static_cast<Ast const*>(TokSkip.get())
-    : static_cast<Ast const*>(TokSeqExit.Back().get());
+    : static_cast<Ast const*>(TokSeqExit.back().get());
   linear_utils::CheckLiveUpToLoop(
-    *exit_point, TokSeqExit.IsEmpty() ? "Loop skip" : "Loop exit",
-    TokSeqExit.Len(), TokSkip != nullptr, *sm, meta);
+    *exit_point, TokSeqExit.empty() ? "Loop skip" : "Loop exit",
+    TokSeqExit.size(), TokSkip != nullptr, *sm, meta);
 }
 
 auto LoopControlFlowStatementAst::Stage11_CodeGen(
@@ -200,9 +200,9 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
 
   // The loop stack is ordered outermost-first, so the innermost
   // enclosing loop is the back element.
-  const auto num_exits = TokSeqExit.Len();
+  const auto num_exits = TokSeqExit.size();
   const auto has_skip = TokSkip != nullptr;
-  const auto num_loops = meta->LlvmLoopStack.Len();
+  const auto num_loops = meta->LlvmLoopStack.size();
 
   // Generate the attached expression (if present) before the
   // branch, so the value is available to the phi node.

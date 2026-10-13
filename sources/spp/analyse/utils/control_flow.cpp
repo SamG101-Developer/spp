@@ -31,16 +31,16 @@ auto spp::analyse::utils::control_flow::Diverges(
   // block's own scope. Its type alone misses a trailing "let"
   // bound to a "!" value, which is typed "Void".
   if (const auto block = stmt.To<asts::InnerScopeExpressionAst>(); block != nullptr) {
-    if (block->Members.IsEmpty()) { return false; }
+    if (block->Members.empty()) { return false; }
     auto tm = ScopeManager(sm->GlobalScope, block->GetAstScope());
-    return Diverges(*block->Members.Back(), &tm, meta);
+    return Diverges(*block->Members.back(), &tm, meta);
   }
 
   // The same for a "case": it has to have an "else" (or it can
   // fall through), and then every branch has to diverge.
   if (const auto case_expr = stmt.To<CaseExpressionAst>(); case_expr != nullptr) {
-    if (case_expr->Branches.IsEmpty()) { return false; }
-    if (case_expr->Branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
+    if (case_expr->Branches.empty()) { return false; }
+    if (case_expr->Branches.back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
     return genex::all_of(case_expr->Branches, [&](auto const &branch) { return Diverges(*branch->Body, sm, meta); });
   }
 

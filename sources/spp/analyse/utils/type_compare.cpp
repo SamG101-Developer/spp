@@ -90,7 +90,7 @@ namespace spp::analyse::utils::type_compare {
       // exist within the output list, before adding it in.
       const auto add_unique = [&](Shared<TypeAst> const &member, TypeRef const &ref) {
         if (genex::any_of(out, [&](auto const &x) { return SameType(ref, x.second, scope, scope); })) { return; }
-        out.EmplaceBack(member, ref);
+        out.emplace_back(member, ref);
       };
 
       // Get the variant member's types from the tuple that is
@@ -99,7 +99,7 @@ namespace spp::analyse::utils::type_compare {
       for (const auto arg : variants.LastTypePart()->GnArgGroup->GetTypeArgs()) {
         const auto ref = TypeRef::Of(*arg->TypeVal, scope);
         const auto nested = VariantMemberRefs(ref, scope);
-        if (nested.IsEmpty()) { add_unique(arg->TypeVal, ref); }
+        if (nested.empty()) { add_unique(arg->TypeVal, ref); }
         else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
       }
 
@@ -116,12 +116,12 @@ namespace spp::analyse::utils::type_compare {
       // Get all the members of the variant as a vector of type
       // references; if empty, then return false (shortcut guard).
       const auto variant_members = VariantMemberRefs(variant, variant_scope);
-      if (variant_members.IsEmpty()) { return false; }
+      if (variant_members.empty()) { return false; }
 
       // Get the members of the type (assuming it is a subset
       // variant.
       const auto type_members = VariantMemberRefs(type, type_scope);
-      if (not type_members.IsEmpty()) {
+      if (not type_members.empty()) {
         return genex::all_of(type_members, [&](auto const &t) {
           return genex::any_of(variant_members, [&](auto const &v) {
             return SameType(v, t, variant_scope, type_scope);
@@ -170,7 +170,7 @@ namespace spp::analyse::utils::type_compare {
       // Todo: Move to "marker_sups" util package?
       auto const &fwd_target = both_ref ? *FWD_REF : *FWD_MUT;
       auto candidates = Vec{arg};
-      candidates.AppendRange(type_members::SuperClsRefs(arg, arg_scope));
+      candidates.append_range(type_members::SuperClsRefs(arg, arg_scope));
       for (auto const &candidate : candidates) {
         if (candidate.Symbol == nullptr or not candidate.IsA(fwd_target, arg_scope)) { continue; }
         auto inner = candidate.Symbol->TypeArgRef("T");
@@ -317,11 +317,11 @@ namespace spp::analyse::utils::type_compare {
     /// variant's members (positionally, as its "Variants" tuple
     /// lists them, in their canonical order). None for anything
     /// else.
-    auto IdArgs(TypeId id) -> std::vector<TypeIdArg> {
+    auto IdArgs(TypeId id) -> Vec<TypeIdArg> {
       if (id == nullptr) { return {}; }
       auto const &head = scopes::HeadOf(id);
       if (head.Kind == TypeKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }
-      auto members = std::vector<TypeIdArg>();
+      auto members = Vec<TypeIdArg>();
       if (head.Kind == TypeKey::Tag::Variant) {
         for (const auto m : head.Members) { members.push_back({.TypeVal = m}); }
       }
@@ -432,18 +432,18 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   // resolved where each is read.
   auto sup_info = Vec<Pair<TypeRef, Scope const*>>{};
   if (is_self and not type_sym->IsGn() and type_sym->LinkedScope != nullptr) {
-    sup_info.EmplaceBack(concrete.WithoutConvention().ReadIn(*type_sym->LinkedScope), type_sym->LinkedScope);
+    sup_info.emplace_back(concrete.WithoutConvention().ReadIn(*type_sym->LinkedScope), type_sym->LinkedScope);
   }
 
   // The bound type itself, by value (a binding's borrow is no
   // part of what its constraints are checked against), then each
   // class it is superimposed as: its sup scopes, or for a generic
   // type symbol the classes its own constraints name.
-  sup_info.EmplaceBack(concrete.WithoutConvention(), &concrete_scope);
+  sup_info.emplace_back(concrete.WithoutConvention(), &concrete_scope);
   const auto add_sup = [&](Scope const *sup_scope) {
     if (sup_scope == nullptr or sup_scope->LinkedTypeSymbol == nullptr) { return; }
     if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { return; }
-    sup_info.EmplaceBack(TypeRef::Of(*sup_scope->LinkedTypeSymbol, *sup_scope), sup_scope);
+    sup_info.emplace_back(TypeRef::Of(*sup_scope->LinkedTypeSymbol, *sup_scope), sup_scope);
   };
 
   // For a Non-generic type, read the constraints as the sup
@@ -493,11 +493,11 @@ auto spp::analyse::utils::type_compare::OrderVariantMembers(
   -> Vec<Shared<TypeAst>> {
   auto keyed = Vec<Pair<Str, Shared<TypeAst>>>();
   for (auto &[type, sym] : members) {
-    keyed.EmplaceBack(sym != nullptr ? sym->FqName()->ToString() : type->ToString(), std::move(type));
+    keyed.emplace_back(sym != nullptr ? sym->FqName()->ToString() : type->ToString(), std::move(type));
   }
   genex::actions::stable_sort(keyed, {}, [](auto const &k) -> Str const& { return k.first; });
   auto out = Vec<Shared<TypeAst>>();
-  for (auto &[_, type] : keyed) { out.EmplaceBack(std::move(type)); }
+  for (auto &[_, type] : keyed) { out.emplace_back(std::move(type)); }
   return out;
 }
 
@@ -532,6 +532,6 @@ auto spp::analyse::utils::type_compare::VariantMemberRefs(
   auto members = Vec<TypeRef>();
   // Read straight off each member's identity, one per member:
   // a member's index is its tag.
-  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.EmplaceBack(TypeRef::Of(member, scope)); }
+  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.emplace_back(TypeRef::Of(member, scope)); }
   return members;
 }

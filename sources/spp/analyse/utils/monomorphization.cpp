@@ -255,7 +255,7 @@ namespace spp::analyse::utils::monomorphization {
       -> void {
       dst.InternalTable.DeepCopyFrom(src.InternalTable);
       if (not recurse) { return; }
-      for (auto i = 0uz; i < dst.Children.Len() and i < src.Children.Len(); ++i) {
+      for (auto i = 0uz; i < dst.Children.size() and i < src.Children.size(); ++i) {
         GiveScopeOwnSymbols(*dst.Children[i].get(), *src.Children[i].get(), true);
       }
     }
@@ -503,8 +503,8 @@ namespace spp::analyse::utils::monomorphization {
       }
       else {
         auto elems = Vec<Shared<TypeAst>>();
-        for (auto i = 0uz; i < packs::CompPackElements(*bound).Len(); ++i) {
-          elems.EmplaceBack(AstCloneShared(declared));
+        for (auto i = 0uz; i < packs::CompPackElements(*bound).size(); ++i) {
+          elems.emplace_back(AstCloneShared(declared));
         }
         type = asts::generate::common_types::TupleType(declared->PosStart(), std::move(elems));
       }
@@ -605,7 +605,7 @@ namespace spp::analyse::utils::monomorphization {
       auto type_syms = Vec<Shared<TypeSymbol>>();
       for (auto const &arg : args) {
         if (arg.TypeVal != nullptr) {
-          type_syms.EmplaceBack(CreateGnTypeSymbol(BindingTypeName(arg), arg.TypeVal, *sm, *meta));
+          type_syms.emplace_back(CreateGnTypeSymbol(BindingTypeName(arg), arg.TypeVal, *sm, *meta));
         }
       }
       for (auto const &sym : type_syms) { RegisterGnTypeSymbol(*scope, sym); }
@@ -615,7 +615,7 @@ namespace spp::analyse::utils::monomorphization {
         if (arg.CompVal == nullptr) { continue; }
         const auto name = BindingCompName(arg);
         auto const *const param = scope->FindVarSymbol(name.get(), true);
-        comp_syms.EmplaceBack(CreateGnCompSymbol(name, arg.CompVal, *sm, meta, param));
+        comp_syms.emplace_back(CreateGnCompSymbol(name, arg.CompVal, *sm, meta, param));
       }
       for (auto const &sym : comp_syms) { RegisterGnCompSymbol(*scope, sym); }
     }
@@ -1012,12 +1012,12 @@ auto spp::analyse::utils::monomorphization::CreateGnClsScope(
   if (new_alias != nullptr) {
     new_alias->DeclaredIn()->AddTypeSymbol(new_cls_sym);
     new_alias->TrackingScope->AddTypeSymbol(new_cls_sym);
-    new_alias->TrackingScope->Children.EmplaceBack(std::move(new_cls_scope));
+    new_alias->TrackingScope->Children.emplace_back(std::move(new_cls_scope));
     new_cls_sym->Alias = std::move(new_alias);
   }
   else {
     new_cls_scope_ptr->Parent->AddTypeSymbol(new_cls_sym);
-    new_cls_scope_ptr->Parent->Children.EmplaceBack(std::move(new_cls_scope));
+    new_cls_scope_ptr->Parent->Children.emplace_back(std::move(new_cls_scope));
   }
 
   if (meta->CurrentStage >= meta::CompilerStage::kAttachSupScopes) {
@@ -1028,7 +1028,7 @@ auto spp::analyse::utils::monomorphization::CreateGnClsScope(
   // an instantiation rather than the template it was cloned from.
   auto new_ast = AstClone(AstAs<ClassPrototypeAst>(old_cls_scope->AstNode));
   new_ast->SetAstScope(new_cls_scope_ptr);
-  new_ast->GnParamGroup->Params.Clear();
+  new_ast->GnParamGroup->Params.clear();
   const auto new_ast_ptr = new_ast.get();
   old_cls_sym->Type->AddGnSubstitution({.InstanceScope = new_cls_scope_ptr, .Proto = std::move(new_ast)});
 
@@ -1184,7 +1184,7 @@ auto spp::analyse::utils::monomorphization::CreateGnSupScope(
 
   // A method's "$" mock was copied with the block's symbols, so the copy is linked to its own cloned scope, and given
   // the cloned "sup $M ext FunXxx" blocks, which read the function type with this instantiation's bindings.
-  for (auto i = 0uz; i < old_sup_scope.Children.Len() and i < new_sup_scope_ptr->Children.Len(); ++i) {
+  for (auto i = 0uz; i < old_sup_scope.Children.size() and i < new_sup_scope_ptr->Children.size(); ++i) {
     auto const &old_child = *old_sup_scope.Children[i];
     auto &new_child = *new_sup_scope_ptr->Children[i];
     if (old_child.LinkedTypeSymbol == nullptr or old_child.LinkedTypeSymbol->Kind != TypeKind::FnMock) { continue; }
@@ -1198,12 +1198,12 @@ auto spp::analyse::utils::monomorphization::CreateGnSupScope(
     if (ext == nullptr or not ext->Name->IsCompilerGeneratedType()) { continue; }
     if (auto *const mock = child->FindTypeSymbol(ext->Name.get()); mock != nullptr and mock->LinkedScope != nullptr
       and mock->LinkedScope->Parent == new_sup_scope_ptr) {
-      ScopeManager::NormalSupBlocks[mock].EmplaceBack(child.get());
+      ScopeManager::NormalSupBlocks[mock].emplace_back(child.get());
     }
   }
 
   // 2. Attach the instantiation to the scope tree, beside the template it was cloned from.
-  old_sup_scope.Parent->Children.EmplaceBack(std::move(new_sup_scope));
+  old_sup_scope.Parent->Children.emplace_back(std::move(new_sup_scope));
 
   // 3. Bind the generic parameters, against the instantiation itself.
   auto tm = ScopeManager(sm->GlobalScope, new_sup_scope_ptr);
@@ -1404,7 +1404,7 @@ auto spp::analyse::utils::monomorphization::EnqueueInstantiation(
   // registered against it in the meantime.
   if (fn_template == nullptr) { return; }
   if (not _Queued.insert(fn_template).second) { return; }
-  _Pending.EmplaceBack(fn_template);
+  _Pending.emplace_back(fn_template);
 }
 
 auto spp::analyse::utils::monomorphization::PopInstantiation()
@@ -1413,7 +1413,7 @@ auto spp::analyse::utils::monomorphization::PopInstantiation()
   // it here rather than leaving a spent cursor behind is what
   // lets a later compilation in the same process start from an
   // empty record.
-  if (_Cursor >= _Pending.Len()) {
+  if (_Cursor >= _Pending.size()) {
     ClearInstantiations();
     return nullptr;
   }
@@ -1428,7 +1428,7 @@ auto spp::analyse::utils::monomorphization::PopInstantiation()
 }
 
 auto spp::analyse::utils::monomorphization::ClearInstantiations() -> void {
-  _Pending.Clear();
+  _Pending.clear();
   _Queued.clear();
   _Cursor = 0uz;
 }

@@ -145,7 +145,7 @@ auto TypeUnaryExpressionAst::NsParts() const -> Vec<IdentifierAst const*> {
 
 auto TypeUnaryExpressionAst::NsParts() -> Vec<IdentifierAst*> {
   auto parts = Op->NsParts();
-  parts.AppendRange(Rhs->NsParts());
+  parts.append_range(Rhs->NsParts());
   return parts;
 }
 
@@ -157,7 +157,7 @@ auto TypeUnaryExpressionAst::TypeParts() const -> Vec<TypeIdentifierAst const*> 
 
 auto TypeUnaryExpressionAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   auto parts = Op->TypeParts();
-  parts.AppendRange(Rhs->TypeParts());
+  parts.append_range(Rhs->TypeParts());
   return parts;
 }
 

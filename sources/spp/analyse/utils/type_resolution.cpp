@@ -103,7 +103,7 @@ auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
   for (const auto arg : args) {
     if (arg->KeywordName() != nullptr) {
       const auto it = genex::find_if(params, [arg](auto const *param) { return *param->Name == *arg->KeywordName(); });
-      out.EmplaceBack(it != params.end() ? *it : nullptr);
+      out.emplace_back(it != params.end() ? *it : nullptr);
       continue;
     }
 
@@ -112,11 +112,11 @@ auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
     // type vs comp.
     const auto comp = arg->IsCompArg();
     auto &cursor = next[comp ? 1 : 0];
-    while (cursor < params.Len() and (params[cursor]->IsCompParam() != comp or taken_by_keyword(params[cursor]))) {
+    while (cursor < params.size() and (params[cursor]->IsCompParam() != comp or taken_by_keyword(params[cursor]))) {
       ++cursor;
     }
-    out.EmplaceBack(cursor < params.Len() ? params[cursor] : nullptr);
-    if (cursor < params.Len() and not params[cursor]->IsVariadic()) { ++cursor; }
+    out.emplace_back(cursor < params.size() ? params[cursor] : nullptr);
+    if (cursor < params.size() and not params[cursor]->IsVariadic()) { ++cursor; }
   }
   return out;
 }
@@ -216,7 +216,7 @@ auto spp::analyse::utils::type_resolution::StampTypeParts(
   // ("U8" here can be a "use" of it, or nothing).
   auto const *const part = type.LastTypePart();
   if (part == nullptr) { return; }
-  if (not part->GnArgGroup->Args.IsEmpty()) {
+  if (not part->GnArgGroup->Args.empty()) {
     // A name written with arguments has the template it instantiates at its head, whatever the arguments become. A
     // "use" of the template is an alias here, private to this module, so the head is the template it names.
     auto const *tmpl = scope.FindHeadSymbol(type);
@@ -298,11 +298,11 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
     const auto at = genex::find(targets, param);
     auto const *const given = at != targets.end() ? all_args[static_cast<std::size_t>(at - targets.begin())] : nullptr;
     if (given != nullptr and given->IsTypeArg()) {
-      out.EmplaceBack(GenericArgumentAst::NewType(param->Name, given->TypeVal));
+      out.emplace_back(GenericArgumentAst::NewType(param->Name, given->TypeVal));
       continue;
     }
     if (given != nullptr and given->IsCompArg()) {
-      out.EmplaceBack(GenericArgumentAst::NewComp(param->Name, AstCloneShared(given->CompVal)));
+      out.emplace_back(GenericArgumentAst::NewComp(param->Name, AstCloneShared(given->CompVal)));
       continue;
     }
 
@@ -313,10 +313,10 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
     if (param->IsTypeParam()) {
       auto type = ReadTypeDefault(*param, std::move(bindings), decl_scope, scope);
       if (type == nullptr) { return {}; }
-      out.EmplaceBack(GenericArgumentAst::NewType(param->Name, std::move(type)));
+      out.emplace_back(GenericArgumentAst::NewType(param->Name, std::move(type)));
     }
     else {
-      out.EmplaceBack(GenericArgumentAst::NewComp(
+      out.emplace_back(GenericArgumentAst::NewComp(
         param->Name, ReadCompDefault(*param, std::move(bindings), decl_scope, scope)));
     }
   }

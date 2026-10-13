@@ -30,7 +30,7 @@ auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
     const auto type_sym = sm.CurrentScope->FindTypeSymbol(expr.To<asts::TypeAst>());
     return type_sym != nullptr and (type_sym->IsZeroType()
       or (type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*type_sym, *sm.CurrentScope), *sm.CurrentScope)
-        and type_sym->TypeArgRefs().IsEmpty()));
+        and type_sym->TypeArgRefs().empty()));
   }
 
   // Only allow tokens when they're explicit allowed,
@@ -53,7 +53,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   // which branch is at fault.
   if (auto const *case_expr = member.To<CaseExpressionAst>()) {
     for (auto const &branch : case_expr->Branches) {
-      if (branch->Body == nullptr or branch->Body->Members.IsEmpty()) { continue; }
+      if (branch->Body == nullptr or branch->Body->Members.empty()) { continue; }
       ValidateDiscardedValue(*branch->Body->FinalMember(), branch->Body->GetAstScope(), sm, meta);
     }
     return;
@@ -61,7 +61,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
 
   // Same for a bare block, whose value is its final statement.
   if (auto const *block = member.To<InnerScopeExpressionAst>()) {
-    if (block->Members.IsEmpty()) { return; }
+    if (block->Members.empty()) { return; }
     ValidateDiscardedValue(*block->FinalMember(), block->GetAstScope(), sm, meta);
     return;
   }

@@ -44,7 +44,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   auto caller_values = Vec<Pair<VariableSymbol*, Unique<Ast>>>();
   const auto take_values = [&caller_values](auto const &self, Scope const &scope) -> void {
     for (auto *sym : scope.GetAllVarSymbols(true)) {
-      caller_values.EmplaceBack(sym, std::move(sym->CompTimeValue));
+      caller_values.emplace_back(sym, std::move(sym->CompTimeValue));
     }
     for (auto const &child : scope.Children) { self(self, *child); }
   };
@@ -54,7 +54,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
   for (auto const &[arg_name, arg_comp] : meta->CompTimeArgs) {
     const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
-    caller_values.EmplaceBack(arg_sym, std::move(arg_sym->CompTimeValue));
+    caller_values.emplace_back(arg_sym, std::move(arg_sym->CompTimeValue));
     arg_sym->CompTimeValue = AstClone(arg_comp);
   }
 

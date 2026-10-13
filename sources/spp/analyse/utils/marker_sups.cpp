@@ -49,9 +49,9 @@ namespace spp::analyse::utils::marker_sups {
       std::function<bool(TypeRef const&)> const &is_marker)
       -> Vec<TypeRef> {
       auto found = Vec<TypeRef>();
-      if (is_marker(ref)) { found.EmplaceBack(ref); }
+      if (is_marker(ref)) { found.emplace_back(ref); }
       for (auto const &sup : type_members::SuperClsRefs(ref, scope)) {
-        if (is_marker(sup)) { found.EmplaceBack(sup); }
+        if (is_marker(sup)) { found.emplace_back(sup); }
       }
       return found;
     }
@@ -128,7 +128,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   // If there are no Gen or GenOnce super types, then the
   // generator and yield type cannot be obtained, so either
   // throw an error or return nullptr.
-  if (generator_candidates.IsEmpty()) {
+  if (generator_candidates.empty()) {
     if (raise) {
       const auto type = spell();
       Raise<SppExpressionNotGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
@@ -139,7 +139,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   // If there are more than 1 Gen or GenOnce super types, then
   // the generator and yield types would be ambiguous, so either
   // throw an error or return nullptr.
-  if (generator_candidates.Len() > 1) {
+  if (generator_candidates.size() > 1) {
     if (raise) {
       const auto type = spell();
       Raise<SppExpressionAmbiguousGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
@@ -180,7 +180,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
   const auto done_ref = TypeRef::Of(*generate::common_types::GenDone(expr.PosStart()), scope);
   if (done_ref.Symbol == nullptr) { return; }
   auto members = VariantMemberRefs(yield_ref, scope);
-  if (members.IsEmpty()) { members.EmplaceBack(yield_ref); }
+  if (members.empty()) { members.emplace_back(yield_ref); }
 
   const auto holds_done = genex::any_of(
     members, [&](auto const &m) { return m.Symbol != nullptr and TypeEq(m, done_ref, scope, scope); });
@@ -209,7 +209,7 @@ auto spp::analyse::utils::marker_sups::FindTrySup(
 
   // If there are no Try super types, then the try type cannot
   // be obtained, so either throw an error or return nullptr.
-  if (try_type_candidates.IsEmpty()) {
+  if (try_type_candidates.empty()) {
     if (raise) {
       const auto type = spell();
       Raise<errors::SppExpressionNotTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type));
@@ -220,7 +220,7 @@ auto spp::analyse::utils::marker_sups::FindTrySup(
   // If there are more than 1 Try super types, then the Try
   // type would be ambiguous, so either throw an error or
   // return nullptr.
-  if (try_type_candidates.Len() > 1) {
+  if (try_type_candidates.size() > 1) {
     if (raise) {
       const auto type = spell();
       Raise<errors::SppExpressionAmbiguousTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type, what));
@@ -246,7 +246,7 @@ auto spp::analyse::utils::marker_sups::FindFwdSups(
   const auto self = ref.WithoutConvention();
   const auto first = [&](TypeAst const &marker) -> TypeRef {
     const auto found = FindMarkerSups(self, scope, [&](TypeRef const &t) { return t.IsA(marker, scope); });
-    return found.IsEmpty() ? TypeRef() : found[0];
+    return found.empty() ? TypeRef() : found[0];
   };
   return {first(*FWD_REF), first(*FWD_MUT)};
 }

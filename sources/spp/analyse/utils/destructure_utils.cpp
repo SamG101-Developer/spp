@@ -289,15 +289,15 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
     | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
     | genex::to<Vec>();
   RaiseIf<errors::SppMultipleRestPatternsError>(
-    multi_arg_skips.Len() > 1, {sm->CurrentScope},
+    multi_arg_skips.size() > 1, {sm->CurrentScope},
     ERR_ARGS(self, *multi_arg_skips[0], *multi_arg_skips[1]));
 
   // The value is of the destructure's kind, with as many elements as are written (fewer only with a "..").
   const auto val = meta->LetStatementValue;
   const auto val_type = val->InferType(sm, meta);
-  const auto num_lhs_elems = elems.Len();
+  const auto num_lhs_elems = elems.size();
   const auto num_rhs_elems = shape.CheckAndCount(*val, val_type);
-  if ((num_lhs_elems < num_rhs_elems and multi_arg_skips.IsEmpty()) or num_lhs_elems > num_rhs_elems) {
+  if ((num_lhs_elems < num_rhs_elems and multi_arg_skips.empty()) or num_lhs_elems > num_rhs_elems) {
     shape.RaiseSizeMismatch(num_lhs_elems, *val, num_rhs_elems);
   }
 
@@ -320,22 +320,22 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // Elements before the skip keep their own position; elements after it are counted back from the end of the value
   // (there are "num_lhs_elems - skip_index - 1" of them), not forward from "num_lhs_elems", which would over-count by
   // the (unindexed) skip slot itself.
-  const auto skip_index = not multi_arg_skips.IsEmpty()
+  const auto skip_index = not multi_arg_skips.empty()
     ? genex::position(elems | genex::views::ptr, [&](auto const &x) { return x == multi_arg_skips[0]; }).value()
-    : elems.Len() - 1;
+    : elems.size() - 1;
 
   // A bound ".." ("let [a, ..b, c] = t") collects what it skips.
   auto bound_multi_skip = Unique<ExpressionAst>(nullptr);
-  if (not multi_arg_skips.IsEmpty() and multi_arg_skips[0]->Binding != nullptr) {
+  if (not multi_arg_skips.empty() and multi_arg_skips[0]->Binding != nullptr) {
     auto skipped = Vec<Unique<ExpressionAst>>();
     for (auto i = skip_index; i < skip_index + num_rhs_elems - num_lhs_elems + 1; ++i) {
-      skipped.EmplaceBack(index_of(i));
+      skipped.emplace_back(index_of(i));
     }
     bound_multi_skip = shape.MakeRest(std::move(skipped));
   }
 
   auto indexes = genex::views::iota(0uz, skip_index + 1uz) | genex::to<Vec>();
-  indexes.AppendRange(
+  indexes.append_range(
     genex::views::iota(num_rhs_elems - num_lhs_elems + skip_index + 1uz, num_rhs_elems) | genex::to<Vec>());
 
   // One "let" per element; a skip ("_", or an unbound "..") converts to nothing.
@@ -343,7 +343,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
     auto new_ast = MakeUnique<LetStatementInitializedAst>(nullptr, std::move(var), nullptr, nullptr, std::move(value));
     if (from_case_pattern) { new_ast->Var->MarkFromCasePattern(); }
     new_ast->Stage7_AnalyseSemantics(sm, meta);
-    new_asts.EmplaceBack(std::move(new_ast));
+    new_asts.emplace_back(std::move(new_ast));
   };
   for (auto const &[i, elem] : genex::views::zip(indexes, elems | genex::views::ptr)) {
     if (const auto rest = elem->To<LocalVariableDestructureSkipMultipleArgumentsAst>(); rest != nullptr) {

@@ -29,7 +29,7 @@ sup Bool ext Copy { }
 
     // The context block comes first, as it does in the printed error, and the error's own block is the primary
     // label an editor underlines.
-    ASSERT_EQ(diagnostic.Labels.Len(), 2u);
+    ASSERT_EQ(diagnostic.Labels.size(), 2u);
     auto const &context = diagnostic.Labels[0];
     auto const &primary = diagnostic.Labels[1];
 
@@ -127,14 +127,14 @@ fun third() -> Void {
     const auto diagnostic = spp::lsp::DiagnosticFrom(error);
     EXPECT_EQ(diagnostic.Code, "E26");
     for (auto const &label : diagnostic.Labels) {
-      if (label.Primary) { lines.EmplaceBack(label.Span.StartLine); }
+      if (label.Primary) { lines.emplace_back(label.Span.StartLine); }
     }
   }
 
   // One per function, wherever in the file they sit; the order they were raised in follows stage 1's lowering
   // rather than the source, so the lines are compared as a set.
   lines |= genex::actions::sort;
-  ASSERT_EQ(lines.Len(), 3u);
+  ASSERT_EQ(lines.size(), 3u);
   EXPECT_EQ(lines[0], 3u);
   EXPECT_EQ(lines[1], 7u);
   EXPECT_EQ(lines[2], 11u);
@@ -152,7 +152,7 @@ fun only_one() -> Void {
 }
 )");
 
-  EXPECT_EQ(spp::analyse::errors::diagnostic_sink::Collected().Len(), 1u);
+  EXPECT_EQ(spp::analyse::errors::diagnostic_sink::Collected().size(), 1u);
 }
 
 TEST(MscJsonDiagnostics, test_a_clean_module_recovers_nothing) {
@@ -202,12 +202,12 @@ sup Derived ext Base {
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
     const auto diagnostic = spp::lsp::DiagnosticFrom(error);
     for (auto const &label : diagnostic.Labels) {
-      if (label.Primary) { found.EmplaceBack(diagnostic.Code, label.Span.StartLine); }
+      if (label.Primary) { found.emplace_back(diagnostic.Code, label.Span.StartLine); }
     }
   }
 
   found |= genex::actions::sort;
-  ASSERT_EQ(found.Len(), 3u);
+  ASSERT_EQ(found.size(), 3u);
   EXPECT_EQ(found[0], std::make_pair(spp::Str("E45"), 10uz));
   EXPECT_EQ(found[1], std::make_pair(spp::Str("E45"), 12uz));
   EXPECT_EQ(found[2], std::make_pair(spp::Str("E62"), 25uz));
@@ -240,9 +240,9 @@ fun second(h: &Holder) -> Void { }
 
   auto codes = spp::Vec<spp::Str>();
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
-    codes.EmplaceBack(spp::lsp::DiagnosticFrom(error).Code);
+    codes.emplace_back(spp::lsp::DiagnosticFrom(error).Code);
   }
-  ASSERT_EQ(codes.Len(), 1u);
+  ASSERT_EQ(codes.size(), 1u);
   EXPECT_EQ(codes[0], "E62");
 }
 
@@ -270,9 +270,9 @@ fun second(h: &Holder) -> Void { }
 
   auto codes = spp::Vec<spp::Str>();
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
-    codes.EmplaceBack(spp::lsp::DiagnosticFrom(error).Code);
+    codes.emplace_back(spp::lsp::DiagnosticFrom(error).Code);
   }
-  ASSERT_EQ(codes.Len(), 2u);
+  ASSERT_EQ(codes.size(), 2u);
   EXPECT_EQ(codes[0], "E45");
   EXPECT_EQ(codes[1], "E45");
 }
@@ -301,12 +301,12 @@ fun second(flag: Bool) -> Res[Handle, Bool] {
   for (auto const &error : spp::analyse::errors::diagnostic_sink::Collected()) {
     const auto diagnostic = spp::lsp::DiagnosticFrom(error);
     for (auto const &label : diagnostic.Labels) {
-      if (label.Primary) { found.EmplaceBack(diagnostic.Code, label.Span.StartLine); }
+      if (label.Primary) { found.emplace_back(diagnostic.Code, label.Span.StartLine); }
     }
   }
 
   found |= genex::actions::sort;
-  ASSERT_EQ(found.Len(), 2u);
+  ASSERT_EQ(found.size(), 2u);
   EXPECT_EQ(found[0].first, "E94");
   EXPECT_EQ(found[1].first, "E94");
   EXPECT_LT(found[0].second, found[1].second);
@@ -631,7 +631,7 @@ fun probe() -> Void {
   auto const &signatures = spp::lsp::resolution_index::GetAllSignatures();
   const auto call = genex::find_if(signatures, [](auto const &s) { return s.Name == "shifted"; });
   ASSERT_NE(call, signatures.end()) << "the call was not recorded";
-  ASSERT_EQ(call->Params.Len(), 2u);
+  ASSERT_EQ(call->Params.size(), 2u);
   EXPECT_EQ(call->Params[0].Name, "base");
   EXPECT_EQ(call->Params[1].Name, "by");
   EXPECT_FALSE(call->Arguments.Generated);

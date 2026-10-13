@@ -248,13 +248,13 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     // and store/load.
     if (llvm::isa<llvm::Constant>(llvm_rt_elem)) {
       auto llvm_ct_elems = Vec<llvm::Constant*>{};
-      llvm_ct_elems.Reserve(n);
+      llvm_ct_elems.reserve(n);
       for (auto i = 0uz; i < n; ++i) {
         const auto llvm_ct_elem = llvm::cast<llvm::Constant>(llvm_rt_elem);
-        llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+        llvm_ct_elems.emplace_back(llvm_ct_elem);
       }
       return llvm::ConstantArray::get(
-        llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
+        llvm_rt_arr_ty, llvm_ct_elems);
     }
 
     // Allocate the array into the enclosing function
@@ -305,11 +305,11 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
     // using the llvm constant array creation, reusing
     // the same constant for every slot.
     auto llvm_ct_elems = Vec<llvm::Constant*>{};
-    llvm_ct_elems.Reserve(n);
-    for (auto i = 0uz; i < n; ++i) { llvm_ct_elems.EmplaceBack(llvm_ct_elem); }
+    llvm_ct_elems.reserve(n);
+    for (auto i = 0uz; i < n; ++i) { llvm_ct_elems.emplace_back(llvm_ct_elem); }
 
     const auto arr_alloc = llvm::ConstantArray::get(
-      llvm_ct_arr_ty, llvm_ct_elems.ToStdVector());
+      llvm_ct_arr_ty, llvm_ct_elems);
     return arr_alloc;
   }
 }

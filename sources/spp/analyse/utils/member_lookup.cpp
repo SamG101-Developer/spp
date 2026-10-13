@@ -28,7 +28,7 @@ namespace spp::analyse::utils::member_lookup {
       // Build a vector of the type scope and all of its super scopes
       // (of any level).
       auto scopes = Vec{&type_scope};
-      scopes.AppendRange(type_scope.GetSupScopes());
+      scopes.append_range(type_scope.GetSupScopes());
 
       // If we discover the symbol within the scope, keep it, otherwise
       // discard. We are left only with the scopes that found contain
@@ -36,7 +36,7 @@ namespace spp::analyse::utils::member_lookup {
       auto out = Vec<Entry>();
       for (const auto scope : scopes) {
         if (const auto sym = lookup(*scope, name); sym != nullptr) {
-          out.EmplaceBack(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
+          out.emplace_back(Entry{.Depth = type_scope.DepthDiff(scope), .Where = scope, .Symbol = sym});
         }
       }
       return out;
@@ -49,7 +49,7 @@ namespace spp::analyse::utils::member_lookup {
       // Find the minimum depth from all the provided info
       // blocks. This is the depth that must be unique for
       // a non-ambiguous lookup.
-      if (candidates.IsEmpty()) { return {}; }
+      if (candidates.empty()) { return {}; }
       auto min_depth = candidates[0].Depth;
       for (auto const &c : candidates) { min_depth = std::min(min_depth, c.Depth); }
 
@@ -58,7 +58,7 @@ namespace spp::analyse::utils::member_lookup {
       // scopes, and we check the count for an error later.
       auto out = Vec<Entry>();
       for (auto const &c : candidates) {
-        if (c.Depth == min_depth) { out.EmplaceBack(c); }
+        if (c.Depth == min_depth) { out.emplace_back(c); }
       }
       return out;
     }
@@ -73,7 +73,7 @@ namespace spp::analyse::utils::member_lookup {
       // Otherwise, there is an ambiguity, so raise an
       // error.
       using errors::SppAmbiguousMemberAccessError;
-      if (closest.Len() <= 1) { return; }
+      if (closest.size() <= 1) { return; }
       Raise<SppAmbiguousMemberAccessError>(
         {closest[0].Where, closest[1].Where, sm.CurrentScope},
         ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
@@ -156,7 +156,7 @@ auto spp::analyse::utils::member_lookup::MembersReachableBy(
   const MemberAccessForm form) -> Vec<DeclaringVarScope> {
   auto out = Vec<DeclaringVarScope>();
   for (auto const &candidate : candidates) {
-    if (MemberReachableBy(*candidate.Symbol, form)) { out.EmplaceBack(candidate); }
+    if (MemberReachableBy(*candidate.Symbol, form)) { out.emplace_back(candidate); }
   }
   return out;
 }
@@ -169,7 +169,7 @@ auto spp::analyse::utils::member_lookup::MemberOf(
   const auto found = type_scope.FindVarSymbol(&name, true);
   if (found == nullptr or MemberReachableBy(*found, form)) { return found; }
   const auto closest = ClosestMembers(type_scope, name, form);
-  return closest.IsEmpty() ? found : closest[0].Symbol;
+  return closest.empty() ? found : closest[0].Symbol;
 }
 
 auto spp::analyse::utils::member_lookup::ClosestMembers(

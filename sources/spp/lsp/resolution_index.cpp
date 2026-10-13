@@ -89,7 +89,7 @@ namespace spp::lsp::resolution_index {
         const auto ext = AstAs<SupPrototypeExtensionAst>(overload->AstNode);
         if (ext == nullptr) { continue; }
         const auto body = AstBody(ext);
-        const auto proto = not body.IsEmpty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
+        const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
         if (proto == nullptr or proto->FnParamGroup == nullptr or proto->ReturnType == nullptr) { continue; }
 
         // Manual stringification because ToString() leaves in the
@@ -99,7 +99,7 @@ namespace spp::lsp::resolution_index {
         for (auto const &param : proto->FnParamGroup->Params) {
           params += (params.length() > 1 ? ", " : "") + param->ToString();
         }
-        signatures.EmplaceBack(params + ") -> " + proto->ReturnType->ToString());
+        signatures.emplace_back(params + ") -> " + proto->ReturnType->ToString());
       }
       return signatures;
     }
@@ -137,13 +137,13 @@ namespace spp::lsp::resolution_index {
       // The current namespace part and all parent scopes up to the root.
       auto parts = Vec<Str>();
       for (auto const *scope : sym.LinkedScope->GetAncestors()) {
-        parts.EmplaceBack(scope->LinkedNamespaceSymbol->Name->ToString());
+        parts.emplace_back(scope->LinkedNamespaceSymbol->Name->ToString());
       }
 
       // Join all the parts into a "::"-joined string, leaving
       // the "_global" root part. Todo: Move to a constant.
       auto path = Str();
-      for (auto i = parts.Len(); i > 0; --i) {
+      for (auto i = parts.size(); i > 0; --i) {
         if (parts[i - 1] == "_global") { continue; }
         path += (path.empty() ? "" : "::") + parts[i - 1];
       }
@@ -270,7 +270,7 @@ namespace spp::lsp::resolution_index {
         auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
         if (not seen.insert(std::move(key)).second) { continue; }
 
-        members.EmplaceBack(Member{
+        members.emplace_back(Member{
           .Name = std::move(name),
           .Kind = KindOf(*sym),
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
@@ -291,7 +291,7 @@ namespace spp::lsp::resolution_index {
         auto key = KeyOf("type", name);
         if (not seen.insert(std::move(key)).second) { continue; }
 
-        members.EmplaceBack(Member{
+        members.emplace_back(Member{
           .Name = std::move(name),
           .Kind = "type",
           .Type = Str(),
@@ -323,7 +323,7 @@ namespace spp::lsp::resolution_index {
         auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
         if (not seen.insert(std::move(key)).second) { continue; }
 
-        members.EmplaceBack(Member{
+        members.emplace_back(Member{
           .Name = std::move(name),
           .Kind = KindOf(*sym),
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
@@ -344,7 +344,7 @@ namespace spp::lsp::resolution_index {
         auto key = KeyOf("type", name);
         if (not seen.insert(std::move(key)).second) { continue; }
 
-        members.EmplaceBack(Member{
+        members.emplace_back(Member{
           .Name = std::move(name),
           .Kind = "type",
           .Type = Str(),
@@ -357,7 +357,7 @@ namespace spp::lsp::resolution_index {
       // which are reachable like "namespace::inner_ns".
       for (const auto sym : ns_scope.GetAllNsSymbols(true)) {
         if (sym == nullptr or sym->Name == nullptr) { continue; }
-        members.EmplaceBack(Member{
+        members.emplace_back(Member{
           .Name = sym->Name->ToString(),
           .Kind = "namespace",
           .Type = Str(),
@@ -376,7 +376,7 @@ namespace spp::lsp::resolution_index {
       if (entry.Use.Generated or not Wants(entry.Use.File)) { return; }
       auto key = KeyOfSpan("use", entry.Use) + KeyOf(entry.Kind, entry.Name);
       if (not Current().Seen.insert(std::move(key)).second) { return; }
-      Current().Entries.EmplaceBack(std::move(entry));
+      Current().Entries.emplace_back(std::move(entry));
     }
 
     /// Keep what a call resolved to, so that the names between its
@@ -397,7 +397,7 @@ namespace spp::lsp::resolution_index {
       auto signature = Signature{
         .Arguments = std::move(span), .Name = std::move(name), .Params = std::move(params)
       };
-      Current().Signatures.EmplaceBack(std::move(signature));
+      Current().Signatures.emplace_back(std::move(signature));
     }
 
     /// Get a list of the members of the type, push it into the
@@ -410,7 +410,7 @@ namespace spp::lsp::resolution_index {
       if (owner.empty() or not WantsMembersYet(meta) or not type_scope.SupsAttached) { return; }
       if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
       auto members = MembersOfTypeScope(type_scope, sm, meta);
-      Current().Members.EmplaceBack(MemberList{
+      Current().Members.emplace_back(MemberList{
         .Owner = std::move(owner), .Of = "type", .Members = std::move(members)
       });
     }
@@ -426,7 +426,7 @@ namespace spp::lsp::resolution_index {
       if (owner.empty() or not WantsMembersYet(meta)) { return; }
       if (not Current().SeenOwners.insert(KeyOf("ns", owner)).second) { return; }
       auto members = MembersOfNamespaceScope(ns_scope, sm, meta);
-      Current().Members.EmplaceBack(MemberList{
+      Current().Members.emplace_back(MemberList{
         .Owner = std::move(owner), .Of = "namespace", .Members = std::move(members)
       });
     }
@@ -479,7 +479,7 @@ auto spp::lsp::resolution_index::EnableFiles(
   -> void {
   // Tell the state to keep the files if there are any,
   // otherwise nothing is being kept. Store the file list.
-  Current().Where = files.IsEmpty() ? Kept::None : Kept::Files;
+  Current().Where = files.empty() ? Kept::None : Kept::Files;
   Current().Files = std::move(files);
 }
 
@@ -495,7 +495,7 @@ auto spp::lsp::resolution_index::Disable()
   // Tell the state to not maintain indexes, and clear
   // the file list.
   Current().Where = Kept::None;
-  Current().Files.Clear();
+  Current().Files.clear();
 }
 
 auto spp::lsp::resolution_index::IsEnabled()
@@ -720,7 +720,7 @@ auto spp::lsp::resolution_index::RecordFnCallArguments(
   for (auto const &param : params) {
     const auto param_name = param->ExtractName();
     if (param_name == nullptr) { continue; }
-    taken.EmplaceBack(Member{
+    taken.emplace_back(Member{
       .Name = param_name->ToString(),
       .Kind = "parameter",
       .Type = param->Type != nullptr ? param->Type->ToString() : Str(),
@@ -781,7 +781,7 @@ auto spp::lsp::resolution_index::RecordCompTimeValue(
   }
 
   // Store the value into the state too.
-  Current().Values.EmplaceBack(CompTimeValue{
+  Current().Values.emplace_back(CompTimeValue{
     .Where = std::move(where), .Name = name.ToString(), .Value = std::move(value)
   });
 }
@@ -807,7 +807,7 @@ auto spp::lsp::resolution_index::RecordScopeOf(
     if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
     auto name = sym->Name->ToString();
     if (not seen.insert(KeyOf("var", name)).second) { continue; }
-    names.EmplaceBack(Member{
+    names.emplace_back(Member{
       .Name = std::move(name),
       .Kind = KindOf(*sym),
       .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
@@ -820,12 +820,12 @@ auto spp::lsp::resolution_index::RecordScopeOf(
     if (sym == nullptr or not IsWritableTypeName(*sym, true)) { continue; }
     auto name = sym->Name->ToString();
     if (not seen.insert(KeyOf("type", name)).second) { continue; }
-    names.EmplaceBack(Member{.Name = std::move(name), .Kind = "type", .Type = Str(), .Definition = {}});
+    names.emplace_back(Member{.Name = std::move(name), .Kind = "type", .Type = Str(), .Definition = {}});
   }
 
   // Store all the members against the span being tracked.
-  if (names.IsEmpty()) { return; }
-  Current().Scopes.EmplaceBack(
+  if (names.empty()) { return; }
+  Current().Scopes.emplace_back(
     NamesInScope{.Where = std::move(where), .Names = std::move(names)});
 }
 
@@ -861,14 +861,14 @@ auto spp::lsp::resolution_index::GetAllScopes()
 
 auto spp::lsp::resolution_index::Clear()
   -> void {
-  Current().Entries.Clear();
+  Current().Entries.clear();
   Current().Seen.clear();
-  Current().Members.Clear();
+  Current().Members.clear();
   Current().SeenOwners.clear();
-  Current().Signatures.Clear();
+  Current().Signatures.clear();
   Current().SeenCalls.clear();
-  Current().Scopes.Clear();
+  Current().Scopes.clear();
   Current().SeenScopes.clear();
-  Current().Values.Clear();
+  Current().Values.clear();
   Current().SeenValues.clear();
 }

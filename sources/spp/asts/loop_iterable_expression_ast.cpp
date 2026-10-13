@@ -170,17 +170,17 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   auto case_valid_branch = [&] {
     auto ignore_fields = MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(nullptr, nullptr);
     auto case_type_pattern = CasePatternVariantDestructureObjectAst::FromType(yield_type);
-    case_type_pattern->Elems.EmplaceBack(std::move(ignore_fields));
+    case_type_pattern->Elems.emplace_back(std::move(ignore_fields));
 
     auto is_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_IS, "is");
     auto patterns = Vec<Unique<CasePatternVariantAst>>();
-    patterns.EmplaceBack(std::move(case_type_pattern));
+    patterns.emplace_back(std::move(case_type_pattern));
 
     // Destructure the "$_res" variable into parts defined in
     // "loop (v1, v2) in ..."
     auto let_stmt = MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(Var), nullptr, nullptr, AstClone(resume_name));
-    Body->Members.Insert(Body->Members.begin(), std::move(let_stmt));
+    Body->Members.insert(Body->Members.begin(), std::move(let_stmt));
     return MakeUnique<CaseExpressionBranchAst>(
       std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
   }();
@@ -199,15 +199,15 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
 
     auto flag_clear_lhs = Vec<Unique<ExpressionAst>>();
     auto flag_clear_rhs = Vec<Unique<ExpressionAst>>();
-    flag_clear_lhs.EmplaceBack(AstClone(flag_name));
-    flag_clear_rhs.EmplaceBack(BooleanLiteralAst::False(PosStart()));
+    flag_clear_lhs.emplace_back(AstClone(flag_name));
+    flag_clear_rhs.emplace_back(BooleanLiteralAst::False(PosStart()));
     auto flag_clear = MakeUnique<AssignmentStatementAst>(
       std::move(flag_clear_lhs), nullptr, std::move(flag_clear_rhs));
 
     auto is_tok = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_IS, "is");
     auto patterns = Vec<Unique<CasePatternVariantAst>>();
-    patterns.EmplaceBack(std::move(case_else_pattern));
-    case_else_body->Members.EmplaceBack(std::move(flag_clear));
+    patterns.emplace_back(std::move(case_else_pattern));
+    case_else_body->Members.emplace_back(std::move(flag_clear));
     return MakeUnique<CaseExpressionBranchAst>(
       std::move(is_tok), std::move(patterns), nullptr, std::move(case_else_body));
   }();
@@ -215,8 +215,8 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   // Case block to handle the resume value.
   auto case_expr = [&] {
     auto case_branches = Vec<Unique<CaseExpressionBranchAst>>();
-    case_branches.EmplaceBack(std::move(case_valid_branch));
-    case_branches.EmplaceBack(std::move(case_else_branch));
+    case_branches.emplace_back(std::move(case_valid_branch));
+    case_branches.emplace_back(std::move(case_else_branch));
     return MakeUnique<CaseExpressionAst>(
       nullptr, AstClone(resume_name), nullptr, std::move(case_branches));
   }();
@@ -228,8 +228,8 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
     return MakeUnique<LoopConditionalExpressionAst>(
       nullptr, std::move(cond), nullptr, std::move(ElseBlock));
   }();
-  loop_new->Body->Members.EmplaceBack(std::move(resume_let));
-  loop_new->Body->Members.EmplaceBack(std::move(case_expr));
+  loop_new->Body->Members.emplace_back(std::move(resume_let));
+  loop_new->Body->Members.emplace_back(std::move(case_expr));
   loop_new->MarkAsIterDesugar();
   _TransformedLoop = std::move(loop_new);
 
@@ -240,7 +240,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   // "std::mem::ops::drop($_iter)".
   const auto drop_iter = [&]() -> Unique<ExpressionAst> {
     auto args = Vec<Unique<FunctionCallArgumentAst>>();
-    args.EmplaceBack(MakeUnique<FunctionCallArgumentPositionalAst>(
+    args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
       nullptr, nullptr, AstClone(iterable_name)));
     auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
       nullptr, MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);

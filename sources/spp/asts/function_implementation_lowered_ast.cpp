@@ -68,7 +68,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
     "std.intrinsics.float_div", "std.intrinsics.float_div_assign",
     "std.intrinsics.float_rem", "std.intrinsics.float_rem_assign",
   };
-  if (not genex::contains(dividing_builtins, _ScopePtr) or args.Len() < 2) { return; }
+  if (not genex::contains(dividing_builtins, _ScopePtr) or args.size() < 2) { return; }
 
   // The divisor has already been resolved to a literal, so
   // whether it is zero is known here.
@@ -100,7 +100,7 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
     "std.intrinsics.bit_shl", "std.intrinsics.bit_shl_assign",
     "std.intrinsics.bit_shr", "std.intrinsics.bit_shr_assign",
   };
-  if (not genex::contains(shifting_builtins, _ScopePtr) or args.Len() < 2) { return; }
+  if (not genex::contains(shifting_builtins, _ScopePtr) or args.size() < 2) { return; }
 
   const auto value = args[0]->To<IntegerLiteralAst>();
   const auto amount = args[1]->To<IntegerLiteralAst>();
@@ -134,7 +134,7 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
   for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
-    extracted_args.EmplaceBack(std::move(arg));
+    extracted_args.emplace_back(std::move(arg));
   }
 
   // A byte literal is a "U8", but it arrives as the char

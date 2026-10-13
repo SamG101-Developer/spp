@@ -135,7 +135,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgRefs().Len();
+    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgRefs().size();
     if (rhs_num_elems < 2) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>(
@@ -150,7 +150,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
         AstClone(Rhs),
         MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
       new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.EmplaceBack(std::move(new_ast));
+      new_asts.emplace_back(std::move(new_ast));
     }
 
     // Convert "t = (0, 1, 2, 3)", ".. + t" into
@@ -181,7 +181,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     // Get the parts of the tuple, and check there are at
     // minimum 2 elements in the tuple.
-    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().Len();
+    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().size();
     if (lhs_num_elems < 2) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
@@ -194,13 +194,13 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
         AstClone(Lhs),
         MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
       new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.EmplaceBack(std::move(new_ast));
+      new_asts.emplace_back(std::move(new_ast));
     }
 
     // Convert "t = (0, 1, 2, 3)", "t + .." into
     // "(t.0 + (t.1 + (t.2 + t.3)))".
-    Lhs = std::move(new_asts[new_asts.Len() - 2]);
-    Rhs = std::move(new_asts[new_asts.Len() - 1]);
+    Lhs = std::move(new_asts[new_asts.size() - 2]);
+    Rhs = std::move(new_asts[new_asts.size() - 1]);
     for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
       Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
       Lhs = std::move(new_ast);
@@ -235,11 +235,11 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       // What an "is" on the left binds holds on the right of an
       // "and" (the match succeeded), but not of an "or" - the right
       // only runs when it failed.
-      const auto bound_before = meta->AddedIsBindings.Len();
+      const auto bound_before = meta->AddedIsBindings.size();
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       if (TokOp->TokenType == lex::SppTokenType::KW_OR) {
-        for (auto i = bound_before; i < meta->AddedIsBindings.Len(); ++i) {
-          meta->ExpiredIsBindings.EmplaceBack(meta->AddedIsBindings[i]);
+        for (auto i = bound_before; i < meta->AddedIsBindings.size(); ++i) {
+          meta->ExpiredIsBindings.emplace_back(meta->AddedIsBindings[i]);
         }
       }
       Rhs->Stage7_AnalyseSemantics(sm, meta);
@@ -433,8 +433,8 @@ auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, Express
   auto const *const call = _MappedFn->Op->To<PostfixExpressionOperatorFunctionCallAst>();
   if (call == nullptr) { return {nullptr, nullptr}; }
   auto const &args = call->FnArgGroup->Args;
-  if (args.Len() == 2) { return {args[0]->Val.get(), args[1]->Val.get()}; }
-  if (args.Len() == 1 and access != nullptr and access->Lhs != nullptr) { return {access->Lhs.get(), args[0]->Val.get()}; }
+  if (args.size() == 2) { return {args[0]->Val.get(), args[1]->Val.get()}; }
+  if (args.size() == 1 and access != nullptr and access->Lhs != nullptr) { return {access->Lhs.get(), args[0]->Val.get()}; }
   return {nullptr, nullptr};
 }
 

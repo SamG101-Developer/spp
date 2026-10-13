@@ -48,12 +48,12 @@ GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
 auto GenericParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Params.IsEmpty() ? 0 : Params.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Params.empty() ? 0 : Params.front()->PosStart();
 }
 
 auto GenericParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Params.IsEmpty() ? 0 : Params.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Params.empty() ? 0 : Params.back()->PosEnd();
 }
 
 auto GenericParameterGroupAst::Clone() const -> Unique<Ast> {
@@ -66,7 +66,7 @@ auto GenericParameterGroupAst::Clone() const -> Unique<Ast> {
 
 auto GenericParameterGroupAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (not Params.IsEmpty()) {
+  if (not Params.empty()) {
     SPP_STRING_APPEND_RAW("[");
     SPP_STRING_EXTEND(Params, ", ");
     SPP_STRING_APPEND_RAW("]");
@@ -121,10 +121,10 @@ auto GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParam
         nullptr, nullptr, AstClone(p->Name), AstClone(p->TypeConstraints),
         nullptr, AstClone(p->CompType), nullptr, nullptr, nullptr);
       required->ShareParamId(*p);
-      new_params.EmplaceBack(std::move(required));
+      new_params.emplace_back(std::move(required));
     }
     else {
-      new_params.EmplaceBack(AstClone(p));
+      new_params.emplace_back(AstClone(p));
     }
   }
 
@@ -151,7 +151,7 @@ auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicate_names.IsEmpty(), {sm->CurrentScope},
+    not duplicate_names.empty(), {sm->CurrentScope},
     ERR_ARGS(*duplicate_names[0], *duplicate_names[1], "generic parameter"));
 
   // Run the generation steps on the parameters in the group.
@@ -178,7 +178,7 @@ auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
       const auto constraint_sym = sm->CurrentScope->FindTypeSymbol(constraint.get());
       for (auto const &dummy_scope : p->GetDummyScopes()) {
         BumpTypeStructureGeneration();
-        dummy_scope->DirectSupScopes.EmplaceBack(constraint_sym->LinkedScope);
+        dummy_scope->DirectSupScopes.emplace_back(constraint_sym->LinkedScope);
       }
     }
 
@@ -215,7 +215,7 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
-    not unordered_params.IsEmpty(), {sm->CurrentScope},
+    not unordered_params.empty(), {sm->CurrentScope},
     ERR_ARGS(
       unordered_params[0].first, *unordered_params[0].second,
       unordered_params[1].first, *unordered_params[1].second));

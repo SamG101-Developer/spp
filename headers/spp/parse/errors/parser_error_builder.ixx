@@ -73,7 +73,7 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
       auto name = TokenTypeForMessage(token);
       if (name.empty()) { continue; }
       if (genex::contains(token_names, name)) { continue; }
-      token_names.EmplaceBack(std::move(name));
+      token_names.emplace_back(std::move(name));
     }
     token_names |= genex::actions::sort;
 

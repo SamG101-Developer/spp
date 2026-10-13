@@ -39,7 +39,7 @@ auto spp::analyse::errors::diagnostic_sink::IsEnabled() -> bool {
 auto spp::analyse::errors::diagnostic_sink::Report(
   SemanticError const &error, Ast const *const member) -> void {
   // Add the error into the list, and poison the member.
-  Current().Errors.EmplaceBack(error);
+  Current().Errors.emplace_back(error);
   if (member != nullptr) { Current().Poisoned.insert(member); }
 }
 
@@ -59,10 +59,10 @@ auto spp::analyse::errors::diagnostic_sink::HasErrors()
   -> bool {
   // If the errors list is not empty, 1 or more have been
   // raised.
-  return not Current().Errors.IsEmpty();
+  return not Current().Errors.empty();
 }
 
 auto spp::analyse::errors::diagnostic_sink::Clear() -> void {
-  Current().Errors.Clear();
+  Current().Errors.clear();
   Current().Poisoned.clear();
 }

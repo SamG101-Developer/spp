@@ -26,8 +26,8 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
   using errors::SppSuperimpositionUnconstrainedGenericParameterError;
   const auto optional = params.GetOptionalParams();
   RaiseIf<SppSuperimpositionOptionalGenericParameterError>(
-    not optional.IsEmpty(), {sm.CurrentScope}, ERR_ARGS(*optional[0]));
-  if (naming_types.IsEmpty()) { return; }
+    not optional.empty(), {sm.CurrentScope}, ERR_ARGS(*optional[0]));
+  if (naming_types.empty()) { return; }
 
   const auto unconstrained = params.GetAllParams()
     | genex::views::filter([&](auto const *param) {
@@ -37,7 +37,7 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
     })
     | genex::to<Vec>();
   RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
-    not unconstrained.IsEmpty(), {sm.CurrentScope}, ERR_ARGS(*unconstrained[0]));
+    not unconstrained.empty(), {sm.CurrentScope}, ERR_ARGS(*unconstrained[0]));
 }
 
 auto spp::analyse::utils::sup_blocks::RegisterSelf(
@@ -86,8 +86,8 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
   const auto base_sym = sm.CurrentScope->FindHeadSymbol(*name);
   if (sm.CurrentScope->Parent == sm.CurrentScope->GetParentModule()
     or (files_nested_mock and name->IsCompilerGeneratedType())) {
-    if (not base_sym->IsGn()) { ScopeManager::NormalSupBlocks[base_sym].EmplaceBack(sm.CurrentScope); }
-    else { ScopeManager::GnSupBlocks.EmplaceBack(sm.CurrentScope); }
+    if (not base_sym->IsGn()) { ScopeManager::NormalSupBlocks[base_sym].emplace_back(sm.CurrentScope); }
+    else { ScopeManager::GnSupBlocks.emplace_back(sm.CurrentScope); }
   }
 
   RegisterSelf(*name, sm);

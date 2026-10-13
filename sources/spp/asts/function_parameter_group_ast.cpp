@@ -36,12 +36,12 @@ FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
 auto FunctionParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "(" token.
-  return TokL != nullptr ? TokL->PosStart() : Params.IsEmpty() ? 0 : Params.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Params.empty() ? 0 : Params.front()->PosStart();
 }
 
 auto FunctionParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
-  return TokR != nullptr ? TokR->PosEnd() : Params.IsEmpty() ? 0 : Params.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Params.empty() ? 0 : Params.back()->PosEnd();
 }
 
 auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
@@ -89,22 +89,22 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 
   // Check there is only 1 "self" parameter.
   RaiseIf<SppMultipleSelfParametersError>(
-    self_params.Len() > 1, {sm->CurrentScope},
+    self_params.size() > 1, {sm->CurrentScope},
     ERR_ARGS(*self_params[0], *self_params[1]));
 
   // Check there is only 1 variadic parameter, and it is last.
   RaiseIf<SppMultipleVariadicParametersError>(
-    variadic_params.Len() > 1, {sm->CurrentScope},
+    variadic_params.size() > 1, {sm->CurrentScope},
     ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
   // Check there are no duplicate parameter names.
   RaiseIf<SppIdentifierDuplicateError>(
-    not param_names.IsEmpty(), {sm->CurrentScope},
+    not param_names.empty(), {sm->CurrentScope},
     ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
-    not unordered_params.IsEmpty(), {sm->CurrentScope},
+    not unordered_params.empty(), {sm->CurrentScope},
     ERR_ARGS(
       unordered_params[1].first, *unordered_params[1].second,
       unordered_params[0].first, *unordered_params[0].second));
@@ -149,7 +149,7 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   for (auto const &param : Params) {
     if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) { out.push_back(self_param); }
   }
-  return out.IsEmpty() ? nullptr : out[0];
+  return out.empty() ? nullptr : out[0];
 }
 
 auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*> {
@@ -176,7 +176,7 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
   for (auto const &param : Params) {
     if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
   }
-  return out.IsEmpty() ? nullptr : out[0];
+  return out.empty() ? nullptr : out[0];
 }
 
 auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {

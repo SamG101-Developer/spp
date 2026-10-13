@@ -154,7 +154,7 @@ auto FunctionPrototypeAst::Clone() const -> Unique<Ast> {
 auto FunctionPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n")
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokCmp).append(TokCmp ? " " : "");
   SPP_STRING_APPEND(TokFun).append(" ");
   SPP_STRING_APPEND(Name);
@@ -182,7 +182,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
     const auto llvm_fun_type = llvm::FunctionType::get(
-      llvm_ret_type, llvm_param_types.ToStdVector(), false);
+      llvm_ret_type, llvm_param_types, false);
 
     // Create the LLVM function and add it to the context. An
     // ffi function is declared under the symbol its annotation
@@ -236,7 +236,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
         : 0;
     };
 
-    for (const auto i : genex::views::iota(FnParamGroup->Params.Len())) {
+    for (const auto i : genex::views::iota(FnParamGroup->Params.size())) {
       const auto j = static_cast<unsigned>(i);
       auto const &param_type = *FnParamGroup->Params[i]->Type;
       if (param_type.GetConvention() == nullptr) {
@@ -300,16 +300,16 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
       std::move(mock_constant_value));
 
     if (const auto mod_ctx = ctx->To<ModulePrototypeAst>(); mod_ctx != nullptr) {
-      mod_ctx->Impl->Members.EmplaceBack(std::move(mock_class_ast));
-      mod_ctx->Impl->Members.EmplaceBack(std::move(mock_constant_ast));
+      mod_ctx->Impl->Members.emplace_back(std::move(mock_class_ast));
+      mod_ctx->Impl->Members.emplace_back(std::move(mock_constant_ast));
     }
     else if (const auto sup_ctx = ctx->To<SupPrototypeFunctionsAst>(); sup_ctx != nullptr) {
-      sup_ctx->Impl->Members.EmplaceBack(std::move(mock_class_ast));
-      sup_ctx->Impl->Members.EmplaceBack(std::move(mock_constant_ast));
+      sup_ctx->Impl->Members.emplace_back(std::move(mock_class_ast));
+      sup_ctx->Impl->Members.emplace_back(std::move(mock_constant_ast));
     }
     else if (const auto ext_ctx = ctx->To<SupPrototypeExtensionAst>(); ext_ctx != nullptr) {
-      ext_ctx->Impl->Members.EmplaceBack(std::move(mock_class_ast));
-      ext_ctx->Impl->Members.EmplaceBack(std::move(mock_constant_ast));
+      ext_ctx->Impl->Members.emplace_back(std::move(mock_class_ast));
+      ext_ctx->Impl->Members.emplace_back(std::move(mock_constant_ast));
     }
   }
 
@@ -336,15 +336,15 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
     for (auto const &p : inherited->Params) { p->IsInherited = true; }
 
     auto at = 0uz;
-    while (at < own.Len() and own[at]->GetOrderTag() == utils::OrderableTag::kRequiredParam) { ++at; }
-    own.Insert(
+    while (at < own.size() and own[at]->GetOrderTag() == utils::OrderableTag::kRequiredParam) { ++at; }
+    own.insert(
       own.begin() + static_cast<std::ptrdiff_t>(at),
       std::make_move_iterator(inherited->Params.begin()),
       std::make_move_iterator(inherited->Params.end()));
   }
 
   for (auto const &a : clone->Annotations) { a->Stage1_PreProcess(clone.get()); }
-  sup_ext_impl_members.EmplaceBack(std::move(clone));
+  sup_ext_impl_members.emplace_back(std::move(clone));
   auto mock_sup_ext_impl = MakeUnique<SupImplementationAst>(nullptr, std::move(sup_ext_impl_members), nullptr);
   auto mock_sup_ext = MakeUnique<SupPrototypeExtensionAst>(
     nullptr, GnParamGroup->OptionalToRequired(), std::move(mock_class_name), nullptr, std::move(function_type),
@@ -354,15 +354,15 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
   // Manipulate the context body with the new mock
   // superimposition extension.
   if (const auto mod_ctx = ctx->To<ModulePrototypeAst>()) {
-    mod_ctx->Impl->Members.Insert(mod_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
+    mod_ctx->Impl->Members.insert(mod_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
     mod_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
   }
   else if (const auto sup_ctx = ctx->To<SupPrototypeFunctionsAst>()) {
-    sup_ctx->Impl->Members.Insert(sup_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
+    sup_ctx->Impl->Members.insert(sup_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
     sup_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
   }
   else if (const auto ext_ctx = ctx->To<SupPrototypeExtensionAst>()) {
-    ext_ctx->Impl->Members.Insert(ext_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
+    ext_ctx->Impl->Members.insert(ext_ctx->Impl->Members.begin(), std::move(mock_sup_ext));
     ext_ctx->Impl->Members |= genex::actions::remove_if([this](auto const &x) { return x.get() == this; });
   }
 }
@@ -510,8 +510,8 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // The parameters' defaults are analysed once every prototype's
   // stage 6 has run, rather than here. Only a prototype that has
   // one is queued.
-  if (not FnParamGroup->GetOptionalParams().IsEmpty()) {
-    _PendingDefaults.EmplaceBack(this, meta->IsTestHarness);
+  if (not FnParamGroup->GetOptionalParams().empty()) {
+    _PendingDefaults.emplace_back(this, meta->IsTestHarness);
   }
 
   // If this is a !compiler_builtin function, swap in the lowered
@@ -579,8 +579,8 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
         {sm->CurrentScope}, ERR_ARGS(*TestAnnotation, *Name, requirement));
     };
     if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
-    if (not FnParamGroup->Params.IsEmpty()) { bad("declares parameters"); }
-    if (not GnParamGroup->Params.IsEmpty()) { bad("declares generic parameters"); }
+    if (not FnParamGroup->Params.empty()) { bad("declares parameters"); }
+    if (not GnParamGroup->Params.empty()) { bad("declares generic parameters"); }
     if (not type_compare::TypeEq(
       TypeRef::Of(*ReturnType, *sm->CurrentScope), TypeRef::Of(*VOID, *sm->CurrentScope), *sm->CurrentScope,
       *sm->CurrentScope)) {
@@ -591,16 +591,16 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // An ffi function body is in C, so there is no body
   // expressible in S++.
   RaiseIf<SppEmptyBodyRequiredError>(
-    FfiAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    FfiAnnotation != nullptr and not Impl->Members.empty(),
     {sm->CurrentScope}, ERR_ARGS(
-      *FfiAnnotation, *Impl->Members.Front(), "an '!ffi' function", "the linker resolves the implementation from C"));
+      *FfiAnnotation, *Impl->Members.front(), "an '!ffi' function", "the linker resolves the implementation from C"));
 
   // An abstract function body is never ran (unreachable)
   // so must be empty.
   RaiseIf<SppEmptyBodyRequiredError>(
-    AbstractAnnotation != nullptr and not Impl->Members.IsEmpty(),
+    AbstractAnnotation != nullptr and not Impl->Members.empty(),
     {sm->CurrentScope}, ERR_ARGS(
-      *AbstractAnnotation, *Impl->Members.Front(), "an '!abstract_method' method", "abstract methods aren't callable"));
+      *AbstractAnnotation, *Impl->Members.front(), "an '!abstract_method' method", "abstract methods aren't callable"));
 
   // Repeated convention check for generic substitutions.
   RaiseIf<SppSecondClassBorrowViolationError>(
@@ -747,7 +747,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     // behind under this clone. They describe the template's body,
     // and the analysis below builds this instantiation's in their
     // place.
-    sub.ProtoScope()->Children.Clear();
+    sub.ProtoScope()->Children.clear();
     sub.WalkScope()->FixChildrenToParentPointer();
     tm.Reset(tm.CurrentScope);
 
@@ -1037,14 +1037,14 @@ auto FunctionPrototypeAst::_IsPureGn(
   if (self_param != nullptr) {
     if (self_param->Conv != nullptr) {
       const auto self_ptr_type = llvm::PointerType::get(*ctx->Context, 0);
-      llvm_param_types.Insert(llvm_param_types.begin(), self_ptr_type);
+      llvm_param_types.insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
       const auto self_type = self_type::SubstituteSelf(
         *self_param->Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
       const auto self_ty_sym = sm->CurrentScope->FindTypeSymbol(self_type.get());
       const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
-      llvm_param_types.Insert(llvm_param_types.begin(), self_val_type);
+      llvm_param_types.insert(llvm_param_types.begin(), self_val_type);
     }
   }
 
@@ -1057,7 +1057,7 @@ auto FunctionPrototypeAst::_IsPureGn(
   // generic over its pack, as a generic parameter would: only the
   // instantiation for each argument count has code to generate.
   const auto unbound_pack = variadic_param != nullptr and VariadicPackType == nullptr and FfiAnnotation == nullptr;
-  const auto is_pure_generic = not GnParamGroup->Params.IsEmpty() or not all_types_converted or unbound_pack;
+  const auto is_pure_generic = not GnParamGroup->Params.empty() or not all_types_converted or unbound_pack;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 
@@ -1066,7 +1066,7 @@ auto FunctionPrototypeAst::AnalysePendingDefaults(
   // Parameter defaults are analysed here: after every module's
   // stage 6, and before any body.
   auto pending = std::move(_PendingDefaults);
-  _PendingDefaults.Clear();
+  _PendingDefaults.clear();
   for (auto const &[proto, is_test_harness] : pending) {
     auto tm = ScopeManager(sm->GlobalScope, proto->GetAstScope());
     auto meta = CompilerMetaData();
@@ -1079,7 +1079,7 @@ auto FunctionPrototypeAst::AnalysePendingDefaults(
 }
 
 auto FunctionPrototypeAst::ClearPendingDefaults() -> void {
-  _PendingDefaults.Clear();
+  _PendingDefaults.clear();
 }
 
 SPP_MOD_END

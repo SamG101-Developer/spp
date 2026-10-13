@@ -69,7 +69,7 @@ namespace spp::analyse::utils::operator_desugaring {
         bin_lhs->Rhs = AstClone(temp_var_name);
 
         // Kept by the caller: nothing else would give it storage.
-        if (temps != nullptr) { temps->EmplaceBack(std::move(temp_let)); }
+        if (temps != nullptr) { temps->emplace_back(std::move(temp_let)); }
       }
 
       // Otherwise, re-arrange the ASTs, with an "and" combinator
@@ -128,7 +128,7 @@ auto spp::analyse::utils::operator_desugaring::ConvertBinExprToFnCall(
     : nullptr;
   auto arg = MakeUnique<FunctionCallArgumentPositionalAst>(
     std::move(conv), nullptr, std::move(new_bin_expr->Rhs));
-  fn_call->FnArgGroup->Args.EmplaceBack(std::move(arg));
+  fn_call->FnArgGroup->Args.emplace_back(std::move(arg));
   fn_call->Source.OriginalExpr = &bin_expr;
 
   // Finally combine the function call ast with the field access
@@ -161,7 +161,7 @@ auto spp::analyse::utils::operator_desugaring::MapToMethodCall(
   -> Shared<PostfixExpressionAst> {
   auto arg_group = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, Vec<Unique<FunctionCallArgumentAst>>{}, nullptr);
   for (auto &&arg : args) {
-    arg_group->Args.EmplaceBack(MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(arg)));
+    arg_group->Args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(arg)));
   }
   auto field_name = MakeUnique<IdentifierAst>(pos, Str(method));
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));

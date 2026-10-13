@@ -146,7 +146,7 @@ auto spp::utils::files::GlobSpp(
   for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
     if (not entry.is_regular_file()) { continue; }
     if (entry.path().extension() != ".spp") { continue; }
-    paths.EmplaceBack(entry.path());
+    paths.emplace_back(entry.path());
   }
 
   // Normalise file order across machines for consistent erroring

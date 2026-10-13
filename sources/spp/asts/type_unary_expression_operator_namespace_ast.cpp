@@ -72,7 +72,7 @@ auto TypeUnaryExpressionOperatorNamespaceAst::TypeParts() -> Vec<TypeIdentifierA
 
 auto TypeUnaryExpressionOperatorNamespaceAst::NsPartsInto(
   Vec<IdentifierAst const*> &out) const -> void {
-  out.EmplaceBack(Ns.get());
+  out.emplace_back(Ns.get());
 }
 
 auto TypeUnaryExpressionOperatorNamespaceAst::TypePartsInto(

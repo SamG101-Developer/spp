@@ -174,7 +174,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     };
     const auto is_abstract = [&unexplained](TypeRef const &held) {
       auto const *const linked = held.Symbol->LinkedScope;
-      return linked != nullptr and not unexplained(*linked).IsEmpty();
+      return linked != nullptr and not unexplained(*linked).empty();
     };
     const auto abstract = type_members::FindHeldByValue(resolved, scope, is_abstract);
     if (abstract.Symbol == nullptr) { return; }
@@ -200,7 +200,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   //  (TestGenericInference_Recursion, disabled).
   const auto _depth = monomorphization::InstantiationDepth(*this, *sm);
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
-    IsSelfType() and GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
+    IsSelfType() and GnArgGroup != nullptr and not GnArgGroup->Args.empty(),
     {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
   if (IsSelfType() and meta->CurrentStage < CompilerStage::kAnalyseSemantics) {
     if (meta->CurrentStage >= CompilerStage::kLoadSupScopes) {
@@ -216,7 +216,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // scope's binding of it, if there is one - rather than being looked up again by its spelling here, where the same
   // spelling can name something else (a caller's "T" substituted into a callee whose own parameter is "T"). It is still
   // checked for being abstract, as an analysed node is.
-  if (_StampedTypeId != nullptr and GnArgGroup->Args.IsEmpty()
+  if (_StampedTypeId != nullptr and GnArgGroup->Args.empty()
     and sm->CurrentScope->FindBoundTypeSymbolById(_StampedTypeId) != nullptr) {
     _HasAnalysed = true;
     check_abstract(meta->TypeAnalysisTypeScope ? *meta->TypeAnalysisTypeScope : *sm->CurrentScope);
@@ -315,7 +315,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
 
     // Solve the arguments not written: from an object initializer's
     // attributes, the constraints and the defaults.
-    if (not is_tuple and not gn_param_group->Params.IsEmpty()) {
+    if (not is_tuple and not gn_param_group->Params.empty()) {
       // An alias's attributes are its class's, in the class's terms:
       // read through the alias's target, they name the
       // alias's own parameters.
@@ -345,7 +345,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   }
   else {
     RaiseIf<SppHigherOrderGenericsNotSupportedError>(
-      GnArgGroup != nullptr and not GnArgGroup->Args.IsEmpty(),
+      GnArgGroup != nullptr and not GnArgGroup->Args.empty(),
       {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
   }
 
@@ -362,10 +362,10 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
     for (auto &member : type_compare::VariantMembers(*this, *sm->CurrentScope)) {
       auto const *const member_sym = TypeRef::Of(*member, *sm->CurrentScope).Symbol;
-      unordered.EmplaceBack(std::move(member), member_sym);
+      unordered.emplace_back(std::move(member), member_sym);
     }
     auto inner_types = type_compare::OrderVariantMembers(std::move(unordered));
-    if (not inner_types.IsEmpty()) {
+    if (not inner_types.empty()) {
       auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
       {
         const auto _meta_guard = MetaGuard(meta);
@@ -386,7 +386,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // the namespace a qualified name ("main::Box[T=T]") is
   // resolved in.
   auto *instance = static_cast<TypeSymbol*>(nullptr);
-  if (not GnArgGroup->Args.IsEmpty()) {
+  if (not GnArgGroup->Args.empty()) {
     // Found, and made, under the identity's own template:
     // through a "use" of a class, that is the class. One
     // found by the solution's identity already is that
@@ -418,7 +418,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // ("Scope::FindBoundTypeSymbolById") rather than the spelling.
   // A generic template named bare is not a type yet: its arguments are filled in place (inferred from an object
   // initializer's attributes, or its defaults), after which the name means an instantiation, so it records nothing.
-  if (GnArgGroup->Args.IsEmpty()) {
+  if (GnArgGroup->Args.empty()) {
     if (auto *const resolved = scope->FindTypeSymbol(this); resolved != nullptr) {
       type_resolution::StampType(*this, *resolved);
     }
@@ -520,7 +520,7 @@ auto TypeIdentifierAst::WithoutGns() const -> Shared<TypeAst> {
   // arrive after the copy is cached, and arguments can be added to a node in place ("ClassPrototypeAst" fills its own
   // name's). The copy is this node's own - "Clone" no longer shares it, as a shared copy took whichever node asked last's.
   _CachedWithoutGns->StampTypeId(
-    GnArgGroup == nullptr or GnArgGroup->Args.IsEmpty() ? _StampedTypeId : _StampedTemplateId);
+    GnArgGroup == nullptr or GnArgGroup->Args.empty() ? _StampedTypeId : _StampedTemplateId);
   return _CachedWithoutGns;
 }
 
@@ -571,7 +571,7 @@ auto TypeIdentifierAst::AnkerlHash() const -> std::size_t {
 }
 
 auto TypeIdentifierAst::ToView() const -> StrView {
-  if (GnArgGroup == nullptr or GnArgGroup->Args.IsEmpty()) {
+  if (GnArgGroup == nullptr or GnArgGroup->Args.empty()) {
     return Name;
   }
 
@@ -588,7 +588,7 @@ auto TypeIdentifierAst::NsPartsInto(
 
 auto TypeIdentifierAst::TypePartsInto(
   Vec<TypeIdentifierAst const*> &out) const -> void {
-  out.EmplaceBack(this);
+  out.emplace_back(this);
 }
 
 auto TypeIdentifierAst::InferFromAttributes(

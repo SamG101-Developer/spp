@@ -151,7 +151,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
       if (attr_sym == nullptr) { continue; }
       for (auto const &arg : ArgGroup->Args) {
         if (arg->Name == nullptr or *arg->Name != *attr->Name) { continue; }
-        equations.EmplaceBack(attr->Name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_sym->FqName());
+        equations.emplace_back(attr->Name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_sym->FqName());
       }
     }
   }
@@ -189,7 +189,7 @@ auto ObjectInitializerAst::Stage9_CompTimeResolve(
     elem->Stage9_CompTimeResolve(sm, meta);
     auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
       elem->Name, nullptr, std::move(meta->CompTimeResult));
-    cmp_elems->Args.EmplaceBack(std::move(cmp_arg));
+    cmp_elems->Args.emplace_back(std::move(cmp_arg));
   }
 
   // Wrap the compile-time array value.
@@ -224,7 +224,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // compiler-known primitives (which don't even lower to
   // structs) and the fat pointer types. Also the base
   // cases for the recursive default initialization.
-  if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
+  if (attr_names.empty()) { return llvm::Constant::getNullValue(llvm_type); }
 
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
   // that interface's fat-pointer fields prepended ahead of
@@ -261,7 +261,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     // as a whole is constant cannot be known until they have
     // been.
     auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
-    arg_values.Reserve(ArgGroup->Args.Len());
+    arg_values.reserve(ArgGroup->Args.size());
     for (auto const &arg : ArgGroup->Args) {
       // No value for Void type arguments (from the generic
       // implementations), so skip them.
@@ -282,7 +282,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
           arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
       }
 
-      arg_values.EmplaceBack(MakePair(llvm_attr_index(attr_index), val));
+      arg_values.emplace_back(MakePair(llvm_attr_index(attr_index), val));
     }
 
     // If every field is filled by a constant of the right
@@ -291,7 +291,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     const auto llvm_struct_type = llvm::dyn_cast<llvm::StructType>(llvm_type);
     auto llvm_ct_fields = Vec<llvm::Constant*>(
       llvm_struct_type != nullptr ? llvm_struct_type->getNumElements() : 0uz, nullptr);
-    auto all_fields_constant = llvm_struct_type != nullptr and arg_values.Len() == llvm_ct_fields.Len();
+    auto all_fields_constant = llvm_struct_type != nullptr and arg_values.size() == llvm_ct_fields.size();
 
     if (all_fields_constant) {
       for (auto const &[index, val] : arg_values) {
@@ -304,7 +304,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     }
 
     if (all_fields_constant and genex::all_of(llvm_ct_fields, [](auto const *f) { return f != nullptr; })) {
-      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_fields.ToStdVector());
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_fields);
     }
 
     // Set each field value in the aggregate.
@@ -338,14 +338,14 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // fat-pointer field, or an attribute this initializer
   // leaves out, still needs a value, because a constant has
   // to give one for every field.
-  for (auto i = 0uz; i < comp_fields.Len(); ++i) {
+  for (auto i = 0uz; i < comp_fields.size(); ++i) {
     if (comp_fields[i] != nullptr) { continue; }
     comp_fields[i] = llvm::Constant::getNullValue(
       struct_type->getElementType(static_cast<unsigned>(i)));
   }
 
   // Return the constant struct.
-  return llvm::ConstantStruct::get(struct_type, comp_fields.ToStdVector());
+  return llvm::ConstantStruct::get(struct_type, comp_fields);
 }
 
 auto ObjectInitializerAst::InferTypeRef(

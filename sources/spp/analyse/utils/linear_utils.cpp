@@ -57,7 +57,7 @@ namespace spp::analyse::utils::linear_utils {
       // Consumed on some of the paths that met and not on others, whole or in part: a path that did not take a part
       // still owns it. The witnesses kept are the first path's, so the value can read as consumed while another path
       // still owns it.
-      const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.IsEmpty();
+      const auto owned_on_some_path = state.MaybeInit.has_value() or not state.MaybePartialMoves.empty();
 
       // The value already left, whole.
       if (state.AstInitialization == nullptr and not owned_on_some_path) { return false; }
@@ -75,7 +75,7 @@ namespace spp::analyse::utils::linear_utils {
       // and a case pattern's destructure only ever records the parts
       // it bound, never the value itself, so the parts are all there
       // is to go on.
-      if (state.PartialMoves.IsEmpty() or owned_on_some_path) { return true; }
+      if (state.PartialMoves.empty() or owned_on_some_path) { return true; }
       return not regions::RegionConsumed(
         regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
         state.PartialMoves);
@@ -88,7 +88,7 @@ auto spp::analyse::utils::linear_utils::CheckDeferredForScope(
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Reverse order: the statements run last-registered-first,
   // so a value deferred after another is released first.
-  for (auto i = scope.Deferred.Len(); i > 0uz; --i) {
+  for (auto i = scope.Deferred.size(); i > 0uz; --i) {
     scope.Deferred[i - 1uz]->CheckAtExit(exit_point, exit_what, sm, meta);
   }
 }
@@ -288,7 +288,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
   // here like any other body: it is that class's value that
   // is dropped.
   auto const *const part_scope = part_ref.Symbol->LinkedScope;
-  if (part_scope != nullptr and not type_members::GetUnimplementedAbstractMethods(*part_scope).IsEmpty()) { return; }
+  if (part_scope != nullptr and not type_members::GetUnimplementedAbstractMethods(*part_scope).empty()) { return; }
   const auto type_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
 
   // In a copy made for a call, the template let this through,

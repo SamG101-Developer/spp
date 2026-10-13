@@ -78,8 +78,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // Update the meta information for enclosing function information.
   meta->Save();
   meta->EnclosingFnFlavour = this->TokFun.get();
-  meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName());
-  meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+  meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName());
+  meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
   meta->EnclosingFnScope = sm->CurrentScope;
   meta->EnclosingFnCmp = TokCmp.get();
   Impl->Stage7_AnalyseSemantics(sm, meta);
@@ -168,8 +168,8 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.EmplaceBack(ret_type_sym->FqName());
-    meta->EnclosingFnSourceRetType.EmplaceBack(ReturnType);
+    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName());
+    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.

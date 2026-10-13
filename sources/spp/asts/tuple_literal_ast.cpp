@@ -39,7 +39,7 @@ TupleLiteralAst::~TupleLiteralAst() = default;
 auto TupleLiteralAst::EqualsTupleLiteral(
   TupleLiteralAst const &other) const -> Ordering {
   // If two tuple asts don't have the same size, they cannot be equal.
-  if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
+  if (Elems.size() != other.Elems.size()) { return Ordering::less; }
 
   // Ensure each element of the two array literals are equal.
   if (genex::all_of(
@@ -58,12 +58,12 @@ auto TupleLiteralAst::Equals(
 
 auto TupleLiteralAst::PosStart() const -> std::size_t {
   // Use the "(" token.
-  return TokL != nullptr ? TokL->PosStart() : Elems.IsEmpty() ? 0 : Elems.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
 auto TupleLiteralAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
-  return TokR != nullptr ? TokR->PosEnd() : Elems.IsEmpty() ? 0 : Elems.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
 auto TupleLiteralAst::Clone() const -> Unique<Ast> {
@@ -126,7 +126,7 @@ auto TupleLiteralAst::Stage9_CompTimeResolve(
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
     Elems[i] = AstClone(meta->CompTimeResult);
-    cmp_elems.EmplaceBack(std::move(meta->CompTimeResult));
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
   }
 
   // Wrap the compile-time array value.
@@ -150,18 +150,18 @@ auto TupleLiteralAst::Stage11_CodeGen(
     // Every element is generated up front, because whether the tuple as a whole is constant cannot be known until
     // they have been.
     auto elem_values = Vec<llvm::Value*>();
-    elem_values.Reserve(Elems.Len());
+    elem_values.reserve(Elems.size());
     for (auto const &elem : Elems) {
       const auto elem_value = elem->Stage11_CodeGen(sm, meta, ctx);
       SPP_ASSERT(elem_value != nullptr);
-      elem_values.EmplaceBack(elem_value);
+      elem_values.emplace_back(elem_value);
     }
 
     // If they all came back constant then so is the tuple, and it can be produced as a value rather than
     // materialised: no stack slot, no per-field GEP and store, and no load to read it back. Being outside a constant
     // context only says this was not written as a "cmp" initializer, which is no statement about the elements.
     auto all_elems_constant = true;
-    for (auto i = 0uz; i < elem_values.Len(); ++i) {
+    for (auto i = 0uz; i < elem_values.size(); ++i) {
       const auto field_type = llvm_struct_type->getElementType(static_cast<unsigned>(i));
       if (llvm::isa<llvm::Constant>(elem_values[i]) and elem_values[i]->getType() == field_type) { continue; }
       all_elems_constant = false;
@@ -170,18 +170,18 @@ auto TupleLiteralAst::Stage11_CodeGen(
 
     if (all_elems_constant) {
       auto llvm_ct_elems = Vec<llvm::Constant*>();
-      llvm_ct_elems.Reserve(elem_values.Len());
+      llvm_ct_elems.reserve(elem_values.size());
       for (auto *elem_value : elem_values) {
-        llvm_ct_elems.EmplaceBack(llvm::cast<llvm::Constant>(elem_value));
+        llvm_ct_elems.emplace_back(llvm::cast<llvm::Constant>(elem_value));
       }
-      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_elems.ToStdVector());
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_elems);
     }
 
     const auto alloca = codegen::LlvmEntryAlloca(llvm_type, "tuple.alloca" + uid, ctx);
     SPP_ASSERT(alloca != nullptr);
 
     // Store each element into the tuple alloca.
-    for (auto i = 0uz; i < elem_values.Len(); ++i) {
+    for (auto i = 0uz; i < elem_values.size(); ++i) {
       const auto elem_ptr = ctx->Builder.CreateStructGEP(
         llvm_type, alloca, static_cast<std::uint32_t>(i), "tuple.elem.ptr" + uid);
       ctx->Builder.CreateStore(elem_values[i], elem_ptr);
@@ -194,13 +194,13 @@ auto TupleLiteralAst::Stage11_CodeGen(
 
   // Constant pathway: the struct constant is built from the elements' own constants.
   auto comp_elems = Vec<llvm::Constant*>();
-  comp_elems.Reserve(Elems.Len());
+  comp_elems.reserve(Elems.size());
   for (auto const &elem : Elems) {
     const auto comp_elem = elem->Stage11_CodeGen(sm, meta, ctx);
     SPP_ASSERT(comp_elem != nullptr);
-    comp_elems.EmplaceBack(llvm::cast<llvm::Constant>(comp_elem));
+    comp_elems.emplace_back(llvm::cast<llvm::Constant>(comp_elem));
   }
-  return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems.ToStdVector());
+  return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
 }
 
 auto TupleLiteralAst::InferType(
@@ -257,16 +257,16 @@ auto TupleLiteralAst::ReadExpr(
   // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
   // into the elements of the tuple it is bound to, as a type pack does in "Tup[S32, Ts]".
   auto elems = Vec<Unique<ExpressionAst>>();
-  elems.Reserve(Elems.Len());
+  elems.reserve(Elems.size());
   for (auto const &elem : Elems) {
     auto sub_elem = elem->ReadExpr(sub);
     auto const *const id = elem->To<IdentifierAst>();
     auto const *const pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
     if (pack != nullptr and pack->IsVariadic and sub_elem->To<TupleLiteralAst>() != nullptr) {
-      for (auto const *inner : analyse::utils::packs::CompPackElements(*sub_elem)) { elems.EmplaceBack(AstClone(inner)); }
+      for (auto const *inner : analyse::utils::packs::CompPackElements(*sub_elem)) { elems.emplace_back(AstClone(inner)); }
       continue;
     }
-    elems.EmplaceBack(AstClone(sub_elem));
+    elems.emplace_back(AstClone(sub_elem));
   }
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }

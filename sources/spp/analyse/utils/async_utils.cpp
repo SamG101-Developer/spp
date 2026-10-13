@@ -38,7 +38,7 @@ auto spp::analyse::utils::async_utils::CaptureOnce(
 
   // Otherwise, this is the first instance of the name in the
   // captures, so just add it, with the provided convention.
-  captures.EmplaceBack(
+  captures.emplace_back(
     MakeUnique<ClosureExpressionCaptureAst>(std::move(conv), std::move(name)));
 }
 

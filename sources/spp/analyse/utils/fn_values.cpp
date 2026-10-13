@@ -85,7 +85,7 @@ auto spp::analyse::utils::fn_values::FnBlockOf(
   Scope const &scope) -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*> {
   const auto ext = AstAs<SupPrototypeExtensionAst>(scope.AstNode);
   const auto body = ext != nullptr ? AstBody(ext) : Vec<Ast*>();
-  const auto proto = not body.IsEmpty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
+  const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
   return {proto != nullptr ? ext : nullptr, proto};
 }
 
@@ -114,7 +114,7 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
       or AstAs<SupPrototypeExtensionAst>(block_node) != nullptr) {
       const auto owner_sym = block->FindHeadSymbol(*AstName(block_node));
       if (owner_sym != nullptr and not owner_sym->IsGn() and owner_sym->LinkedScope != nullptr
-        and owner_sym->Type != nullptr and owner_sym->Type->GnParamGroup->Params.IsEmpty()) {
+        and owner_sym->Type != nullptr and owner_sym->Type->GnParamGroup->Params.empty()) {
         return {proto->Name, owner_sym->LinkedScope};
       }
     }
@@ -162,7 +162,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     if (target_kind == nullptr) { continue; }
     auto const *const target_tmpl = TypeRef::ForKindCheck(*target_kind, func_scope).Template();
     auto kinds = Vec<Scope const*>{kind_sym->LinkedScope};
-    kinds.AppendRange(kind_sym->LinkedScope->GetSupScopes());
+    kinds.append_range(kind_sym->LinkedScope->GetSupScopes());
     if (not genex::any_of(kinds, [&](auto const *kind) {
       return kind->LinkedTypeSymbol != nullptr
         and TypeRef::ForKindCheck(*kind).Template() == target_tmpl;
@@ -181,7 +181,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     // Either way the signature is then checked exactly.
     auto const &own_params = proto->GnParamGroup->Params;
     auto inferred = scopes::GenericSubst();
-    if (not own_params.IsEmpty()) {
+    if (not own_params.empty()) {
       const auto unify = [&](TypeAst const &target, TypeAst const &own) {
         const auto t = func_scope.TypeIdOf(target);
         const auto o = ext_scope->TypeIdOf(own);
@@ -194,7 +194,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
 
     // Only its own generics, each of which has to be bound.
     const auto bindings = scopes::BindingsFor(inferred, *proto->GnParamGroup);
-    if (bindings.TypeParams.size() + bindings.CompParams.size() != own_params.Len()) { continue; }
+    if (bindings.TypeParams.size() + bindings.CompParams.size() != own_params.size()) { continue; }
 
     // Its own signature with what it inferred bound, read where the target is.
     const auto read = [&](TypeAst const &own) { return type_resolution::ReadType(own, ExprSubst::Across(*ext_scope, bindings, func_scope)); };
@@ -210,7 +210,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     // none does.
     auto found = FnValueMatch{
       .Proto = proto, .FnScope = ext_scope, .Bindings = bindings};
-    if (own_params.IsEmpty()) { return found; }
+    if (own_params.empty()) { return found; }
     if (not match.has_value()) { match = std::move(found); }
   }
   return match;
@@ -286,7 +286,7 @@ namespace spp::analyse::utils::fn_values {
       };
       const auto own_a = own_params(fn_a);
       const auto own_b = own_params(fn_b);
-      for (auto i = 0uz; i < own_a.Len() and i < own_b.Len(); ++i) {
+      for (auto i = 0uz; i < own_a.size() and i < own_b.size(); ++i) {
         if (own_a[i]->IsTypeParam() != own_b[i]->IsTypeParam()) { return std::nullopt; }
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
@@ -371,8 +371,8 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
 
     // Ignore if there are a different number of required
     // generic parameters.
-    if (new_fn.GnParamGroup->GetTypeParams().Len() != old_fn->GnParamGroup->GetTypeParams().Len()) { continue; }
-    if (new_fn.GnParamGroup->GetCompParams().Len() != old_fn->GnParamGroup->GetCompParams().Len()) { continue; }
+    if (new_fn.GnParamGroup->GetTypeParams().size() != old_fn->GnParamGroup->GetTypeParams().size()) { continue; }
+    if (new_fn.GnParamGroup->GetCompParams().size() != old_fn->GnParamGroup->GetCompParams().size()) { continue; }
 
     // The two are compared with the old one's generics renamed to the new one's ("f[T](a: T)" and "f[U](a: U)"
     // conflict), and parameters with either borrow as the same: a call cannot choose between "&Bool" and "&mut Bool",
@@ -446,7 +446,7 @@ auto spp::analyse::utils::fn_values::SameSignature(
   };
 
   auto param_names_eq = [](auto const &a, auto const &b) {
-    if (a.Len() != b.Len()) { return false; }
+    if (a.size() != b.size()) { return false; }
     for (auto const &[x, y] : genex::views::zip(a, b)) {
       if (*x != *y) { return false; }
     }
@@ -463,7 +463,7 @@ auto spp::analyse::utils::fn_values::SameSignature(
 
   // Get a list of conditions to check for conflicting
   // functions.
-  if (params_a.Len() != params_b.Len()) { return false; }
+  if (params_a.size() != params_b.size()) { return false; }
 
   // All parameters must have the same names.
   if (genex::any_of(

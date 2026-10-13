@@ -88,7 +88,7 @@ auto PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   // "a[i]" is "a.index_ref(i)", or "a.index_mut(i)" for "a[mut i]".
   operator_desugaring::CheckIndexable(*this, sm, meta);
   auto args = Vec<Unique<ExpressionAst>>();
-  args.EmplaceBack(std::move(Expr));
+  args.emplace_back(std::move(Expr));
   _MappedFn = operator_desugaring::MapToMethodCall(
     *this, PosStart(), TokMut != nullptr ? "index_mut" : "index_ref", std::move(args), sm, meta);
 }

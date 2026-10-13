@@ -117,7 +117,7 @@ auto spp::codegen::EmitDrop(
 
   // Reverse order: the last part built is the first one
   // destroyed, mirroring the order they were initialized in.
-  for (auto i = parts.Len(); i > 0uz; --i) {
+  for (auto i = parts.size(); i > 0uz; --i) {
     auto const &part = parts[i - 1uz];
     if (part.Ref.Symbol == &type_sym or part.Ref.Symbol == bare_sym) { continue; }
     if (not NeedsDrop(part.Ref, *sm, meta)) { continue; }

@@ -76,7 +76,7 @@ namespace spp::analyse::utils::memory_state {
     auto AddMaybePart(
       Vec<MaybeMovedPart> &maybe, regions::PlaceAt const &part, PathsDisagree const &paths) -> void {
       if (genex::any_of(maybe, [&](auto const &x) { return SamePart(x.Part, part); })) { return; }
-      maybe.EmplaceBack(MaybeMovedPart{.Part = part, .Paths = paths});
+      maybe.emplace_back(MaybeMovedPart{.Part = part, .Paths = paths});
     }
   }
 }
@@ -94,10 +94,10 @@ auto MemoryState::InitializedBy(
 
   // Clear the "maybe init" flag, nothing is owed as this is
   // a fresh value, and there are no partial moves.
-  // Todo: PartialMoves.Clear()?
+  // Todo: PartialMoves.clear()?
   MaybeInit = std::nullopt;
   OwesNothing = false;
-  MaybePartialMoves.Clear();
+  MaybePartialMoves.clear();
 }
 
 auto MemoryState::MovedBy(
@@ -109,9 +109,9 @@ auto MemoryState::MovedBy(
 
   // Clear the partial moves, the "maybe init" and the "maybe
   // partial moves" too.
-  PartialMoves.Clear();
+  PartialMoves.clear();
   MaybeInit = std::nullopt;
-  MaybePartialMoves.Clear();
+  MaybePartialMoves.clear();
 }
 
 auto MemoryState::PartMovedBy(
@@ -124,7 +124,7 @@ auto MemoryState::PartMovedBy(
         and regions::Relate(*part.Of, *maybe.Part.Of) == regions::MemRegionRelation::Contains;
     });
   }
-  PartialMoves.EmplaceBack(part);
+  PartialMoves.emplace_back(part);
 }
 
 /// [CHECKED]
@@ -188,12 +188,12 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
   // into the set, ie not a duplicate, insert it into the main
   // vector too.
   for (auto sym : sm->CurrentScope->GetAllVarSymbols()) {
-    if (var_syms_seen.insert(sym).second) { var_syms.EmplaceBack(sym); }
+    if (var_syms_seen.insert(sym).second) { var_syms.emplace_back(sym); }
   }
   if (const auto flow = FlowOf(*sm->CurrentScope); flow != nullptr) {
     for (auto const &[sym, _] : flow->States) {
       if (var_syms_seen.insert(sym).second) {
-        var_syms.EmplaceBack(const_cast<VariableSymbol*>(sym));
+        var_syms.emplace_back(const_cast<VariableSymbol*>(sym));
       }
     }
   }
@@ -210,14 +210,14 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
       ? subject_edges->OnMatch[i]
       : meta::SubjectOnMatch::kKeep;
     branch->Stage8_CheckMemory(sm, meta);
-    paths.EmplaceBack(branch, SnapshotSymbols(var_syms, *sm->CurrentScope));
+    paths.emplace_back(branch, SnapshotSymbols(var_syms, *sm->CurrentScope));
     RestoreSnapshot(pre_analysis);
   }
 
   // On the fall-through path, the subject holds whichever
   // members no branch matched.
   const auto falls_through = coverage.FallsThrough;
-  paths.EmplaceBack(nullptr, pre_analysis);
+  paths.emplace_back(nullptr, pre_analysis);
   const auto discharged = subject_edges != nullptr
     and subject_edges->OnFallThrough == meta::SubjectOnMatch::kDischarge;
 
@@ -259,11 +259,11 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
   };
   const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(*non_terminating_branch);
   auto const &first_path = non_terminating_branch != branches.end()
-    ? paths.At(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
-    : paths.Back().second;
+    ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
+    : paths.back().second;
 
-  const auto has_else_branch = not branches.IsEmpty()
-    ? branches.Back()->Patterns[0]->To<CasePatternVariantElseAst>()
+  const auto has_else_branch = not branches.empty()
+    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
     : nullptr;
   const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
 
@@ -274,11 +274,11 @@ auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
   const auto leaves = [&](CaseExpressionBranchAst const *branch) {
     return not((branch == nullptr and not falls_through) or (branch != nullptr and diverges(branch))
       or (branch != nullptr and not reachable(branch))
-      or (skip_else and not branches.IsEmpty() and branch == branches.Back()));
+      or (skip_else and not branches.empty() and branch == branches.back()));
   };
   const auto state_on = [&](ScopeSnapshot const &path, VariableSymbol const &sym) {
     auto state = StateIn(path, sym);
-    if (discharged and &sym == subject and &path == &paths.Back().second) { state.OwesNothing = true; }
+    if (discharged and &sym == subject and &path == &paths.back().second) { state.OwesNothing = true; }
     return SettleFullyTaken(state, sym, *sm->CurrentScope);
   };
   for (auto sym : var_syms) {
@@ -307,7 +307,7 @@ auto spp::analyse::utils::memory_state::SnapshotSymbols(
   // the symbols' states.
   auto out = ScopeSnapshot();
   for (const auto sym : syms) {
-    out.Symbols.EmplaceBack(sym->SharedFromThis<VariableSymbol>(), StateOf(scope, *sym));
+    out.Symbols.emplace_back(sym->SharedFromThis<VariableSymbol>(), StateOf(scope, *sym));
   }
 
   // Assign the "flow" of the scope into snapshot. This can be
@@ -529,7 +529,7 @@ auto spp::analyse::utils::memory_state::LoansHeldBy(
   // "holder", and are not pending.
   auto out = Vec<Loan const*>();
   for (auto const &loan : loans) {
-    if (loan.Holder == &holder and not loan.Pending) { out.EmplaceBack(&loan); }
+    if (loan.Holder == &holder and not loan.Pending) { out.emplace_back(&loan); }
   }
   return out;
 }
@@ -541,7 +541,7 @@ auto spp::analyse::utils::memory_state::LoansHeldBy(
 //   -> Vec<Loan const*> {
 //   auto out = Vec<Loan const*>();
 //   for (auto const &loan : loans) {
-//     if (RootOf(loan) == &root and not loan.Pending) { out.EmplaceBack(&loan); }
+//     if (RootOf(loan) == &root and not loan.Pending) { out.emplace_back(&loan); }
 //   }
 //   return out;
 // }
@@ -604,7 +604,7 @@ auto spp::analyse::utils::memory_state::JoinLoans(
     if (FindLoan(into, loan) != nullptr) { continue; }
     auto added = loan;
     if (not added.Maybe.has_value()) { added.Maybe = here; }
-    into.EmplaceBack(std::move(added));
+    into.emplace_back(std::move(added));
   }
 }
 
@@ -635,7 +635,7 @@ auto spp::analyse::utils::memory_state::SettleFullyTaken(
   // moves are empty, it is settled so return the state as it
   // is.
   if (state.AstInitialization == nullptr
-    or state.PartialMoves.IsEmpty()
+    or state.PartialMoves.empty()
     or sym.Type == nullptr) {
     return state;
   }
@@ -656,8 +656,8 @@ auto spp::analyse::utils::memory_state::SettleFullyTaken(
   // Otherwise, set the state to "moved" (using the first
   // partial move as the site), clear the partial moves,
   // and reset the initialisation.
-  state.AstMoved = state.PartialMoves.Front().Site;
+  state.AstMoved = state.PartialMoves.front().Site;
   state.AstInitialization = nullptr;
-  state.PartialMoves.Clear();
+  state.PartialMoves.clear();
   return state;
 }

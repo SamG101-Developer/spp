@@ -97,7 +97,7 @@ namespace {
     // is a container rather than a mistake.
     auto section_names = spp::Vec<spp::Str>();
     for (auto const &section : Schema()) {
-      section_names.EmplaceBack(spp::Str(section.Name));
+      section_names.emplace_back(spp::Str(section.Name));
     }
 
     for (auto &&[raw_key, node] : table) {
@@ -108,12 +108,12 @@ namespace {
         // A section: everything under it must be one of its keys, and the keys it must have must be there.
         auto const *const inner = node.as_table();
         if (inner == nullptr) {
-          errors.EmplaceBack("'[" + path + "]' must be a section, not a value");
+          errors.emplace_back("'[" + path + "]' must be a section, not a value");
           continue;
         }
 
         auto key_names = spp::Vec<spp::Str>();
-        for (auto const &k : section->Keys) { key_names.EmplaceBack(spp::Str(k.Name)); }
+        for (auto const &k : section->Keys) { key_names.emplace_back(spp::Str(k.Name)); }
 
         for (auto &&[raw_inner_key, inner_node] : *inner) {
           const auto inner_key = spp::Str(raw_inner_key.str());
@@ -127,9 +127,9 @@ namespace {
 
           if (spec == nullptr) {
             if (section->FreeForm) { continue; }
-            errors.EmplaceBack(
+            errors.emplace_back(
               "unknown key '" + inner_key + "' in [" + path + "]" + Suggest(inner_key, key_names)
-              + "\n    [" + path + "] accepts: " + (key_names.IsEmpty()
+              + "\n    [" + path + "] accepts: " + (key_names.empty()
                 ? spp::Str("(nothing)")
                 : [&] {
                   auto joined = spp::Str();
@@ -146,13 +146,13 @@ namespace {
             ? inner_node.is_string()
             : inner_node.is_table();
           if (not ok) {
-            errors.EmplaceBack("'" + inner_key + "' in [" + path + "] must be " + spp::Str(KindName(spec->Kind)));
+            errors.emplace_back("'" + inner_key + "' in [" + path + "] must be " + spp::Str(KindName(spec->Kind)));
           }
         }
 
         for (auto const &k : section->Keys) {
           if (k.Required and not inner->contains(k.Name)) {
-            errors.EmplaceBack("[" + path + "] is missing the required key '" + spp::Str(k.Name) + "'");
+            errors.emplace_back("[" + path + "] is missing the required key '" + spp::Str(k.Name) + "'");
           }
         }
         continue;
@@ -180,7 +180,7 @@ namespace {
         walk = descend;
       }
 
-      errors.EmplaceBack(
+      errors.emplace_back(
         "unknown section '[" + written + "]'" + Suggest(written, section_names)
         + "\n    known sections: " + [&] {
           auto joined = spp::Str();
@@ -293,7 +293,7 @@ auto spp::utils::features::Validate(
   // Check the spp toml is present. Failsafe but needed
   // so we don't get worse errors downstream.
   if (not std::filesystem::exists(config)) {
-    errors.EmplaceBack("no 'spp.toml' here");
+    errors.emplace_back("no 'spp.toml' here");
     return false;
   }
 
@@ -308,12 +308,12 @@ auto spp::utils::features::Validate(
     WalkTable(root, Str(), errors);
   }
   catch (std::exception const &e) {
-    errors.EmplaceBack(Str("could not read 'spp.toml': ") + e.what());
+    errors.emplace_back(Str("could not read 'spp.toml': ") + e.what());
   }
 
   // Validity of semantics is enforced by the tracking
   // list remaining empty.
-  return errors.IsEmpty();
+  return errors.empty();
 }
 
 auto spp::utils::features::Load(

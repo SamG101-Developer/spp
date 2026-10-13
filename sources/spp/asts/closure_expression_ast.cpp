@@ -177,8 +177,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
       const auto written_ret = ReturnType;
       ReturnType = type_resolution::AnalyseWrittenType(*ReturnType, *sm, *meta);
 
-      meta->EnclosingFnRetType.EmplaceBack(ReturnType);
-      meta->EnclosingFnSourceRetType.EmplaceBack(written_ret);
+      meta->EnclosingFnRetType.emplace_back(ReturnType);
+      meta->EnclosingFnSourceRetType.emplace_back(written_ret);
     }
 
     // A "ret" or "?" in the body leaves the closure rather
@@ -196,7 +196,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
-    _TrueRetType = not meta->EnclosingFnRetType.IsEmpty()
+    _TrueRetType = not meta->EnclosingFnRetType.empty()
       ? meta->EnclosingFnRetType[0]
       : Body->InferType(sm, meta);
     _TrueRetType->Stage7_AnalyseSemantics(sm, meta);
@@ -282,10 +282,10 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   // back (the bare symbol gave a "&U32" a 4-byte slot for 8).
   for (auto const &capture : PcGroup->CaptureGroup->Captures) {
     const auto cap_ty = capture->InferType(sm, meta);
-    closure_env_field_tys.EmplaceBack(
+    closure_env_field_tys.emplace_back(
       codegen::GetLlvmTypeOf(TypeRef::Of(*cap_ty, *sm->CurrentScope), ctx));
   }
-  closure_env_ty->setBody(closure_env_field_tys.ToStdVector(), false);
+  closure_env_ty->setBody(closure_env_field_tys, false);
 
   // Build a new function that the body of the closure is built into.
   // It needs a variable binding at the top (ie allow "let a = env.a";
@@ -295,11 +295,11 @@ auto ClosureExpressionAst::Stage11_CodeGen(
       return codegen::GetLlvmTypeOf(TypeRef::Of(*param->Type, *sm->CurrentScope), ctx);
     })
     | genex::to<Vec>();
-  llvm_param_types.Insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
+  llvm_param_types.insert(llvm_param_types.begin(), llvm::PointerType::get(*ctx->Context, 0));
   const auto llvm_ret_ty = codegen::GetLlvmTypeOf(TypeRef::Of(*_TrueRetType, *sm->CurrentScope), ctx);
 
   const auto llvm_fn_ty = llvm::FunctionType::get(
-    llvm_ret_ty, llvm_param_types.ToStdVector(), PcGroup->ParamGroup->GetVariadicParam() != nullptr);
+    llvm_ret_ty, llvm_param_types, PcGroup->ParamGroup->GetVariadicParam() != nullptr);
 
   // The closure body has internal linkage, so it cannot be declared
   // into a second module the way an external symbol can - it has to
@@ -406,7 +406,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
     // No captures means we don't even need to allocate
     // an env pointer. This is also safe to free, so no
     // special logic needed there.
-    if (PcGroup->CaptureGroup->Captures.IsEmpty()) {
+    if (PcGroup->CaptureGroup->Captures.empty()) {
       return llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0));
     }
 
@@ -499,7 +499,7 @@ auto ClosureExpressionAst::_FnType(
 
   // If there are no captures, return a FunRef type with
   // the parameters and return type.
-  if (PcGroup->CaptureGroup->Captures.IsEmpty()) {
+  if (PcGroup->CaptureGroup->Captures.empty()) {
     auto param_types = PcGroup->ParamGroup->Params
       | genex::views::transform([](auto const &x) { return x->Type; })
       | genex::to<Vec>();
@@ -574,7 +574,7 @@ auto ClosureExpressionAst::_MakeMockType(
   // sup scope list, as happens with normal overload resolution
   // of functions / methods.
   BumpTypeStructureGeneration();
-  mock_scope->DirectSupScopes.EmplaceBack(fun_sym->LinkedScope);
+  mock_scope->DirectSupScopes.emplace_back(fun_sym->LinkedScope);
   mock_scope->LinkedTypeSymbol = mock_sym;
 
   // Use the captures to determine if the closure can be copied
@@ -598,15 +598,15 @@ auto ClosureExpressionAst::_MakeMockType(
   // Add the $closure type symbol into the module scope and save
   // then scope into the temp scopes for persistence.
   mod_scope->AddTypeSymbol(mock_sym);
-  _MockAsts.EmplaceBack(std::move(mock_ast));
-  ScopeManager::TempScopes.EmplaceBack(
+  _MockAsts.emplace_back(std::move(mock_ast));
+  ScopeManager::TempScopes.emplace_back(
     std::move(mock_scope));
   return mock_name;
 }
 
 auto ClosureExpressionAst::ClearMockAsts() -> void {
   // Empty the temp asts (manual memory freeing).
-  _MockAsts.Clear();
+  _MockAsts.clear();
 }
 
 auto ClosureExpressionAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {

@@ -43,7 +43,7 @@ namespace {
     auto const *const param = sc::FindGnTypeParamById(param_id);
     ctx.Bindings.TypeParams.emplace_back(param_id, given);
     if (param != nullptr and param->IsVariadic) { ctx.Bindings.TypePackParams.push_back(param_id); }
-    if (not ctx.CheckConstraints or param == nullptr or param->TypeConstraints.IsEmpty()) { return true; }
+    if (not ctx.CheckConstraints or param == nullptr or param->TypeConstraints.empty()) { return true; }
 
     // A pack's constraints hold for each of its elements, not for the tuple they are gathered into
     // ("type_compare::PackConstraintsSatisfied"): an empty pack has none to check.
@@ -87,7 +87,7 @@ namespace {
   }
 
   /// The tuple a gathered type pack is bound to: "Tup" over the types, by position.
-  auto TupleIdOf(std::vector<sc::TypeId> const &elems, sc::Scope const &scope) -> sc::TypeId {
+  auto TupleIdOf(spp::Vec<sc::TypeId> const &elems, sc::Scope const &scope) -> sc::TypeId {
     auto *const tup = scope.FindTypeSymbol(spp::asts::generate::common_types_precompiled::TUP.get());
     if (tup == nullptr) { return nullptr; }
     if (elems.empty()) { return sc::TypeRef::Of(*tup, scope).Id; }
@@ -107,9 +107,9 @@ namespace {
   /// template given ("Vec" in its own body) stands for its own parameters.
   auto UnifyArgs(
     sc::TypeIdHead const &given, sc::TypeIdHead const &declared, sc::TypeSymbol const &tmpl, Ctx &ctx) -> bool {
-    const auto declared_args = declared.Args != nullptr ? sc::ArgsOf(declared.Args) : std::vector<sc::TypeIdArg>();
+    const auto declared_args = declared.Args != nullptr ? sc::ArgsOf(declared.Args) : spp::Vec<sc::TypeIdArg>();
     const auto bare = given.Kind == sc::TypeKey::Tag::Symbol;
-    const auto given_args = not bare and given.Args != nullptr ? sc::ArgsOf(given.Args) : std::vector<sc::TypeIdArg>();
+    const auto given_args = not bare and given.Args != nullptr ? sc::ArgsOf(given.Args) : spp::Vec<sc::TypeIdArg>();
     const auto is_variadic = tmpl.Type != nullptr and tmpl.Type->GnParamGroup->GetVariadicParam() != nullptr;
 
     // A pattern with no arguments takes any instance of its class, of a fixed number of parameters.
@@ -136,7 +136,7 @@ namespace {
       }
 
       // By position: the given positional arguments in order. A trailing pack takes the rest.
-      auto rest = std::vector<sc::TypeIdArg>();
+      auto rest = spp::Vec<sc::TypeIdArg>();
       for (auto j = 0uz; j < given_args.size(); ++j) {
         if (given_args[j].Named) { continue; }
         rest.push_back(given_args[j]);
@@ -144,7 +144,7 @@ namespace {
       const auto last = i + 1 == declared_args.size();
       if (last and d.TypeVal != nullptr) {
         if (const auto pack = TypePackParamOf(d.TypeVal); pack != 0) {
-          auto elems = std::vector<sc::TypeId>();
+          auto elems = spp::Vec<sc::TypeId>();
           for (auto j = positional; j < rest.size(); ++j) {
             if (rest[j].TypeVal == nullptr) { return false; }
             elems.push_back(rest[j].TypeVal);
@@ -154,7 +154,7 @@ namespace {
       }
       if (last and d.CompVal != nullptr) {
         if (const auto pack = CompPackParamOf(d.CompVal); pack != 0) {
-          auto elems = std::vector<sc::CompKey const*>();
+          auto elems = spp::Vec<sc::CompKey const*>();
           for (auto j = positional; j < rest.size(); ++j) {
             if (rest[j].CompVal == nullptr) { return false; }
             elems.push_back(rest[j].CompVal);
@@ -208,7 +208,7 @@ namespace {
       // a tuple in their canonical order: members are a set, so each other one takes whichever given member fits it.
       const auto pack = genex::find_if(d.Members, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
       if (pack != d.Members.end()) {
-        auto used = std::vector<bool>(g.Members.size(), false);
+        auto used = spp::Vec<bool>(g.Members.size(), false);
         for (const auto member : d.Members) {
           if (member == *pack) { continue; }
           auto found = false;
@@ -220,7 +220,7 @@ namespace {
           }
           if (not found) { return false; }
         }
-        auto rest = std::vector<sc::TypeId>();
+        auto rest = spp::Vec<sc::TypeId>();
         for (auto i = 0uz; i < g.Members.size(); ++i) { if (not used[i]) { rest.push_back(g.Members[i]); } }
         return BindType(TypePackParamOf(*pack), TupleIdOf(rest, ctx.Given), ctx);
       }
@@ -267,7 +267,7 @@ auto spp::analyse::scopes::UnifyCompIds(
     if (pack != 0 ? g.size() < fixed : g.size() != fixed) { return false; }
     for (auto i = 0uz; i < fixed; ++i) { if (not UnifyCompIds(g[i], d[i], bindings)) { return false; } }
     if (pack == 0) { return true; }
-    auto rest = std::vector<scopes::CompKey const*>(g.begin() + static_cast<std::ptrdiff_t>(fixed), g.end());
+    auto rest = spp::Vec<scopes::CompKey const*>(g.begin() + static_cast<std::ptrdiff_t>(fixed), g.end());
     return BindComp(pack, scopes::InternCompKey(scopes::CompKey::OfPack(std::move(rest))), bindings);
   }
   return given == declared;

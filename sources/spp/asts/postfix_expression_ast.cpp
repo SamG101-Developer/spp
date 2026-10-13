@@ -27,6 +27,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
+import genex;
 
 SPP_MOD_BEGIN
 PostfixExpressionAst::PostfixExpressionAst(
@@ -246,8 +247,8 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   // exists.
   auto lhs_parts = Lhs->ExprParts();
   auto rhs_parts = Op->ExprParts();
-  if (not rhs_parts.IsEmpty()) {
-    lhs_parts.AppendRange(std::move(rhs_parts));
+  if (not rhs_parts.empty()) {
+    lhs_parts.append_range(genex::views::move(rhs_parts));
   }
   return lhs_parts;
 }

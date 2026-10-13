@@ -62,7 +62,7 @@ struct spp::utils::errors::AbstractErrorBuilder {
   /// set the list to a new one. Todo: Rename.
   auto WithErrorFormatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder& {
     // Add a single error formatter to the list.
-    _ErrFormatters.EmplaceBack(error_formatter);
+    _ErrFormatters.emplace_back(error_formatter);
     return *this;
   }
 

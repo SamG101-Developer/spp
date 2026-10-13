@@ -28,7 +28,7 @@ auto spp::analyse::utils::regions::PlaceOf(
   // method called on a place, is a step; a dereference is
   // none. A call of anything else (a function, a value)
   // hands back a temporary, which is no place.
-  auto steps = std::vector<PlaceStep>();
+  auto steps = Vec<PlaceStep>();
   auto cur = &ast;
   while (const auto postfix = cur->To<PostfixExpressionAst>()) {
     // For a runtime member access, get the interned if of
@@ -215,7 +215,7 @@ auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
 }
 
 auto spp::analyse::utils::regions::DescendToPart(
-  TypeRef const &root, Scope const &root_scope, std::vector<PlaceStep> const &steps,
+  TypeRef const &root, Scope const &root_scope, Vec<PlaceStep> const &steps,
   const std::size_t count) -> Pair<TypeRef, Scope const*> {
   // Start at the root type-ref and scope, and loop from the
   // 0th element upto the provided count or the number of steps.

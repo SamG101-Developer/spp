@@ -38,7 +38,7 @@ namespace spp::analyse::scopes {
     /// interned with "InternCompKey", as a type key's nested
     /// types are, so a node's equality and hash read one
     /// pointer per part rather than walking the parts.
-    std::vector<CompKey const*> Kids;
+    Vec<CompKey const*> Kids;
 
     /// "Member": the type the constant is named through, as
     /// its "TypeId"'s word.
@@ -89,7 +89,7 @@ namespace spp::analyse::scopes {
 
     /// A pack of interned elements, and an operation over two
     /// interned operands.
-    static auto OfPack(std::vector<CompKey const*> elems) -> CompKey {
+    static auto OfPack(Vec<CompKey const*> elems) -> CompKey {
       return CompKey{.Kind = Part::Pack, .Text = {}, .ParamId = 0, .Kids = std::move(elems), .Type = 0, .Val = {}};
     }
 
@@ -188,12 +188,12 @@ namespace spp::analyse::scopes {
   /// which names nothing by identity. Only difference to the
   /// type version is this is not cached.
   SPP_EXP_FUN auto ParamsNamedBy(
-    CompId id) -> std::vector<std::uint64_t>;
+    CompId id) -> Vec<std::uint64_t>;
 
   /// The constants an identity names through types ("Member"
   /// parts): each type's "TypeId" word and the name, in order.
   SPP_EXP_FUN auto MembersNamedBy(
-    CompId id) -> std::vector<std::pair<std::uint64_t, Str>>;
+    CompId id) -> Vec<std::pair<std::uint64_t, Str>>;
 
   /// Whether an identity is a value all the way down: a value,
   /// or a pack of comp values (recursive check). Anything

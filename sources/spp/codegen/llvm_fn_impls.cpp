@@ -75,7 +75,7 @@ namespace {
     const auto dprintf_fn = mod->getOrInsertFunction(
       "dprintf", llvm::FunctionType::get(i32_ty, {i32_ty, ptr_ty}, true));
 
-    auto call_args = std::vector<llvm::Value*>{
+    auto call_args = spp::Vec<llvm::Value*>{
       // Todo: Vec
       llvm::ConstantInt::get(i32_ty, 2),
       ctx->Builder.CreateGlobalString(spp::Str(fmt) + "\n")
@@ -328,7 +328,7 @@ auto spp::codegen::fn_impls::SimpleCreateFn(
 
   const auto uid = "." + utils::Uid();
   const auto name = mangle::MangleFnName(*sm->CurrentScope, *proto);
-  const auto fn_ty = llvm::FunctionType::get(ret_ty, param_tys.ToStdVector(), false);
+  const auto fn_ty = llvm::FunctionType::get(ret_ty, param_tys, false);
   const auto fn = llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry" + uid, fn);
   ctx->Builder.SetInsertPoint(entry_bb);
@@ -506,7 +506,7 @@ auto spp::codegen::fn_impls::SimpleIntrinsicBinopAssign(
   const auto value_ty = GetLlvmTypeOf(
     analyse::scopes::TypeRef::Of(*params[0]->Type, *sm->CurrentScope).WithoutConvention(), ctx);
   const auto operand_ty = GetLlvmTypeOf(
-    analyse::scopes::TypeRef::Of(*params.Back()->Type, *sm->CurrentScope).WithoutConvention(), ctx);
+    analyse::scopes::TypeRef::Of(*params.back()->Type, *sm->CurrentScope).WithoutConvention(), ctx);
 
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
   const auto ptr_ty = llvm::cast<llvm::Type>(llvm::PointerType::get(*ctx->Context, 0));
@@ -2305,7 +2305,7 @@ auto spp::codegen::fn_impls::StdIntrinsicsFpclass(
   const auto other_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.other" + uid, fn);
   const auto sw = ctx->Builder.CreateSwitch(flag_arg, other_bb, kClassCount);
 
-  auto incoming = std::vector<std::pair<llvm::Value*, llvm::BasicBlock*>>();
+  auto incoming = Vec<std::pair<llvm::Value*, llvm::BasicBlock*>>();
   for (auto i = 0u; i < kClassCount; ++i) {
     const auto case_bb = llvm::BasicBlock::Create(*ctx->Context, "fpclass.c" + std::to_string(i) + uid, fn);
     sw->addCase(llvm::cast<llvm::ConstantInt>(llvm::ConstantInt::get(i32_ty, i)), case_bb);
@@ -2537,7 +2537,7 @@ auto spp::codegen::fn_impls::StdNonNullWrite(
   // generic arg means the param is removed from the signature.
   // Use the special return void instruction in this case.
   const auto value_params = proto->FnParamGroup->GetNonSelfParams();
-  if (value_params.IsEmpty()) {
+  if (value_params.empty()) {
     ctx->Builder.CreateRetVoid();
     return;
   }
@@ -3012,7 +3012,7 @@ auto spp::codegen::fn_impls::StdMemOpsDrop(
   // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
   // A Void generic arg removes the parameter from the signature, and a Void has nothing to destroy.
   const auto params = proto->FnParamGroup->GetAllParams();
-  if (params.IsEmpty()) {
+  if (params.empty()) {
     ctx->Builder.CreateRetVoid();
     return;
   }

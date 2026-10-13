@@ -87,7 +87,7 @@ namespace {
    */
   auto CollectBoundNames(LocalVariableAst const &var, spp::Vec<IdentifierAst const*> &out) -> void {
     if (auto const *single = var.To<LocalVariableSingleIdentifierAst>(); single != nullptr) {
-      out.EmplaceBack(single->Alias != nullptr ? single->Alias->Name.get() : single->Name.get());
+      out.emplace_back(single->Alias != nullptr ? single->Alias->Name.get() : single->Name.get());
     }
     else if (auto const *tup = var.To<LocalVariableDestructureTupleAst>(); tup != nullptr) {
       for (auto const &elem : tup->Elems) { CollectBoundNames(*elem, out); }
@@ -165,8 +165,8 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   // (which lowers to one of these) alike.
   auto bound_names = Vec<IdentifierAst const*>();
   CollectBoundNames(*Var, bound_names);
-  for (auto i = 0uz; i < bound_names.Len(); ++i) {
-    for (auto j = i + 1; j < bound_names.Len(); ++j) {
+  for (auto i = 0uz; i < bound_names.size(); ++i) {
+    for (auto j = i + 1; j < bound_names.size(); ++j) {
       RaiseIf<SppIdentifierDuplicateError>(
         *bound_names[i] == *bound_names[j], {sm->CurrentScope},
         ERR_ARGS(*bound_names[i], *bound_names[j], "destructure binding"));

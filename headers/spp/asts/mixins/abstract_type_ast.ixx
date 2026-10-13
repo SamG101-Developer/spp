@@ -36,7 +36,7 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// make one allocation for the entire parts retrieval, not
   /// a sublist per ast that gets merged anyway.
   virtual auto NsPartsInto(Vec<IdentifierAst const*> &out) const -> void {
-    for (auto const *part : NsParts()) { out.EmplaceBack(part); }
+    for (auto const *part : NsParts()) { out.emplace_back(part); }
   }
 
   /// Again to prevent extraneous allocations, we can allocate
@@ -44,7 +44,7 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// one allocation for the entire parts retrieval, not a
   /// sublist per ast that gets merged anyway.
   virtual auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const -> void {
-    for (auto const *part : TypeParts()) { out.EmplaceBack(part); }
+    for (auto const *part : TypeParts()) { out.emplace_back(part); }
   }
 
   /// The externally produces/allocating namespace parts list,

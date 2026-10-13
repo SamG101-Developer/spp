@@ -211,7 +211,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
   // pointer. Allows for compatibility with closures too;
   // one uniform system for all function type storage.
   if (const auto fields = GetFatPointerFields(*cls_sym, *scope, ctx); fields.has_value()) {
-    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, fields->ToStdVector());
+    cls_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, *fields);
     return;
   }
 

@@ -147,7 +147,7 @@ auto SupPrototypeExtensionAst::Clone() const -> Unique<Ast> {
 auto SupPrototypeExtensionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSup).append(" ");
-  SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.IsEmpty() ? "" : " ");
+  SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.empty() ? "" : " ");
   SPP_STRING_APPEND(Name).append(" ");
   SPP_STRING_APPEND(TokExt).append(" ");
   SPP_STRING_APPEND(SuperCls).append(" ");
@@ -359,10 +359,10 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
         // walks line up index for index ("GetAllAttrAsts").
         const auto attrs = type_members::GetAllAttrs(*cls_sym);
         const auto attr_asts = type_members::GetAllAttrAsts(*cls_sym);
-        for (auto i = 0uz; i < attr_asts.Len(); ++i) {
+        for (auto i = 0uz; i < attr_asts.size(); ++i) {
           auto const *const attr = attr_asts[i];
           const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
-          auto const *const attr_scope = i < attrs.Len() ? spp::get<2>(attrs[i]) : nullptr;
+          auto const *const attr_scope = i < attrs.size() ? spp::get<2>(attrs[i]) : nullptr;
           RaiseIf<SppGenericConstraintError>(
             attr_sym != nullptr and not attr_sym->IsGn() and not attr_sym->IsCopyable(),
             {sm->CurrentScope, attr_scope != nullptr ? attr_scope : sm->CurrentScope},

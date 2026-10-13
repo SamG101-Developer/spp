@@ -66,7 +66,7 @@ auto ClassAttributeAst::Clone() const -> Unique<Ast> {
 auto ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(Name);
   SPP_STRING_APPEND(TokColon).append(" ");
   SPP_STRING_APPEND(Type);

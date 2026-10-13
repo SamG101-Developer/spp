@@ -134,7 +134,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     // read off the non-generic scope, because that is where the
     // member was written and so where its annotation lives; an
     // instantiation's copy of a symbol is not the declaration.
-    if (not closest.IsEmpty()) {
+    if (not closest.empty()) {
       const auto scope = closest[0].Where->NonGnScope;
       const auto declared_sym = scope->FindVarSymbol(Name.get());
       visibility_utils::CheckTypeMemberVisibility(

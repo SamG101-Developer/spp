@@ -7,6 +7,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
+import spp.utils.types;
 import std;
 
 auto spp::codegen::GetOrAddTargetIntoCurrentModule(
@@ -65,14 +66,14 @@ auto spp::codegen::BuildFnValue(
 
   auto thunk = module->getFunction(thunk_name);
   if (thunk == nullptr) {
-    auto thunk_param_tys = std::vector<llvm::Type*>{ptr_ty};
+    auto thunk_param_tys = spp::Vec<llvm::Type*>{ptr_ty};
     for (const auto param_ty : callee->getFunctionType()->params()) { thunk_param_tys.push_back(param_ty); }
 
     thunk = llvm::Function::Create(
       llvm::FunctionType::get(callee->getReturnType(), thunk_param_tys, false),
       llvm::GlobalValue::InternalLinkage, thunk_name, module);
     auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(*ctx->Context, "entry", thunk));
-    auto forwarded = std::vector<llvm::Value*>();
+    auto forwarded = spp::Vec<llvm::Value*>();
     for (auto &arg : thunk->args()) {
       if (arg.getArgNo() > 0) { forwarded.push_back(&arg); }
     }

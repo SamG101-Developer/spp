@@ -123,7 +123,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   output_call->Source.OriginalExpr = this;
 
   auto output_members = Vec<Unique<StatementAst>>();
-  output_members.EmplaceBack(MakeUnique<PostfixExpressionAst>(std::move(output_target), std::move(output_call)));
+  output_members.emplace_back(MakeUnique<PostfixExpressionAst>(std::move(output_target), std::move(output_call)));
   auto output_body = MakeUnique<InnerScopeExpressionAst>(nullptr, std::move(output_members), nullptr);
 
   // The function call for extracting the error state out of
@@ -143,20 +143,20 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
 
   auto residual_statements = Vec<Unique<StatementAst>>();
   if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
-    residual_statements.EmplaceBack(MakeUnique<RetStatementAst>(nullptr, std::move(residual_extract)));
+    residual_statements.emplace_back(MakeUnique<RetStatementAst>(nullptr, std::move(residual_extract)));
   }
   else {
-    residual_statements.EmplaceBack(MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(residual_extract)));
-    residual_statements.EmplaceBack(MakeUnique<RetStatementAst>(nullptr, nullptr));
+    residual_statements.emplace_back(MakeUnique<GenExpressionAst>(nullptr, nullptr, std::move(residual_extract)));
+    residual_statements.emplace_back(MakeUnique<RetStatementAst>(nullptr, nullptr));
   }
   auto residual_body = MakeUnique<InnerScopeExpressionAst>(nullptr, std::move(residual_statements), nullptr);
 
   // Build the "else" branch with the residual unwrap, which will
   // get returned/yielded (depending on the function flavour).
   auto else_patterns = Vec<Unique<CasePatternVariantAst>>();
-  else_patterns.EmplaceBack(MakeUnique<CasePatternVariantElseAst>(nullptr));
+  else_patterns.emplace_back(MakeUnique<CasePatternVariantElseAst>(nullptr));
   auto branches = Vec<Unique<CaseExpressionBranchAst>>();
-  branches.EmplaceBack(
+  branches.emplace_back(
     MakeUnique<CaseExpressionBranchAst>(nullptr, std::move(else_patterns), nullptr, std::move(residual_body)));
 
   // Build the `case` expression with the value "branch" as the
@@ -170,8 +170,8 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // into the surrounding one and the whole lowering has a single
   // AST for the later stages to forward to.
   auto members = Vec<Unique<StatementAst>>();
-  members.EmplaceBack(std::move(let_stmt));
-  members.EmplaceBack(std::move(case_expr));
+  members.emplace_back(std::move(let_stmt));
+  members.emplace_back(std::move(case_expr));
 
   _TransformedExpr = MakeUnique<InnerScopeExpressionAst>(
     nullptr, std::move(members), nullptr);
@@ -197,18 +197,18 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(
-        TypeRef::Of(*meta->EnclosingFnRetType.Back(), *meta->EnclosingFnScope),
+        TypeRef::Of(*meta->EnclosingFnRetType.back(), *meta->EnclosingFnScope),
         residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
       {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFnSourceRetType.Back(), *meta->EnclosingFnRetType.Back(),
+        *meta->EnclosingFnSourceRetType.back(), *meta->EnclosingFnRetType.back(),
         *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
   }
 
   // Todo: Tidy!
   // Coroutine return type check.
   else {
-    auto const &ret_type = meta->EnclosingFnRetType.Back();
+    auto const &ret_type = meta->EnclosingFnRetType.back();
     const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
       [&] { return ret_type; }, "early return"));
@@ -217,7 +217,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
       not type_compare::Assignable(yield_ref, residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
       {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFnSourceRetType.Back(), ErrTypeAt(yield_ref, *meta->EnclosingFnSourceRetType.Back()),
+        *meta->EnclosingFnSourceRetType.back(), ErrTypeAt(yield_ref, *meta->EnclosingFnSourceRetType.back()),
         *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
   }
 }

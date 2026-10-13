@@ -102,7 +102,7 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
     nullptr, nullptr, std::move(gen_value));
 
   auto loop_body = InnerScopeExpressionAst::NewEmpty();
-  loop_body->Members.EmplaceBack(std::move(gen_expression));
+  loop_body->Members.emplace_back(std::move(gen_expression));
   _MappedLoop = MakeUnique<LoopIterableExpressionAst>(
     nullptr, std::move(temp_var), nullptr, std::move(Expr), std::move(loop_body), nullptr);
 

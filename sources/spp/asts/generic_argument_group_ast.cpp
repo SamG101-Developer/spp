@@ -37,7 +37,7 @@ namespace spp::asts {
       // vector.
       auto names = Vec<TypeAst*>();
       for (const auto x : keyword_args) {
-        if (x->IsCompArg() == comp) { names.EmplaceBack(x->KeywordName().get()); }
+        if (x->IsCompArg() == comp) { names.emplace_back(x->KeywordName().get()); }
       }
 
       // Grab the first set of duplicate into a new vector
@@ -66,14 +66,14 @@ auto GenericArgumentGroupAst::FromParams(
     if (param->IsTypeParam()) {
       auto val = AstClone(param->Name);
       auto arg = GenericArgumentAst::NewType(param->Name, std::move(val));
-      mapped_args.EmplaceBack(std::move(arg));
+      mapped_args.emplace_back(std::move(arg));
     }
 
     // Map comptime generic parameters to keyword comptime arguments.
     else {
       auto val = IdentifierAst::FromType(*param->Name);
       auto arg = GenericArgumentAst::NewComp(param->Name, std::move(val));
-      mapped_args.EmplaceBack(std::move(arg));
+      mapped_args.emplace_back(std::move(arg));
     }
   }
 
@@ -96,12 +96,12 @@ GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
 auto GenericArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Args.IsEmpty() ? 0 : Args.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Args.empty() ? 0 : Args.front()->PosStart();
 }
 
 auto GenericArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Args.IsEmpty() ? 0 : Args.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Args.empty() ? 0 : Args.back()->PosEnd();
 }
 
 auto GenericArgumentGroupAst::Clone() const -> Unique<Ast> {
@@ -114,11 +114,11 @@ auto GenericArgumentGroupAst::Clone() const -> Unique<Ast> {
 
 auto GenericArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_START;
-  if (not Args.IsEmpty()) {
+  if (not Args.empty()) {
     // Separators go between the arguments only, so there is no
     // trailing ", " before the "]".
     SPP_STRING_APPEND_RAW("[");
-    for (auto i = 0uz; i < Args.Len(); ++i) {
+    for (auto i = 0uz; i < Args.size(); ++i) {
       if (i != 0) { SPP_STRING_APPEND_RAW(", "); }
       SPP_STRING_APPEND(Args[i]);
     }
@@ -129,11 +129,11 @@ auto GenericArgumentGroupAst::ToString() const -> Str {
 
 auto GenericArgumentGroupAst::operator==(
   GenericArgumentGroupAst const &other) const -> bool {
-  if (Args.Len() != other.Args.Len()) {
+  if (Args.size() != other.Args.size()) {
     return false;
   }
 
-  for (std::size_t i = 0; i < Args.Len(); i++) {
+  for (std::size_t i = 0; i < Args.size(); i++) {
     if (*Args[i] != *other.Args[i]) { return false; }
   }
 
@@ -155,12 +155,12 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   const auto keyword_args = GetKeywordArgs();
   const auto type_arg_names = DuplicateNames(keyword_args, false);
   RaiseIf<SppIdentifierDuplicateError>(
-    not type_arg_names.IsEmpty(), {sm->CurrentScope},
+    not type_arg_names.empty(), {sm->CurrentScope},
     ERR_ARGS(*type_arg_names[0], *type_arg_names[1], "keyword generic type argument"));
 
   const auto comp_arg_names = DuplicateNames(keyword_args, true);
   RaiseIf<SppIdentifierDuplicateError>(
-    not comp_arg_names.IsEmpty(), {sm->CurrentScope},
+    not comp_arg_names.empty(), {sm->CurrentScope},
     ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword generic comp argument"));
 
   // Check the arguments are in the correct order.
@@ -170,7 +170,7 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(
-    not unordered_args.IsEmpty(), {sm->CurrentScope},
+    not unordered_args.empty(), {sm->CurrentScope},
     ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
   // Analyse the arguments.
@@ -205,7 +205,7 @@ auto GenericArgumentGroupAst::MergeArgs(
     }
     const auto *name = other_arg->KeywordName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
     if (At(name) != nullptr) { continue; }
-    Args.EmplaceBack(std::move(other_arg));
+    Args.emplace_back(std::move(other_arg));
   }
 }
 

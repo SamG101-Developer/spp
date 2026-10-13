@@ -117,10 +117,10 @@ auto spp::analyse::scopes::FoldCompValues(
 
 /// [CHECKED]
 auto spp::analyse::scopes::ParamsNamedBy(
-  const CompId id) -> std::vector<std::uint64_t> {
+  const CompId id) -> Vec<std::uint64_t> {
   // Collect all the parts of the comp key that are "Param"
   // parts, and push them into one collection.
-  auto out = std::vector<std::uint64_t>();
+  auto out = Vec<std::uint64_t>();
   if (id == nullptr) { return out; }
   id->Visit([&out](CompKey const &part) {
     if (part.Kind == CompKey::Part::Param) { out.push_back(part.ParamId); }
@@ -130,10 +130,10 @@ auto spp::analyse::scopes::ParamsNamedBy(
 
 /// [CHECKED]
 auto spp::analyse::scopes::MembersNamedBy(
-  const CompId id) -> std::vector<std::pair<std::uint64_t, Str>> {
+  const CompId id) -> Vec<std::pair<std::uint64_t, Str>> {
   // Collect all the parts of the comp key that are "Member"
   // parts, and push them into one collection.
-  auto out = std::vector<std::pair<std::uint64_t, Str>>();
+  auto out = Vec<std::pair<std::uint64_t, Str>>();
   if (id == nullptr) { return out; }
   id->Visit([&out](CompKey const &part) {
     if (part.Kind == CompKey::Part::Member) { out.emplace_back(part.Type, part.Text); }

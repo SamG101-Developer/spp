@@ -62,10 +62,10 @@ namespace spp::asts {
 
       const auto arg_at = [](TypeAst const &t, const std::size_t i) -> Shared<TypeAst> {
         auto const &args = t.LastTypePart()->GnArgGroup->Args;
-        return i < args.Len() ? args[i]->TypeVal : nullptr;
+        return i < args.size() ? args[i]->TypeVal : nullptr;
       };
 
-      for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.Len(); ++i) {
+      for (auto i = 0uz; i < pattern.LastTypePart()->GnArgGroup->Args.size(); ++i) {
         const auto p = arg_at(pattern, i);
         const auto a = arg_at(alt, i);
         // An argument can be absent on either side: the accessor above reads "TypeVal", which a comp argument
@@ -354,7 +354,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
       const auto alts = type_compare::VariantMembers(
         *subject_type->WithoutConvention(), *sm->CurrentScope);
-      if (*tag >= alts.Len()) { break; }
+      if (*tag >= alts.size()) { break; }
 
       auto [next_pattern, next_subject] = NarrowedLevel(*pattern_type, *alts[*tag], *sm->CurrentScope);
       if (next_pattern == nullptr) { break; }
@@ -445,7 +445,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
 
   const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
-  auto llvm_master_transform = llvm_transforms.IsEmpty()
+  auto llvm_master_transform = llvm_transforms.empty()
     ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
     : genex::fold_left_first(llvm_transforms, std::move(AND));
 

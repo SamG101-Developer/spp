@@ -173,9 +173,9 @@ namespace spp::codegen {
     if (IsTypeTuple(ref, scope)) {
       const auto elems = sym.TypeArgRefs();
       auto elem_layouts = Vec<Layout>();
-      elem_layouts.Reserve(elems.Len());
+      elem_layouts.reserve(elems.size());
       for (auto const &elem : elems) {
-        elem_layouts.EmplaceBack(LayoutOf(sm, elem));
+        elem_layouts.emplace_back(LayoutOf(sm, elem));
       }
       return AggregateLayout(elem_layouts);
     }
@@ -216,7 +216,7 @@ namespace spp::codegen {
     // between them.
     auto attr_layouts = Vec<Layout>();
     for (auto const &attr : analyse::utils::type_members::GetAllAttrs(sym)) {
-      attr_layouts.EmplaceBack(LayoutOf(sm, spp::get<1>(attr)));
+      attr_layouts.emplace_back(LayoutOf(sm, spp::get<1>(attr)));
     }
     attr_layouts |= genex::actions::stable_sort([](auto const &a, auto const &b) {
       return a.Align != b.Align ? a.Align > b.Align : a.Size > b.Size;

@@ -51,7 +51,7 @@ auto UseStatementAst::Clone() const -> Unique<Ast> {
 auto UseStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokUse).append(" ");
   SPP_STRING_APPEND(OldType);
   SPP_STRING_END;

@@ -75,7 +75,7 @@ namespace spp::analyse::scopes {
     SPP_ATTR_NODISCARD auto begin() const { return _List->begin(); }
     SPP_ATTR_NODISCARD auto end() const { return _List->end(); }
     SPP_ATTR_NODISCARD auto size() const { return _List->size(); }
-    SPP_ATTR_NODISCARD auto IsEmpty() const { return _List->IsEmpty(); }
+    SPP_ATTR_NODISCARD auto empty() const { return _List->empty(); }
 
     operator Vec<Scope*> const&() const { return *_List; }
   };

@@ -117,7 +117,7 @@ namespace spp::codegen::mangle {
       analyse::scopes::TypeSymbol const *naming)
       -> Str {
       auto out = Str("[");
-      for (auto i = 0uz; i < args.Len(); ++i) {
+      for (auto i = 0uz; i < args.size(); ++i) {
         auto const *arg = args[i];
         if (i != 0) { out += ", "; }
         if (arg->KeywordName() != nullptr) { out += arg->KeywordName()->ToString() + "="; }
@@ -147,13 +147,13 @@ namespace spp::codegen::mangle {
       };
       const auto join = [&](auto const &list, Str const &sep) {
         auto joined = Str();
-        for (auto i = 0uz; i < list.Len(); ++i) { joined += (i != 0 ? sep : Str()) + short_arg(list[i]); }
+        for (auto i = 0uz; i < list.size(); ++i) { joined += (i != 0 ? sep : Str()) + short_arg(list[i]); }
         return joined;
       };
 
       const auto head = bare->WithoutGns()->ToString();
       if (head == "std::tuple::Tup") { return out + "(" + join(args, ", ") + ")"; }
-      if (head == "std::variant::Var" and args.Len() == 1 and args[0]->IsTypeArg()) {
+      if (head == "std::variant::Var" and args.size() == 1 and args[0]->IsTypeArg()) {
         auto const *tup = args[0]->TypeVal->LastTypePart();
         if (tup != nullptr and tup->GnArgGroup != nullptr) { return out + join(tup->GnArgGroup->GetAllArgs(), " or "); }
       }
@@ -162,7 +162,7 @@ namespace spp::codegen::mangle {
       // reads as noise and changes every build.
       if (last->Name.starts_with("$closure")) { return out + "{closure}"; }
       out += last->Name;
-      return args.IsEmpty() ? out : out + "[" + join(args, ", ") + "]";
+      return args.empty() ? out : out + "[" + join(args, ", ") + "]";
     }
 
     /// A 64-bit FNV-1a hash as 16 hex digits: stable across
@@ -222,7 +222,7 @@ auto spp::codegen::mangle::MangleTypeName(
   // ("MangleGnArgs").
   const auto fq_name = type_sym.FqName();
   auto const *last = fq_name->LastTypePart();
-  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.IsEmpty()) {
+  if (last == nullptr or last->GnArgGroup == nullptr or last->GnArgGroup->Args.empty()) {
     return fq_name->ToString();
   }
   return fq_name->WithoutGns()->ToString()
@@ -283,7 +283,7 @@ auto spp::codegen::mangle::MangleFnName(
 
   // Save the type symbols into a vector.
   auto types = Vec{return_type_sym};
-  types.AppendRange(param_type_syms);
+  types.append_range(param_type_syms);
 
   // Convert the mangled type names into a single function
   // name.
@@ -301,8 +301,8 @@ auto spp::codegen::mangle::MangleFnName(
   // arguments are.
   const auto owner_generic_args = owner_scope.GetGns();
   auto owner_args = Vec<asts::GenericArgumentAst*>();
-  for (auto const &arg : owner_generic_args) { owner_args.EmplaceBack(arg.get()); }
-  const auto owner_name = owner_args.IsEmpty() ? Str() : "#" + MangleGnArgs(owner_args, &owner_scope, nullptr);
+  for (auto const &arg : owner_generic_args) { owner_args.emplace_back(arg.get()); }
+  const auto owner_name = owner_args.empty() ? Str() : "#" + MangleGnArgs(owner_args, &owner_scope, nullptr);
   const auto full = mod_name + "#" + fun_proto.Name->Val + owner_name + "#" + fun_sig;
 
   // The readable part: the path, the name, and the owner's generics as a backtrace shows them.
@@ -311,9 +311,9 @@ auto spp::codegen::mangle::MangleFnName(
     readable.replace(pos, 1, "::");
   }
   readable += "::" + fun_proto.Name->Val;
-  if (not owner_args.IsEmpty()) {
+  if (not owner_args.empty()) {
     readable += "[";
-    for (auto i = 0uz; i < owner_args.Len(); ++i) {
+    for (auto i = 0uz; i < owner_args.size(); ++i) {
       auto const *arg = owner_args[i];
       if (i != 0) { readable += ", "; }
       if (arg->KeywordName() != nullptr) { readable += arg->KeywordName()->ToString() + "="; }

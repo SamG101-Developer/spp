@@ -70,7 +70,7 @@ namespace spp {
         auto type = arg.Ref.AstIn(*scopes[0]);
         SPP_ASSERT(type != nullptr);
         if (arg.At != nullptr) { type = type->WithSourceSpanAt(*arg.At); }
-        named.EmplaceBack(type);
+        named.emplace_back(type);
         return static_cast<asts::Ast const&>(*type);
       }
       else { return std::forward<T>(arg); }
@@ -126,13 +126,13 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     auto messages = Vec<Str>();
     auto next = 0uz;
     for (auto &info : cast_error->ErrorInfo) {
-      if (this->_ErrFormatters.IsEmpty()) { break; }
-      auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.Len()];
+      if (this->_ErrFormatters.empty()) { break; }
+      auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.size()];
       if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
         info.Span = formatter->SpanOfAst(info.Ast);
         ++next;
       }
-      messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
+      messages.emplace_back(_StringifyErrorInformation(formatter, info));
     }
     cast_error->Messages = std::move(messages);
 
@@ -142,7 +142,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     for (auto const &msg : _SubErrors) {
       auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
-      cast_error->Messages.EmplaceBack(header + msg);
+      cast_error->Messages.emplace_back(header + msg);
       ++i;
     }
 

@@ -205,7 +205,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
     SPP_NO_ANNOTATIONS, nullptr, nullptr, nullptr, nullptr);
   auto dummy_scope = MakeUnique<Scope>(
     dummy_scope_name, sm->CurrentScope, dummy_ast.get());
-  _DummyScopeAsts.EmplaceBack(std::move(dummy_ast));
+  _DummyScopeAsts.emplace_back(std::move(dummy_ast));
 
   // Create the type symbol for the generic parameter.
   const auto sym = MakeShared<TypeSymbol>(
@@ -228,8 +228,8 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
   sm->CurrentScope->AddTypeSymbol(sym);
 
   dummy_scope->LinkedTypeSymbol = sym;
-  _DummyScopes.EmplaceBack(dummy_scope.get());
-  ScopeManager::TempScopes.EmplaceBack(
+  _DummyScopes.emplace_back(dummy_scope.get());
+  ScopeManager::TempScopes.emplace_back(
     std::move(dummy_scope));
 }
 
@@ -356,12 +356,12 @@ auto GenericParameterAst::Stage11_CodeGen(
 
 auto GenericParameterAst::GetDummyScopes() const -> std::span<Scope* const> {
   // View the dummy scope vector.
-  return _DummyScopes.ToView();
+  return _DummyScopes;
 }
 
 auto GenericParameterAst::ClearDummyScopes() -> void {
   // Clear the dummy scopes.
-  _DummyScopeAsts.Clear();
+  _DummyScopeAsts.clear();
 }
 
 SPP_MOD_END

@@ -80,7 +80,7 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
   _LhsAsId = AstClone(Lhs->To<IdentifierAst>());
 
   // Convert to a "case" destructure and analyse it.
-  const auto n = sm->CurrentScope->Children.Len();
+  const auto n = sm->CurrentScope->Children.size();
   _MappedFn = case_utils::ConvertIsExprToFnCall(*this, sm, meta);
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
@@ -88,14 +88,14 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
   // includes the lhs symbol if it's been flow typed. They are
   // recorded as the scope's bindings, as a "let"'s are, so
   // a later walk only finds them from this "is" onwards.
-  _Exposed.Clear();
+  _Exposed.clear();
   if (AstAs<InnerScopeAst<Unique<Ast>>>(sm->CurrentScope->AstNode) == nullptr) {
     const auto destructure_syms = sm->CurrentScope->Children[n]->Children[0]->GetAllVarSymbols(true, true);
     for (auto const &x : destructure_syms) {
-      _Exposed.EmplaceBack(x->SharedFromThis<VariableSymbol>());
-      sm->CurrentScope->RecordLetBinding(_Exposed.Back());
-      sm->CurrentScope->AddVarSymbol(_Exposed.Back());
-      if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.EmplaceBack(x); }
+      _Exposed.emplace_back(x->SharedFromThis<VariableSymbol>());
+      sm->CurrentScope->RecordLetBinding(_Exposed.back());
+      sm->CurrentScope->AddVarSymbol(_Exposed.back());
+      if (x->Kind == VariableKind::Local) { meta->AddedIsBindings.emplace_back(x); }
     }
   }
 }

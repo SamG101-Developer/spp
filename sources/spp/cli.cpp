@@ -263,7 +263,7 @@ auto spp::cli::RunCli(
 
   auto test_name_filter = Str();
   auto test_group_filter = Str();
-  auto test_libs = std::vector<Str>();
+  auto test_libs = Vec<Str>();
   auto test_all_libs = false;
   auto test_runner = Str();
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
@@ -557,11 +557,11 @@ auto spp::cli::HandleClean(
   auto targets = Vec<Str>();
   if (not target.empty()) {
     if (not codegen::SelectTarget(target.c_str())) { return; }
-    targets.EmplaceBack(codegen::TargetFolderName());
+    targets.emplace_back(codegen::TargetFolderName());
   }
   else {
     for (auto const &entry : SafeDirectoryIterator(cwd / OUT_FOLDER)) {
-      if (entry.is_directory()) { targets.EmplaceBack(utils::files::NativeString(entry.path().filename())); }
+      if (entry.is_directory()) { targets.emplace_back(utils::files::NativeString(entry.path().filename())); }
     }
   }
 
@@ -674,11 +674,11 @@ auto spp::cli::HandleTest(
 
   auto failed = Vec<Str>();
   for (auto const &name : c.TestNames()) {
-    if (run(name) != 0) { failed.EmplaceBack(name); }
+    if (run(name) != 0) { failed.emplace_back(name); }
   }
 
-  std::cout << "\n" << (c.TestCount() - failed.Len()) << "/" << c.TestCount() << " test(s) passed." << std::endl;
-  if (failed.IsEmpty()) {
+  std::cout << "\n" << (c.TestCount() - failed.size()) << "/" << c.TestCount() << " test(s) passed." << std::endl;
+  if (failed.empty()) {
     // Every test passes on its own, so what failed is something
     // they share rather than any one of them.
     std::cerr << "The suite failed as a whole but every test passes alone - suspect shared state or the harness.\n";
@@ -746,7 +746,7 @@ auto spp::cli::HandleValidate(
   // Check the version follows "major.minor.patch" format.
   const auto version = project->at("version").value<Str>().value_or("");
   const auto version_parts = version | genex::views::split('.') | genex::to<Vec>();
-  if (version_parts.Len() != 3) {
+  if (version_parts.size() != 3) {
     std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
     return false;
   }
@@ -851,7 +851,7 @@ auto spp::cli::FormatDefaultFileContents(
   // // Remove the first newline, and replace "    " with "".
   // auto out = Str();
   // for (const auto&line: contents | genex::views::split('\n')) {
-  //     if (line.Len() <= 0) { continue; }
+  //     if (line.size() <= 0) { continue; }
   //     auto formatted = line | genex::to<Str>();
   //     formatted.replace(formatted.find("    "), 4, "");
   // }

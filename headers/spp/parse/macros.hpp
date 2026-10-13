@@ -34,7 +34,7 @@
                 break;                         \
             }                                  \
             else {                             \
-                out.EmplaceBack(std::move(ast)); \
+                out.emplace_back(std::move(ast)); \
                 done_1_parse = true;           \
                 temp_index = _Pos;             \
             }                                  \
@@ -43,13 +43,13 @@
 
 #define PARSE_ONE_OR_MORE(out, f, s) \
     PARSE_ZERO_OR_MORE(out, f, s)    \
-    if (out.IsEmpty()) {             \
+    if (out.empty()) {             \
         return nullptr;              \
     }
 
 #define PARSE_TWO_OR_MORE(out, f, s) \
     PARSE_ONE_OR_MORE(out, f, s)     \
-    if (out.Len() < 2) {             \
+    if (out.size() < 2) {             \
         return nullptr;              \
     }
 

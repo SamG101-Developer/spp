@@ -77,7 +77,7 @@ auto SupPrototypeFunctionsAst::Clone() const -> Unique<Ast> {
 auto SupPrototypeFunctionsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSup).append(" ");
-  SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.IsEmpty() ? "" : " ");
+  SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.empty() ? "" : " ");
   SPP_STRING_APPEND(Name).append(" ");
   SPP_STRING_APPEND(Impl);
   SPP_STRING_END;
