@@ -80,6 +80,7 @@ syscall
 yielder
 vtables?
 Asan
+LSan
 MSan
 Tsan
 UBsan
@@ -102,3 +103,4 @@ cppcheck
 [Aa]llowlists?
 ReadIn
 Uids?
+[Vv]algrind
