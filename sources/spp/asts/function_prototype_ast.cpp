@@ -249,8 +249,14 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
 
       func->Target->addParamAttr(j, llvm::Attribute::NonNull);
       func->Target->addParamAttr(j, llvm::Attribute::NoUndef);
-      // No "noalias" on a "&mut": the overlap check compares spelled regions, so two can alias undetected.
+
+      // A "&mut" is the only way to its place while the call
+      // runs: the checker refuses any call given two ways to
+      // one place where one is "&mut" (by place identity, a
+      // call or index step overlapping its whole position, and
+      // every loan held), which is what "noalias" asks of the callee.
       if (is_ref) { func->Target->addParamAttr(j, llvm::Attribute::ReadOnly); }
+      if (is_mut) { func->Target->addParamAttr(j, llvm::Attribute::NoAlias); }
       if (const auto bytes = deref_bytes(param_type); bytes > 0) {
         func->Target->addDereferenceableParamAttr(j, bytes);
       }
