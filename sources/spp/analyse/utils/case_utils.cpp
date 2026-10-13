@@ -269,19 +269,34 @@ namespace spp::analyse::utils::case_utils {
     }
 
     /// Two patterns for one field, as the one matching what both match:
-    /// the other, when either is anything; else nothing known.
-    /// Todo: two constructor patterns give up here, so a refined type
-    ///  with a binding on the same field covers nothing (red test
-    ///  "test_valid_nested_variant_covered_by_refining_type_and_binding").
-    ///  Meet them field by field: the same constructor meets its fields,
-    ///  different constructors match nothing.
+    /// the other, when either is anything; one constructor with its
+    /// fields met in turn, when both name it ("is Some[Some[S32]]" and a
+    /// binding "val=Some(v)" on the same field); one literal, when both
+    /// are it. Anything else - an opaque test, or two that cannot both
+    /// hold - is nothing known.
     auto Meet(Pat a, Pat b) -> Pat {
       if (a.K == Pat::Kind::Wild) { return b; }
       if (b.K == Pat::Kind::Wild) { return a; }
+      if (a.K == Pat::Kind::Ctor and b.K == Pat::Kind::Ctor and a.Ctor == b.Ctor
+        and a.Fields.size() == b.Fields.size()) {
+        for (auto f = 0uz; f < a.Fields.size(); ++f) { a.Fields[f] = Meet(std::move(a.Fields[f]), std::move(b.Fields[f])); }
+        return a;
+      }
+      if (a.K == Pat::Kind::Lit and b.K == Pat::Kind::Lit and a.Lit == b.Lit) { return a; }
       return OpaquePat();
     }
 
-    auto ToPat(CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, bool eq_op) -> Pat;
+    /// A literal tested against "col": "true" and "false" select a
+    /// "Bool" column's constructor (and test nothing known of any
+    /// other); any other literal is its value.
+    auto LiteralPat(LiteralAst const &lit, Column const &col, Scope const &scope) -> Pat {
+      if (const auto b = lit.To<BooleanLiteralAst>()) {
+        return col.IsBool ? CtorPat(col, b->IsTrue() ? 1uz : 0uz) : OpaquePat();
+      }
+      return LitPat(LiteralValue(lit, scope));
+    }
+
+    auto ToPat(CasePatternVariantAst const &pattern, Column const &col, Scope const &scope) -> Pat;
 
     /// [CHECKED]
     /// A positional destructure ("(a, b)", "[a, .., z]") of a tuple or
@@ -310,45 +325,30 @@ namespace spp::analyse::utils::case_utils {
         if (i == skip) { continue; }
         const auto at = skip.has_value() and i > *skip ? fields.size() - (n - i) : i;
         if (at >= fields.size()) { return OpaquePat(); }
-        out.Fields[at] = ToPat(*elems[i], fields[at], scope, false);
+        out.Fields[at] = ToPat(*elems[i], fields[at], scope);
       }
       return out;
     }
 
     /// [CHECKED]
-    /// "pattern" in the terms of the column it tests. "eq_op" says it
-    /// sits directly under an "==" branch, where a "Bool" literal
-    /// selects that value.
+    /// "pattern" in the terms of the column it tests.
     auto ToPat(
-      CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, const bool eq_op) -> Pat {
-      const auto bool_pat = [&](BooleanLiteralAst const &lit) {
-        return col.IsBool ? CtorPat(col, lit.IsTrue() ? 1uz : 0uz) : OpaquePat();
-      };
-
+      CasePatternVariantAst const &pattern, Column const &col, Scope const &scope) -> Pat {
       // For an attribute binding pattern, we need to recurse
       // the function into the value on the binding, which might
       // be a pattern itself.
       if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>()) {
-        return binding->Val != nullptr ? ToPat(*binding->Val, col, scope, false) : Pat();
+        return binding->Val != nullptr ? ToPat(*binding->Val, col, scope) : Pat();
       }
 
-      // For a literal pattern, if it's a boolean literal, then
-      // just check if the literal holds "true" or not. Otherwise,
-      // it is keyed by its value.
+      // A literal, by its value ("LiteralPat").
       if (const auto lit = pattern.To<CasePatternVariantLiteralAst>()) {
-        if (const auto b = lit->Literal->To<BooleanLiteralAst>()) { return bool_pat(*b); }
-        return LitPat(LiteralValue(*lit->Literal, scope));
+        return LiteralPat(*lit->Literal, col, scope);
       }
 
-      // Similar to above, if the expression is a boolean literal
-      // then use the helper, otherwise it's opaque.
-      // Todo: "== 1" is a literal too, and is opaque here, so a repeated
-      //  one is never unreachable (red test "test_invalid_repeated_equality_literal").
-      //  Under "==", any literal should be a "Lit", as in a destructure.
-      if (const auto expr = pattern.To<CasePatternVariantExpressionAst>()) {
-        const auto b = expr->Expr->To<BooleanLiteralAst>();
-        return eq_op and b != nullptr ? bool_pat(*b) : OpaquePat();
-      }
+      // An expression tests something only coverage cannot read,
+      // except a comparing branch's operand ("BranchPat").
+      if (pattern.To<CasePatternVariantExpressionAst>() != nullptr) { return OpaquePat(); }
 
       // For tuples, use the positional pattern, with the tuple
       // elements.
@@ -384,13 +384,27 @@ namespace spp::analyse::utils::case_utils {
           if (binding == nullptr or binding->Val == nullptr) { continue; }
           const auto f = genex::position(names, [&](auto const &n) { return n == binding->Name->Val; });
           if (not f.has_value()) { return OpaquePat(); }
-          out.Fields[*f] = Meet(std::move(out.Fields[*f]), ToPat(*binding->Val, fields[*f], scope, false));
+          out.Fields[*f] = Meet(std::move(out.Fields[*f]), ToPat(*binding->Val, fields[*f], scope));
           if (out.Fields[*f].K == Pat::Kind::Opaque) { return OpaquePat(); }
         }
         return out;
       }
       // A name, a skip, an "else": anything.
       return Pat();
+    }
+
+    /// A branch's pattern, as "ToPat" reads it, except that the
+    /// operand of a comparing branch is an expression: under "==" a
+    /// literal operand is the value it names ("== 1" twice repeats
+    /// a value, as "is (1, _)" twice does); anything else it compares
+    /// with is nothing known.
+    auto BranchPat(
+      CasePatternVariantAst const &pattern, Column const &col, Scope const &scope, const bool eq_op) -> Pat {
+      if (const auto expr = pattern.To<CasePatternVariantExpressionAst>()) {
+        const auto lit = expr->Expr->To<LiteralAst>();
+        return eq_op and lit != nullptr ? LiteralPat(*lit, col, scope) : OpaquePat();
+      }
+      return ToPat(pattern, col, scope);
     }
 
     /// Converts each opaque part of a pattern into a wildcard
@@ -924,23 +938,6 @@ auto spp::analyse::utils::case_utils::ConvertIsExprToFnCall(
   return case_expr;
 }
 
-auto spp::analyse::utils::case_utils::MemberOf(
-  CaseCoverage const &coverage, CasePatternVariantAst const &pattern,
-  Scope const &scope) -> Opt<TypeRef> {
-  // Only a pattern naming a type selects a member, and only a
-  // member of the subject's own variant.
-  const auto type = pattern.NarrowsTo();
-  if (coverage.VariantMembers.empty() or type == nullptr) { return Nullopt; }
-  const auto ref = TypeRef::Of(*type, scope);
-
-  // Get the member in the variant members list, that matches
-  // what the pattern narrows to.
-  for (auto const &member : coverage.VariantMembers) {
-    if (type_compare::TypeEq(member, ref, scope, scope)) { return member; }
-  }
-  return Nullopt;
-}
-
 auto spp::analyse::utils::case_utils::IsElseBranch(
   CaseExpressionBranchAst const &branch) -> bool {
   // Check if either of the two "else" variations of case
@@ -977,10 +974,23 @@ auto spp::analyse::utils::case_utils::CoverageOf(
   auto rows = Vec<Row>();
   auto rows_by = Vec<std::size_t>();
   for (auto const &branch : branches) {
+    // Each pattern in the column's terms, once: as a query for
+    // what it can match, and below as the row it covers. A pattern
+    // naming one of the subject's members by constructor selects
+    // that member.
     const auto eq_op = branch->Op != nullptr and branch->Op->TokenType == lex::SppTokenType::TK_EQ;
-    const auto pats = branch->Patterns
-      | genex::views::transform([&](auto const &p) { return AsQuery(ToPat(*p, col, scope, eq_op)); })
+    const auto branch_pats = branch->Patterns
+      | genex::views::transform([&](auto const &p) { return BranchPat(*p, col, scope, eq_op); })
       | genex::to<Vec>();
+    const auto pats = branch_pats
+      | genex::views::transform([](auto const &p) { return AsQuery(p); })
+      | genex::to<Vec>();
+    out.SelectedMembers.emplace_back(branch_pats
+      | genex::views::transform([&](auto const &p) -> Opt<TypeRef> {
+        if (p.K != Pat::Kind::Ctor or col.VariantMembers.empty()) { return Nullopt; }
+        return col.VariantMembers[p.Ctor];
+      })
+      | genex::to<Vec>());
 
     // Get the branches that are actually useful if a branch is
     // not reachable, then dont include it here.
@@ -1003,7 +1013,7 @@ auto spp::analyse::utils::case_utils::CoverageOf(
     // its runtime evaluating as to that the condition is
     // preventing from making an exclusive match.
     if (branch->Guard == nullptr) {
-      for (auto const &p : branch->Patterns) { rows.emplace_back(Row{ToPat(*p, col, scope, eq_op)}); }
+      for (auto const &p : branch_pats) { rows.emplace_back(Row{p}); }
     }
     rows_by.emplace_back(rows.size());
   }
@@ -1016,8 +1026,7 @@ auto spp::analyse::utils::case_utils::CoverageOf(
 }
 
 auto spp::analyse::utils::case_utils::PlanSubjectEdges(
-  Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage,
-  Scope const &scope) -> SubjectEdges {
+  Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage) -> SubjectEdges {
   // Lambda to detect if every type ref in a list is copyable
   // or not. This dictates if a subject is moved or copied on
   // a match.
@@ -1041,12 +1050,10 @@ auto spp::analyse::utils::case_utils::PlanSubjectEdges(
       continue;
     }
 
-    //
+    // The members the branch's patterns select, where each does.
     auto narrowed = Vec<TypeRef>();
-    for (auto const &pattern : patterns) {
-      if (const auto member = MemberOf(coverage, *pattern, scope); member.has_value()) {
-        narrowed.emplace_back(*member);
-      }
+    for (auto const &member : coverage.SelectedMembers[i]) {
+      if (member.has_value()) { narrowed.emplace_back(*member); }
     }
     const auto is_else = IsElseBranch(*branch);
     const auto narrows_only_to_copy = narrowed.size() == patterns.size() and all_copy(narrowed);

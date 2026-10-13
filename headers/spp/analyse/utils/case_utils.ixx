@@ -41,19 +41,18 @@ namespace spp::analyse::utils::case_utils {
     /// everything it matches is matched.
     Vec<Opt<std::size_t>> ShadowedBy;
 
+    /// For each branch, the member of the subject each of its patterns
+    /// selects: one naming a member, or refining one ("Some[Some[T]]"
+    /// for "Some[Opt[T]]"), selects it; anything else (a sub-variant,
+    /// the subject's own type, a test) selects none.
+    Vec<Vec<Opt<TypeRef>>> SelectedMembers;
+
     /// Whether control can fall through every branch, and the members
     /// it is left holding if so.
     bool FallsThrough = true;
 
     Vec<TypeRef> Remaining;
   };
-
-  /// The member of "coverage"'s subject that "pattern" selects, if it
-  /// names one. Its the patterns "NarrowTo" + a membership check. Todo
-  /// this will likely get cleaned away in tidy-ups.
-  SPP_EXP_FUN auto MemberOf(
-    CaseCoverage const &coverage, CasePatternVariantAst const &pattern,
-    Scope const &scope) -> Opt<TypeRef>;
 
   /// Whether a branch's patterns are an "else" ("else" or "else
   /// case"), which matches whatever reaches it.
@@ -87,8 +86,7 @@ namespace spp::analyse::utils::case_utils {
   /// "else" or fall-through left only such members, find it owes
   /// nothing. Anything else keeps it owned on that path.
   SPP_EXP_FUN auto PlanSubjectEdges(
-    Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage,
-    Scope const &scope) -> SubjectEdges;
+    Vec<CaseExpressionBranchAst*> const &branches, CaseCoverage const &coverage) -> SubjectEdges;
 
   /// The match edge of "branch", once its patterns and guard have
   /// matched: what "meta.CaseSubjectOnMatch" says is done to

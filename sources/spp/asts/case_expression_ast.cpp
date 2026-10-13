@@ -290,7 +290,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
   auto const &coverage = Coverage(sm, meta);
   const auto temporary = subject == nullptr and linear_utils::IsLinearTemporary(*Cond, *sm, meta);
   const auto edges = subject != nullptr or temporary
-    ? Opt(case_utils::PlanSubjectEdges(branches, coverage, *sm->CurrentScope))
+    ? Opt(case_utils::PlanSubjectEdges(branches, coverage))
     : Nullopt;
 
   // Handle unconsumed temporaries. For example, when a linear
