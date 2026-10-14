@@ -5,8 +5,11 @@ module;
 module spp.asts.function_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;
@@ -177,6 +180,23 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
     if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
   }
   return out.empty() ? nullptr : out[0];
+}
+
+auto FunctionParameterGroupAst::IsVoidParam(
+  FunctionParameterAst const &param, Scope const &scope) -> bool {
+  // Build a type-ref to the parameters type, and run a simple
+  // comparison against the "Void" type.
+  return analyse::utils::type_predicates::IsTypeVoid(
+    TypeRef::ForKindCheck(*param.Type, scope), scope);
+}
+
+auto FunctionParameterGroupAst::RemoveVoidParams(
+  Scope const &scope) -> void {
+  // Strip any parameter that is the Void type, using the other
+  // helper.
+  Params |= genex::actions::remove_if([&scope](auto const &param) {
+    return IsVoidParam(*param, scope);
+  });
 }
 
 auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {
