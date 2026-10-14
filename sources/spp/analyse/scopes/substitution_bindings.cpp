@@ -120,6 +120,14 @@ auto spp::analyse::scopes::BindSelf(
   if (const auto self_id = scope.TypeIdOf(self_type); self_id != nullptr) { subst.TypeParams.emplace_back(0, self_id); }
 }
 
+auto spp::analyse::scopes::SubstituteSelfId(
+  const TypeId type, const TypeId self) -> TypeId {
+  if (type == nullptr or self == nullptr or not type->HasSelf) { return type; }
+  auto subst = GenericSubst();
+  subst.TypeParams.emplace_back(0, self);
+  return SubstituteTypeId(type, subst);
+}
+
 auto spp::analyse::scopes::InstanceBindings(
   TypeRef const &inst) -> GenericSubst {
   if (inst.Id == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) { return {}; }

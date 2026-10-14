@@ -112,6 +112,11 @@ namespace spp::analyse::scopes {
   SPP_EXP_FUN auto BindSelf(
     GenericSubst &subst, TypeAst const &self_type, Scope const &scope) -> void;
 
+  /// "type" with "Self" (parameter 0) read as "self", by identity:
+  /// "type" itself when either is null or "type" names no "Self".
+  SPP_EXP_FUN auto SubstituteSelfId(
+    TypeId type, TypeId self) -> TypeId;
+
   /// What an instantiation binds its class's parameters to, read
   /// off its identity (defaults filled), as a type written in the
   /// class's terms is read with. Empty for anything that is not
