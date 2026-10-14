@@ -245,6 +245,16 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     return *index;
   };
 
+  // An attribute whose type carries no value ("v: T" at
+  // "T=Void") has no field: the layout leaves it out
+  // ("llvm_layout"), so it is given nothing, though what
+  // it is given is still generated (a call returning "Void"
+  // still runs).
+  const auto is_valueless = [&](const std::size_t attr_index) {
+    auto const &attr_ref = spp::get<1>(attrs[attr_index]);
+    return attr_ref.Symbol != nullptr and codegen::IsValuelessType(codegen::GetLlvmTypeOf(attr_ref, ctx));
+  };
+
   // The physical field order isn't the declaration order,
   // because the S++ layout re-orders the fields to minimize
   // padding, so every attribute's index has to be resolved
@@ -263,16 +273,14 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
     arg_values.reserve(ArgGroup->Args.size());
     for (auto const &arg : ArgGroup->Args) {
-      // No value for Void type arguments (from the generic
-      // implementations), so skip them.
       auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-      if (val == nullptr) { continue; }
+      const auto attr_index = spp_attr_index_of(*arg->Name);
+      if (val == nullptr or is_valueless(attr_index)) { continue; }
 
       // An attribute whose type is a variant takes any one of
       // its member types, and the value has to be tagged and
       // widened on the way in - the same coercion a by-value
       // argument gets at a function call.
-      const auto attr_index = spp_attr_index_of(*arg->Name);
       if (auto const &attr_ref = spp::get<1>(attrs[attr_index]); attr_ref.Symbol != nullptr) {
         val = codegen::CoerceToFnValue(
           val, attr_ref,
@@ -330,8 +338,9 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-    if (comp_val == nullptr) { continue; }
-    comp_fields[llvm_attr_index(spp_attr_index_of(*arg->Name))] = llvm::cast<llvm::Constant>(comp_val);
+    const auto attr_index = spp_attr_index_of(*arg->Name);
+    if (comp_val == nullptr or is_valueless(attr_index)) { continue; }
+    comp_fields[llvm_attr_index(attr_index)] = llvm::cast<llvm::Constant>(comp_val);
   }
 
   // Anything the arguments did not cover - a synthesized
