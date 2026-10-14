@@ -89,6 +89,12 @@ public:
   /// rather than from arguments read back.
   SPP_ATTR_NODISCARD auto SolvedArgsId() const -> scopes::TypeId;
 
+  /// The parameters the solution took from the call's arguments
+  /// ("Unify"): bound, but neither given ("Give") nor defaulted. An
+  /// argument naming one of these chose its parameter's type, rather
+  /// than being held to it.
+  SPP_ATTR_NODISCARD auto InferredParams() const -> Vec<std::uint64_t>;
+
   /// The solution, in parameter order, followed by the emitted
   /// names that are not parameters. A type not given is read back
   /// from its identity, recording what it means ("Scope::TypeAstOf"),

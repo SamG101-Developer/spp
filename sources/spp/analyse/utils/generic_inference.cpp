@@ -930,6 +930,17 @@ auto GenericSolver::Solve(
   if (check_types) { _CheckTypeArgs(bindings); }
 }
 
+auto GenericSolver::InferredParams() const -> Vec<std::uint64_t> {
+  auto out = Vec<std::uint64_t>();
+  for (auto const &entry : _Entries) {
+    if (entry->Param == nullptr or not entry->IsBound()) { continue; }
+    const auto inferred_type = not entry->TypeVals.empty() and not entry->IsTypeGiven and not entry->IsTypeFromDefault;
+    const auto inferred_comp = not entry->CompVals.empty() and not entry->IsCompGiven and not entry->IsCompFromDefault;
+    if (inferred_type or inferred_comp) { out.emplace_back(_EntryParamId(*entry)); }
+  }
+  return out;
+}
+
 auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
   // As "Scope::ArgsIdOf" keys a keyword argument: the parameter its name stamps, else the entry's, "Self" as 0; then
   // the value's identity, a comp value keyed where the call is.
