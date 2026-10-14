@@ -20,7 +20,7 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
           disable-sudo: true
@@ -36,7 +36,7 @@ jobs:
 
       # uv manages the documentation build's own Python environment, from the lockfile at the repository root.
       - name: Set up uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
@@ -72,7 +72,7 @@ jobs:
 
       # An empty site is not a valid outcome: it means the build produced nothing.
       - name: Upload HTML artefact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: docs-html
           path: docs/build/html
