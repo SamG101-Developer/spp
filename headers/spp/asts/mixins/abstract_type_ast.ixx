@@ -75,6 +75,10 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// entire type parts list just to get the final part.
   SPP_ATTR_NODISCARD virtual auto LastTypePart() -> TypeIdentifierAst* = 0;
 
+  /// Mark every part as not written at the source, for a type
+  /// built from another to be used where it was not written.
+  auto ClearPartsSourceWritten() -> void;
+
   /// Create a new type, by stripping the convention off of an
   /// existing type, converting something like "&std::string::Str"
   /// into "std::string::Str".

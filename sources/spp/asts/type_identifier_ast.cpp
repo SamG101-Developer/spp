@@ -153,8 +153,6 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     // set of superimpositions, some of which depend on what the
     // parameter becomes, so whether it is abstract is not yet
     // known. Each concrete instance is checked where it is made.
-    // (The symbol's "IsConcrete" flag is not trusted for this: an
-    // instance minted through an alias carries it set regardless.)
     const auto resolved = TypeRef::Of(*this, scope);
     if (not type_predicates::IsTypeConcrete(resolved)) { return; }
 
@@ -194,10 +192,10 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  // An instantiation that keeps nesting is reported, rather than left to overflow the stack.
-  // Todo: A function instantiating itself with a bigger type ("f[(T, T)]" inside "f[T]") is not caught by this - the
-  //  types grow wider rather than deeper, and it runs out of memory
-  //  (TestGenericInference_Recursion, disabled).
+  // An instantiation that keeps nesting is reported, rather
+  // than left to overflow the stack. One growing wider instead
+  // ("f[(T, T)]" inside "f[T]") is refused where the function
+  // is instantiated (E109).
   const auto _depth = monomorphization::InstantiationDepth(*this, *sm);
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
     IsSelfType() and GnArgGroup != nullptr and not GnArgGroup->Args.empty(),
@@ -459,9 +457,7 @@ auto TypeIdentifierAst::NsParts() -> Vec<IdentifierAst*> {
 auto TypeIdentifierAst::ClearSourceWritten() -> void {
   _IsSourceWritten = false;
   for (auto const &arg : GnArgGroup->Args) {
-    if (arg->IsTypeArg()) {
-      for (auto *part : arg->TypeVal->TypeParts()) { part->ClearSourceWritten(); }
-    }
+    if (arg->IsTypeArg()) { arg->TypeVal->ClearPartsSourceWritten(); }
   }
 }
 
