@@ -262,6 +262,9 @@ struct spp::analyse::utils::generic_inference::GenericSolver::_Entry {
   /// Given a type rather than inferred one, so inference neither offers it another nor rewrites it.
   bool IsTypeGiven = false;
 
+  /// Given a comp value rather than inferred one.
+  bool IsCompGiven = false;
+
   /// Bound to its default, which is written in the declaration's own terms and so may name the others.
   bool IsTypeFromDefault = false;
   bool IsCompFromDefault = false;
@@ -378,7 +381,10 @@ auto GenericSolver::Give(
         _TypeVal{.Id = _Sm->CurrentScope->TypeIdOf(*arg->TypeVal), .Written = arg->TypeVal, .Site = nullptr});
       entry->IsTypeGiven = true;
     }
-    else { entry->CompVals.emplace_back(arg->CompVal); }
+    else {
+      entry->CompVals.emplace_back(arg->CompVal);
+      entry->IsCompGiven = true;
+    }
     _Given.emplace_back(std::move(arg));
     _AnyGiven = true;
   }
@@ -414,6 +420,7 @@ auto GenericSolver::Give(
     if (param == nullptr or id == nullptr) { continue; }
     if (auto *const entry = take(*TypeIdentifierAst::FromIdentifier(*param->Name)); entry != nullptr) {
       entry->CompVals.emplace_back(scope.CompAstOf(id));
+      entry->IsCompGiven = true;
     }
   }
 }
