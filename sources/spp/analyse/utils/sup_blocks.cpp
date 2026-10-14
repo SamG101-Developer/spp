@@ -14,16 +14,36 @@ import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
+import spp.asts.sup_prototype_extension_ast;
+import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+auto spp::analyse::utils::sup_blocks::IsSupBlock(
+  Ast const *node) -> bool {
+  // Simple multi-cast check.
+  return node != nullptr and (
+    node->To<SupPrototypeFunctionsAst>() != nullptr or
+    node->To<SupPrototypeExtensionAst>() != nullptr);
+}
+
+auto spp::analyse::utils::sup_blocks::EnclosingSupBlock(
+  Scope const &scope) -> Scope const* {
+  // Get the ancestral scope whose node is a sup or sup-ext
+  // block, and the name is compiler generated. This is wrapping
+  // the overload set of function prototype asts.
+  for (auto const *s = &scope; s != nullptr; s = s->Parent) {
+    if (IsSupBlock(s->AstNode) and not AstName(s->AstNode)->IsCompilerGeneratedType()) { return s; }
+  }
+  return nullptr;
+}
+
 auto spp::analyse::utils::sup_blocks::CheckGnParams(
-  GenericParameterGroupAst const &params,
-  Vec<TypeAst const*> const &naming_types,
-  ScopeManager const &sm)
-  -> void {
+  GenericParameterGroupAst const &params, Vec<TypeAst const*> const &naming_types,
+  ScopeManager const &sm) -> void {
   using errors::SppSuperimpositionOptionalGenericParameterError;
   using errors::SppSuperimpositionUnconstrainedGenericParameterError;
   const auto optional = params.GetOptionalParams();
@@ -43,12 +63,11 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
 }
 
 auto spp::analyse::utils::sup_blocks::RegisterSelf(
-  TypeAst const &name,
-  ScopeManager &sm)
-  -> void {
+  TypeAst const &name, ScopeManager &sm) -> void {
   if (name.IsCompilerGeneratedType()) { return; }
 
-  // A block over an alias ("sup U8") is over what the alias stands for: its "Self" is the target, not the class at
+  // A block over an alias ("sup U8") is over what the alias
+  // stands for: its "Self" is the target, not the class at
   // the end of the alias's chain (which only links the template).
   auto *sym = sm.CurrentScope->FindTypeSymbol(&name);
   if (sym->Alias != nullptr) { sym = sym->AliasTarget(*sm.CurrentScope); }
@@ -56,9 +75,7 @@ auto spp::analyse::utils::sup_blocks::RegisterSelf(
 }
 
 auto spp::analyse::utils::sup_blocks::RegisterProvisionalSelf(
-  TypeAst const &name,
-  ScopeManager &sm)
-  -> void {
+  TypeAst const &name, ScopeManager &sm) -> void {
   if (name.IsCompilerGeneratedType()) { return; }
   if (const auto base_sym = sm.CurrentScope->FindHeadSymbol(name)) {
     self_type::AddSelfTypeSymbol(*sm.CurrentScope, base_sym->LinkedScope, name.PosStart());
@@ -66,12 +83,8 @@ auto spp::analyse::utils::sup_blocks::RegisterProvisionalSelf(
 }
 
 auto spp::analyse::utils::sup_blocks::LoadTarget(
-  Ast const &block,
-  Shared<TypeAst> &name,
-  const bool files_nested_mock,
-  ScopeManager &sm,
-  meta::CompilerMetaData *meta)
-  -> TypeSymbol* {
+  Ast const &block, Shared<TypeAst> &name, const bool files_nested_mock,
+  ScopeManager &sm, meta::CompilerMetaData *meta) -> TypeSymbol* {
   {
     const auto _meta_guard = asts::meta::MetaGuard(meta);
     meta->AllowAbstractType = true;
@@ -81,10 +94,12 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
     type_predicates::IsTypeBorrowed(*name, sm),
     {sm.CurrentScope}, ERR_ARGS(block, *name, "superimposition type"));
 
-  // A "$" mock keeps its bare name: it is declared in the module of the mock class it names.
+  // A "$" mock keeps its bare name: it is declared in the
+  // module of the mock class it names.
   name = sm.CurrentScope->FindTypeSymbol(name.get())->FqName(true)->WithSourceSpanOf(*name);
 
-  // A method's "$" mock block sits inside its "sup" block rather than the module, and still reaches its mock class.
+  // A method's "$" mock block sits inside its "sup" block
+  // rather than the module, and still reaches its mock class.
   const auto base_sym = sm.CurrentScope->FindHeadSymbol(*name);
   if (sm.CurrentScope->Parent == sm.CurrentScope->GetParentModule()
     or (files_nested_mock and name->IsCompilerGeneratedType())) {
