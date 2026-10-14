@@ -608,12 +608,6 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
     {sm->CurrentScope}, ERR_ARGS(
       *AbstractAnnotation, *Impl->Members.front(), "an '!abstract_method' method", "abstract methods aren't callable"));
 
-  // Repeated convention check for generic substitutions.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*ReturnType, *sm),
-    {sm->CurrentScope}, ERR_ARGS(
-      *ReturnType, *ReturnType, "function return type"));
-
   // Analyse the generic parameter group, and the parameter
   // group.
   for (auto const &p : FnParamGroup->GetNonSelfParams()) {
