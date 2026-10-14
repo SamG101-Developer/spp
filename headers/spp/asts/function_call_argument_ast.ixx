@@ -48,15 +48,5 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  auto SetSelfType(Shared<TypeAst> self_type) -> void;
-
-  SPP_ATTR_NODISCARD auto GetSelfType() const -> Shared<TypeAst>;
-
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
-
-private:
-  /// When the compiler generates an argument to inject the
-  /// "self" type into a method call, the type is passed
-  /// explicitly to speed up inference.
-  Shared<TypeAst> _InjectedSelfType;
 };

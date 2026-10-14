@@ -26,8 +26,7 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
   const utils::OrderableTag order_tag) :
   OrderableAst(order_tag),
   Conv(std::move(conv)),
-  Val(std::move(val)),
-  _InjectedSelfType(nullptr) {
+  Val(std::move(val)) {
 }
 
 auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
@@ -62,9 +61,7 @@ auto FunctionCallArgumentAst::Stage11_CodeGen(
 
 auto FunctionCallArgumentAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // Infer the type from the value expression, unless an explicit "self" type has been given.
-  if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }
-
+  // Infer the type from the value expression.
   auto type = Val->InferType(sm, meta);
   if (Conv) { type = type->WithConvention(AstClone(Conv)); }
   return type;
@@ -72,8 +69,6 @@ auto FunctionCallArgumentAst::InferType(
 
 auto FunctionCallArgumentAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  if (_InjectedSelfType != nullptr) { return TypeRef::Of(*_InjectedSelfType, *sm->CurrentScope); }
-
   // Held as the argument says: a borrow of "!" is a real value.
   auto ref = Val->InferTypeRef(sm, meta);
   if (Conv) {
@@ -81,17 +76,6 @@ auto FunctionCallArgumentAst::InferTypeRef(
     ref.IsNever = false;
   }
   return ref;
-}
-
-auto FunctionCallArgumentAst::SetSelfType(
-  Shared<TypeAst> self_type) -> void {
-  // Set the self type to the given type.
-  _InjectedSelfType = std::move(self_type);
-}
-
-auto FunctionCallArgumentAst::GetSelfType() const -> Shared<TypeAst> {
-  // Get the self type.
-  return _InjectedSelfType;
 }
 
 auto FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
