@@ -156,17 +156,13 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
       : nullptr;
     if (kind_sym == nullptr or kind_sym->LinkedScope == nullptr) { continue; }
 
-    // The kind is compared bare, so it resolves anywhere; the
-    // signature where the overload's own generics do.
-    auto const *target_kind = func_scope.FindHeadSymbol(func_type);
+    // Checks whether the function types are compatible; so a FunRef
+    // cannot be used where a FunMov is needed (generics aside); but
+    // a FunMov can be used in place of a FunRef (constraint).
+    const auto target_kind = func_scope.FindHeadSymbol(func_type);
     if (target_kind == nullptr) { continue; }
-    auto const *const target_tmpl = TypeRef::ForKindCheck(*target_kind, func_scope).Template();
-    auto kinds = Vec<Scope const*>{kind_sym->LinkedScope};
-    kinds.append_range(kind_sym->LinkedScope->GetSupScopes());
-    if (not genex::any_of(kinds, [&](auto const *kind) {
-      return kind->LinkedTypeSymbol != nullptr
-        and TypeRef::ForKindCheck(*kind).Template() == target_tmpl;
-    })) { continue; }
+    const auto target_tmpl = TypeRef::ForKindCheck(*target_kind, func_scope).Template();
+    if (not type_members::IsOrExtendsTemplate(*kind_sym, *ext_scope, target_tmpl)) { continue; }
 
     const auto own_generics = ext->SuperCls->LastTypePart()->GnArgGroup.get();
     const auto target_generics = func_type.WithoutConvention()->LastTypePart()->GnArgGroup.get();

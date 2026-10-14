@@ -70,6 +70,13 @@ namespace spp::analyse::utils::type_members {
     CmpStatementAst const &cmp_member, Scope &cls_scope,
     Scope const &own_scope, ScopeManager const &sm) -> void;
 
+  /// Whether "sym", read in "scope", is an instance of "tmpl" (or
+  /// "tmpl" itself), or extends one: the template of the type, or
+  /// of any "sup" scope attached to it.
+  SPP_EXP_FUN auto IsOrExtendsTemplate(
+    TypeSymbol const &sym, Scope const &scope,
+    TypeSymbol const *tmpl) -> bool;
+
   /**
    * Drop everything @c GetUnimplementedAbstractMethods has remembered. Its cache is keyed on scope addresses, so it
    * must not outlive the scopes it names - a later run allocating a scope at a freed address would otherwise be

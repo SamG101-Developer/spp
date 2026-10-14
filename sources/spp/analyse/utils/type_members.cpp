@@ -228,6 +228,17 @@ auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
   }
 }
 
+auto spp::analyse::utils::type_members::IsOrExtendsTemplate(
+  TypeSymbol const &sym, Scope const &scope,
+  TypeSymbol const *tmpl) -> bool {
+  // Check for a template match; is the template of symbol
+  // equal to "tmpl"?
+  if (TypeRef::ForKindCheck(sym, scope).Template() == tmpl) { return true; }
+  return sym.LinkedScope != nullptr and genex::any_of(sym.LinkedScope->GetSupScopes(), [tmpl](auto const *sup_scope) {
+    return sup_scope->LinkedTypeSymbol != nullptr and TypeRef::ForKindCheck(*sup_scope).Template() == tmpl;
+  });
+}
+
 auto spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache()
   -> void {
   _UnimplementedAbstractMethodsCache().clear();
