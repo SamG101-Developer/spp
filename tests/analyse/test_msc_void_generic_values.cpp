@@ -63,3 +63,97 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         take(sink(Str::from("x")))
     }
 )");
+
+// A class keeps an attribute whose type is "Void" ("v: T" at "T=Void"); the layout gives it no field, so what it is
+// given is generated (a call returning "Void" still runs) but stored nowhere.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_attribute_given_a_void_value, R"(
+    fun nothing() -> Void { }
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box[Void](v=nothing())
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_attribute_inferred_from_a_void_value, R"(
+    fun nothing() -> Void { }
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box(v=nothing())
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_attribute_beside_a_value, R"(
+    cls Pair[A, B] {
+        !public a: A
+        !public b: B
+    }
+
+    fun take(p: Pair[S32, Void]) -> S32 {
+        let x = p.a
+        std::mem::ops::drop(p)
+        ret x
+    }
+
+    fun f() -> S32 {
+        ret take(Pair[S32, Void](a=1_s32))
+    }
+)");
+
+// "Void"'s one value is no value: always initialized, and "Copy".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_attribute_left_out_is_initialized, R"(
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box[Void]()
+        let x = b.v
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_destructured_void_needs_no_consuming, R"(
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box[Void]()
+        let Box[Void](v) = b
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_unused_void_parameter_needs_no_drop, R"(
+    fun takes(x: Void) -> S32 { ret 1_s32 }
+
+    fun f() -> S32 {
+        ret takes()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  VoidGenericValues,
+  test_valid_void_value_used_twice, R"(
+    fun nothing() -> Void { }
+    cls Box[T] { !public v: T }
+
+    fun f() -> Void {
+        let v = nothing()
+        let a = Box(v=v)
+        let b = Box(v=v)
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+    }
+)");
