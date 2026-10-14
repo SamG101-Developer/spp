@@ -67,24 +67,6 @@ auto spp::analyse::utils::type_resolution::AnalyseWrittenType(
 }
 
 /// [CHECKED]
-auto spp::analyse::utils::type_resolution::AnalyseWrittenComp(
-  ExpressionAst const &written,
-  Scope const &scope) -> Unique<ExpressionAst> {
-  // Try to fold the written expression ast. If it folded, then
-  // it has also been analysed (like type's Self substitution),
-  // so return the folded comp ast.
-  if (auto folded = scope.FoldedCompAstOf(written); folded != nullptr) { return folded; }
-
-  // If the comp expression is an identifier, then get the var
-  // symbol it represents, and get that symbols "bound comp val",
-  // which is pre-stored on the symbol.
-  const auto id = written.To<IdentifierAst>();
-  const auto var = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
-  const auto bound = var != nullptr ? var->BoundCompVal() : nullptr;
-  return bound != nullptr ? AstClone(bound) : nullptr;
-}
-
-/// [CHECKED]
 auto spp::analyse::utils::type_resolution::ParamsBoundByArgs(
   Vec<GenericArgumentAst*> const &args,
   Vec<GenericParameterAst*> const &params) -> Vec<GenericParameterAst*> {

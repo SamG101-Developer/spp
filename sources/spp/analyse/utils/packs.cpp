@@ -107,13 +107,6 @@ auto spp::analyse::utils::packs::DoesArgNameAPack(
     : FindCompPack(*arg.CompVal, scope) != nullptr;
 }
 
-auto spp::analyse::utils::packs::DoesArgNameAnUnboundPack(
-  GenericArgumentAst const &arg, Scope const &scope) -> bool {
-  return arg.IsTypeArg()
-    ? DoesTypeNameAnUnboundPack(*arg.TypeVal, scope)
-    : DoesCompNameAnUnboundPack(*arg.CompVal, scope);
-}
-
 auto spp::analyse::utils::packs::PackTypeParamName(
   IdentifierAst const &param_name)
   -> Str {

@@ -342,10 +342,6 @@ namespace spp::analyse::utils::memory_state {
   SPP_EXP_FUN auto LoansHeldBy(
     LoanSet const &loans, VariableSymbol const &holder) -> Vec<Loan const*>;
 
-  /// The loans of "root" or a part of it (none still pending).
-  // SPP_EXP_FUN auto LoansOn(
-  //   LoanSet const &loans, VariableSymbol const &root) -> Vec<Loan const*>;
-
   /// End every loan "holder" holds, as it ends (its scope ends, it
   /// is given a new value, an "exit" leaves its scope).
   SPP_EXP_FUN auto ReleaseLoans(

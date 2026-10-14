@@ -47,14 +47,6 @@ namespace spp::analyse::utils::type_resolution {
     TypeAst const &written, ScopeManager &sm, meta::CompilerMetaData &meta,
     SelfPolicy self = SelfPolicy::kSubstitute) -> Shared<TypeAst>;
 
-  /// "AnalyseWrittenType" for a comp value written here: the
-  /// value it folds to, else the value of the comp generic it
-  /// names ("SizedInteger[w]" in a "[cmp w: U32]" instance
-  /// stands for 32), its name read by identity. Null when
-  /// neither, and it stays as written.
-  SPP_EXP_FUN auto AnalyseWrittenComp(
-    ExpressionAst const &written, Scope const &scope) -> Unique<ExpressionAst>;
-
   /// Record on a written type the identity "sym" (what it
   /// names) stands for wherever it is read ("NameTypeIdOf"),
   /// unless it records one already. The one rule for every

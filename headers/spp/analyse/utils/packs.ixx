@@ -48,11 +48,6 @@ namespace spp::analyse::utils::packs {
   SPP_EXP_FUN auto DoesArgNameAPack(
     GenericArgumentAst const &arg, Scope const &scope) -> bool;
 
-  /// Whether a generic argument names an unbound pack, of its kind ("DoesTypeNameAnUnboundPack",
-  /// "DoesCompNameAnUnboundPack").
-  SPP_EXP_FUN auto DoesArgNameAnUnboundPack(
-    GenericArgumentAst const &arg, Scope const &scope) -> bool;
-
   /// The name of the type parameter a variadic function parameter is instantiated over ("..xs: S32" binds
   /// "VariadicPackOfxs" to the tuple a call passes). The one place the name is spelled.
   SPP_EXP_FUN auto PackTypeParamName(

@@ -537,18 +537,6 @@ auto spp::analyse::utils::memory_state::LoansHeldBy(
   return out;
 }
 
-/// [DEAD] ?
-// auto spp::analyse::utils::memory_state::LoansOn(
-//   LoanSet const &loans,
-//   VariableSymbol const &root)
-//   -> Vec<Loan const*> {
-//   auto out = Vec<Loan const*>();
-//   for (auto const &loan : loans) {
-//     if (RootOf(loan) == &root and not loan.Pending) { out.emplace_back(&loan); }
-//   }
-//   return out;
-// }
-
 /// [CHECKED]
 auto spp::analyse::utils::memory_state::ReleaseLoans(
   LoanSet &loans, VariableSymbol const &holder) -> void {
