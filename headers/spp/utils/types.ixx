@@ -35,6 +35,12 @@ namespace spp {
 
   SPP_EXP_CON inline constexpr auto Nullopt = std::nullopt;
 
+  SPP_EXP_CLS template <typename T, typename E>
+  using Expected = std::expected<T, E>;
+
+  SPP_EXP_CLS template <typename E>
+  using Unexpected = std::unexpected<E>;
+
   SPP_EXP_CLS
   using Path = std::filesystem::path;
 
