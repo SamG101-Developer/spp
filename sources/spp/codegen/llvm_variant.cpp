@@ -199,7 +199,7 @@ auto spp::codegen::BuildVariant(
 
   // A member that lowers to nothing (such as the stateless "None")
   // has no payload; the tag knows the type though.
-  if (member_val != nullptr and not member_val->getType()->isVoidTy()) {
+  if (member_val != nullptr and not IsValuelessType(member_val->getType())) {
     ctx->Builder.CreateStore(member_val, GetVariantPayloadPtr(slot, variant_llvm_type, name + ".payload.ptr", ctx));
   }
 
@@ -226,7 +226,7 @@ auto spp::codegen::CoerceToVariant(
   // poison of the type the consumer expects.
   if (llvm_val != nullptr and source.IsNever and not target.IsNever) {
     if (const auto target_llvm_type = GetLlvmTypeOf(target, ctx);
-      target_llvm_type != nullptr and not target_llvm_type->isVoidTy()) {
+      not IsValuelessType(target_llvm_type)) {
       return llvm::PoisonValue::get(target_llvm_type);
     }
   }

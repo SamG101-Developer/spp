@@ -12,7 +12,6 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -23,7 +22,7 @@ import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.identifier_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
-import spp.asts.generate.common_types_precompiled;
+import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -69,7 +68,6 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
-  using generate::common_types_precompiled::VOID;
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
@@ -88,10 +86,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   }
 
   // Check for a void return type.
-  const auto is_void = type_compare::TypeEq(
-    TypeRef::Of(*ReturnType, *sm->CurrentScope),
-    TypeRef::Of(*VOID, *sm->CurrentScope),
-    *sm->CurrentScope, *sm->CurrentScope);
+  const auto is_void = type_predicates::IsTypeVoid(
+    TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope);
 
   // Check there is a return statement at the end (for non-void
   // functions).

@@ -579,7 +579,6 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // annotation binds, because that runs per-annotation and
   // has no view of the rest of the prototype.
   if (TestAnnotation != nullptr) {
-    using generate::common_types_precompiled::VOID;
     const auto bad = [&](const StrView requirement) {
       Raise<SppUnitTestInvalidSignatureError>(
         {sm->CurrentScope}, ERR_ARGS(*TestAnnotation, *Name, requirement));
@@ -587,9 +586,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
     if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
     if (not FnParamGroup->Params.empty()) { bad("declares parameters"); }
     if (not GnParamGroup->Params.empty()) { bad("declares generic parameters"); }
-    if (not type_compare::TypeEq(
-      TypeRef::Of(*ReturnType, *sm->CurrentScope), TypeRef::Of(*VOID, *sm->CurrentScope), *sm->CurrentScope,
-      *sm->CurrentScope)) {
+    if (not type_predicates::IsTypeVoid(TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope)) {
       bad("does not return 'Void'");
     }
   }

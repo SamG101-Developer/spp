@@ -2513,7 +2513,7 @@ auto spp::codegen::fn_impls::StdNonNullRead(
   // Add a Void guard to cover all eventualities of the generic
   // instantiation of intrinsic functions. Use the special return
   // void instruction in this case.
-  if (ty == nullptr or ty->isVoidTy()) {
+  if (IsValuelessType(ty)) {
     ctx->Builder.CreateRetVoid();
     return;
   }

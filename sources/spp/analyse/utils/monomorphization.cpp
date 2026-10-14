@@ -1336,6 +1336,9 @@ auto spp::analyse::utils::monomorphization::FindOrMakeGnSubstitutedPrototype(
       }
     }
 
+    // A parameter whose type is now "Void" is no parameter of
+    // the instantiation.
+    new_fn_proto->FnParamGroup->RemoveVoidParams(*new_fn_scope);
     ReattachCallableConstraints(*new_fn_proto, *fn_proto, new_fn_scope, tm, meta);
     RetypeInheritedSymbols(*new_fn_proto, new_fn_scope, pinned_self, variadic_pack_type, tm, meta);
 
