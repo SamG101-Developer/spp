@@ -538,3 +538,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a: S32 = Box(v=1).get()
     }
 )");
+
+// A closure held in an attribute is called as the value it is: the attribute names no method, so no receiver is added.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionAst,
+  test_valid_call_a_closure_held_in_an_attribute, R"(
+    cls H {
+        !public f: std::function::FunRef[(S32,), S32]
+    }
+
+    fun g(h: &H) -> S32 {
+        ret h.f(1_s32)
+    }
+)");

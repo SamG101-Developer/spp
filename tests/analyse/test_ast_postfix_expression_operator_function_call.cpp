@@ -99,15 +99,19 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A concrete overload matches its argument exactly, and so beats a generic one ("test_msc_overload_ranks").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
-  test_invalid_postfix_func_call_ambiguous_1,
-  SppFunctionCallOverloadAmbiguousError, R"(
-    fun f(a: S32) -> Void { }
-    fun f[T](a: T) -> Void { }
+  test_valid_postfix_func_call_concrete_beats_generic, R"(
+    fun f(a: S32) -> Bool { ret true }
+    fun f[T](a: T) -> S32 {
+        std::mem::ops::drop(a)
+        ret 1
+    }
 
     fun g() -> Void {
-        f(1)
+        let r = f(1)
+        let b: Bool = r
     }
 )");
 

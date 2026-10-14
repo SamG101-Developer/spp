@@ -1045,3 +1045,25 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+// The variant behind an alias is found however long the chain to it ("ColumnOf" follows it with no hop limit).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_exhaustive_case_through_a_long_alias_chain, R"(
+    type A0[T] = std::option::Opt[T]
+    type A1[T] = A0[T]
+    type A2[T] = A1[T]
+    type A3[T] = A2[T]
+    type A4[T] = A3[T]
+    type A5[T] = A4[T]
+    type A6[T] = A5[T]
+    type A7[T] = A6[T]
+    type A8[T] = A7[T]
+
+    fun f(o: A8[S32]) -> S32 {
+        case o of {
+            is std::option::Some[S32](val) { ret val }
+            is std::option::None() { ret 0_s32 }
+        }
+    }
+)");
