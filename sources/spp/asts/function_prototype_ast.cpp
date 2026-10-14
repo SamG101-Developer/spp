@@ -514,6 +514,12 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
     _PendingDefaults.emplace_back(this, meta->IsTestHarness);
   }
 
+  // A parameter whose type is "Void" is no parameter. Removed
+  // once its type is known, so every call is checked against, and
+  // the declaration is generated with, the same parameters. An
+  // instantiation of a generic one removes its own as it is made.
+  FnParamGroup->RemoveVoidParams(*sm->CurrentScope);
+
   // If this is a !compiler_builtin function, swap in the lowered
   // implementation now (stage 6), so that the lowered (comptime)
   // body is available to any stage 9 call regardless of definition
