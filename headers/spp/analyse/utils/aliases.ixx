@@ -34,4 +34,10 @@ namespace spp::analyse::utils::aliases {
   /// when the identity or the target has no such reading.
   SPP_EXP_FUN auto InstanceTargetOf(
     TypeSymbol const &alias, TypeId id, Scope const &scope) -> Shared<TypeAst>;
+
+  /// "InstanceTargetOf" by identity: the target's "TypeId", built
+  /// nowhere. "id" itself when it is filed under the class it names
+  /// rather than under "alias".
+  SPP_EXP_FUN auto InstanceTargetIdOf(
+    TypeSymbol const &alias, TypeId id) -> TypeId;
 }

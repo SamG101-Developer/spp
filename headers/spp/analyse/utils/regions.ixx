@@ -43,9 +43,21 @@ namespace spp::analyse::utils::regions {
   /// is written, so it means the variable it named there,
   /// whatever a later "let" shadows; none for an expression
   /// naming no place.
+  ///
+  /// The special members are defined out of line: clang 23.1
+  /// segfaults generating the implicit destructor in some
+  /// importers (GetVTTParameter, in symbols.cpp).
   SPP_EXP_CLS struct PlaceAt {
     Ast const *Site = nullptr;
     Opt<Place> Of;
+
+    PlaceAt();
+    PlaceAt(Ast const *site, Opt<Place> of);
+    PlaceAt(PlaceAt const &);
+    PlaceAt(PlaceAt &&) noexcept;
+    auto operator=(PlaceAt const &) -> PlaceAt&;
+    auto operator=(PlaceAt &&) noexcept -> PlaceAt&;
+    ~PlaceAt();
   };
 }
 

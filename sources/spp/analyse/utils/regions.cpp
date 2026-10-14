@@ -22,6 +22,25 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+SPP_MOD_BEGIN
+spp::analyse::utils::regions::PlaceAt::PlaceAt() = default;
+
+spp::analyse::utils::regions::PlaceAt::PlaceAt(
+  Ast const *site, Opt<Place> of) :
+  Site(site), Of(std::move(of)) {
+}
+
+spp::analyse::utils::regions::PlaceAt::PlaceAt(PlaceAt const &) = default;
+
+spp::analyse::utils::regions::PlaceAt::PlaceAt(PlaceAt &&) noexcept = default;
+
+auto spp::analyse::utils::regions::PlaceAt::operator=(PlaceAt const &) -> PlaceAt& = default;
+
+auto spp::analyse::utils::regions::PlaceAt::operator=(PlaceAt &&) noexcept -> PlaceAt& = default;
+
+spp::analyse::utils::regions::PlaceAt::~PlaceAt() = default;
+SPP_MOD_END
+
 auto spp::analyse::utils::regions::PlaceOf(
   Ast const &ast, Scope const &scope) -> Opt<Place> {
   // Walk in from the outermost step: an attribute, or a
@@ -136,7 +155,7 @@ auto spp::analyse::utils::regions::PlaceAtOf(
   Ast const &ast, Scope const &scope) -> PlaceAt {
   // Bind the ast into the place struct, and forward the ast
   // into the general place analysis function.
-  return PlaceAt{.Site = &ast, .Of = PlaceOf(ast, scope)};
+  return PlaceAt(&ast, PlaceOf(ast, scope));
 }
 
 auto spp::analyse::utils::regions::Overlap(

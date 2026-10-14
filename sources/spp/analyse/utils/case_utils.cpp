@@ -128,13 +128,13 @@ namespace spp::analyse::utils::case_utils {
       auto through = col.Ref;
       const auto is_alias = [](TypeRef const &r) { return r.Symbol != nullptr and r.Symbol->Alias != nullptr; };
 
-      // Move through aliases, checking for variant members, grabbing
-      // them, binding them, and then breaking out of the loop.
-      // Todo: Remove the hop limit (documented).
-      for (auto hops = 0; col.VariantMembers.empty() and is_alias(through) and hops < 8; ++hops) {
-        const auto target = aliases::InstanceTargetOf(*through.Symbol, through.Id, where);
-        if (target == nullptr) { break; }
-        through = TypeRef::Of(*target, where);
+      // Move through aliases by identity to the variant behind them
+      // ("Opt[T]" is "Var[..]"). A chain ends: cycles are rejected
+      // where an alias is declared ("aliases::StatementTarget").
+      while (col.VariantMembers.empty() and is_alias(through)) {
+        const auto target = aliases::InstanceTargetIdOf(*through.Symbol, through.Id);
+        if (target == nullptr or target == through.Id) { break; }
+        through = TypeRef::Of(target, where);
         col.VariantMembers = type_compare::VariantMemberRefs(through, where);
       }
 

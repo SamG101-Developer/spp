@@ -538,10 +538,11 @@ auto spp::lsp::resolution_index::RecordVariable(
 
   // For symbols introduced via a "use" statement, we want to
   // get back to the actual cmp/fun definition in a different
-  // module. Todo: Can we remove the "hop" mechanic? The "use"
-  // uses private visibility so shouldn't have > 1 hop.
+  // module, through each "use" in turn.
   auto target = &sym;
-  for (auto hops = 0; target->AliasSymbol != nullptr and hops < 8; ++hops) { target = target->AliasSymbol.get(); }
+  while (target->AliasSymbol != nullptr and target->AliasSymbol.get() != target) {
+      target = target->AliasSymbol.get();
+  }
 
   // The definition is the span of the name within the scope
   // that the symbol was defined in.

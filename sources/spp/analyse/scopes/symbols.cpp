@@ -670,7 +670,7 @@ auto AliasInfo::DeclaredIn() const -> Scope* {
 
 auto TypeSymbol::AliasTarget(
   Scope const &scope, const bool make) const -> TypeSymbol* {
-  // Followed until nothing changes, capped against a cycle ("type A = A" is reported where it is declared). Read where
+  // Followed until nothing changes: a cycle ("type A = A") is rejected where it is declared. Read where
   // it was written first: its linked scope is the target class's own, where the target's spelling can name that
   // class's parameters instead ("type Mine = Vec[A]" in "sup A", read in "Vec", is "Vec[A=A]").
   const auto read = [make](Scope const *where, TypeAst const &resolved) -> TypeSymbol* {
@@ -678,7 +678,7 @@ auto TypeSymbol::AliasTarget(
     return make ? FindOrMakeTypeSymbol(*where, resolved) : where->FindTypeSymbol(&resolved);
   };
   auto *s = const_cast<TypeSymbol*>(this);
-  for (auto step = 0; step < 8 and s->Alias != nullptr and s->Alias->Resolved != nullptr; ++step) {
+  while (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
     auto const &resolved = *s->Alias->Resolved;
     auto *next = read(s->Alias->WrittenIn, resolved);
     if (next == nullptr) { next = read(s->LinkedScope, resolved); }
@@ -707,10 +707,10 @@ auto TypeSymbol::AliasTargetId(
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {
-  // Capped against a cycle, as "AliasTarget" is.
+  // Followed until nothing changes, as "AliasTarget" is: a cycle of "use"s is rejected where one is declared.
   auto *s = const_cast<TypeSymbol*>(this);
-  for (auto step = 0; step < 8 and s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
-       and s->Alias->Written != nullptr; ++step) {
+  while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
+    and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);
     if (next == nullptr or next == s) { break; }
     s = next;

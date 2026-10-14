@@ -119,19 +119,24 @@ auto spp::analyse::utils::aliases::StatementTarget(
 auto spp::analyse::utils::aliases::InstanceTargetOf(
   TypeSymbol const &alias, const scopes::TypeId id,
   Scope const &scope) -> Shared<TypeAst> {
+  const auto target = InstanceTargetIdOf(alias, id);
+  return target != nullptr ? scope.TypeAstOf(target) : nullptr;
+}
+
+auto spp::analyse::utils::aliases::InstanceTargetIdOf(
+  TypeSymbol const &alias, const scopes::TypeId id) -> scopes::TypeId {
   // Filed under the class it names (a "use" of the class), the identity is the target already.
   if (id == nullptr or scopes::HeadOf(id).Kind != scopes::TypeKey::Tag::Inst) { return nullptr; }
-  if (scopes::HeadOf(id).Symbol() != &alias) { return scope.TypeAstOf(id); }
+  if (scopes::HeadOf(id).Symbol() != &alias) { return id; }
 
   // A "use" stands for what it names under the same arguments: the identity re-headed onto that. One whose name
   // does not lead past itself is read as any alias, off its recorded target.
   auto *const used = alias.Alias->IsFromUseStmt ? alias.UseTarget() : nullptr;
   if (used != nullptr and used != &alias) {
     const auto reheaded = scopes::InstanceIdOfArgs(*used, scopes::HeadOf(id).Args);
-    return used->Alias != nullptr ? InstanceTargetOf(*used, reheaded, scope) : scope.TypeAstOf(reheaded);
+    return used->Alias != nullptr ? InstanceTargetIdOf(*used, reheaded) : reheaded;
   }
 
   // Its target, by identity, with its parameters bound to the instantiation's arguments ("AliasTargetId").
-  const auto target = alias.AliasTargetId(scopes::HeadOf(id).Args);
-  return target != nullptr ? scope.TypeAstOf(target) : nullptr;
+  return alias.AliasTargetId(scopes::HeadOf(id).Args);
 }
