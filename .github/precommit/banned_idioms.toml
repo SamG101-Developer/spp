@@ -25,7 +25,7 @@ allow = ["headers/spp/utils/ptr.ixx"]
 [[rule]]
 id = "use-spp-type-aliases"
 enabled = true
-pattern = '\bstd::(?:unordered_map|unordered_set|map|set|vector|array|optional|filesystem::path|string_view|string|copyable_function|function_ref|function|span|variant|monostate|tuple|pair|shared_ptr|unique_ptr|weak_ptr|strong_ordering|enable_shared_from_this)\b(?!::)'
+pattern = '\bstd::(?:unordered_map|unordered_set|map|set|vector|array|optional|expected|unexpected|filesystem::path|string_view|string|copyable_function|function_ref|function|span|variant|monostate|tuple|pair|shared_ptr|unique_ptr|weak_ptr|strong_ordering|enable_shared_from_this)\b(?!::)'
 message = "use the spp alias from types.ixx"
 files = '\.(?:cpp|ixx|hpp)$'
 skip-comments = true
