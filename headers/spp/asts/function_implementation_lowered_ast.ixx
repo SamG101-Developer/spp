@@ -11,12 +11,16 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(FunctionImplementationLoweredAst);
 use(spp::asts, struct FunctionPrototypeAst);
+use(spp::codegen::builtins, struct LoweredFnImpl);
 
 SPP_EXP_CLS struct spp::asts::FunctionImplementationLoweredAst final : FunctionImplementationAst {
   SPP_AST_KIND(FunctionImplementationLoweredAst)
 
 private:
-  Str _ScopePtr;
+  /// The builtin this lowers to, resolved once from the prototype's
+  /// "!compiler_builtin" name: an entry of "kBuiltinFuncs", built
+  /// once and never changed, so the pointer is stable.
+  codegen::builtins::LoweredFnImpl const *_Builtin = nullptr;
 
   FunctionPrototypeAst *_ProtoPtr = nullptr;
 
@@ -37,7 +41,9 @@ public:
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto SetScopePtr(Str const &scope_str) -> void;
+  auto SetBuiltin(codegen::builtins::LoweredFnImpl const *builtin) -> void;
+
+  SPP_ATTR_NODISCARD auto Builtin() const -> codegen::builtins::LoweredFnImpl const*;
 
   auto SetProtoPtr(FunctionPrototypeAst *proto) -> void;
 };

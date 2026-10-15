@@ -42,7 +42,7 @@ auto FunctionImplementationLoweredAst::Clone() const -> Unique<Ast> {
     AstClone(TokL),
     AstCloneVec(Members),
     AstClone(TokR));
-  f->SetScopePtr(_ScopePtr);
+  f->SetBuiltin(_Builtin);
   f->SetProtoPtr(_ProtoPtr);
   return f;
 }
@@ -68,7 +68,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
     "std.intrinsics.float_div", "std.intrinsics.float_div_assign",
     "std.intrinsics.float_rem", "std.intrinsics.float_rem_assign",
   };
-  if (not genex::contains(dividing_builtins, _ScopePtr) or args.size() < 2) { return; }
+  if (not genex::contains(dividing_builtins, _Builtin->Name) or args.size() < 2) { return; }
 
   // The divisor has already been resolved to a literal, so
   // whether it is zero is known here.
@@ -100,7 +100,7 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
     "std.intrinsics.bit_shl", "std.intrinsics.bit_shl_assign",
     "std.intrinsics.bit_shr", "std.intrinsics.bit_shr_assign",
   };
-  if (not genex::contains(shifting_builtins, _ScopePtr) or args.size() < 2) { return; }
+  if (not genex::contains(shifting_builtins, _Builtin->Name) or args.size() < 2) { return; }
 
   const auto value = args[0]->To<IntegerLiteralAst>();
   const auto amount = args[1]->To<IntegerLiteralAst>();
@@ -127,11 +127,11 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
 auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  if (codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl == nullptr) {
+  if (_Builtin->CompTimeImpl == nullptr) {
     return;
   }
 
-  auto &lowered_cmp_code = *codegen::builtins::kBuiltinFuncs.at(_ScopePtr).CompTimeImpl;
+  auto &lowered_cmp_code = *_Builtin->CompTimeImpl;
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
   for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
     extracted_args.emplace_back(std::move(arg));
@@ -175,9 +175,7 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
     *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(),
     *sm->CurrentScope, sm, meta);
 
-  codegen::builtins::kBuiltinFuncs
-    .at(_ScopePtr)
-    .LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
+  _Builtin->LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
 
   // Skip scopes to get back to the parent scope (skipping inner
   // scopes on the lowered function - `!intrinsic` etc).
@@ -185,10 +183,15 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto FunctionImplementationLoweredAst::SetScopePtr(
-  Str const &scope_str) -> void {
-  // Set the scope string for this lowered function implementation.
-  _ScopePtr = scope_str;
+auto FunctionImplementationLoweredAst::SetBuiltin(
+  codegen::builtins::LoweredFnImpl const *builtin) -> void {
+  // Non-owning: an entry of the static "kBuiltinFuncs".
+  _Builtin = builtin;
+}
+
+auto FunctionImplementationLoweredAst::Builtin() const
+  -> codegen::builtins::LoweredFnImpl const* {
+  return _Builtin;
 }
 
 SPP_MOD_END

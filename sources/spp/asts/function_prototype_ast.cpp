@@ -532,10 +532,20 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
   IMPORT_UTILS;
   //
   if (BuiltinAnnotation) {
+    // The builtin is resolved once, here, and kept on the lowered
+    // implementation; every later stage reads it from there.
     const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
+    const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
+    RaiseIf<SppInternalCompilerError>(
+      builtin == codegen::builtins::kBuiltinFuncs.end(), {sm->CurrentScope}, ERR_ARGS(*Name, err1));
+
+    const auto err2 = "compiler_builtin function '" + name + "' missing builtin comptime implementation";
+    RaiseIf<SppInternalCompilerError>(
+      TokCmp != nullptr and builtin->second.CompTimeImpl == nullptr, {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
 
     auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
-    lowered_impl->SetScopePtr(name);
+    lowered_impl->SetBuiltin(&builtin->second);
     lowered_impl->SetProtoPtr(this);
     Impl = std::move(lowered_impl);
 
@@ -549,16 +559,6 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
       }
     };
     forget_body_asts(forget_body_asts, sm->CurrentScope);
-
-    const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
-    RaiseIf<SppInternalCompilerError>(
-      not codegen::builtins::kBuiltinFuncs.contains(name),
-      {sm->CurrentScope}, ERR_ARGS(*Name, err1));
-
-    const auto err2 = "compiler_builtin function '" + name + "' missing builtin comptime implementation";
-    RaiseIf<SppInternalCompilerError>(
-      TokCmp != nullptr and codegen::builtins::kBuiltinFuncs.at(name).CompTimeImpl == nullptr,
-      {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
   }
 }
 
@@ -800,16 +800,18 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   //
   if (sub_proto.BuiltinAnnotation == nullptr) { return; }
 
-  const auto name_arg = sub_proto.BuiltinAnnotation->FnArgGroup->At("name");
-  if (name_arg == nullptr) { return; }
-  const auto name = name_arg->Val->ToUnchecked<StringLiteralAst>()->CppVal();
-  const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
-  if (builtin == codegen::builtins::kBuiltinFuncs.end() or builtin->second.DropsGn.empty()) { return; }
+  // The builtin was resolved where the template was lowered (stage
+  // 6), and the instantiation's implementation is a clone of it.
+  auto const *const lowered = sub_proto.Impl->To<FunctionImplementationLoweredAst>();
+  const auto err = Str("compiler_builtin instantiation was not lowered");
+  RaiseIf<SppInternalCompilerError>(
+    lowered == nullptr or lowered->Builtin() == nullptr, {tm.CurrentScope}, ERR_ARGS(*sub_proto.Name, err));
+  if (lowered->Builtin()->DropsGn.empty()) { return; }
 
   // The generic is what the instantiation bound, and the scope
   // manager is sitting inside the instantiation's own scope,
   // which is where that binding lives.
-  const auto t_ast = TypeIdentifierAst::FromString(builtin->second.DropsGn);
+  const auto t_ast = TypeIdentifierAst::FromString(lowered->Builtin()->DropsGn);
   drop_utils::EnsureDropInstantiated(TypeRef::Of(*t_ast, *tm.CurrentScope), tm, meta);
 }
 
