@@ -49,11 +49,17 @@ public:
   auto operator=(GenericSolver const &) -> GenericSolver& = delete;
 
   /// Take in a layer of named arguments, below every layer already
-  /// given. "emit" says whether a name that is not one of the
-  /// parameters ("Self") is part of the solution, or only seen by
-  /// the inference.
+  /// given. A "Self" argument (from a name an instantiation was
+  /// keyed with) is the pinned "Self", only seen by the inference.
   auto Give(
-    Vec<Unique<GenericArgumentAst>> args, bool emit = false) -> void;
+    Vec<Unique<GenericArgumentAst>> args) -> void;
+
+  /// Pin "Self" (parameter 0) to "type", below every layer already
+  /// given: the call's receiver ("PinSelfToReceiver"). "emit" says
+  /// whether it is part of the solution, and so of the instance's
+  /// key, or only seen by the inference.
+  auto PinSelf(
+    Shared<TypeAst> type, bool emit) -> void;
 
   /// "Give" for a layer of bindings by identity (a match's): each
   /// under its parameter, read where "scope" reads it.
@@ -112,6 +118,12 @@ private:
   ScopeManager *_Sm;
   meta::CompilerMetaData *_Meta;
   Vec<Unique<_Entry>> _Entries;
+
+  /// The entry for "Self" (parameter 0), in "_Entries", once it is
+  /// given; it is no declared parameter, so is found here rather
+  /// than by name.
+  _Entry *_Self = nullptr;
+
   Vec<Unique<_Equation>> _Equations;
   Vec<Unique<GenericArgumentAst>> _Given;
   scopes::GenericSubst _DeclaredReading;
@@ -124,6 +136,8 @@ private:
   bool _AnyGiven = false;
 
   auto _Find(TypeIdentifierAst const &name) const -> _Entry*;
+  auto _FindById(std::uint64_t pid) const -> _Entry*;
+  auto _TakeSelf(bool emit) -> _Entry*;
   auto _EntryParamId(_Entry const &entry) const -> std::uint64_t;
   auto _EntryTypeId(_Entry const &entry) const -> scopes::TypeId;
   auto _AstOf(_TypeVal const &val) const -> Shared<TypeAst>;

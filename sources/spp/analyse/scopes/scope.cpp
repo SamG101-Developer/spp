@@ -1399,23 +1399,27 @@ auto Scope::ArgsIdOf(
 
   // Each argument is keyed by the parameter it is for ("ParamId"): a keyword by the identity its name carries (a
   // parameter's own name, "FromParams", or a variadic pack's, "GnPackParamId"), else by the parameter of that name in
-  // "params", the group it is written against, and "Self" as parameter 0; a positional argument by the parameter it
+  // "params", the group it is written against ("Self" records parameter 0); a positional argument by the parameter it
   // binds ("ParamsBoundByArgs"). A pack's elements, and anything past the parameters, stay positional. A keyword naming
   // no parameter is rejected before anything is keyed (E46), so reaching one here is a bug. A comp argument is its
   // value's identity: folded where closed, its parameters by identity where not.
   const auto targets = params != nullptr
     ? utils::type_resolution::ParamsBoundByArgs(args, params->GetAllParams())
     : Vec<GenericParameterAst*>();
-  const auto param_named = [params](TypeIdentifierAst const &name) -> std::uint64_t {
+  // The parameter a keyword names: the one its name records ("Self", 0, included), else the one of that name in
+  // "params"; none for a name that is no parameter.
+  const auto param_named = [params](TypeIdentifierAst const &name) -> Opt<std::uint64_t> {
     if (const auto stamped = name.StampedTypeId(); stamped != nullptr) {
       auto const &head = HeadOf(stamped);
       if (head.Kind == TypeKey::Tag::TypeParam or head.Kind == TypeKey::Tag::TypeBound) { return head.TypeParamId; }
     }
-    if (params == nullptr) { return 0; }
+    if (params == nullptr) { return Nullopt; }
     for (auto const *param : params->GetAllParams()) {
-      if (param->Name->ToUnchecked<TypeIdentifierAst>()->ToView() == name.ToView()) { return param->ParamId(); }
+      if (param->ParamId() != 0 and param->Name->ToUnchecked<TypeIdentifierAst>()->ToView() == name.ToView()) {
+        return param->ParamId();
+      }
     }
-    return 0;
+    return Nullopt;
   };
 
   for (auto i = 0uz; i < args.size(); ++i) {
@@ -1425,8 +1429,7 @@ auto Scope::ArgsIdOf(
     // A keyword: the parameter it names, "Self" as 0.
     if (arg->KeywordName() != nullptr) {
       auto const &name = *arg->KeywordName()->ToUnchecked<TypeIdentifierAst>();
-      if (const auto id = param_named(name); id != 0) { key.Push(TypeKey::Tag::Arg, id); }
-      else if (name.ToView() == "Self") { key.Push(TypeKey::Tag::Arg, 0); }
+      if (const auto id = param_named(name); id.has_value()) { key.Push(TypeKey::Tag::Arg, *id); }
       else { Raise<errors::SppInternalCompilerError>({this}, ERR_ARGS(name, "generic argument names no parameter")); }
     }
 
@@ -1598,9 +1601,12 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
         const auto tmpl = head.Symbol();
         auto group = GenericArgumentGroupAst::NewEmpty();
         for (auto const &arg : ArgsOf(head.Args)) {
+          // Named by its parameter's identity as well as spelled,
+          // so what reads it back finds the parameter by identity.
           auto name = arg.Named
             ? TypeIdentifierAst::FromString(ArgNameOf(arg))
             : nullptr;
+          if (name != nullptr) { name->StampTypeId(ParamTypeId(arg.Slot)); }
           if (arg.TypeVal != nullptr) {
             auto type = TypeAstOf(arg.TypeVal);
             if (type == nullptr) { return nullptr; }

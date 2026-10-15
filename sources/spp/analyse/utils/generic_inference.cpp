@@ -36,6 +36,7 @@ import genex;
 
 namespace spp::analyse::utils::generic_inference {
   namespace {
+    /// [CHECKED]
     /// Reject the first argument name no parameter has, reported
     /// against the first parameter (or the argument itself, when
     /// there are none). The parameter is shown from "params_scope",
@@ -70,7 +71,8 @@ namespace spp::analyse::utils::generic_inference {
       for (auto const &[param, arg, shown] : args) {
         auto const *const arg_sym = TypeRef::Of(arg, scope).Symbol;
         if (arg_sym == nullptr) { continue; }
-        auto con_sm = sm.NewManagerAt(arg_sym->LinkedScope != nullptr ? arg_sym->LinkedScope : sm.CurrentScope);
+        auto con_sm = sm.NewManagerAt(
+          arg_sym->LinkedScope != nullptr ? arg_sym->LinkedScope : sm.CurrentScope);
 
         // This parameter's constraints, with the arguments bound.
         auto p_cons = Vec<Shared<TypeAst>>();
@@ -137,6 +139,25 @@ namespace spp::analyse::utils::generic_inference {
         | genex::to<Vec>();
       EnforceGnArgNamesKnown(params, keyword_args, params_scope, sm.CurrentScope);
 
+      // Each argument names its parameter by identity as well as by
+      // name: a keyword argument's name, matched to its parameter
+      // by spelling just above, is stamped with the parameter's
+      // identity, and a positional one is given the parameter's
+      // name, stamped. A parameter not declared yet has none.
+      const auto name_of = [](GenericParameterAst const &param) -> Shared<TypeAst> {
+        if (param.Name->StampedTypeId() != nullptr or param.ParamId() == 0) { return param.Name; }
+        auto name = AstCloneShared(param.Name);
+        name->StampTypeId(scopes::ParamTypeId(param.ParamId()));
+        return name;
+      };
+      for (auto const *arg : keyword_args) {
+        auto const &name = *arg->KeywordName();
+        const auto param = genex::find_if(params, [&name](auto const *p) { return *p->Name == name; });
+        if (param != params.end() and (*param)->ParamId() != 0 and name.StampedTypeId() == nullptr) {
+          name.StampTypeId(scopes::ParamTypeId((*param)->ParamId()));
+        }
+      }
+
       const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
 
       const auto _meta_guard = meta::MetaGuard(&meta);
@@ -149,7 +170,7 @@ namespace spp::analyse::utils::generic_inference {
         RaiseIf<errors::SppGenericArgumentTooManyError>(
           param == nullptr, {params.empty() ? sm.CurrentScope : &params_scope, sm.CurrentScope, sm.CurrentScope},
           ERR_ARGS(params.empty() ? owner : *params[0], owner, *positional));
-        auto named = MakeUnique<GenericArgumentAst>(param->Name, nullptr, nullptr, nullptr);
+        auto named = MakeUnique<GenericArgumentAst>(name_of(*param), nullptr, nullptr, nullptr);
 
         if (param->IsVariadic()) {
           const auto forwards = i + 1 == args.size() and packs::DoesArgNameAPack(*positional, *sm.CurrentScope);
@@ -250,15 +271,17 @@ struct GenericSolver::_TypeVal {
 /// the parameters, like a pinned "Self") is offered.
 struct GenericSolver::_Entry {
   /// The parameter, or @c nullptr for a given name that is not
-  /// one.
+  /// one ("Self", or a parameter of another declaration).
   GenericParameterAst const *Param;
 
   /// The parameter's identity ("ParamId"), which is what a name
-  /// is found by; 0 for a name that is no parameter.
+  /// is found by; 0 for a name that is no parameter, or one not
+  /// declared yet.
   std::uint64_t Id = 0;
 
-  /// The parameter's name, for a name that carries no identity
-  /// (a keyword argument as written, "Self"). Todo: "Self=0"?
+  /// The parameter's name: what the solution's argument is named,
+  /// and what an error shows. Entries are found by identity
+  /// ("_Find"), never by it.
   Shared<TypeIdentifierAst> Name;
   Vec<_TypeVal> TypeVals;
   Vec<Shared<ExpressionAst>> CompVals;
@@ -275,8 +298,8 @@ struct GenericSolver::_Entry {
   bool IsTypeFromDefault = false;
   bool IsCompFromDefault = false;
 
-  /// Whether a name that is not a parameter is part of the
-  /// solution.
+  /// Whether the pinned "Self" is part of the solution (a
+  /// declared parameter always is).
   bool Emit = false;
 
   /// Whether the comp value's type, or the bound type's constraints, have been inferred from yet: each is read once,
@@ -310,21 +333,27 @@ GenericSolver::GenericSolver(
 
 GenericSolver::~GenericSolver() = default;
 
+auto GenericSolver::_FindById(
+  const std::uint64_t pid) const -> _Entry* {
+  // The entry of the parameter "pid", if this declaration declares it.
+  if (pid == 0) { return nullptr; }
+  for (auto const &entry : _Entries) {
+    if (entry->Id == pid) { return entry.get(); }
+  }
+  return nullptr;
+}
+
 auto GenericSolver::_Find(
   TypeIdentifierAst const &name) const -> _Entry* {
   // By identity: a name stamped as one of this declaration's parameters ("TypeParam", or "TypeBound" through a
-  // binding of it) is that parameter's entry. A name with no identity (a keyword argument as written, "Self"), or one
-  // naming a parameter this declaration does not declare (a "sup" block's, copied into a method's group), is found by
-  // its spelling.
+  // binding of it) is that parameter's entry. Every name a solver is given records one ("NameArgs" and
+  // "Scope::TypeAstOf" stamp the names they make; "Self" has its own entry, "_Self").
   if (const auto id = name.StampedTypeId(); id != nullptr) {
     auto const &head = scopes::HeadOf(id);
     if (head.Kind == scopes::TypeKey::Tag::TypeParam or head.Kind == scopes::TypeKey::Tag::TypeBound) {
-      for (auto const &entry : _Entries) {
-        if (entry->Id != 0 and entry->Id == head.TypeParamId) { return entry.get(); }
-      }
+      return _FindById(head.TypeParamId);
     }
   }
-  for (auto const &entry : _Entries) { if (*entry->Name == name) { return entry.get(); } }
   return nullptr;
 }
 
@@ -362,7 +391,7 @@ auto GenericSolver::_Bindings(
 }
 
 auto GenericSolver::Give(
-  Vec<Unique<GenericArgumentAst>> args, const bool emit) -> void {
+  Vec<Unique<GenericArgumentAst>> args) -> void {
   using errors::SppInternalCompilerError;
   // Taken by value, so the caller's list is emptied rather
   // than left holding moved-from arguments.
@@ -374,15 +403,20 @@ auto GenericSolver::Give(
     }
 
     // A layer given earlier outranks this one: the first binding
-    // offered for a name is the one it keeps.
+    // offered for a name is the one it keeps. "Self" is the
+    // pinned "Self", only seen by the inference.
     const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->KeywordName());
-    auto entry = _Find(*name);
+    if (not name->IsSelfType() and name->StampedTypeId() == nullptr) {
+      const auto err = "generic argument '" + arg->ToString() + "' is not named by its parameter's identity";
+      Raise<SppInternalCompilerError>({_Sm->CurrentScope}, ERR_ARGS(*arg, err));
+    }
+    auto entry = name->IsSelfType() ? _TakeSelf(false) : _Find(*name);
+    if (entry == nullptr and name->IsSelfType()) { continue; }
     if (entry != nullptr and entry->IsBound()) { continue; }
     if (entry == nullptr) {
       auto extra = MakeUnique<_Entry>();
       extra->Param = nullptr;
       extra->Name = name;
-      extra->Emit = emit;
       entry = extra.get();
       _Entries.emplace_back(std::move(extra));
     }
@@ -400,35 +434,59 @@ auto GenericSolver::Give(
   }
 }
 
+auto GenericSolver::_TakeSelf(
+  const bool emit) -> _Entry* {
+  // The "Self" entry, made (after every entry made so far, so the
+  // solution's order is the order things were given) the first
+  // time "Self" is offered; null once it is bound, as an earlier
+  // layer outranks a later one.
+  if (_Self != nullptr) { return _Self->IsBound() ? nullptr : _Self; }
+  auto entry = MakeUnique<_Entry>();
+  entry->Param = nullptr;
+  entry->Name = static_shared_cast<TypeIdentifierAst>(generate::common_types::SelfType(0));
+  entry->Name->StampTypeId(scopes::ParamTypeId(0));
+  entry->Emit = emit;
+  _Self = entry.get();
+  _Entries.emplace_back(std::move(entry));
+  return _Self;
+}
+
+auto GenericSolver::PinSelf(
+  Shared<TypeAst> type, const bool emit) -> void {
+  // Held as "Give" holds a type given. The argument is kept with
+  // the others given, as a declaration with no parameters answers
+  // with what it was given ("_Trivial").
+  auto *const entry = _TakeSelf(emit);
+  if (entry == nullptr) { return; }
+  entry->TypeVals.emplace_back(_TypeVal{.Id = _Sm->CurrentScope->TypeIdOf(*type), .Written = type, .Site = nullptr});
+  entry->IsTypeGiven = true;
+  _Given.emplace_back(GenericArgumentAst::NewType(entry->Name, std::move(type)));
+  _AnyGiven = true;
+}
+
 auto GenericSolver::Give(
   GenericSubst const &bindings, Scope const &scope) -> void {
-  // As "Give" does for arguments, each binding under its parameter's name (by identity where the name records one),
-  // held as the identity it is; a layer given earlier outranks it.
-  const auto take = [&](TypeIdentifierAst const &name) -> _Entry* {
-    auto *entry = _Find(name);
-    if (entry != nullptr and entry->IsBound()) { return nullptr; }
-    if (entry == nullptr) {
-      auto extra = MakeUnique<_Entry>();
-      extra->Param = nullptr;
-      extra->Name = static_shared_cast<TypeIdentifierAst>(AstCloneShared(&name));
-      entry = extra.get();
-      _Entries.emplace_back(std::move(extra));
-    }
+  // As "Give" does for arguments, each binding under its parameter (by identity), held as the identity it is; a layer
+  // given earlier outranks it.
+  // The entry is found by the parameter's identity. A binding of a parameter this declaration does not declare is not
+  // this solve's, even under a name one of its own shares: "fun ior_[E]" in "sup [T, E] Res[T, E]" declares an "E" of
+  // its own, which the receiver's "E" does not bind.
+  const auto take = [&](const std::uint64_t pid) -> _Entry* {
+    auto *const entry = _FindById(pid);
+    if (entry == nullptr or entry->IsBound()) { return nullptr; }
     _AnyGiven = true;
     return entry;
   };
   for (auto const &[pid, id] : bindings.TypeParams) {
-    auto const *const param = pid != 0 ? scopes::FindGnTypeParamById(pid) : nullptr;
-    if (param == nullptr or id == nullptr) { continue; }
-    if (auto *const entry = take(*param->Name); entry != nullptr) {
+    if (id == nullptr) { continue; }
+    if (auto *const entry = take(pid); entry != nullptr) {
       entry->TypeVals.emplace_back(_TypeVal{.Id = id, .Written = nullptr, .Site = nullptr});
       entry->IsTypeGiven = true;
     }
   }
   for (auto const &[pid, id] : bindings.CompParams) {
-    auto const *const param = scopes::FindGnCompParamById(pid);
-    if (param == nullptr or id == nullptr) { continue; }
-    if (auto *const entry = take(*TypeIdentifierAst::FromIdentifier(*param->Name)); entry != nullptr) {
+    if (id == nullptr) { continue; }
+    if (auto *const entry = take(pid); entry != nullptr) {
       entry->CompVals.emplace_back(scope.CompAstOf(id));
       entry->IsCompGiven = true;
     }
@@ -466,11 +524,12 @@ auto GenericSolver::KnownBindings(
   //
   for (auto const &entry : _Entries) {
     if (not entry->IsBound()) { continue; }
-    const auto pid = _EntryParamId(*entry);
-    if (pid == 0 and entry->Name->ToView() == "Self" and not entry->TypeVals.empty()) {
+    if (entry.get() == _Self) {
+      if (entry->TypeVals.empty()) { continue; }
       if (const auto self_id = _EntryTypeId(*entry); self_id != nullptr) { out.TypeParams.emplace_back(0, self_id); }
       continue;
     }
+    const auto pid = _EntryParamId(*entry);
     if (not entry->TypeVals.empty() and genex::contains(declared.TypeParams, pid)) {
       const auto id = _EntryTypeId(*entry);
       if (id == nullptr) { continue; }
@@ -723,8 +782,7 @@ auto GenericSolver::_SelfForDefault(
   // is written for, so needs that type; a type argument keeps "Self" as written - it is read where it is used, and an
   // instantiation keys a "Self" argument as parameter 0, open (keyed by meaning, "Vec[Self]" minted "View[T=Self]"
   // without end).
-  if (auto const *const pinned = _Find(*generate::common_types::SelfType(0)->ToUnchecked<TypeIdentifierAst>());
-    pinned != nullptr and not pinned->TypeVals.empty()) { return pinned->TypeVals[0].Written; }
+  if (_Self != nullptr and not _Self->TypeVals.empty()) { return _Self->TypeVals[0].Written; }
   if (not as_value) { return nullptr; }
   auto self_type = _OwnerScope->FindEnclosingSelfType(*_Meta);
   return self_type != nullptr and not self_type->IsSelfType() ? self_type : nullptr;
@@ -980,9 +1038,8 @@ auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
   for (auto const &entry : _Entries) {
     if (entry->Param == nullptr and not entry->Emit) { continue; }
     if (not entry->IsBound()) { continue; }
-    const auto id = _EntryParamId(*entry);
-    if (id != 0) { key.Push(TypeKey::Tag::Arg, id); }
-    else if (entry->Name->ToView() == "Self") { key.Push(TypeKey::Tag::Arg, 0); }
+    const auto id = entry.get() == _Self ? 0 : _EntryParamId(*entry);
+    if (id != 0 or entry.get() == _Self) { key.Push(TypeKey::Tag::Arg, id); }
     else {
       Raise<errors::SppInternalCompilerError>(
         {_Sm->CurrentScope}, ERR_ARGS(*entry->Name, "solved generic argument names no parameter"));
@@ -1051,12 +1108,20 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
   named->Args = std::move(comp_args);
   named->Args.append_range(genex::views::move(type_args));
 
-  auto param_index = Map<StrView, std::size_t>();
-  for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) {
-    param_index[p->Name->ToUnchecked<TypeIdentifierAst>()->Name] = i;
+  // Into parameter order, by the parameter each argument's name
+  // records ("NameArgs" stamped every one).
+  auto param_index = Map<std::uint64_t, std::size_t>();
+  for (auto [i, p] : p_group.GetAllParams() | genex::views::enumerate) { param_index[p->ParamId()] = i; }
+  for (auto const &arg : named->Args) {
+    const auto stamped = arg->KeywordName()->StampedTypeId();
+    if (stamped == nullptr or not param_index.contains(scopes::HeadOf(stamped).TypeParamId)) {
+      const auto err = Str("generic argument is not named by its parameter's identity");
+      Raise<errors::SppInternalCompilerError>({sm.CurrentScope}, ERR_ARGS(*arg, err));
+    }
   }
-  named->Args |= genex::actions::sort([&](auto const &a, auto const &b) {
-    return param_index[a->ViewName()] < param_index[b->ViewName()];
-  });
+  const auto index_of = [&](GenericArgumentAst const &arg) {
+    return param_index.at(scopes::HeadOf(arg.KeywordName()->StampedTypeId()).TypeParamId);
+  };
+  named->Args |= genex::actions::sort([&](auto const &a, auto const &b) { return index_of(*a) < index_of(*b); });
   return named;
 }
