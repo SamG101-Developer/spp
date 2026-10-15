@@ -1455,7 +1455,7 @@ auto OverloadSolver::_Check(
   // "meta" unrestored, so that is unwound here.
   const auto depth = _Meta->Depth();
   try {
-    return CheckCandidate(_Call, candidate, _Site, _Sm, _Meta);
+    return CheckCandidate(_Call, candidate, _Site, _Candidates.Callable != nullptr, _Sm, _Meta);
   }
   catch (errors::SemanticError const &e) {
     while (_Meta->Depth() > depth) { _Meta->Restore(); }
