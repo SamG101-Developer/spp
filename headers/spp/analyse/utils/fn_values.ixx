@@ -97,11 +97,12 @@ namespace spp::analyse::utils::fn_values {
     ScopeManager &sm, meta::CompilerMetaData *meta)
     -> FunctionPrototypeAst*;
 
-  /// Check whether an expression is callable or not, by
-  /// checking if the type is functional, or a symbol flag
-  /// has been set via generic constraints. Todo: Do we
+  /// The function type an expression is called indirectly
+  /// through: the "Fun*" its type is or superimposes, or the
+  /// one a generic constraint promised ("IndirectFnType" on
+  /// its symbol); null for anything not callable. Todo: Do we
   /// want to return TypeAst here, or a TypeRef?
-  SPP_EXP_FUN auto IsTargetCallable(
+  SPP_EXP_FUN auto IndirectFnTypeOf(
     ExpressionAst &expr, ScopeManager &sm,
     meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
 }

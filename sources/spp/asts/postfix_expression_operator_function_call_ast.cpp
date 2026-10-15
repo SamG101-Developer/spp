@@ -77,7 +77,7 @@ PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallA
   FnArgGroup(std::move(arg_group)),
   Fold(std::move(fold)),
   _OverloadInfo(Nullopt),
-  _Callable(Nullopt),
+  _Indirect(Nullopt),
   _CalleeArgGroup(nullptr),
   _IsAsync(nullptr),
   _IsCoroAndAutoResume(false) {
@@ -108,7 +108,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
     ast->Source.OriginalExpr = Source.OriginalExpr;
   }
   ast->_OverloadInfo = _OverloadInfo;
-  ast->_Callable = _Callable;
+  ast->_Indirect = _Indirect;
   ast->_CalleeArgGroup = AstClone(_CalleeArgGroup);
   ast->_IsAsync = _IsAsync;
   ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
@@ -157,18 +157,18 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   }
 
   // Resolve the overload for this function call.
-  auto [overload, callable] = solver->Resolve();
+  auto [overload, indirect] = solver->Resolve();
 
-  // A callable value is called through its function type, which
+  // An indirect callee is called through its function type, which
   // decides how the call holds it: a "FunRef" is borrowed, a
   // "FunMut" borrowed mutably, and a "FunMov" taken.
-  if (callable != nullptr) {
-    const auto head = TypeRef::ForKindCheck(*callable, *sm->CurrentScope);
+  if (indirect != nullptr) {
+    const auto head = TypeRef::ForKindCheck(*indirect, *sm->CurrentScope);
     const auto is_fun = [&](auto const &tmpl) {
       return head.KindSymbol() != nullptr and head.IsA(*tmpl, *sm->CurrentScope);
     };
     const auto conv = is_fun(FUN_MUT) ? ConventionTag::MUT : is_fun(FUN_REF) ? ConventionTag::REF : ConventionTag::MOV;
-    _Callable = _CallableInfo{.FnType = callable, .Conv = conv};
+    _Indirect = _IndirectInfo{.FnType = indirect, .Conv = conv};
 
     // A "FunMov" (that is not a "FunMut") is called by value, so
     // calling one held through a borrow ("v[i]", a "&FunMov"
@@ -274,8 +274,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     return;
   }
 
-  // A callable value being called is used by the call: taken by a "FunMov" call, borrowed by the others.
-  if (_Callable.has_value() and _Callable->Conv == ConventionTag::MOV) {
+  // An indirect callee is used by the call: taken by a "FunMov" call, borrowed by the others.
+  if (_Indirect.has_value() and _Indirect->Conv == ConventionTag::MOV) {
     // Calling a "FunMov" consumes it where it stands, so what it
     // borrows is used up with it rather than carried anywhere -
     // unlike moving the closure away, which the rule against
@@ -422,7 +422,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // Extract the two pointers and call through fn_ptr,
   // prepending the environment pointer (the closure function
   // is compiled as "(env*, ...params) -> ret").
-  if (_Callable.has_value()) {
+  if (_Indirect.has_value()) {
     const auto closure_uid = "." + Uid();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
@@ -486,7 +486,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // "FunMov::drop" would. Whether there is storage to free is
     // read from the environment itself: a "FunRef" passed as a
     // "FunMov" still has its environment on the caller's stack.
-    const auto consumes_closure = not closure_val->getType()->isPointerTy() and _Callable->Conv == ConventionTag::MOV;
+    const auto consumes_closure = not closure_val->getType()->isPointerTy() and _Indirect->Conv == ConventionTag::MOV;
     const auto release_env = [&] {
       if (not consumes_closure or ctx->Builder.GetInsertBlock()->hasTerminator()) { return; }
       codegen::EmitReleaseClosureEnv(env_ptr, ctx);

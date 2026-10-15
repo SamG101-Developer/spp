@@ -287,7 +287,7 @@ VariableSymbol::VariableSymbol(
   IsMutable(that.IsMutable),
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
-  CallableAsType(that.CallableAsType),
+  IndirectFnType(that.IndirectFnType),
   Visibility(that.Visibility),
   VisibilityAnnotation(that.VisibilityAnnotation),
   MemInfo(that.MemInfo->Clone()),

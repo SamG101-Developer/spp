@@ -93,7 +93,7 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
     // to keep that: "(caps f) { f() }" inside a "FunMov"-constrained
     // generic consumes "f", whatever closure it is.
     const auto outer_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
-    const auto callable_as = outer_sym != nullptr ? outer_sym->CallableAsType : nullptr;
+    const auto indirect_type = outer_sym != nullptr ? outer_sym->IndirectFnType : nullptr;
     let->Stage7_AnalyseSemantics(sm, meta);
 
     // The closure declares its captures up front; no walk reaches
@@ -102,7 +102,7 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 
     // Apply the borrow to the symbol.
     const auto sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
-    if (callable_as != nullptr) { sym->CallableAsType = callable_as; }
+    if (indirect_type != nullptr) { sym->IndirectFnType = indirect_type; }
     sym->Kind = VariableKind::Capture;
     const auto conv = cap->Conv.get();
     sym->MemInfo->AstBorrowed = conv;

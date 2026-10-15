@@ -436,7 +436,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// To enforce consistency of memory rules, we call it with the
   /// constraint type, so whether FunMov/Mut/Ref is passed in, it
   /// always uses the FunMov technique and memory analysis.
-  Shared<const TypeAst> CallableAsType;
+  Shared<const TypeAst> IndirectFnType;
 
   /// The visibility that this variable has. This is only
   /// applicable in contexts such as module/sup-level constants,

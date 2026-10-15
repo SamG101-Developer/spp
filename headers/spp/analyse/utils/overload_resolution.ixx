@@ -25,7 +25,7 @@ namespace spp::analyse::utils::overload_resolution {
   /// A function overload struct contains information about
   /// the scope/proto of the function, the "sup" scope it was
   /// reached through ("ReachedThrough", whose bound generics it
-  /// inherits; null for a free function or a callable value), and
+  /// inherits; null for a free function or an indirect callee), and
   /// a potential type-forwarding type too.
   SPP_EXP_CLS struct FnOverload {
     Scope const *FnScope;
@@ -136,11 +136,12 @@ namespace spp::analyse::utils::overload_resolution {
   };
 
   /// The overloads a call could resolve to: the named function's,
-  /// or, for a callee naming none, the one a callable value's
-  /// function type stands for ("Callable", a "FunRef[(S32,), S32]",
-  /// whose prototype is "CallablePrototypeOf"'s).
+  /// or, for a callee naming none, the one the function type of
+  /// a value called through it stands for ("IndirectFnType", a
+  /// "FunRef[(S32,), S32]", whose prototype is
+  /// "IndirectPrototypeOf"'s).
   SPP_EXP_CLS struct OverloadCandidates {
-    Shared<TypeAst const> Callable;
+    Shared<TypeAst const> IndirectFnType;
     Vec<FnOverload> Overloads;
   };
 
@@ -176,7 +177,7 @@ namespace spp::analyse::utils::overload_resolution {
     Scope const &scope, IdentifierAst const &name) -> Vec<MethodEntry>;
 
   /// Forget every scope's method table ("GetAllFnScopes") and
-  /// every callable value's prototype, at the end of a compile.
+  /// every indirect callee's prototype, at the end of a compile.
   SPP_EXP_FUN auto ClearCaches() -> void;
 
   /// Given a function name and a scope, find all the function
@@ -221,7 +222,7 @@ public:
   /// forwarding, argument validation, and disambiguation. A
   /// method's receiver is injected first (self). Called once
   /// per solver, as it takes the candidates. The second element
-  /// is the function type of the callable value called, or null
+  /// is the function type of the indirect callee, or null
   /// for a call of a named function.
   auto Resolve() -> Pair<PassedOverload, Shared<TypeAst const>>;
 

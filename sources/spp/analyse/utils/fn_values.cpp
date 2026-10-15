@@ -557,7 +557,7 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverride(
 }
 
 /// [CHECKED]
-auto spp::analyse::utils::fn_values::IsTargetCallable(
+auto spp::analyse::utils::fn_values::IndirectFnTypeOf(
   ExpressionAst &expr, ScopeManager &sm,
   meta::CompilerMetaData *meta) -> Shared<const TypeAst> {
   // Get the type of the expression, then find its functional
@@ -572,14 +572,14 @@ auto spp::analyse::utils::fn_values::IsTargetCallable(
   // type, which by then is whatever the generic was substituted
   // with.
   if (const auto sym = sm.CurrentScope->FindVarSymbolOutermost(expr).first;
-    sym != nullptr and sym->CallableAsType != nullptr) {
-    return sym->CallableAsType;
+    sym != nullptr and sym->IndirectFnType != nullptr) {
+    return sym->IndirectFnType;
   }
 
   // Otherwise, infer the type of the expression, find its
   // functional superimpositions, and get the function type
   // on the relevant sup block.
   const auto expr_type = expr.InferType(&sm, meta);
-  const auto callable = marker_sups::FindFnSup(*expr_type, *sm.CurrentScope);
-  return callable.Symbol != nullptr ? callable.AstIn(*sm.CurrentScope) : nullptr;
+  const auto fn_sup = marker_sups::FindFnSup(*expr_type, *sm.CurrentScope);
+  return fn_sup.Symbol != nullptr ? fn_sup.AstIn(*sm.CurrentScope) : nullptr;
 }

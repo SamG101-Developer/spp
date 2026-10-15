@@ -115,16 +115,16 @@ private:
   Shared<TypeAst> _Inferred;
   Scope const *_InferredIn = nullptr;
 
-  /// A callable value being called (a closure, a "FunXxx" held in
+  /// A value called through its function type (a closure, a "FunXxx" held in
   /// a variable), resolved once at stage 7: the function type it is
   /// called through, and how the call holds it ("FunRef" borrowed,
   /// "FunMut" borrowed mutably, "FunMov" taken).
-  struct _CallableInfo {
+  struct _IndirectInfo {
     Shared<TypeAst const> FnType;
     ConventionTag Conv;
   };
 
-  Opt<_CallableInfo> _Callable;
+  Opt<_IndirectInfo> _Indirect;
 
   /// The borrow of the callee a "FunRef" or "FunMut" call makes, as
   /// an argument group of its own, checked against what the body

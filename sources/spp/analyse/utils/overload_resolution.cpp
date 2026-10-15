@@ -321,14 +321,14 @@ namespace spp::analyse::utils::overload_resolution {
       args.insert(args.begin(), std::move(self_arg));
     }
 
-    /// Each callable value's prototype, by its function type's
+    /// Each indirect callee's prototype, by its function type's
     /// identity: built from the type alone, so shared by every call.
-    auto _CallablePrototypes() -> Map<TypeId, Unique<FunctionPrototypeAst>>& {
+    auto _IndirectPrototypes() -> Map<TypeId, Unique<FunctionPrototypeAst>>& {
       static auto protos = Map<TypeId, Unique<FunctionPrototypeAst>>();
       return protos;
     }
 
-    auto CreateCallablePrototype(
+    auto CreateIndirectPrototype(
       TypeAst const &expr_ty)
       -> Unique<FunctionPrototypeAst> {
       // Extract the parameter and return types from the
@@ -369,18 +369,18 @@ namespace spp::analyse::utils::overload_resolution {
     }
 
     /**
-     * The prototype a callable value of function type "fn_type" is called as: its parameters and return type, made
+     * The prototype a value of function type "fn_type" is called indirectly as: its parameters and return type, made
      * once per type. Null for a type that carries neither, or names nothing here.
      */
-    auto CallablePrototypeOf(
+    auto IndirectPrototypeOf(
       TypeAst const &fn_type,
       Scope const &scope)
       -> FunctionPrototypeAst* {
       const auto id = TypeRef::Of(fn_type, scope).Id;
       if (id == nullptr) { return nullptr; }
-      auto &protos = _CallablePrototypes();
+      auto &protos = _IndirectPrototypes();
       if (const auto hit = protos.find(id); hit != protos.end()) { return hit->second.get(); }
-      auto proto = CreateCallablePrototype(fn_type);
+      auto proto = CreateIndirectPrototype(fn_type);
       auto *const out = proto.get();
       if (out != nullptr) { protos.emplace(id, std::move(proto)); }
       return out;
@@ -394,24 +394,25 @@ namespace spp::analyse::utils::overload_resolution {
       meta::CompilerMetaData *meta) -> OverloadCandidates {
       // For named functions (ie non-closures), get all the
       // function overload implementation scopes. Empty list
-      // for closures.
+      // for a value called through its function type.
       auto all_overloads = site.FnName != nullptr and site.OwnerScope != nullptr
         ? GetAllFnScopes(*site.FnName, site.OwnerScope, *sm, meta)
         : Vec<FnOverload>{};
 
       // If the overload list is not empty, ie the target is
-      // not a closure, return the overload candidates.
+      // a named function, return the overload candidates.
       if (not all_overloads.empty()) {
         return OverloadCandidates{
-          .Callable = nullptr,
+          .IndirectFnType = nullptr,
           .Overloads = std::move(all_overloads)
         };
       }
 
-      // If there are no scopes, assume that this is a closure
-      // (do functional type check).
-      auto callable = fn_values::IsTargetCallable(*site.Written, *sm, meta);
-      if (const auto proto = callable != nullptr ? CallablePrototypeOf(*callable, *sm->CurrentScope) : nullptr;
+      // If there are no scopes, the callee is a value called
+      // through its function type (a closure, a "Fun*" field
+      // or parameter, a constrained generic).
+      auto indirect = fn_values::IndirectFnTypeOf(*site.Written, *sm, meta);
+      if (const auto proto = indirect != nullptr ? IndirectPrototypeOf(*indirect, *sm->CurrentScope) : nullptr;
         proto != nullptr) {
         all_overloads.emplace_back(overload_resolution::FnOverload{
           .FnScope = sm->CurrentScope,
@@ -419,7 +420,7 @@ namespace spp::analyse::utils::overload_resolution {
           .ReachedThrough = nullptr,
           .FwdType = nullptr
         });
-        return OverloadCandidates{std::move(callable), std::move(all_overloads)};
+        return OverloadCandidates{std::move(indirect), std::move(all_overloads)};
       }
 
       // Otherwise, there are no scopes (handled in caller).
@@ -567,10 +568,7 @@ namespace spp::analyse::utils::overload_resolution {
         TypeRef::Of(*declared_self, *fn_scope), TypeRef::Of(*call_self, *sm->CurrentScope), *fn_scope,
         *sm->CurrentScope)) { return; }
       const auto concrete = not call_self->IsSelfType() and not receiver_sym->IsGn();
-      auto self_arg = Vec<Unique<GenericArgumentAst>>();
-      self_arg.emplace_back(
-        GenericArgumentAst::NewType(generate::common_types::SelfType(0), AstCloneShared(call_self)));
-      solver.Give(std::move(self_arg), concrete);
+      solver.PinSelf(AstCloneShared(call_self), concrete);
     }
 
     /**
@@ -1182,7 +1180,7 @@ namespace spp::analyse::utils::overload_resolution {
     /// arguments vs parameters must be compatible too).
     auto CheckCandidate(
       PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      FnOverload &candidate, CallSite const &site, const bool is_callable_value,
+      FnOverload &candidate, CallSite const &site, const bool is_indirect,
       ScopeManager *sm, meta::CompilerMetaData *meta) -> PassedOverload {
       using errors::SppFunctionCallTooManyArgumentsError;
       auto fn_proto = candidate.Proto;
@@ -1216,9 +1214,13 @@ namespace spp::analyse::utils::overload_resolution {
       }
 
       // Determine the true value for "Self" for this function
-      // call, and then pin that self into the receiver.
+      // call, and then pin that self into the receiver. A value
+      // called through its function type ("h.f()", "f" a field)
+      // is not pinned: its prototype is built from that type,
+      // so it is declared by no class and is not instantiated
+      // per receiver.
       const auto call_self = CallSelf(candidate, site, sm);
-      if (not is_callable_value) { PinSelfToReceiver(fn_scope, call_self, solver, sm, meta); }
+      if (not is_indirect) { PinSelfToReceiver(fn_scope, call_self, solver, sm, meta); }
 
       // Get the solver's currently known bindings. A default is
       // read with what is known so far, "Self" as the call
@@ -1418,7 +1420,7 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   // "1.add(2)" is checked as "S32::add(1, 2)". A runtime
   // access naming no method (a closure held in an field)
   // is called as the value it is, with no receiver.
-  const auto has_receiver = site.IsMethod and candidates.Callable == nullptr;
+  const auto has_receiver = site.IsMethod and candidates.IndirectFnType == nullptr;
   if (has_receiver) { InjectReceiver(fn_call, site); }
   auto pass_overloads = Vec<PassedOverload>{};
   auto fail_overloads = Vec<FailedOverload>{};
@@ -1445,7 +1447,7 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   pass_overloads[0].Proto->RequireGnSubstitution(fn_call.Source.OriginalExpr, sm->CurrentScope);
   pass_overloads[0].HasReceiver = has_receiver;
 
-  return {std::move(pass_overloads[0]), candidates.Callable};
+  return {std::move(pass_overloads[0]), candidates.IndirectFnType};
 }
 
 auto OverloadSolver::_Check(
@@ -1455,7 +1457,7 @@ auto OverloadSolver::_Check(
   // "meta" unrestored, so that is unwound here.
   const auto depth = _Meta->Depth();
   try {
-    return CheckCandidate(_Call, candidate, _Site, _Candidates.Callable != nullptr, _Sm, _Meta);
+    return CheckCandidate(_Call, candidate, _Site, _Candidates.IndirectFnType != nullptr, _Sm, _Meta);
   }
   catch (errors::SemanticError const &e) {
     while (_Meta->Depth() > depth) { _Meta->Restore(); }
@@ -1611,7 +1613,7 @@ auto spp::analyse::utils::overload_resolution::MethodsOf(
 auto spp::analyse::utils::overload_resolution::ClearCaches()
   -> void {
   _MethodTables().clear();
-  _CallablePrototypes().clear();
+  _IndirectPrototypes().clear();
 }
 
 /// [CHECKED]
