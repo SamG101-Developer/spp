@@ -823,7 +823,7 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
       fold_indexes.emplace_back(i);
       folded_args.emplace_back(arg);
       folded_arg_types.emplace_back(arg_type.get());
-      folded_tup_lens.emplace_back(sm->CurrentScope->FindTypeSymbol(arg_type.get())->TypeArgRefs().size());
+      folded_tup_lens.emplace_back(TypeRef::Of(*arg_type, *sm->CurrentScope).Symbol->TypeArgRefs().size());
     }
   }
 
