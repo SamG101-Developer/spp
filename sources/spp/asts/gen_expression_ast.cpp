@@ -326,7 +326,7 @@ auto GenExpressionAst::InferTypeRef(
   // The generator's "Send" argument, off its identity; "Void" for a "GenOnce", which has none.
   using generate::common_types_precompiled::VOID;
   return not _IsOnce
-    ? sm->CurrentScope->FindTypeSymbol(_GenType.get())->TypeArgRef("Send")
+    ? TypeRef::Of(*_GenType, *sm->CurrentScope).Symbol->TypeArgRef("Send")
     : TypeRef::Of(*VOID, *sm->CurrentScope);
 }
 

@@ -87,7 +87,7 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
         not type_predicates::IsTypeArray(TypeRef::ForKindCheck(*val_type, *sm->CurrentScope), *sm->CurrentScope),
         {sm->CurrentScope}, ERR_ARGS(*this, val, *val_type));
       return static_cast<std::size_t>(
-        analyse::scopes::U64Of(sm->CurrentScope->FindTypeSymbol(val_type.get())->CompArgId("n")).value());
+        analyse::scopes::U64Of(TypeRef::Of(*val_type, *sm->CurrentScope).Symbol->CompArgId("n")).value());
     },
     .RaiseSizeMismatch = [&](const std::size_t lhs, ExpressionAst const &val, const std::size_t rhs) {
       Raise<SppVariableArrayDestructureArraySizeMismatchError>({sm->CurrentScope}, ERR_ARGS(*this, lhs, val, rhs));

@@ -12,7 +12,6 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
 import spp.asts.identifier_ast;
@@ -154,7 +153,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   // is, and each instantiation folds its own clone. The type is
   // analysed here, in the size's scope, with the written size as
   // its argument.
-  if (monomorphization::IsInTemplate(*sm->CurrentScope)) {
+  if (sm->CurrentScope->IsInTemplate()) {
     _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));
     _ArrayType->Stage7_AnalyseSemantics(sm, meta);
     sm->MoveOutOfCurrentScope();
