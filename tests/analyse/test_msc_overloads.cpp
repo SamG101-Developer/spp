@@ -397,3 +397,32 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(x)
     }
 )");
+
+// A method's own generic may share a name with its "sup" block's: they are two parameters. The block's binding (from
+// the receiver) is for the block's, and the method's is inferred from its own arguments.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverloads_SupBlocks,
+  test_valid_method_generic_shadowing_the_block_generic_inferred_from_the_argument, R"(
+    cls Box[T] { !public v: T }
+
+    sup [T] Box[T] {
+        !public fun swap[T](&self, other: T) -> T { ret other }
+    }
+
+    fun f() -> Void {
+        let b = Box[S32](v=1)
+        let s: Bool = b.swap(true)
+        std::mem::ops::drop(b)
+    }
+)");
+
+// "ior_"'s own "E" once took the receiver's "E" ("Bool") by name, so "Res[S32, U8]" did not match.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverloads_SupBlocks,
+  test_valid_result_ior_with_another_error_type, R"(
+    fun f() -> Void {
+        let r: Res[S32, Bool] = Fail(err=false)
+        let o: Res[S32, U8] = Pass(val=1)
+        let x: Res[S32, U8] = r.ior_(o)
+    }
+)");
