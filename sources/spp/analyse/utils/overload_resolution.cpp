@@ -1182,8 +1182,8 @@ namespace spp::analyse::utils::overload_resolution {
     /// arguments vs parameters must be compatible too).
     auto CheckCandidate(
       PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      FnOverload &candidate, CallSite const &site, ScopeManager *sm,
-      meta::CompilerMetaData *meta) -> PassedOverload {
+      FnOverload &candidate, CallSite const &site, const bool is_callable_value,
+      ScopeManager *sm, meta::CompilerMetaData *meta) -> PassedOverload {
       using errors::SppFunctionCallTooManyArgumentsError;
       auto fn_proto = candidate.Proto;
       auto fn_scope = candidate.FnScope;
@@ -1218,7 +1218,7 @@ namespace spp::analyse::utils::overload_resolution {
       // Determine the true value for "Self" for this function
       // call, and then pin that self into the receiver.
       const auto call_self = CallSelf(candidate, site, sm);
-      PinSelfToReceiver(fn_scope, call_self, solver, sm, meta);
+      if (not is_callable_value) { PinSelfToReceiver(fn_scope, call_self, solver, sm, meta); }
 
       // Get the solver's currently known bindings. A default is
       // read with what is known so far, "Self" as the call
