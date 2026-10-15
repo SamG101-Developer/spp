@@ -22,6 +22,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+/// [CHECKED]
 auto spp::analyse::utils::sup_blocks::IsSupBlock(
   Ast const *node) -> bool {
   // Simple multi-cast check.
@@ -30,6 +31,7 @@ auto spp::analyse::utils::sup_blocks::IsSupBlock(
     node->To<SupPrototypeExtensionAst>() != nullptr);
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::sup_blocks::EnclosingSupBlock(
   Scope const &scope) -> Scope const* {
   // Get the ancestral scope whose node is a sup or sup-ext

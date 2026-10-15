@@ -150,7 +150,7 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   // Filter by casting.
   auto out = Vec<FunctionParameterSelfAst*>();
   for (auto const &param : Params) {
-    if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) { out.push_back(self_param); }
+    if (auto *self_param = param->To<FunctionParameterSelfAst>()) { out.push_back(self_param); }
   }
   return out.empty() ? nullptr : out[0];
 }
@@ -159,7 +159,7 @@ auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParamet
   // Filter by casting.
   auto out = Vec<FunctionParameterRequiredAst*>();
   for (auto const &param : Params) {
-    if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) { out.push_back(req_param); }
+    if (auto *req_param = param->To<FunctionParameterRequiredAst>()) { out.push_back(req_param); }
   }
   return out;
 }
@@ -168,7 +168,7 @@ auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParamet
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();
   for (auto const &param : Params) {
-    if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) { out.push_back(opt_param); }
+    if (auto *opt_param = param->To<FunctionParameterOptionalAst>()) { out.push_back(opt_param); }
   }
   return out;
 }
@@ -177,7 +177,7 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
   // Filter by casting.
   auto out = Vec<FunctionParameterVariadicAst*>();
   for (auto const &param : Params) {
-    if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
+    if (auto *var_param = param->To<FunctionParameterVariadicAst>()) { out.push_back(var_param); }
   }
   return out.empty() ? nullptr : out[0];
 }
@@ -203,7 +203,7 @@ auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParamete
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) {
-    if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) { out.push_back(param.get()); }
+    if (param->To<FunctionParameterSelfAst>() == nullptr) { out.push_back(param.get()); }
   }
   return out;
 }

@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.sup_attachment;
 import spp.analyse.utils.type_members;
 import spp.asts.closure_expression_ast;
@@ -27,6 +28,7 @@ ScopeTree::~ScopeTree() {
   spp::analyse::scopes::ClearGnParams();
   spp::analyse::utils::sup_attachment::ClearSupStatementsCache();
   spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache();
+  spp::analyse::utils::overload_resolution::ClearCaches();
   spp::asts::GenericParameterAst::ClearDummyScopes();
   spp::asts::ClosureExpressionAst::ClearMockAsts();
 }

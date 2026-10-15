@@ -192,9 +192,10 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
   // If the target is a coroutine, or the target is called
   // as "async", then pins are required.
-  const auto is_target_coro = meta->TargetCallFnPrototype and
-    meta->TargetCallFnPrototype->To<CoroutinePrototypeAst>() != nullptr;
-  const auto pins_required = meta->TargetCallWasFnAsync or is_target_coro;
+  const auto call = meta->TargetCall;
+  auto target = call != nullptr ? call->ResolvedProto() : nullptr;
+  const auto is_target_coro = target != nullptr and target->To<CoroutinePrototypeAst>() != nullptr;
+  const auto pins_required = (call != nullptr and call->IsAsync()) or is_target_coro;
 
   // The law of exclusivity: the borrows the arguments make are held by the call while it runs ("call_loans"), and
   // are checked against each other and against every loan already held in the body.
@@ -218,11 +219,13 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   };
 
   for (auto const &arg : Args) {
+    const auto is_receiver = call != nullptr and call->IsReceiverArg(*arg);
+
     // A drop ends the value it is given, and with it every loan the value holds ("drop_utils::EndsArgument"). They end
     // before the argument is read: dropping frees a frame or an environment without using what it borrowed, so a
     // conflict recorded on one of those loans is not a use, and the holder, holding nothing, can be moved into it.
-    if (meta->TargetCallFnPrototype != nullptr and arg->Val->To<IdentifierAst>() != nullptr
-      and drop_utils::EndsArgument(*meta->TargetCallFnPrototype, *arg, *sm, meta)) {
+    if (target != nullptr and arg->Val->To<IdentifierAst>() != nullptr
+      and drop_utils::EndsArgument(*target, *arg, is_receiver, *sm, meta)) {
       if (auto *const held = sm->CurrentScope->FindVarSymbol(arg->Val->To<IdentifierAst>()); held != nullptr) {
         memory_state::ReleaseLoans(loans, *held);
       }
@@ -262,8 +265,8 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     // would be moved out while its owner still owns it, and freed
     // twice. The checks below miss it - moving a borrow variable is
     // fine, and a chained receiver is a temporary with no symbol.
-    if (arg->GetSelfType() != nullptr and arg->Conv == nullptr and meta->TargetCallFnPrototype != nullptr) {
-      const auto self_param = meta->TargetCallFnPrototype->FnParamGroup->GetSelfParam();
+    if (is_receiver and arg->Conv == nullptr) {
+      const auto self_param = target->FnParamGroup->GetSelfParam();
       const auto receiver = arg->Val->InferTypeRef(sm, meta);
       if (self_param != nullptr and self_param->Conv == nullptr and receiver.IsBorrowed()
         and receiver.Symbol != nullptr and not receiver.Symbol->IsCopyable()) {

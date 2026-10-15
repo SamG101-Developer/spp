@@ -114,8 +114,8 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   // completion plugin.
   {
     const auto produces_value =
-     Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr or
-     Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
+      Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr or
+      Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
 
     if (produces_value) {
       lsp::resolution_index::RecordExpression(
@@ -129,18 +129,19 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   //
   IMPORT_UTILS;
 
-  // A method call is checked in its function form, where the receiver is the "self" argument, so the lhs is not also
-  // checked as a use of its own.
-  const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  if (const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr; fn_lhs != nullptr) {
-    fn_lhs->Stage8_CheckMemory(sm, meta);
+  // A method call's receiver is checked as its "self" argument,
+  // so the lhs ("obj.m") is not also checked as a use of its
+  // own.
+  if (const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
+    func != nullptr and func->HasReceiver()) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->PostfixExpressionLhs = fn_lhs;
+    meta->PostfixExpressionLhs = Lhs.get();
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
 
-  if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
+  if (const auto early_ret = Op->To<PostfixExpressionOperatorEarlyReturnAst>();
+    early_ret != nullptr) {
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->PostfixExpressionLhs = Lhs.get();
@@ -152,8 +153,9 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   // Index and slice operators desugar to borrow-based method calls (index_ref/mut, slice_ref/mut). Route memory
   // checking through their mapped function like a normal method call, rather than treating the identifier lhs as a
   // moved value here (which the desugared "&self"/"&mut self" call handles correctly).
-  if (Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or Op->To<PostfixExpressionOperatorSliceAst>() !=
-    nullptr) {
+  if (
+    Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or
+    Op->To<PostfixExpressionOperatorSliceAst>() != nullptr) {
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
@@ -212,13 +214,9 @@ auto PostfixExpressionAst::Stage9_CompTimeResolve(
 
 auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // A method call is generated in its function form ("Type::m(obj)").
-  const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-  const auto fn_lhs = func != nullptr ? func->GetTransformedLhs() : nullptr;
-
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = fn_lhs != nullptr ? static_cast<ExpressionAst*>(fn_lhs) : Lhs.get();
+  meta->PostfixExpressionLhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
 }

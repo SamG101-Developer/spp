@@ -1012,7 +1012,7 @@ auto TypeRef::ForKindCheck(
 auto TypeRef::ForKindCheck(
   TypeAst const &type, Scope const &scope) -> TypeRef {
   // Held as written: a borrow or "!" stays one, so the same checks reject it.
-  auto *const head = type.IsNeverType() ? nullptr : scope.FindHeadSymbol(type);
+  const auto head = type.IsNeverType() ? nullptr : scope.FindHeadSymbol(type);
   if (head == nullptr) { return TypeRef(); }
   auto ref = ForKindCheck(*head, scope);
   if (type.GetConvention() != nullptr) { ref.Conv = type.GetConvention()->Tag(); }

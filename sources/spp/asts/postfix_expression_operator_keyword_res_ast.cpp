@@ -238,9 +238,10 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // slot, and asking for one ("getNullValue" of a void type)
   // is itself invalid. The receiver is an argument of the
   // mapped ".send()" call too, and is not one of these.
-  const auto &args_group = _MappedFn->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>()->FnArgGroup;
+  const auto mapped_call = _MappedFn->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>();
+  const auto &args_group = mapped_call->FnArgGroup;
   const auto send_arg = genex::find_if(
-    args_group->Args, [](auto const &x) { return x->GetSelfType() == nullptr; });
+    args_group->Args, [mapped_call](auto const &x) { return not mapped_call->IsReceiverArg(*x); });
 
   if (send_arg != args_group->Args.end()) {
     const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(

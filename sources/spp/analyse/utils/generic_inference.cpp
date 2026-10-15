@@ -240,36 +240,43 @@ SPP_MOD_BEGIN
 /// for a type given that does not key (yet), which is passed on as written. "Written" is the type as given, or the
 /// default as declared; "Site" what an inferred type, or a default, is read back pointing at. One "Written" with no
 /// "Site" is shown as given.
-struct spp::analyse::utils::generic_inference::GenericSolver::_TypeVal {
+struct GenericSolver::_TypeVal {
   TypeId Id = nullptr;
   Shared<TypeAst> Written;
   Shared<TypeAst> Site;
 };
 
-/// Everything one generic parameter (or a name given alongside the parameters, like a pinned "Self") is offered.
-struct spp::analyse::utils::generic_inference::GenericSolver::_Entry {
-  /// The parameter, or @c nullptr for a given name that is not one.
+/// Everything one generic parameter (or a name given alongside
+/// the parameters, like a pinned "Self") is offered.
+struct GenericSolver::_Entry {
+  /// The parameter, or @c nullptr for a given name that is not
+  /// one.
   GenericParameterAst const *Param;
 
-  /// The parameter's identity ("ParamId"), which is what a name is found by; 0 for a name that is no parameter.
+  /// The parameter's identity ("ParamId"), which is what a name
+  /// is found by; 0 for a name that is no parameter.
   std::uint64_t Id = 0;
 
-  /// The parameter's name, for a name that carries no identity (a keyword argument as written, "Self").
+  /// The parameter's name, for a name that carries no identity
+  /// (a keyword argument as written, "Self"). Todo: "Self=0"?
   Shared<TypeIdentifierAst> Name;
   Vec<_TypeVal> TypeVals;
   Vec<Shared<ExpressionAst>> CompVals;
 
-  /// Given a type rather than inferred one, so inference neither offers it another nor rewrites it.
+  /// Given a type rather than inferred one, so inference neither
+  // offers it another nor rewrites it.
   bool IsTypeGiven = false;
 
   /// Given a comp value rather than inferred one.
   bool IsCompGiven = false;
 
-  /// Bound to its default, which is written in the declaration's own terms and so may name the others.
+  /// Bound to its default, which is written in the declaration's
+  /// own terms and so may name the others.
   bool IsTypeFromDefault = false;
   bool IsCompFromDefault = false;
 
-  /// Whether a name that is not a parameter is part of the solution.
+  /// Whether a name that is not a parameter is part of the
+  /// solution.
   bool Emit = false;
 
   /// Whether the comp value's type, or the bound type's constraints, have been inferred from yet: each is read once,
@@ -356,17 +363,20 @@ auto GenericSolver::_Bindings(
 
 auto GenericSolver::Give(
   Vec<Unique<GenericArgumentAst>> args, const bool emit) -> void {
-  // Taken by value, so the caller's list is emptied rather than left holding moved-from arguments.
   using errors::SppInternalCompilerError;
+  // Taken by value, so the caller's list is emptied rather
+  // than left holding moved-from arguments.
   for (auto &arg : args) {
+    // ICE if we bug the argument ast translations.
     if (arg->KeywordName() == nullptr or (not arg->IsTypeArg() and not arg->IsCompArg())) {
       const auto err = "generic argument '" + arg->ToString() + "' is still positional where a binding is expected";
       Raise<SppInternalCompilerError>({_Sm->CurrentScope}, ERR_ARGS(*arg, err));
     }
 
-    // A layer given earlier outranks this one: the first binding offered for a name is the one it keeps.
+    // A layer given earlier outranks this one: the first binding
+    // offered for a name is the one it keeps.
     const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->KeywordName());
-    auto *entry = _Find(*name);
+    auto entry = _Find(*name);
     if (entry != nullptr and entry->IsBound()) { continue; }
     if (entry == nullptr) {
       auto extra = MakeUnique<_Entry>();
@@ -443,9 +453,17 @@ auto GenericSolver::KnownBindings(
   GenericParameterGroupAst const &params) const -> Opt<GenericSubst> {
   // What was given, by the parameter each binds ("BindByName"'s rule over the given layers), packs marked; and "Self"
   // where it is pinned.
+
+  // If nothing has been given, short circuit out of this getter
+  // function. No point wasting search work.
   if (not _AnyGiven) { return Nullopt; }
+
+  // Extract the parameter ids for the inputted parameter group,
+  // and declare an empty substitution map.
   const auto declared = scopes::ParamsDeclaredBy(params);
   auto out = GenericSubst();
+
+  //
   for (auto const &entry : _Entries) {
     if (not entry->IsBound()) { continue; }
     const auto pid = _EntryParamId(*entry);
@@ -1012,16 +1030,17 @@ auto GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
 
 SPP_MOD_END
 
+/// [CHECKED]
 auto spp::analyse::utils::generic_inference::NamedGnArgs(
-  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const &params_scope,
-  Ast const &owner, ScopeManager &sm,
+  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group,
+  Scope const &params_scope, Ast const &owner, ScopeManager &sm,
   meta::CompilerMetaData &meta, const bool is_tuple_owner) -> Unique<GenericArgumentGroupAst> {
   // A tuple's arguments stay positional.
   auto named = AstClone(&written);
   if (is_tuple_owner) { return named; }
 
-  // The two kinds are named separately, as a type and a comp parameter cannot share a name, then put in parameter
-  // order.
+  // The two kinds are named separately, as a type and a comp
+  // parameter cannot share a name, then put in parameter order.
   auto comp_args = Vec<Unique<GenericArgumentAst>>();
   auto type_args = Vec<Unique<GenericArgumentAst>>();
   for (auto &&arg : std::move(named->Args)) {

@@ -17,6 +17,7 @@ use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LoopExpressionAst);
+use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
@@ -203,15 +204,10 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// symbols from the outer scope, and then move then in.
   Scope *CurrentLambdaOuterScope;
 
-  /// The function prototype being called by a postfix function
-  /// call operator. Needed for coroutine target checking during
-  /// analysis, especially memory rules.
-  FunctionPrototypeAst *TargetCallFnPrototype;
-
-  /// Similar to above, but rather than tracking the variation
-  /// of the target function prototype, check the calling
-  /// convention for "async", for memory rules.
-  bool TargetCallWasFnAsync;
+  /// The call whose arguments are being checked: what it resolved
+  /// to (a coroutine pins its borrows), whether it is "async", and
+  /// which argument is its receiver, for the memory rules.
+  PostfixExpressionOperatorFunctionCallAst const *TargetCall;
 
   /// The explicit type, if provided, on a "let" statement,
   /// carried forward for local variable asts to analyse values

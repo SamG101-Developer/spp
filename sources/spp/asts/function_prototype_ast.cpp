@@ -19,7 +19,6 @@ import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.self_type;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;

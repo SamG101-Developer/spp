@@ -32,8 +32,7 @@ auto CompilerMetaData::ResetContext() -> void {
   EnclosingFnCmp = nullptr;
   OverriddenScopeForClosure = nullptr;
   CurrentLambdaOuterScope = nullptr;
-  TargetCallFnPrototype = nullptr;
-  TargetCallWasFnAsync = false;
+  TargetCall = nullptr;
   LetStatementExplicitType = nullptr;
   LetStatementValue = nullptr;
   LetStatementFromUninitialized = false;
@@ -88,8 +87,7 @@ auto CompilerMetaData::Save() -> void {
   s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
   s.EnclosingFnCmp = EnclosingFnCmp;
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
-  s.TargetCallFnPrototype = TargetCallFnPrototype;
-  s.TargetCallWasFnAsync = TargetCallWasFnAsync;
+  s.TargetCall = TargetCall;
   s.LetStatementExplicitType = LetStatementExplicitType;
   s.LetStatementValue = LetStatementValue;
   s.LetStatementFromUninitialized = LetStatementFromUninitialized;
@@ -155,8 +153,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   }
   OverriddenScopeForClosure = state.OverriddenScopeForClosure;
   CurrentLambdaOuterScope = state.CurrentLambdaOuterScope;
-  TargetCallFnPrototype = state.TargetCallFnPrototype;
-  TargetCallWasFnAsync = state.TargetCallWasFnAsync;
+  TargetCall = state.TargetCall;
   LetStatementExplicitType = std::move(state.LetStatementExplicitType);
   LetStatementValue = state.LetStatementValue;
   LetStatementFromUninitialized = state.LetStatementFromUninitialized;

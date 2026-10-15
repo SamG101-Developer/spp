@@ -11,7 +11,9 @@ import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
+import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -48,10 +50,7 @@ namespace spp::analyse::utils::fn_values {
     auto _SupBlockOf(
       FunctionPrototypeAst const &fn) -> Ast* {
       const auto ctx = fn.GetAstCtx();
-      if (ctx == nullptr) { return nullptr; }
-      const auto is_sup = ctx->To<SupPrototypeFunctionsAst>() != nullptr
-        or ctx->To<SupPrototypeExtensionAst>() != nullptr;
-      return is_sup ? ctx : nullptr;
+      return sup_blocks::IsSupBlock(ctx) ? ctx : nullptr;
     }
 
     /// Determine if two "sup" blocks can ever apply to the same
@@ -81,8 +80,12 @@ namespace spp::analyse::utils::fn_values {
   }
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::fn_values::FnBlockOf(
   Scope const &scope) -> Pair<SupPrototypeExtensionAst*, FunctionPrototypeAst*> {
+  // Get the sup-ext node in the scope, and inspect its body.
+  // Select the 1st child (the actual function from pre-
+  // processing), and return it with the ext block.
   const auto ext = AstAs<SupPrototypeExtensionAst>(scope.AstNode);
   const auto body = ext != nullptr ? AstBody(ext) : Vec<Ast*>();
   const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
@@ -110,8 +113,7 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
     // which gathers the overloads from all of them.
     const auto block = ext_scope->Parent;
     const auto block_node = block->AstNode;
-    if (AstAs<SupPrototypeFunctionsAst>(block_node) != nullptr
-      or AstAs<SupPrototypeExtensionAst>(block_node) != nullptr) {
+    if (sup_blocks::IsSupBlock(block_node)) {
       const auto owner_sym = block->FindHeadSymbol(*AstName(block_node));
       if (owner_sym != nullptr and not owner_sym->IsGn() and owner_sym->LinkedScope != nullptr
         and owner_sym->Type != nullptr and owner_sym->Type->GnParamGroup->Params.empty()) {
@@ -242,7 +244,8 @@ namespace spp::analyse::utils::fn_values {
      * block is matched against the super class the implementer extends, as a receiver binds a block's generics
      * ("sup [Rhs] Eq[Rhs]" against "ext Eq", which is "Eq[Rhs=Self]" with its default filled); and a parameter "fn_b"'s
      * scope binds to "Self" ("Ret" of "BitAnd[Rhs=Self, Ret=Self]") is the implementer too. None when their own
-     * generics differ in kind, or a part does not key.
+     * generics differ in kind (type or comp, a pack or one: "..xs: Ts" takes a mix of types, "..xs: T" one), or a part
+     * does not key.
      */
     auto IdTermsOf(
       FunctionPrototypeAst const &fn_a, Scope const &scope_a,
@@ -284,6 +287,7 @@ namespace spp::analyse::utils::fn_values {
       const auto own_b = own_params(fn_b);
       for (auto i = 0uz; i < own_a.size() and i < own_b.size(); ++i) {
         if (own_a[i]->IsTypeParam() != own_b[i]->IsTypeParam()) { return Nullopt; }
+        if (own_a[i]->IsVariadic() != own_b[i]->IsVariadic()) { return Nullopt; }
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
           if (a_param == nullptr) { continue; }
@@ -296,23 +300,13 @@ namespace spp::analyse::utils::fn_values {
         subst_b.CompParams.emplace_back(b_var->ParamId(), scope_a.CompIdOfSymbol(*a_var));
       }
 
-      const auto enclosing = [](Scope const &scope, auto const pred) -> Ast* {
-        for (auto const *s = &scope; s != nullptr; s = s->Parent) {
-          if (s->AstNode != nullptr and pred(*s->AstNode)) { return s->AstNode; }
-        }
-        return nullptr;
-      };
-      // A method's own "sup $F ext FunXxx" block is not the one it was written in.
-      const auto is_sup = [](Ast const &n) {
-        auto *const node = const_cast<Ast*>(&n);
-        return (n.To<SupPrototypeFunctionsAst>() != nullptr or n.To<SupPrototypeExtensionAst>() != nullptr)
-          and not AstName(node)->IsCompilerGeneratedType();
-      };
-      auto *const b_block = enclosing(scope_b, is_sup);
-      auto *const a_ext_node = enclosing(scope_a, [&is_sup](Ast const &n) {
-        return is_sup(n) and n.To<SupPrototypeExtensionAst>() != nullptr;
-      });
-      auto const *const a_ext = a_ext_node != nullptr ? a_ext_node->To<SupPrototypeExtensionAst>() : nullptr;
+      // The blocks each method was written in (a method's own "sup $F ext FunXxx" block is not one).
+      auto const *const b_block_scope = sup_blocks::EnclosingSupBlock(scope_b);
+      auto *const b_block = b_block_scope != nullptr ? b_block_scope->AstNode : nullptr;
+      auto const *const a_block_scope = sup_blocks::EnclosingSupBlock(scope_a);
+      auto const *const a_ext = a_block_scope != nullptr
+        ? AstAs<SupPrototypeExtensionAst>(a_block_scope->AstNode)
+        : nullptr;
       if (self_id != nullptr and b_block != nullptr and a_ext != nullptr) {
         // "fn_b"'s block's generics bound off "fn_a"'s super class, "Self" in what they bind read as "fn_a"'s.
         auto const *const super_sym = TypeRef::Of(*a_ext->SuperCls, scope_a).Symbol;
@@ -336,6 +330,47 @@ namespace spp::analyse::utils::fn_values {
       }
       return Pair<GenericSubst, GenericSubst>{std::move(subst_a), std::move(subst_b)};
     }
+
+    /**
+     * Two prototypes read in one set of terms ("IdTermsOf": the second's generics renamed to the first's), so a type
+     * of either is compared with the other's by identity: each keyed where it is written, then substituted.
+     */
+    struct SigTerms {
+      Scope const &ScopeA;
+      Scope const &ScopeB;
+      GenericSubst SubstA;
+      GenericSubst SubstB;
+
+      auto IdA(TypeAst const &type) const -> TypeId {
+        return SubstituteTypeId(ScopeA.TypeIdOf(type), SubstA);
+      }
+
+      auto IdB(TypeAst const &type) const -> TypeId {
+        return SubstituteTypeId(ScopeB.TypeIdOf(type), SubstB);
+      }
+
+      /// Whether "a" (of the first) and "b" (of the second) are one type. With "any_borrow", a borrow is the same
+      /// as a borrow of either kind ("&Bool" and "&mut Bool", which a call cannot choose between), and a value only a
+      /// value.
+      auto Same(TypeAst const &a, TypeAst const &b, const bool any_borrow = false) const -> bool {
+        if (any_borrow and (a.GetConvention() == nullptr) != (b.GetConvention() == nullptr)) { return false; }
+        const auto id_a = any_borrow ? IdA(*a.WithoutConvention()) : IdA(a);
+        const auto id_b = any_borrow ? IdB(*b.WithoutConvention()) : IdB(b);
+        return id_a != nullptr and id_a == id_b;
+      }
+    };
+
+    /**
+     * "SigTerms" for two prototypes; none where "IdTermsOf" has none.
+     */
+    auto SigTermsOf(
+      FunctionPrototypeAst const &fn_a, Scope const &scope_a,
+      FunctionPrototypeAst const &fn_b, Scope const &scope_b)
+      -> Opt<SigTerms> {
+      auto terms = IdTermsOf(fn_a, scope_a, fn_b, scope_b);
+      if (not terms.has_value()) { return Nullopt; }
+      return SigTerms{scope_a, scope_b, std::move(terms->first), std::move(terms->second)};
+    }
   }
 }
 
@@ -353,10 +388,9 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
   // Check for an overload conflict with all functions
   // of the same name.
   for (auto const &[old_scope, old_fn, _, _] : existing) {
-    // Ignore if the method is an identical match on a
-    // base class (override) or is the same object.
+    // Ignore the same object. A method it overrides on a base
+    // class is not among them: "GetAllFnScopes" applies overrides.
     if (old_fn == &new_fn) { continue; }
-    if (old_fn == CheckForConflictingOverride(this_scope, old_scope, new_fn, sm, meta, old_scope)) { continue; }
 
     // Ignore if the two methods come from "sup" blocks that
     // are disjoint specializations of the same type, such as
@@ -373,23 +407,11 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
     // The two are compared with the old one's generics renamed to the new one's ("f[T](a: T)" and "f[U](a: U)"
     // conflict), and parameters with either borrow as the same: a call cannot choose between "&Bool" and "&mut Bool",
     // but can between "T" and "&T". A return type keeps its convention, as return types overload.
-    const auto terms = IdTermsOf(new_fn, this_scope, *old_fn, *old_scope);
+    const auto terms = SigTermsOf(new_fn, this_scope, *old_fn, *old_scope);
     if (not terms.has_value()) { continue; }
-    auto const &subst_new = terms->first;
-    auto const &subst_old = terms->second;
-    const auto id_of = [&](TypeAst const &new_type, TypeAst const &old_type) {
-      return Pair<TypeId, TypeId>{
-        SubstituteTypeId(this_scope.TypeIdOf(new_type), subst_new),
-        SubstituteTypeId(old_scope->TypeIdOf(old_type), subst_old)};
-    };
-    const auto same = [&](TypeAst const &new_type, TypeAst const &old_type) {
-      if ((new_type.GetConvention() == nullptr) != (old_type.GetConvention() == nullptr)) { return false; }
-      const auto [n, o] = id_of(*new_type.WithoutConvention(), *old_type.WithoutConvention());
-      return n != nullptr and n == o;
-    };
 
     // Ignore if the return types are different.
-    if (const auto [n, o] = id_of(*new_fn.ReturnType, *old_fn->ReturnType); n == nullptr or n != o) { continue; }
+    if (not terms->Same(*new_fn.ReturnType, *old_fn->ReturnType)) { continue; }
 
     // Get the two parameter lists and create copies to
     // remove duplicate parameters from.
@@ -400,7 +422,7 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverload(
     // parameter list off of the other parameter list.
     for (auto [p, q] : genex::views::zip(new_fn.FnParamGroup->Params | genex::views::ptr,
                                          old_fn->FnParamGroup->Params | genex::views::ptr)) {
-      if (same(*p->Type, *q->Type)) {
+      if (terms->Same(*p->Type, *q->Type, true)) {
         params_new |= genex::actions::remove_if([pe=p->ExtractNames()](auto &&x) {
           return genex::equals(x->ExtractNames(), std::move(pe), {}, genex::meta::deref, genex::meta::deref);
         });
@@ -468,19 +490,21 @@ auto spp::analyse::utils::fn_values::SameSignature(
     return false;
   }
 
-  const auto terms = IdTermsOf(fn_a, scope_a, fn_b, scope_b);
+  const auto terms = SigTermsOf(fn_a, scope_a, fn_b, scope_b);
   if (not terms.has_value()) { return false; }
-  auto const &[subst_a, subst_b] = *terms;
+  auto const &subst_a = terms->SubstA;
+  auto const &subst_b = terms->SubstB;
 
-  // All parameters must have the same types: each keyed
-  // where it is written, then read in "fn_a"'s terms.
+  // All parameters must have the same types, read in "fn_a"'s terms.
   for (auto const &[p, q] : genex::views::zip(params_a, params_b)) {
-    const auto id_a = SubstituteTypeId(scope_a.TypeIdOf(*p->Type), subst_a);
-    if (id_a == nullptr or id_a != SubstituteTypeId(scope_b.TypeIdOf(*q->Type), subst_b)) { return false; }
+    if (not terms->Same(*p->Type, *q->Type)) { return false; }
   }
 
-  // The function type (subroutine vs coroutine) must match.
+  // The function type (subroutine vs coroutine) must match, as must the "self" parameters' conventions.
   if (fn_a.TokFun->TokenType != fn_b.TokFun->TokenType) {
+    return false;
+  }
+  if (hs(&fn_a) != hs(&fn_b) or (sc(&fn_a) and *sc(&fn_a) != sc(&fn_b)) or (not sc(&fn_a) and sc(&fn_b))) {
     return false;
   }
 
@@ -502,25 +526,17 @@ auto spp::analyse::utils::fn_values::SameSignature(
     return ref.Substitute(subst, scope_a, TypeRef::OnMissing::Make);
   };
   // The same identity in "fn_a"'s terms is the same type, made or not (as the parameters are compared).
-  const auto ret_id_a = SubstituteTypeId(scope_a.TypeIdOf(*fn_a.ReturnType), subst_a);
-  if (ret_id_a != nullptr and ret_id_a == SubstituteTypeId(scope_b.TypeIdOf(*fn_b.ReturnType), subst_b)) {
-    return not(hs(&fn_a) != hs(&fn_b) or (sc(&fn_a) and *sc(&fn_a) != sc(&fn_b)) or (not sc(&fn_a) and sc(&fn_b)));
-  }
+  if (terms->Same(*fn_a.ReturnType, *fn_b.ReturnType)) { return true; }
   const auto ret_a = ret_of(fn_a, scope_a, subst_a);
   const auto ret_b = ret_of(fn_b, scope_b, subst_b);
-
-
   if (ret_a.Id == nullptr or ret_b.Id == nullptr) { return false; }
-  if (not ret_a.SameAs(ret_b) and not type_compare::Assignable(ret_b, ret_a, scope_a, scope_a)) { return false; }
-
-  // Check the self parameters' conventions.
-  return not(hs(&fn_a) != hs(&fn_b) or (sc(&fn_a) and *sc(&fn_a) != sc(&fn_b)) or (not sc(&fn_a) and sc(&fn_b)));
+  return ret_a.SameAs(ret_b) or type_compare::Assignable(ret_b, ret_a, scope_a, scope_a);
 }
 
 auto spp::analyse::utils::fn_values::CheckForConflictingOverride(
   Scope const &this_scope, Scope const *target_scope,
   FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-  meta::CompilerMetaData *meta, Scope const *exclude_scope)
+  meta::CompilerMetaData *meta)
   -> FunctionPrototypeAst* {
   // Get the existing functions that belong to this
   // type, or any of its supertypes.
@@ -531,7 +547,6 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverride(
   for (auto const &[old_scope, old_fn, _, _] : existing) {
     // Ignore if the method is the same object.
     if (old_fn == &new_fn) { continue; }
-    if (old_scope == exclude_scope) { continue; }
 
     // The functions must have identical signatures to
     // conflict, so return the old function.
@@ -541,6 +556,7 @@ auto spp::analyse::utils::fn_values::CheckForConflictingOverride(
   return nullptr;
 }
 
+/// [CHECKED]
 auto spp::analyse::utils::fn_values::IsTargetCallable(
   ExpressionAst &expr, ScopeManager &sm,
   meta::CompilerMetaData *meta) -> Shared<const TypeAst> {
@@ -560,6 +576,9 @@ auto spp::analyse::utils::fn_values::IsTargetCallable(
     return sym->CallableAsType;
   }
 
+  // Otherwise, infer the type of the expression, find its
+  // functional superimpositions, and get the function type
+  // on the relevant sup block.
   const auto expr_type = expr.InferType(&sm, meta);
   const auto callable = marker_sups::FindFnSup(*expr_type, *sm.CurrentScope);
   return callable.Symbol != nullptr ? callable.AstIn(*sm.CurrentScope) : nullptr;

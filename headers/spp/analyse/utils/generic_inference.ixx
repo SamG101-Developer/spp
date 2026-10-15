@@ -74,8 +74,8 @@ public:
   /// Everything given so far, as bindings of the parameters "params"
   /// declares, and of "Self" (0) where it is pinned; nothing when
   /// nothing was given.
-  SPP_ATTR_NODISCARD auto KnownBindings(GenericParameterGroupAst const &params) const
-    -> Opt<GenericSubst>;
+  SPP_ATTR_NODISCARD auto KnownBindings(
+    GenericParameterGroupAst const &params) const -> Opt<GenericSubst>;
 
   /// Solve, raising on a conflict, an uninferred parameter, a comp
   /// argument of the wrong type or an unsatisfied constraint. "variadic_fn_param" names a
@@ -117,6 +117,10 @@ private:
   scopes::GenericSubst _DeclaredReading;
 
   bool _Trivial = false;
+
+  /// Whether any generic has been given / logged into the
+  /// entries. This is used as an optimization to short-circuit
+  /// out of search-operation methods.
   bool _AnyGiven = false;
 
   auto _Find(TypeIdentifierAst const &name) const -> _Entry*;
@@ -150,12 +154,7 @@ namespace spp::analyse::utils::generic_inference {
   /// "params_scope" is where "p_group" is written, which a name
   /// no parameter has is reported against.
   SPP_EXP_FUN auto NamedGnArgs(
-    GenericArgumentGroupAst const &written,
-    GenericParameterGroupAst const &p_group,
-    Scope const &params_scope,
-    Ast const &owner,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta,
-    bool is_tuple_owner = false)
-    -> Unique<GenericArgumentGroupAst>;
+    GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group,
+    Scope const &params_scope, Ast const &owner, ScopeManager &sm,
+    meta::CompilerMetaData &meta, bool is_tuple_owner = false) -> Unique<GenericArgumentGroupAst>;
 }

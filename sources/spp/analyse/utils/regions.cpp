@@ -65,34 +65,32 @@ auto spp::analyse::utils::regions::PlaceOf(
     else if (IsDeref(cur)) { cur = postfix->Lhs.get(); }
 
     // A method call, in whatever form it was written ("v.method(..)", "Type::method(self=v, ..)", or "v[mut i]",
-    // which is "index_mut"), is derived from its receiver: the "self" argument of its function form, the method a step
-    // taken into it. A call of anything else (a function, a value) hands back a temporary.
+    // which is "index_mut"), is derived from its receiver: the call's "self" argument, the method a step taken into
+    // it. A call of anything else (a function, a value) hands back a temporary.
     else if (const auto call = postfix->Op->To<PostfixExpressionOperatorFunctionCallAst>(); call != nullptr) {
-      const auto form = call->GetTransformedLhs() != nullptr
-        ? call->GetTransformedLhs()->To<Ast>()
-        : postfix->Lhs.get();
+      const auto callee = postfix->Lhs.get();
 
       // If this is not a static or runtime member being
       // called as a function, then it is a free function.
-      if (not IsStaticMemberAccess(form) and not IsRuntimeMemberAccess(form)) { return Nullopt; }
+      if (not IsStaticMemberAccess(callee) and not IsRuntimeMemberAccess(callee)) { return Nullopt; }
 
       // Get the "receiver" of the call, which is either
-      // the "self" argument of the function form, or the
-      // variable. No "self" (namespaced free function or
-      // static method) is also a free function.
+      // the call's "self" argument, or the variable. No
+      // "self" (namespaced free function or static method)
+      // is also a free function.
       auto receiver = static_cast<Ast const*>(nullptr);
       for (const auto arg : call->FnArgGroup->GetKeywordArgs()) {
         if (arg->Name->Val == "self") { receiver = arg->Val.get(); }
       }
-      if (receiver == nullptr and IsRuntimeMemberAccess(form)) {
-        receiver = form->ToUnchecked<PostfixExpressionAst>()->Lhs.get();
+      if (receiver == nullptr and IsRuntimeMemberAccess(callee)) {
+        receiver = callee->ToUnchecked<PostfixExpressionAst>()->Lhs.get();
       }
       if (receiver == nullptr) { return Nullopt; }
 
       // Get the operator from the postfix left-hand-side
       // of the function call operation. Add the part into
       // the steps for the memory location.
-      const auto form_op = form->ToUnchecked<PostfixExpressionAst>()->Op.get();
+      const auto form_op = callee->ToUnchecked<PostfixExpressionAst>()->Op.get();
       if (const auto static_ = form_op->To<PostfixExpressionOperatorStaticMemberAccessAst>(); static_ != nullptr) {
         steps.push_back({.Name = static_->Name->NameId(), .Opaque = true});
       }

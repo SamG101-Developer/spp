@@ -22,6 +22,7 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_self_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.string_literal_ast;
@@ -48,7 +49,7 @@ namespace spp::analyse::utils::drop_utils {
         return FnOverload{
           .FnScope = nullptr,
           .Proto = nullptr,
-          .SupGns = nullptr,
+          .ReachedThrough = nullptr,
           .FwdType = nullptr
         };
       };
@@ -124,7 +125,11 @@ namespace spp::analyse::utils::drop_utils {
       // Either just find the overload or instantiate it too (this
       // will only instantiate it if it hasn't already been).
       auto tm = sm.NewManagerAt(sym.LinkedScope);
-      const auto args_id = tm.CurrentScope->ArgsIdOf(overload.SupGns->GetAllArgs(), nullptr);
+      const auto sup_gns = overload.ReachedThrough != nullptr
+        ? overload.ReachedThrough->GetGns()
+        : Vec<Unique<GenericArgumentAst>>();
+      const auto args_id = tm.CurrentScope->ArgsIdOf(
+        sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
       return instantiate
         ? monomorphization::InstantiateOverload(overload.Proto, overload.FnScope, args_id, &tm, meta)
         : monomorphization::FindInstantiatedOverload(overload.Proto, args_id, &tm);
@@ -140,7 +145,7 @@ auto spp::analyse::utils::drop_utils::FindDropOverload(
 }
 
 auto spp::analyse::utils::drop_utils::EndsArgument(
-  FunctionPrototypeAst const &proto, FunctionCallArgumentAst const &arg,
+  FunctionPrototypeAst const &proto, FunctionCallArgumentAst const &arg, const bool is_receiver,
   ScopeManager &sm, CompilerMetaData *meta) -> bool {
   // Only a value given as it is can be ended, not a borrow of one.
   if (arg.Conv != nullptr) { return false; }
@@ -148,7 +153,7 @@ auto spp::analyse::utils::drop_utils::EndsArgument(
     const auto name = builtin->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
     if (name == "std.mem.ops.drop") { return true; }
   }
-  if (arg.GetSelfType() == nullptr) { return false; }
+  if (not is_receiver) { return false; }
   const auto receiver = arg.Val->InferTypeRef(&sm, meta);
   if (receiver.Symbol == nullptr or receiver.IsBorrowed()) { return false; }
   const auto own_drop = FindDropOverload(*receiver.Symbol, sm, meta);

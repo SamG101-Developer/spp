@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.postfix_expression_operator_function_call_ast;
+import spp.analyse.scopes.type_key;
 import spp.asts.ast_kind;
+import spp.asts.convention_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.codegen.llvm_ctx;
 import spp.utils.types;
@@ -76,16 +78,20 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
   /// The scope "Target" is declared in (the overload's own), which an error showing the target is formatted against.
   SPP_ATTR_NODISCARD auto TargetScope() const -> Scope const*;
 
-  auto SetClosureDummyProto(Unique<FunctionPrototypeAst> &&proto) -> void;
+  /// Whether this is a method called on a value ("obj.m(a)"): its
+  /// receiver is the "self" argument, first, and the left-hand side
+  /// ("obj.m") names the method rather than being a use of "obj".
+  SPP_ATTR_NODISCARD auto HasReceiver() const -> bool;
 
-  SPP_ATTR_NODISCARD auto TakeClosureDummyProto() -> Unique<FunctionPrototypeAst>;
+  /// Whether "arg" is that receiver: this call's first argument.
+  SPP_ATTR_NODISCARD auto IsReceiverArg(FunctionCallArgumentAst const &arg) const -> bool;
 
-  /// A method call ("obj.m(a)") is resolved as its function form
-  /// ("Type::m(obj, a)"): this call, with "self" injected into
-  /// its arguments, under the "Type::m" left-hand side kept here.
-  auto SetTransformedLhs(Unique<PostfixExpressionAst> &&lhs) -> void;
+  /// The prototype the call resolved to, as resolved ("Target" is
+  /// what is emitted, which for a lowered "GenOnce" is no coroutine).
+  SPP_ATTR_NODISCARD auto ResolvedProto() const -> FunctionPrototypeAst*;
 
-  SPP_ATTR_NODISCARD auto GetTransformedLhs() const -> PostfixExpressionAst*;
+  /// Whether the call is made "async".
+  SPP_ATTR_NODISCARD auto IsAsync() const -> bool;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
@@ -95,15 +101,35 @@ private:
     FunctionPrototypeAst *Proto;
 
     /// What "Self" stands for at this call, decided with the
-    /// overload ("PassedOverload::SelfType").
-    Shared<TypeAst> SelfType;
+    /// overload ("PassedOverload::SelfId").
+    analyse::scopes::TypeId SelfId;
+
+    /// "PassedOverload::HasReceiver".
+    bool HasReceiver;
   };
 
   Opt<_OInfo> _OverloadInfo;
-  Unique<PostfixExpressionAst> _TransformedLhs;
-  Unique<FunctionCallArgumentGroupAst> _ClosureDummyArgGroup;
-  Unique<FunctionCallArgumentPositionalAst> _ClosureDummyArg;
-  Unique<FunctionPrototypeAst> _ClosureDummyProto;
+
+  /// The return type "InferType" built, analysed, in the scope it
+  /// was spelled in ("_InferredIn"), kept so it is built once there.
+  Shared<TypeAst> _Inferred;
+  Scope const *_InferredIn = nullptr;
+
+  /// A callable value being called (a closure, a "FunXxx" held in
+  /// a variable), resolved once at stage 7: the function type it is
+  /// called through, and how the call holds it ("FunRef" borrowed,
+  /// "FunMut" borrowed mutably, "FunMov" taken).
+  struct _CallableInfo {
+    Shared<TypeAst const> FnType;
+    ConventionTag Conv;
+  };
+
+  Opt<_CallableInfo> _Callable;
+
+  /// The borrow of the callee a "FunRef" or "FunMut" call makes, as
+  /// an argument group of its own, checked against what the body
+  /// already holds.
+  Unique<FunctionCallArgumentGroupAst> _CalleeArgGroup;
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
 
   Ast *_IsAsync;

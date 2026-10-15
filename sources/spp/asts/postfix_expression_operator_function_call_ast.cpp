@@ -7,13 +7,13 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
-import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -77,10 +77,8 @@ PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallA
   FnArgGroup(std::move(arg_group)),
   Fold(std::move(fold)),
   _OverloadInfo(Nullopt),
-  _TransformedLhs(nullptr),
-  _ClosureDummyArgGroup(nullptr),
-  _ClosureDummyArg(nullptr),
-  _ClosureDummyProto(nullptr),
+  _Callable(Nullopt),
+  _CalleeArgGroup(nullptr),
   _IsAsync(nullptr),
   _IsCoroAndAutoResume(false) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->GnArgGroup);
@@ -109,25 +107,17 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   if (Source.OriginalExpr != this) {
     ast->Source.OriginalExpr = Source.OriginalExpr;
   }
-  ast->_ClosureDummyProto = AstClone(_ClosureDummyProto);
-  ast->_TransformedLhs = AstClone(_TransformedLhs);
   ast->_OverloadInfo = _OverloadInfo;
-  if (ast->_OverloadInfo.has_value()
-    and _ClosureDummyProto != nullptr
-    and ast->_OverloadInfo->Proto == _ClosureDummyProto.get()) {
-    ast->_OverloadInfo->Proto = ast->_ClosureDummyProto.get();
-  }
+  ast->_Callable = _Callable;
+  ast->_CalleeArgGroup = AstClone(_CalleeArgGroup);
   ast->_IsAsync = _IsAsync;
   ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
-  ast->_ClosureDummyArgGroup = AstClone(_ClosureDummyArgGroup);
-  ast->_ClosureDummyArg = AstClone(_ClosureDummyArg);
   ast->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
   return ast;
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::ToString() const -> Str {
   SPP_STRING_START;
-  SPP_STRING_APPEND(_TransformedLhs);
   SPP_STRING_APPEND(GnArgGroup);
   SPP_STRING_APPEND(FnArgGroup);
   SPP_STRING_APPEND(Fold);
@@ -141,17 +131,21 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::FUN_REF;
   using generate::common_types_precompiled::FUN_MUT;
 
-  // Prevent double analysis.
-  // Todo: See why this might be happening anyway, and remove this check preferably.
+  // A call is resolved once. There are some instances where we
+  // are getting double analysis, and re-analysing is a waste.
+  // Todo: Why is this occurring?
   if (_OverloadInfo.has_value()) { return; }
 
-  // Analyse the generic arguments and the function call
-  // arguments before determining the overload.
+  // Analyse the generic arguments, find what is called and its
+  // candidates once, and analyse the function call arguments
+  // against them before determining the overload.
+  auto solver = Opt<overload_resolution::OverloadSolver>();
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
-    FnArgGroup->ExpectedTypes = overload_resolution::ExpectedArgTypes(*this, sm, meta);
+    solver.emplace(*this, *meta->PostfixExpressionLhs, *sm, *meta);
+    FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes();
     FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -163,52 +157,62 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   }
 
   // Resolve the overload for this function call.
-  auto [overload, is_closure] = overload_resolution::DetermineOverload(*this, sm, meta);
+  auto [overload, callable] = solver->Resolve();
 
-  // Special case for closures; apply the convention the
-  // closure name to ensure is it movable/mutable etc.
-  if (is_closure) {
-    const auto lhs_type = fn_values::IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
-    auto dummy_self_arg = MakeUnique<FunctionCallArgumentPositionalAst>(
-      nullptr, nullptr, AstClone(meta->PostfixExpressionLhs));
-
-    // The callable's function type, as the template it stands for (a borrow of one is neither).
-    const auto lhs_head = TypeRef::ForKindCheck(*lhs_type, *sm->CurrentScope);
+  // A callable value is called through its function type, which
+  // decides how the call holds it: a "FunRef" is borrowed, a
+  // "FunMut" borrowed mutably, and a "FunMov" taken.
+  if (callable != nullptr) {
+    const auto head = TypeRef::ForKindCheck(*callable, *sm->CurrentScope);
     const auto is_fun = [&](auto const &tmpl) {
-      return lhs_head.KindSymbol() != nullptr and lhs_head.IsA(*tmpl, *sm->CurrentScope);
+      return head.KindSymbol() != nullptr and head.IsA(*tmpl, *sm->CurrentScope);
     };
-    if (is_fun(FUN_MUT)) {
-      dummy_self_arg->Conv = MakeUnique<ConventionMutAst>(nullptr, nullptr);
-      dummy_self_arg->Conv->To<ConventionMutAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
-    }
-    else if (is_fun(FUN_REF)) {
-      dummy_self_arg->Conv = MakeUnique<ConventionRefAst>(nullptr);
-      dummy_self_arg->Conv->To<ConventionRefAst>()->TokBorrow->PatchPos(meta->PostfixExpressionLhs->PosStart());
-    }
+    const auto conv = is_fun(FUN_MUT) ? ConventionTag::MUT : is_fun(FUN_REF) ? ConventionTag::REF : ConventionTag::MOV;
+    _Callable = _CallableInfo{.FnType = callable, .Conv = conv};
 
     // A "FunMov" (that is not a "FunMut") is called by value, so
     // calling one held through a borrow ("v[i]", a "&FunMov"
     // parameter) moves it out of the borrow - the rule a method
     // taking "self" by value has (see "FunctionCallArgumentGroupAst"
-    // ::Stage8_CheckMemory). The callable type above has its
-    // borrow stripped, so the expression's own type is read.
-    if (const auto callee = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
-      not is_fun(FUN_MUT) and callee.IsBorrowed() and callee.Symbol != nullptr and not callee.Symbol->IsCopyable()) {
-      auto const &lhs = *meta->PostfixExpressionLhs;
+    // ::Stage8_CheckMemory). The function type has its borrow
+    // stripped, so the expression's own type is read.
+    auto &lhs = *meta->PostfixExpressionLhs;
+    if (const auto callee = lhs.InferTypeRef(sm, meta);
+      conv != ConventionTag::MUT and callee.IsBorrowed() and callee.Symbol != nullptr
+      and not callee.Symbol->IsCopyable()) {
       const auto [lhs_sym, _] = sm->CurrentScope->FindVarSymbolOutermost(lhs);
       auto const &borrowed_at = lhs_sym != nullptr and lhs_sym->MemInfo->AstBorrowed != nullptr
         ? *lhs_sym->MemInfo->AstBorrowed
         : static_cast<Ast const&>(lhs);
       Raise<SppMoveFromBorrowedMemoryError>({sm->CurrentScope}, ERR_ARGS(lhs, borrowed_at, borrowed_at));
     }
-    _ClosureDummyArg = std::move(dummy_self_arg);
+
+    // A borrowing call holds its callee as an argument would, with the convention its function type takes.
+    if (conv != ConventionTag::MOV) {
+      auto callee_arg = MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, AstClone(&lhs));
+      if (conv == ConventionTag::MUT) {
+        callee_arg->Conv = MakeUnique<ConventionMutAst>(nullptr, nullptr);
+        callee_arg->Conv->To<ConventionMutAst>()->TokBorrow->PatchPos(lhs.PosStart());
+      }
+      else {
+        callee_arg->Conv = MakeUnique<ConventionRefAst>(nullptr);
+        callee_arg->Conv->To<ConventionRefAst>()->TokBorrow->PatchPos(lhs.PosStart());
+      }
+      auto callee_args = Vec<Unique<FunctionCallArgumentAst>>();
+      callee_args.emplace_back(std::move(callee_arg));
+      _CalleeArgGroup = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(callee_args), nullptr);
+      _CalleeArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    }
   }
 
-  // Set the overload to the only pass overload.
+  // Set the overload to the only pass overload; a return type inferred before (a revoked resolution's) is not its.
+  _Inferred = nullptr;
+  _InferredIn = nullptr;
   _OverloadInfo = _OInfo{
     .OverloadScope = overload.FnScope,
     .Proto = overload.Proto,
-    .SelfType = overload.SelfType
+    .SelfId = overload.SelfId,
+    .HasReceiver = overload.HasReceiver
   };
 
   // Use the hook to record information for the resolution and
@@ -258,14 +262,6 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       *meta->PostfixExpressionLhs, [&] { return proto_ret_type; }, "GenOnce collapse");
     _IsCoroAndAutoResume = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
   }
-
-  // Todo: Is this needed?
-  const auto ret_type = InferType(sm, meta);
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    _OverloadInfo->Proto->TokFun->TokenType == lex::SppTokenType::KW_FUN
-    and type_predicates::IsTypeBorrowed(*ret_type->WithoutConvention(), *sm),
-    {_OverloadInfo->OverloadScope, sm->CurrentScope},
-    ERR_ARGS(*this, *ret_type, "function return type"));
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
@@ -278,23 +274,17 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     return;
   }
 
-  // If a closure is being called, apply memory rules to
-  // the symbolic target.
-  if (_ClosureDummyArg != nullptr and _ClosureDummyArg->Conv == nullptr) {
+  // A callable value being called is used by the call: taken by a "FunMov" call, borrowed by the others.
+  if (_Callable.has_value() and _Callable->Conv == ConventionTag::MOV) {
     // Calling a "FunMov" consumes it where it stands, so what it
     // borrows is used up with it rather than carried anywhere -
     // unlike moving the closure away, which the rule against
     // moving a holder of escaping borrows is there for.
-    _ClosureDummyArg->Val->Stage7_AnalyseSemantics(sm, meta);
     mem_utils::ValidateSymbolMemory(
-      *_ClosureDummyArg->Val, *_ClosureDummyArg, *sm, meta, {.CheckEscapingBorrowMove = false});
+      *meta->PostfixExpressionLhs, *this, *sm, meta, {.CheckEscapingBorrowMove = false});
   }
-  else if (_ClosureDummyArg != nullptr) {
-    auto closure_args = Vec<Unique<FunctionCallArgumentAst>>();
-    closure_args.emplace_back(std::move(_ClosureDummyArg));
-    _ClosureDummyArgGroup = MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(closure_args), nullptr);
-    _ClosureDummyArgGroup->Stage7_AnalyseSemantics(sm, meta);
-    _ClosureDummyArgGroup->Stage8_CheckMemory(sm, meta);
+  else if (_CalleeArgGroup != nullptr) {
+    _CalleeArgGroup->Stage8_CheckMemory(sm, meta);
   }
 
   // Check the generic and function arguments, the latter
@@ -302,8 +292,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   GnArgGroup->Stage8_CheckMemory(sm, meta);
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->TargetCallFnPrototype = _OverloadInfo->Proto;
-  meta->TargetCallWasFnAsync = _IsAsync;
+  meta->TargetCall = this;
   FnArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
@@ -312,13 +301,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   //
   IMPORT_UTILS;
 
-  // When coming from stage7 (also limit this allowance based
-  // on meta->CurrentStage for when we expand to cmp generics?)
-  auto revoke = false;
-  if (not _OverloadInfo.has_value()) {
-    revoke = true;
-    Stage7_AnalyseSemantics(sm, meta);
-  }
+  // A call folded before its own stage 7 (a comp default folded where it is used) is resolved here, once.
+  if (not _OverloadInfo.has_value()) { Stage7_AnalyseSemantics(sm, meta); }
 
   // Get the function prototype and resolve it.
   auto const *const fn_proto = _OverloadInfo->Proto->GetNonGnImpl();
@@ -331,15 +315,11 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     Fold != nullptr,
     {sm->CurrentScope}, ERR_ARGS(*Fold));
 
-  // Create the argument map for the function to use. Positional
-  // arguments (including the implicit "self" injected for
-  // method-call syntax) are matched to parameters by position;
-  // keyword arguments by name.
-  const auto fn_params = fn_proto->FnParamGroup->GetAllParams();
+  // Create the argument map for the function to use: stage 7 left one keyword argument per parameter
+  // ("ElaborateCall"), the receiver of a method call included.
   auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
-  for (auto const &[i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
-    const auto kw_arg = arg->To<FunctionCallArgumentKeywordAst>();
-    auto name = kw_arg != nullptr ? kw_arg->Name : fn_params[i]->ExtractName();
+  for (auto *arg : FnArgGroup->GetAllArgs()) {
+    auto name = arg->ToUnchecked<FunctionCallArgumentKeywordAst>()->Name;
     arg->Stage9_CompTimeResolve(sm, meta);
     args.emplace_back(std::move(name), std::move(meta->CompTimeResult));
   }
@@ -405,9 +385,6 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     flt_result->ValidateBounds(site, site_scope);
   }
 
-  if (revoke) {
-    _OverloadInfo.reset();
-  }
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
@@ -433,7 +410,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     if (tuple_llvm_type == nullptr or not tuple_llvm_type->isStructTy()) { return nullptr; }
     auto tuple_val = static_cast<llvm::Value*>(llvm::PoisonValue::get(tuple_llvm_type));
     for (auto i = 0uz; i < results.size(); ++i) {
-      if (results[i] == nullptr or results[i]->getType()->isVoidTy()) { continue; }
+      if (results[i] == nullptr or codegen::IsValuelessType(results[i]->getType())) { continue; }
       tuple_val = ctx->Builder.CreateInsertValue(
         tuple_val, results[i], {codegen::GetPhysicalFieldIndex(*tuple_sym->LlvmInfo, i)});
     }
@@ -445,7 +422,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // Extract the two pointers and call through fn_ptr,
   // prepending the environment pointer (the closure function
   // is compiled as "(env*, ...params) -> ret").
-  if (_ClosureDummyProto != nullptr) {
+  if (_Callable.has_value()) {
     const auto closure_uid = "." + Uid();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
     const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
@@ -491,13 +468,13 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       | genex::views::transform([](auto const &v) { return v->getType(); })
       | genex::to<Vec>();
 
-    // Bandaid for resolving generic issues with closure return
-    // types, before any variant coercion is done. Todo: tidy this
-    // up.
+    // The value returns what its own function type's "Out" is, which can be narrower than what the call is typed as:
+    // called through a constraint ("F: FunMov[(T,), Opt[U]]"), a closure answering "Some[U]" is widened into the
+    // "Opt[U]" asked for. So it is read off the value's type here, not the type the call resolved through.
     const auto expected_ret_ref = InferTypeRef(sm, meta);
     auto actual_ret_ref = expected_ret_ref;
-    if (const auto callable = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope); callable.Symbol != nullptr) {
-      if (const auto out = callable.Symbol->TypeArgRef("Out"); out.Symbol != nullptr) { actual_ret_ref = out; }
+    if (const auto fn_sup = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope); fn_sup.Symbol != nullptr) {
+      if (const auto out = fn_sup.Symbol->TypeArgRef("Out"); out.Symbol != nullptr) { actual_ret_ref = out; }
     }
 
     const auto closure_ret_ty = codegen::GetLlvmTypeOf(actual_ret_ref, ctx);
@@ -509,16 +486,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // "FunMov::drop" would. Whether there is storage to free is
     // read from the environment itself: a "FunRef" passed as a
     // "FunMov" still has its environment on the caller's stack.
-    const auto consumes_closure = [&] {
-      using generate::common_types_precompiled::FUN_MOV;
-      using generate::common_types_precompiled::FUN_MUT;
-      if (closure_val->getType()->isPointerTy()) { return false; }
-      const auto callable = fn_values::IsTargetCallable(*meta->PostfixExpressionLhs, *sm, meta);
-      if (callable == nullptr) { return false; }
-      const auto head = TypeRef::ForKindCheck(*callable, *sm->CurrentScope);
-      return head.KindSymbol() != nullptr and head.IsA(*FUN_MOV, *sm->CurrentScope)
-        and not head.IsA(*FUN_MUT, *sm->CurrentScope);
-    }();
+    const auto consumes_closure = not closure_val->getType()->isPointerTy() and _Callable->Conv == ConventionTag::MOV;
     const auto release_env = [&] {
       if (not consumes_closure or ctx->Builder.GetInsertBlock()->hasTerminator()) { return; }
       codegen::EmitReleaseClosureEnv(env_ptr, ctx);
@@ -573,6 +541,12 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // The arguments have already been reordered to match the
   // parameters, so the two line up index for index.
   const auto &fn_params = Target()->FnParamGroup->Params;
+
+  // "Self" in a parameter's type is the owner, as it is in the declaration's own signature, else "Self or S32" widens
+  // into "Var[Self, S32]" and the call mismatches it.
+  auto const *const fn_scope = _OverloadInfo->OverloadScope;
+  const auto owner = fn_scope->FindEnclosingSelfType(*meta);
+  const auto owner_id = owner != nullptr ? fn_scope->TypeIdOf(*owner) : nullptr;
   auto llvm_func_args = Vec<llvm::Value*>();
   llvm_func_args.reserve(FnArgGroup->Args.size());
 
@@ -584,23 +558,15 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     if (arg_is_void) { continue; }
     SPP_ASSERT(llvm_arg != nullptr);
 
-    // The parameter's type is named where the overload lives,
-    // so it is qualified there and then re-resolved here. The
-    // coercion compares the two types from this scope, and a
-    // parameter that does not resolve from it (a generic still
-    // standing in for one) is not a variant this call has to
-    // widen into anyway. "Self" is the owner, as it is in the
-    // declaration's own signature, else "Self or S32" widens
-    // into "Var[Self, S32]" and the call mismatches it.
-    const auto param_written = p < fn_params.size()
-      ? self_type::SubstituteSelf(
-        *fn_params[p]->Type, _OverloadInfo->OverloadScope->FindEnclosingSelfType(*meta).get(),
-        *_OverloadInfo->OverloadScope)
-      : nullptr;
-    const auto param_type_sym = param_written != nullptr
-      ? _OverloadInfo->OverloadScope->FindTypeSymbol(param_written.get())
-      : nullptr;
-    const auto param_type = param_type_sym != nullptr ? param_type_sym->FqName() : nullptr;
+    // The parameter's type by identity, keyed where the overload
+    // lives and read from this scope, where the coercion compares
+    // the two types. One with nothing filed under it here (a
+    // generic still standing in for one) is not a variant this
+    // call has to widen into anyway.
+    const auto param_ref = p < fn_params.size()
+      ? TypeRef::Of(
+        analyse::scopes::SubstituteSelfId(fn_scope->TypeIdOf(*fn_params[p]->Type), owner_id), *sm->CurrentScope)
+      : TypeRef();
 
     // Only a by-value parameter is ever widened. A borrowed one
     // receives a pointer to something that is already the variant,
@@ -610,14 +576,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       ? fn_params[p]->To<FunctionParameterSelfAst>()->Conv != nullptr
       : fn_params[p]->Type->GetConvention() != nullptr);
 
-    if (param_type != nullptr and not param_is_borrow
-      and sm->CurrentScope->FindTypeSymbol(param_type.get()) != nullptr) {
-      llvm_arg = codegen::CoerceToFnValue(
-        llvm_arg, TypeRef::Of(*param_type, *sm->CurrentScope), arg->InferTypeRef(sm, meta),
-        *sm, ctx);
+    if (param_ref.Symbol != nullptr and not param_is_borrow) {
+      llvm_arg = codegen::CoerceToFnValue(llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm, ctx);
       llvm_arg = codegen::CoerceToVariant(
-        llvm_arg, TypeRef::Of(*param_type, *sm->CurrentScope), arg->InferTypeRef(sm, meta),
-        *sm->CurrentScope, "arg.variant" + uid, ctx);
+        llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm->CurrentScope, "arg.variant" + uid, ctx);
       SPP_ASSERT(llvm_arg != nullptr);
     }
 
@@ -705,7 +667,6 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
   //
-  using generate::common_types::SelfType;
   using generate::common_types::TupleType;
 
   // For function folding, collect a tuple of all return types.
@@ -720,13 +681,24 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
     return tuple_type;
   }
 
-  // Get the function return type from the overload.
-  auto ret_type = _OverloadInfo->Proto->ReturnType;
+  // Built and analysed once per scope it is spelled in, and handed out as a node of its own: callers modify the type
+  // they are given.
+  if (_Inferred != nullptr and _InferredIn == sm->CurrentScope) { return AstCloneShared(_Inferred); }
 
-  // An instantiation whose arguments name a parameter it
-  // binds returns by identity, spelled where the call is,
-  // whose parameters those are.
-  if (const auto ret_id = _OverloadInfo->Proto->InstanceReturnTypeId; ret_id != nullptr) {
+  // Get the function return type from the overload.
+  auto const &proto = *_OverloadInfo->Proto;
+  auto ret_type = proto.ReturnType;
+
+  // An instantiation whose arguments name a parameter it binds returns by identity, as does one naming "Self", keyed
+  // where the overload is; "Self" is what the call decided it stands for ("PassedOverload::SelfId"). Spelled where the
+  // call is, whose parameters those are.
+  auto ret_id = proto.InstanceReturnTypeId;
+  if (ret_id == nullptr and _OverloadInfo->OverloadScope != nullptr and _OverloadInfo->SelfId != nullptr
+    and type_predicates::DoesTypeNameSelf(*ret_type)) {
+    ret_id = _OverloadInfo->OverloadScope->TypeIdOf(*ret_type);
+  }
+  ret_id = analyse::scopes::SubstituteSelfId(ret_id, _OverloadInfo->SelfId);
+  if (ret_id != nullptr) {
     if (auto spelled = sm->CurrentScope->TypeAstOf(ret_id); spelled != nullptr) {
       ret_type = std::move(spelled);
     }
@@ -747,15 +719,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
       *meta->PostfixExpressionLhs, [&] { return ret_type; }, "function call"));
     // Read off the generator's identity, shared by every spelling of it, so it points at the return type the callee
     // wrote.
-    ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*_OverloadInfo->Proto->ReturnType);
-  }
-
-  // "Self", alone or inside the return type ("Opt[Self]"), is what the call decided it stands for
-  // ("PassedOverload::SelfType"): parameter 0, read from this call ("self_type::SubstituteSelf"), as a node of its own
-  // (callers modify the type they are given, and "SelfType" can be a symbol's cached name). A return type naming no
-  // "Self" is a clone, and is cloned again below.
-  if (_OverloadInfo->SelfType != nullptr) {
-    ret_type = self_type::SubstituteSelf(*ret_type, _OverloadInfo->SelfType.get(), *sm->CurrentScope);
+    ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*proto.ReturnType);
   }
 
   // Generic instantiations embedded in the return type (eg "Var[Tup[Pass[Str], Fail[Utf8Err]]]" from a "Res[...]"
@@ -765,9 +729,9 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // reachable) from this scope too before anything downstream tries to look up its symbol.
   ret_type = AstCloneShared(ret_type);
   ret_type->Stage7_AnalyseSemantics(sm, meta);
-
-  // Return the type.
-  return ret_type;
+  _Inferred = ret_type;
+  _InferredIn = sm->CurrentScope;
+  return AstCloneShared(ret_type);
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
@@ -779,8 +743,10 @@ auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   // type written in terms of "Self" build the type they return, so they are inferred as one - as is any return type
   // whose instantiation is not filed under that identity here.
   if (_FoldedAsts.empty() and not _IsCoroAndAutoResume and _OverloadInfo->OverloadScope != nullptr) {
-    // An instantiation's return type by identity, as it is.
-    if (const auto ret_id = _OverloadInfo->Proto->InstanceReturnTypeId; ret_id != nullptr) {
+    // An instantiation's return type by identity, "Self" what the call decided.
+    if (const auto ret_id = analyse::scopes::SubstituteSelfId(
+        _OverloadInfo->Proto->InstanceReturnTypeId, _OverloadInfo->SelfId);
+      ret_id != nullptr) {
       if (not ret_id->HasSelf) {
         if (const auto read = TypeRef::Of(ret_id, *sm->CurrentScope); read.Symbol != nullptr) {
           return read;
@@ -826,22 +792,21 @@ auto PostfixExpressionOperatorFunctionCallAst::Target() const -> FunctionPrototy
   return target_proto;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::SetClosureDummyProto(
-  Unique<FunctionPrototypeAst> &&proto) -> void {
-  _ClosureDummyProto = std::move(proto);
+auto PostfixExpressionOperatorFunctionCallAst::HasReceiver() const -> bool {
+  return _OverloadInfo.has_value() and _OverloadInfo->HasReceiver;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::TakeClosureDummyProto() -> Unique<FunctionPrototypeAst> {
-  return std::move(_ClosureDummyProto);
+auto PostfixExpressionOperatorFunctionCallAst::IsReceiverArg(
+  FunctionCallArgumentAst const &arg) const -> bool {
+  return HasReceiver() and not FnArgGroup->Args.empty() and FnArgGroup->Args.front().get() == &arg;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::SetTransformedLhs(
-  Unique<PostfixExpressionAst> &&lhs) -> void {
-  _TransformedLhs = std::move(lhs);
+auto PostfixExpressionOperatorFunctionCallAst::ResolvedProto() const -> FunctionPrototypeAst* {
+  return _OverloadInfo.has_value() ? _OverloadInfo->Proto : nullptr;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::GetTransformedLhs() const -> PostfixExpressionAst* {
-  return _TransformedLhs.get();
+auto PostfixExpressionOperatorFunctionCallAst::IsAsync() const -> bool {
+  return _IsAsync != nullptr;
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(

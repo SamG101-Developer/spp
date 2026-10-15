@@ -25,10 +25,10 @@ namespace spp::analyse::utils::drop_utils {
 
   /// Whether the call to "proto" ends the value "arg" gives it,
   /// so nothing can use it, or what it borrows, afterwards:
-  /// "std::mem::ops::drop", or the receiver of the value's own
-  /// "Drop::drop".
+  /// "std::mem::ops::drop", or the receiver ("is_receiver") of the
+  /// value's own "Drop::drop".
   SPP_EXP_FUN auto EndsArgument(
-    FunctionPrototypeAst const &proto, FunctionCallArgumentAst const &arg,
+    FunctionPrototypeAst const &proto, FunctionCallArgumentAst const &arg, bool is_receiver,
     ScopeManager &sm, CompilerMetaData *meta) -> bool;
 
   /// Whether a type needs dropping or not - if is has a drop

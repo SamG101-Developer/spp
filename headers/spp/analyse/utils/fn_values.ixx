@@ -89,18 +89,19 @@ namespace spp::analyse::utils::fn_values {
     FunctionPrototypeAst const &fn_b, Scope const &scope_b) -> bool;
 
   /// Check whether the new function prototype is a genuine
-  /// override of a method on a super type. This is used to
-  /// ensure function overriding is a genuine match. It is
-  /// also used to remove overridden functions from overload
-  /// selection, so we get subclass's prototype override.
+  /// override of a method on a super type: the method on
+  /// "target_scope" with the same signature, if any. This is used
+  /// to ensure function overriding is a genuine match.
   SPP_EXP_FUN auto CheckForConflictingOverride(
     Scope const &this_scope, Scope const *target_scope, FunctionPrototypeAst const &new_fn,
-    ScopeManager &sm, meta::CompilerMetaData *meta, Scope const *exclude_scope = nullptr)
+    ScopeManager &sm, meta::CompilerMetaData *meta)
     -> FunctionPrototypeAst*;
 
   /// Check whether an expression is callable or not, by
   /// checking if the type is functional, or a symbol flag
-  /// has been set via generic constraints.
+  /// has been set via generic constraints. Todo: Do we
+  /// want to return TypeAst here, or a TypeRef?
   SPP_EXP_FUN auto IsTargetCallable(
-    ExpressionAst &expr, ScopeManager &sm, meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
+    ExpressionAst &expr, ScopeManager &sm,
+    meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
 }

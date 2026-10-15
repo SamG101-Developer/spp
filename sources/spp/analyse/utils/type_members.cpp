@@ -9,8 +9,8 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.fn_values;
 import spp.analyse.utils.member_lookup;
+import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
@@ -247,9 +247,6 @@ auto spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache()
 auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
   Scope const &type_scope)
   -> Vec<FunctionPrototypeAst const*> {
-  //
-  using fn_values::SameSignature;
-
   // Every mention of a type asks this, and the answer is a property of the type rather than of the mention: it is read
   // off the methods of this scope and of the scopes above it, none of which change once the type is in place. The work
   // is a signature comparison of every abstract method against every concrete one, so recomputing it per mention is
@@ -281,54 +278,26 @@ auto spp::analyse::utils::type_members::GetUnimplementedAbstractMethods(
     if (type_predicates::IsTypeFunction(TypeRef::ForKindCheck(type_scope), type_scope)) { return remember({}); }
   }
 
-  // Gather every method visible on the type, from the type's own scope and from all of its super scopes, each tagged
-  // with the scope that resolves the types in its signature.
-  auto all_scopes = Vec<Scope const*>{&type_scope};
-  all_scopes.append_range(sups);
-
-  auto methods = Vec<Pair<Scope const*, FunctionPrototypeAst const*>>();
-  for (auto const *scope : all_scopes) {
-    if (scope->AstNode == nullptr) { continue; }
-
-    const auto impl = AstAs<ClassPrototypeAst>(scope->AstNode) == nullptr
-      ? AstBody(scope->AstNode)
-      : Vec<Ast*>{};
-    if (impl.empty()) { continue; }
-
-    for (const auto member : impl) {
+  // A method stays abstract only while nothing nearer the type implements its signature: an abstract method is
+  // unimplemented when the type's method table still holds it ("overload_resolution::MethodsOf", which applies overrides
+  // as a call reaching the method would), so the two never disagree. Read once per name an abstract method has.
+  auto names = Vec<IdentifierAst const*>();
+  for (auto const *scope : sups) {
+    if (scope->AstNode == nullptr or AstAs<ClassPrototypeAst>(scope->AstNode) != nullptr) { continue; }
+    for (const auto member : AstBody(scope->AstNode)) {
       const auto fn = SupMemberAsMethod(member);
-      if (fn == nullptr) { continue; }
-
-      const auto method_scope = genex::find_if(
-        scope->Children, [member](auto const &child) { return child->AstNode == member; });
-      if (method_scope == scope->Children.end()) { continue; }
-
-      methods.emplace_back(method_scope->get(), fn);
+      if (fn == nullptr or fn->AbstractAnnotation == nullptr) { continue; }
+      if (genex::none_of(names, [&](auto const *n) { return n->NameId() == fn->Name->NameId(); })) {
+        names.emplace_back(fn->Name.get());
+      }
     }
   }
 
-  // A method stays abstract only while nothing anywhere on the type implements its signature. "SameSignature" answers
-  // false for any two methods whose names differ, so only the concrete methods sharing a name with the abstract one can
-  // implement it; indexing them by name turns a scan of every method on the type into a scan of its overloads, which
-  // for a type with many single-overload methods is the difference between a square and a line.
-  auto concrete_by_name = Map<
-    spp::utils::InternedId, Vec<Pair<Scope const*, FunctionPrototypeAst const*>>>();
-  for (auto const &entry : methods) {
-    if (entry.second->AbstractAnnotation != nullptr) { continue; }
-    concrete_by_name[entry.second->Name->NameId()].emplace_back(entry);
-  }
-
   auto unimplemented = Vec<FunctionPrototypeAst const*>();
-  for (auto const &[abs_scope, abs_fn] : methods) {
-    if (abs_fn->AbstractAnnotation == nullptr) { continue; }
-
-    const auto candidates = concrete_by_name.find(abs_fn->Name->NameId());
-    const auto is_implemented = candidates != concrete_by_name.end()
-      and genex::any_of(candidates->second, [&](auto const &other) {
-        return SameSignature(*other.second, *other.first, *abs_fn, *abs_scope);
-      });
-
-    if (not is_implemented) { unimplemented.emplace_back(abs_fn); }
+  for (auto const *name : names) {
+    for (auto const &entry : overload_resolution::MethodsOf(type_scope, *name)) {
+      if (entry.Proto->AbstractAnnotation != nullptr) { unimplemented.emplace_back(entry.Proto); }
+    }
   }
 
   return remember(std::move(unimplemented));
