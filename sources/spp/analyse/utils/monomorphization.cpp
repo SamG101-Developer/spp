@@ -78,7 +78,7 @@ namespace spp::analyse::utils::monomorphization {
      * @param tm A scope manager positioned at @p new_fn_scope .
      * @param meta Associated metadata.
      */
-    auto ReattachCallableConstraints(
+    auto ReattachIndirectFnTypes(
       FunctionPrototypeAst const &new_fn_proto, FunctionPrototypeAst const &fn_proto,
       Scope *new_fn_scope, ScopeManager &tm, meta::CompilerMetaData *meta) -> void {
       for (auto const *p : new_fn_proto.FnParamGroup->GetNonSelfParams()) {
@@ -103,16 +103,16 @@ namespace spp::analyse::utils::monomorphization {
           // written in the template's terms ("FunMov[(T,), U]"),
           // and what the call needs is this instantiation's argument
           // and return types.
-          auto callable = type_resolution::ReadType(*c, ExprSubst::In(*new_fn_scope));
-          callable->Stage7_AnalyseSemantics(&tm, meta);
+          auto fn_type = type_resolution::ReadType(*c, ExprSubst::In(*new_fn_scope));
+          fn_type->Stage7_AnalyseSemantics(&tm, meta);
 
           // Through an alias, as the name of what it resolves to
           // ("TypeRef" never answers with an alias).
-          const auto head = new_fn_scope->FindHeadSymbol(*callable);
-          auto const *const full = TypeRef::Of(*callable, *new_fn_scope).Symbol;
-          sym->CallableAsType = head != nullptr and head->Alias != nullptr and full != nullptr
+          const auto head = new_fn_scope->FindHeadSymbol(*fn_type);
+          auto const *const full = TypeRef::Of(*fn_type, *new_fn_scope).Symbol;
+          sym->IndirectFnType = head != nullptr and head->Alias != nullptr and full != nullptr
             ? AstCloneShared(full->FqName())
-            : callable;
+            : fn_type;
           break;
         }
       }
@@ -1339,7 +1339,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeGnSubstitutedPrototype(
     // A parameter whose type is now "Void" is no parameter of
     // the instantiation.
     new_fn_proto->FnParamGroup->RemoveVoidParams(*new_fn_scope);
-    ReattachCallableConstraints(*new_fn_proto, *fn_proto, new_fn_scope, tm, meta);
+    ReattachIndirectFnTypes(*new_fn_proto, *fn_proto, new_fn_scope, tm, meta);
     RetypeInheritedSymbols(*new_fn_proto, new_fn_scope, pinned_self, variadic_pack_type, tm, meta);
 
     if (const auto declared = template_scope.TypeIdOf(*fn_proto->ReturnType); declared != nullptr) {
