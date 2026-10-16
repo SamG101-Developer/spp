@@ -11,6 +11,17 @@ import spp.asts.generate.common_types_precompiled;
 import genex;
 import std;
 
+namespace spp::analyse::scopes {
+  namespace {
+    /// "UnifyTypeIds" for a comp value: a comp parameter binds
+    /// the value opposite it, a pack matches element by element
+    /// (a trailing variadic parameter taking the rest), and
+    /// anything else is the same value by identity.
+    auto UnifyCompIds(
+      CompId given, CompId declared, GenericSubst &bindings) -> bool;
+  }
+}
+
 namespace {
   namespace sc = spp::analyse::scopes;
   using spp::asts::ConventionTag;
@@ -250,25 +261,29 @@ auto spp::analyse::scopes::UnifyTypeIds(
   return UnifyType(given, declared, ctx);
 }
 
-auto spp::analyse::scopes::UnifyCompIds(
-  const scopes::CompId given,
-  const scopes::CompId declared,
-  scopes::GenericSubst &bindings)
-  -> bool {
-  if (given == nullptr or declared == nullptr) { return false; }
-  if (declared->Kind == scopes::CompKey::Part::Param) { return BindComp(declared->ParamId, given, bindings); }
+namespace spp::analyse::scopes {
+  namespace {
+    auto UnifyCompIds(
+      const scopes::CompId given,
+      const scopes::CompId declared,
+      scopes::GenericSubst &bindings)
+      -> bool {
+      if (given == nullptr or declared == nullptr) { return false; }
+      if (declared->Kind == scopes::CompKey::Part::Param) { return BindComp(declared->ParamId, given, bindings); }
 
-  // Two packs element by element; a trailing variadic parameter of the pattern takes the rest as a pack of its own.
-  if (declared->Kind == scopes::CompKey::Part::Pack and given->Kind == scopes::CompKey::Part::Pack) {
-    auto const &d = declared->Kids;
-    auto const &g = given->Kids;
-    const auto pack = d.empty() ? 0 : CompPackParamOf(d.back());
-    const auto fixed = pack != 0 ? d.size() - 1 : d.size();
-    if (pack != 0 ? g.size() < fixed : g.size() != fixed) { return false; }
-    for (auto i = 0uz; i < fixed; ++i) { if (not UnifyCompIds(g[i], d[i], bindings)) { return false; } }
-    if (pack == 0) { return true; }
-    auto rest = spp::Vec<scopes::CompKey const*>(g.begin() + static_cast<std::ptrdiff_t>(fixed), g.end());
-    return BindComp(pack, scopes::InternCompKey(scopes::CompKey::OfPack(std::move(rest))), bindings);
+      // Two packs element by element; a trailing variadic parameter of the pattern takes the rest as a pack of its own.
+      if (declared->Kind == scopes::CompKey::Part::Pack and given->Kind == scopes::CompKey::Part::Pack) {
+        auto const &d = declared->Kids;
+        auto const &g = given->Kids;
+        const auto pack = d.empty() ? 0 : CompPackParamOf(d.back());
+        const auto fixed = pack != 0 ? d.size() - 1 : d.size();
+        if (pack != 0 ? g.size() < fixed : g.size() != fixed) { return false; }
+        for (auto i = 0uz; i < fixed; ++i) { if (not UnifyCompIds(g[i], d[i], bindings)) { return false; } }
+        if (pack == 0) { return true; }
+        auto rest = spp::Vec<scopes::CompKey const*>(g.begin() + static_cast<std::ptrdiff_t>(fixed), g.end());
+        return BindComp(pack, scopes::InternCompKey(scopes::CompKey::OfPack(std::move(rest))), bindings);
+      }
+      return given == declared;
+    }
   }
-  return given == declared;
 }

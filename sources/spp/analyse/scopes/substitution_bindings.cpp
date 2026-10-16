@@ -24,76 +24,50 @@ auto spp::analyse::scopes::ParamsDeclaredBy(
   return out;
 }
 
-auto spp::analyse::scopes::BindByName(
-  TypeIdParams const &params, const TypeId args,
-  const bool all) -> Opt<GenericSubst> {
-  // Each parameter's argument is the one keyed by its identity ("Scope::ArgsIdOf").
-  if (args == nullptr) { return Nullopt; }
-  auto subst = GenericSubst();
-  for (const auto pid : params.TypeParams) {
-    const auto arg = FindArgOf(args, pid);
-    if (not arg.has_value() or arg->TypeVal == nullptr) {
-      if (all) { return Nullopt; }
-      continue;
-    }
-    subst.TypeParams.emplace_back(pid, arg->TypeVal);
-    if (auto const *const param = FindGnTypeParamById(pid); param != nullptr and param->IsVariadic) {
-      subst.TypePackParams.push_back(pid);
-    }
-  }
-  for (const auto pid : params.CompParams) {
-    const auto arg = FindArgOf(args, pid);
-    if (not arg.has_value() or arg->CompVal == nullptr) {
-      if (all) { return Nullopt; }
-      continue;
-    }
-    subst.CompParams.emplace_back(pid, arg->CompVal);
-    if (auto const *const param = FindGnCompParamById(pid); param != nullptr and param->IsVariadic) {
-      subst.CompPackParams.push_back(pid);
-    }
-  }
-  return subst;
-}
-
 auto spp::analyse::scopes::BindArgs(
   GenericParameterGroupAst const &params, Vec<GenericArgumentAst*> const &args,
   Scope const &scope) -> GenericSubst {
-  return BindByName(ParamsDeclaredBy(params), scope.ArgsIdOf(args, &params), false)
-    .value_or(GenericSubst());
+  const auto declared = ParamsDeclaredBy(params);
+  return BindingsOfArgs(scope.ArgsIdOf(args, &params), &declared);
 }
 
 /// [CHECKED]
 auto spp::analyse::scopes::BindingsOfArgs(
-  const TypeId args) -> GenericSubst {
-  // Start with an empty generic substitution map, and a nullptr
-  // guard against the type id.
+  const TypeId args, TypeIdParams const *only) -> GenericSubst {
+  // Start with an empty generic substitution map. A null "args"
+  // binds nothing ("ArgsOf" and "FindArgOf" find nothing in it).
   auto subst = GenericSubst();
-  if (args == nullptr) { return subst; }
 
-  // For each "type id arg" embedded in the args, run type vs
-  // comp logic against it. Only for the named args.
-  for (auto const &arg : ArgsOf(args)) {
-    if (not arg.Named) { continue; }
-
-    // For a type arg, store it in the type args vector on the
-    // substitution, and add it to the type packs if necessary.
+  // Bind one named argument under its parameter, marking it as a
+  // pack when its parameter is variadic.
+  const auto bind = [&subst](TypeIdArg const &arg) {
     if (arg.TypeVal != nullptr) {
       subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal);
       const auto param = FindGnTypeParamById(arg.Slot);
-      if (param != nullptr and param->IsVariadic) {
-        subst.TypePackParams.push_back(arg.Slot);
-      }
+      if (param != nullptr and param->IsVariadic) { subst.TypePackParams.push_back(arg.Slot); }
     }
-
-    // For a comp arg, store it in the comp args vector on the
-    // substitution, and add it to the comp packs if necessary.
     else if (arg.CompVal != nullptr) {
       subst.CompParams.emplace_back(arg.Slot, arg.CompVal);
       const auto param = FindGnCompParamById(arg.Slot);
-      if (param != nullptr and param->IsVariadic) {
-        subst.CompPackParams.push_back(arg.Slot);
-      }
+      if (param != nullptr and param->IsVariadic) { subst.CompPackParams.push_back(arg.Slot); }
     }
+  };
+
+  // Every named argument, in the order they are keyed.
+  if (only == nullptr) {
+    for (auto const &arg : ArgsOf(args)) {
+      if (arg.Named) { bind(arg); }
+    }
+    return subst;
+  }
+
+  // Only the listed parameters, in their order: each one's
+  // argument is the one keyed by its identity.
+  for (const auto pid : only->TypeParams) {
+    if (const auto arg = FindArgOf(args, pid); arg.has_value() and arg->TypeVal != nullptr) { bind(*arg); }
+  }
+  for (const auto pid : only->CompParams) {
+    if (const auto arg = FindArgOf(args, pid); arg.has_value() and arg->CompVal != nullptr) { bind(*arg); }
   }
   return subst;
 }
@@ -148,5 +122,5 @@ auto spp::analyse::scopes::InstanceBindings(
   auto const *const tmpl = inst.Template();
   if (tmpl == nullptr or tmpl->GnParams() == nullptr) { return {}; }
   const auto params = ParamsDeclaredBy(*tmpl->GnParams());
-  return BindByName(params, HeadOf(inst.Id).Args, false).value_or(GenericSubst());
+  return BindingsOfArgs(HeadOf(inst.Id).Args, &params);
 }

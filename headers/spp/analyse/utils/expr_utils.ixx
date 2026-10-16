@@ -9,6 +9,7 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct StatementAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::expr_utils {
@@ -38,4 +39,11 @@ namespace spp::analyse::utils::expr_utils {
     CompilerMetaData *meta)
     -> void;
 
+  /// Whether control never continues past a statement: it is
+  /// written to leave ("ret", "exit", "skip", or a block/case
+  /// every path of which does), or its analysed type is "!" (a
+  /// call to "abort", a loop with no way out). A "let" diverges
+  /// when its value does. The statement must be analysed.
+  SPP_EXP_FUN auto Diverges(
+    StatementAst &stmt, ScopeManager *sm, CompilerMetaData *meta) -> bool;
 }

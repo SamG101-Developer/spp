@@ -9,7 +9,9 @@ import std;
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct Ast);
 use(spp::asts, struct BinaryExpressionAst);
+use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IsExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts::meta, struct CompilerMetaData);
@@ -71,6 +73,16 @@ namespace spp::analyse::utils::operator_desugaring {
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Unique<PostfixExpressionAst>;
+
+  /// Convert the is expression to the equivalent "case"
+  /// expression: "a is P" becomes "case a { P { true } else
+  /// { false } }", marked as lowered from an "is". Its
+  /// pattern's bindings are what the "is" binds.
+  SPP_EXP_FUN auto ConvertIsExprToCase(
+    IsExpressionAst &is_expr,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> Unique<CaseExpressionAst>;
 
   /// The index and slice operators' shared check: the left-hand side ("PostfixExpressionLhs") is a value whose type
   /// has a scope to look its "index_*" / "slice_*" methods up in. A function value (a "$" mock) is not; "op" is where

@@ -62,19 +62,16 @@ namespace spp::analyse::scopes {
   SPP_EXP_FUN auto SubstituteCompId(
     CompId id, GenericSubst const &subst) -> CompId;
 
+  /// Forget every remembered substitution ("SubstituteTypeId",
+  /// "SubstituteCompId"), keyed by identities that "ClearTypeIds"
+  /// and "ClearCompIds" free: called with them.
+  SPP_EXP_FUN auto ClearSubstitutionMemos() -> void;
+
   /// The parameters a parameter group declares, by identity,
   /// as "ParamsNamedBy" lists a type's.
   SPP_EXP_FUN auto ParamsDeclaredBy(GenericParameterGroupAst const &params) -> TypeIdParams;
 
-  /// Bind the parameters "params" lists to the arguments of the
-  /// same names in "args" (an instantiation's arguments' key, as
-  /// "Scope::ArgsIdOf" makes one), as an instantiation's
-  /// arguments name the parameters of what it instantiates. With
-  /// "all", nothing unless every one is bound; otherwise a
-  /// parameter with no argument of its name is left out.
-  SPP_EXP_FUN auto BindByName(TypeIdParams const &params, TypeId args, bool all) -> Opt<GenericSubst>;
-
-  /// "BindByName" for the named arguments "args", each read in
+  /// "BindingsOfArgs" for the named arguments "args", each read in
   /// "scope": what a type written in the terms of "params" is read
   /// with ("ReadType"). A parameter with no argument is left out.
   SPP_EXP_FUN auto BindArgs(
@@ -83,10 +80,13 @@ namespace spp::analyse::scopes {
 
   /// What the arguments whose identity is "args" ("Scope::ArgsIdOf")
   /// bind, by the parameter each is for (packs marked); one keyed
-  /// by spelling or position binds nothing. The inverse of
+  /// by spelling or position binds nothing. With "only", just the
+  /// parameters it lists, in its order (an instantiation's
+  /// arguments binding the parameters of what it instantiates); a
+  /// parameter with no argument is left out. The inverse of
   /// "ArgsIdOfBindings".
   SPP_EXP_FUN auto BindingsOfArgs(
-    TypeId args) -> GenericSubst;
+    TypeId args, TypeIdParams const *only = nullptr) -> GenericSubst;
 
   /// The identity of "bindings" as arguments ("Scope::ArgsIdOf"
   /// keys arguments named for the parameters they bind): each
@@ -137,10 +137,4 @@ namespace spp::analyse::scopes {
     TypeId given, TypeId declared, Scope const &given_scope, Scope const &declared_scope,
     GenericSubst &bindings, bool check_variant = false, bool check_constraints = true) -> bool;
 
-  /// "UnifyTypeIds" for a comp value: a comp parameter binds
-  /// the value opposite it, a pack matches element by element
-  /// (a trailing variadic parameter taking the rest), and
-  /// anything else is the same value by identity.
-  SPP_EXP_FUN auto UnifyCompIds(
-    CompId given, CompId declared, GenericSubst &bindings) -> bool;
 }

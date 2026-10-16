@@ -6,22 +6,9 @@ module spp.analyse.utils.memory_state;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.case_utils;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.regions;
 import spp.asts.ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_else_ast;
-import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.statement_ast;
-import spp.asts.meta.compiler_meta_data;
-import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_ctx;
-import spp.codegen.llvm_layout;
-import spp.codegen.llvm_type;
 import spp.utils.ptr;
 import genex;
 import std;
@@ -175,135 +162,6 @@ auto MemoryInfo::Clone() const
 
 SPP_MOD_END
 
-auto spp::analyse::utils::memory_state::ValidateInconsistentMemory(
-  Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
-  CaseCoverage const &coverage, VariableSymbol *subject,
-  SubjectEdges const *subject_edges, ScopeManager *sm,
-  CompilerMetaData *meta) -> void {
-  // The symbols whose states are joined: those visible here,
-  // and (inside a body) every one its flow has touched, so a
-  // symbol hidden by a shadowing "let" is joined too. The
-  // lookup can reach one symbol by more than one route.
-  auto var_syms = Vec<VariableSymbol*>();
-  auto var_syms_seen = Set<VariableSymbol const*>();
-
-  // Add every symbol into the "seen" set. If it was inserted
-  // into the set, ie not a duplicate, insert it into the main
-  // vector too.
-  for (auto sym : sm->CurrentScope->GetAllVarSymbols()) {
-    if (var_syms_seen.insert(sym).second) { var_syms.emplace_back(sym); }
-  }
-  if (const auto flow = FlowOf(*sm->CurrentScope); flow != nullptr) {
-    for (auto const &[sym, _] : flow->States) {
-      if (var_syms_seen.insert(sym).second) {
-        var_syms.emplace_back(const_cast<VariableSymbol*>(sym));
-      }
-    }
-  }
-
-  // The state before any branch has run. Each branch starts
-  // from it, and it stands in as the path that falls through
-  // every branch, where there is one. Each branch's state
-  // is kept to be joined.
-  const auto pre_analysis = SnapshotSymbols(var_syms, *sm->CurrentScope);
-  auto paths = Vec<Pair<CaseExpressionBranchAst*, ScopeSnapshot>>();
-  for (auto const &[i, branch] : branches | genex::views::enumerate) {
-    // The branch applies its match edge to the subject.
-    meta->CaseSubjectOnMatch = subject_edges != nullptr
-      ? subject_edges->OnMatch[i]
-      : meta::SubjectOnMatch::kKeep;
-    branch->Stage8_CheckMemory(sm, meta);
-    paths.emplace_back(branch, SnapshotSymbols(var_syms, *sm->CurrentScope));
-    RestoreSnapshot(pre_analysis);
-  }
-
-  // On the fall-through path, the subject holds whichever
-  // members no branch matched.
-  const auto falls_through = coverage.FallsThrough;
-  paths.emplace_back(nullptr, pre_analysis);
-  const auto discharged = subject_edges != nullptr
-    and subject_edges->OnFallThrough == meta::SubjectOnMatch::kDischarge;
-
-  // A branch that never finishes leaves no state behind to
-  // agree with. Worked out once per branch, not per symbol:
-  // it infers the body's type.
-  auto diverging = Set<CaseExpressionBranchAst const*>();
-  for (auto branch : branches) {
-    if (control_flow::Diverges(*branch->Body, sm, meta)) { diverging.insert(branch); }
-  }
-
-  // A branch diverges if it in the set of diverging case
-  // expression asts.
-  const auto diverges = [&](CaseExpressionBranchAst const *branch) {
-    return diverging.contains(branch);
-  };
-
-  // A branch after every value was matched, is never taken.
-  const auto reachable = [&](CaseExpressionBranchAst const *branch) {
-    const auto at = genex::position(branches, genex::operations::eq_fixed{branch});
-    return not at.has_value() or coverage.Reachable[*at];
-  };
-
-  // The first branch that finishes is the path carried on.
-  const auto non_terminating_branch = genex::find_if(
-    branches, [&](auto const &x) { return not diverges(x); });
-
-  // A path is named by its branch, or by the "case" itself
-  // where the branch was generated (a lowered "is" builds an
-  // "else" with no source of its own) and so has nowhere to
-  // point - or, the lowered "case" having no "case" token
-  // either, by its condition, which is the "is" expression's
-  // subject as written.
-  auto case_named = parent->PosStart() != 0 or meta->CaseCondition == nullptr
-    ? parent
-    : static_cast<Ast*>(meta->CaseCondition);
-  const auto path_of = [case_named](CaseExpressionBranchAst *branch) -> Ast* {
-    return branch != nullptr and branch->PosStart() != 0 ? static_cast<Ast*>(branch) : case_named;
-  };
-  const auto first_branch = non_terminating_branch == branches.end() ? case_named : path_of(*non_terminating_branch);
-  auto const &first_path = non_terminating_branch != branches.end()
-    ? paths.at(static_cast<std::size_t>(genex::iterators::distance(branches.begin(), non_terminating_branch))).second
-    : paths.back().second;
-
-  const auto has_else_branch = not branches.empty()
-    ? branches.back()->Patterns[0]->To<CasePatternVariantElseAst>()
-    : nullptr;
-  const auto skip_else = has_else_branch and has_else_branch->MarkedForIterLoopExit();
-
-  // The state after the "case" is every path's state out of
-  // it, joined: the branches that finish, and without an
-  // "else" (when no branch may run at all) the state the
-  // "case" was entered with (the null entry).
-  const auto leaves = [&](CaseExpressionBranchAst const *branch) {
-    return not((branch == nullptr and not falls_through) or (branch != nullptr and diverges(branch))
-      or (branch != nullptr and not reachable(branch))
-      or (skip_else and not branches.empty() and branch == branches.back()));
-  };
-  const auto state_on = [&](ScopeSnapshot const &path, VariableSymbol const &sym) {
-    auto state = StateIn(path, sym);
-    if (discharged and &sym == subject and &path == &paths.back().second) { state.OwesNothing = true; }
-    return SettleFullyTaken(state, sym, *sm->CurrentScope);
-  };
-  for (auto sym : var_syms) {
-    auto joined = state_on(first_path, *sym);
-    for (auto const &[branch_or_null, path] : paths) {
-      if (leaves(branch_or_null)) {
-        Join(joined, state_on(path, *sym), first_branch, path_of(branch_or_null));
-      }
-    }
-    StateOf(*sm->CurrentScope, *sym) = joined;
-  }
-
-  // The loans held after the "case", likewise.
-  auto &loans = LoansOf(*sm->CurrentScope);
-  const auto loans_on = [](ScopeSnapshot const &path) { return path.Loans; };
-  loans = loans_on(first_path);
-  for (auto const &[branch_or_null, path] : paths) {
-    if (leaves(branch_or_null)) { JoinLoans(loans, loans_on(path), first_branch, path_of(branch_or_null)); }
-  }
-}
-
-/// [CHECKED]
 auto spp::analyse::utils::memory_state::SnapshotSymbols(
   Vec<VariableSymbol*> const &syms, Scope const &scope) -> ScopeSnapshot {
   // Create an empty snapshot and load it with the symbols and

@@ -67,36 +67,6 @@ namespace spp::analyse::utils::fn_values {
     TypeRef const &value, TypeRef const &target,
     ScopeManager const &sm) -> FunctionPrototypeAst*;
 
-  /// Check whether the new function prototype conflicts with
-  /// functions of the same name but different signatures with
-  /// the same owner. Two "fun f(&self) -> Void" is ambiguous.
-  /// Several semantic checks in place to detect ambiguities.
-  /// The conflicting prototype and the scope it is declared in
-  /// (another module's, for a "sup" block written elsewhere);
-  /// both null for no conflict.
-  SPP_EXP_FUN auto CheckForConflictingOverload(
-    Scope const &this_scope, Scope const *target_scope,
-    FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-    meta::CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*>;
-
-  /// The core of the override checker, checking whether "fn_a"
-  /// (the override or implementation) has "fn_b"'s signature: the
-  /// same parameters, and a return type that may narrow "fn_b"'s.
-  /// Publicly exposed because the type_members module needs it for
-  /// checking for any unimplemented abstract methods.
-  SPP_EXP_FUN auto SameSignature(
-    FunctionPrototypeAst const &fn_a, Scope const &scope_a,
-    FunctionPrototypeAst const &fn_b, Scope const &scope_b) -> bool;
-
-  /// Check whether the new function prototype is a genuine
-  /// override of a method on a super type: the method on
-  /// "target_scope" with the same signature, if any. This is used
-  /// to ensure function overriding is a genuine match.
-  SPP_EXP_FUN auto CheckForConflictingOverride(
-    Scope const &this_scope, Scope const *target_scope, FunctionPrototypeAst const &new_fn,
-    ScopeManager &sm, meta::CompilerMetaData *meta)
-    -> FunctionPrototypeAst*;
-
   /// The function type an expression is called indirectly
   /// through: the "Fun*" its type is or superimposes, or the
   /// one a generic constraint promised ("IndirectFnType" on

@@ -167,12 +167,19 @@ namespace spp::analyse::scopes {
     }
   };
 
+  /// Every comp key interned so far: a "CompId" is the address
+  /// of one. Kept until "ClearCompIds".
+  inline auto InternedCompKeys() -> StableSet<CompKey, CompKeyHash>& {
+    static auto interned = StableSet<CompKey, CompKeyHash>();
+    return interned;
+  }
+
   /// The one canonical node equal to "node" by hash. Its
   /// parts must be interned already. This says "given this
   /// comp key, if an interned one is already equal, use
   /// this interned version".
   SPP_EXP_FUN inline auto InternCompKey(CompKey &&node) -> CompId {
-    static auto interned = StableSet<CompKey, CompKeyHash>();
+    auto &interned = InternedCompKeys();
     if (const auto hit = interned.find(node); hit != interned.end()) { return &*hit; }
     return &*interned.emplace(std::move(node)).first;
   }
@@ -210,12 +217,6 @@ namespace spp::analyse::scopes {
   SPP_EXP_FUN auto U64Of(
     CompId id) -> Opt<std::uint64_t>;
 
-  /// "DoesTypeIdNameAnyGnParams" for a comp value: a comp
-  /// parameter of its own ("ParamsNamedBy"), or a parameter of a
-  /// type it names a constant through ("Box[T]::n" names "T"),
-  /// as a type's "ParamsNamedBy" counts both.
-  SPP_EXP_FUN auto DoesCompIdNameAnyGnParams(CompId id) -> bool;
-
   /// "IsConcreteTypeId" for a comp value: it names no parameter
   /// ("DoesCompIdNameAnyGnParams") and no "Self", which reaches a
   /// comp value only as the owner of a constant ("Self::n"). As
@@ -236,4 +237,8 @@ namespace spp::analyse::scopes {
   /// "IsClosedTypeId" for a comp value: concrete
   /// ("IsConcreteCompId") and readable ("IsReadableCompId").
   SPP_EXP_FUN auto IsClosedCompId(CompId id) -> bool;
+
+  /// Forget every interned comp key, as "ClearTypeIds" does the
+  /// type keys: called once a compile is freed.
+  SPP_EXP_FUN auto ClearCompIds() -> void;
 }

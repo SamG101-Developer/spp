@@ -6,7 +6,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.class_prototype_ast;
@@ -226,7 +226,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     // be.
     const auto member_sm = sm.NewManagerAt(const_cast<Scope*>(scope));
 
-    for (auto const &member : analyse::utils::type_compare::VariantMemberRefs(cls_ref, *scope)) {
+    for (auto const &member : analyse::utils::type_members::VariantMemberRefs(cls_ref, *scope)) {
       const auto member_sym = member.Symbol;
       if (member_sym == nullptr) { continue; }
 

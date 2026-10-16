@@ -32,12 +32,6 @@ namespace spp::analyse::utils::linear_utils {
     Scope const &scope, Ast const &exit_point, StrView exit_what,
     ScopeManager &sm, CompilerMetaData *meta) -> void;
 
-  /// Leaving "scope" by "exit_point", when it is the scope of a
-  /// "case" branch that keeps a linear temporary, drops it.
-  SPP_EXP_FUN auto CheckKeptTemporaries(
-    Scope const &scope, Ast const &exit_point,
-    ScopeManager &sm, CompilerMetaData *meta) -> void;
-
   /// A more expansive check that "CheckScopeExit" - this does
   /// the same thing but checks between this scope and the
   /// enclosing function's scope, allowing nested-ast "ret" or

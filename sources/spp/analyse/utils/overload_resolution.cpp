@@ -10,12 +10,14 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.packs;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -473,13 +475,6 @@ namespace spp::analyse::utils::overload_resolution {
       const auto pattern = AstName(sup_scope->AstNode);
       const auto receiver_type = receiver->WithConvention(nullptr);
 
-      // The receiver itself, then the classes it extends, each named where it resolves.
-      auto candidates = Vec<Pair<Shared<TypeAst>, Scope const*>>{{receiver_type, sm.CurrentScope}};
-      if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
-        receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
-        candidates.append_range(type_members::SuperClsNames(receiver_sym->LinkedScope->GetSupScopes()));
-      }
-
       // An instantiated block binds some of its generics already, and only a class that agrees with them is its
       // receiver: "D" extending "Base[Str]" and "Base[Bool]" reaches the "Base[Bool]" block only through "Base[Bool]",
       // though "Base[Str]" matches its pattern "Base[B]" first. By identity, the pattern keys a bound generic as its
@@ -497,13 +492,21 @@ namespace spp::analyse::utils::overload_resolution {
         : nullptr;
       if (params == nullptr) { return {}; }
       auto bound = scopes::GenericSubst();
-      for (auto const &[candidate, candidate_scope] : candidates) {
-        const auto candidate_id = candidate_scope->TypeIdOf(*candidate);
+      const auto matches = [&](const scopes::TypeId candidate_id, Scope const &candidate_scope) {
         auto inferred = scopes::GenericSubst();
-        if (candidate_id != nullptr and scopes::UnifyTypeIds(
-          candidate_id, pattern_id, *candidate_scope, *sup_scope, inferred, false, false)) {
-          bound = scopes::BindingsFor(inferred, *params);
-          break;
+        if (candidate_id == nullptr or not scopes::UnifyTypeIds(
+          candidate_id, pattern_id, candidate_scope, *sup_scope, inferred, false, false)) { return false; }
+        bound = scopes::BindingsFor(inferred, *params);
+        return true;
+      };
+
+      // The receiver itself, then the classes it extends, each keyed where it resolves, and only once the ones before
+      // it have not matched.
+      if (matches(sm.CurrentScope->TypeIdOf(*receiver_type), *sm.CurrentScope)) { return bound; }
+      if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
+        receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
+        for (auto const *const cls_scope : type_members::SuperClsScopes(receiver_sym->LinkedScope->GetSupScopes())) {
+          if (matches(cls_scope->TypeIdOfSymbol(*cls_scope->LinkedTypeSymbol), *cls_scope)) { break; }
         }
       }
       return bound;
@@ -886,7 +889,7 @@ namespace spp::analyse::utils::overload_resolution {
             if (receiver_sym != nullptr and a_sym != nullptr
               and not receiver_sym->IsGn() and not a_sym->IsGn()) {
               const auto receiver_tmpl = TypeRef::ForKindCheck(*receiver_sym, *sm->CurrentScope).Template();
-              const auto matches = type_members::IsOrExtendsTemplate(*a_sym, *sm->CurrentScope, receiver_tmpl);
+              const auto matches = type_predicates::IsOrExtendsTemplate(*a_sym, *sm->CurrentScope, receiver_tmpl);
               // Named only for the error, and held here: "ERR_ARGS" keeps references, not the copy.
               if (not matches) {
                 const auto a_type = arg.Val->InferType(sm, meta)->WithoutConvention();
@@ -910,12 +913,8 @@ namespace spp::analyse::utils::overload_resolution {
         // bug). One nothing pins, and a variadic parameter's tuple, are
         // read from the parameter as written.
         const auto is_variadic = param->To<FunctionParameterVariadicAst>() != nullptr;
-        auto p_sig = is_variadic ? nullptr : param->InstanceTypeId;
-        if (p_sig == nullptr and not is_variadic and self_id != nullptr
-          and type_predicates::DoesTypeNameSelf(*param->Type)) {
-          p_sig = fn_scope->TypeIdOf(*param->Type);
-        }
-        p_sig = scopes::SubstituteSelfId(p_sig, self_id);
+        auto p_sig = self_type::TypeIdWithSelf(
+          is_variadic ? nullptr : param->InstanceTypeId, *param->Type, is_variadic ? nullptr : fn_scope, self_id);
         if (p_sig != nullptr and p_sig->HasSelf) { p_sig = nullptr; }
 
         // The parameter's type as shown, built only where one is wanted: an error, and a variadic parameter's tuple. A
@@ -924,8 +923,8 @@ namespace spp::analyse::utils::overload_resolution {
           if (p_sig != nullptr) {
             if (auto shown = sm->CurrentScope->TypeAstOf(p_sig); shown != nullptr) { return shown; }
           }
-          else if (is_variadic and self_id != nullptr and type_predicates::DoesTypeNameSelf(*param->Type)) {
-            const auto element = scopes::SubstituteSelfId(fn_scope->TypeIdOf(*param->Type), self_id);
+          else if (is_variadic) {
+            const auto element = self_type::TypeIdWithSelf(nullptr, *param->Type, fn_scope, self_id);
             if (auto shown = element != nullptr ? sm->CurrentScope->TypeAstOf(element) : nullptr; shown != nullptr) {
               return shown;
             }
@@ -958,25 +957,31 @@ namespace spp::analyse::utils::overload_resolution {
             : TypeRef::Of(*p_written, *fn_scope);
         };
 
+        // The argument's type as resolved, worked out once, and only if something below asks for it.
+        auto a_ref_once = Opt<TypeRef>();
+        const auto a_ref = [&]() -> TypeRef const& {
+          if (not a_ref_once.has_value()) { a_ref_once = TypeRef::Of(*a_type, *sm->CurrentScope); }
+          return *a_ref_once;
+        };
+
         // A value handed over through its forwarding type is the forwarded-to value, so the argument becomes that
         // call once this overload is chosen.
         const auto forwards = [&] {
-          const auto a_ref = TypeRef::Of(*a_type, *sm->CurrentScope);
-          return type_compare::TypeFwdEq(a_ref, p_ref(), *sm->CurrentScope, *fn_scope)
-            and marker_sups::CanForward(a_ref, *sm->CurrentScope);
+          return type_compare::TypeFwdEq(a_ref(), p_ref(), *sm->CurrentScope, *fn_scope)
+            and marker_sups::CanForward(a_ref(), *sm->CurrentScope);
         };
 
         // An argument satisfies its parameter either outright, or by binding a generic the call is free to choose.
-        if (not type_compare::ConventionEq(*p_written, *a_type)
-          or not type_compare::Assignable(
-            p_ref(), TypeRef::Of(*a_type, *sm->CurrentScope), *fn_scope, *sm->CurrentScope)) {
+        const auto conventions_agree = type_compare::ConventionEq(*p_written, *a_type);
+        if (not conventions_agree
+          or not type_compare::Assignable(p_ref(), a_ref(), *fn_scope, *sm->CurrentScope)) {
           // The argument is the given side, the parameter the pattern whose generics it binds, by identity. A
           // parameter whose generic is already fixed by a scope enclosing the caller keys as what it is fixed to, so
           // it has to match exactly.
           const auto a_id = sm->CurrentScope->TypeIdOf(*a_type);
           const auto p_id = p_sig != nullptr ? p_sig : fn_scope->TypeIdOf(*p_written);
           auto inferred = scopes::GenericSubst();
-          const auto binds_to_match = type_compare::ConventionEq(*p_written, *a_type) and a_id != nullptr
+          const auto binds_to_match = conventions_agree and a_id != nullptr
             and p_id != nullptr and scopes::UnifyTypeIds(a_id, p_id, *sm->CurrentScope, *fn_scope, inferred);
 
           // Forwarding is the last resort, tried only once the argument has failed to match any other way - so it
@@ -1596,7 +1601,7 @@ auto spp::analyse::utils::overload_resolution::MethodsOf(
       // If the signature matches, then the derived one wins,
       // so mark the base version as "hidden". This will be
       // removed from the available set.
-      if (fn_values::SameSignature(*derived.Proto, *derived.FnScope, *base.Proto, *base.ReachedThrough)) {
+      if (fn_signatures::SameSignature(*derived.Proto, *derived.FnScope, *base.Proto, *base.ReachedThrough)) {
         hidden.insert(base.Proto);
       }
     }

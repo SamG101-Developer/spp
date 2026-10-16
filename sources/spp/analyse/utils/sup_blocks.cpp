@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
@@ -56,32 +55,12 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
   const auto unconstrained = params.GetAllParams()
     | genex::views::filter([&](auto const *param) {
       return not genex::any_of(naming_types, [&](auto const *type) {
-        return type_resolution::DoesTypeNameAGnParam(*type, *param, *sm.CurrentScope);
+        return type_predicates::DoesTypeNameAGnParam(*type, *param, *sm.CurrentScope);
       });
     })
     | genex::to<Vec>();
   RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
     not unconstrained.empty(), {sm.CurrentScope}, ERR_ARGS(*unconstrained[0]));
-}
-
-auto spp::analyse::utils::sup_blocks::RegisterSelf(
-  TypeAst const &name, ScopeManager &sm) -> void {
-  if (name.IsCompilerGeneratedType()) { return; }
-
-  // A block over an alias ("sup U8") is over what the alias
-  // stands for: its "Self" is the target, not the class at
-  // the end of the alias's chain (which only links the template).
-  auto *sym = sm.CurrentScope->FindTypeSymbol(&name);
-  if (sym->Alias != nullptr) { sym = sym->AliasTarget(*sm.CurrentScope); }
-  self_type::AddSelfTypeSymbol(*sm.CurrentScope, sym->LinkedScope, name.PosStart());
-}
-
-auto spp::analyse::utils::sup_blocks::RegisterProvisionalSelf(
-  TypeAst const &name, ScopeManager &sm) -> void {
-  if (name.IsCompilerGeneratedType()) { return; }
-  if (const auto base_sym = sm.CurrentScope->FindHeadSymbol(name)) {
-    self_type::AddSelfTypeSymbol(*sm.CurrentScope, base_sym->LinkedScope, name.PosStart());
-  }
 }
 
 auto spp::analyse::utils::sup_blocks::LoadTarget(
@@ -109,6 +88,6 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
     else { sm.Tree().GnSupBlocks.emplace_back(sm.CurrentScope); }
   }
 
-  RegisterSelf(*name, sm);
+  self_type::RegisterSelf(*name, sm);
   return base_sym;
 }

@@ -4,7 +4,6 @@ module;
 export module spp.analyse.utils.type_resolution;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.type_key;
-import spp.analyse.utils.type_compare;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -25,15 +24,6 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::type_resolution {
-  /// Whether a type names a generic parameter, by identity: a
-  /// part (or a comp name) that is that parameter where it is
-  /// read in "scope" ("Vec[T]" names "T"; a "T" of another
-  /// declaration does not). Used to find a "sup" block's
-  /// parameters its type never names (so never inferable), and
-  /// the constraints others are inferred through.
-  SPP_EXP_FUN auto DoesTypeNameAGnParam(
-    TypeAst const &type, GenericParameterAst const &param, Scope const &scope) -> bool;
-
   /// Whether "AnalyseWrittenType" replaces "Self" from the scope,
   /// or leaves it for a caller that decides per use what it stands
   /// for (function parameter and return types).
@@ -111,12 +101,6 @@ namespace spp::analyse::utils::type_resolution {
   SPP_EXP_FUN auto ReadComp(
     ExpressionAst const &written, ExprSubst const &sub) -> Shared<ExpressionAst>;
 
-  /// A type parameter's default, written where "param" is, read in
-  /// "read_in" with "bindings" applied. Null when there is no
-  /// default, or it does not resolve.
-  SPP_EXP_FUN auto ReadTypeDefault(
-    GenericParameterAst const &param, GenericSubst bindings,
-    Scope const &written_in, Scope const &read_in) -> Shared<TypeAst>;
 
   /// "ReadTypeDefault" for a comp parameter's default, read as
   /// written ("GenericParameterAst::WrittenCompDefault": analysing

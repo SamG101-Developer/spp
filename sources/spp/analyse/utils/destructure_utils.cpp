@@ -32,6 +32,124 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+namespace spp::analyse::utils::destructure_utils {
+  namespace {
+    /// When we have a pattern like "let Self(fd) = self", we
+    /// mark "self" as moved, because all non-copyable fields
+    /// have to be moved (for linear system drop rules), and
+    /// this is how in the "drop" methods, we finish consuming
+    /// "self".
+    auto ConsumeDestructureSource(
+      Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
+      ScopeManager &sm, CompilerMetaData const *meta) -> void {
+      // A case pattern only answers for the parts of a subject its
+      // "case" can take ("meta->CaseSubject"); the "case" itself takes
+      // the subject, on the branch's match edge.
+      if (from_case_pattern and meta->CaseSubject == nullptr) { return; }
+
+      // If this is for a let statement + local variable destructure
+      // (not a case pattern), then there must be a value, and it
+      // must name existing storage.
+      const auto val = meta->LetStatementValue;
+      if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
+
+      // Get the outermost (root) symbol for the value being
+      // destructured.
+      const auto sym = sm.CurrentScope->FindVarSymbolOutermost(*val).first;
+      if (sym == nullptr) { return; }
+
+      // Destructuring a borrow reads through it. The value behind
+      // it belongs to someone else, so it is not consumed here.
+      if (sym->MemInfo->AstBorrowed != nullptr) { return; }
+      if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
+
+      // The value has to still be there to be taken apart. Each
+      // bound part is checked as it is read, but a destructure
+      // binding nothing ("let L() = l") reads no part, so a value
+      // already moved away was consumed a second time unnoticed.
+      if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
+
+      // A destructure takes the value apart, so what it does
+      // not bind is left with nothing holding it. This creates
+      // leaks because there is then no way to drop those values,
+      // so make sure all movables are bound.
+      if (any_binding_is_moving) {
+        // Get the region path of the value, and check if any parts
+        // have not been considered by the destructure. These cannot
+        // be left unbound, because they would silently drop.
+        const auto region = regions::PlaceOf(*val, *sm.CurrentScope);
+
+        if (const auto skipped = region.has_value() ? regions::FirstUnaccountedPart(*sym, *region, sm) : Str();
+          not skipped.empty()) {
+          Raise<errors::SppDestructureSkipsOwnedPartError>(
+            {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
+        }
+      }
+
+      // The "case" subject itself is taken on the branch's
+      // match edge; a part nested inside it is taken here. The
+      // pattern's "let" holds a copy of the condition, so the
+      // two are compared by the place they name.
+      if (from_case_pattern and meta->CaseCondition != nullptr
+        and regions::PlaceOf(*val, *sm.CurrentScope) == regions::PlaceOf(*meta->CaseCondition, *sm.CurrentScope)) {
+        return;
+      }
+      if (val->To<IdentifierAst>() != nullptr) {
+        memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(owner);
+      }
+      else {
+        memory_state::StateOf(*sm.CurrentScope, *sym).PartMovedBy(regions::PlaceAtOf(*val, *sm.CurrentScope));
+      }
+    }
+
+    /// When we have a temporary materialization, mark it as
+    /// consumed by getting the symbol and setting the memory
+    /// fields on it to mark as "moved".
+    auto ConsumeDestructureTemp(
+      IdentifierAst const &tmp_name, ScopeManager const &sm) -> void {
+      // Every part the bindings read came off the temporary, so
+      // between them they took all of it.
+      const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
+      if (sym == nullptr) { return; }
+      memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(tmp_name);
+    }
+
+    /// Run uniform stage 8 memory analysis on the destructure
+    /// temporary materialization, should it exist (this won't
+    /// be called if not).
+    auto DestructureTempStage8(
+      Ast const &owner, IdentifierAst const &tmp_name,
+      ScopeManager &sm, CompilerMetaData *meta) -> void {
+      using mem_utils::ValidateSymbolMemory;
+      // The value is moved into the temporary as a whole, so it
+      // is checked (and consumed) once here, rather than once
+      // per expanded "let". This traversal is also what walks
+      // the scopes the value created in stage 7.
+      meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
+      ValidateSymbolMemory(
+        *meta->LetStatementValue, owner, sm, meta);
+
+      // Mark the temporary as initialized by the value.
+      const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
+      memory_state::StateOf(*sm.CurrentScope, *sym).InitializedBy(tmp_name);
+    }
+
+    /// Run uniform stage 9 comptime resolution on the
+    /// destructure temporary materialization, should it exist
+    /// (this won't be called if not).
+    auto DestructureTempStage9(
+      Shared<IdentifierAst> const &tmp_name, ScopeManager const &sm,
+      CompilerMetaData const *meta) -> void {
+      // The owning "let" statement has already resolved the
+      // value, so the temporary takes a copy of that result
+      // rather than resolving the value a second time (which
+      // would walk the value's scopes twice).
+      const auto sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
+      sym->CompTimeValue = AstClone(meta->CompTimeResult);
+    }
+  }
+}
+
 auto spp::analyse::utils::destructure_utils::GetNestedBindingIdentifiers(
   Vec<Unique<LocalVariableAst>> const &elems) -> Vec<Shared<IdentifierAst>> {
   // Recursively walk the destructure pattern to extract all
@@ -70,106 +188,6 @@ auto spp::analyse::utils::destructure_utils::BindDestructureTemporary(
 
   sm.CurrentScope->AddVarSymbol(sym);
   return name;
-}
-
-auto spp::analyse::utils::destructure_utils::ConsumeDestructureSource(
-  Ast const &owner, const bool from_case_pattern, const bool any_binding_is_moving,
-  ScopeManager &sm, CompilerMetaData const *meta) -> void {
-  // A case pattern only answers for the parts of a subject its
-  // "case" can take ("meta->CaseSubject"); the "case" itself takes
-  // the subject, on the branch's match edge.
-  if (from_case_pattern and meta->CaseSubject == nullptr) { return; }
-
-  // If this is for a let statement + local variable destructure
-  // (not a case pattern), then there must be a value, and it
-  // must name existing storage.
-  const auto val = meta->LetStatementValue;
-  if (val == nullptr or not regions::IsDestructurePlaceExpression(*val)) { return; }
-
-  // Get the outermost (root) symbol for the value being
-  // destructured.
-  const auto sym = sm.CurrentScope->FindVarSymbolOutermost(*val).first;
-  if (sym == nullptr) { return; }
-
-  // Destructuring a borrow reads through it. The value behind
-  // it belongs to someone else, so it is not consumed here.
-  if (sym->MemInfo->AstBorrowed != nullptr) { return; }
-  if (sym->Type != nullptr and sym->Type->GetConvention() != nullptr) { return; }
-
-  // The value has to still be there to be taken apart. Each
-  // bound part is checked as it is read, but a destructure
-  // binding nothing ("let L() = l") reads no part, so a value
-  // already moved away was consumed a second time unnoticed.
-  if (val->To<IdentifierAst>() != nullptr) { mem_utils::RaiseIfMoved(*sym, *val, sm.CurrentScope); }
-
-  // A destructure takes the value apart, so what it does
-  // not bind is left with nothing holding it. This creates
-  // leaks because there is then no way to drop those values,
-  // so make sure all movables are bound.
-  if (any_binding_is_moving) {
-    // Get the region path of the value, and check if any parts
-    // have not been considered by the destructure. These cannot
-    // be left unbound, because they would silently drop.
-    const auto region = regions::PlaceOf(*val, *sm.CurrentScope);
-
-    if (const auto skipped = region.has_value() ? regions::FirstUnaccountedPart(*sym, *region, sm) : Str();
-      not skipped.empty()) {
-      Raise<errors::SppDestructureSkipsOwnedPartError>(
-        {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
-    }
-  }
-
-  // The "case" subject itself is taken on the branch's
-  // match edge; a part nested inside it is taken here. The
-  // pattern's "let" holds a copy of the condition, so the
-  // two are compared by the place they name.
-  if (from_case_pattern and meta->CaseCondition != nullptr
-    and regions::PlaceOf(*val, *sm.CurrentScope) == regions::PlaceOf(*meta->CaseCondition, *sm.CurrentScope)) {
-    return;
-  }
-  if (val->To<IdentifierAst>() != nullptr) {
-    memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(owner);
-  }
-  else {
-    memory_state::StateOf(*sm.CurrentScope, *sym).PartMovedBy(regions::PlaceAtOf(*val, *sm.CurrentScope));
-  }
-}
-
-auto spp::analyse::utils::destructure_utils::ConsumeDestructureTemp(
-  IdentifierAst const &tmp_name, ScopeManager const &sm) -> void {
-  // Every part the bindings read came off the temporary, so
-  // between them they took all of it.
-  const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
-  if (sym == nullptr) { return; }
-  memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(tmp_name);
-}
-
-auto spp::analyse::utils::destructure_utils::DestructureTempStage8(
-  Ast const &owner, IdentifierAst const &tmp_name,
-  ScopeManager &sm, CompilerMetaData *meta) -> void {
-  using mem_utils::ValidateSymbolMemory;
-  // The value is moved into the temporary as a whole, so it
-  // is checked (and consumed) once here, rather than once
-  // per expanded "let". This traversal is also what walks
-  // the scopes the value created in stage 7.
-  meta->LetStatementValue->Stage8_CheckMemory(&sm, meta);
-  ValidateSymbolMemory(
-    *meta->LetStatementValue, owner, sm, meta);
-
-  // Mark the temporary as initialized by the value.
-  const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
-  memory_state::StateOf(*sm.CurrentScope, *sym).InitializedBy(tmp_name);
-}
-
-auto spp::analyse::utils::destructure_utils::DestructureTempStage9(
-  Shared<IdentifierAst> const &tmp_name, ScopeManager const &sm,
-  CompilerMetaData const *meta) -> void {
-  // The owning "let" statement has already resolved the
-  // value, so the temporary takes a copy of that result
-  // rather than resolving the value a second time (which
-  // would walk the value's scopes twice).
-  const auto sym = sm.CurrentScope->FindVarSymbol(tmp_name.get());
-  sym->CompTimeValue = AstClone(meta->CompTimeResult);
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
@@ -304,7 +322,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // Bind the value to a hidden temporary, and index that from every element, so the value is analysed and evaluated
   // once for the whole pattern.
   auto effective_val = static_cast<ExpressionAst const*>(val);
-  if (not regions::IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
+  if (not IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
     tmp_name = BindDestructureTemporary(val, val_type, *sm);
     effective_val = tmp_name.get();
   }
@@ -353,4 +371,19 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
       add_let(AstClone(elem), index_of(i));
     }
   }
+}
+
+auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
+  ExpressionAst const &expr) -> bool {
+  // Strip the member accesses off the expression: "a.b.c"
+  // becomes "a". Any other postfix operator (a function
+  // call, an early return etc) means the expression produces
+  // a new value rather than naming existing storage.
+  auto cur = static_cast<Ast const*>(&expr);
+  while (const auto postfix = cur->To<PostfixExpressionAst>()) {
+    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
+    cur = postfix->Lhs.get();
+  }
+
+  return cur->To<IdentifierAst>() != nullptr;
 }

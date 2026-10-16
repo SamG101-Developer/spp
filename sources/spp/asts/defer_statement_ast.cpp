@@ -8,7 +8,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.memory_state;
 import spp.asts.expression_ast;
@@ -76,7 +75,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
   RaiseIf<SppDeferTerminatesError>(
-    control_flow::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
+    expr_utils::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value

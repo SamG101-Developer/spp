@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -307,7 +306,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
       // A reachable branch that keeps the case condition temporary
       // (does not take it) raises a linear error, unless the body
       // of the branch diverges.
-      if (not control_flow::Diverges(*branch->Body, sm, meta)) {
+      if (not expr_utils::Diverges(*branch->Body, sm, meta)) {
         linear_utils::RaiseTemporaryNotConsumed(
           *Cond, *branch, "This branch keeps it, so nothing owns it after the \"case\"", *sm, meta);
       }
@@ -333,7 +332,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->CaseSubject = subject;
-    memory_state::ValidateInconsistentMemory(
+    case_utils::ValidateInconsistentMemory(
       this, branches, coverage, subject, subject != nullptr ? &*edges : nullptr, sm, meta);
   }
   if (flow != nullptr) { flow->KeptTemporaries.resize(kept_before); }
@@ -536,7 +535,7 @@ auto CaseExpressionAst::InferType(
   if (_Coverage != nullptr) {
     auto diverges = true;
     for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
-      if (_Coverage->Reachable[i] and not control_flow::Diverges(*branch->Body, sm, meta)) {
+      if (_Coverage->Reachable[i] and not expr_utils::Diverges(*branch->Body, sm, meta)) {
         diverges = false;
       }
     }

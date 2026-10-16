@@ -94,11 +94,6 @@ namespace spp::analyse::utils::regions {
   SPP_EXP_FUN auto Overlap(
     PlaceAt const &p1, PlaceAt const &p2) -> bool;
 
-  /// A place written out as its root's name and its steps
-  /// ("a.b.c").
-  SPP_EXP_FUN auto PlaceText(
-    Place const &place) -> Str;
-
   /// The first part of a value that a destructure has not
   /// accounted for, and would otherwise silently drop. Copyable
   /// parts are ignored, following usual memory rules, and a
@@ -107,23 +102,11 @@ namespace spp::analyse::utils::regions {
   SPP_EXP_FUN auto FirstUnaccountedPart(
     VariableSymbol const &sym, Place const &region, ScopeManager const &sm) -> Str;
 
-  /// Check if an ast is an identifier ast type. This is used
-  /// to determine which mutability and memory rules to apply
-  /// during assignment analysis.
-  SPP_EXP_FUN auto IsIdentifier(
-    Ast const *expr) -> bool;
-
-  /// Check if an ast is an attribute access ast type. This
-  /// has alternative mutability/memory rules to enforce, and
-  /// because it is only used from the assignment ast, we can
-  /// just negate the identifier check.
+  /// Check if an ast is an attribute access ("a.b") whose
+  /// outermost part names a variable. Assignment and moves
+  /// apply the attribute mutability/memory rules to it.
   SPP_EXP_FUN auto IsAttr(
     Ast const *expr, ScopeManager const *sm) -> bool;
-
-  /// Whether the expression holds "destructure-able" storage
-  /// or not. Typically, if not, then a materialization occurs.
-  SPP_EXP_FUN auto IsDestructurePlaceExpression(
-    ExpressionAst const &expr) -> bool;
 
   /// The type of the place "steps" names after "count" of its
   /// steps ("type_members::GetAllParts"), and the scope it

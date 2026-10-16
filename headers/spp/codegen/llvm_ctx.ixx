@@ -11,14 +11,11 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::codegen, struct LlvmCtx);
 use(spp::codegen, struct LlvmGenerator);
 
-namespace spp::codegen {
-  auto GLOBAL_CONTEXT = new llvm::LLVMContext();
-}
-
 /// The LLVM context information used throughout stage 10 and
 /// 11 of the compiler's code generation.
 SPP_EXP_CLS struct spp::codegen::LlvmCtx {
-  /// The LLVM context object.
+  /// The LLVM context object, shared by every module of one
+  /// compile (so they can be linked) and owned by the compile.
   llvm::LLVMContext *Context;
 
   /// The scope manager currently in use.
@@ -46,10 +43,10 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
   Scope *CurrentClosureScope = nullptr;
 
   /// Build a new context from the module name that is about
-  /// to run stage 10/11,
-  static auto NewCtx(Str const &module_name) -> Unique<LlvmCtx>;
+  /// to run stage 10/11, emitting into "context".
+  static auto NewCtx(Str const &module_name, llvm::LLVMContext &context) -> Unique<LlvmCtx>;
 
-  LlvmCtx();
+  explicit LlvmCtx(llvm::LLVMContext &context);
   LlvmCtx(LlvmCtx const &) = delete;
   LlvmCtx(LlvmCtx &&) noexcept = delete;
   auto operator=(LlvmCtx const &) -> LlvmCtx& = delete;

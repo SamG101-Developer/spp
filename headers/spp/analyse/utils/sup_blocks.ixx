@@ -36,17 +36,6 @@ namespace spp::analyse::utils::sup_blocks {
     GenericParameterGroupAst const &params, Vec<TypeAst const*> const &naming_types,
     ScopeManager const &sm) -> void;
 
-  /// Register "Self" as what "name" names: a class prototype's own name, or a block's type once qualified (through an
-  /// alias, its target). A "$" mock registers none.
-  SPP_EXP_FUN auto RegisterSelf(
-    TypeAst const &name, ScopeManager &sm) -> void;
-
-  /// Stage 3: register a provisional "Self" before any alias in the block is resolved, so that one naming it has
-  /// something to resolve to. The name is not qualified yet, so its head symbol answers; a name that does not
-  /// resolve registers none (the stage qualifying it reports it). "LoadTarget" replaces it.
-  SPP_EXP_FUN auto RegisterProvisionalSelf(
-    TypeAst const &name, ScopeManager &sm) -> void;
-
   /// Stage 5: analyse the block's type ("name", abstract allowed: a block is where abstract methods are declared and
   /// implemented), reject a borrow, qualify it in place, file the block against its base symbol (a module-level block,
   /// or any "$" mock block when "files_nested_mock"), and re-register "Self" against the qualified name. "block" is

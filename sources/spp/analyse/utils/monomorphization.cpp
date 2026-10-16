@@ -690,7 +690,7 @@ namespace spp::analyse::utils::monomorphization {
       }
       auto stm = sm->NewManagerAt(&fn_scope);
       ReadVarSymbolTypes(fn_scope, &stm, meta, self_type.get());
-      return std::move(new_fun_scope);
+      return new_fun_scope;
     }
 
     thread_local auto instantiation_depth = 0uz;
@@ -998,7 +998,8 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   auto new_alias = Shared<AliasInfo>(nullptr);
   if (old_cls_sym->Alias != nullptr) {
     new_alias = MakeShared<AliasInfo>(*old_cls_sym->Alias); // Copy
-    new_alias->Resolved = aliases::InstanceTargetOf(*old_cls_sym, args_id, *sm->CurrentScope);
+    const auto target = aliases::InstanceTargetIdOf(*old_cls_sym, args_id);
+    new_alias->Resolved = target != nullptr ? sm->CurrentScope->TypeAstOf(target) : nullptr;
     new_alias->Resolved->Stage7_AnalyseSemantics(sm, meta);
     // TODO: Remove generic parameters that have been given arguments (not always all generic args)?
   }

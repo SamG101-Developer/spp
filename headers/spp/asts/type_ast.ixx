@@ -48,10 +48,6 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   SPP_ATTR_NODISCARD auto ReadExpr(
     analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
-  /// "ReadExpr", answered as the type it still is.
-  SPP_ATTR_NODISCARD auto ReadExprType(
-    analyse::scopes::ExprSubst const &sub) const -> Shared<TypeAst>;
-
   /// A clone of this type with "arg_group" on its right-most part.
   /// A plain name builds its own ("TypeIdentifierAst").
   SPP_ATTR_NODISCARD auto WithGns(

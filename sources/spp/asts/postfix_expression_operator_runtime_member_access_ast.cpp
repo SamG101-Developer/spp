@@ -158,7 +158,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
 
     // Check the index is within the bounds of the tuple
     // or array.
-    if (auto [in_bounds, n] = type_members::IsIndexWithinBound(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope); not in_bounds) {
+    if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
       const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
       Raise<SppMemberAccessOutOfBoundsError>(
         {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));

@@ -11,12 +11,15 @@ import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.expression_ast;
 import spp.asts.inner_scope_expression_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
+import genex;
 import std;
 
 auto spp::analyse::utils::expr_utils::IsPrimaryExprTypeValid(
@@ -84,4 +87,39 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
   const auto type_name = type->ToString();
   if (IsTypeVoid(TypeRef::ForKindCheck(*type, *scope), *scope) or type->IsNeverType()) { return; }
   Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
+}
+
+/// [CHECKED]
+auto spp::analyse::utils::expr_utils::Diverges(
+  StatementAst &stmt, ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // The written forms first: they need no analysis, and "ret"
+  // or "exit" has no "!" type to find.
+  if (stmt.Terminates()) { return true; }
+
+  // A block diverges when its last statement does, read in the
+  // block's own scope. Its type alone misses a trailing "let"
+  // bound to a "!" value, which is typed "Void".
+  if (const auto block = stmt.To<asts::InnerScopeExpressionAst>(); block != nullptr) {
+    if (block->Members.empty()) { return false; }
+    auto tm = sm->NewManagerAt(block->GetAstScope());
+    return Diverges(*block->Members.back(), &tm, meta);
+  }
+
+  // The same for a "case": it has to have an "else" (or it can
+  // fall through), and then every branch has to diverge.
+  if (const auto case_expr = stmt.To<CaseExpressionAst>(); case_expr != nullptr) {
+    if (case_expr->Branches.empty()) { return false; }
+    if (case_expr->Branches.back()->Patterns[0]->To<CasePatternVariantElseAst>() == nullptr) { return false; }
+    return genex::all_of(case_expr->Branches, [&](auto const &branch) { return Diverges(*branch->Body, sm, meta); });
+  }
+
+  // Otherwise it is the value's type: "!" is only met by what
+  // never produces one. A "let" is not an expression, but it
+  // runs its value.
+  const auto let = stmt.To<LetStatementInitializedAst>();
+  const auto expr = let != nullptr ? let->Val.get() : stmt.To<ExpressionAst>();
+  if (expr == nullptr) { return false; }
+  const auto _meta_guard = MetaGuard(meta);
+  meta->IgnoreMissingElseBranchForInference = true;
+  return expr->InferTypeRef(sm, meta).IsNever;
 }

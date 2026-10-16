@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.self_type;
-import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -193,7 +192,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   // Stage 3 registered a provisional one so that the body's
   // aliases could name it; this replaces it with the scope
   // the fully-resolved name links to.
-  sup_blocks::RegisterSelf(*Name, *sm);
+  self_type::RegisterSelf(*Name, *sm);
 
   Impl->Stage5_LoadSupScopes(sm, meta);
   sm->MoveOutOfCurrentScope();
@@ -208,7 +207,7 @@ auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   Impl->Stage6_PreAnalyseSemantics(sm, meta);
 
   // Check the type isn't recursive.
-  const auto recursion = type_members::IsTypeRecursive(*this, *sm);
+  const auto recursion = type_members::FindRecursiveAttrType(*this, *sm);
   RaiseIf<SppRecursiveTypeError>(
     recursion != nullptr, {sm->CurrentScope},
     ERR_ARGS(*this, *recursion));

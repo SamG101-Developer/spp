@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.fn_values;
+import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
@@ -194,7 +194,7 @@ auto SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
   IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  sup_blocks::RegisterProvisionalSelf(*Name, *sm);
+  self_type::RegisterProvisionalSelf(*Name, *sm);
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -429,7 +429,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
       // Get the method and identify the base method it
       // is overriding.
       const auto this_method = ext_member->Impl->FinalMember()->To<FunctionPrototypeAst>();
-      const auto base_method = fn_values::CheckForConflictingOverride(
+      const auto base_method = fn_signatures::CheckForConflictingOverride(
         *member->GetAstScope(), sup_sym->LinkedScope, *this_method, sm, meta);
 
       // Check the base method exists.

@@ -7,7 +7,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
-import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.class_prototype_ast;
@@ -90,6 +90,38 @@ auto spp::analyse::utils::type_predicates::DoesTypeNameSelf(
   return AnyTypePart(type, [](TypeIdentifierAst const &part) { return part.IsSelfType(); });
 }
 
+auto spp::analyse::utils::type_predicates::DoesTypeNameAGnParam(
+  TypeAst const &type, GenericParameterAst const &param,
+  Scope const &scope) -> bool {
+  // The parameter's identity, given when declared ("GenericParameterAst::Stage2_GenTopLvlScopes"); each part is the
+  // parameter (or a binding of it) it resolves to where read. Walked as written, not read off the type's identity: an
+  // alias over a template not made yet ("SizedIntegerUnsigned[w]") is keyed with its arguments spelled, so its identity
+  // names no parameter that the written arguments do.
+  const auto type_param = param.IsTypeParam() ? param.ParamId() : 0;
+  const auto comp_param = param.IsCompParam() ? param.ParamId() : 0;
+  return AnyTypePart(
+    type,
+    [&](TypeIdentifierAst const &part) {
+      auto const *const sym = type_param != 0 ? scope.FindTypeSymbol(&part) : nullptr;
+      return sym != nullptr and sym->ParamId() == type_param;
+    },
+    [&](IdentifierAst const &name) {
+      auto const *const sym = comp_param != 0 ? scope.FindVarSymbol(&name) : nullptr;
+      return sym != nullptr and sym->ParamId() == comp_param;
+    });
+}
+
+auto spp::analyse::utils::type_predicates::IsOrExtendsTemplate(
+  TypeSymbol const &sym, Scope const &scope,
+  TypeSymbol const *tmpl) -> bool {
+  // Check for a template match; is the template of symbol
+  // equal to "tmpl"?
+  if (TypeRef::ForKindCheck(sym, scope).Template() == tmpl) { return true; }
+  return sym.LinkedScope != nullptr and genex::any_of(sym.LinkedScope->GetSupScopes(), [tmpl](auto const *sup_scope) {
+    return sup_scope->LinkedTypeSymbol != nullptr and TypeRef::ForKindCheck(*sup_scope).Template() == tmpl;
+  });
+}
+
 auto spp::analyse::utils::type_predicates::IsTypeGenerator(
   TypeRef const &ref, Scope const &scope) -> bool {
   // Either the Gen or GenOnce generator type, discarding generics.
@@ -151,10 +183,21 @@ auto spp::analyse::utils::type_predicates::IsTypeTry(
   return ref.KindSymbol() != nullptr and ref.IsA(*TRY, scope);
 }
 
+namespace {
+  /// A generic template named with no arguments: it stands for itself over its own parameters, which nothing has bound
+  /// - unless every parameter is a pack, which no arguments bind to the empty pack: "Tup" with none is the empty tuple,
+  /// which is how "()" is named.
+  auto IsUnboundTemplate(
+    spp::analyse::scopes::TypeSymbol const &sym) -> bool {
+    return sym.IsBareTemplate() and not genex::all_of(
+      sym.Type->GnParamGroup->Params, [](auto const &param) { return param->IsVariadic(); });
+  }
+}
+
 auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   TypeRef const &ref) -> bool {
-  // A generic template named bare stands for itself over its own parameters, which nothing has bound.
-  if (ref.Symbol != nullptr and ref.Symbol->IsBareTemplate()) { return false; }
+  // A template named bare, its parameters unbound ("IsUnboundTemplate").
+  if (ref.Symbol != nullptr and IsUnboundTemplate(*ref.Symbol)) { return false; }
   if (ref.Id == nullptr) { return ref.Symbol != nullptr; }
   return scopes::IsConcreteTypeId(ref.Id);
 }
@@ -165,15 +208,9 @@ auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   // parameter: a nested argument is looked up in the instantiation's own scope, which need not have every type its
   // arguments were written in terms of in view, and reading "not found" as "still generic" would refuse perfectly good
   // instantiations.
-  // A template named with no arguments stands for itself over its own parameters - unless every parameter is a pack,
-  // which no arguments bind to the empty pack: "Tup" with none is the empty tuple, which is how "()" is named.
+  // A template named with no arguments, its parameters unbound ("IsUnboundTemplate").
   auto const *const head = scope.FindHeadSymbol(type);
-  if (head != nullptr and head->IsBareTemplate() and type.LastTypePart()->GnArgGroup->Args.empty()) {
-    const auto all_packs = genex::all_of(head->Type->GnParamGroup->Params, [](auto const &param) {
-      return param->IsVariadic();
-    });
-    if (not all_packs) { return false; }
-  }
+  if (head != nullptr and type.LastTypePart()->GnArgGroup->Args.empty() and IsUnboundTemplate(*head)) { return false; }
   return scopes::IsConcreteTypeId(scope.PartialTypeIdOf(type));
 }
 
@@ -193,7 +230,7 @@ auto spp::analyse::utils::type_predicates::IsTypeBorrowed(
   // A variant is borrowed when any member is: the members are
   // flattened through nested variants already.
   if (deep and IsTypeVariant(ref, *sm.CurrentScope)) {
-    for (auto const &member : type_compare::VariantMemberRefs(ref, *sm.CurrentScope)) {
+    for (auto const &member : type_members::VariantMemberRefs(ref, *sm.CurrentScope)) {
       if (member.IsBorrowed()) { return true; }
     }
   }

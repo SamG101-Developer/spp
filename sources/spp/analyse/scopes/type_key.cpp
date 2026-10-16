@@ -13,6 +13,21 @@ import std;
 
 namespace spp::analyse::scopes {
   namespace {
+    /// [CHECKED]
+    /// The inverse of the string-to-word interner. This allows
+    /// for strings to be re-created off of interning, once all
+    /// processing with interning has been completed.
+    auto TextOfWord(const Word word) -> StrView {
+      // Call the low level reverse intern function with a word
+      // cast to an InternId type, to recreate the string (view).
+      return spp::utils::InternedText(static_cast<spp::utils::InternedId>(word));
+    }
+
+    /// Convert a "word" into a "comp id", by inverting the cast.
+    auto CompIdOfWord(const Word word) -> CompId {
+      return reinterpret_cast<CompId>(static_cast<std::uintptr_t>(word));
+    }
+
     using Words = Span<std::uint64_t const>;
 
     /// [CHECKED]
@@ -180,6 +195,22 @@ namespace spp::analyse::scopes {
   }
 }
 
+namespace spp::analyse::scopes {
+  namespace {
+    /// What "HeadOf" has read off each type id.
+    auto HeadMemo() -> StableMap<TypeId, TypeIdHead>& {
+      static auto memo = StableMap<TypeId, TypeIdHead>();
+      return memo;
+    }
+
+    /// What "ParamsNamedBy" has read off each type id.
+    auto ParamsMemo() -> StableMap<TypeId, TypeIdParams>& {
+      static auto memo = StableMap<TypeId, TypeIdParams>();
+      return memo;
+    }
+  }
+}
+
 SPP_MOD_BEGIN
 /// [CHECKED]
 auto spp::analyse::scopes::HeadOf(
@@ -187,9 +218,9 @@ auto spp::analyse::scopes::HeadOf(
   // Use the internally cached head on the type id, if it
   // exists, to get the head. Define the "remember" lambda
   // that memoises the head for the type id.
-  static auto memo = StableMap<TypeId, TypeIdHead>();
+  auto &memo = HeadMemo();
   if (id != nullptr and id->_CachedHead != nullptr) { return *id->_CachedHead; }
-  const auto remember = [id](TypeIdHead &&answer) -> TypeIdHead const& {
+  const auto remember = [id, &memo](TypeIdHead &&answer) -> TypeIdHead const& {
     auto const &kept = memo.emplace(id, std::move(answer)).first->second;
     if (id != nullptr) { id->_CachedHead = &kept; }
     return kept;
@@ -296,7 +327,7 @@ SPP_MOD_END
 auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const& {
   // For a type id that hasn't been param-extracted already,
   // no work needs to be done, so return the ids as they are.
-  static auto memo = StableMap<TypeId, TypeIdParams>();
+  auto &memo = ParamsMemo();
   if (id != nullptr and id->_CachedParams != nullptr) { return *id->_CachedParams; }
   if (const auto hit = memo.find(id); hit != memo.end()) { return hit->second; }
 
@@ -375,6 +406,14 @@ auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const&
   auto const &kept = memo.emplace(id, std::move(out)).first->second;
   if (id != nullptr) { id->_CachedParams = &kept; }
   return kept;
+}
+
+auto spp::analyse::scopes::ClearTypeIds() -> void {
+  // The memos first: each is keyed by an interned key, and the
+  // key points back at its entry ("_CachedHead", "_CachedParams").
+  HeadMemo().clear();
+  ParamsMemo().clear();
+  InternedTypeKeys().clear();
 }
 
 /// [CHECKED]

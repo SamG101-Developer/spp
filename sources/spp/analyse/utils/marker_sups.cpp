@@ -171,7 +171,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
   -> void {
   //
   using type_compare::TypeEq;
-  using type_compare::VariantMemberRefs;
+  using type_members::VariantMemberRefs;
   const auto yield_ref = GenYieldOf(gen);
   if (yield_ref.Symbol == nullptr or IsGenOnce(gen, scope)) { return; }
 

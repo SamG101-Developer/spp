@@ -9,7 +9,6 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -182,7 +181,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // "ret", or is "!") has no next iteration unless a "skip" starts
   // one. The bound only guards against a state that never settles;
   // each pass has checked another iteration by then.
-  const auto body_diverges = control_flow::Diverges(*Body, sm, meta);
+  const auto body_diverges = expr_utils::Diverges(*Body, sm, meta);
   if (not body_diverges or flow.Loops[frame_at].Skips != 0) {
     constexpr auto max_iterations = 8;
     for (auto iteration = 1; iteration < max_iterations; ++iteration) {

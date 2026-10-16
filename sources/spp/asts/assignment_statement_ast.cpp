@@ -205,7 +205,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // in the scope, and remove them by comparing the holder
     // symbol.
     auto &loans = memory_state::LoansOf(*sm->CurrentScope);
-    if (regions::IsIdentifier(lhs_expr) and lhs_sym != nullptr) {
+    if (lhs_expr->To<IdentifierAst>() != nullptr and lhs_sym != nullptr) {
       loans |= genex::actions::remove_if([&](auto const &loan) {
         return loan.Holder == lhs_sym and not loan.Yielded;
       });
@@ -215,13 +215,13 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(lhs_expr->To<IdentifierAst>());
       meta->AssignmentTargetType = lhs_expr->InferType(sm, meta);
-      meta->AssignmentTargetSymbol = regions::IsIdentifier(lhs_expr) ? lhs_sym : nullptr;
+      meta->AssignmentTargetSymbol = lhs_expr->To<IdentifierAst>() != nullptr ? lhs_sym : nullptr;
       rhs_expr->Stage8_CheckMemory(sm, meta);
     }
 
     // For a left-hand-side identifier (symbolic), activate any
     // loans (escaping borrows) on it.
-    if (regions::IsIdentifier(lhs_expr) and lhs_sym != nullptr) {
+    if (lhs_expr->To<IdentifierAst>() != nullptr and lhs_sym != nullptr) {
       memory_state::ActivateLoans(loans, *lhs_sym);
     }
 
@@ -236,7 +236,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // Writing over a value that a live coroutine, future or
     // iterator borrows changes what that borrow points at, just
     // as moving it out would, and is refused the same way.
-    if (regions::IsAttr(lhs_expr, sm) or regions::IsIdentifier(lhs_expr)) {
+    if (regions::IsAttr(lhs_expr, sm) or lhs_expr->To<IdentifierAst>() != nullptr) {
       for (auto &loan : loans) {
         if (loan.Pending or not loan.Borrowed.Of.has_value() or loan.Borrowed.Of->Root != lhs_sym) { continue; }
         borrows::ConflictWith(
@@ -270,7 +270,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
 
     // Otherwise, resolve the moved identifier's memory status
     // to the "initialised" state.
-    else if (regions::IsIdentifier(lhs_expr)) {
+    else if (lhs_expr->To<IdentifierAst>() != nullptr) {
       // An immutable may be given its value once: only if no path
       // here has given it one yet. A value held now, on some path
       // only, or since moved on, was a first one (a loop body's
@@ -295,7 +295,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
     // it is moved into.
     const auto lhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*lhs_expr).first;
     const auto rhs_outermost = sm->CurrentScope->FindVarSymbolOutermost(*rhs_expr).first;
-    if (regions::IsIdentifier(lhs_expr) and regions::IsIdentifier(rhs_expr)
+    if (lhs_expr->To<IdentifierAst>() != nullptr and rhs_expr->To<IdentifierAst>() != nullptr
       and lhs_sym != nullptr and rhs_outermost != nullptr) {
       memory_state::TransferLoans(loans, *rhs_outermost, *lhs_sym);
     }
@@ -318,7 +318,7 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
     const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
 
     // Assign to a full identifier.
-    if (regions::IsIdentifier(Lhs[i].get())) {
+    if (Lhs[i]->To<IdentifierAst>() != nullptr) {
       lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
     }
 
@@ -351,7 +351,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = AstCloneShared(Lhs[i]->To<IdentifierAst>());
       meta->AssignmentTargetType = Lhs[i]->InferType(sm, meta);
-      if (regions::IsIdentifier(Lhs[i].get())) {
+      if (Lhs[i]->To<IdentifierAst>() != nullptr) {
         meta->LlvmAssignmentTarget = sm->CurrentScope->FindVarSymbol(
           Lhs[i]->To<IdentifierAst>())->LlvmInfo->Alloca;
       }
@@ -396,7 +396,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
 
     // The statement "a = v" targets the variable's allocation directly
     // (loading it would yield the rvalue).
-    else if (regions::IsIdentifier(Lhs[i].get())) {
+    else if (Lhs[i]->To<IdentifierAst>() != nullptr) {
       const auto var_sym = sm->CurrentScope->FindVarSymbol(
         Lhs[i]->To<IdentifierAst>());
       SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);

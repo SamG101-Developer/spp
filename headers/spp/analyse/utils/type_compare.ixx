@@ -59,26 +59,4 @@ namespace spp::analyse::utils::type_compare {
     Vec<Shared<TypeAst>> const &constraints, TypeRef const &concrete,
     bool is_self, Scope const &constraints_owner_scope, Scope const &concrete_scope)
     -> TypeAst const*;
-
-  /// A variant's members in their one canonical order ("Bool or S32"
-  /// is "S32 or Bool"): by the qualified name of what each names (the
-  /// symbol given with it), else by its spelling, ties kept in order.
-  /// The analysed variant ("TypeIdentifierAst::Stage7") and the one
-  /// built from an identity ("Scope::TypeAstOf") are both put in it,
-  /// so their members' tags agree.
-  SPP_EXP_FUN auto OrderVariantMembers(
-    Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
-    -> Vec<Shared<TypeAst>>;
-
-  /// A variant's members as types, flattened through nested
-  /// variants and without duplicates: "Str or Str or S32" is
-  /// "Str, S32". Members written directly keep their spelling.
-  SPP_EXP_FUN auto VariantMembers(
-    TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>>;
-
-  /// A variant's members as resolved types: flattened through nested
-  /// variants and without duplicates, none for a non-variant. What a
-  /// reader that needs the members' symbols, not their names, asks.
-  SPP_EXP_FUN auto VariantMemberRefs(
-    TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
 }

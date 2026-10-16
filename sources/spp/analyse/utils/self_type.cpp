@@ -28,6 +28,16 @@ auto spp::analyse::utils::self_type::SubstituteSelf(
   return out;
 }
 
+auto spp::analyse::utils::self_type::TypeIdWithSelf(
+  const scopes::TypeId instance_id, TypeAst const &written, Scope const *const written_in,
+  const scopes::TypeId self) -> scopes::TypeId {
+  auto id = instance_id;
+  if (id == nullptr and written_in != nullptr and self != nullptr and type_predicates::DoesTypeNameSelf(written)) {
+    id = written_in->TypeIdOf(written);
+  }
+  return SubstituteSelfId(id, self);
+}
+
 auto spp::analyse::utils::self_type::MakeSelfTypeSymbol(
   Scope *linked_scope, Scope *defined_in, const std::size_t pos) -> Shared<TypeSymbol> {
   // Create a "Self" symbol with a provided set of scopes.
@@ -42,4 +52,24 @@ auto spp::analyse::utils::self_type::AddSelfTypeSymbol(
   // scope of the type it stands for ("linked_scope").
   if (linked_scope == nullptr) { return; }
   defined_in.AddTypeSymbol(MakeSelfTypeSymbol(linked_scope, &defined_in, pos));
+}
+
+auto spp::analyse::utils::self_type::RegisterSelf(
+  TypeAst const &name, ScopeManager &sm) -> void {
+  if (name.IsCompilerGeneratedType()) { return; }
+
+  // A block over an alias ("sup U8") is over what the alias
+  // stands for: its "Self" is the target, not the class at
+  // the end of the alias's chain (which only links the template).
+  auto *sym = sm.CurrentScope->FindTypeSymbol(&name);
+  if (sym->Alias != nullptr) { sym = sym->AliasTarget(*sm.CurrentScope); }
+  AddSelfTypeSymbol(*sm.CurrentScope, sym->LinkedScope, name.PosStart());
+}
+
+auto spp::analyse::utils::self_type::RegisterProvisionalSelf(
+  TypeAst const &name, ScopeManager &sm) -> void {
+  if (name.IsCompilerGeneratedType()) { return; }
+  if (const auto base_sym = sm.CurrentScope->FindHeadSymbol(name)) {
+    AddSelfTypeSymbol(*sm.CurrentScope, base_sym->LinkedScope, name.PosStart());
+  }
 }

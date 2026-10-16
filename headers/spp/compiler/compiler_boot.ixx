@@ -6,6 +6,7 @@ import spp.codegen.llvm_ctx;
 import spp.compiler.out_layout;
 import spp.utils.progress;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::analyse::scopes {
@@ -142,6 +143,14 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
 
 private:
   Vec<asts::ModulePrototypeAst*> _Modules;
+
+  /**
+   * The LLVM context every module of this compile is built into, so they can be linked. Owned by the compile, not the
+   * process: a named struct type lives in its context, and a later compile reusing it would be handed this one's
+   * layout for a same-named class. Declared before @c _LlvmCtxs , so it outlives the modules in it.
+   */
+  Unique<llvm::LLVMContext> _LlvmContext;
+
   Vec<Unique<codegen::LlvmCtx>> _LlvmCtxs;
 
   /**

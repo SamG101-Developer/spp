@@ -20,20 +20,10 @@ namespace spp::analyse::scopes {
   /// A type key holds a vector of words. This function allows
   /// a "word" to be produced from a string, for the creation
   /// of the type key.
-  SPP_EXP_FUN inline auto TextWord(const StrView text) -> Word {
+  inline auto TextWord(const StrView text) -> Word {
     // Call the low level intern function and cast the result
     // from an "InternId" into a "Word" (raw, hashable number).
     return static_cast<Word>(utils::Intern(text));
-  }
-
-  /// [CHECKED]
-  /// The inverse of the string-to-word interner. This allows
-  /// for strings to be re-created off of interning, once all
-  /// processing with interning has been completed.
-  SPP_EXP_FUN inline auto TextOfWord(const Word word) -> StrView {
-    // Call the low level reverse intern function with a word
-    // cast to an InternId type, to recreate the string (view).
-    return utils::InternedText(static_cast<utils::InternedId>(word));
   }
 
   SPP_EXP_CLS struct TypeKey;
@@ -246,20 +236,16 @@ namespace spp::analyse::scopes {
     return reinterpret_cast<TypeId>(static_cast<std::uintptr_t>(word));
   }
 
-  /// Convert a "comp id" into a word, just by casting the
-  /// address into a number, as for a "type id".
-  SPP_EXP_FUN inline auto CompIdWord(const CompId id) -> Word {
-    return reinterpret_cast<std::uintptr_t>(id);
-  }
-
-  /// Convert a "word" into a "comp id", by inverting the cast.
-  SPP_EXP_FUN inline auto CompIdOfWord(const Word word) -> CompId {
-    return reinterpret_cast<CompId>(static_cast<std::uintptr_t>(word));
+  /// Every type key interned so far: a "TypeId" is the address
+  /// of one. Kept until "ClearTypeIds".
+  inline auto InternedTypeKeys() -> StableSet<TypeKey, TypeKeyHash>& {
+    static auto interned = StableSet<TypeKey, TypeKeyHash>();
+    return interned;
   }
 
   /// Produce a "type id" from an "instance key".
   SPP_EXP_FUN SPP_ATTR_HOT inline auto InternTypeKey(TypeKey &&key) -> TypeId {
-    static auto interned = StableSet<TypeKey, TypeKeyHash>();
+    auto &interned = InternedTypeKeys();
     if (const auto hit = interned.find(key); hit != interned.end()) { return &*hit; }
     return &*interned.emplace(std::move(key)).first;
   }
@@ -354,6 +340,12 @@ namespace spp::analyse::scopes {
   /// representative type. Memoised.
   SPP_EXP_FUN SPP_ATTR_HOT auto ParamsNamedBy(
     TypeId id) -> TypeIdParams const&;
+
+  /// Forget every interned type key and what is remembered about
+  /// each ("HeadOf", "ParamsNamedBy"). A key holds its compile's
+  /// symbols by address, so it is that compile's alone: called
+  /// once a compile is freed, when nothing holds a "TypeId".
+  SPP_EXP_FUN auto ClearTypeIds() -> void;
 
   /// Whether "id" names a type or comp parameter anywhere
   /// in it ("ParamsNamedBy").

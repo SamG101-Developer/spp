@@ -143,7 +143,7 @@ public:
 
   /// The memory state of the body this is the outermost scope of
   /// (a function's or a closure's), while Stage 8 walks it
-  /// ("memory_state::StartFlow").
+  /// ("memory_state::BodyFlow").
   mutable Shared<utils::memory_state::FlowState> Flow;
 
   /// The sup-scopes directly attached to this type. Top
@@ -407,10 +407,6 @@ public:
   /// Get the type symbol of a type id, by getting its generic
   /// parameter id and looking that up into a symbol.
   SPP_ATTR_NODISCARD SPP_ATTR_HOT auto FindTypeSymbolById(TypeId id) const -> TypeSymbol*;
-
-  /// Get the variable symbol of a comp id, by getting its generic
-  /// parameter id and looking that up into a symbol.
-  SPP_ATTR_NODISCARD auto FindVarSymbolById(CompId id) const -> VariableSymbol*;
 
   /// Get a type ast for the type id. This reverse lookup is
   /// used after the type id has been used for comparisons,

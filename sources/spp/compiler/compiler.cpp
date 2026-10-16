@@ -4,10 +4,13 @@ module;
 module spp.compiler.compiler;
 
 import spp.analyse.errors.diagnostic_sink;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.scopes.type_key;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -60,7 +63,19 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   return c;
 }
 
-spp::compiler::Compiler::~Compiler() = default;
+spp::compiler::Compiler::~Compiler() {
+  // Free this compile, in the order the members would go, and
+  // only then the identities it interned: they hold its symbols
+  // by address, so a later compile reusing an address would read
+  // this one's. Nothing holds a "TypeId" or "CompId" by now.
+  _ScopeManager.reset();
+  _ScopeTree.reset();
+  _Boot.reset();
+  _Modules.reset();
+  analyse::scopes::ClearSubstitutionMemos();
+  analyse::scopes::ClearTypeIds();
+  analyse::scopes::ClearCompIds();
+}
 
 auto spp::compiler::Compiler::Compile() -> bool {
   // The global scope is anchored to the first module in the

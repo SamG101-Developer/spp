@@ -161,15 +161,23 @@ auto spp::analyse::scopes::U64Of(
   return value != nullptr ? spp::utils::numbers::ToU64(*value) : Nullopt;
 }
 
-/// [CHECKED]
-auto spp::analyse::scopes::DoesCompIdNameAnyGnParams(
-  const CompId id) -> bool {
-  // Its own parameters, then those of the types it names
-  // constants through, as a type's "ParamsNamedBy"
-  // collects both.
-  return not ParamsNamedBy(id).empty() or genex::any_of(MembersNamedBy(id), [](auto const &member) {
-    return DoesTypeIdNameAnyGnParams(TypeIdOfWord(member.first));
-  });
+namespace spp::analyse::scopes {
+  namespace {
+    /// [CHECKED]
+    /// "DoesTypeIdNameAnyGnParams" for a comp value: a comp
+    /// parameter of its own ("ParamsNamedBy"), or a parameter of a
+    /// type it names a constant through ("Box[T]::n" names "T"),
+    /// as a type's "ParamsNamedBy" counts both.
+    auto DoesCompIdNameAnyGnParams(
+      const CompId id) -> bool {
+      // Its own parameters, then those of the types it names
+      // constants through, as a type's "ParamsNamedBy"
+      // collects both.
+      return not ParamsNamedBy(id).empty() or genex::any_of(MembersNamedBy(id), [](auto const &member) {
+        return DoesTypeIdNameAnyGnParams(TypeIdOfWord(member.first));
+      });
+    }
+  }
 }
 
 /// [CHECKED]
@@ -197,4 +205,8 @@ auto spp::analyse::scopes::IsClosedCompId(
   // A closed comp id is a concrete comp id that is also
   // readable.
   return IsConcreteCompId(id) and IsReadableCompId(id);
+}
+
+auto spp::analyse::scopes::ClearCompIds() -> void {
+  InternedCompKeys().clear();
 }

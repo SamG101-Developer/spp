@@ -14,6 +14,7 @@ import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -692,12 +693,8 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // An instantiation whose arguments name a parameter it binds returns by identity, as does one naming "Self", keyed
   // where the overload is; "Self" is what the call decided it stands for ("PassedOverload::SelfId"). Spelled where the
   // call is, whose parameters those are.
-  auto ret_id = proto.InstanceReturnTypeId;
-  if (ret_id == nullptr and _OverloadInfo->OverloadScope != nullptr and _OverloadInfo->SelfId != nullptr
-    and type_predicates::DoesTypeNameSelf(*ret_type)) {
-    ret_id = _OverloadInfo->OverloadScope->TypeIdOf(*ret_type);
-  }
-  ret_id = analyse::scopes::SubstituteSelfId(ret_id, _OverloadInfo->SelfId);
+  const auto ret_id = analyse::utils::self_type::TypeIdWithSelf(
+    proto.InstanceReturnTypeId, *ret_type, _OverloadInfo->OverloadScope, _OverloadInfo->SelfId);
   if (ret_id != nullptr) {
     if (auto spelled = sm->CurrentScope->TypeAstOf(ret_id); spelled != nullptr) {
       ret_type = std::move(spelled);
@@ -857,7 +854,7 @@ auto PostfixExpressionOperatorFunctionCallAst::ReadExpr(
   auto gn_arg_group = AstClone(GnArgGroup);
   for (auto const &gn_arg : gn_arg_group->Args) {
     if (gn_arg->IsTypeArg()) {
-      gn_arg->TypeVal = gn_arg->TypeVal->ReadExprType(sub);
+      gn_arg->TypeVal = analyse::utils::type_resolution::ReadType(*gn_arg->TypeVal, sub);
     }
     else if (gn_arg->IsCompArg()) {
       gn_arg->CompVal = AstClone(gn_arg->CompVal->ReadExpr(sub));

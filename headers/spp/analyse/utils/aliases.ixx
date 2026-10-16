@@ -27,17 +27,13 @@ namespace spp::analyse::utils::aliases {
     ScopeManager *sm, meta::CompilerMetaData *meta)
     -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*>;
 
-  /// What an alias's instantiation stands for: the alias's target,
-  /// its parameters replaced by the instantiation's arguments, as
-  /// its identity ("Scope::InstanceIdOf") holds them ("Res[T=S32,
-  /// E=Str]" is "Pass[S32] or Fail[Str]"), built in "scope". Null
-  /// when the identity or the target has no such reading.
-  SPP_EXP_FUN auto InstanceTargetOf(
-    TypeSymbol const &alias, TypeId id, Scope const &scope) -> Shared<TypeAst>;
-
-  /// "InstanceTargetOf" by identity: the target's "TypeId", built
-  /// nowhere. "id" itself when it is filed under the class it names
-  /// rather than under "alias".
+  /// What an alias's instantiation stands for, by identity: the
+  /// alias's target, its parameters replaced by the
+  /// instantiation's arguments, as its identity
+  /// ("Scope::InstanceIdOf") holds them ("Res[T=S32, E=Str]" is
+  /// "Pass[S32] or Fail[Str]"). "id" itself when it is filed under
+  /// the class it names rather than under "alias"; null when the
+  /// identity or the target has no such reading.
   SPP_EXP_FUN auto InstanceTargetIdOf(
     TypeSymbol const &alias, TypeId id) -> TypeId;
 }

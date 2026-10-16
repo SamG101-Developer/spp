@@ -12,6 +12,7 @@ import spp.analyse.utils.case_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -352,7 +353,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       current_ptr = codegen::GetVariantPayloadPtr(
         current_ptr, llvm_subject_ty, "case.pattern.payload" + level_uid, ctx);
 
-      const auto alts = type_compare::VariantMembers(
+      const auto alts = type_members::VariantMembers(
         *subject_type->WithoutConvention(), *sm->CurrentScope);
       if (*tag >= alts.size()) { break; }
 

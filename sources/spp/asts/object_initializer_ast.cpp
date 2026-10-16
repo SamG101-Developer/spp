@@ -364,12 +364,13 @@ auto ObjectInitializerAst::InferTypeRef(
 }
 
 auto ObjectInitializerAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The initialiser names its type outright, and each
   // of its arguments is an expression in its own right.
   auto arg_group = AstClone(ArgGroup);
   for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->ReadExpr(sub)); }
-  return MakeShared<ObjectInitializerAst>(Type->ReadExprType(sub), std::move(arg_group));
+  return MakeShared<ObjectInitializerAst>(
+    analyse::utils::type_resolution::ReadType(*Type, sub), std::move(arg_group));
 }
 
 auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {

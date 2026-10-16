@@ -13,7 +13,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.packs;
-import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -1187,9 +1187,12 @@ auto Scope::FindVarSymbol(
 /// [CHECKED]
 auto Scope::FindBoundVarSymbolById(
   const CompId written) const -> VariableSymbol* {
-  // Get the variable symbol by the comp id normally, canon it
-  // into this scope, and return the result.
-  const auto param = FindVarSymbolById(written);
+  // Only a parameter has a symbol: get the variable symbol of
+  // the generic parameter its identity names, then canon it into
+  // this scope.
+  auto *const param = written != nullptr and written->Kind == CompKey::Part::Param
+    ? FindGnCompParamById(written->ParamId)
+    : nullptr;
   return param != nullptr ? _CanonVar(*param) : nullptr;
 }
 
@@ -1586,14 +1589,6 @@ auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
 }
 
 /// [CHECKED]
-auto Scope::FindVarSymbolById(
-  const CompId id) const -> VariableSymbol* {
-  // Only a parameter has a symbol: get the variable symbol of
-  // the generic parameter its identity names.
-  return id != nullptr and id->Kind == CompKey::Part::Param ? FindGnCompParamById(id->ParamId) : nullptr;
-}
-
-/// [CHECKED]
 auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
   using generate::common_types_precompiled::SELF_TYPE;
   using generate::common_types_precompiled::TUP;
@@ -1665,7 +1660,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
           if (type == nullptr) { return nullptr; }
           unordered.emplace_back(std::move(type), FindTypeSymbolById(BareOf(member)));
         }
-        auto members = utils::type_compare::OrderVariantMembers(std::move(unordered));
+        auto members = utils::type_members::OrderVariantMembers(std::move(unordered));
         out = generate::common_types::VariantType(0, {});
         out->LastTypePart()->GnArgGroup->Args.emplace_back(GenericArgumentAst::NewType(
           TypeIdentifierAst::FromString("Variants"), generate::common_types::TupleType(0, std::move(members))));

@@ -17,8 +17,6 @@ import spp.asts.convention_ast;
 import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
-import spp.asts.generic_argument_ast;
-import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
@@ -67,46 +65,6 @@ namespace spp::analyse::utils::type_compare {
     auto SameType(
       TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
 
-    /// A resolved type named as its symbol names it, under its
-    /// convention: how a variant's members are listed.
-    auto AsType(
-      TypeRef const &ref)
-      -> Shared<TypeAst> {
-      auto name = ref.Symbol->FqName();
-      return ref.Conv != ConventionTag::MOV ? name->WithConvention(ConventionAstOf(ref.Conv)) : name;
-    }
-
-    /// For a variant type, flatten any sub-variants into the
-    /// single variant type list, and remove any duplicates too
-    /// (flattening can introduce duplicates, or they might be
-    /// pre-existing).
-    auto FlattenVariants(
-      TypeAst const &variants, Scope const &scope) -> Vec<Pair<Shared<TypeAst>, TypeRef>> {
-      // Create the list of types that will be the final returned
-      // flattened, deduplicated list.
-      auto out = Vec<Pair<Shared<TypeAst>, TypeRef>>();
-
-      // The adder function first checks that the type doesn't
-      // exist within the output list, before adding it in.
-      const auto add_unique = [&](Shared<TypeAst> const &member, TypeRef const &ref) {
-        if (genex::any_of(out, [&](auto const &x) { return SameType(ref, x.second, scope, scope); })) { return; }
-        out.emplace_back(member, ref);
-      };
-
-      // Get the variant member's types from the tuple that is
-      // the "..Variants" generic parameter's argument. Add or
-      // flatten each type into the resulting list.
-      for (const auto arg : variants.LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        const auto ref = TypeRef::Of(*arg->TypeVal, scope);
-        const auto nested = VariantMemberRefs(ref, scope);
-        if (nested.empty()) { add_unique(arg->TypeVal, ref); }
-        else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
-      }
-
-      // Return the new filled flat vector.
-      return out;
-    }
-
     /// [CHECKED]
     /// Do a variant check - this checks if the type fits in the
     /// variant, either as a single element of it, or a subset
@@ -115,14 +73,14 @@ namespace spp::analyse::utils::type_compare {
       TypeRef const &variant, TypeRef const &type, Scope const &variant_scope, Scope const &type_scope) -> bool {
       // Get all the members of the variant as a vector of type
       // references; if empty, then return false (shortcut guard).
-      const auto variant_members = VariantMemberRefs(variant, variant_scope);
+      const auto variant_members = type_members::VariantMemberRefs(variant, variant_scope);
       if (variant_members.empty()) { return false; }
 
       // Get the members of the type (assuming it is a subset
       // variant.
-      const auto type_members = VariantMemberRefs(type, type_scope);
-      if (not type_members.empty()) {
-        return genex::all_of(type_members, [&](auto const &t) {
+      const auto subset_members = type_members::VariantMemberRefs(type, type_scope);
+      if (not subset_members.empty()) {
+        return genex::all_of(subset_members, [&](auto const &t) {
           return genex::any_of(variant_members, [&](auto const &v) {
             return SameType(v, t, variant_scope, type_scope);
           });
@@ -470,7 +428,7 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
     // thread safety is required. Instead of auto injecting
     // as this can blow up generic instantiations.
     if (constraint->LastTypePart()->Name == THREAD_SAFE->LastTypePart()->Name
-      and constraints_owner_scope.TypeIdOf(*constraint) == constraints_owner_scope.TypeIdOf(*THREAD_SAFE)) {
+      and TypeRef::ForKindCheck(*constraint, constraints_owner_scope).IsA(*THREAD_SAFE, constraints_owner_scope)) {
       if (type_sym->IsThreadSafe()) { continue; }
       return constraint.get();
     }
@@ -486,52 +444,4 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
 
   // All constraints are satisfied.
   return nullptr;
-}
-
-auto spp::analyse::utils::type_compare::OrderVariantMembers(
-  Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
-  -> Vec<Shared<TypeAst>> {
-  auto keyed = Vec<Pair<Str, Shared<TypeAst>>>();
-  for (auto &[type, sym] : members) {
-    keyed.emplace_back(sym != nullptr ? sym->FqName()->ToString() : type->ToString(), std::move(type));
-  }
-  genex::actions::stable_sort(keyed, {}, [](auto const &k) -> Str const& { return k.first; });
-  auto out = Vec<Shared<TypeAst>>();
-  for (auto &[_, type] : keyed) { out.emplace_back(std::move(type)); }
-  return out;
-}
-
-/// [CHECKED]
-auto spp::analyse::utils::type_compare::VariantMembers(
-  TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>> {
-  // A type based overload of the variant member detection,
-  // which flattens and deduplicates.
-  const auto variants = type.LastTypePart()->GnArgGroup->At("Variants");
-  if (variants != nullptr and variants->IsTypeArg()) {
-    return FlattenVariants(*variants->TypeVal, scope)
-      | genex::views::transform([](auto const &x) { return x.first; })
-      | genex::to<Vec>();
-  }
-
-  return VariantMemberRefs(TypeRef::Of(type, scope), scope)
-    | genex::views::transform([](auto const &x) { return AsType(x); })
-    | genex::to<Vec>();
-}
-
-/// [CHECKED]
-auto spp::analyse::utils::type_compare::VariantMemberRefs(
-  TypeRef const &ref, Scope const &scope) -> Vec<TypeRef> {
-  // Never types won't have variant members so guard against
-  // that at the start.
-  const auto sym = ref.IsNever ? nullptr : ref.Symbol;
-  if (sym == nullptr) { return {}; }
-
-  // Its identity lists its members, flattened and in order,
-  // each what it means; anything else is not a variant.
-  if (ref.Id == nullptr or scopes::HeadOf(ref.Id).Kind != TypeKey::Tag::Variant) { return {}; }
-  auto members = Vec<TypeRef>();
-  // Read straight off each member's identity, one per member:
-  // a member's index is its tag.
-  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.emplace_back(TypeRef::Of(member, scope)); }
-  return members;
 }

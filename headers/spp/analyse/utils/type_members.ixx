@@ -70,13 +70,6 @@ namespace spp::analyse::utils::type_members {
     CmpStatementAst const &cmp_member, Scope &cls_scope,
     Scope const &own_scope, ScopeManager const &sm) -> void;
 
-  /// Whether "sym", read in "scope", is an instance of "tmpl" (or
-  /// "tmpl" itself), or extends one: the template of the type, or
-  /// of any "sup" scope attached to it.
-  SPP_EXP_FUN auto IsOrExtendsTemplate(
-    TypeSymbol const &sym, Scope const &scope,
-    TypeSymbol const *tmpl) -> bool;
-
   /**
    * Drop everything @c GetUnimplementedAbstractMethods has remembered. Its cache is keyed on scope addresses, so it
    * must not outlive the scopes it names - a later run allocating a scope at a freed address would otherwise be
@@ -114,11 +107,13 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto SuperClsRefs(
     TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
 
-  /// The classes among "sup_scopes", each named where its own sup
-  /// scope reads it: a sup type's name can hold a "Self" (as in
-  /// "S32 ext Ord[Rhs=Self]") only that scope has a symbol for.
-  SPP_EXP_FUN auto SuperClsNames(
-    Vec<Scope*> const &sup_scopes) -> Vec<Pair<Shared<TypeAst>, Scope const*>>;
+  /// The sup scopes among "sup_scopes" that superimpose a class
+  /// ("sup Foo ext Bar"), in order. One is keyed where its own sup
+  /// scope reads it ("TypeIdOfSymbol" of its linked symbol there): a
+  /// sup type's name can hold a "Self" (as in "S32 ext
+  /// Ord[Rhs=Self]") only that scope has a symbol for.
+  SPP_EXP_FUN auto SuperClsScopes(
+    Vec<Scope*> const &sup_scopes) -> Vec<Scope const*>;
 
   /// Get the number of synthetic fat-pointer fields on this
   /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
@@ -137,21 +132,43 @@ namespace spp::analyse::utils::type_members {
     TypeRef const &ref, Scope const &scope,
     FuncRef<bool(TypeRef const &)> matches) -> TypeRef;
 
-  /// Detect if a type is recursive by checking all the fields
-  /// of the type recursively, and making sure a look in the
-  /// type graph is never reached.
-  SPP_EXP_FUN auto IsTypeRecursive(
+  /// The written type of the first attribute that holds the type
+  /// itself by value, directly or through anything it holds by
+  /// value, making the type infinitely large; null if none does.
+  SPP_EXP_FUN auto FindRecursiveAttrType(
     ClassPrototypeAst const &type, ScopeManager const &sm) -> Shared<TypeAst>;
 
-  /// Check if an index is within the bounds of an array or tuple,
-  /// ie at compile-time check if the element requested is
-  /// genuinely reachable.
-  SPP_EXP_FUN auto IsIndexWithinBound(
-    std::size_t index, TypeRef const &ref, Scope const &scope) -> Pair<bool, std::size_t>;
+  /// The number of elements an index can reach in a tuple or an
+  /// array: a tuple's arguments, an array's compile-time "n". An
+  /// index below it is in bounds. The type must be one of them.
+  SPP_EXP_FUN auto IndexBoundOf(
+    TypeRef const &ref, Scope const &scope) -> std::size_t;
 
   /// Get the nth type of a tuple, or for an array, all the types
   /// are the same: read off the instance's identity, where its
   /// scope reads it.
   SPP_EXP_FUN auto GetNthTypeOfIndexableType(
     std::size_t index, TypeRef const &ref, Scope const &scope) -> TypeRef;
+
+  /// A variant's members in their one canonical order ("Bool or S32"
+  /// is "S32 or Bool"): by the qualified name of what each names (the
+  /// symbol given with it), else by its spelling, ties kept in order.
+  /// The analysed variant ("TypeIdentifierAst::Stage7") and the one
+  /// built from an identity ("Scope::TypeAstOf") are both put in it,
+  /// so their members' tags agree.
+  SPP_EXP_FUN auto OrderVariantMembers(
+    Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
+    -> Vec<Shared<TypeAst>>;
+
+  /// A variant's members as types, flattened through nested
+  /// variants and without duplicates: "Str or Str or S32" is
+  /// "Str, S32". Members written directly keep their spelling.
+  SPP_EXP_FUN auto VariantMembers(
+    TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>>;
+
+  /// A variant's members as resolved types: flattened through nested
+  /// variants and without duplicates, none for a non-variant. What a
+  /// reader that needs the members' symbols, not their names, asks.
+  SPP_EXP_FUN auto VariantMemberRefs(
+    TypeRef const &ref, Scope const &scope) -> Vec<TypeRef>;
 }

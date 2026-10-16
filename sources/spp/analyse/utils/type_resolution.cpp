@@ -41,6 +41,16 @@ namespace spp::analyse::utils::type_resolution {
       const auto out = id != nullptr ? sub.Reading->TypeAstOf(id) : nullptr;
       return out != nullptr ? out->WithSourceSpanOf(written) : nullptr;
     }
+
+    /// A type parameter's default, written where "param" is, read in
+    /// "read_in" with "bindings" applied. Null when there is no
+    /// default, or it does not resolve.
+    auto ReadTypeDefault(
+      GenericParameterAst const &param, GenericSubst bindings,
+      Scope const &written_in, Scope const &read_in) -> Shared<TypeAst> {
+      if (param.TypeDefault == nullptr) { return nullptr; }
+      return ReadTypeOrNull(*param.TypeDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
+    }
   }
 }
 
@@ -109,13 +119,6 @@ auto spp::analyse::utils::type_resolution::ReadType(
   return out != nullptr ? out : AstCloneShared(&written);
 }
 
-auto spp::analyse::utils::type_resolution::ReadTypeDefault(
-  GenericParameterAst const &param, GenericSubst bindings,
-  Scope const &written_in, Scope const &read_in) -> Shared<TypeAst> {
-  if (param.TypeDefault == nullptr) { return nullptr; }
-  return ReadTypeOrNull(*param.TypeDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
-}
-
 auto spp::analyse::utils::type_resolution::ReadCompDefault(
   GenericParameterAst const &param, GenericSubst bindings,
   Scope const &written_in, Scope const &read_in) -> Shared<ExpressionAst> {
@@ -143,27 +146,6 @@ auto spp::analyse::utils::type_resolution::ReadComp(
   if (auto value = ReadCompId(written, sub); value != nullptr) { return value; }
   if (written.To<IdentifierAst>() != nullptr) { return AstCloneShared(&written); }
   return written.ReadExpr(sub);
-}
-
-auto spp::analyse::utils::type_resolution::DoesTypeNameAGnParam(
-  TypeAst const &type, GenericParameterAst const &param,
-  Scope const &scope) -> bool {
-  // The parameter's identity, given when declared ("GenericParameterAst::Stage2_GenTopLvlScopes"); each part is the parameter (or a
-  // binding of it) it resolves to where read. Walked as written, not read off the type's identity: an alias over a
-  // template not made yet ("SizedIntegerUnsigned[w]") is keyed with its arguments spelled, so its identity names no
-  // parameter that the written arguments do.
-  const auto type_param = param.IsTypeParam() ? param.ParamId() : 0;
-  const auto comp_param = param.IsCompParam() ? param.ParamId() : 0;
-  return type_predicates::AnyTypePart(
-    type,
-    [&](TypeIdentifierAst const &part) {
-      auto const *const sym = type_param != 0 ? scope.FindTypeSymbol(&part) : nullptr;
-      return sym != nullptr and sym->ParamId() == type_param;
-    },
-    [&](IdentifierAst const &name) {
-      auto const *const sym = comp_param != 0 ? scope.FindVarSymbol(&name) : nullptr;
-      return sym != nullptr and sym->ParamId() == comp_param;
-    });
 }
 
 auto spp::analyse::utils::type_resolution::StampType(

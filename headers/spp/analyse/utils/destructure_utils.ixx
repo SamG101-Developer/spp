@@ -70,46 +70,6 @@ namespace spp::analyse::utils::destructure_utils {
     CompilerMetaData *meta)
     -> void;
 
-  /// When we have a pattern like "let Self(fd) = self", we
-  /// mark "self" as moved, because all non-copyable fields
-  /// have to be moved (for linear system drop rules), and
-  /// this is how in the "drop" methods, we finish consuming
-  /// "self".
-  auto ConsumeDestructureSource(
-    Ast const &owner,
-    bool from_case_pattern,
-    bool any_binding_is_moving,
-    ScopeManager &sm,
-    CompilerMetaData const *meta)
-    -> void;
-
-  /// When we have a temporary materialization, mark it as
-  /// consumed by getting the symbol and setting the memory
-  /// fields on it to mark as "moved".
-  auto ConsumeDestructureTemp(
-    IdentifierAst const &tmp_name,
-    ScopeManager const &sm)
-    -> void;
-
-  /// Run uniform stage 8 memory analysis on the destructure
-  /// temporary materialization, should it exist (this won't
-  /// be called if not).
-  auto DestructureTempStage8(
-    Ast const &owner,
-    IdentifierAst const &tmp_name,
-    ScopeManager &sm,
-    CompilerMetaData *meta)
-    -> void;
-
-  /// Run uniform stage 9 comptime resolution on the
-  /// destructure temporary materialization, should it exist
-  /// (this won't be called if not).
-  auto DestructureTempStage9(
-    Shared<IdentifierAst> const &tmp_name,
-    ScopeManager const &sm,
-    CompilerMetaData const *meta)
-    -> void;
-
   /// Stage 8 for a destructure: check the hidden temporary, the flow-typing "let" if there is one, and each expanded
   /// binding, then consume what was taken apart - the temporary if there is one, otherwise the source value.
   SPP_EXP_FUN auto DestructureStage8(
@@ -145,4 +105,9 @@ namespace spp::analyse::utils::destructure_utils {
     CompilerMetaData *meta,
     LlvmCtx *ctx)
     -> void;
+
+  /// Whether the expression holds "destructure-able" storage
+  /// or not. Typically, if not, then a materialization occurs.
+  SPP_EXP_FUN auto IsDestructurePlaceExpression(
+    ExpressionAst const &expr) -> bool;
 }

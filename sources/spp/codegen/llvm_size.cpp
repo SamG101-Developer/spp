@@ -2,7 +2,6 @@ module spp.codegen.llvm_size;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
@@ -53,7 +52,7 @@ namespace spp::codegen {
     using namespace spp;
     using codegen::Layout;
     using analyse::scopes::TypeRef;
-    using analyse::utils::type_compare::VariantMemberRefs;
+    using analyse::utils::type_members::VariantMemberRefs;
     using analyse::utils::type_predicates::IsTypeArray;
     using analyse::utils::type_predicates::IsTypeFunction;
     using analyse::utils::type_predicates::IsTypeGenerator;

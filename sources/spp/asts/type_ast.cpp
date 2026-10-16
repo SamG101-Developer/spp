@@ -19,11 +19,6 @@ TypeAst::~TypeAst() = default;
 
 auto TypeAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
-  return ReadExprType(sub);
-}
-
-auto TypeAst::ReadExprType(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<TypeAst> {
   return analyse::utils::type_resolution::ReadType(*this, sub);
 }
 

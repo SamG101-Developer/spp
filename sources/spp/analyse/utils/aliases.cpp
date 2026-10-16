@@ -116,13 +116,6 @@ auto spp::analyse::utils::aliases::StatementTarget(
   return {old_type, attach, final_sym->ScopeDefinedIn, final_sym};
 }
 
-auto spp::analyse::utils::aliases::InstanceTargetOf(
-  TypeSymbol const &alias, const scopes::TypeId id,
-  Scope const &scope) -> Shared<TypeAst> {
-  const auto target = InstanceTargetIdOf(alias, id);
-  return target != nullptr ? scope.TypeAstOf(target) : nullptr;
-}
-
 auto spp::analyse::utils::aliases::InstanceTargetIdOf(
   TypeSymbol const &alias, const scopes::TypeId id) -> scopes::TypeId {
   // Filed under the class it names (a "use" of the class), the identity is the target already.

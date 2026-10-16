@@ -54,7 +54,7 @@ namespace spp::analyse::utils::mem_utils {
       // may be writing to it. Only a name or an attribute path
       // reads the memory itself; a call, index or slice off it
       // is checked against the loans as the call it is.
-      const auto reads_memory = regions::IsIdentifier(&value_ast) or regions::IsAttr(&value_ast, &sm);
+      const auto reads_memory = value_ast.To<IdentifierAst>() != nullptr or regions::IsAttr(&value_ast, &sm);
       if (not moves_value and reads_memory) {
         const auto value_place = regions::PlaceAtOf(value_ast, *scope);
         for (auto &loan : loans) {

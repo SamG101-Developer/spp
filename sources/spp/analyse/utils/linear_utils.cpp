@@ -80,6 +80,22 @@ namespace spp::analyse::utils::linear_utils {
         regions::Place{.Root = const_cast<VariableSymbol*>(&sym), .Steps = {}}, type, *sm.CurrentScope,
         state.PartialMoves);
     }
+
+    /// Leaving "scope" by "exit_point", when it is the scope of a
+    /// "case" branch that keeps a linear temporary, drops it.
+    auto CheckKeptTemporaries(
+      Scope const &scope, Ast const &exit_point,
+      ScopeManager &sm, CompilerMetaData *meta) -> void {
+      // Leaving the scope of a branch that keeps a "case"'s
+      // temporary leaves the "case" with it unconsumed.
+      auto const *const flow = memory_state::FlowOf(scope);
+      if (flow == nullptr) { return; }
+      for (auto const &kept : flow->KeptTemporaries) {
+        if (scope.AstNode != kept.Branch) { continue; }
+        RaiseTemporaryNotConsumed(
+          *kept.Temporary, exit_point, "This branch keeps it and leaves here, so nothing owns it after", sm, meta);
+      }
+    }
   }
 }
 
@@ -122,20 +138,6 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     const auto type_name = sym->Type->WithoutGns()->ToString();
     Raise<SppLinearValueNotConsumedError>(
       {sm.CurrentScope}, ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
-  }
-}
-
-auto spp::analyse::utils::linear_utils::CheckKeptTemporaries(
-  Scope const &scope, Ast const &exit_point,
-  ScopeManager &sm, CompilerMetaData *meta) -> void {
-  // Leaving the scope of a branch that keeps a "case"'s
-  // temporary leaves the "case" with it unconsumed.
-  auto const *const flow = memory_state::FlowOf(scope);
-  if (flow == nullptr) { return; }
-  for (auto const &kept : flow->KeptTemporaries) {
-    if (scope.AstNode != kept.Branch) { continue; }
-    RaiseTemporaryNotConsumed(
-      *kept.Temporary, exit_point, "This branch keeps it and leaves here, so nothing owns it after", sm, meta);
   }
 }
 

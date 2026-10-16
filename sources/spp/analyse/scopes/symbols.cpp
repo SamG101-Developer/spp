@@ -702,8 +702,7 @@ auto TypeSymbol::AliasTargetId(
   // The alias's own parameters bound to the arguments; an enclosing block's, which the target can name too, are left.
   // Qualified: GCC ICEs ("lookup_mark") on the unqualified lookup from this member.
   const auto params = spp::analyse::scopes::ParamsDeclaredBy(*Alias->Params);
-  const auto subst = spp::analyse::scopes::BindByName(params, args, false);
-  return subst.has_value() ? SubstituteTypeId(target, *subst) : nullptr;
+  return SubstituteTypeId(target, spp::analyse::scopes::BindingsOfArgs(args, &params));
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {

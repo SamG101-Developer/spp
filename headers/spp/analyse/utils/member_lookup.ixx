@@ -46,16 +46,6 @@ namespace spp::analyse::utils::member_lookup {
     ScopeManager const &sm)
     -> void;
 
-  /// Raise an error for a missing type identifier, and provide
-  /// the closest options; a singular place to uniformly handle
-  /// these errors.
-  SPP_EXP_FUN SPP_ATTR_COLD SPP_ATTR_NORETURN
-  auto RaiseMissingTypeIdentifierAndClosestOptions(
-    TypeIdentifierAst const &identifier,
-    Vec<TypeSymbol*> const &symbols,
-    ScopeManager const &sm)
-    -> void;
-
   /// "Scope::FindTypeSymbol" for "type" in "scope", raising an unknown-identifier error (with the closest names) for
   /// its last part when there is none.
   SPP_EXP_FUN auto FindTypeSymbolOrError(
@@ -149,5 +139,4 @@ namespace spp::analyse::utils::member_lookup {
     Ast const &access,
     ScopeManager const &sm)
     -> void;
-
 }

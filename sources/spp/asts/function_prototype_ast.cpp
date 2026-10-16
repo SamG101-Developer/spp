@@ -9,12 +9,12 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.fn_values;
+import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
@@ -484,7 +484,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // aren't reachable from its class scope until now. The
   // conflicting overload is shown from its own scope: a
   // "sup" block in another module puts it in another file.
-  const auto [conflict, conflict_scope] = fn_values::CheckForConflictingOverload(
+  const auto [conflict, conflict_scope] = fn_signatures::CheckForConflictingOverload(
     *sm->CurrentScope, type_scope, *this, *sm, meta);
   RaiseIf<SppFunctionPrototypeConflictError>(
     conflict, {conflict_scope != nullptr ? conflict_scope : sm->CurrentScope, sm->CurrentScope},
@@ -645,7 +645,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
     // overrides it. There is no body that could have consumed the
     // parameters, so there is nothing to hold to the rule.
     if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-      and not control_flow::Diverges(*Impl, sm, meta)) {
+      and not expr_utils::Diverges(*Impl, sm, meta)) {
       linear_utils::CheckScopeExit(
         *sm->CurrentScope, *Impl, "Function end", *sm, meta);
     }
@@ -787,7 +787,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr and not control_flow::Diverges(*sub.Proto->Impl, &tm, meta)) {
+      and sub.Proto->AbstractAnnotation == nullptr and not expr_utils::Diverges(*sub.Proto->Impl, &tm, meta)) {
       linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
@@ -997,11 +997,17 @@ auto FunctionPrototypeAst::_IsPureGn(
   //
   IMPORT_UTILS;
 
+  // Each type is read with "Self" as the enclosing type, by identity: code generation makes nothing, so every type it
+  // names exists by now, and a lookup finds it.
+  auto const &scope = *sm->CurrentScope;
+  const auto enclosing_self = scope.FindEnclosingSelfType(*meta);
+  const auto self_id = enclosing_self != nullptr ? scope.TypeIdOf(*enclosing_self) : nullptr;
+  const auto read_type = [&](TypeAst const &written) {
+    return TypeRef::Of(analyse::scopes::SubstituteSelfId(scope.TypeIdOf(written), self_id), scope);
+  };
+
   // Convert the return and parameter types to LLVM types.
-  const auto ret_type = self_type::SubstituteSelf(
-    *ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
-  const auto llvm_ret_type = codegen::GetLlvmTypeOf(
-    TypeRef::Of(*ret_type, *sm->CurrentScope), ctx);
+  const auto llvm_ret_type = codegen::GetLlvmTypeOf(read_type(*ReturnType), ctx);
 
   // A variadic parameter declares one element ("..b: T") but
   // receives the whole tuple the call site collapsed its
@@ -1015,11 +1021,7 @@ auto FunctionPrototypeAst::_IsPureGn(
         ? VariadicPackType
         : x->Type;
 
-      const auto param_type = self_type::SubstituteSelf(
-        *source_type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
-
-      return codegen::GetLlvmTypeOf(
-        TypeRef::Of(*param_type, *sm->CurrentScope), ctx);
+      return codegen::GetLlvmTypeOf(read_type(*source_type), ctx);
     })
     | genex::to<Vec>();
 
@@ -1033,10 +1035,7 @@ auto FunctionPrototypeAst::_IsPureGn(
       llvm_param_types.insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_type = self_type::SubstituteSelf(
-        *self_param->Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
-      const auto self_ty_sym = sm->CurrentScope->FindTypeSymbol(self_type.get());
-      const auto self_val_type = codegen::GetLlvmType(*self_ty_sym, ctx);
+      const auto self_val_type = codegen::GetLlvmType(*read_type(*self_param->Type).Symbol, ctx);
       llvm_param_types.insert(llvm_param_types.begin(), self_val_type);
     }
   }

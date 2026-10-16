@@ -387,6 +387,11 @@ auto spp::analyse::scopes::SubstituteCompId(
   return RewriteCompId(id, subst, SubstId(subst));
 }
 
+auto spp::analyse::scopes::ClearSubstitutionMemos() -> void {
+  TypeMemo().clear();
+  CompMemo().clear();
+}
+
 SPP_MOD_BEGIN
 auto spp::analyse::scopes::ExprSubst::In(
   Scope const &scope, GenericSubst bindings) -> ExprSubst {

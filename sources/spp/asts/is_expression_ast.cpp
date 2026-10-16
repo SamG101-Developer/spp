@@ -8,7 +8,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.case_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.operator_desugaring;
 import spp.asts.ast;
@@ -81,7 +80,7 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
 
   // Convert to a "case" destructure and analyse it.
   const auto n = sm->CurrentScope->Children.size();
-  _MappedFn = case_utils::ConvertIsExprToFnCall(*this, sm, meta);
+  _MappedFn = operator_desugaring::ConvertIsExprToCase(*this, sm, meta);
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 
   // Add the destructure symbols to the current scope. This

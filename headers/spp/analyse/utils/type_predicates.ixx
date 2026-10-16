@@ -12,6 +12,7 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
@@ -40,6 +41,22 @@ namespace spp::analyse::utils::type_predicates {
   /// Check if "Self" appears anywhere in a type, at any depth
   /// ("Opt[Self]", "&Self"), not only as the whole type.
   SPP_EXP_FUN auto DoesTypeNameSelf(TypeAst const &type) -> bool;
+
+  /// Whether a type names a generic parameter, by identity: a
+  /// part (or a comp name) that is that parameter where it is
+  /// read in "scope" ("Vec[T]" names "T"; a "T" of another
+  /// declaration does not). Used to find a "sup" block's
+  /// parameters its type never names (so never inferable), and
+  /// the constraints others are inferred through.
+  SPP_EXP_FUN auto DoesTypeNameAGnParam(
+    TypeAst const &type, GenericParameterAst const &param, Scope const &scope) -> bool;
+
+  /// Whether "sym", read in "scope", is an instance of "tmpl" (or
+  /// "tmpl" itself), or extends one: the template of the type, or
+  /// of any "sup" scope attached to it.
+  SPP_EXP_FUN auto IsOrExtendsTemplate(
+    TypeSymbol const &sym, Scope const &scope,
+    TypeSymbol const *tmpl) -> bool;
 
   /// The kind checks for a resolved type, as a value of it is held ("TypeRef"): whether it instantiates the template
   /// of the kind ("TypeRef::IsA"). A borrow is none of the kinds (a borrowed variant excepted), "!" is only itself,

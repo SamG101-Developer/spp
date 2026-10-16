@@ -78,6 +78,26 @@ namespace spp::analyse::utils::member_lookup {
         {closest[0].Where, closest[1].Where, sm.CurrentScope},
         ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
     }
+
+    /// Raise an error for a missing type identifier, and provide
+    /// the closest options; a singular place to uniformly handle
+    /// these errors.
+    SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
+      TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols,
+      ScopeManager const &sm) -> void {
+      using spp::utils::strings::ClosestMatch;
+
+      //
+      const auto alternatives = symbols
+        | genex::views::filter([](auto const &x) { return not x->IsMock(); })
+        | genex::views::transform([](auto const &x) { return x->Name->Name; })
+        | genex::to<Vec>();
+
+      //
+      const auto closest_match = ClosestMatch(identifier.Name, alternatives);
+      Raise<errors::SppIdentifierUnknownError>(
+        {sm.CurrentScope}, ERR_ARGS(identifier, "type identifier", closest_match));
+    }
   }
 }
 
@@ -100,23 +120,6 @@ auto spp::analyse::utils::member_lookup::RaiseMissingIdentifierAndClosestOptions
   const auto closest_match = ClosestMatch(identifier.Val, alternatives);
   Raise<SppIdentifierUnknownError>(
     {sm.CurrentScope}, ERR_ARGS(identifier, "identifier", closest_match));
-}
-
-auto spp::analyse::utils::member_lookup::RaiseMissingTypeIdentifierAndClosestOptions(
-  TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols,
-  ScopeManager const &sm) -> void {
-  using spp::utils::strings::ClosestMatch;
-
-  //
-  const auto alternatives = symbols
-    | genex::views::filter([](auto const &x) { return not x->IsMock(); })
-    | genex::views::transform([](auto const &x) { return x->Name->Name; })
-    | genex::to<Vec>();
-
-  //
-  const auto closest_match = ClosestMatch(identifier.Name, alternatives);
-  Raise<errors::SppIdentifierUnknownError>(
-    {sm.CurrentScope}, ERR_ARGS(identifier, "type identifier", closest_match));
 }
 
 auto spp::analyse::utils::member_lookup::FindTypeSymbolOrError(

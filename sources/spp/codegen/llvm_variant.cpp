@@ -143,7 +143,7 @@ auto spp::codegen::GetVariantIndexOfMember(
   -> Opt<std::uint64_t> {
   //
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_compare::VariantMemberRefs;
+  using analyse::utils::type_members::VariantMemberRefs;
 
   // Index the type in the list of member types of the variant.
   const auto members = VariantMemberRefs(variant, scope);
@@ -217,7 +217,7 @@ auto spp::codegen::CoerceToVariant(
   //
   using analyse::scopes::TypeRef;
   using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_compare::VariantMemberRefs;
+  using analyse::utils::type_members::VariantMemberRefs;
   using analyse::utils::type_predicates::IsTypeTuple;
   using analyse::utils::type_predicates::IsTypeVariant;
 
@@ -359,7 +359,7 @@ auto spp::codegen::NarrowVariant(
   LlvmCtx *ctx)
   -> Pair<llvm::Value*, llvm::Value*> {
   //
-  using analyse::utils::type_compare::VariantMemberRefs;
+  using analyse::utils::type_members::VariantMemberRefs;
   using analyse::utils::type_predicates::IsTypeVariant;
 
   if (not IsTypeVariant(target, scope) or not IsTypeVariant(source, scope)) { return {nullptr, nullptr}; }

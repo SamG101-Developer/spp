@@ -255,9 +255,11 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   }
   bar.Finish();
 
-  // Give every module a context to build into.
+  // Give every module a context to build into, all in this
+  // compile's LLVM context.
+  _LlvmContext = MakeUnique<llvm::LLVMContext>();
   for (auto const &mod : _Modules) {
-    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath);
+    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath, *_LlvmContext);
     ctx->Sm = sm;
     _LlvmCtxs.emplace_back(std::move(ctx));
   }

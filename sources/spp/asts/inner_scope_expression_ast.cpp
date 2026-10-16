@@ -8,7 +8,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.control_flow;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -125,7 +124,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     // before the next statement is analysed, so the dead code is
     // reported rather than whatever else is wrong with it.
     RaiseIf<SppUnreachableCodeError>(
-      control_flow::Diverges(*x, sm, meta), {sm->CurrentScope}, ERR_ARGS(*x, *Members[i + 1]));
+      expr_utils::Diverges(*x, sm, meta), {sm->CurrentScope}, ERR_ARGS(*x, *Members[i + 1]));
   }
 
   // Every statement but the last has its value discarded; the last
@@ -191,7 +190,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // because releasing them is what clears the very state the
   // check reads to tell that a symbol holding borrows is not
   // something this scope owes.
-  if (not control_flow::Diverges(*this, sm, meta)) {
+  if (not expr_utils::Diverges(*this, sm, meta)) {
     linear_utils::CheckDeferredForScope(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm, meta);

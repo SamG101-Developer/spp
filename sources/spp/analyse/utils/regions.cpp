@@ -41,6 +41,24 @@ auto spp::analyse::utils::regions::PlaceAt::operator=(PlaceAt &&) noexcept -> Pl
 spp::analyse::utils::regions::PlaceAt::~PlaceAt() = default;
 SPP_MOD_END
 
+namespace spp::analyse::utils::regions {
+  namespace {
+    /// A place written out as its root's name and its steps
+    /// ("a.b.c").
+    auto PlaceText(
+      Place const &place) -> Str {
+      // The output string starts as the name on the root variable
+      // symbol. For each part, un-intern the step part and append
+      // to the output string.
+      auto out = place.Root != nullptr ? place.Root->Name->Val : Str();
+      for (auto const &step : place.Steps) {
+        out += "." + Str(spp::utils::InternedText(step.Name)) + (step.Opaque ? "()" : "");
+      }
+      return out;
+    }
+  }
+}
+
 auto spp::analyse::utils::regions::PlaceOf(
   Ast const &ast, Scope const &scope) -> Opt<Place> {
   // Walk in from the outermost step: an attribute, or a
@@ -164,18 +182,6 @@ auto spp::analyse::utils::regions::Overlap(
     and Relate(*p1.Of, *p2.Of) != MemRegionRelation::Disjoint;
 }
 
-auto spp::analyse::utils::regions::PlaceText(
-  Place const &place) -> Str {
-  // The output string starts as the name on the root variable
-  // symbol. For each part, un-intern the step part and append
-  // to the output string.
-  auto out = place.Root != nullptr ? place.Root->Name->Val : Str();
-  for (auto const &step : place.Steps) {
-    out += "." + Str(spp::utils::InternedText(step.Name)) + (step.Opaque ? "()" : "");
-  }
-  return out;
-}
-
 auto spp::analyse::utils::regions::FirstUnaccountedPart(
   VariableSymbol const &sym, Place const &region,
   ScopeManager const &sm) -> Str {
@@ -199,36 +205,14 @@ auto spp::analyse::utils::regions::FirstUnaccountedPart(
   return unaccounted;
 }
 
-auto spp::analyse::utils::regions::IsIdentifier(
-  Ast const *expr) -> bool {
-  // Determine if the AST node is an identifier.
-  return expr->To<IdentifierAst>() != nullptr;
-}
-
 auto spp::analyse::utils::regions::IsAttr(
   Ast const *expr, ScopeManager const *sm) -> bool {
-  // Determine if the AST node is an attribute (ie not
-  // an identifier).
+  // Determine if the AST node is an attribute access.
   if (not IsRuntimeMemberAccess(expr)) { return false; }
 
   // Perform validation on the actual attribute too.
   auto const var_symbol_outermost = sm->CurrentScope->FindVarSymbolOutermost(*expr);
   return var_symbol_outermost.first != nullptr;
-}
-
-auto spp::analyse::utils::regions::IsDestructurePlaceExpression(
-  ExpressionAst const &expr) -> bool {
-  // Strip the member accesses off the expression: "a.b.c"
-  // becomes "a". Any other postfix operator (a function
-  // call, an early return etc) means the expression produces
-  // a new value rather than naming existing storage.
-  auto cur = static_cast<Ast const*>(&expr);
-  while (const auto postfix = cur->To<PostfixExpressionAst>()) {
-    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
-    cur = postfix->Lhs.get();
-  }
-
-  return cur->To<IdentifierAst>() != nullptr;
 }
 
 auto spp::analyse::utils::regions::DescendToPart(

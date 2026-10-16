@@ -14,6 +14,7 @@ import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
@@ -509,8 +510,9 @@ auto GenericSolver::ReadDeclaredWith(
 
 auto GenericSolver::KnownBindings(
   GenericParameterGroupAst const &params) const -> Opt<GenericSubst> {
-  // What was given, by the parameter each binds ("BindByName"'s rule over the given layers), packs marked; and "Self"
-  // where it is pinned.
+  // What was given, by the parameter each binds (as
+  // "BindingsOfArgs" binds over the given layers), packs marked;
+  // and "Self" where it is pinned.
 
   // If nothing has been given, short circuit out of this getter
   // function. No point wasting search work.
@@ -732,8 +734,8 @@ auto GenericSolver::_ReadConstraints() -> bool {
     if (concrete_sym != nullptr and not concrete_sym->IsGn()) {
       candidates.emplace_back(scope.TypeIdOfSymbol(*concrete_sym), &scope);
       if (concrete_sym->LinkedScope != nullptr) {
-        for (auto const &[sup, sup_scope] : type_members::SuperClsNames(concrete_sym->LinkedScope->GetSupScopes())) {
-          candidates.emplace_back(sup_scope->TypeIdOf(*sup), sup_scope);
+        for (auto const *const cls_scope : type_members::SuperClsScopes(concrete_sym->LinkedScope->GetSupScopes())) {
+          candidates.emplace_back(cls_scope->TypeIdOfSymbol(*cls_scope->LinkedTypeSymbol), cls_scope);
         }
       }
     }
@@ -761,7 +763,7 @@ auto GenericSolver::_ReadConstraints() -> bool {
       if (not candidates.empty() and not matched) {
         const auto constraint_drives_inference = genex::any_of(
           type_params, [&](auto const *other) {
-            return type_resolution::DoesTypeNameAGnParam(*constraint, *other, *_OwnerScope);
+            return type_predicates::DoesTypeNameAGnParam(*constraint, *other, *_OwnerScope);
           });
         if (constraint_drives_inference) {
           const auto inferred_type = _AstOf(entry->TypeVals[0]);

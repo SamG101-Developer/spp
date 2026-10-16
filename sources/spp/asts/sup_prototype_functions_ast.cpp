@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -115,7 +116,7 @@ auto SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
   IMPORT_UTILS;
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-  sup_blocks::RegisterProvisionalSelf(*Name, *sm);
+  self_type::RegisterProvisionalSelf(*Name, *sm);
   Impl->Stage3_GenTopLvlAliases(sm, meta);
   sm->MoveOutOfCurrentScope();
 }

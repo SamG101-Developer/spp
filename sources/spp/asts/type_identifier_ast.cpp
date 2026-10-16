@@ -11,12 +11,10 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
-import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.packs;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -142,7 +140,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // to use `Clone::clone` as the default, which returns "Self", but will never be used from `Clone`, but rather the
   // implementation type.
   const auto check_abstract = [&](Scope const &scope) {
-    // Judged from pre-analysis on. Signatures are compared by identity ("fn_values::SameSignature"), which makes
+    // Judged from pre-analysis on. Signatures are compared by identity ("fn_signatures::SameSignature"), which makes
     // nothing, so the answer does not depend on whether instantiations can still be made (code generation).
     if (meta->AllowAbstractType or meta->CurrentStage<CompilerStage::kPreAnalyseSemantics) { return; }
     const auto resolved_sym = scope.FindTypeSymbol(this);
@@ -358,11 +356,11 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   if (GnArgGroup != nullptr and GnArgGroup->At("Variants") != nullptr
     and type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
     auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
-    for (auto &member : type_compare::VariantMembers(*this, *sm->CurrentScope)) {
+    for (auto &member : type_members::VariantMembers(*this, *sm->CurrentScope)) {
       auto const *const member_sym = TypeRef::Of(*member, *sm->CurrentScope).Symbol;
       unordered.emplace_back(std::move(member), member_sym);
     }
-    auto inner_types = type_compare::OrderVariantMembers(std::move(unordered));
+    auto inner_types = type_members::OrderVariantMembers(std::move(unordered));
     if (not inner_types.empty()) {
       auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
       {

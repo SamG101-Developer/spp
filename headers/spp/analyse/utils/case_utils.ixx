@@ -3,7 +3,6 @@ module;
 
 export module spp.analyse.utils.case_utils;
 import spp.asts.meta.compiler_meta_data;
-import spp.lex.tokens;
 import spp.utils.types;
 import llvm;
 import std;
@@ -11,12 +10,11 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
-use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct CasePatternVariantAst);
 use(spp::asts, struct ExpressionAst);
-use(spp::asts, struct IsExpressionAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::codegen, struct LlvmCtx);
@@ -129,11 +127,17 @@ namespace spp::analyse::utils::case_utils {
     ScopeManager &sm, CompilerMetaData *meta)
     -> Tup<Pair<Ast*, Shared<TypeAst>>, Vec<Pair<Ast*, Shared<TypeAst>>>>;
 
-  /// Convert the is expression to the equivalent function
-  /// call, based on the above mapping. For example, "a is
-  /// S32" becomes a case-pattern destructure check.
-  /// Provides a uniform variant decomposition mechanism.
-  SPP_EXP_FUN auto ConvertIsExprToFnCall(
-    IsExpressionAst &is_expr, ScopeManager *sm,
-    CompilerMetaData *meta) -> Unique<CaseExpressionAst>;
+  /// Similar to the type check validation, but for memory. This
+  /// is more complex as we must check every symbol, and reset
+  /// its status to the original snapshots. The final symbol
+  /// status is based off the consistent status's of every branch.
+  /// Errors are not thrown if one branch moves a symbol and
+  /// another doesn't; but the symbol mem-info is updated such
+  /// that *using* that symbol later in the function would
+  /// cause an error.
+  SPP_EXP_FUN auto ValidateInconsistentMemory(
+    Ast *parent, Vec<CaseExpressionBranchAst*> const &branches,
+    CaseCoverage const &coverage, VariableSymbol *subject,
+    SubjectEdges const *subject_edges, ScopeManager *sm,
+    CompilerMetaData *meta) -> void;
 }
