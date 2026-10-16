@@ -251,3 +251,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let u = t
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureArrayAst,
+  test_valid_destructure_through_an_array_alias, R"(
+    type Arr3[T] = std::array::Arr[T, 3_uz]
+
+    fun f() -> Void {
+        let a: Arr3[S32] = [3_s32, 4_s32, 5_s32]
+        let [x, y, z] = a
+    }
+)");

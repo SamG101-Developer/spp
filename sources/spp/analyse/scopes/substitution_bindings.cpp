@@ -62,21 +62,35 @@ auto spp::analyse::scopes::BindArgs(
     .value_or(GenericSubst());
 }
 
+/// [CHECKED]
 auto spp::analyse::scopes::BindingsOfArgs(
   const TypeId args) -> GenericSubst {
+  // Start with an empty generic substitution map, and a nullptr
+  // guard against the type id.
   auto subst = GenericSubst();
   if (args == nullptr) { return subst; }
+
+  // For each "type id arg" embedded in the args, run type vs
+  // comp logic against it. Only for the named args.
   for (auto const &arg : ArgsOf(args)) {
     if (not arg.Named) { continue; }
+
+    // For a type arg, store it in the type args vector on the
+    // substitution, and add it to the type packs if necessary.
     if (arg.TypeVal != nullptr) {
       subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal);
-      if (auto const *const param = FindGnTypeParamById(arg.Slot); param != nullptr and param->IsVariadic) {
+      const auto param = FindGnTypeParamById(arg.Slot);
+      if (param != nullptr and param->IsVariadic) {
         subst.TypePackParams.push_back(arg.Slot);
       }
     }
+
+    // For a comp arg, store it in the comp args vector on the
+    // substitution, and add it to the comp packs if necessary.
     else if (arg.CompVal != nullptr) {
       subst.CompParams.emplace_back(arg.Slot, arg.CompVal);
-      if (auto const *const param = FindGnCompParamById(arg.Slot); param != nullptr and param->IsVariadic) {
+      const auto param = FindGnCompParamById(arg.Slot);
+      if (param != nullptr and param->IsVariadic) {
         subst.CompPackParams.push_back(arg.Slot);
       }
     }

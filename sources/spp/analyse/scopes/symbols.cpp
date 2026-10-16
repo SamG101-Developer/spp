@@ -589,7 +589,7 @@ TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   Serial(NextTypeSymbolSerial()) {
   // Shared rather than cloned: an alias's description is
   // fixed once resolved, and an instantiation of a generic
-  // alias builds its own ("CreateGnClsScope") rather
+  // alias builds its own ("FindOrMakeClsInstance") rather
   // than mutating one it was handed.
   Alias = that.Alias;
   LlvmInfo = that.LlvmInfo;

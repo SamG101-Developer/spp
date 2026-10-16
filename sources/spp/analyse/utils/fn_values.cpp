@@ -221,7 +221,7 @@ auto spp::analyse::utils::fn_values::InstantiateFnValue(
   const auto args_id = match.has_value() ? scopes::ArgsIdOfBindings(match->Bindings, *sm->CurrentScope) : nullptr;
   if (args_id == nullptr) { return; }
   auto tm = sm->NewManagerAt(const_cast<Scope*>(match->FnScope));
-  monomorphization::InstantiateOverload(match->Proto, match->FnScope, args_id, &tm, meta);
+  monomorphization::RequireFnInstance(match->Proto, match->FnScope, args_id, &tm, meta);
 }
 
 auto spp::analyse::utils::fn_values::FindFnValue(
@@ -231,7 +231,7 @@ auto spp::analyse::utils::fn_values::FindFnValue(
   if (not match.has_value()) { return nullptr; }
   const auto args_id = scopes::ArgsIdOfBindings(match->Bindings, *sm.CurrentScope);
   if (args_id == nullptr) { return match->Proto; }
-  return monomorphization::FindInstantiatedOverload(match->Proto, args_id, &sm);
+  return monomorphization::FindRequiredFnInstance(match->Proto, args_id);
 }
 
 namespace spp::analyse::utils::fn_values {

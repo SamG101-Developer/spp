@@ -349,7 +349,7 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS auto FindGnCompParamById(std::uint64_t id) -> VariableSymbol*;
 
   /// The parameter a function's variadic pack ("..xs") is bound through, which no generic parameter declares: the
-  /// "VariadicPackOf.." argument its instantiations are keyed by ("packs::PackTypeParamName"). Minted once per pack,
+  /// "VariadicPackOf.." argument its instantiations are keyed by ("packs::FnVariadicParamName"). Minted once per pack,
   /// named "name", so an argument for it is keyed by identity as any other parameter's is.
   SPP_EXP_CLS auto GnPackParamId(void const *pack, Str const &name) -> std::uint64_t;
 
@@ -544,7 +544,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::AliasInfo {
 
   /// The scope its target is written in, where every reader reads it ("TypeSymbol::AliasTarget",
   /// "TypeSymbol::AliasTargetId"): the statement's own scope, which declares its parameters, or for a copy made per
-  /// instantiation of a generic block ("CreateGnSupScope"), that instantiation's scope.
+  /// instantiation of a generic block ("MakeSupInstance"), that instantiation's scope.
   Scope *WrittenIn = nullptr;
 
   /// Whether a "use" statement produced this alias; generics

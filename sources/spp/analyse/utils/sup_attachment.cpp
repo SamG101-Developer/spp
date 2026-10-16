@@ -261,7 +261,7 @@ namespace spp::analyse::utils::sup_attachment {
 
     auto AttachSpecificSuperScopesImpl(
       Scope &scope, Vec<Scope*> const &sup_scopes, ScopeManager const &sm, CompilerMetaData *meta) -> void {
-      using utils::monomorphization::CreateGnSupScope;
+      using utils::monomorphization::MakeSupInstance;
       if (sup_scopes.empty()) { return; }
 
       // Clear the sup scopes list.
@@ -322,7 +322,7 @@ namespace spp::analyse::utils::sup_attachment {
           and not genex::contains(sm.Tree().GnSupBlocks, sup_scope)) {
           // Build the generic sup scope for this instantiation,
           // and get the new cls symbol.
-          tie(new_sup_scope, new_cls_scope) = CreateGnSupScope(
+          tie(new_sup_scope, new_cls_scope) = MakeSupInstance(
             *sup_scope, scope, scope_args_id, &sm, meta);
           sup_sym = new_cls_scope ? new_cls_scope->LinkedTypeSymbol.get() : nullptr;
 

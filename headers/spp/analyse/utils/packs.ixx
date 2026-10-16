@@ -49,7 +49,8 @@ namespace spp::analyse::utils::packs {
     GenericArgumentAst const &arg, Scope const &scope) -> bool;
 
   /// The name of the type parameter a variadic function parameter is instantiated over ("..xs: S32" binds
-  /// "VariadicPackOfxs" to the tuple a call passes). The one place the name is spelled.
-  SPP_EXP_FUN auto PackTypeParamName(
+  /// "VariadicPackOfxs" to the tuple a call passes). The one place the name is spelled. No "comp" equivalent because
+  /// this is for the types of the variadic function parameter, not a variadic generic type parameter.
+  SPP_EXP_FUN auto FnVariadicParamName(
     IdentifierAst const &param_name) -> Str;
 }

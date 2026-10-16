@@ -723,7 +723,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   }
 
   // Generic instantiations embedded in the return type (eg "Var[Tup[Pass[Str], Fail[Utf8Err]]]" from a "Res[...]"
-  // alias) are only registered in the scope of whichever module first analysed them (see CreateGnClsScope), and
+  // alias) are only registered in the scope of whichever module first analysed them (see FindOrMakeClsInstance), and
   // that scope isn't guaranteed to be reachable from this call site's scope. Rather than relying on lookup finding a
   // registration made elsewhere, re-analyse a fresh clone here so the instantiation is guaranteed to exist (and be
   // reachable) from this scope too before anything downstream tries to look up its symbol.

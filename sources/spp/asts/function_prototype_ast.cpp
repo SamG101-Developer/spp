@@ -715,7 +715,9 @@ auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
   }
 }
 
-auto FunctionPrototypeAst::AnalysingGnSubstitution() -> GenericSubstitution const* {
+/// [CHECKED]
+auto FunctionPrototypeAst::AnalysingGnSubstitution()
+  -> GenericSubstitution const* {
   return analysing_gn_substitution;
 }
 
@@ -737,16 +739,16 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     auto tm = sm->NewManagerAt(sub.WalkScope());
     if (not sub.IsConcrete) { continue; }
 
-    // Discard the scopes the template's own body analysis left
-    // behind under this clone. They describe the template's body,
-    // and the analysis below builds this instantiation's in their
-    // place.
+    // Discard any scopes left under the instantiation's function
+    // scope before its body is analysed (a default argument analysed
+    // where the function is declared can leave one): the analysis
+    // below builds the body's scopes in their place, in walk order.
     sub.ProtoScope()->Children.clear();
     sub.WalkScope()->FixChildrenToParentPointer();
     tm.RestartWalk(tm.CurrentScope);
 
-    // The instantiation was built from the signature alone, so the
-    // body it holds is still the template's, un-analysed.
+    // The instantiation was built from the signature alone
+    // ("CloneSignature"), so it takes the template's pristine body.
     sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
     sub.Proto->_InstallLoweredImpl(&tm);
 
@@ -857,12 +859,7 @@ auto FunctionPrototypeAst::PrintSignature(
 }
 
 auto FunctionPrototypeAst::GetDeclarationScope() const -> Scope* {
-  if (auto const *const tmpl = GetNonGnImpl(); tmpl != nullptr) {
-    for (auto const &sub : tmpl->_GnSubstitutions) {
-      if (sub.Proto.get() == this) { return sub.ProtoScope(); }
-    }
-  }
-  return GetAstScope();
+  return _OwnGnSubstitution != nullptr ? _OwnGnSubstitution->ProtoScope() : GetAstScope();
 }
 
 auto FunctionPrototypeAst::GenericSubstitution::WalkScope() const -> Scope* {
@@ -898,38 +895,38 @@ auto FunctionPrototypeAst::_CloneStateInto(
 auto FunctionPrototypeAst::AddGnSubstitution(
   GenericSubstitution &&sub) -> GenericSubstitution& {
   // Store the scope for object persistence (and codegen), keyed
-  // by the arguments that produced it.
-  return _GnSubstitutions.emplace_back(std::move(sub));
+  // by the arguments that produced it, and point the instantiation
+  // back at its own record.
+  auto &filed = _GnSubstitutions.emplace_back(std::move(sub));
+  _GnSubstitutionsById[filed.ArgsId] = &filed;
+  filed.Proto->_OwnGnSubstitution = &filed;
+  return filed;
 }
 
-auto FunctionPrototypeAst::RequireGnSubstitution(Ast const *at, Scope *in) const -> void {
+auto FunctionPrototypeAst::RequireGnSubstitution(
+  Ast const *at, Scope *in) const -> void {
   IMPORT_UTILS;
-  auto *const tmpl = GetNonGnImpl();
-  if (tmpl == nullptr) { return; }
-  for (auto &sub : tmpl->_GnSubstitutions) {
-    if (sub.Proto.get() != this or sub.IsRequired) { continue; }
-    sub.IsRequired = true;
-    sub.RequiredAt = at;
-    sub.RequiredIn = in;
+  const auto tmpl = GetNonGnImpl();
+  const auto sub = _OwnGnSubstitution;
+  if (tmpl == nullptr or sub == nullptr or sub->IsRequired) { return; }
+  sub->IsRequired = true;
+  sub->RequiredAt = at;
+  sub->RequiredIn = in;
 
-    // The instantiation's body has not been analysed yet, and
-    // nothing walks the ast to find it - a substitution is
-    // registered against the template, wherever the template
-    // happens to live, from wherever the call that produced it was
-    // written. Record the template so the monomorphisation stage
-    // comes back for it.
-    monomorphization::EnqueueInstantiation(tmpl);
-    return;
-  }
+  // The instantiation's body has not been analysed yet, and
+  // nothing walks the ast to find it - a substitution is
+  // registered against the template, wherever the template
+  // happens to live, from wherever the call that produced it was
+  // written. Record the template so the monomorphisation stage
+  // comes back for it.
+  monomorphization::EnqueueInstantiation(tmpl);
 }
 
 auto FunctionPrototypeAst::FindGnSubstitution(
   analyse::scopes::TypeId const args_id) -> GenericSubstitution* {
   // Get the generic implementation for arguments of this identity.
-  for (auto &sub : _GnSubstitutions) {
-    if (sub.ArgsId == args_id) { return &sub; }
-  }
-  return nullptr;
+  const auto it = _GnSubstitutionsById.find(args_id);
+  return it != _GnSubstitutionsById.end() ? it->second : nullptr;
 }
 
 auto FunctionPrototypeAst::SetNonGnImpl(

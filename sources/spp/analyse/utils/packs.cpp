@@ -107,7 +107,7 @@ auto spp::analyse::utils::packs::DoesArgNameAPack(
     : FindCompPack(*arg.CompVal, scope) != nullptr;
 }
 
-auto spp::analyse::utils::packs::PackTypeParamName(
+auto spp::analyse::utils::packs::FnVariadicParamName(
   IdentifierAst const &param_name)
   -> Str {
   return "VariadicPackOf" + param_name.Val;

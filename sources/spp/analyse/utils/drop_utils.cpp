@@ -131,8 +131,8 @@ namespace spp::analyse::utils::drop_utils {
       const auto args_id = tm.CurrentScope->ArgsIdOf(
         sup_gns | genex::views::transform([](auto const &a) { return a.get(); }) | genex::to<Vec>(), nullptr);
       return instantiate
-        ? monomorphization::InstantiateOverload(overload.Proto, overload.FnScope, args_id, &tm, meta)
-        : monomorphization::FindInstantiatedOverload(overload.Proto, args_id, &tm);
+        ? monomorphization::RequireFnInstance(overload.Proto, overload.FnScope, args_id, &tm, meta)
+        : monomorphization::FindRequiredFnInstance(overload.Proto, args_id);
     }
   }
 }

@@ -745,6 +745,10 @@ Scope::Scope(
 }
 
 Scope::Scope(Scope const &other) :
+  Scope(other, std::numeric_limits<std::size_t>::max()) {
+}
+
+Scope::Scope(Scope const &other, const std::size_t depth) :
   Name(other.Name),
   Parent(other.Parent),
   AstNode(other.AstNode),
@@ -755,9 +759,10 @@ Scope::Scope(Scope const &other) :
   _ErrorFormatter(nullptr) {
   InternalTable.ShallowCopyFrom(other.InternalTable);
 
-  // Copy the children recursively.
+  // Copy the children recursively, as far down as asked.
+  if (depth == 0) { return; }
   for (auto const &child_scope : other.Children) {
-    auto child_copy = MakeUnique<Scope>(*child_scope);
+    auto child_copy = MakeUnique<Scope>(*child_scope, depth - 1);
     child_copy->Parent = this;
     Children.emplace_back(std::move(child_copy));
   }
@@ -812,13 +817,32 @@ auto Scope::IsFromPrelude(
   return formatter != nullptr and formatter->IsPastUserSource(ast.PosStart());
 }
 
+auto Scope::IsInTemplate() const -> bool {
+  for (auto const *s = this; s != nullptr; s = s->Parent) {
+    if (genex::any_of(s->GetAllTypeSymbols(true), [](auto const *sym) { return sym->Kind == TypeKind::GnTypeParam; })) {
+      return true;
+    }
+    if (genex::any_of(s->GetAllVarSymbols(true), [](auto const *sym) {
+      return sym->Kind == VariableKind::GnCompParam;
+    })) { return true; }
+  }
+  return false;
+}
+
 /// [CHECKED]
 auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
-  // Create the symbols list.
+  // Create the symbols list. Each binding is kept beside the depth
+  // of the scope declaring the parameter it binds, which orders
+  // them: an enclosing declaration's generics (a "sup" block's)
+  // before a nested one's (a method's own), whatever order the
+  // bindings were registered in.
   const auto scopes = GetAncestors();
-  auto syms = Vec<Unique<GenericArgumentAst>>();
+  auto syms = Vec<Pair<std::size_t, Unique<GenericArgumentAst>>>();
   auto type_names = Vec<Shared<TypeIdentifierAst>>();
   auto comp_names = Vec<Shared<IdentifierAst>>();
+  const auto declared_depth = [](auto const *param) {
+    return param != nullptr and param->ScopeDefinedIn != nullptr ? param->ScopeDefinedIn->GetAncestors().size() : 0uz;
+  };
 
   // Check each ancestor scope, accumulating generic type
   // and comp symbols.
@@ -837,20 +861,26 @@ auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
       if (t->Kind == TypeKind::GnTypeParam) { continue; }
       if (t->LinkedSymbol() == t and t->BoundTypeVal == nullptr) { continue; }
       if (genex::contains(type_names, *t->Name, genex::meta::deref)) { continue; }
-      syms.emplace_back(GenericArgumentAst::FromSymbol(*t));
+      auto const *const param = t->BindsParamId != 0 ? FindGnTypeParamById(t->BindsParamId) : nullptr;
+      syms.emplace_back(declared_depth(param), GenericArgumentAst::FromSymbol(*t));
       type_names.emplace_back(t->Name);
     }
 
     for (auto const &v : all_comp_syms) {
       if (genex::contains(comp_names, *v->Name, genex::meta::deref)) { continue; }
       if (v->Kind == VariableKind::GnCompParam or v->BoundCompVal() == nullptr) { continue; }
-      syms.emplace_back(GenericArgumentAst::FromSymbol(*v));
+      auto const *const param = v->BindsParamId != 0 ? FindGnCompParamById(v->BindsParamId) : nullptr;
+      syms.emplace_back(declared_depth(param), GenericArgumentAst::FromSymbol(*v));
       comp_names.emplace_back(v->Name);
     }
   }
 
-  // Return the list of generic symbols.
-  return syms;
+  // Outermost declaration first; ties keep the order found.
+  std::stable_sort(syms.begin(), syms.end(), [](auto const &a, auto const &b) { return a.first < b.first; });
+  auto out = Vec<Unique<GenericArgumentAst>>();
+  out.reserve(syms.size());
+  for (auto &[_, arg] : syms) { out.emplace_back(std::move(arg)); }
+  return out;
 }
 
 /// [CHECKED]
@@ -2083,7 +2113,7 @@ auto Scope::_CanonType(TypeSymbol &sym) const -> TypeSymbol* {
 
   // An alias declared in a generic block has a copy per
   // instantiation of the block, its target read through that
-  // instantiation's bindings ("CreateGnSupScope"): the copy
+  // instantiation's bindings ("MakeSupInstance"): the copy
   // this scope reaches is the one it means. Copies share their
   // statement, which is how one is told from another alias of
   // that name (a "use" of it shares its name node, but is a

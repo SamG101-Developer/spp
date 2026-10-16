@@ -1248,7 +1248,7 @@ namespace spp::analyse::utils::overload_resolution {
       // Found or made from the solution's identity: no arguments
       // are built.
       auto template_proto = fn_proto;
-      tie(fn_proto, fn_scope) = monomorphization::FindOrMakeGnSubstitutedPrototype(
+      tie(fn_proto, fn_scope) = monomorphization::FindOrMakeFnInstance(
         fn_proto, fn_scope, solver.SolvedArgsId(), variadic_pack_type, sm, meta);
       candidate.Proto = fn_proto;
       candidate.FnScope = fn_scope;

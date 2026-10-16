@@ -110,7 +110,8 @@ namespace {
     auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
     if (sym == nullptr or not sym->IsVariadic or sym->Kind == VariableKind::GnCompArg) { return nullptr; }
     if (sym->Kind == VariableKind::GnCompParam) { return sym; }
-    const auto pack_type = spp::MakeUnique<spp::asts::TypeIdentifierAst>(0, packs::PackTypeParamName(*sym->Name), nullptr);
+    const auto pack_type = spp::MakeUnique<spp::asts::TypeIdentifierAst>(
+      0, packs::FnVariadicParamName(*sym->Name), nullptr);
     return sm.CurrentScope->FindTypeSymbol(pack_type.get()) == nullptr ? sym : nullptr;
   }
 }

@@ -296,6 +296,13 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   virtual auto IsCoroutine() const -> bool = 0;
 
+  /// A copy of the prototype without its body (the empty one a
+  /// prototype is made with), as an instantiation is made: it takes
+  /// the template's pristine body ("Source.OriginalImpl") when its
+  /// own body is analysed, so the analysed one is not copied only to
+  /// be thrown away.
+  SPP_ATTR_NODISCARD virtual auto CloneSignature() const -> Unique<FunctionPrototypeAst> = 0;
+
 protected:
   /// What "Clone" copies besides the children it constructs the copy from: the analysed annotation state, the
   /// original body, the context, scope and lowered function, and the variadic pack type. Re-parents the copy's
@@ -305,6 +312,15 @@ protected:
   /// Using a list because there are times that the collection
   /// is iterated whilst being appended to.
   std::list<GenericSubstitution> _GnSubstitutions;
+
+  /// The substitutions by the identity of their arguments
+  /// ("GenericSubstitution::ArgsId"), into "_GnSubstitutions",
+  /// whose elements a list never moves.
+  Map<TypeId, GenericSubstitution*> _GnSubstitutionsById;
+
+  /// On an instantiation, its own record in its template's
+  /// "_GnSubstitutions"; null on anything else.
+  GenericSubstitution *_OwnGnSubstitution = nullptr;
 
   FunctionPrototypeAst *_NonGnImpl;
 

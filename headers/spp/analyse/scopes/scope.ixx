@@ -196,6 +196,11 @@ public:
     ErrorFormatter *error_formatter = nullptr);
 
   Scope(Scope const &other);
+
+  /// A copy of "other" and of its descendants "depth" levels
+  /// down: 0 copies it alone, 1 its children too, and so on.
+  Scope(Scope const &other, std::size_t depth);
+
   ~Scope();
 
   /// Create a new global scope for the scope manager. This is
@@ -214,6 +219,12 @@ public:
   /// Whether a node sits in the prelude appended behind this
   /// scope's file, rather than in what the author wrote.
   SPP_ATTR_NODISCARD auto IsFromPrelude(Ast const &ast) const -> bool;
+
+  /// Whether this scope is inside a template: it, or a scope around
+  /// it, declares a generic parameter with no binding (an unbound
+  /// type or comp parameter). Nothing written there that depends
+  /// on one has a value yet; an instantiation's scopes bind them.
+  SPP_ATTR_NODISCARD auto IsInTemplate() const -> bool;
 
   /// Get the generics associated with this scope, by searching all
   /// type and variable symbols, filtering them on their generic

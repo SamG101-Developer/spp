@@ -41,7 +41,7 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterAst : Ast, mixins::OrderableAst {
 
   /// In an instantiation, the parameter's type by identity: the
   /// template's, with the instantiation's bindings substituted
-  /// once ("FindOrMakeGnSubstitutedPrototype"), which is what a call
+  /// once ("FindOrMakeFnInstance"), which is what a call
   /// is checked against.
   analyse::scopes::TypeId InstanceTypeId = nullptr;
 

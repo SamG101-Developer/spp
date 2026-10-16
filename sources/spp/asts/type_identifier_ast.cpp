@@ -391,13 +391,9 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     // instance; anything else is keyed from its arguments.
     instance = solved_instance;
     if (instance == nullptr) {
-      const auto id = sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs());
-      instance = sm->CurrentScope->FindTypeSymbolById(id);
-      if (instance == nullptr) {
-        const auto *new_scope = monomorphization::CreateGnClsScope(
-          *this, type_sym->InstanceTemplate()->SharedFromThis<TypeSymbol>(), id, is_tuple, sm, meta);
-        instance = new_scope->LinkedTypeSymbol.get();
-      }
+      instance = monomorphization::FindOrMakeClsInstance(
+        *this, type_sym->InstanceTemplate()->SharedFromThis<TypeSymbol>(),
+        sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs()), is_tuple, sm, meta);
     }
 
     // Stamped with it, so a lookup of this name from anywhere finds this instantiation, re-read through the bindings of

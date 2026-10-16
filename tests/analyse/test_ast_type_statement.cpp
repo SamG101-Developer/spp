@@ -225,3 +225,25 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     test_valid_type_statement_qualified_generic_parameter_type, R"(
     fun f(o: std::option::Opt[std::boolean::Bool]) -> std::void::Void { }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestTypeStatementAst,
+  test_valid_type_statement_alias_spreads_its_own_pack_into_a_tuple, R"(
+    type T2[..Items] = std::tuple::Tup[Items]
+
+    fun f() -> Void {
+        let p: T2[S32, Bool] = (4_s32, true)
+        let (a, b) = p
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestTypeStatementAst,
+  test_valid_type_statement_alias_repeating_a_parameter_destructures_to_its_tuple, R"(
+    type TupRep[T] = (T, T)
+
+    fun f() -> Void {
+        let p: TupRep[S32] = (2_s32, 9_s32)
+        let (a, b) = p
+    }
+)");
