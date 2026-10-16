@@ -49,6 +49,15 @@ SubroutinePrototypeAst::SubroutinePrototypeAst(
 SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
 auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
+  return _CloneWithImpl(AstClone(Impl));
+}
+
+auto SubroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
+  return _CloneWithImpl(nullptr);
+}
+
+auto SubroutinePrototypeAst::_CloneWithImpl(
+  decltype(Impl) &&impl) const -> Unique<SubroutinePrototypeAst> {
   IMPORT_UTILS;
   auto ast = MakeUnique<SubroutinePrototypeAst>(
     AstCloneVec(Annotations),
@@ -59,7 +68,7 @@ auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(FnParamGroup),
     AstClone(TokArrow),
     AstClone(ReturnType),
-    AstClone(Impl));
+    std::move(impl));
   _CloneStateInto(*ast);
   return ast;
 }

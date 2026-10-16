@@ -91,6 +91,15 @@ CoroutinePrototypeAst::CoroutinePrototypeAst(
 CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
 auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
+  return _CloneWithImpl(AstClone(Impl));
+}
+
+auto CoroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
+  return _CloneWithImpl(nullptr);
+}
+
+auto CoroutinePrototypeAst::_CloneWithImpl(
+  decltype(Impl) &&impl) const -> Unique<CoroutinePrototypeAst> {
   IMPORT_UTILS;
   auto ast = MakeUnique<CoroutinePrototypeAst>(
     AstCloneVec(Annotations),
@@ -101,7 +110,7 @@ auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(FnParamGroup),
     AstClone(TokArrow),
     AstClone(ReturnType),
-    AstClone(Impl));
+    std::move(impl));
   _CloneStateInto(*ast);
   return ast;
 }

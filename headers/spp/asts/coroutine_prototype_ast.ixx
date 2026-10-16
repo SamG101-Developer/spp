@@ -32,6 +32,8 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
+  SPP_ATTR_NODISCARD auto CloneSignature() const -> Unique<FunctionPrototypeAst> override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -74,4 +76,7 @@ private:
   /// Give the lowering's allocas a lifetime of their own; see
   /// the definition. Needs the body, so runs after it.
   auto _DeclareBorrowedYieldStorage(SubroutinePrototypeAst const &lowered) const -> void;
+
+  SPP_ATTR_NODISCARD auto _CloneWithImpl(
+    decltype(Impl) &&impl) const -> Unique<CoroutinePrototypeAst>;
 };
