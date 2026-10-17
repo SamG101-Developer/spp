@@ -158,6 +158,102 @@ namespace spp::cli {
 #endif
       return std::system(command.c_str()) == 0;
     }
+
+    /// Fill this project's "ffi" folder from its dependencies':
+    /// each package a checkout ships replaces the project's copy
+    /// whole, so a file the package no longer has (a library from
+    /// an older layout) goes with it. Done whenever this project
+    /// is validated (so on every build, fetched or not, before its
+    /// "ffi" folder is checked) and after a fetch. A project's own
+    /// packages are left alone.
+    auto SyncVcsFfi(Path const &cwd) -> void {
+      for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
+        for (auto const &package : SafeDirectoryIterator(vcs_dir.path() / FFI_FOLDER)) {
+          if (not package.is_directory()) { continue; }
+          const auto target = cwd / FFI_FOLDER / package.path().filename();
+          std::filesystem::remove_all(target);
+          std::filesystem::create_directories(target.parent_path());
+          std::filesystem::copy(package.path(), target, std::filesystem::copy_options::recursive);
+        }
+      }
+    }
+
+    /// Check this project's "ffi" packages are laid out as the
+    /// compiler reads them: a stub, and a folder per target that
+    /// holds the library named for its platform. Checked after
+    /// the dependencies are fetched, as their packages are copied
+    /// in ("SyncVcsFfi"), and a stale checkout's would otherwise
+    /// stop the fetch that brings the new ones.
+    auto ValidateFfi(Path const &cwd) -> bool {
+      using namespace std::string_literals;
+      for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
+        if (not std::filesystem::is_directory(ffi_dir)) {
+          std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
+            ffi_dir.path().filename()) + "\n";
+          return false;
+        }
+
+        const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
+
+        // Check for a stub file for each ffi package. This is what
+        // s++ uses (s++ code) to hook into the shared library.
+        if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
+          std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
+          return false;
+        }
+
+        // Everything else is a folder per target, named the one way
+        // the compiler spells it, holding the library named for that
+        // target's platform. Checked for every target the package
+        // ships rather than only this host's, because a package is
+        // validated where it is made, not only where it is built.
+        auto targets = 0uz;
+        for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
+          const auto found = utils::files::NativeString(entry.path().filename());
+          if (found == STUB_FILE) { continue; }
+
+          // Loose files (a SOURCE, README, LICENSE) are the package's
+          // own business; only its library left outside a target
+          // folder, the old flat layout, is an error.
+          if (not entry.is_directory()) {
+            const auto misplaced = genex::any_of(Arr<StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
+              return found == utils::files::SharedLibraryName(lib_name, ext);
+            });
+            if (not misplaced) { continue; }
+            std::cerr
+              << "Error: 'ffi/" + lib_name + "/" + found + "' is not in a target folder.\n"
+              << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+              << codegen::HostFfiFolderName() << "/'.\n";
+            return false;
+          }
+
+          if (not codegen::IsFfiFolderName(found.c_str())) {
+            std::cerr
+              << "Error: 'ffi/" + lib_name + "/" + found + "' does not name a target.\n"
+              << "  A target folder is '<arch>-<os>[-<env>]', spelled as the compiler spells it; this host's is '"
+              << codegen::HostFfiFolderName() << "'.\n";
+            return false;
+          }
+
+          const auto expected = utils::files::SharedLibraryName(
+            lib_name, codegen::SharedLibraryExtension(found.c_str()));
+          if (not std::filesystem::exists(entry.path() / expected)) {
+            std::cerr << "Error: 'ffi/" + lib_name + "/" + found + "' has no '" + expected + "'.\n";
+            return false;
+          }
+          targets += 1;
+        }
+
+        if (targets == 0) {
+          std::cerr
+            << "Error: 'ffi/" + lib_name + "' ships no library for any target.\n"
+            << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+            << codegen::HostFfiFolderName() << "/'.\n";
+          return false;
+        }
+      }
+      return true;
+    }
   }
 }
 
@@ -295,7 +391,11 @@ auto spp::cli::RunCli(
 
   app.add_subcommand("validate", "Validate the project")
      ->fallthrough()
-     ->callback([] { if (not HandleValidate(false)) { throw CLI::RuntimeError(1); } });
+     ->callback([] {
+       if (not HandleValidate(false) or not ValidateFfi(std::filesystem::current_path())) {
+         throw CLI::RuntimeError(1);
+       }
+     });
 
   app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
      ->fallthrough()
@@ -404,20 +504,12 @@ auto spp::cli::HandleVcs()
       std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
     }
 
-    // Copy all DLLs from the VCS's FFI folder into this
-    // project's FFI folder.
-    auto ffi_repo_folder = repo_folder / FFI_FOLDER;
-    if (std::filesystem::exists(ffi_repo_folder)) {
-      for (auto const &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
-        std::filesystem::copy(
-          entry.path(), cwd / FFI_FOLDER / entry.path().filename(),
-          std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
-      }
-    }
   }
 
-  // Move back into the original working directory.
+  // Move back into the original working directory, and take
+  // the packages the checkouts now ship.
   std::filesystem::current_path(cwd);
+  SyncVcsFfi(cwd);
   return ok;
 }
 
@@ -463,8 +555,10 @@ auto spp::cli::HandleBuild(
     return false;
   }
 
-  // Revalidate (after including the VCS folders).
+  // Revalidate (after including the VCS folders), and check
+  // the ffi packages the fetch brought.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
+  if (not ValidateFfi(std::filesystem::current_path())) { return false; }
   const auto build_type =
     toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
@@ -603,6 +697,7 @@ auto spp::cli::HandleTest(
     return;
   }
   SPP_VALIDATE_STRUCTURE(false);
+  if (not ValidateFfi(std::filesystem::current_path())) { std::exit(1); }
 
   // A test build compiles at "rel", so it must look for its
   // executable there too - see the Compiler constructed below.
@@ -713,9 +808,10 @@ auto spp::cli::HandleValidate(
     return false;
   }
 
-  // Create the other folders if they don't exist, but only in this
-  // project - a dependency's checkout is a fetched artifact, and
-  // filling it with empty folders makes its working tree dirty.
+  // Create the other folders if they don't exist, and fill "ffi"
+  // from the dependencies, but only in this project - a
+  // dependency's checkout is a fetched artifact, and filling it
+  // with empty folders makes its working tree dirty.
   if (create_missing) {
     if (not std::filesystem::exists(cwd / OUT_FOLDER)) {
       std::filesystem::create_directory(cwd / OUT_FOLDER);
@@ -729,6 +825,7 @@ auto spp::cli::HandleValidate(
     if (not std::filesystem::exists(cwd / TST_FOLDER)) {
       std::filesystem::create_directory(cwd / TST_FOLDER);
     }
+    SyncVcsFfi(cwd);
   }
 
   // Check the file against the schema: every section and key
@@ -768,74 +865,6 @@ auto spp::cli::HandleValidate(
     std::filesystem::current_path(vcs_dir.path());
     HandleValidate(false, false);
     std::filesystem::current_path(cwd);
-  }
-
-  // Check the FFI subfolders are structured properly.
-  for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
-    if (not std::filesystem::is_directory(ffi_dir)) {
-      std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
-        ffi_dir.path().filename()) + "\n";
-      return false;
-    }
-
-    const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
-
-    // Check for a stub file for each ffi package. This is what
-    // s++ uses (s++ code) to hook into the shared library.
-    if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
-      std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
-      return false;
-    }
-
-    // Everything else is a folder per target, named the one way
-    // the compiler spells it, holding the library named for that
-    // target's platform. Checked for every target the package
-    // ships rather than only this host's, because a package is
-    // validated where it is made, not only where it is built.
-    auto targets = 0uz;
-    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
-      const auto found = utils::files::NativeString(entry.path().filename());
-      if (found == STUB_FILE) { continue; }
-
-      // Loose files (a SOURCE, README, LICENSE) are the package's
-      // own business; only its library left outside a target
-      // folder, the old flat layout, is an error.
-      if (not entry.is_directory()) {
-        const auto misplaced = genex::any_of(Arr<StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
-          return found == utils::files::SharedLibraryName(lib_name, ext);
-        });
-        if (not misplaced) { continue; }
-        std::cerr
-          << "Error: 'ffi/" + lib_name + "/" + found + "' is not in a target folder.\n"
-          << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
-          << codegen::HostFfiFolderName() << "/'.\n";
-        return false;
-      }
-
-      if (not codegen::IsFfiFolderName(found.c_str())) {
-        std::cerr
-          << "Error: 'ffi/" + lib_name + "/" + found + "' does not name a target.\n"
-          << "  A target folder is '<arch>-<os>[-<env>]', spelled as the compiler spells it; this host's is '"
-          << codegen::HostFfiFolderName() << "'.\n";
-        return false;
-      }
-
-      const auto expected = utils::files::SharedLibraryName(
-        lib_name, codegen::SharedLibraryExtension(found.c_str()));
-      if (not std::filesystem::exists(entry.path() / expected)) {
-        std::cerr << "Error: 'ffi/" + lib_name + "/" + found + "' has no '" + expected + "'.\n";
-        return false;
-      }
-      targets += 1;
-    }
-
-    if (targets == 0) {
-      std::cerr
-        << "Error: 'ffi/" + lib_name + "' ships no library for any target.\n"
-        << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
-        << codegen::HostFfiFolderName() << "/'.\n";
-      return false;
-    }
   }
 
   // All checks passed.

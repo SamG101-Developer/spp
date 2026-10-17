@@ -73,7 +73,8 @@ namespace spp::cli {
   /// is sound. "is_exe" is whether the project is entered
   /// through a "src/main.spp" (a library is not).
   /// "create_missing" creates the optional folders ("out",
-  /// "vcs", "ffi", "tst") that are absent; it is false when
+  /// "vcs", "ffi", "tst") that are absent and fills "ffi" with
+  /// the dependencies' ffi packages; it is false when
   /// checking someone else's project, because a dependency's
   /// checkout is not this build's to write into.
   SPP_EXP_FUN auto HandleValidate(
