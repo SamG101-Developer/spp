@@ -549,7 +549,7 @@ auto spp::compiler::CompilerBoot::_FfiLibraries(
   auto libraries = Vec<Path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
-  const auto target = Str(codegen::FfiFolderName());
+  const auto target = Str(codegen::TargetFolderName());
   const auto extension = Str(codegen::SharedLibraryExtension(target.c_str()));
   for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
     if (not entry.is_directory()) { continue; }

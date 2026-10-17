@@ -223,15 +223,15 @@ namespace spp::cli {
             std::cerr
               << "Error: 'ffi/" + lib_name + "/" + found + "' is not in a target folder.\n"
               << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
-              << codegen::HostFfiFolderName() << "/'.\n";
+              << codegen::HostFolderName() << "/'.\n";
             return false;
           }
 
-          if (not codegen::IsFfiFolderName(found.c_str())) {
+          if (not codegen::IsTargetFolderName(found.c_str())) {
             std::cerr
               << "Error: 'ffi/" + lib_name + "/" + found + "' does not name a target.\n"
               << "  A target folder is '<arch>-<os>[-<env>]', spelled as the compiler spells it; this host's is '"
-              << codegen::HostFfiFolderName() << "'.\n";
+              << codegen::HostFolderName() << "'.\n";
             return false;
           }
 
@@ -248,7 +248,7 @@ namespace spp::cli {
           std::cerr
             << "Error: 'ffi/" + lib_name + "' ships no library for any target.\n"
             << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
-            << codegen::HostFfiFolderName() << "/'.\n";
+            << codegen::HostFolderName() << "/'.\n";
           return false;
         }
       }

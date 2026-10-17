@@ -26,37 +26,29 @@ namespace spp::codegen {
   /// ffi runtimes a project ships are host objects.
   auto TargetIsHost() -> bool;
 
-  /// The selected target as a directory name, which names its
-  /// folder in the "out" tree. Validated as a single path
-  /// component by "SelectTarget", and deliberately not read
-  /// back off llvm - see the note on the definition. Never
-  /// empty, because an unselected target is the host's own
-  /// triple.
+  /// The selected target as a folder name: "<arch>-<os>[-<env>]",
+  /// such as "x86_64-linux-gnu", "aarch64-macos" or
+  /// "x86_64-windows-msvc". It names the target's folder in the
+  /// "out" tree, and the folder an ffi package ships its library
+  /// for the target in. One spelling per target, however the
+  /// target was asked for. Fixes the target to the host if read
+  /// before "SelectTarget".
   auto TargetFolderName() -> char const*;
 
-  /// The selected target as the folder an ffi package ships its
-  /// library for it in: "<arch>-<os>[-<env>]", such as
-  /// "x86_64-linux-gnu", "aarch64-macos" or "x86_64-windows-msvc".
-  /// Unlike "TargetFolderName" this is one canonical spelling per
-  /// target, so a package and the compiler agree on it however
-  /// the target was asked for.
-  auto FfiFolderName() -> char const*;
+  /// The host's folder name, in the same spelling. Safe to read
+  /// before "SelectTarget", which "TargetFolderName" is not.
+  auto HostFolderName() -> char const*;
 
-  /// The host's ffi folder name, in the same spelling. Safe to
-  /// read before "SelectTarget", which "FfiFolderName" is not:
-  /// it fixes the target to the host on first use.
-  auto HostFfiFolderName() -> char const*;
-
-  /// Whether "folder" is the canonical ffi folder name of some
+  /// Whether "folder" is the canonical folder name of some
   /// target with a known architecture and operating system.
   /// Another spelling of a known target ("arm64-linux-gnu",
   /// "x86_64-darwin") is not, because the compiler would never
   /// look in it.
-  auto IsFfiFolderName(char const *folder) -> bool;
+  auto IsTargetFolderName(char const *folder) -> bool;
 
-  /// The extension a shared library carries on the target an
-  /// ffi folder names, without the leading dot: "so", "dylib"
-  /// or "dll". "folder" must pass "IsFfiFolderName".
+  /// The extension a shared library carries on the target a
+  /// folder names, without the leading dot: "so", "dylib" or
+  /// "dll". "folder" must pass "IsTargetFolderName".
   auto SharedLibraryExtension(char const *folder) -> char const*;
 
   /// Stamp an "llvm::Module" (passed as an opaque pointer)

@@ -158,7 +158,7 @@ private:
   /**
    * Every native library a package ships for the selected target, found by shape:
    * @c \<package\>/ffi/\<name\>/\<target\>/lib\<name\>.so , which is the library beside the stub that declares
-   * it, in the folder @c codegen::FfiFolderName names, under the one name the loader will ask for. A package with no
+   * it, in the folder @c codegen::TargetFolderName names, under the one name the loader will ask for. A package with no
    * library for the target is reported, rather than a link that quietly leaves it out.
    * @param[in] project_root The directory to sweep.
    * @return The libraries, or nothing when a package has none for the target.

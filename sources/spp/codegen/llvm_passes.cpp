@@ -249,32 +249,6 @@ namespace {
   }
 
   /**
-   * The target as a directory name.
-   */
-  auto SelectedFolderName()
-    -> std::string& {
-    static auto name = std::string(SPP_HOST_TRIPLE);
-    return name;
-  }
-
-  /**
-   * Whether @p text is usable as one path component: a triple's own alphabet, and nothing that would end the
-   * component or walk out of it.
-   */
-  auto IsPathComponent(
-    std::string const &text)
-    -> bool {
-    if (text.empty() or text == "." or text == "..") { return false; }
-    for (const auto c : text) {
-      const auto ok =
-        (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9')
-        or c == '-' or c == '_' or c == '.';
-      if (not ok) { return false; }
-    }
-    return true;
-  }
-
-  /**
    * Canonical triples worth suggesting when a "--target" is not recognised. Not a whitelist, just examples.
    */
   constexpr char const *kSuggestedTriples[] = {
@@ -350,11 +324,11 @@ namespace {
   }
 
   /**
-   * The ffi folder name of @p triple : "<arch>-<os>[-<env>]". Built from the parsed enums and LLVM's literal names for
-   * them, never from a string LLVM hands back, and with no vendor, because the vendor never changes what a library
-   * links against.
+   * The folder name of @p triple : "<arch>-<os>[-<env>]". Built from the parsed enums and LLVM's literal names for
+   * them, never from a string LLVM hands back, so it is always one safe path component. No vendor, because it never
+   * changes what is built or linked, and no OS version, so each target has the one spelling however it was asked for.
    */
-  auto FfiFolderOf(
+  auto FolderOf(
     llvm::Triple const &triple)
     -> std::string {
     auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
@@ -368,10 +342,10 @@ namespace {
   }
 
   /**
-   * The triple an ffi folder name spells, parsed positionally rather than through normalize(), whose result comes
+   * The triple a folder name spells, parsed positionally rather than through normalize(), whose result comes
    * back over-long across the LLVM boundary. Empty when @p folder is not two or three components.
    */
-  auto TripleOfFfiFolder(
+  auto TripleOfFolder(
     std::string const &folder)
     -> std::optional<llvm::Triple> {
     auto parts = llvm::SmallVector<llvm::StringRef, 4>();
@@ -393,14 +367,6 @@ auto spp::codegen::SelectTarget(
   // resolves to on its own when nothing has been selected.
   const auto requested = std::string(triple != nullptr ? triple : "");
   if (requested.empty()) { return true; }
-
-  // The request names a directory, so it has to be one component
-  // and nothing that leaves it. Checked before anything is done
-  // with it rather than after.
-  if (not IsPathComponent(requested)) {
-    llvm::errs() << "Invalid target '" << requested << "': a triple is letters, digits, '-', '_' and '.'\n";
-    return false;
-  }
 
   // Normalised before the lookup, so a short name ("riscv64",
   // "aarch64") is accepted on the same terms as a full triple.
@@ -428,12 +394,6 @@ auto spp::codegen::SelectTarget(
   }
 
   SelectedTriple() = normalized;
-
-  // The folder keeps the requested spelling, not the normalised
-  // one: normalize() returns a std::string across the boundary
-  // described above, so what comes back cannot be trusted to be
-  // a path component even though the request was.
-  SelectedFolderName() = requested;
   return true;
 }
 
@@ -444,36 +404,31 @@ auto spp::codegen::TargetIsHost()
 
 auto spp::codegen::TargetFolderName()
   -> char const* {
-  return SelectedFolderName().c_str();
-}
-
-auto spp::codegen::FfiFolderName()
-  -> char const* {
-  static const auto folder = FfiFolderOf(TargetTriple());
+  static const auto folder = FolderOf(TargetTriple());
   return folder.c_str();
 }
 
-auto spp::codegen::HostFfiFolderName()
+auto spp::codegen::HostFolderName()
   -> char const* {
-  static const auto folder = FfiFolderOf(HostTriple());
+  static const auto folder = FolderOf(HostTriple());
   return folder.c_str();
 }
 
-auto spp::codegen::IsFfiFolderName(
+auto spp::codegen::IsTargetFolderName(
   char const *folder)
   -> bool {
   const auto spelled = std::string(folder);
-  const auto triple = TripleOfFfiFolder(spelled);
+  const auto triple = TripleOfFolder(spelled);
   if (not triple.has_value()) { return false; }
   if (triple->getArch() == llvm::Triple::UnknownArch) { return false; }
   if (triple->getOS() == llvm::Triple::UnknownOS) { return false; }
-  return FfiFolderOf(*triple) == spelled;
+  return FolderOf(*triple) == spelled;
 }
 
 auto spp::codegen::SharedLibraryExtension(
   char const *folder)
   -> char const* {
-  const auto triple = TripleOfFfiFolder(folder);
+  const auto triple = TripleOfFolder(folder);
   SPP_ASSERT(triple.has_value());
   if (triple->isOSWindows()) { return "dll"; }
   if (triple->isOSDarwin()) { return "dylib"; }
