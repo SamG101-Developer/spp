@@ -92,10 +92,14 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     // this builder, and call the internal raise steps for
     // the abstract builder.
     this->_ErrObj->Message = err_msg;
-    this->_ErrObj->Span = this->_ErrFormatters[0]->SpanOfRawPos(Pos, 1);
+
+    // "Pos" is the parser's token index; the formatter reads
+    // the position a token of its file has.
+    const auto position = this->_ErrFormatters[0]->PositionOf(Pos);
+    this->_ErrObj->Span = this->_ErrFormatters[0]->SpanOfRawPos(position, 1);
     this->_ErrObj->Messages = {
       this->_ErrFormatters[0]->ErrorRawPos(
-        Pos, 1, std::move(err_msg), "Syntax error")
+        position, 1, std::move(err_msg), "Syntax error")
     };
     utils::errors::AbstractErrorBuilder<T>::Raise();
   }

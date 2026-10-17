@@ -2004,7 +2004,10 @@ auto spp::parse::ParserSpp::ParseSpecificCharacters(Str &&s)
     identifier += p1->TokenData[0];
   }
 
-  return identifier != s ? nullptr : _CreateAst<asts::TokenAst>(pos, lex::SppTokenType::SP_NO_TOK, identifier);
+  return identifier != s ? nullptr : _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(pos),
+    lex::SppTokenType::SP_NO_TOK,
+    identifier);
 }
 
 auto spp::parse::ParserSpp::ParseSpecificCharacter(const char16_t c)
@@ -2042,7 +2045,9 @@ auto spp::parse::ParserSpp::ParseLexemeCharacterOrDigitOrUnderscore()
 auto spp::parse::ParserSpp::ParseLexemeBinInteger()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_NUMBER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_NUMBER, Str());
 
   PARSE_ONCE(p1, [this] { return ParseSpecificCharacter('0'); });
   out->TokenData += p1->TokenData;
@@ -2066,7 +2071,9 @@ auto spp::parse::ParserSpp::ParseLexemeBinInteger()
 auto spp::parse::ParserSpp::ParseLexemeOctInteger()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_NUMBER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_NUMBER, Str());
 
   PARSE_ONCE(p1, [this] { return ParseSpecificCharacter('0'); });
   out->TokenData += p1->TokenData;
@@ -2090,7 +2097,9 @@ auto spp::parse::ParserSpp::ParseLexemeOctInteger()
 auto spp::parse::ParserSpp::ParseLexemeDecInteger()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_NUMBER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_NUMBER, Str());
 
   PARSE_ONCE(p1, ParseLexemeDigit);
   out->TokenData += p1->TokenData;
@@ -2106,7 +2115,9 @@ auto spp::parse::ParserSpp::ParseLexemeDecInteger()
 auto spp::parse::ParserSpp::ParseLexemeHexInteger()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_NUMBER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_NUMBER, Str());
 
   PARSE_ONCE(p1, [this] { return ParseSpecificCharacter('0'); });
   out->TokenData += p1->TokenData;
@@ -2130,7 +2141,9 @@ auto spp::parse::ParserSpp::ParseLexemeHexInteger()
 auto spp::parse::ParserSpp::ParseLexemeSingleQuoteChar()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_CHAR, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_CHAR, Str());
 
   PARSE_ONCE(p1, ParseTokenSingleQuote);
   out->TokenData += p1->TokenData;
@@ -2149,7 +2162,9 @@ auto spp::parse::ParserSpp::ParseLexemeSingleQuoteChar()
 auto spp::parse::ParserSpp::ParseLexemeDoubleQuoteString()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_STRING, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_STRING, Str());
 
   PARSE_ONCE(p1, ParseTokenDoubleQuote);
   out->TokenData += p1->TokenData;
@@ -2168,7 +2183,9 @@ auto spp::parse::ParserSpp::ParseLexemeDoubleQuoteString()
 auto spp::parse::ParserSpp::ParseLexemeIdentifier()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_IDENTIFIER, Str());
 
   PARSE_ONCE(p2, ParseLexemeCharacter);
   if (std::isupper(p2->TokenData[0])) { return nullptr; }
@@ -2188,7 +2205,9 @@ auto spp::parse::ParserSpp::ParseLexemeIdentifier()
 auto spp::parse::ParserSpp::ParseLexemeUpperIdentifier()
   -> Unique<asts::TokenAst> {
   PARSE_ONCE(_, ParseNothing);
-  auto out = _CreateAst<asts::TokenAst>(_Pos, lex::SppTokenType::LX_IDENTIFIER, Str());
+  auto out = _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(_Pos),
+    lex::SppTokenType::LX_IDENTIFIER, Str());
 
   PARSE_ONCE(p2, ParseLexemeCharacter);
   if (std::islower(p2->TokenData[0])) { return nullptr; }
@@ -2821,7 +2840,9 @@ auto spp::parse::ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppT
   }
 
   if (tok == lex::RawTokenType::SP_NO_TOK) {
-    return _CreateAst<asts::TokenAst>(_Pos, mapped_tok, Str());
+    return _CreateAst<asts::TokenAst>(
+      _ErrorFormatter->PositionOf(_Pos),
+      mapped_tok, Str());
   }
 
   if (_Tokens[_Pos].Type != tok) {
@@ -2835,7 +2856,8 @@ auto spp::parse::ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppT
     // the end of their file sits the appended prelude, and reporting
     // "got 'use'" against a "use" the compiler put there reads as a
     // complaint about their code.
-    const auto got = _ErrorFormatter != nullptr and _ErrorFormatter->IsPastUserSource(_Pos)
+    const auto got = _ErrorFormatter != nullptr and _ErrorFormatter->IsPastUserSource(
+      _ErrorFormatter->PositionOf(_Pos))
       ? "the end of the file"s
       : "'"s + _Tokens[_Pos].Data + "'";
 
@@ -2849,7 +2871,9 @@ auto spp::parse::ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppT
 
   const auto pos = _Pos;
   ++_Pos;
-  return _CreateAst<asts::TokenAst>(pos, mapped_tok, _Tokens[_Pos - 1].Data.data());
+  return _CreateAst<asts::TokenAst>(
+    _ErrorFormatter->PositionOf(pos),
+    mapped_tok, _Tokens[_Pos - 1].Data.data());
 }
 
 auto spp::parse::ParserSpp::_StoreError(

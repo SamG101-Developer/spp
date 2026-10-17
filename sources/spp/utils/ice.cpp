@@ -55,11 +55,13 @@ namespace spp {
     SPP_ATTR_NORETURN auto ThrowAt(
       asts::Ast const &at, analyse::scopes::Scope const *scope, const StrView message,
       std::source_location const &raised_at, Str const &call_stack) -> void {
-      auto *const formatter = scope != nullptr ? scope->GetErrorFormatter() : nullptr;
+      // The file the ast was parsed from, else the scope's.
+      auto formatter = utils::errors::ErrorFormatter::Owning(&at);
+      if (formatter == nullptr and scope != nullptr) { formatter = scope->GetErrorFormatter(); }
       if (formatter == nullptr) {
         Throw(message, raised_at, Nullopt, "= At (no source position): " + at.ToString() + "\n", call_stack);
       }
-      auto quoted = formatter->ErrorAst(&at, "", "The compiler was looking at this");
+      const auto quoted = formatter->ErrorAst(&at, "", "The compiler was looking at this");
       Throw(message, raised_at, formatter->SpanOfAst(&at), quoted + "\n", call_stack);
     }
   }

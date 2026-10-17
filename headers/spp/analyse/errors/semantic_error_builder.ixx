@@ -119,19 +119,29 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
-    // Pair the scopes' formatters, in order, with the blocks that
-    // quote source (an error and its context), cycling when there
+    // Each block that quotes source (an error and its context) is
+    // quoted through the file its ast was parsed from, which its
+    // position names ("ErrorFormatter::Owning"), whatever scopes
+    // the error was raised with. An ast no file holds (generated)
+    // takes the scopes' formatters, in order, cycling when there
     // are fewer scopes than blocks. The header and footer quote
-    // nothing, so they take no formatter; counting them used to
-    // swap the two scopes of every two-scope error.
+    // nothing, so they take no formatter. Todo: Can we get rid of
+    // scopes then for the formatter?
     auto messages = Vec<Str>();
     auto next = 0uz;
     for (auto &info : cast_error->ErrorInfo) {
-      if (this->_ErrFormatters.empty()) { break; }
-      auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.size()];
+      auto formatter = static_cast<utils::errors::ErrorFormatter*>(nullptr);
       if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
-        info.Span = formatter->SpanOfAst(info.Ast);
+        formatter = utils::errors::ErrorFormatter::Owning(info.Ast);
+        if (formatter == nullptr and not this->_ErrFormatters.empty()) {
+          formatter = this->_ErrFormatters[next % this->_ErrFormatters.size()];
+        }
         ++next;
+        if (formatter == nullptr) {
+          messages.emplace_back(utils::errors::ErrorFormatter::WithoutSource(info.Ast, info.Tag));
+          continue;
+        }
+        info.Span = formatter->SpanOfAst(info.Ast);
       }
       messages.emplace_back(_StringifyErrorInformation(formatter, info));
     }

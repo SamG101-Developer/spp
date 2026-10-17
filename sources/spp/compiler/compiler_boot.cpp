@@ -63,7 +63,7 @@ auto spp::compiler::CompilerBoot::Lex(
   for (auto const &mod : tree) {
     auto lexer = lex::Lexer(mod->Code, not utils::files::NativeString(mod->Path).contains("/src/std/"));
     mod->Tokens = lexer.Lex();
-    mod->Formatter = MakeUnique<utils::errors::ErrorFormatter>(
+    mod->Formatter = utils::errors::ErrorFormatter::ForFile(
       mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
     bar.Next();
   }
@@ -89,7 +89,7 @@ auto spp::compiler::CompilerBoot::Parse(
     mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
     auto lexer = lex::Lexer(mod->Code, true);
     mod->Tokens = lexer.Lex();
-    mod->Formatter = MakeUnique<utils::errors::ErrorFormatter>(
+    mod->Formatter = utils::errors::ErrorFormatter::ForFile(
       mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
     _Modules.emplace_back(mod->ModuleAst.get());
