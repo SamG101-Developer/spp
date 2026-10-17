@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <optional>
 
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
@@ -348,6 +349,38 @@ namespace {
     return machine;
   }
 
+  /**
+   * The ffi folder name of @p triple : "<arch>-<os>[-<env>]". Built from the parsed enums and LLVM's literal names for
+   * them, never from a string LLVM hands back, and with no vendor, because the vendor never changes what a library
+   * links against.
+   */
+  auto FfiFolderOf(
+    llvm::Triple const &triple)
+    -> std::string {
+    auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
+    folder += "-";
+    folder += triple.isMacOSX() ? "macos" : llvm::Triple::getOSTypeName(triple.getOS()).str();
+    if (triple.getEnvironment() != llvm::Triple::UnknownEnvironment) {
+      folder += "-";
+      folder += llvm::Triple::getEnvironmentTypeName(triple.getEnvironment()).str();
+    }
+    return folder;
+  }
+
+  /**
+   * The triple an ffi folder name spells, parsed positionally rather than through normalize(), whose result comes
+   * back over-long across the LLVM boundary. Empty when @p folder is not two or three components.
+   */
+  auto TripleOfFfiFolder(
+    std::string const &folder)
+    -> std::optional<llvm::Triple> {
+    auto parts = llvm::SmallVector<llvm::StringRef, 4>();
+    llvm::StringRef(folder).split(parts, '-');
+    if (parts.size() == 2) { return llvm::Triple(parts[0], "unknown", parts[1]); }
+    if (parts.size() == 3) { return llvm::Triple(parts[0], "unknown", parts[1], parts[2]); }
+    return std::nullopt;
+  }
+
   /** The attribute a backend reads to decide whether a prologue probes, and the value asking it to do so inline. */
   constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
   constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
@@ -412,6 +445,39 @@ auto spp::codegen::TargetIsHost()
 auto spp::codegen::TargetFolderName()
   -> char const* {
   return SelectedFolderName().c_str();
+}
+
+auto spp::codegen::FfiFolderName()
+  -> char const* {
+  static const auto folder = FfiFolderOf(TargetTriple());
+  return folder.c_str();
+}
+
+auto spp::codegen::HostFfiFolderName()
+  -> char const* {
+  static const auto folder = FfiFolderOf(HostTriple());
+  return folder.c_str();
+}
+
+auto spp::codegen::IsFfiFolderName(
+  char const *folder)
+  -> bool {
+  const auto spelled = std::string(folder);
+  const auto triple = TripleOfFfiFolder(spelled);
+  if (not triple.has_value()) { return false; }
+  if (triple->getArch() == llvm::Triple::UnknownArch) { return false; }
+  if (triple->getOS() == llvm::Triple::UnknownOS) { return false; }
+  return FfiFolderOf(*triple) == spelled;
+}
+
+auto spp::codegen::SharedLibraryExtension(
+  char const *folder)
+  -> char const* {
+  const auto triple = TripleOfFfiFolder(folder);
+  SPP_ASSERT(triple.has_value());
+  if (triple->isOSWindows()) { return "dll"; }
+  if (triple->isOSDarwin()) { return "dylib"; }
+  return "so";
 }
 
 auto spp::codegen::ApplyTargetToModule(
