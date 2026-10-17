@@ -341,6 +341,18 @@ namespace {
   /** The attribute a backend reads to decide whether a prologue probes, and the value asking it to do so inline. */
   constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
   constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
+
+  /** Whether the selected target has straight-line speculation hardening: x86 and AArch64 do, nothing else does. */
+  auto TargetHasSlsHardening()
+    -> bool {
+    return TargetTriple().isX86() or TargetTriple().isAArch64();
+  }
+
+  /** Whether the selected target can scrub registers on return: x86 and AArch64 can. */
+  auto TargetHasRegisterScrubbing()
+    -> bool {
+    return TargetTriple().isX86() or TargetTriple().isAArch64();
+  }
 }
 
 auto spp::codegen::SelectTarget(
@@ -612,15 +624,16 @@ auto spp::codegen::ApplyStackProtector(
   return stamped;
 }
 
-auto spp::codegen::TargetHasSlsHardening()
-  -> bool {
-  return TargetTriple().isX86() or TargetTriple().isAArch64();
-}
-
 auto spp::codegen::ApplySlsHardening(
   void *llvm_module)
-  -> unsigned long {
+  -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  if (not TargetHasSlsHardening()) {
+    llvm::errs()
+      << "This target has no straight-line speculation hardening.\n"
+      << "  To build without it, set 'sls = false' under [binary.codegen] in spp.toml.\n";
+    return false;
+  }
 
   // The features name the branches the trap follows: returns
   // and indirect jumps on x86, returns, indirect branches and
@@ -631,15 +644,35 @@ auto spp::codegen::ApplySlsHardening(
     ? llvm::StringRef("+harden-sls-ret,+harden-sls-ijmp")
     : llvm::StringRef("+harden-sls-retbr,+harden-sls-blr");
 
-  auto stamped = 0UL;
   for (auto &fn : llvm_mod) {
     if (fn.isDeclaration()) { continue; }
     const auto existing = fn.getFnAttribute("target-features").getValueAsString();
     if (existing.contains(features)) { continue; }
     fn.addFnAttr("target-features", existing.empty() ? features.str() : (existing + "," + features).str());
-    stamped += 1;
   }
-  return stamped;
+  return true;
+}
+
+auto spp::codegen::ApplyRegisterScrubbing(
+  void *llvm_module)
+  -> bool {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  if (not TargetHasRegisterScrubbing()) {
+    llvm::errs()
+      << "This target cannot scrub registers on return.\n"
+      << "  To build without it, set 'scrub = false' under [binary.codegen] in spp.toml.\n";
+    return false;
+  }
+
+  // "used-gpr": only the general-purpose registers the function
+  // touched. Vector registers too ("all") would cost far more
+  // on every return for little a pointer-sized leak needs.
+  for (auto &fn : llvm_mod) {
+    if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
+    if (fn.hasFnAttribute("zero-call-used-regs")) { continue; }
+    fn.addFnAttr("zero-call-used-regs", "used-gpr");
+  }
+  return true;
 }
 
 auto spp::codegen::ApplyStackClashProtection(

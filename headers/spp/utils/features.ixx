@@ -18,6 +18,7 @@ namespace spp::utils::features {
     MemoryMapDenyWx,
     MemoryMapSeal,
     BinaryCodegenSls,
+    BinaryCodegenScrub,
     BinaryLinkHarden,
   };
 

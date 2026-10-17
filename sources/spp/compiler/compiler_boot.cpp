@@ -471,15 +471,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
-  FEATURE_GATE(BinaryCodegenSls) {
-    if (not codegen::TargetHasSlsHardening()) {
-      llvm::errs()
-        << "This target has no straight-line speculation hardening.\n"
-        << "  To build without it, set 'sls = false' under [binary.codegen] in spp.toml.\n";
-      return false;
-    }
-    codegen::ApplySlsHardening(lto_module.get());
-  }
+  FEATURE_GATE(BinaryCodegenSls) { if (not codegen::ApplySlsHardening(lto_module.get())) { return false; } }
+  FEATURE_GATE(BinaryCodegenScrub) { if (not codegen::ApplyRegisterScrubbing(lto_module.get())) { return false; } }
   codegen::ApplyUnwindTables(lto_module.get());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 

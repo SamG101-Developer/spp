@@ -72,19 +72,26 @@ namespace spp::codegen {
   /// way past. Answers how many functions were given one.
   auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
 
-  /// Whether the selected target has straight-line speculation
-  /// hardening for "ApplySlsHardening" to turn on: x86 and
-  /// AArch64 do, nothing else llvm targets does.
-  auto TargetHasSlsHardening() -> bool;
-
   /// Harden every function in an "llvm::Module" (passed as an
   /// opaque pointer) against straight-line speculation: a trap
   /// straight after every return and indirect jump, so the
   /// bytes that follow one are never run speculatively as the
   /// gadget they would otherwise be. Code size only; the trap
-  /// is never reached architecturally. Answers how many
-  /// functions were hardened.
-  auto ApplySlsHardening(void *llvm_module) -> unsigned long;
+  /// is never reached architecturally. x86 and AArch64 only:
+  /// on any other target this reports the key that turns it
+  /// off and answers false, which fails the build.
+  auto ApplySlsHardening(void *llvm_module) -> bool;
+
+  /// Make every function in an "llvm::Module" (passed as an
+  /// opaque pointer) zero the general-purpose registers it used
+  /// and its caller does not expect kept, just before it
+  /// returns, so a pointer or secret it computed is not left
+  /// for whatever runs next, and a return-oriented chain finds
+  /// none of them preloaded. A few "xor"s on every return.
+  /// x86 and AArch64 only: on any other target this reports
+  /// the key that turns it off and answers false, which fails
+  /// the build.
+  auto ApplyRegisterScrubbing(void *llvm_module) -> bool;
 
   /// Split every function's frame in two: the objects a callee
   /// could write past stay on a separate "unsafe" stack, and

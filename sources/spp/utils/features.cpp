@@ -308,6 +308,16 @@ auto spp::utils::features::Schema()
                   "speculatively. Code size only. x86 and AArch64; any other target fails the build until this is "
                   "turned off."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenScrub,
+          .Name = "scrub",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Zero the registers a function used, and its caller does not keep, just before it returns, so "
+                  "nothing it computed is left behind. A few instructions on every return. x86 and AArch64; any "
+                  "other target fails the build until this is turned off."
+        },
       },
       .FreeForm = false,
     },
