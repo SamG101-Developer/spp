@@ -787,26 +787,55 @@ auto spp::cli::HandleValidate(
       return false;
     }
 
-    // Collect the shared library binaries within the folder, and
-    // get the expected library binary name and extension that will
-    // be checked against.
-    const auto expected = utils::files::SharedLibraryName(lib_name);
-    if (std::filesystem::exists(ffi_dir.path() / expected)) { continue; }
-
-    auto found_names = Str();
+    // Everything else is a folder per target, named the one way
+    // the compiler spells it, holding the library named for that
+    // target's platform. Checked for every target the package
+    // ships rather than only this host's, because a package is
+    // validated where it is made, not only where it is built.
+    auto targets = 0uz;
     for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
-      if (not entry.is_regular_file()) { continue; }
       const auto found = utils::files::NativeString(entry.path().filename());
       if (found == STUB_FILE) { continue; }
-      found_names += (found_names.empty() ? "" : ", ") + found;
+
+      // Loose files (a SOURCE, README, LICENSE) are the package's
+      // own business; only its library left outside a target
+      // folder, the old flat layout, is an error.
+      if (not entry.is_directory()) {
+        const auto misplaced = genex::any_of(Arr<StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
+          return found == utils::files::SharedLibraryName(lib_name, ext);
+        });
+        if (not misplaced) { continue; }
+        std::cerr
+          << "Error: 'ffi/" + lib_name + "/" + found + "' is not in a target folder.\n"
+          << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+          << codegen::HostFfiFolderName() << "/'.\n";
+        return false;
+      }
+
+      if (not codegen::IsFfiFolderName(found.c_str())) {
+        std::cerr
+          << "Error: 'ffi/" + lib_name + "/" + found + "' does not name a target.\n"
+          << "  A target folder is '<arch>-<os>[-<env>]', spelled as the compiler spells it; this host's is '"
+          << codegen::HostFfiFolderName() << "'.\n";
+        return false;
+      }
+
+      const auto expected = utils::files::SharedLibraryName(
+        lib_name, codegen::SharedLibraryExtension(found.c_str()));
+      if (not std::filesystem::exists(entry.path() / expected)) {
+        std::cerr << "Error: 'ffi/" + lib_name + "/" + found + "' has no '" + expected + "'.\n";
+        return false;
+      }
+      targets += 1;
     }
 
-    std::cerr
-      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds "
-      + (found_names.empty() ? Str("nothing but its stub") : found_names) + ".\n"
-      << "  A package is linked through the library named for it, so one built for another platform does not "
-      << "stand in for this host's.\n";
-    return false;
+    if (targets == 0) {
+      std::cerr
+        << "Error: 'ffi/" + lib_name + "' ships no library for any target.\n"
+        << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+        << codegen::HostFfiFolderName() << "/'.\n";
+      return false;
+    }
   }
 
   // All checks passed.
