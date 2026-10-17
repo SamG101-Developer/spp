@@ -4,7 +4,6 @@ module;
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
-import spp.utils.ice;
 import colex;
 import genex;
 import std;
@@ -188,23 +187,22 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   using lex::RawTokenType;
 
   // A span of over 1000 tokens (a whole function or class) is
-  // quoted by its first token, so the report stays readable. A
-  // position past this file's tokens is an ast from another file
-  // given to this file's formatter, which is a compiler bug.
+  // quoted by its first token, so the report stays readable.
   ast_size = ast_size > 1000 ? 1 : ast_size;
-  if (ast_start_pos > _Tokens.size()) {
-    Ice(std::format("an ast at token {} quoted from a file of {} tokens", ast_start_pos, _Tokens.size()));
-  }
 
   // Synthetic/generated ASTs have no real source position
   // (pos == 0 is the lexer's prepended newline sentinel),
   // and neither has anything past the end of what the author
   // wrote, which is the prelude appended behind it. Quoting
   // either back would point at a line the user didn't type.
-  if (ast_start_pos == 0 or IsPastUserSource(ast_start_pos)) {
+  // Nor does a position past this file's tokens: an ast from
+  // another file, given this one's formatter because an error
+  // pairs its blocks with its scopes in order (N8.7), would be
+  // quoted as whatever this file has there.
+  if (ast_start_pos == 0 or ast_start_pos >= _Tokens.size() or IsPastUserSource(ast_start_pos)) {
     auto nowhere = _RawLocation();
     nowhere.Generated = true;
-    nowhere.PastUserSource = ast_start_pos != 0;
+    nowhere.PastUserSource = ast_start_pos != 0 and ast_start_pos < _Tokens.size();
     return nowhere;
   }
 
