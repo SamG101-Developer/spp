@@ -35,19 +35,15 @@ namespace spp::utils::files {
   /// file under it.
   SPP_EXP_FUN auto GlobSpp(Path const &path) -> Vec<Path>;
 
-  /// The extension a shared library carries on this host,
-  /// without the leading dot: "so", "dylib" or "dll".
-  SPP_EXP_FUN auto SharedLibraryExtension() -> Str;
-
   /// The one file name a package's shared library may have on
-  /// this host, which is the name the loader will ask for once
-  /// something links against it. On an ELF or Mach-O host that
-  /// is the soname, and a soname carries the "lib" prefix; on
-  /// Windows there is no soname, and a dll is imported under
+  /// a target, which is the name the loader will ask for once
+  /// something links against it. On an ELF or Mach-O target
+  /// that is the soname, and a soname carries the "lib" prefix;
+  /// on Windows there is no soname, and a dll is imported under
   /// the file name it was built as. "package" is the package's
   /// folder name under "ffi", which is also the library's own
-  /// name.
-  SPP_EXP_FUN auto SharedLibraryName(StrView package) -> Str;
+  /// name, and "extension" is the target's, without the dot.
+  SPP_EXP_FUN auto SharedLibraryName(StrView package, StrView extension) -> Str;
 
   /// An advisory lock over a whole file: "flock(2)" on POSIX,
   /// and the equivalent whole-range "LockFileEx" on Windows.

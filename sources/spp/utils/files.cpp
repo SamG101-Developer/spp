@@ -155,23 +155,9 @@ auto spp::utils::files::GlobSpp(
   return paths;
 }
 
-auto spp::utils::files::SharedLibraryExtension()
-  -> Str {
-#if SPP_PLATFORM_WINDOWS
-  return "dll";
-#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
-  return "dylib";
-#else
-  return "so";
-#endif
-}
-
 auto spp::utils::files::SharedLibraryName(
-  const StrView package)
+  const StrView package, const StrView extension)
   -> Str {
-#if SPP_PLATFORM_WINDOWS
-  return Str(package) + "." + SharedLibraryExtension();
-#else
-  return "lib" + Str(package) + "." + SharedLibraryExtension();
-#endif
+  const auto prefix = extension == "dll" ? "" : "lib";
+  return prefix + Str(package) + "." + Str(extension);
 }
