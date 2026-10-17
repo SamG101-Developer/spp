@@ -24,8 +24,7 @@ namespace spp::parse::errors {
   /// token. Used in error messages about parsing. Must be TU
   /// local (not hidden) for below usage - might be GCC bug.
   SPP_ATTR_COLD inline auto TokenTypeForMessage(
-    const lex::SppTokenType token)
-    -> Str {
+    const lex::SppTokenType token) -> Str {
     switch (token) {
       case lex::SppTokenType::LX_IDENTIFIER: return "an identifier";
       case lex::SppTokenType::LX_NUMBER: return "a number";
