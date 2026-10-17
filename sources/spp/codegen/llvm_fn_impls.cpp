@@ -51,106 +51,105 @@ import std;
 // =========================================================================================================
 
 namespace {
-  /**
-   * Emit a message to stderr and abort, terminating the current block.
-   *
-   * @n
-   * Used wherever a runtime contract is broken and the failure has something worth saying. The alternative - a bare
-   * @c llvm.trap - lowers to @c ud2 and surfaces as "Illegal instruction" with no index, no length, no location and no
-   * name: a good deal less than the failure actually knows. @c dprintf is used rather than @c fprintf because it takes
-   * a descriptor directly, so no @c FILE* has to be reached for from ir.
-   *
-   * @param ctx The llvm context to emit into, positioned at the block that fails.
-   * @param fmt The message, as a printf format; a newline is appended.
-   * @param args The values for @p fmt 's conversions, in order.
-   */
-  auto EmitRuntimeAbort(
-    spp::codegen::LlvmCtx *const ctx,
-    spp::Str const &fmt,
-    spp::Vec<llvm::Value*> const &args = {})
-    -> void {
-    auto *const mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
+  /// [CHECKED]
+  /// The runtime checks the compiler emits. The numbers are
+  /// the runtime's own (SPPC_CHECK_* enum), which names each
+  /// check in its report.
+  enum class RuntimeCheck : std::uint32_t {
+    Index = 1,
+    Conversion = 2,
+    GeneratorSend = 3,
+    SliceOrder = 4,
+    SliceEnd = 5,
+    SignedAdd = 0x10,
+    UnsignedAdd = 0x11,
+    SignedSub = 0x12,
+    UnsignedSub = 0x13,
+    SignedMul = 0x14,
+    UnsignedMul = 0x15,
+  };
+
+  /// [CHECKED]
+  /// Fail a runtime check, terminating the current block. Every
+  /// failed check ends the process through 1 unified runtime
+  /// call "sppc_check_failed", which reports the check by name
+  /// with the values given and prints a backtrace with "_exit"
+  /// (no allocation, no signal handler, etc).
+  auto EmitCheckFailed(
+    LlvmCtx *const ctx, const RuntimeCheck check,
+    llvm::Value *a = nullptr, llvm::Value *b = nullptr) -> void {
+    // Get the module and create some predefined types that will
+    // be reused through this function.
+    const auto mod = ctx->Builder.GetInsertBlock()->getParent()->getParent();
     const auto i32_ty = llvm::Type::getInt32Ty(*ctx->Context);
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
 
-    const auto dprintf_fn = mod->getOrInsertFunction(
-      "dprintf", llvm::FunctionType::get(i32_ty, {i32_ty, ptr_ty}, true));
+    // Get the call target embedded in the std library via the
+    // sppc ffi bindings.
+    auto callee = mod->getOrInsertFunction(
+      "sppc_check_failed",
+      llvm::FunctionType::get(void_ty, {i32_ty, i64_ty, i64_ty}, false));
 
-    auto call_args = spp::Vec<llvm::Value*>{
-      // Todo: Vec
-      llvm::ConstantInt::get(i32_ty, 2),
-      ctx->Builder.CreateGlobalString(spp::Str(fmt) + "\n")
-    };
-    call_args.insert(call_args.end(), args.begin(), args.end());
-    ctx->Builder.CreateCall(dprintf_fn, call_args);
+    // Assuming the function has been found, set a few llvm attrs
+    // on it, for optimization.
+    if (const auto fn = llvm::dyn_cast<llvm::Function>(callee.getCallee())) {
+      fn->setDoesNotReturn();
+      fn->setDoesNotThrow();
+      fn->addFnAttr(llvm::Attribute::Cold);
+    }
 
+    // Create a call to the check-failed function, passing in the
+    // "a" and "b" attributes if they are present, otherwise using
+    // zero as fallback defaults.
+    const auto zero = llvm::ConstantInt::get(i64_ty, 0);
     ctx->Builder.CreateCall(
-      mod->getOrInsertFunction("sppc_abort", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {}, false)),
-      {});
+      callee, {
+        llvm::ConstantInt::get(i32_ty, std::to_underlying(check)),
+        a != nullptr ? ctx->Builder.CreateZExtOrTrunc(a, i64_ty) : zero,
+        b != nullptr ? ctx->Builder.CreateZExtOrTrunc(b, i64_ty) : zero
+      });
     ctx->Builder.CreateUnreachable();
   }
 
-  /**
-   * Emit a shift whose result is defined for every distance, including one at or past the operand's width.
-   *
-   * @n
-   * A bare @c shl or @c lshr is poison once the distance reaches the operand's bit width, and the hardware does not
-   * agree with the language about what that means: x86 masks a variable shift count to the low five or six bits, so
-   * @c "x >> 32" on a 32-bit value is assembled as a shift by zero and hands back @p a unchanged. Source that shifts a
-   * value out in a loop then never terminates - and if it allocates per iteration, it does not fail, it exhausts the
-   * machine. That is not a diagnosable condition the way an out-of-bounds index is: a distance past the width has one
-   * obvious answer, which is that every bit has been shifted out, so this defines it rather than reporting it.
-   *
-   * The distance is clamped before the shift as well as selected over afterwards, because the shift is emitted on both
-   * paths and has to be in range on the one that is discarded too.
-   *
-   * @param ctx The llvm context to emit into.
-   * @param op The shift being emitted; must satisfy @c IsShiftBinOp.
-   * @param a The value being shifted.
-   * @param b The distance, already the same type as @p a.
-   * @return The shifted value, or zero when @p b is at or past the width of @p a.
-   */
+  /// [CHECKED]
+  /// Emit a shift whose result is defined for any distance
+  /// (including one at or past the operand's width). A bare
+  /// shl/lhsr poisons if the distance reaches the operand's
+  /// bit width. Clamp the distance before the shift as well
+  /// as afterwards.
   auto EmitDefinedShift(
-    spp::codegen::LlvmCtx *const ctx,
-    const spp::codegen::fn_impls::BinOp op,
-    llvm::Value *const a,
-    llvm::Value *const b)
-    -> llvm::Value* {
-    const auto uid = spp::utils::Uid();
+    LlvmCtx *ctx, const fn_impls::BinOp op,
+    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+    // Create some predefined types that will be reused through
+    // this function. Define the width and max for the shifts.
+    const auto uid = "." + spp::utils::Uid();
     const auto ty = a->getType();
     const auto width = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth());
     const auto max = llvm::ConstantInt::get(ty, ty->getIntegerBitWidth() - 1);
 
+    // Do a width check and select the safe value if it trips;
+    // this is the "before" check.
     const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
     const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
-    const auto raw = op == spp::codegen::fn_impls::BinOp::Shl
+    const auto raw = op == fn_impls::BinOp::Shl
       ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
       : ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid);
 
-    return ctx->Builder.CreateSelect(too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
+    // Do a width check afterwards too on the result. This is
+    // the completion of the "<<" and ">>" safety.
+    return ctx->Builder.CreateSelect(
+      too_wide, llvm::ConstantInt::get(ty, 0), raw, "shift.result" + uid);
   }
 
-  /**
-   * The declaration of one of llvm's "with.overflow" intrinsics over @p ty .
-   *
-   * @n
-   * The name is built here rather than taken from @c Intrinsic::getOrInsertDeclaration , which goes through
-   * @c Intrinsic::getName . That call was returning a name with eight bytes of heap garbage in the middle of it until
-   * the libstdc++ shim in @c libstdcxx_string_compat.cpp went in, and while it is correct now, there is nothing to be
-   * gained by routing a name through it: this family is closed and only ever overloaded over a plain integer, so the
-   * whole of the mangling is "i<width>", and @c Function 's constructor recognises a correctly spelled intrinsic name
-   * and gives the declaration the right id and attributes by itself.
-   *
-   * @param ctx The llvm context whose module the declaration belongs to.
-   * @param intrinsic Which of the six; anything else is not a "with.overflow" intrinsic.
-   * @param ty The integer type the operation is over.
-   * @return The declaration, ready to call with two @p ty operands for a "{ty, i1}" result.
-   */
+  /// [CHECKED]
+  /// Convert the intrinsic into a "llvm.<intrinsic>" (fully
+  /// qualified), to get the overflow information too.
   auto OverflowIntrinsic(
-    spp::codegen::LlvmCtx const *ctx,
-    const llvm::Intrinsic::IndependentIntrinsics intrinsic,
-    llvm::Type *const ty)
-    -> llvm::Function* {
+    LlvmCtx const *ctx, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
+    llvm::Type *ty) -> llvm::Function* {
+    // Operation name mapper based off of the intrinsic name. It
+    // gives the final part of the fully qualified version.
     auto op = spp::StrView();
     switch (intrinsic) {
       case llvm::Intrinsic::sadd_with_overflow: op = "sadd";
@@ -168,40 +167,36 @@ namespace {
       default: spp::Ice("not a checked arithmetic intrinsic");
     }
 
+    // Create the fully qualified name, and get its function.
+    // Given it exists, return it.
     const auto name = std::format("llvm.{}.with.overflow.i{}", op, ty->getIntegerBitWidth());
-    if (auto *const declared = ctx->Module->getFunction(name); declared != nullptr) { return declared; }
+    if (const auto declared = ctx->Module->getFunction(name); declared != nullptr) {
+      return declared;
+    }
 
-    const auto ret_ty = llvm::StructType::get(*ctx->Context, {ty, llvm::Type::getInt1Ty(*ctx->Context)});
-    const auto fn_ty = llvm::FunctionType::get(ret_ty, {ty, ty}, false);
-    return llvm::Function::Create(fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
+    // Otherwise, create it with external linkage for a library
+    // to provide implementation.
+    const auto ret_ty = llvm::StructType::get(
+      *ctx->Context, {ty, llvm::Type::getInt1Ty(*ctx->Context)});
+    const auto fn_ty = llvm::FunctionType::get(
+      ret_ty, {ty, ty}, false);
+    return llvm::Function::Create(
+      fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
   }
 
-  /**
-   * The result of an arithmetic operation together with whether it overflowed.
-   *
-   * @n
-   * Each of these is one of llvm's "with.overflow" intrinsics, which the backend selects as the ordinary instruction
-   * plus a read of the flag that instruction already set - so a signed add and its check are "addq; jo", two
-   * instructions, with the check off the dependency chain entirely. Spelling the same question out by hand costs
-   * three or four instructions for the signed cases, because "did the sign come out wrong" is two exclusive-ors and a
-   * test where the hardware has a flag for it; that is what this used to do, before the name corruption these
-   * intrinsics were unusable through was traced to libstdc++ and shimmed (see @c libstdcxx_string_compat.cpp ).
-   *
-   * @param ctx The llvm context to emit into.
-   * @param op The operation; must be one of the "*Checked" members.
-   * @param a The left operand.
-   * @param b The right operand, already the same type as @p a .
-   * @return The wrapped result, and whether the true result was out of range for the type.
-   */
+  /// [CHECKED]
+  /// The lowest level part of an arithmetic operation, with
+  /// additional information for if it overflowed or not. This
+  /// flows up to all math calling functions.
   auto EmitOverflowPair(
-    spp::codegen::LlvmCtx *const ctx,
-    const spp::codegen::fn_impls::BinOp op,
-    llvm::Value *const a,
-    llvm::Value *const b)
+    LlvmCtx *ctx, const fn_impls::BinOp op,
+    llvm::Value *a, llvm::Value *b)
     -> spp::Pair<llvm::Value*, llvm::Value*> {
-    using BinOp = spp::codegen::fn_impls::BinOp;
+    using BinOp = fn_impls::BinOp;
     const auto uid = "." + spp::utils::Uid();
 
+    // Get the intrinsic based off the selected operation from
+    // the calling function.
     auto intrinsic = llvm::Intrinsic::sadd_with_overflow;
     switch (op) {
       case BinOp::SAddChecked: intrinsic = llvm::Intrinsic::sadd_with_overflow;
@@ -219,102 +214,79 @@ namespace {
       default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
     }
 
+    // Create a call ingo the intrinsic with the detected
+    // types. Because of the S++ type system, the left and
+    // right operands will be the same type.
     const auto pair = ctx->Builder.CreateCall(
-      OverflowIntrinsic(ctx, intrinsic, a->getType()), {a, b}, "arith.checked" + uid);
+      OverflowIntrinsic(ctx, intrinsic, a->getType()),
+      {a, b}, "arith.checked" + uid);
+
+    // Return a pair of function calls to get the value
+    // and if there is an overflow or not.
     return {
       ctx->Builder.CreateExtractValue(pair, 0, "arith.value" + uid),
       ctx->Builder.CreateExtractValue(pair, 1, "arith.overflowed" + uid)
     };
   }
 
-  /**
-   * Emit an arithmetic operation that aborts rather than wraps when its result does not fit its type.
-   *
-   * @n
-   * Wrapping is not what "+" means, so the language does not spell it that way: a sum too large for its type is a bug
-   * wherever it happens, and a build profile is not the place to decide whether a bug is reported. Rust's split -
-   * checked in dev, wrapping in release - means the shipped binary is the one build that keeps going after the thing
-   * the check was for, which is the wrong way round. So this is emitted for every profile, and the aim is to make it
-   * cheap enough that there is nothing to trade away.
-   *
-   * @n
-   * The check is a branch on the flag the arithmetic instruction already set, so it adds nothing to the dependency
-   * chain, and it is never taken, so it costs a statically predicted not-taken branch - "imul; jo" rather than
-   * "imul". Its failure edge ends in
-   * @c unreachable and traps, which is @c cold and @c noreturn : block placement sinks it past the return, and
-   * SimplifyCFG merges the failure edges of every check sharing a trap code into one landing block per function,
-   * after inlining. So a function's whole worth of checks costs one branch each on the hot path and a single
-   * three-byte @c ud1 off it, with no stack frame - the trap is used rather than a call to a message-printing abort
-   * precisely because a call would force a frame onto every leaf function that does arithmetic.
-   *
-   * @n
-   * The trap code says which check failed, so the three bytes are not wasted: a handler (or a debugger stopped on the
-   * @c SIGILL ) can read the immediate out of the faulting instruction and name the operation.
-   *
-   * @n
-   * The cost this does not avoid is vectorisation: a loop whose body can trap has an exit llvm's loop vectoriser will
-   * not widen, so an elementwise loop over "+" stays scalar where a wrapping one would not. Recovering that needs the
-   * checks hoisted out of the loop and folded into one test at its exit, which changes when the abort is observed
-   * relative to the loop's stores, so it is a deliberate transformation rather than something to do quietly here.
-   *
-   * @param ctx The llvm context to emit into. Left positioned at the block reached when the result fits, so the
-   * caller goes on building as if it had emitted the plain operation.
-   * @param op The operation being emitted; must be one of the "*Checked" members.
-   * @param a The left operand.
-   * @param b The right operand, already the same type as @p a .
-   * @return The result, valid on the only path that reaches the caller's next instruction.
-   */
+  /// [CHECKED]
+  /// All math operations in S++ are checked, in debug and
+  /// release mode; no wrapping or no undefined behaviour. This
+  /// is to enforce maximum safety.
   auto EmitCheckedArith(
-    spp::codegen::LlvmCtx *const ctx,
-    const spp::codegen::fn_impls::BinOp op,
-    llvm::Value *const a,
-    llvm::Value *const b)
-    -> llvm::Value* {
-    using BinOp = spp::codegen::fn_impls::BinOp;
+    LlvmCtx *ctx, const fn_impls::BinOp op,
+    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+    using BinOp = fn_impls::BinOp;
     const auto uid = "." + spp::utils::Uid();
 
-    // One trap code per operation, so the landing block names the check that failed rather than just "arithmetic".
-    // Distinct codes cost one extra three-byte block per operation kind per function, which is why they are per
-    // operation and not per operation *site*.
-    auto code = 0U;
+    // One check per operation, so the report names the check
+    // that failed rather than just "arithmetic". Distinct
+    // checks cost one extra landing block per operation kind
+    // per function, which is why they are per operation and
+    // not per operation *site*.
+    auto check = RuntimeCheck{};
     switch (op) {
-      case BinOp::SAddChecked: code = 0x10;
+      case BinOp::SAddChecked:
+        check = RuntimeCheck::SignedAdd;
         break;
-      case BinOp::UAddChecked: code = 0x11;
+      case BinOp::UAddChecked:
+        check = RuntimeCheck::UnsignedAdd;
         break;
-      case BinOp::SSubChecked: code = 0x12;
+      case BinOp::SSubChecked:
+        check = RuntimeCheck::SignedSub;
         break;
-      case BinOp::USubChecked: code = 0x13;
+      case BinOp::USubChecked:
+        check = RuntimeCheck::UnsignedSub;
         break;
-      case BinOp::SMulChecked: code = 0x14;
+      case BinOp::SMulChecked:
+        check = RuntimeCheck::SignedMul;
         break;
-      case BinOp::UMulChecked: code = 0x15;
+      case BinOp::UMulChecked:
+        check = RuntimeCheck::UnsignedMul;
         break;
-      default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
+      default:
+        spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
     }
 
-    auto *const fn = ctx->Builder.GetInsertBlock()->getParent();
+    // Call the low level overflow-safe arithmetic implementation
+    // function, and destructure the results. The "overflowed"
+    // flag will be used to branch.
+    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
     const auto [value, overflowed] = EmitOverflowPair(ctx, op, a, b);
 
-    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "arith.ok" + uid, fn);
-    const auto trap_bb = llvm::BasicBlock::Create(*ctx->Context, "arith.trap" + uid, fn);
-    ctx->Builder.CreateCondBr(overflowed, trap_bb, ok_bb);
+    // Define the pass and fail states of an arithmetic operation,
+    // and branch based on the "overflowed" flag.
+    const auto ok_bb = llvm::BasicBlock::Create(
+      *ctx->Context, "arith.ok" + uid, fn);
+    const auto fail_bb = llvm::BasicBlock::Create(
+      *ctx->Context, "arith.fail" + uid, fn);
+    ctx->Builder.CreateCondBr(overflowed, fail_bb, ok_bb);
 
-    // No branch weights: "llvm.ubsantrap" is itself "cold noreturn" and the block ends in "unreachable", which is
-    // already everything block placement needs to sink it - measured identical with and without the metadata.
-    // Declared by name rather than through "Intrinsic::getOrInsertDeclaration" for the reason given on
-    // "EmitOverflowPair"; unlike the "with.overflow" family this one is not overloaded, so a name is all it needs.
-    ctx->Builder.SetInsertPoint(trap_bb);
-    const auto i8_ty = llvm::Type::getInt8Ty(*ctx->Context);
-    auto *trap_fn = ctx->Module->getFunction("llvm.ubsantrap");
-    if (trap_fn == nullptr) {
-      const auto trap_ty = llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {i8_ty}, false);
-      trap_fn = llvm::Function::Create(
-        trap_ty, llvm::Function::ExternalLinkage, "llvm.ubsantrap", ctx->Module.get());
-    }
-    ctx->Builder.CreateCall(trap_fn, {llvm::ConstantInt::get(i8_ty, code)});
-    ctx->Builder.CreateUnreachable();
-
+    // No branch weights: the call is "cold noreturn" and the block
+    // ends in "unreachable", which is already everything block
+    // placement needs to sink it.
+    ctx->Builder.SetInsertPoint(fail_bb);
+    EmitCheckFailed(ctx, check);
     ctx->Builder.SetInsertPoint(ok_bb);
     return value;
   }
@@ -607,7 +579,7 @@ auto spp::codegen::fn_impls::SimpleIntrinsicConv(
   // arm of that gets instantiated for the widths the enclosing instantiation binds, while only the arm the widths
   // choose can ever run. The other arms are given a body that says so, rather than an instruction llvm rejects.
   if (not ConvOpIsDefined(op, src_ty, ty)) {
-    EmitRuntimeAbort(ctx, "integer conversion reached for a width pair it is not defined for");
+    EmitCheckFailed(ctx, RuntimeCheck::Conversion);
     return;
   }
   ctx->Builder.CreateRet(ApplyConvOp(ctx, op, operand, ty));
@@ -1056,6 +1028,30 @@ auto spp::codegen::fn_impls::SimpleCoroViewSlice(
       const auto self_data_ptr = ctx->Builder.CreateStructGEP(
         _ViewTy, _SelfPtr, _DataIdx, "view.slice.self_data_ptr" + _Uid);
       const auto self_data = ctx->Builder.CreateLoad(ptr_ty, self_data_ptr, "view.slice.self_data" + _Uid);
+      const auto self_length = ctx->Builder.CreateLoad(
+        i64_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.slice.self_length_ptr" + _Uid),
+        "view.slice.self_length" + _Uid);
+
+      // Both bounds are checked before either is used: a slice
+      // that ends before it starts would wrap its length, and
+      // one ending past the view would span memory it does not
+      // own. Each failure reports both numbers it compared.
+      const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+      const auto order_ok_bb = llvm::BasicBlock::Create(*ctx->Context, "view.slice.order_ok" + _Uid, fn);
+      const auto order_bad_bb = llvm::BasicBlock::Create(*ctx->Context, "view.slice.order_bad" + _Uid, fn);
+      ctx->Builder.CreateCondBr(
+        ctx->Builder.CreateICmpULE(from_val, upto_val, "view.slice.in_order" + _Uid), order_ok_bb, order_bad_bb);
+      ctx->Builder.SetInsertPoint(order_bad_bb);
+      EmitCheckFailed(ctx, RuntimeCheck::SliceOrder, from_val, upto_val);
+
+      ctx->Builder.SetInsertPoint(order_ok_bb);
+      const auto end_ok_bb = llvm::BasicBlock::Create(*ctx->Context, "view.slice.end_ok" + _Uid, fn);
+      const auto end_bad_bb = llvm::BasicBlock::Create(*ctx->Context, "view.slice.end_bad" + _Uid, fn);
+      ctx->Builder.CreateCondBr(
+        ctx->Builder.CreateICmpULE(upto_val, self_length, "view.slice.end_in_bounds" + _Uid), end_ok_bb, end_bad_bb);
+      ctx->Builder.SetInsertPoint(end_bad_bb);
+      EmitCheckFailed(ctx, RuntimeCheck::SliceEnd, upto_val, self_length);
+      ctx->Builder.SetInsertPoint(end_ok_bb);
 
       // A slice is a new view over the same storage: its data
       // starts "from" elements along, and it is "upto - from"
@@ -1266,7 +1262,7 @@ auto spp::codegen::fn_impls::SimpleCoroViewIndex(
         ctx->Builder.CreateICmpULT(idx_val, self_length, "view.index.in_bounds" + _Uid), ok_bb, oob_bb);
 
       ctx->Builder.SetInsertPoint(oob_bb);
-      EmitRuntimeAbort(ctx, "index %zu out of bounds for length %zu", {idx_val, self_length});
+      EmitCheckFailed(ctx, RuntimeCheck::Index, idx_val, self_length);
 
       // Indexed over the element type, so one step of the index advances by one element rather than by one byte.
       ctx->Builder.SetInsertPoint(ok_bb);
@@ -2362,7 +2358,7 @@ auto spp::codegen::fn_impls::StdGeneratorSend(
   -> void {
   // Dummy function for analysis. Still needs terminating. The ".res()" operator handles the lowering for generators
   // there, so reaching this body means "send" was called directly rather than through it.
-  EmitRuntimeAbort(ctx, "generator 'send' was reached directly; it is lowered through the '.res()' operator");
+  EmitCheckFailed(ctx, RuntimeCheck::GeneratorSend);
 }
 
 auto spp::codegen::fn_impls::StdGeneratorOnceSend(
@@ -2372,7 +2368,7 @@ auto spp::codegen::fn_impls::StdGeneratorOnceSend(
   -> void {
   // Dummy function for analysis. Still needs terminating. The ".res()" operator handles the lowering for generators
   // there, so reaching this body means "send" was called directly rather than through it.
-  EmitRuntimeAbort(ctx, "generator 'send' was reached directly; it is lowered through the '.res()' operator");
+  EmitCheckFailed(ctx, RuntimeCheck::GeneratorSend);
 }
 
 auto spp::codegen::fn_impls::StdGeneratorDrop(
