@@ -327,3 +327,67 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret 0
     }
 )");
+
+// A "skip" is a way into the next iteration, with everything it leaves: a part moved before it is still moved when
+// the body runs again.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_invalid_skip_leaves_a_part_moved,
+    SppInconsistentlyInitializedMemoryUseError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    fun f(c: Bool) -> Void {
+        let mut p = Point(x=Str::from("5"), y=Str::from("5"))
+        loop c {
+            let x = p.x
+            std::mem::ops::drop(x)
+            case c { skip }
+            p.x = Str::from("6")
+        }
+        std::mem::ops::drop(p)
+    }
+)");
+
+// The same for a loan: a borrow taken on the way to a "skip" is held when the next iteration begins (through the
+// "skip", not the body's end, so held on some ways back round).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_invalid_skip_leaves_a_loan_held,
+    SppInconsistentlyEscapingBorrows, R"(
+    fun f(c: Bool) -> Void {
+        let mut v = std::vector::Vec[S32]::from(&[1, 2])
+        let mut w = std::vector::Vec[S32]::from(&[3, 4])
+        {
+            let mut a = w[mut 0_uz]
+            loop c {
+                let n = v[mut 1_uz]
+                a@ = 1
+                case c {
+                    a = v[mut 0_uz]
+                    skip
+                }
+                a = w[mut 0_uz]
+            }
+        }
+        std::mem::ops::drop(v)
+        std::mem::ops::drop(w)
+    }
+)");
+
+// A "skip" after the value is given again leaves nothing moved for the next iteration.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryLoopChecks,
+    test_valid_skip_after_reinitialization, R"(
+    fun f(c: Bool) -> Void {
+        let mut x = Str::from("hello")
+        loop c {
+            std::mem::ops::drop(x)
+            x = Str::from("world")
+            case c { skip }
+        }
+        std::mem::ops::drop(x)
+    }
+)");
