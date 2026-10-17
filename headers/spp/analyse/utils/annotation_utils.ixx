@@ -48,7 +48,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
   constexpr static auto kVersioned = "std::annotations::versioned"; // TODO: HANDLE
   constexpr static auto kLlvmInline = "std::llvm::inline";
   constexpr static auto kLlvmAlwaysInline = "std::llvm::always_inline";
-  constexpr static auto kLlvmNoInline = "std::llvm::noinline";
+  constexpr static auto kLlvmNoInline = "std::llvm::no_inline";
   constexpr static auto kLlvmHot = "std::llvm::hot";
   constexpr static auto kLlvmCold = "std::llvm::cold";
 };
