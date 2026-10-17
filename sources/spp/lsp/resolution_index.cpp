@@ -151,14 +151,22 @@ namespace spp::lsp::resolution_index {
       return path;
     }
 
+    /// The formatter of the file "ast" was parsed from, or for one
+    /// no file holds, the scope's.
+    auto FormatterOf(
+      Ast const *ast, Scope const &scope) -> ErrorFormatter* {
+      const auto owner = ErrorFormatter::Owning(ast);
+      return owner != nullptr ? owner : scope.GetErrorFormatter();
+    }
+
     /// The whole of what an ast covers, across however many lines:
     /// a region, rather than the place a quote would underline.
     /// Uses a start and end position rather than the ast.
     auto RegionOf(
       Ast const *const ast, Scope const &scope) -> SourceSpan {
-      // Create a span over the ast, using the error formatter
-      // from the scope.
-      const auto formatter = scope.GetErrorFormatter();
+      // Create a span over the ast, using the error formatter of
+      // the file it was parsed from (else the scope's).
+      const auto formatter = FormatterOf(ast, scope);
       if (ast == nullptr or formatter == nullptr or ast->PosStart() == 0) { return {}; }
       return formatter->SpanAcross(ast->PosStart(), ast->PosEnd());
     }
@@ -167,9 +175,9 @@ namespace spp::lsp::resolution_index {
     /// positions.
     auto SpanOf(
       Ast const *const ast, Scope const &scope) -> SourceSpan {
-      // Create a span over the ast, using the error formatter
-      // from the scope.
-      const auto formatter = scope.GetErrorFormatter();
+      // Create a span over the ast, using the error formatter of
+      // the file it was parsed from (else the scope's).
+      const auto formatter = FormatterOf(ast, scope);
       if (ast == nullptr or formatter == nullptr) { return {}; }
       return formatter->SpanOfAst(ast);
     }
@@ -177,9 +185,8 @@ namespace spp::lsp::resolution_index {
     /// Where a type was declared. A "use" import is walked through to what it imported, because nobody wants to land
     /// on the import; a "type" statement is not, because the alias is the thing that was named.
     auto DefinitionOfType(
-      TypeSymbol const &sym)
-      -> spp::utils::errors::SourceSpan {
-      auto const *const target = sym.UseTarget();
+      TypeSymbol const &sym) -> SourceSpan {
+      const auto target = sym.UseTarget();
 
       // The definition requires a different ast and scope depending
       // on whether an alias is being used or not.
@@ -315,7 +322,9 @@ namespace spp::lsp::resolution_index {
       for (const auto sym : ns_scope.GetAllVarSymbols(true, false)) {
         if (sym == nullptr or not IsWritableVarName(*sym)) { continue; }
         const auto definition_scope = sym->ScopeDefinedIn != nullptr ? sym->ScopeDefinedIn : &ns_scope;
-        if (not analyse::utils::visibility_utils::IsModuleMemberVisible(*sym, *definition_scope, sm, meta)) { continue; }
+        if (not analyse::utils::visibility_utils::IsModuleMemberVisible(*sym, *definition_scope, sm, meta)) {
+          continue;
+        }
 
         auto name = sym->Name->ToString();
         auto key = KeyOf("var", name, sym->Type != nullptr ? sym->Type->ToString() : Str());
@@ -542,7 +551,7 @@ auto spp::lsp::resolution_index::RecordVariable(
   // module, through each "use" in turn.
   auto target = &sym;
   while (target->AliasSymbol != nullptr and target->AliasSymbol.get() != target) {
-      target = target->AliasSymbol.get();
+    target = target->AliasSymbol.get();
   }
 
   // The definition is the span of the name within the scope
