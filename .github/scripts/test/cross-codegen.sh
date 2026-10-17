@@ -26,10 +26,20 @@ fi
 scratch_project "$SPP" cross
 
 echo "::group::spp build --target ${TRIPLE}"
-"$SPP" build -m rel --target "$TRIPLE" 2>&1 | tr '\r' '\n' | tail -25
+LOG="$("$SPP" build -m rel --target "$TRIPLE" 2>&1 | tr '\r' '\n' || true)"
+tail -25 <<< "$LOG"
 echo "::endgroup::"
 
-OUT="out/${TRIPLE}/rel"
+# The out folder is the compiler's spelling of the target, not the
+# triple asked for, so it is read off the build rather than restated.
+FOLDER="$(sed -n 's/^Built object for \([^:]*\):.*/\1/p' <<< "$LOG")"
+if [ -z "$FOLDER" ]; then
+  echo "::error::spp build --target ${TRIPLE} did not report an object"
+  exit 1
+fi
+echo "folder: ${FOLDER}"
+
+OUT="out/${FOLDER}/rel"
 OBJ="${OUT}/llvm/spp.o"
 IR="${OUT}/llvm/lto.ll"
 
