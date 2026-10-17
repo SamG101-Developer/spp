@@ -15,6 +15,7 @@ namespace spp::utils::features {
     MemoryStackProtect,
     MemoryStackProbe,
     MemoryStackSplit,
+    MemoryMapDenyWx,
     BinaryLinkHarden,
   };
 

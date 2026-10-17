@@ -133,7 +133,11 @@ namespace spp::codegen {
   /// "ApplySafeStack" is asked to do later: a program whose
   /// functions read an unsafe stack pointer that was never set
   /// up writes its first split frame through a null one.
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> void;
+  ///
+  /// "deny_wx" denies the process writable-and-executable
+  /// memory as the last start-up step (MDWE, Linux 6.6+); a
+  /// kernel without it fails the program at start-up.
+  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks, bool deny_wx) -> void;
 
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,

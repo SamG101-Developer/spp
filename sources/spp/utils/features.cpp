@@ -268,6 +268,23 @@ auto spp::utils::features::Schema()
       .FreeForm = false,
     },
     SectionSpec{
+      .Name = "memory.map",
+      .Help = "Protections applied to the process's memory mappings.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::MemoryMapDenyWx,
+          .Name = "deny_wx",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Refuse any mapping that is, or later becomes, both writable and executable, for this process "
+                  "but not its children. Needs Linux 6.6; on an older kernel the program fails at startup until "
+                  "this is turned off."
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
       .Name = "binary.link",
       .Help = "What the linker is asked to make of the sections code generation produced.",
       .Keys = Vec<KeySpec>{

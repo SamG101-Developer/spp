@@ -438,7 +438,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (has_entry_point) {
     codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
-      utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit));
+      utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit),
+      utils::features::Enabled(utils::features::ConfigKey::MemoryMapDenyWx));
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
