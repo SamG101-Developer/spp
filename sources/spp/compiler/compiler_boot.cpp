@@ -397,8 +397,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   return _LinkTimeOptimize(out, opt_level);
 }
 
-auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
-  -> Str {
+auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const -> Str {
   if (_EntryPoint == nullptr) { return {}; }
   const auto llvm_func = _EntryPoint->GetLlvmFn();
   if (llvm_func == nullptr or llvm_func->Target == nullptr) { return {}; }
@@ -406,9 +405,7 @@ auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
 }
 
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
-  OutLayout const &out,
-  const unsigned opt_level)
-  -> bool {
+  OutLayout const &out, const unsigned opt_level) -> bool {
   // Guard.
   if (_LlvmCtxs.empty()) { return true; }
 
@@ -498,8 +495,11 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto lib_dir = out.LibRoot();
   std::filesystem::create_directories(lib_dir);
 
+  const auto libraries = _FfiLibraries(out.Root);
+  if (not libraries.has_value()) { return false; }
+
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
-  for (auto const &lib : _FfiLibraries(out.Root)) {
+  for (auto const &lib : *libraries) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
     // was built and the path baked into it is a relative one.
@@ -539,40 +539,53 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 }
 
 auto spp::compiler::CompilerBoot::_FfiLibraries(
-  Path const &project_root)
-  -> Vec<Path> {
-  // "<package>/ffi/<name>/lib<name>.so" is what a package ships
-  // its native code as, beside the stub that declares it, both
-  // for the project itself and for anything it has vendored, so
-  // the whole tree is swept for that shape rather than any one
-  // place being named.
+  Path const &project_root) -> Opt<Vec<Path>> {
+  // "<package>/ffi/<name>/<target>/lib<name>.so" is what a package
+  // ships its native code as, one library per target beside the
+  // stub that declares it, both for the project itself and for
+  // anything it has vendored, so the whole tree is swept for that
+  // shape rather than any one place being named.
   auto libraries = Vec<Path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
-  // What counts as a library is the host's own extension, not
-  // ".so" everywhere: a package may ship one library per platform
-  // beside its stub, and the ones for other hosts are not this
-  // link's to make sense of.
-  const auto extension = "." + utils::files::SharedLibraryExtension();
+  const auto target = Str(codegen::FfiFolderName());
+  const auto extension = Str(codegen::SharedLibraryExtension(target.c_str()));
   for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
-    if (not entry.is_regular_file()) { continue; }
-    if (utils::files::NativeString(entry.path().extension()) != extension) { continue; }
-    if (entry.path().parent_path().parent_path().filename() != "ffi") { continue; }
+    if (not entry.is_directory()) { continue; }
+    if (entry.path().parent_path().filename() != "ffi") { continue; }
+    if (not std::filesystem::exists(entry.path() / "stub.spp")) { continue; }
 
     // One name, one library: a package and something it vendored
     // can both ship the same runtime, and linking two copies of
     // it is at best redundant and at worst two sets of its state.
+    const auto package = utils::files::NativeString(entry.path().filename());
+    const auto library = entry.path() / target / utils::files::SharedLibraryName(package, extension);
     const auto already_found = genex::any_of(libraries, [&](auto const &found) {
-      return found.filename() == entry.path().filename();
+      return found.filename() == library.filename();
     });
-    if (not already_found) { libraries.emplace_back(entry.path()); }
+    if (already_found) { continue; }
+
+    // A package with a stub but no library for this target cannot
+    // be linked, and leaving it out would only move the failure
+    // to the first call into it.
+    if (not std::filesystem::exists(library)) {
+      auto shipped = Str();
+      for (auto const &t : std::filesystem::directory_iterator(entry.path())) {
+        if (not t.is_directory()) { continue; }
+        shipped += (shipped.empty() ? "" : ", ") + utils::files::NativeString(t.path().filename());
+      }
+      llvm::errs()
+        << "No ffi library for " << target << ": expected " << utils::files::DisplayString(library) << "\n"
+        << "  '" << package << "' ships for " << (shipped.empty() ? Str("no target") : shipped) << ".\n";
+      return Nullopt;
+    }
+    libraries.emplace_back(library);
   }
   return libraries;
 }
 
 auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
-  analyse::scopes::ScopeManager *sm)
-  -> void {
+  analyse::scopes::ScopeManager *sm) -> void {
   // Check whether the "main" function exists with the correct
   // signature: `fun main()`.
   const auto main_call = INJECT_CODE("main()", ParseExpression);
