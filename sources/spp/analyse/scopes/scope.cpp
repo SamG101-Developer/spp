@@ -813,8 +813,9 @@ auto Scope::GetErrorFormatter() const -> ErrorFormatter* {
 auto Scope::IsFromPrelude(
   Ast const &ast) const -> bool {
   // The prelude is appended behind the author's code, so a
-  // position past what they wrote is one of its nodes.
-  const auto formatter = GetErrorFormatter();
+  // position past what they wrote is one of its nodes. Read in
+  // the ast's own file.
+  const auto formatter = ErrorFormatter::Owning(&ast);
   return formatter != nullptr and formatter->IsPastUserSource(ast.PosStart());
 }
 
@@ -877,6 +878,7 @@ auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
   }
 
   // Outermost declaration first; ties keep the order found.
+  // Todo: genex::actions::stable_sort
   std::stable_sort(syms.begin(), syms.end(), [](auto const &a, auto const &b) { return a.first < b.first; });
   auto out = Vec<Unique<GenericArgumentAst>>();
   out.reserve(syms.size());
