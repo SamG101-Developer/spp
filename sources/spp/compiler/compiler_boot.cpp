@@ -32,6 +32,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.compiler.ffi;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
@@ -498,7 +499,7 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto lib_dir = out.LibRoot();
   std::filesystem::create_directories(lib_dir);
 
-  const auto libraries = _FfiLibraries(out.Root);
+  const auto libraries = ffi::Libraries(out.Root);
   if (not libraries.has_value()) { return false; }
 
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
@@ -541,52 +542,6 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   }
   std::cout << "Built executable: " << exe_file << std::endl;
   return true;
-}
-
-auto spp::compiler::CompilerBoot::_FfiLibraries(
-  Path const &project_root) -> Opt<Vec<Path>> {
-  // "<package>/ffi/<name>/<target>/lib<name>.so" is what a package
-  // ships its native code as, one library per target beside the
-  // stub that declares it, both for the project itself and for
-  // anything it has vendored, so the whole tree is swept for that
-  // shape rather than any one place being named.
-  auto libraries = Vec<Path>();
-  if (not std::filesystem::exists(project_root)) { return libraries; }
-
-  const auto target = Str(codegen::TargetFolderName());
-  const auto extension = Str(codegen::SharedLibraryExtension(target.c_str()));
-  for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
-    if (not entry.is_directory()) { continue; }
-    if (entry.path().parent_path().filename() != "ffi") { continue; }
-    if (not std::filesystem::exists(entry.path() / "stub.spp")) { continue; }
-
-    // One name, one library: a package and something it vendored
-    // can both ship the same runtime, and linking two copies of
-    // it is at best redundant and at worst two sets of its state.
-    const auto package = utils::files::NativeString(entry.path().filename());
-    const auto library = entry.path() / target / utils::files::SharedLibraryName(package, extension);
-    const auto already_found = genex::any_of(libraries, [&](auto const &found) {
-      return found.filename() == library.filename();
-    });
-    if (already_found) { continue; }
-
-    // A package with a stub but no library for this target cannot
-    // be linked, and leaving it out would only move the failure
-    // to the first call into it.
-    if (not std::filesystem::exists(library)) {
-      auto shipped = Str();
-      for (auto const &t : std::filesystem::directory_iterator(entry.path())) {
-        if (not t.is_directory()) { continue; }
-        shipped += (shipped.empty() ? "" : ", ") + utils::files::NativeString(t.path().filename());
-      }
-      llvm::errs()
-        << "No ffi library for " << target << ": expected " << utils::files::DisplayString(library) << "\n"
-        << "  '" << package << "' ships for " << (shipped.empty() ? Str("no target") : shipped) << ".\n";
-      return Nullopt;
-    }
-    libraries.emplace_back(library);
-  }
-  return libraries;
 }
 
 auto spp::compiler::CompilerBoot::_ValidateEntryPoint(

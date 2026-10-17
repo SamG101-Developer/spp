@@ -4,6 +4,7 @@ module;
 
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
+import spp.compiler.ffi;
 import spp.utils.files;
 import genex;
 import std;
@@ -74,9 +75,11 @@ spp::compiler::ModuleTree::ModuleTree(
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>();
 
-  auto ffi_modules = spp::utils::files::GlobSpp(_FfiPath)
-    | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
-    | genex::to<Vec>();
+  // The ffi packages, the project's and its dependencies', read where they are.
+  auto ffi_modules = decltype(src_modules)();
+  for (auto const &package : ffi::Packages(_Root)) {
+    for (auto const &p : spp::utils::files::GlobSpp(package)) { ffi_modules.emplace_back(Module::FromPath(p)); }
+  }
 
   // The project's own tests, and only when they were asked for - see "TestScope".
   auto tst_modules = tests.Project
@@ -86,7 +89,7 @@ spp::compiler::ModuleTree::ModuleTree(
     | genex::to<Vec>()
     : decltype(ffi_modules)();
 
-  // Remove the "main.spp" files from the vcs modules.
+  // Remove the "main.spp" files from the vcs modules, and their ffi stubs, which came through "ffi::Packages".
   auto filtered_vcs_modules = decltype(vcs_modules)();
   for (auto &&m : vcs_modules) {
     auto relative_path = std::filesystem::relative(m->Path, _VcsPath);
