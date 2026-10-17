@@ -35,6 +35,12 @@ public:
     Vec<lex::RawToken> tokens, Str file_path,
     std::size_t prelude_token_index = Str::npos);
 
+  ~ErrorFormatter();
+  ErrorFormatter(ErrorFormatter const &) = delete;
+  ErrorFormatter(ErrorFormatter &&) = delete;
+  auto operator=(ErrorFormatter const &) -> ErrorFormatter& = delete;
+  auto operator=(ErrorFormatter &&) -> ErrorFormatter& = delete;
+
   /// The formatter of a source file. A file's positions are its
   /// own ("PositionOf"): each file is given a range no other file
   /// has, so any position names the file it came from ("Owning"),
@@ -42,12 +48,6 @@ public:
   SPP_ATTR_NODISCARD static auto ForFile(
     Vec<lex::RawToken> tokens, Str file_path,
     std::size_t prelude_token_index) -> Unique<ErrorFormatter>;
-
-  ~ErrorFormatter();
-  ErrorFormatter(ErrorFormatter const &) = delete;
-  ErrorFormatter(ErrorFormatter &&) = delete;
-  auto operator=(ErrorFormatter const &) -> ErrorFormatter& = delete;
-  auto operator=(ErrorFormatter &&) -> ErrorFormatter& = delete;
 
   /// The formatter of the file "position" lies in, or none for a
   /// position no file holds (generated code, code the compiler

@@ -4,6 +4,7 @@ module;
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
+import spp.utils.ice;
 import colex;
 import genex;
 import std;
@@ -25,6 +26,24 @@ namespace spp::utils::errors {
       }
       return units;
     }
+
+    /// How far apart two files' positions start: more tokens than
+    /// any file has, so ranges never overlap.
+    constexpr auto kFilePositionStride = 1uz << 24;
+
+    /// The formatters that own positions, in the order they were
+    /// made; each removes itself when it goes.
+    auto Registered() -> Vec<ErrorFormatter*>& {
+      static auto formatters = Vec<ErrorFormatter*>();
+      return formatters;
+    }
+
+    /// The base the next file's formatter is given. Never reused,
+    /// so an ast of a freed file is owned by no later one.
+    auto NextBase() -> std::size_t& {
+      static auto next = kFilePositionStride;
+      return next;
+    }
   }
 }
 
@@ -35,10 +54,67 @@ spp::utils::errors::ErrorFormatter::ErrorFormatter(
   _PreludeTokenIndex(prelude_token_index) {
 }
 
+spp::utils::errors::ErrorFormatter::~ErrorFormatter() {
+  if (_Base != 0) { std::erase(Registered(), this); }
+}
+
+auto spp::utils::errors::ErrorFormatter::ForFile(
+  Vec<lex::RawToken> tokens, Str file_path,
+  const std::size_t prelude_token_index) -> Unique<ErrorFormatter> {
+  // Take the next range, and register the formatter as owning
+  // it. This provides unique indexes per formatter.
+  SPP_ASSERT(tokens.size() < kFilePositionStride);
+  auto formatter = MakeUnique<ErrorFormatter>(
+    std::move(tokens), std::move(file_path), prelude_token_index);
+
+  // Increment the base and assign the formatter into the
+  // "registered" list.
+  formatter->_Base = std::exchange(NextBase(), NextBase() + kFilePositionStride);
+  Registered().emplace_back(formatter.get());
+  return formatter;
+}
+
+auto spp::utils::errors::ErrorFormatter::Owning(
+  const std::size_t position) -> ErrorFormatter* {
+  // Extract a formatter from the "registered" list by the
+  // position.
+  for (const auto formatter : Registered()) {
+    if (formatter->_TokenIndexOf(position).has_value()) { return formatter; }
+  }
+  return nullptr;
+}
+
+auto spp::utils::errors::ErrorFormatter::Owning(
+  Ast const *ast) -> ErrorFormatter* {
+  // Map into the error formatter "owning" by the ast's
+  // start position.
+  return ast != nullptr ? Owning(ast->PosStart()) : nullptr;
+}
+
+auto spp::utils::errors::ErrorFormatter::WithoutSource(
+  Ast const *ast, Str const &tag_message) -> Str {
+  using namespace std::string_literals;
+  return (colex::fg_bright_white & colex::st_bold) + "In generated code: "s + ast->ToString() + " <- "s + tag_message
+    + "\n"s;
+}
+
+auto spp::utils::errors::ErrorFormatter::PositionOf(
+  const std::size_t token_index) const
+  -> std::size_t {
+  return _Base + token_index;
+}
+
+auto spp::utils::errors::ErrorFormatter::_TokenIndexOf(
+  const std::size_t position) const
+  -> Opt<std::size_t> {
+  if (position < _Base or position - _Base >= _Tokens.size()) { return Nullopt; }
+  return position - _Base;
+}
+
 auto spp::utils::errors::ErrorFormatter::IsPastUserSource(
-  const std::size_t token_pos) const
-  -> bool {
-  return token_pos >= _PreludeTokenIndex;
+  const std::size_t position) const -> bool {
+  const auto index = _TokenIndexOf(position);
+  return index.has_value() and *index >= _PreludeTokenIndex;
 }
 
 auto spp::utils::errors::ErrorFormatter::ErrorRawPos(
@@ -174,7 +250,7 @@ auto spp::utils::errors::ErrorFormatter::SpanOfWholeFile() const
   // Every line the author wrote: the prelude appended behind
   // them is not part of the file anyone is looking at.
   auto lines = 0uz;
-  for (auto i = 0uz; i < _Tokens.size() and not IsPastUserSource(i); ++i) {
+  for (auto i = 0uz; i < _Tokens.size() and i < _PreludeTokenIndex; ++i) {
     if (_Tokens[i].Type == RawTokenType::TK_LINE_FEED) { ++lines; }
   }
   return SourceSpan{.File = _FilePath, .EndLine = lines, .Generated = false};
@@ -191,20 +267,20 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   ast_size = ast_size > 1000 ? 1 : ast_size;
 
   // Synthetic/generated ASTs have no real source position
-  // (pos == 0 is the lexer's prepended newline sentinel),
-  // and neither has anything past the end of what the author
-  // wrote, which is the prelude appended behind it. Quoting
-  // either back would point at a line the user didn't type.
-  // Nor does a position past this file's tokens: an ast from
-  // another file, given this one's formatter because an error
-  // pairs its blocks with its scopes in order (N8.7), would be
-  // quoted as whatever this file has there.
-  if (ast_start_pos == 0 or ast_start_pos >= _Tokens.size() or IsPastUserSource(ast_start_pos)) {
+  // (token 0 is the lexer's prepended newline sentinel), and
+  // neither has anything past the end of what the author wrote,
+  // which is the prelude appended behind it. Quoting either back
+  // would point at a line the user didn't type. A position that
+  // is not this file's (another file's ast, or code the compiler
+  // parsed for itself) has none here either.
+  const auto index = _TokenIndexOf(ast_start_pos);
+  if (not index.has_value() or *index == 0 or *index >= _PreludeTokenIndex) {
     auto nowhere = _RawLocation();
     nowhere.Generated = true;
-    nowhere.PastUserSource = ast_start_pos != 0 and ast_start_pos < _Tokens.size();
+    nowhere.PastUserSource = index.has_value() and *index != 0;
     return nowhere;
   }
+  ast_start_pos = *index;
 
   // Find the start of the error line: the token immediately
   // after the last newline before this one.
