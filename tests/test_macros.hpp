@@ -1,39 +1,4 @@
 #pragma once
-#define GTEST_BUILD_WITH_IMPORT_STD
-
-import pthread;
-import sys;
-using pthread::pthread_create;
-using pthread::pthread_equal;
-using pthread::pthread_getspecific;
-using pthread::pthread_join;
-using pthread::pthread_key_create;
-using pthread::pthread_key_delete;
-using pthread::pthread_self;
-using pthread::pthread_mutex_destroy;
-using pthread::pthread_mutex_init;
-using pthread::pthread_mutex_lock;
-using pthread::pthread_mutex_unlock;
-using pthread::pthread_setspecific;
-using pthread::pthread_t;
-using pthread::pthread_key_t;
-using pthread::pthread_mutex_t;
-using sys::chdir;
-using sys::close;
-using sys::errno;
-using sys::fileno;
-using sys::fdopen;
-using sys::isatty;
-using sys::read;
-using sys::rmdir;
-using sys::strcasecmp;
-using sys::stderr;
-using sys::stdin;
-using sys::stdout;
-using sys::write;
-using sys::stat;
-using sys::S_ISDIR;
-
 #include <gtest/gtest.h>
 #include <spp/macros.hpp>
 #include "test_boot.hpp"
@@ -46,8 +11,8 @@ import spp.analyse.errors.semantic_error;
 namespace spp_test {
   /// The error formatter colours its output; strip the escapes
   /// so a block can be read as plain text.
-  inline auto StripAnsi(std::string const &s) -> std::string {
-    auto out = std::string();
+  inline auto StripAnsi(spp::Str const &s) -> spp::Str {
+    auto out = spp::Str();
     out.reserve(s.size());
     for (auto i = 0uz; i < s.size(); ++i) {
       if (s[i] == '\x1b' and i + 1 < s.size() and s[i + 1] == '[') {
@@ -63,8 +28,8 @@ namespace spp_test {
   /// quoted source line that sit above a "^". The source row is
   /// "N | code" and the caret row below it lines up column for
   /// column. Empty when the block quotes no source.
-  inline auto Underlined(std::string const &block) -> std::string {
-    auto lines = std::vector<std::string>();
+  inline auto Underlined(spp::Str const &block) -> spp::Str {
+    auto lines = spp::Vec<spp::Str>();
     for (auto start = 0uz; start <= block.size();) {
       const auto end = block.find('\n', start);
       lines.push_back(block.substr(start, end == std::string::npos ? std::string::npos : end - start));
@@ -79,7 +44,7 @@ namespace spp_test {
       const auto number = code.substr(0, bar);
       if (number.find_first_not_of(' ') == std::string::npos
         or number.find_first_not_of(" 0123456789") != std::string::npos) { continue; }
-      auto out = std::string();
+      auto out = spp::Str();
       for (auto c = 0uz; c < carets.size() and c < code.size(); ++c) {
         if (carets[c] == '^') { out += code[c]; }
       }
@@ -99,8 +64,15 @@ namespace spp_test {
   auto CheckErrorLocations(Messages const &messages, char const *underline) -> void {
     auto primary_seen = false;
     for (auto const &raw : messages) {
-      const auto block = StripAnsi(std::string(raw));
-      if (block.starts_with("-----")) { continue; }
+      const auto block = StripAnsi(spp::Str(raw));
+
+      // A candidate's own error (under "no valid signatures") points at that candidate, in whatever file it is in, but
+      // never past the end of a file: a block formatted against the wrong file's text lands there.
+      if (block.starts_with("-----")) {
+        EXPECT_EQ(block.find("at the end of the file"), std::string::npos)
+          << "A candidate's error block points past the end of a file:\n" << block;
+        continue;
+      }
       const auto is_error = block.find("Error in file '") != std::string::npos;
       const auto is_context = block.find("Context from file '") != std::string::npos;
       if (not is_error and not is_context) { continue; }
@@ -117,7 +89,7 @@ namespace spp_test {
       EXPECT_TRUE(path.ends_with("/src/main.spp"))
         << "An error block points outside the test's own source:\n" << block;
       if (underline != nullptr and not primary_seen) {
-        EXPECT_EQ(Underlined(block), std::string(underline))
+        EXPECT_EQ(Underlined(block), spp::Str(underline))
           << "The error block underlines the wrong code:\n" << block;
       }
       primary_seen = true;
@@ -131,12 +103,12 @@ namespace spp_test {
   /// error points (see "CheckErrorLocations").
   template <typename E>
   auto ExpectSemanticError(
-    std::string code, const bool add_main, char const *error_name, char const *underline) -> void {
+    spp::Str code, const bool add_main, char const *error_name, char const *underline) -> void {
     try {
       build_temp_project(std::move(code), add_main);
     }
     catch (E const &e) {
-      CheckErrorLocations(e.messages, underline);
+      CheckErrorLocations(e.Messages, underline);
       return;
     }
     catch (std::exception const &e) {

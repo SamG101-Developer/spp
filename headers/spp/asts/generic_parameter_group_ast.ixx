@@ -51,7 +51,7 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<GenericParameterAst*>;
 
-  SPP_ATTR_NODISCARD auto GetVariadicParams() const -> GenericParameterAst*;
+  SPP_ATTR_NODISCARD auto GetVariadicParam() const -> GenericParameterAst*;
 
   SPP_ATTR_NODISCARD auto GetCompParams() const -> Vec<GenericParameterAst*>;
 
@@ -59,5 +59,5 @@ SPP_EXP_CLS struct spp::asts::GenericParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetAllParams() const -> Vec<GenericParameterAst*>;
 
-  SPP_ATTR_NODISCARD auto OptToReq() const -> Unique<GenericParameterGroupAst>;
+  SPP_ATTR_NODISCARD auto OptionalToRequired() const -> Unique<GenericParameterGroupAst>;
 };

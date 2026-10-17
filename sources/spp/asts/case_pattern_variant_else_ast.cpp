@@ -30,9 +30,12 @@ auto CasePatternVariantElseAst::PosEnd() const -> std::size_t {
 }
 
 auto CasePatternVariantElseAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<CasePatternVariantElseAst>(
+  // Clone all the members of the ast, carrying over the marker
+  // the loop's desugaring set.
+  auto ast = MakeUnique<CasePatternVariantElseAst>(
     AstClone(TokElse));
+  ast->_ForIterLoopExit = _ForIterLoopExit;
+  return ast;
 }
 
 auto CasePatternVariantElseAst::ToString() const -> Str {
@@ -44,7 +47,7 @@ auto CasePatternVariantElseAst::ToString() const -> Str {
 auto CasePatternVariantElseAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // The "else" pattern always matches, so return "true".
-  meta->CmpResult = BooleanLiteralAst::True(TokElse->PosStart());
+  meta->CompTimeResult = BooleanLiteralAst::True(TokElse->PosStart());
 }
 
 auto CasePatternVariantElseAst::Stage11_CodeGen(

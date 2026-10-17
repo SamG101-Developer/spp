@@ -12,7 +12,9 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.monomorphization_utils;
+import spp.analyse.scopes.type_key;
+import spp.analyse.utils.monomorphization;
+import spp.analyse.utils.sup_attachment;
 import spp.asts.annotation_ast;
 import spp.asts.ast;
 import spp.asts.expression_ast;
@@ -20,6 +22,7 @@ import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
+import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -37,47 +40,31 @@ import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import genex;
 import llvm;
 
 #define PREP_SCOPE_MANAGER \
-  auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->module_ast.get() == mod; })
+  auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->ModuleAst.get() == mod; })
 
 #define PREP_SCOPE_MANAGER_AND_META(s)                                  \
   PREP_SCOPE_MANAGER;                                                   \
   spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
   auto meta = spp::asts::meta::CompilerMetaData();                      \
-  meta.IsTestHarness = mod_in_tree->is_test_harness;                    \
+  meta.IsTestHarness = mod_in_tree->IsTestHarness;                    \
   meta.CurrentStage = (s)
 
 SPP_MOD_BEGIN
-namespace {
-  /// Lets a lookup make an instantiation not made yet ("Scope::OnInstantiationMissing") while an analysis stage runs,
-  /// analysed as that stage would analyse it.
-  auto InstallInstantiateOnLookup(
-    spp::analyse::scopes::ScopeManager *sm,
-    const spp::asts::meta::CompilerStage stage)
-    -> void {
-    spp::analyse::scopes::Scope::OnInstantiationMissing = [sm, stage](
-      spp::analyse::scopes::TypeSymbol &open_instance, spp::analyse::scopes::Scope const &scope) {
-      auto meta = spp::asts::meta::CompilerMetaData();
-      meta.CurrentStage = stage;
-      return spp::analyse::utils::monomorphization_utils::InstantiateForScope(
-        open_instance, scope, sm->GlobalScope, &meta);
-    };
-  }
-}
-
 auto spp::compiler::CompilerBoot::Lex(
   utils::ProgressBar &bar,
   ModuleTree &tree)
   -> void {
   // Lexing stage.
   for (auto const &mod : tree) {
-    auto lexer = lex::Lexer(mod->code, not utils::files::NativeString(mod->path).contains("/src/std/"));
-    mod->tokens = lexer.Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
+    auto lexer = lex::Lexer(mod->Code, not utils::files::NativeString(mod->Path).contains("/src/std/"));
+    mod->Tokens = lexer.Lex();
+    mod->Formatter = utils::errors::ErrorFormatter::ForFile(
+      mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
     bar.Next();
   }
   bar.Finish();
@@ -91,21 +78,21 @@ auto spp::compiler::CompilerBoot::Parse(
   // modules, depending on the how the compiler has been
   // invoked.
   for (auto const &mod : tree) {
-    if (mod->is_test_harness) { continue; }
-    mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
-    _Modules.EmplaceBack(mod->module_ast.get());
+    if (mod->IsTestHarness) { continue; }
+    mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+    _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
 
   for (auto const &mod : tree) {
-    if (not mod->is_test_harness) { continue; }
-    mod->code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
-    auto lexer = lex::Lexer(mod->code, true);
-    mod->tokens = lexer.Lex();
-    mod->error_formatter = MakeUnique<utils::errors::ErrorFormatter>(
-      mod->tokens, utils::files::DisplayString(mod->path), lexer.PreludeTokenIndex());
-    mod->module_ast = parse::ParserSpp(mod->tokens, mod->error_formatter).parse();
-    _Modules.EmplaceBack(mod->module_ast.get());
+    if (not mod->IsTestHarness) { continue; }
+    mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
+    auto lexer = lex::Lexer(mod->Code, true);
+    mod->Tokens = lexer.Lex();
+    mod->Formatter = utils::errors::ErrorFormatter::ForFile(
+      mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());
+    mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+    _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
   bar.Finish();
@@ -119,7 +106,7 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
   // Pre-processing stage.
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER;
-    mod->FilePath = mod_in_tree->path;
+    mod->FilePath = mod_in_tree->Path;
     mod->Stage1_PreProcess(ctx);
     bar.Next();
   }
@@ -135,7 +122,7 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlScopes);
     mod->Stage2_GenTopLvlScopes(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -150,7 +137,7 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlAliases);
     mod->Stage3_GenTopLvlAliases(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -165,7 +152,7 @@ auto spp::compiler::CompilerBoot::Stage4_ResolveDeclarations(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kResolveDeclarations);
     mod->Stage4_ResolveDeclarations(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -180,7 +167,7 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kLoadSupScopes);
     mod->Stage5_LoadSupScopes(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -196,8 +183,9 @@ auto spp::compiler::CompilerBoot::Stage5_5_AttachSupScopes(
   // thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAttachSupScopes);
-  sm->AttachAllSuperScopes(&meta);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kAttachSupScopes);
+  analyse::utils::sup_attachment::AttachAllSuperScopes(*sm, &meta);
   bar.Finish();
 }
 
@@ -207,12 +195,24 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kPreAnalyseSemantics);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
+
+  // Every extension block's members are checked against its
+  // super class before anything is pre-analysed, so a bad
+  // override is reported where it is written, rather than
+  // as an abstract type use wherever the type is first named.
+  for (auto const &mod : _Modules) {
+    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
+    mod->Impl->CheckExtensionMembers(sm, &meta);
+    sm->RestartWalk();
+  }
+
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
     mod->Stage6_PreAnalyseSemantics(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
@@ -226,11 +226,12 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Analyse semantics stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kAnalyseSemantics);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kAnalyseSemantics);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
     mod->Stage7_AnalyseSemantics(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -245,20 +246,23 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Check memory stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCheckMemory);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kCheckMemory);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
     mod->Stage8_CheckMemory(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
 
-  // Give every module a context to build into.
+  // Give every module a context to build into, all in this
+  // compile's LLVM context.
+  _LlvmContext = MakeUnique<llvm::LLVMContext>();
   for (auto const &mod : _Modules) {
-    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath);
+    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath, *_LlvmContext);
     ctx->Sm = sm;
-    _LlvmCtxs.EmplaceBack(std::move(ctx));
+    _LlvmCtxs.emplace_back(std::move(ctx));
   }
 }
 
@@ -268,11 +272,12 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Comptime resolution stage.
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kCompTimeResolve);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kCompTimeResolve);
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
     mod->Stage9_CompTimeResolve(sm, &meta);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -284,15 +289,16 @@ auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   analyse::scopes::ScopeManager *sm)
   -> void {
   //
-  using analyse::utils::monomorphization_utils::MonomorphiseToFixedPoint;
+  using namespace analyse::utils;
 
   // Monomorphisation stage. Not a walk over the modules -
   // see "MonomorphiseToFixedPoint" - so there is no per-module
   // progress to report, only the whole thing being done.
   auto meta = asts::meta::CompilerMetaData();
   meta.CurrentStage = asts::meta::CompilerStage::kMonomorphise;
-  InstallInstantiateOnLookup(sm, asts::meta::CompilerStage::kMonomorphise);
-  MonomorphiseToFixedPoint(sm, &meta);
+  analyse::utils::monomorphization::StartInstantiatingOnRead(
+    sm->Tree(), asts::meta::CompilerStage::kMonomorphise);
+  monomorphization::MonomorphiseToFixedPoint(sm, &meta);
   bar.Finish();
 }
 
@@ -302,13 +308,13 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // An instantiation made from here on would never be generated, so lookups stop making them.
-  analyse::scopes::Scope::OnInstantiationMissing = nullptr;
+  analyse::utils::monomorphization::StopInstantiatingOnRead();
 
   // Code generation stage.
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);
     mod->Stage10_PreCodeGen(sm, &meta, ctx);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -324,7 +330,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
     mod->Stage11_CodeGen(sm, &meta, ctx);
-    sm->Reset();
+    sm->RestartWalk();
     bar.Next();
   }
   bar.Finish();
@@ -348,9 +354,10 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     // is about what codegen produced rather than about what a pass
     // made of it.
     const auto verify = [&](Str const &when) {
-      if (not llvm::verifyModule(*ctx->Module, &llvm::errs())) { return true; }
-      llvm::errs() << "Invalid module" << when << ": " << ctx->Module->getName() << "\n";
-      invalid_modules.EmplaceBack(ctx->Module->getName().str());
+      auto details = Str();
+      auto stream = llvm::raw_string_ostream(details);
+      if (not llvm::verifyModule(*ctx->Module, &stream)) { return true; }
+      invalid_modules.emplace_back(ctx->Module->getName().str() + when + ":\n" + details);
       return false;
     };
 
@@ -377,14 +384,12 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   }
 
   // Report on all the modules now that they have been built.
-  // All invalid modules are reported before aborting.
-  if (not invalid_modules.IsEmpty()) {
-    llvm::errs() << invalid_modules.Len() << " invalid module(s):\n";
-    for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
-    if (VerifyOnly) {
-      throw std::runtime_error(std::to_string(invalid_modules.Len()) + " invalid module(s), see the verifier above");
-    }
-    std::abort();
+  // All invalid modules are reported together: code generation
+  // made invalid IR, which is a compiler bug.
+  if (not invalid_modules.empty()) {
+    auto report = std::to_string(invalid_modules.size()) + " invalid module(s) from code generation:";
+    for (auto const &module : invalid_modules) { report += "\n" + module; }
+    Ice(report);
   }
 
   // Link every module together now that all of them have been
@@ -392,20 +397,17 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   return _LinkTimeOptimize(out, opt_level);
 }
 
-auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const
-  -> Str {
+auto spp::compiler::CompilerBoot::_EntryPointLlvmName() const -> Str {
   if (_EntryPoint == nullptr) { return {}; }
-  const auto llvm_func = _EntryPoint->GetLlvmFunc();
+  const auto llvm_func = _EntryPoint->GetLlvmFn();
   if (llvm_func == nullptr or llvm_func->Target == nullptr) { return {}; }
   return llvm_func->Target->getName().str();
 }
 
 auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
-  OutLayout const &out,
-  const unsigned opt_level)
-  -> bool {
+  OutLayout const &out, const unsigned opt_level) -> bool {
   // Guard.
-  if (_LlvmCtxs.IsEmpty()) { return true; }
+  if (_LlvmCtxs.empty()) { return true; }
 
   const auto lto_module = MakeUnique<llvm::Module>("spp.lto", *_LlvmCtxs[0]->Context);
   codegen::ApplyTargetToModule(lto_module.get());
@@ -414,18 +416,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // creates one meta-module containing all the definitions.
   for (auto const &ctx : _LlvmCtxs | genex::views::ptr) {
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
-    llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
-    if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
-    return false;
+    Ice("could not link module " + ctx->Module->getName().str() + " into the lto module");
   }
 
   // Do a final pass on the lto module before internalizing. This
   // checks for errors in the combined module.
-  if (llvm::verifyModule(*lto_module, &llvm::errs())) {
-    llvm::errs() << "Invalid lto module\n";
-    if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
-    return false;
-  }
+  auto lto_details = Str();
+  auto lto_stream = llvm::raw_string_ostream(lto_details);
+  if (llvm::verifyModule(*lto_module, &lto_stream)) { Ice("invalid lto module:\n" + lto_details); }
 
   // The unit tests stop here: the combined module is valid, and
   // optimising, emitting and linking it would add nothing more.
@@ -435,14 +433,12 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // optimizing. The C entry point is added before internalizing,
   // so that it is the thing being kept and the s++ one it calls is
   // free to be internalized into it along with everything else.
-  auto has_entry_point = false;
-  if (const auto entry = _EntryPointLlvmName(); not entry.empty()) {
-    has_entry_point = codegen::EmitCEntryPoint(
+  const auto entry = _EntryPointLlvmName();
+  const auto has_entry_point = not entry.empty();
+  if (has_entry_point) {
+    codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
       utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit));
-  }
-
-  if (has_entry_point) {
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
@@ -489,8 +485,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 }
 
 auto spp::compiler::CompilerBoot::_LinkExecutable(
-  OutLayout const &out)
-  -> bool {
+  OutLayout const &out) -> bool {
   // The object holds calls into the ffi runtime and nothing
   // else external, so the link is the object plus whatever
   // shared libraries the project's packages ship.
@@ -499,8 +494,11 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto lib_dir = out.LibRoot();
   std::filesystem::create_directories(lib_dir);
 
+  const auto libraries = _FfiLibraries(out.Root);
+  if (not libraries.has_value()) { return false; }
+
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
-  for (auto const &lib : _FfiLibraries(out.Root)) {
+  for (auto const &lib : *libraries) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
     // was built and the path baked into it is a relative one.
@@ -514,11 +512,13 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 
   // Binary hardening, done by attaching flags to the linker.
   FEATURE_GATE(BinaryLinkHarden) {
-    command += " -pie";                     // No fixed load address to write an exploit against.
-    command += " -Wl,-z,relro,-z,now";      // Read-only after startup, and nothing left to bind later.
-    command += " -Wl,-z,noexecstack";       // The stack is data; say so in the header rather than by accident.
-    command += " -Wl,-z,separate-code";     // Code in its own mapping, so no data shares a page with it.
-    command += " -Wl,-z,defs";              // A symbol nothing defines is a link error, not a run-time surprise.
+    command += " -pie"; // No fixed load address to write an exploit against.
+    command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
+    command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
+    command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
+    command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
+    command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
+    command += " -Wl,--error-rwx-segments"; // No segment is ever writable and executable at once.
   }
 
   // "-z nodlopen" is not here on purpose: it sets a flag on a shared
@@ -540,52 +540,65 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 }
 
 auto spp::compiler::CompilerBoot::_FfiLibraries(
-  std::filesystem::path const &project_root)
-  -> Vec<std::filesystem::path> {
-  // "<package>/ffi/<name>/lib<name>.so" is what a package ships
-  // its native code as, beside the stub that declares it, both
-  // for the project itself and for anything it has vendored, so
-  // the whole tree is swept for that shape rather than any one
-  // place being named.
-  auto libraries = Vec<std::filesystem::path>();
+  Path const &project_root) -> Opt<Vec<Path>> {
+  // "<package>/ffi/<name>/<target>/lib<name>.so" is what a package
+  // ships its native code as, one library per target beside the
+  // stub that declares it, both for the project itself and for
+  // anything it has vendored, so the whole tree is swept for that
+  // shape rather than any one place being named.
+  auto libraries = Vec<Path>();
   if (not std::filesystem::exists(project_root)) { return libraries; }
 
-  // What counts as a library is the host's own extension, not
-  // ".so" everywhere: a package may ship one library per platform
-  // beside its stub, and the ones for other hosts are not this
-  // link's to make sense of.
-  const auto extension = "." + utils::files::SharedLibraryExtension();
+  const auto target = Str(codegen::FfiFolderName());
+  const auto extension = Str(codegen::SharedLibraryExtension(target.c_str()));
   for (auto const &entry : std::filesystem::recursive_directory_iterator(project_root)) {
-    if (not entry.is_regular_file()) { continue; }
-    if (utils::files::NativeString(entry.path().extension()) != extension) { continue; }
-    if (entry.path().parent_path().parent_path().filename() != "ffi") { continue; }
+    if (not entry.is_directory()) { continue; }
+    if (entry.path().parent_path().filename() != "ffi") { continue; }
+    if (not std::filesystem::exists(entry.path() / "stub.spp")) { continue; }
 
     // One name, one library: a package and something it vendored
     // can both ship the same runtime, and linking two copies of
     // it is at best redundant and at worst two sets of its state.
+    const auto package = utils::files::NativeString(entry.path().filename());
+    const auto library = entry.path() / target / utils::files::SharedLibraryName(package, extension);
     const auto already_found = genex::any_of(libraries, [&](auto const &found) {
-      return found.filename() == entry.path().filename();
+      return found.filename() == library.filename();
     });
-    if (not already_found) { libraries.EmplaceBack(entry.path()); }
+    if (already_found) { continue; }
+
+    // A package with a stub but no library for this target cannot
+    // be linked, and leaving it out would only move the failure
+    // to the first call into it.
+    if (not std::filesystem::exists(library)) {
+      auto shipped = Str();
+      for (auto const &t : std::filesystem::directory_iterator(entry.path())) {
+        if (not t.is_directory()) { continue; }
+        shipped += (shipped.empty() ? "" : ", ") + utils::files::NativeString(t.path().filename());
+      }
+      llvm::errs()
+        << "No ffi library for " << target << ": expected " << utils::files::DisplayString(library) << "\n"
+        << "  '" << package << "' ships for " << (shipped.empty() ? Str("no target") : shipped) << ".\n";
+      return Nullopt;
+    }
+    libraries.emplace_back(library);
   }
   return libraries;
 }
 
 auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
-  analyse::scopes::ScopeManager *sm)
-  -> void {
+  analyse::scopes::ScopeManager *sm) -> void {
   // Check whether the "main" function exists with the correct
   // signature: `fun main()`.
-  const auto main_call = INJECT_CODE("main()", parse_expression);
+  const auto main_call = INJECT_CODE("main()", ParseExpression);
   auto main_scope = static_cast<analyse::scopes::Scope*>(nullptr);
-  for (auto const &top_level_child : sm->GlobalScope->Children) {
-    const auto n = std::get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
+  for (auto const &top_level_child : sm->GlobalScope()->Children) {
+    const auto n = get_if<analyse::scopes::ScopeIdentifierName>(&top_level_child->Name);
     if (n and n->Name->Val == "main") {
       main_scope = top_level_child.get();
       break;
     }
   }
-  sm->Reset(main_scope);
+  sm->RestartWalk(main_scope);
 
   try {
     auto meta = asts::meta::CompilerMetaData();
@@ -604,15 +617,15 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
   // Check that the "main" function exists,
   catch (analyse::errors::SppIdentifierUnknownError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>(ERR_ARGS());
   }
 
   // Check that if the "main" function exists, the signature is compatible.
   catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope.get()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>(ERR_ARGS());
   }
 
-  sm->Reset();
+  sm->RestartWalk();
 }
 
 auto spp::compiler::CompilerBoot::_GenerateTestHarness(
@@ -648,16 +661,16 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
 
   auto body = Str();
   auto count = 0uz;
-  TestNames.Clear();
+  TestNames.clear();
   for (auto const &mod : tree) {
-    if (mod->is_test_harness or mod->module_ast == nullptr) { continue; }
+    if (mod->IsTestHarness or mod->ModuleAst == nullptr) { continue; }
 
-    auto const &ns_parts = mod->ns_parts;
+    auto const &ns_parts = mod->NsParts;
     auto ns = Str();
     for (auto const &part : ns_parts) { ns += part + "::"; }
-    const auto module_group = ns_parts.IsEmpty() ? Str() : ns_parts.Back();
+    const auto module_group = ns_parts.empty() ? Str() : ns_parts.back();
 
-    for (auto *member : asts::AstBody(mod->module_ast.get())) {
+    for (auto *member : asts::AstBody(mod->ModuleAst.get())) {
       const auto fun = member->To<asts::FunctionPrototypeAst>();
       if (fun == nullptr) { continue; }
       const auto annotation = test_annotation_of(fun);
@@ -674,7 +687,7 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
       body += "    " + fq_name + "()\n";
       body += "    std::console::println(\"[  OK ] " + group + " :: " + fq_name + "\")\n";
       body += "  }\n";
-      TestNames.EmplaceBack(fq_name);
+      TestNames.emplace_back(fq_name);
       ++count;
     }
   }
@@ -693,7 +706,7 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
   Module const &mod)
   -> void {
   //
-  auto const &mod_ns = mod.ns_parts;
+  auto const &mod_ns = mod.NsParts;
 
   // Iterate over the parts of the module namespace.
   for (auto const &part : mod_ns) {
@@ -701,9 +714,10 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
     auto identifier_part = MakeShared<asts::IdentifierAst>(0uz, Str(part));
 
     // If the part exists in the current scope (starting from the global scope), then move into it.
-    if (const auto quick_ns_sym = sm->CurrentScope->GetNsSymbol(identifier_part.get(), true); quick_ns_sym != nullptr) {
+    if (const auto quick_ns_sym = sm->CurrentScope->FindNsSymbol(identifier_part.get(), true);
+      quick_ns_sym != nullptr) {
       const auto ns_scope = quick_ns_sym->LinkedScope;
-      sm->Reset(ns_scope);
+      sm->RestartWalk(ns_scope);
     }
 
     // Otherwise, create a new scope and move into it.
@@ -711,10 +725,10 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
       const auto ns_sym = MakeShared<analyse::scopes::NamespaceSymbol>(identifier_part, nullptr);
       sm->CurrentScope->AddNsSymbol(ns_sym);
       const auto ns_scope_name = analyse::scopes::ScopeIdentifierName(identifier_part);
-      const auto ns_scope = sm->CreateAndMoveIntoNewScope(ns_scope_name, nullptr, mod.error_formatter.get());
+      const auto ns_scope = sm->CreateAndMoveIntoNewScope(ns_scope_name, nullptr, mod.Formatter.get());
       ns_sym->LinkedScope = ns_scope;
-      ns_sym->LinkedScope->NsSym = ns_sym;
-      ns_sym->LinkedScope->AstNode = mod.module_ast.get();
+      ns_sym->LinkedScope->LinkedNamespaceSymbol = ns_sym;
+      ns_sym->LinkedScope->AstNode = mod.ModuleAst.get();
     }
   }
 }

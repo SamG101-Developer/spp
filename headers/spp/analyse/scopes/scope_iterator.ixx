@@ -7,6 +7,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeIterator);
+use(spp::analyse::scopes, struct ScopePosition);
 
 /// The scope iterator is a special iterator that performs
 /// depth-first traversal of the scope tree, starting from
@@ -35,7 +36,7 @@ SPP_EXP_CLS class spp::analyse::scopes::ScopeIterator {
   /// The stack that the iterator maintains to keep track of
   /// the current scope and its ancestors. The top of the stack
   /// is the current scope.
-  Vec<Frame> _Stack;
+  SmallVec<Frame, 8> _Stack;
 
 public:
   using iterator_category = std::forward_iterator_tag;
@@ -48,6 +49,12 @@ public:
   using const_reference = Scope* const&;
 
   explicit ScopeIterator(Scope *root = nullptr);
+
+  ScopeIterator(ScopeIterator const &other);
+  ScopeIterator(ScopeIterator &&other) noexcept;
+  auto operator=(ScopeIterator const &other) -> ScopeIterator&;
+  auto operator=(ScopeIterator &&other) noexcept -> ScopeIterator&;
+  ~ScopeIterator();
   auto operator*() -> reference;
   auto operator*() const -> const_reference;
   auto operator->() -> pointer;
@@ -56,4 +63,11 @@ public:
   auto operator++(int) -> ScopeIterator;
   auto operator==(ScopeIterator const &other) const -> bool;
   auto operator!=(ScopeIterator const &other) const -> bool;
+};
+
+/// Where a walk stands: the scope, and the iterator positioned
+/// at it.
+SPP_EXP_CLS struct spp::analyse::scopes::ScopePosition {
+  Scope *At = nullptr;
+  ScopeIterator It;
 };

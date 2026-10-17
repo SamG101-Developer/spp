@@ -5,8 +5,11 @@ module;
 module spp.asts.function_parameter_group_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.order_utils;
+import spp.analyse.utils.type_predicates;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;
@@ -18,6 +21,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
+import spp.utils.ice;
 import spp.utils.types;
 import genex;
 import llvm;
@@ -36,12 +40,12 @@ FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
 auto FunctionParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "(" token.
-  return TokL != nullptr ? TokL->PosStart() : Params.IsEmpty() ? 0 : Params.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Params.empty() ? 0 : Params.front()->PosStart();
 }
 
 auto FunctionParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
-  return TokR != nullptr ? TokR->PosEnd() : Params.IsEmpty() ? 0 : Params.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Params.empty() ? 0 : Params.back()->PosEnd();
 }
 
 auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
@@ -62,10 +66,7 @@ auto FunctionParameterGroupAst::ToString() const -> Str {
 
 auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppMultipleSelfParametersError;
-  using analyse::errors::SppMultipleVariadicParametersError;
-  using analyse::errors::SppIdentifierDuplicateError;
-  using analyse::errors::SppOrderInvalidError;
+  IMPORT_UTILS;
 
   // Create sets of parameters based on conditions.
   const auto self_params = Params
@@ -85,29 +86,29 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
     | genex::views::duplicates({}, genex::meta::deref)
     | genex::to<Vec>();
 
-  const auto unordered_params = analyse::utils::order_utils::DoOrderParams(Params
+  const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
     | genex::views::cast_dynamic<mixins::OrderableAst*>()
     | genex::to<Vec>());
 
   // Check there is only 1 "self" parameter.
   RaiseIf<SppMultipleSelfParametersError>(
-    self_params.Len() > 1, {sm->CurrentScope},
+    self_params.size() > 1,
     ERR_ARGS(*self_params[0], *self_params[1]));
 
   // Check there is only 1 variadic parameter, and it is last.
   RaiseIf<SppMultipleVariadicParametersError>(
-    variadic_params.Len() > 1, {sm->CurrentScope},
+    variadic_params.size() > 1,
     ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
   // Check there are no duplicate parameter names.
   RaiseIf<SppIdentifierDuplicateError>(
-    not param_names.IsEmpty(), {sm->CurrentScope},
+    not param_names.empty(),
     ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
-    not unordered_params.IsEmpty(), {sm->CurrentScope},
+    not unordered_params.empty(),
     ERR_ARGS(
       unordered_params[1].first, *unordered_params[1].second,
       unordered_params[0].first, *unordered_params[0].second));
@@ -127,14 +128,13 @@ auto FunctionParameterGroupAst::Stage11_CodeGen(
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the
   // 0th argument is the closure env (skip it).
-  // Todo: why not using meta->Save()/->Restore()?
   const auto llvm_fn = ctx->Builder.GetInsertBlock()->getParent();
   auto arg_index = ctx->CurrentClosureType != nullptr ? 1u : 0u;
   for (auto const &param : Params) {
     SPP_ASSERT(arg_index < llvm_fn->arg_size());
+    const auto _meta_guard = MetaGuard(meta);
     meta->LetStatementPrecomputedValue = llvm_fn->getArg(arg_index);
     param->Stage11_CodeGen(sm, meta, ctx);
-    meta->LetStatementPrecomputedValue = nullptr;
     ++arg_index;
   }
   return nullptr;
@@ -151,16 +151,16 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   // Filter by casting.
   auto out = Vec<FunctionParameterSelfAst*>();
   for (auto const &param : Params) {
-    if (auto *self_param = dynamic_cast<FunctionParameterSelfAst*>(param.get())) { out.push_back(self_param); }
+    if (auto *self_param = param->To<FunctionParameterSelfAst>()) { out.push_back(self_param); }
   }
-  return out.IsEmpty() ? nullptr : out[0];
+  return out.empty() ? nullptr : out[0];
 }
 
 auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterRequiredAst*>();
   for (auto const &param : Params) {
-    if (auto *req_param = dynamic_cast<FunctionParameterRequiredAst*>(param.get())) { out.push_back(req_param); }
+    if (auto *req_param = param->To<FunctionParameterRequiredAst>()) { out.push_back(req_param); }
   }
   return out;
 }
@@ -169,25 +169,42 @@ auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParamet
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();
   for (auto const &param : Params) {
-    if (auto *opt_param = dynamic_cast<FunctionParameterOptionalAst*>(param.get())) { out.push_back(opt_param); }
+    if (auto *opt_param = param->To<FunctionParameterOptionalAst>()) { out.push_back(opt_param); }
   }
   return out;
 }
 
-auto FunctionParameterGroupAst::GetVariadicParams() const -> FunctionParameterVariadicAst* {
+auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVariadicAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterVariadicAst*>();
   for (auto const &param : Params) {
-    if (auto *var_param = dynamic_cast<FunctionParameterVariadicAst*>(param.get())) { out.push_back(var_param); }
+    if (auto *var_param = param->To<FunctionParameterVariadicAst>()) { out.push_back(var_param); }
   }
-  return out.IsEmpty() ? nullptr : out[0];
+  return out.empty() ? nullptr : out[0];
+}
+
+auto FunctionParameterGroupAst::IsVoidParam(
+  FunctionParameterAst const &param, Scope const &scope) -> bool {
+  // Build a type-ref to the parameters type, and run a simple
+  // comparison against the "Void" type.
+  return analyse::utils::type_predicates::IsTypeVoid(
+    TypeRef::ForKindCheck(*param.Type, scope), scope);
+}
+
+auto FunctionParameterGroupAst::RemoveVoidParams(
+  Scope const &scope) -> void {
+  // Strip any parameter that is the Void type, using the other
+  // helper.
+  Params |= genex::actions::remove_if([&scope](auto const &param) {
+    return IsVoidParam(*param, scope);
+  });
 }
 
 auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) {
-    if (dynamic_cast<FunctionParameterSelfAst*>(param.get()) == nullptr) { out.push_back(param.get()); }
+    if (param->To<FunctionParameterSelfAst>() == nullptr) { out.push_back(param.get()); }
   }
   return out;
 }

@@ -181,3 +181,35 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(vec)
     }
 )");
+
+// Resuming a generator that reached the caller through a plain function, rather than straight from the "cor", emits
+// a GEP with invalid indices on the handle slot.
+// FIXED
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    CoroutinePrototypeAst,
+    test_valid_resume_a_generator_returned_by_a_function, R"(
+    cor g() -> Gen[S32] { gen 1 }
+
+    fun f() -> Gen[S32] {
+        ret g()
+    }
+
+    fun h() -> Void {
+        let mut c = f()
+        let v = c.res()
+        std::mem::ops::drop(c)
+    }
+)");
+
+// A generator holding a borrow of a parameter can be returned, and the caller never learns it holds a borrow of its
+// argument - so it can drop the owner and then resume the generator.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    CoroutinePrototypeAst,
+    test_invalid_return_a_generator_borrowing_a_parameter,
+    SppSecondClassBorrowViolationError, R"(
+    cor g(a: &Str) -> Gen[S32] { gen 1 }
+
+    fun f(x: &Str) -> Gen[S32] {
+        ret g(x)
+    }
+)");

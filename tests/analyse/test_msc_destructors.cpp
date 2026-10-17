@@ -104,7 +104,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 // declaration lowers into a mock constant named "drop" in the enclosing "sup" scope, and the call still has to reach
 // the free function rather than that mock - the shape every composite "Drop" in the standard library is written in.
 //
-// Note this does *not* cover the module-scope resolution fix in "overload_utils". Reproducing that needs the import
+// Note this does *not* cover the module-scope resolution fix in "overload_resolution". Reproducing that needs the import
 // written above the declarations, which a file with no prelude gets and a test snippet cannot: the prelude is appended
 // to the snippet, and writing "use std::mem::ops::drop" here would duplicate it, which is itself an error (see
 // "test_invalid_use_variable_statement_duplicate_of_prelude"). That fix is only observable in the standard library.

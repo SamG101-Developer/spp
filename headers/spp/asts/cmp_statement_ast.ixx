@@ -101,5 +101,5 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
 private:
   bool _FromUseStatement;
 
-  Shared<VariableSymbol> _AliasSym;
+  Shared<VariableSymbol> _AliasSymbol;
 };

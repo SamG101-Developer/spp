@@ -6,10 +6,6 @@ inputs:
     description: "CMAKE_BUILD_TYPE to configure with."
     required: false
     default: "RelWithDebInfo"
-  sanitizer:
-    description: "Sanitizer set to enable, e.g. `address+undefined+leak`; empty means none."
-    required: false
-    default: ""
   extra-flags:
     description: "Additional flags appended verbatim to the CMake configure command."
     required: false
@@ -18,11 +14,11 @@ inputs:
 runs:
   using: composite
   steps:
-    # Calls the cmake configuration script.
+    # Calls the cmake configuration script. This runs the cmake
+    # configurations.
     - name: Configure
       shell: bash
       env:
         BUILD_TYPE: ${{ inputs.build-type }}
-        SANITIZER: ${{ inputs.sanitizer }}
         EXTRA_FLAGS: ${{ inputs.extra-flags }}
-      run: bash .github/scripts/configure-cmake/configure.sh
+      run: bash .github/scripts/build/configure.sh

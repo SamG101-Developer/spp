@@ -12,7 +12,9 @@ import std;
 SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LocalVariableSingleIdentifierAliasAst);
+use(spp::asts, struct TypeAst);
 use(spp::asts, struct TokenAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 
@@ -69,29 +71,30 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
   SPP_ATTR_NODISCARD auto ExtractName() const -> Shared<IdentifierAst> override;
 
+  /// From here on, this binding declares "flow", a flow-typed copy
+  /// of its symbol (a destructure narrowing what it indexes): what
+  /// a later walk finds under the name, where the "let" is written.
+  auto Narrow(Shared<VariableSymbol> const &flow, Scope &scope) -> void;
+
 private:
-  /// The symbol this binding's Stage 7 created, and the one its
-  /// name held in the same scope just before. A scope holds one
-  /// symbol per name, so after Stage 7 the name belongs to
-  /// whichever binding declared it last, and a later stage
-  /// looking a same-scope shadower's predecessor up by name
-  /// would find the shadower. Only a binding that shadows one
-  /// in its own scope uses these; every other binding is found
-  /// by its name, as before. Neither is carried by "Clone".
-  Shared<VariableSymbol> _Sym;
-  Shared<VariableSymbol> _PrevSym;
+  /// The symbol this binding's Stage 7 created. This helps
+  /// avoid issues with shadowing / redeclaring; the true
+  /// symbol is stamped onto this AST.
+  Shared<VariableSymbol> _Symbol;
 
-  /// Whether this binding is one of a same-scope shadowing
-  /// pair, on either side: it shadows a binding in its own
-  /// scope, or a later binding in its own scope has taken the
-  /// name. Only then are the saved symbols used.
-  SPP_ATTR_NODISCARD auto _UsesSavedSymbol(ScopeManager const *sm) const -> bool;
+  /// This binding's symbol, without declaring it. Either read
+  /// from the stamp, otherwise pull from the symbol table.
+  SPP_ATTR_NODISCARD auto _Own(
+    ScopeManager const *sm) const -> VariableSymbol*;
 
-  SPP_ATTR_NODISCARD auto _OwnSymbol(ScopeManager const *sm) const -> VariableSymbol*;
+  /// The symbol this binding declares, before it is declared: its
+  /// own, or for a clone walked over its original's scope (which
+  /// has none), the one its original recorded there.
+  SPP_ATTR_NODISCARD auto _Binding(
+    ScopeManager const *sm) const -> VariableSymbol*;
 
-  /// Put back what the name meant before this binding, for its
-  /// value to be analysed, checked or generated against.
-  /// Answers with what to re-add once the value is done: this
-  /// binding's own symbol.
-  auto _ExposePreviousSymbol(ScopeManager *sm) const -> Shared<VariableSymbol>;
+  /// Declare this binding in the current scope, (add the var
+  /// symbol into the scope). Future asts will see this symbol.
+  auto _Declare(
+    ScopeManager *sm) const -> VariableSymbol*;
 };

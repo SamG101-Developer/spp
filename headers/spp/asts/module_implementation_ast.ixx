@@ -46,4 +46,9 @@ SPP_EXP_CLS struct spp::asts::ModuleImplementationAst final : Ast {
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* override;
+
+  /// Check every extension block's members against its super
+  /// class ("SupPrototypeExtensionAst::CheckExtensionMembers"),
+  /// before any member is pre-analysed.
+  auto CheckExtensionMembers(ScopeManager *sm, CompilerMetaData *meta) -> void;
 };

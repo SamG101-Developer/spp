@@ -100,3 +100,39 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+// A method taking "self" by value consumes its receiver, so it cannot be called through a borrow: the borrowed value
+// would be moved out and still owned by its owner, which frees it again later.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryBorrowedSelf,
+    test_invalid_consuming_method_called_through_a_mut_borrow,
+    SppMoveFromBorrowedMemoryError, R"(
+    cls A { }
+
+    sup A {
+        !public fun take(self) -> Void { let A() = self }
+    }
+
+    fun f(a: &mut A) -> Void {
+        a.take()
+    }
+)");
+
+// The same through a "&mut" handed back by a chaining method - the "StrBuilder().append(..).str()" double free.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryBorrowedSelf,
+    test_invalid_consuming_method_called_on_a_chained_mut_borrow,
+    SppMoveFromBorrowedMemoryError, R"(
+    cls B { }
+
+    sup B {
+        !public cor chain(&mut self) -> std::generator::GenOnce[&mut B] { gen self }
+        !public fun finish(self) -> Void { let B() = self }
+    }
+
+    fun f() -> Void {
+        let mut b = B()
+        b.chain().finish()
+        std::mem::ops::drop(b)
+    }
+)");

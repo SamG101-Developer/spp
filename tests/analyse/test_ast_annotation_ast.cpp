@@ -1,15 +1,23 @@
 #include "../test_macros.hpp"
 
+import spp.analyse.utils.annotation_utils;
+
+/// A method should be able to be declared as a "virtual
+/// method". Apply it to a method on a superimposition block
+/// and expect no errors.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AnnotationAst_BuiltinVirtualMethod,
   test_valid_usage_on_method, R"(
     cls A { }
     sup A {
-        !virtual_method
-        fun f() -> Void { }
+      !virtual_method
+      fun f() -> Void { }
     }
 )");
 
+/// A free function should not be able to be declared as a
+/// virtual method. Apply it to a free function and expect
+/// an annotation error to be raised.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AnnotationAst_BuiltinVirtualMethod,
   test_invalid_usage_on_function,
@@ -281,6 +289,22 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !cold
     fun f() -> Void { }
 )");
+
+/// The compiler binds behaviour to an llvm annotation by
+/// comparing its fully qualified name to a spelling of its own.
+/// A spelling std does not define is never matched, and the
+/// annotation is accepted and then silently ignored, so every
+/// name the compiler checks for must resolve to a std
+/// annotation. Taken from the compiler's table rather than
+/// spelled again here, so a drift between the two is caught.
+TEST(AnnotationAst_BuiltinLlvm, test_compiler_names_resolve_in_std) {
+  using A = spp::analyse::utils::annotation_utils::BuiltinAnnotations;
+  for (const auto fq_name : {A::kLlvmInline, A::kLlvmAlwaysInline, A::kLlvmNoInline, A::kLlvmHot, A::kLlvmCold}) {
+    const auto fq = spp::Str(fq_name);
+    const auto name = fq.substr(fq.rfind("::") + 2);
+    EXPECT_NO_THROW(build_temp_project("use " + fq + "\n!" + name + "\nfun f() -> Void { }\n")) << fq;
+  }
+}
 
 //
 

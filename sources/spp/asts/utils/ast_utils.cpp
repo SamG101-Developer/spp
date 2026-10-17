@@ -14,13 +14,16 @@ import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.statement_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
@@ -41,7 +44,7 @@ auto spp::asts::AstName(Ast *ast) -> Shared<TypeAst> {
   if (auto name = AstNameOrNull(ast); name != nullptr) {
     return name;
   }
-  throw std::runtime_error("ast_name: Unsupported AST type " + Str(typeid(*ast).name()));
+  Ice(*ast, "AstName: this kind of ast has no name");
 }
 
 auto spp::asts::AstBody(
@@ -67,7 +70,7 @@ auto spp::asts::AstBody(
   // (sup scopes are constraints).
   if (ast == nullptr) { return {}; }
 
-  throw std::runtime_error("ast_body: Unsupported AST type");
+  Ice(*ast, "AstBody: this kind of ast has no body");
 }
 
 auto spp::asts::IsRuntimeMemberAccess(
@@ -79,6 +82,24 @@ auto spp::asts::IsRuntimeMemberAccess(
     and postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr;
 }
 
+auto spp::asts::IsStaticMemberAccess(
+  Ast const *ast) -> bool {
+  // Check the ast is a postfix expression, whose operator is
+  // the static member access operator.
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>() != nullptr;
+}
+
+auto spp::asts::IsDeref(
+  Ast const *ast) -> bool {
+  // Check the ast is a postfix expression, whose operator is
+  // the deref operator.
+  const auto postfix = ast->To<PostfixExpressionAst>();
+  return postfix != nullptr
+    and postfix->Op->To<PostfixExpressionOperatorDerefAst>() != nullptr;
+}
+
 auto spp::asts::BindLocal(
   Unique<ExpressionAst> &slot, Vec<Unique<StatementAst>> &prelude,
   const std::size_t pos) -> Unique<IdentifierAst> {
@@ -87,7 +108,7 @@ auto spp::asts::BindLocal(
   const auto uid = spp::utils::Uid();
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, MakeShared<IdentifierAst>(pos, Str(uid)), nullptr);
-  prelude.EmplaceBack(MakeUnique<LetStatementInitializedAst>(
+  prelude.emplace_back(MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(var), nullptr, nullptr, std::move(slot)));
   slot = MakeUnique<IdentifierAst>(pos, Str(uid));
   return MakeUnique<IdentifierAst>(pos, Str(uid));

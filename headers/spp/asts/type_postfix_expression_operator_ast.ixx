@@ -35,11 +35,11 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionOperatorAst : Ast {
   /// allocation. "NsParts" is the same walk with the buffer
   /// supplied for the caller.
   virtual auto NsPartsInto(Vec<IdentifierAst const*> &out) const -> void {
-    for (auto const *part : NsParts()) { out.EmplaceBack(part); }
+    for (auto const *part : NsParts()) { out.emplace_back(part); }
   }
 
   virtual auto TypePartsInto(Vec<TypeIdentifierAst const*> &out) const -> void {
-    for (auto const *part : TypeParts()) { out.EmplaceBack(part); }
+    for (auto const *part : TypeParts()) { out.emplace_back(part); }
   }
 
   SPP_ATTR_NODISCARD virtual auto NsParts() const -> Vec<IdentifierAst const*> = 0;

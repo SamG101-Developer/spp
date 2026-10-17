@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(CoroutinePrototypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct SubroutinePrototypeAst);
 use(spp::asts, struct TypeAst);
 
@@ -31,6 +32,8 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
+  SPP_ATTR_NODISCARD auto CloneSignature() const -> Unique<FunctionPrototypeAst> override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -50,7 +53,7 @@ SPP_EXP_CLS struct spp::asts::CoroutinePrototypeAst final : FunctionPrototypeAst
 private:
   bool _IsOnce;
   Shared<TypeAst> _YieldType;
-  Shared<TypeAst> _SendType;
+  Shared<TypeRef> _SendRef;
   Unique<SubroutinePrototypeAst> _GenOnceLowered;
 
   /// Desugar a "GenOnce" coroutine into a subroutine returning
@@ -73,4 +76,7 @@ private:
   /// Give the lowering's allocas a lifetime of their own; see
   /// the definition. Needs the body, so runs after it.
   auto _DeclareBorrowedYieldStorage(SubroutinePrototypeAst const &lowered) const -> void;
+
+  SPP_ATTR_NODISCARD auto _CloneWithImpl(
+    decltype(Impl) &&impl) const -> Unique<CoroutinePrototypeAst>;
 };

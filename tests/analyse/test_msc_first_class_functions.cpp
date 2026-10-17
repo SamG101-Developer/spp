@@ -113,3 +113,71 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         g(x)
     }
 )");
+
+// A closure borrowed as a concrete function type is that type's fat pointer: it is called through the borrow.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFirstClassFunctions,
+    test_valid_closure_borrowed_as_fun_ref, R"(
+    fun take(c: &FunRef[(), U32]) -> U32 {
+        ret c()
+    }
+
+    fun f() -> Void {
+        let x = 1_u32
+        let c = (caps &x) { ret x + 1_u32 }
+        let y = take(&c)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFirstClassFunctions,
+    test_valid_closure_mutably_borrowed_as_fun_mut, R"(
+    fun run(c: &mut FunMut[(), Void]) -> Void {
+        c()
+        c()
+    }
+
+    fun f() -> Void {
+        let mut x = 1_s32
+        let mut c = (caps &mut x) { x@ = 2_s32 }
+        run(&mut c)
+        std::mem::ops::drop(c)
+    }
+)");
+
+// The convention is still the parameter's: an immutable borrow cannot stand for a "&mut".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestFirstClassFunctions,
+    test_invalid_closure_borrowed_as_mut_fun_mut,
+    SppFunctionCallNoValidSignaturesError, R"(
+    fun run(c: &mut FunMut[(), Void]) -> Void { }
+
+    fun f() -> Void {
+        let mut x = 1_s32
+        let mut c = (caps &mut x) { x@ = 2_s32 }
+        run(&c)
+    }
+)");
+
+// The borrowed closure carries its captures into the call, beside another way to the same place.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestFirstClassFunctions,
+    test_invalid_closure_borrowed_as_fun_mut_beside_its_capture,
+    SppMemoryOverlapUsageError, R"(
+    fun run(c: &mut FunMut[(), Void], y: &mut S32) -> Void { }
+
+    fun f() -> Void {
+        let mut x = 1_s32
+        let mut c = (caps &mut x) { x@ = 2_s32 }
+        run(&mut c, &mut x)
+    }
+)");
+
+// A borrowed "FunRef" is called as a "FunRef", not as the "FunMut" it extends (which needed a "&mut").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestFirstClassFunctions,
+    test_valid_call_through_borrowed_fun_ref, R"(
+    fun take(c: &FunRef[(), U32]) -> U32 {
+        ret c()
+    }
+)");

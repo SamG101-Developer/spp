@@ -99,15 +99,19 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A concrete overload matches its argument exactly, and so beats a generic one ("test_msc_overload_ranks").
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
-  test_invalid_postfix_func_call_ambiguous_1,
-  SppFunctionCallOverloadAmbiguousError, R"(
-    fun f(a: S32) -> Void { }
-    fun f[T](a: T) -> Void { }
+  test_valid_postfix_func_call_concrete_beats_generic, R"(
+    fun f(a: S32) -> Bool { ret true }
+    fun f[T](a: T) -> S32 {
+        std::mem::ops::drop(a)
+        ret 1
+    }
 
     fun g() -> Void {
-        f(1)
+        let r = f(1)
+        let b: Bool = r
     }
 )");
 
@@ -327,6 +331,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_postfix_function_folding_2, R"(
@@ -336,6 +341,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = (1, 2, 3, 4)
         let y = (1, 2, 3, 4)
         let mut z = f(x, y)..
+        std::mem::ops::drop(z)
     }
 )");
 
@@ -491,6 +497,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = pass_through(1, true, Str::from("hi"))
+        std::mem::ops::drop(x)
         x = (0, false, Str::from("bye"))
         std::mem::ops::drop(x)
     }
@@ -535,7 +542,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 )");
 
 // Red: the tuple the variadic arguments collapse into is never memory-checked, so moving the same object into two
-// variadic calls goes unreported. See the Todo in "func_utils.cpp".
+// variadic calls goes unreported. See the Todo in "fn_values.cpp".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_variadic_pack_reuses_moved_argument,
@@ -685,7 +692,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_invalid_postfix_func_call_non_cmp_in_cmp_context,
-  SppInvalidComptimeOperationError, R"(
+  SppInvalidCompTimeOperationError, R"(
     fun g() -> Void { }
 
     cmp fun f() -> Void {

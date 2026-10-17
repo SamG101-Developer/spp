@@ -86,8 +86,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestLinearDestructure,
   test_invalid_destructure_skips_an_owned_attribute,
   SppDestructureSkipsOwnedPartError, R"(
-    cls Point { !public x: Str
-                !public y: Str }
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
 
     fun f(p: Point) -> Void {
         let Point(x, ..) = p
@@ -109,8 +111,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestLinearDestructure,
   test_invalid_case_branch_skips_an_owned_attribute,
   SppDestructureSkipsOwnedPartError, R"(
-    cls Point { !public x: Str
-                !public y: Str }
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
 
     fun f(p: Point) -> Void {
         case p of {
@@ -122,8 +126,10 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestLinearDestructure,
   test_valid_destructure_skips_a_copyable_attribute, R"(
-    cls Point { !public x: Str
-                !public y: U32 }
+    cls Point {
+        !public x: Str
+        !public y: U32
+    }
 
     fun f(p: Point) -> Void {
         let Point(x, ..) = p
@@ -134,12 +140,78 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestLinearDestructure,
   test_valid_shape_test_takes_nothing_apart, R"(
-    cls Point { !public x: Str
-                !public y: Str }
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
 
     fun f(p: Point) -> Void {
         let b = p is Point(..)
         drop(b)
         drop(p)
+    }
+)");
+
+// A destructure binding nothing reads no part, and the parts are all the old check looked at, so a value that had
+// already been moved was consumed again.
+// FIXED
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestLinearDestructure,
+    test_invalid_empty_destructure_of_a_moved_value,
+    SppUninitializedMemoryUseError, R"(
+    cls DsEmpty { }
+
+    fun eat(l: DsEmpty) -> Void { let DsEmpty() = l }
+
+    fun f() -> Void {
+        let l = DsEmpty()
+        eat(l)
+        let DsEmpty() = l
+    }
+)");
+
+// A value made on the spot is held by a hidden temporary, which answers for its parts as a named value does.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearDestructure,
+  test_invalid_destructure_of_a_temporary_skips_an_owned_attribute,
+  SppDestructureSkipsOwnedPartError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+
+    fun mk() -> Point { ret Point(x=Str::from("x"), y=Str::from("y")) }
+
+    fun f() -> Void {
+        let Point(x, ..) = mk()
+        drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearDestructure,
+  test_invalid_tuple_destructure_of_a_temporary_skips_an_owned_element,
+  SppDestructureSkipsOwnedPartError, R"(
+    fun mk() -> (Str, Str) { ret (Str::from("x"), Str::from("y")) }
+
+    fun f() -> Void {
+        let (x, ..) = mk()
+        drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestLinearDestructure,
+  test_valid_destructure_of_a_temporary_skips_only_copy_parts, R"(
+    cls Point {
+        !public x: Str
+        !public y: S32
+    }
+
+    fun mk() -> Point { ret Point(x=Str::from("x"), y=1) }
+
+    fun f() -> Void {
+        let Point(x, ..) = mk()
+        drop(x)
     }
 )");

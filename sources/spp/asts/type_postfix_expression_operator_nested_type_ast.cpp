@@ -79,7 +79,7 @@ auto TypePostfixExpressionOperatorNestedTypeAst::NsPartsInto(
 
 auto TypePostfixExpressionOperatorNestedTypeAst::TypePartsInto(
   Vec<TypeIdentifierAst const*> &out) const -> void {
-  out.EmplaceBack(Name.get());
+  out.emplace_back(Name.get());
 }
 
 SPP_MOD_END

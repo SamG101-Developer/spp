@@ -41,6 +41,17 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  /// Emit a return of "expr" (none for a bare "ret") from the
+  /// function being generated, coerced to "ret_type" (else the
+  /// enclosing function's), after what the scopes it leaves
+  /// deferred. "site" is where an error is reported. Shared by
+  /// "ret" and by a "gen" in a lowered "GenOnce", which reads as
+  /// a return; "expr" is only read, so either can be generated
+  /// again.
+  static auto EmitReturn(
+    ExpressionAst *expr, Shared<TypeAst> const &ret_type, Ast const &site, ScopeManager *sm,
+    CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
+
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
 private:

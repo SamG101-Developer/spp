@@ -162,9 +162,31 @@ namespace spp::asts::generate::common_types {
     std::size_t pos)
     -> Shared<TypeAst>;
 
+  SPP_EXP_FUN auto GenDone(
+    std::size_t pos)
+    -> Shared<TypeAst>;
+
   SPP_EXP_FUN auto NonNullType(
     std::size_t pos,
     Shared<TypeAst> inner_type)
+    -> Shared<TypeAst>;
+
+  /// The "SizedInteger" template, with no arguments (the types
+  /// "S8".."U256" are made from).
+  SPP_EXP_FUN auto SizedIntegerType(
+    std::size_t pos)
+    -> Shared<TypeAst>;
+
+  /// The "SizedFloatingPoint" template, with no arguments (the
+  /// types "F8".."F128" are made from).
+  SPP_EXP_FUN auto SizedFloatType(
+    std::size_t pos)
+    -> Shared<TypeAst>;
+
+  /// The "Generated" template, with no arguments ("send"'s
+  /// return type).
+  SPP_EXP_FUN auto GeneratedType(
+    std::size_t pos)
     -> Shared<TypeAst>;
 
   SPP_EXP_FUN auto GenType(

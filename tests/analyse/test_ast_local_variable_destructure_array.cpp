@@ -105,6 +105,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let t = (1, Str::from("2"))
         let [(a, mut b), c] = [t, (3, Str::from("4"))]
+        std::mem::ops::drop(b)
         b = Str::from("5")
         std::mem::ops::drop(b)
         std::mem::ops::drop(c)
@@ -248,5 +249,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let t = [Str::from("a"), Str::from("b")]
         let [a, b] = t
         let u = t
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LocalVariableDestructureArrayAst,
+  test_valid_destructure_through_an_array_alias, R"(
+    type Arr3[T] = std::array::Arr[T, 3_uz]
+
+    fun f() -> Void {
+        let a: Arr3[S32] = [3_s32, 4_s32, 5_s32]
+        let [x, y, z] = a
     }
 )");

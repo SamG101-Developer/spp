@@ -100,9 +100,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestForwarding,
     test_valid_forwarding_str_equality, R"(
     fun f(s: Str) -> Void {
-        let mut b = s == Str::from("hello")
+        let hello = Str::from("hello")
+        let mut b = s == hello
         b = false
         std::mem::ops::drop(s)
+        std::mem::ops::drop(hello)
     }
 )");
 
@@ -136,6 +138,67 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f(w: Wrapper) -> Void {
         let mut b = w.greet()
         b = false
+        std::mem::ops::drop(w)
+    }
+)");
+
+// --- "Self" in a method reached by forwarding -----------------------------------------------------
+
+// A method declared on a class and called on an implementer of it has "Self" pinned to the implementer; the same holds
+// when the implementer is reached by forwarding. The control calls it on the implementer directly.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestForwarding,
+    test_valid_self_pinned_to_implementer_directly, R"(
+    cls Writer { }
+    sup Writer {
+        !public !abstract_method
+        fun write(&self) -> S32 { }
+
+        !public
+        fun accepts(&self, other: &Self) -> Bool { ret true }
+    }
+
+    cls Mine { }
+    sup Mine ext Copy { }
+    sup Mine ext Writer {
+        fun write(&self) -> S32 { ret 7 }
+    }
+
+    fun f() -> Void {
+        let m = Mine()
+        let b = m.accepts(&Mine())
+    }
+)");
+
+// "CallSelf" answers the forwarded-to type; it used to answer nothing, leaving "Self" the declaring "Writer", so
+// "&Mine" was rejected (E1 under E51).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestForwarding,
+    test_valid_self_pinned_to_implementer_through_forwarding, R"(
+    use std::ops::fwd::FwdRef
+
+    cls Writer { }
+    sup Writer {
+        !public !abstract_method
+        fun write(&self) -> S32 { }
+
+        !public
+        fun accepts(&self, other: &Self) -> Bool { ret true }
+    }
+
+    cls Mine { }
+    sup Mine ext Copy { }
+    sup Mine ext Writer {
+        fun write(&self) -> S32 { ret 7 }
+    }
+
+    cls Wrapper { !public inner: Mine }
+    sup Wrapper ext FwdRef[Mine] {
+        cor fwd_ref(&self) -> GenOnce[&Mine] { gen &self.inner }
+    }
+
+    fun f(w: Wrapper) -> Void {
+        let b = w.accepts(&Mine())
         std::mem::ops::drop(w)
     }
 )");

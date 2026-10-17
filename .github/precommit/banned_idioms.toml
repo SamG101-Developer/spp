@@ -23,19 +23,74 @@ files = '\.(?:cpp|ixx|hpp)$'
 allow = ["headers/spp/utils/ptr.ixx"]
 
 [[rule]]
-id = "no-std-map"
+id = "use-spp-type-aliases"
 enabled = true
-pattern = '\bstd::(?:map|unordered_map)\b'
-message = "use the ankerl map via spp::Map instead"
+pattern = '\bstd::(?:unordered_map|unordered_set|map|set|vector|array|optional|expected|unexpected|filesystem::path|string_view|string|copyable_function|function_ref|function|span|variant|monostate|tuple|pair|shared_ptr|unique_ptr|weak_ptr|strong_ordering|enable_shared_from_this)\b(?!::)'
+message = "use the spp alias from types.ixx"
 files = '\.(?:cpp|ixx|hpp)$'
-allow = ["headers/spp/utils/types.ixx"]
+skip-comments = true
+allow = [
+  "headers/spp/utils/types.ixx",
+  "headers/wrappers",
+  "headers/spp/codegen/llvm_passes.hpp",
+  "sources/spp/codegen/llvm_passes.cpp",
+]
+
+[rule.suggest]
+"std::unordered_map" = "Map"
+"std::unordered_set" = "Set"
+"std::map" = "Map, or OrderedMap if the order matters"
+"std::set" = "Set"
+"std::vector" = "Vec"
+"std::array" = "Arr"
+"std::optional" = "Opt"
+"std::filesystem::path" = "Path"
+"std::string" = "Str"
+"std::string_view" = "StrView"
+"std::function" = "Func"
+"std::copyable_function" = "Func"
+"std::function_ref" = "FuncRef"
+"std::span" = "Span"
+"std::variant" = "Variant"
+"std::monostate" = "Monostate"
+"std::tuple" = "Tup"
+"std::pair" = "Pair"
+"std::shared_ptr" = "Shared"
+"std::unique_ptr" = "Unique"
+"std::weak_ptr" = "Weak"
+"std::strong_ordering" = "Ordering"
+"std::enable_shared_from_this" = "EnableLocalSharedFromThis"
 
 [[rule]]
-id = "no-std-set"
+id = "use-spp-function-aliases"
 enabled = true
-pattern = '\bstd::(?:set|unordered_set)\b'
-message = "use the ankerl set via spp::Set instead"
+pattern = '\bstd::(?:nullopt|make_pair|make_shared|make_unique|make_tuple|get_if|get|holds_alternative|visit|apply|tie|tuple_cat|forward_as_tuple|make_from_tuple|ignore)\b(?!::)'
+message = "use the spp name from types.ixx"
 files = '\.(?:cpp|ixx|hpp)$'
+skip-comments = true
+allow = [
+  "headers/spp/utils/types.ixx",
+  "headers/wrappers",
+  "headers/spp/codegen/llvm_passes.hpp",
+  "sources/spp/codegen/llvm_passes.cpp",
+]
+
+[rule.suggest]
+"std::nullopt" = "Nullopt"
+"std::make_pair" = "MakePair"
+"std::make_shared" = "MakeShared"
+"std::make_unique" = "MakeUnique"
+"std::make_tuple" = "MakeTuple"
+"std::get" = "get"
+"std::get_if" = "get_if"
+"std::holds_alternative" = "holds_alternative"
+"std::visit" = "visit"
+"std::apply" = "apply"
+"std::tie" = "tie"
+"std::tuple_cat" = "tuple_cat"
+"std::forward_as_tuple" = "forward_as_tuple"
+"std::make_from_tuple" = "make_from_tuple"
+"std::ignore" = "ignore"
 
 [[rule]]
 id = "no-std-regex"
@@ -43,6 +98,14 @@ enabled = true
 pattern = '\bstd::regex\b'
 message = "query about finding a new regex module instead"
 files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "no-std-hash"
+enabled = false
+pattern = '\bstd::hash\b'
+message = "use the ankerl hash via spp::Hash instead"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = ["headers/spp/utils/types.ixx"]
 
 [[rule]]
 id = "processor-conditional-include"

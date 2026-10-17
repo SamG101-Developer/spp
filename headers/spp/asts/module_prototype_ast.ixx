@@ -21,7 +21,7 @@ SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
   /// The file path of the module prototype, used by the
   /// compiler to resolve module imports. Not got from parsing
   /// children asts.
-  std::filesystem::path FilePath = "";
+  Path FilePath = "";
 
   /// The module implementation ast this prototype represents.
   Unique<ModuleImplementationAst> Impl;

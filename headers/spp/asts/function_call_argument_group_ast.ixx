@@ -12,6 +12,7 @@ use(spp::asts, struct FunctionCallArgumentAst);
 use(spp::asts, struct FunctionCallArgumentKeywordAst);
 use(spp::asts, struct FunctionCallArgumentPositionalAst);
 use(spp::asts, struct TokenAst);
+use(spp::analyse::scopes, struct TypeRef);
 
 /// A group of function call arguments, grouping multiple
 /// positional or keyword arguments together in a function call.
@@ -24,6 +25,12 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentGroupAst final : Ast {
   /// The arguments in the group, which can be both positional
   /// and keyword arguments.
   Vec<Unique<FunctionCallArgumentAst>> Args;
+
+  /// Per argument, the type the callee expects there when every
+  /// overload agrees on it (see "ExpectedArgTypes"), set by the
+  /// call before this group is analysed. An argument that is an
+  /// overloaded call resolves its return type against it.
+  Vec<Shared<analyse::scopes::TypeRef>> ExpectedTypes;
 
   /// The ")" token that closes the argument group.
   Unique<TokenAst> TokR;

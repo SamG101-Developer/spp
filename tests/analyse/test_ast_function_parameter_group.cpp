@@ -190,3 +190,52 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     R"(
     fun f(a: S32, b: S32 = 0, ..c: S32) -> Void { }
 )");
+
+// A variadic parameter holds a pack: in the template it is read element by element, typed as its element; each
+// instantiation (one per argument count) reads its tuple, where the index is checked.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_valid_variadic_parameter_element_access, R"(
+    fun g(..xs: S32) -> S32 { ret xs.0 + xs.1 }
+    fun f() -> Void { let a = g(1, 2) }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_valid_variadic_generic_parameter_element_access, R"(
+    fun g[..Ts](..a: Ts) -> Void {
+        let x = a.0
+        std::mem::ops::drop(x)
+    }
+    fun f() -> Void { g(1, true) }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_valid_variadic_comp_parameter_element_access, R"(
+    fun g[cmp ..n: Bool]() -> Bool { ret n.0 }
+    fun f() -> Void { let b = g[true, false]() }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_valid_variadic_parameter_called_with_no_arguments, R"(
+    fun g(..xs: S32) -> Void { }
+    fun f() -> Void { g() }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_invalid_variadic_parameter_element_out_of_range,
+    SppMemberAccessOutOfBoundsError, R"(
+    fun g(..xs: S32) -> S32 { ret xs.2 }
+    fun f() -> Void { let a = g(1, 2) }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    FunctionParameterGroupAst,
+    test_invalid_variadic_comp_parameter_element_out_of_range,
+    SppMemberAccessOutOfBoundsError, R"(
+    fun g[cmp ..n: Bool]() -> Bool { ret n.2 }
+    fun f() -> Void { let b = g[true, false]() }
+)");

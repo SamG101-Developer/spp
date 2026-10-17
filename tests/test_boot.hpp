@@ -13,7 +13,7 @@ import std;
  * lock keeps the workers off each other. Running SppBootstrap.Fixture on its own first, as run-tests.sh does, keeps the
  * [vcs] clone out of the parallel phase entirely.
  */
-auto ensure_temp_project() -> void;
+auto EnsureTempProject() -> void;
 
 /**
  * Compile one module of code as a throwaway project.
@@ -22,4 +22,4 @@ auto ensure_temp_project() -> void;
  * @return The values the module's compile-time constants resolved to, by name. Reading a "cmp" back is the only way a
  * test can check what comp-time resolution computed rather than merely that it finished; see SPP_TEST_CMP_VALUES.
  */
-auto build_temp_project(std::string code, bool add_main = true) -> spp::Map<spp::Str, spp::Str>;
+auto build_temp_project(spp::Str code, bool add_main = true) -> spp::Map<spp::Str, spp::Str>;

@@ -158,6 +158,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
                 std::mem::ops::drop(xxx)
                 std::mem::ops::drop(y_unused)
             }
+        }
+    }
+
+    fun g(p: Point1) -> Void {
+        case p of {
             is Point1(y as y_value, x as x_unused) {
                 let yyy = y_value
                 std::mem::ops::drop(yyy)
@@ -213,8 +218,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_nested_tuple_in_object_partially_bound,
-  SppLinearValueNotConsumedError, R"(
-    # Only the first element of the tuple is bound, so "p.x" is not accounted for and "p" still owns something.
+  SppDestructureSkipsOwnedPartError, R"(
+    # Only the first element of the tuple is bound, so "p.x.1" is left with no owner once the pattern takes "p".
     cls Point {
         !public x: (Str, Str)
         !public y: Str
@@ -227,7 +232,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_invalid_nested_class_in_object_partially_bound,
-  SppLinearValueNotConsumedError, R"(
+  SppDestructureSkipsOwnedPartError, R"(
     cls Inner {
         !public a: Str
         !public b: Str
@@ -246,9 +251,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CasePatternVariantDestructureObjectAst,
   test_valid_nested_object_in_object, R"(
-    # Copyable attributes, so the aliased bindings copy rather than move: a binary "is" matches on one path only, and
-    # binding by value would leave "p" partially moved there and intact on the other. What this pins is the shape of
-    # the nested pattern, which the attribute type is incidental to.
+    # A pattern that cannot fail, binding by value, takes "p" on its match edge, and there is no other edge. What this
+    # pins is the shape of the nested pattern, which the attribute type is incidental to.
     cls Point {
         !public x: S32
         !public y: S32
@@ -261,7 +265,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(p: Line) -> Void {
         case p is Line(start=Point(x as x1, y as y1), end=Point(x as x2, y as y2)) { }
-        std::mem::ops::drop(p)
     }
 )");
 
@@ -343,7 +346,6 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let a = 123
         case p of {
             is Point(&mut x, ..) { x@ = a }
-            else { }
         }
     }
 )");

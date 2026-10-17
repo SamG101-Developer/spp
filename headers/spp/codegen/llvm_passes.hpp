@@ -34,6 +34,31 @@ namespace spp::codegen {
   /// triple.
   auto TargetFolderName() -> char const*;
 
+  /// The selected target as the folder an ffi package ships its
+  /// library for it in: "<arch>-<os>[-<env>]", such as
+  /// "x86_64-linux-gnu", "aarch64-macos" or "x86_64-windows-msvc".
+  /// Unlike "TargetFolderName" this is one canonical spelling per
+  /// target, so a package and the compiler agree on it however
+  /// the target was asked for.
+  auto FfiFolderName() -> char const*;
+
+  /// The host's ffi folder name, in the same spelling. Safe to
+  /// read before "SelectTarget", which "FfiFolderName" is not:
+  /// it fixes the target to the host on first use.
+  auto HostFfiFolderName() -> char const*;
+
+  /// Whether "folder" is the canonical ffi folder name of some
+  /// target with a known architecture and operating system.
+  /// Another spelling of a known target ("arm64-linux-gnu",
+  /// "x86_64-darwin") is not, because the compiler would never
+  /// look in it.
+  auto IsFfiFolderName(char const *folder) -> bool;
+
+  /// The extension a shared library carries on the target an
+  /// ffi folder names, without the leading dot: "so", "dylib"
+  /// or "dll". "folder" must pass "IsFfiFolderName".
+  auto SharedLibraryExtension(char const *folder) -> char const*;
+
   /// Stamp an "llvm::Module" (passed as an opaque pointer)
   /// with the selected target's triple and data layout.
   auto ApplyTargetToModule(void *llvm_module) -> void;
@@ -116,8 +141,7 @@ namespace spp::codegen {
   /// "ApplySafeStack" is asked to do later: a program whose
   /// functions read an unsafe stack pointer that was never set
   /// up writes its first split frame through a null one.
-  /// Answers whether the entry point was added.
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> bool;
+  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> void;
 
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,

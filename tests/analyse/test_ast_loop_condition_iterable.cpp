@@ -61,6 +61,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let v = Vec[Str]()
         loop mut x in v.iter_mov() {
+            std::mem::ops::drop(x)
             x = Str::from("hello")
             std::mem::ops::drop(x)
         }

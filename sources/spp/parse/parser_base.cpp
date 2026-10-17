@@ -11,7 +11,7 @@ SPP_MOD_BEGIN
 spp::parse::ParserBase::ParserBase(Vec<lex::RawToken> tokens,
   Shared<utils::errors::ErrorFormatter> const &error_formatter) :
   _Tokens(std::move(tokens)),
-  _TokensLen(_Tokens.Len()),
+  _TokensLen(_Tokens.size()),
   _ErrorBuilder(MakeUnique<errors::SyntacticErrorBuilder<errors::SppSyntaxError>>()),
   _ErrorFormatter(error_formatter ? error_formatter : MakeShared<utils::errors::ErrorFormatter>(_Tokens, "<temp>")) {
   _ErrorBuilder->WithErrorFormatter(_ErrorFormatter.get());

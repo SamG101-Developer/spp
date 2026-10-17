@@ -16,7 +16,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_materialize;
+import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_type;
 
 SPP_MOD_BEGIN
@@ -26,20 +26,18 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
   const utils::OrderableTag order_tag) :
   OrderableAst(order_tag),
   Conv(std::move(conv)),
-  Val(std::move(val)),
-  _InjectedSelfType(nullptr) {
+  Val(std::move(val)) {
 }
 
 auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::errors::SppInvalidPrimaryExpressionError;
+  IMPORT_UTILS;
 
   // Analyse the semantics of the value expression.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Val, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Val));
+    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
+    ERR_ARGS(*Val));
 }
 
 auto FunctionCallArgumentAst::Stage8_CheckMemory(
@@ -58,14 +56,12 @@ auto FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
-  return codegen::llvm_addr_of(*Val, sm, meta, ctx);
+  return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
 }
 
 auto FunctionCallArgumentAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // Infer the type from the value expression, unless an explicit "self" type has been given.
-  if (_InjectedSelfType != nullptr) { return _InjectedSelfType; }
-
+  // Infer the type from the value expression.
   auto type = Val->InferType(sm, meta);
   if (Conv) { type = type->WithConvention(AstClone(Conv)); }
   return type;
@@ -73,8 +69,6 @@ auto FunctionCallArgumentAst::InferType(
 
 auto FunctionCallArgumentAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  if (_InjectedSelfType != nullptr) { return TypeRef::Of(*_InjectedSelfType, *sm->CurrentScope); }
-
   // Held as the argument says: a borrow of "!" is a real value.
   auto ref = Val->InferTypeRef(sm, meta);
   if (Conv) {
@@ -82,17 +76,6 @@ auto FunctionCallArgumentAst::InferTypeRef(
     ref.IsNever = false;
   }
   return ref;
-}
-
-auto FunctionCallArgumentAst::SetSelfType(
-  Shared<TypeAst> self_type) -> void {
-  // Set the self type to the given type.
-  _InjectedSelfType = std::move(self_type);
-}
-
-auto FunctionCallArgumentAst::GetSelfType() const -> Shared<TypeAst> {
-  // Get the self type.
-  return _InjectedSelfType;
 }
 
 auto FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {

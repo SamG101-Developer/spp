@@ -6,6 +6,7 @@ import spp.codegen.llvm_ctx;
 import spp.compiler.out_layout;
 import spp.utils.progress;
 import spp.utils.types;
+import llvm;
 import std;
 
 namespace spp::analyse::scopes {
@@ -19,7 +20,6 @@ namespace spp::asts {
 }
 
 namespace spp::compiler {
-
   SPP_EXP_CLS struct CompilerBoot;
   SPP_EXP_CLS struct Module;
   SPP_EXP_CLS struct ModuleTree;
@@ -46,86 +46,58 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
   bool VerifyOnly = false;
 
   auto Lex(
-    utils::ProgressBar &bar,
-    ModuleTree &tree)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree) -> void;
 
   auto Parse(
-    utils::ProgressBar &bar,
-    ModuleTree &tree)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree) -> void;
 
   auto Stage1_PreProcess(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    asts::Ast *ctx)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    asts::Ast *ctx) -> void;
 
   auto Stage2_GenTopLvlScopes(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage3_GenTopLvlAliases(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage4_ResolveDeclarations(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage5_LoadSupScopes(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage5_5_AttachSupScopes(
     utils::ProgressBar &bar,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage6_PreAnalyseSemantics(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage7_AnalyseSemantics(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    bool is_exe,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree, bool is_exe,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage8_CheckMemory(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage9_CompTimeResolve(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage9_5_Monomorphise(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   auto Stage10_PreCodeGen(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    utils::ProgressBar &bar, ModuleTree &tree,
+    analyse::scopes::ScopeManager *sm) -> void;
 
   /**
    * Generate, optimise, emit and link. Unlike the stages above it, this one has a back end under it that can fail
@@ -134,14 +106,20 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
    * @return @c true when the build produced its artefact, @c false when the back end failed.
    */
   SPP_ATTR_NODISCARD auto Stage11_CodeGen(
-    utils::ProgressBar &bar,
-    ModuleTree &tree,
+    utils::ProgressBar &bar, ModuleTree &tree,
     analyse::scopes::ScopeManager *sm,
-    unsigned opt_level)
-    -> bool;
+    unsigned opt_level) -> bool;
 
 private:
   Vec<asts::ModulePrototypeAst*> _Modules;
+
+  /**
+   * The LLVM context every module of this compile is built into, so they can be linked. Owned by the compile, not the
+   * process: a named struct type lives in its context, and a later compile reusing it would be handed this one's
+   * layout for a same-named class. Declared before @c _LlvmCtxs , so it outlives the modules in it.
+   */
+  Unique<llvm::LLVMContext> _LlvmContext;
+
   Vec<Unique<codegen::LlvmCtx>> _LlvmCtxs;
 
   /**
@@ -154,12 +132,10 @@ private:
    * The linkage name of @c _EntryPoint , or an empty string if there is no entry point or it never reached code
    * generation.
    */
-  SPP_ATTR_NODISCARD auto _EntryPointLlvmName() const
-    -> Str;
+  SPP_ATTR_NODISCARD auto _EntryPointLlvmName() const -> Str;
 
   auto _ValidateEntryPoint(
-    analyse::scopes::ScopeManager *sm)
-    -> void;
+    analyse::scopes::ScopeManager *sm) -> void;
 
   /**
    * Copy every module into one and run the optimization pipeline over that, so the optimizer can see across the file
@@ -169,9 +145,7 @@ private:
    * @return @c true when there is nothing left to do or the executable was produced, @c false when a step failed.
    */
   SPP_ATTR_NODISCARD auto _LinkTimeOptimize(
-    OutLayout const &out,
-    unsigned opt_level)
-    -> bool;
+    OutLayout const &out, unsigned opt_level) -> bool;
 
   /**
    * Link the emitted object against the ffi runtimes the project's packages ship, producing the executable.
@@ -179,19 +153,18 @@ private:
    * @return @c true when the linker produced the executable, @c false when it returned non-zero.
    */
   SPP_ATTR_NODISCARD auto _LinkExecutable(
-    OutLayout const &out)
-    -> bool;
+    OutLayout const &out) -> bool;
 
   /**
-   * Every native library a package ships, found by shape: @c \<package\>/ffi/\<name\>/lib\<name\>.so , which is
-   * the library beside the stub that declares it, under the one name the loader will ask for. The shape is what
-   * @c handle_validate holds a project to, so a library the sweep does not find is a validation error rather than a
-   * link that quietly leaves it out.
+   * Every native library a package ships for the selected target, found by shape:
+   * @c \<package\>/ffi/\<name\>/\<target\>/lib\<name\>.so , which is the library beside the stub that declares
+   * it, in the folder @c codegen::FfiFolderName names, under the one name the loader will ask for. A package with no
+   * library for the target is reported, rather than a link that quietly leaves it out.
    * @param[in] project_root The directory to sweep.
+   * @return The libraries, or nothing when a package has none for the target.
    */
   SPP_ATTR_NODISCARD static auto _FfiLibraries(
-    std::filesystem::path const &project_root)
-    -> Vec<std::filesystem::path>;
+    Path const &project_root) -> Opt<Vec<Path>>;
 
   /**
    * The source of the entry point a test build is run through: a "main" that calls every discovered unit test in turn,
@@ -202,14 +175,9 @@ private:
    * @param[out] out_count How many tests the generated harness runs.
    */
   auto _GenerateTestHarness(
-    ModuleTree &tree,
-    StrView name_filter,
-    StrView group_filter,
-    std::size_t &out_count)
-    -> Str;
+    ModuleTree &tree, StrView name_filter, StrView group_filter,
+    std::size_t &out_count) -> Str;
 
   static auto _MoveScopeManagerToNs(
-    analyse::scopes::ScopeManager *sm,
-    Module const &mod)
-    -> void;
+    analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
 };

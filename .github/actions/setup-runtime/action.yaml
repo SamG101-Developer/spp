@@ -1,0 +1,41 @@
+# Download a built binary artefact, verify its integrity, and
+# make it available to the test job.
+
+name: setup-runtime
+description: "Fetch a lane's built binaries into build/, verified against the digests its build job published."
+
+# No toolchain: the binaries are self-contained, so a test job needs only Python.
+
+inputs:
+  artifact:
+    description: "Name of the lane's binaries artifact, from the build job's outputs."
+    required: true
+  spp-sha256:
+    description: "sha256 of spp, from the build job's outputs. Never from the artifact itself."
+    required: true
+  tests-sha256:
+    description: "sha256 of spp_tests, from the build job's outputs. Empty when that build staged no tests."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python and load pins
+      uses: ./.github/actions/setup-python
+
+    # Download the binary artefact that was created and uploaded
+    # from the build job.
+    - name: Download binaries
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        name: ${{ inputs.artifact }}
+        path: build
+
+    # Verify the integrity of the downloaded binaries.
+    - name: Verify binaries
+      shell: bash
+      env:
+        SPP_SHA256: ${{ inputs.spp-sha256 }}
+        TESTS_SHA256: ${{ inputs.tests-sha256 }}
+      run: bash .github/scripts/lib/verify-binaries.sh

@@ -1,8 +1,5 @@
 name: claude-review
 
-# Advisory, like Sonar: left out of the ci-success `needs` list, so nothing it says blocks a merge. It has no
-# trigger of its own - pr.yaml owns the concurrency group, so a new push cancels the run rather than posting twice.
-
 on:
   workflow_call:
     secrets:
@@ -36,7 +33,10 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@56cf60fde42f7b19c3abfd5c9c48b69a1288461f
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
+          show_full_output: true
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Todo: pin this to a commit.
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'

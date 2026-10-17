@@ -52,7 +52,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_visibility_access_private_module_member,
   SppAccessViolationError, R"(
     fun f() -> Void {
-        let x = std::generator::Generated[S32]()
+        let x = std::random::rotl64(1_u64, 2_u32)
         std::mem::ops::drop(x)
     }
 )");
@@ -234,5 +234,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let v = Vec[Box[S32]]::new()
         std::mem::ops::drop(v)
+    }
+)");
+
+// A closure's type has no module of its own, so the member's own one is where it is reported as defined (reporting it
+// once crashed the compiler).
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMscVisibility,
+  test_invalid_protected_drop_called_on_a_closure,
+  SppAccessViolationError, R"(
+    fun f() -> Void {
+        let s = Str::from("a")
+        let c = (caps s) { }
+        c.drop()
     }
 )");

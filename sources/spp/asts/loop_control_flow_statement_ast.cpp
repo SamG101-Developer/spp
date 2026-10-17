@@ -5,17 +5,20 @@ module;
 module spp.asts.loop_control_flow_statement_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
+import spp.asts.ast;
 import spp.asts.expression_ast;
+import spp.asts.loop_conditional_expression_ast;
 import spp.asts.loop_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -38,20 +41,22 @@ LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
 
 auto LoopControlFlowStatementAst::PosStart() const -> std::size_t {
   // Use the first "exit" or "skip".
-  return TokSeqExit.IsEmpty() ? TokSkip->PosStart() : TokSeqExit.Front()->PosStart();
+  return TokSeqExit.empty() ? TokSkip->PosStart() : TokSeqExit.front()->PosStart();
 }
 
 auto LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
   // Use expression or "skip" or last "exit".
-  return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.Back()->PosEnd();
+  return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.back()->PosEnd();
 }
 
 auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<LoopControlFlowStatementAst>(
+  auto p = MakeUnique<LoopControlFlowStatementAst>(
     AstCloneVec(TokSeqExit),
     AstClone(TokSkip),
     AstClone(Expr));
+  p->_ExprIsNever = _ExprIsNever;
+  return p;
 }
 
 auto LoopControlFlowStatementAst::ToString() const -> Str {
@@ -66,38 +71,38 @@ auto LoopControlFlowStatementAst::ToString() const -> Str {
 
 auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppLoopTooManyControlFlowStatementsError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
-  using generate::common_types::VoidType;
+  IMPORT_UTILS;
+  using generate::common_types_precompiled::VoidAt;
 
   // Get the number of control flow statements, and the
   // loop's nesting level.
   const auto has_skip = TokSkip != nullptr;
-  const auto num_controls = TokSeqExit.Len() + (has_skip ? 1 : 0);
+  const auto num_controls = TokSeqExit.size() + (has_skip ? 1 : 0);
   const auto nested_loop_depth = meta->LoopCurrentDepth;
 
   // Check the depth of the loop is greater than or equal
-  // to the number of control statements.
+  // to the number of control statements. Outside any loop
+  // there is no loop to point at, so the statement stands in.
   RaiseIf<SppLoopTooManyControlFlowStatementsError>(
-    num_controls > nested_loop_depth, {sm->CurrentScope},
-    ERR_ARGS(*meta->LoopCurrentAst->TokLoop, *this, num_controls, nested_loop_depth));
+    num_controls > nested_loop_depth,
+    ERR_ARGS(
+      meta->LoopCurrentAst != nullptr ? static_cast<Ast const&>(*meta->LoopCurrentAst->TokLoop) : *this,
+      *this, num_controls, nested_loop_depth));
 
   // Save and compare the loop's "exiting" type against
   // other nested loop's exit statement types.
   if (not has_skip) {
-    auto expr_type = VoidType(PosStart());
+    auto expr_type = VoidAt(PosStart());
 
     // Analyse the expression if it is present.
     if (Expr != nullptr) {
       Expr->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+        Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
+        ERR_ARGS(*Expr.get()));
 
       expr_type = Expr->InferType(sm, meta);
+      _ExprIsNever = expr_type->IsNeverType();
     }
 
     // Insert or check the depth's corresponding exit type.
@@ -113,8 +118,10 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       }
       else if (not expr_type->IsNeverType()) {
         RaiseIf<SppTypeMismatchError>(
-          not TypeEq(*expr_type, *that_expr_type, *sm->CurrentScope, *that_scope),
-          {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+          not type_compare::Assignable(
+            TypeRef::Of(*expr_type, *sm->CurrentScope), TypeRef::Of(*that_expr_type, *that_scope), *sm->CurrentScope,
+            *that_scope),
+          ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
       }
     }
     else {
@@ -127,38 +134,76 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
 auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
+  auto &loops = memory_state::FlowOf(*sm->CurrentScope)->Loops;
+
+  // What memory looks like on the edge to the "n"th loop out (1 is
+  // the innermost): the state here, with what the scopes inside
+  // that loop's own scope held released, as each of their ends
+  // would; the loop's own scope outlives the edge. The walk carries
+  // on past this statement, so its state is put back.
+  const auto state_leaving_to = [&](const std::size_t n) {
+    const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
+    auto loops_seen = 0uz;
+    for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
+      const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+      if (is_loop and ++loops_seen == n) { break; }
+      for (const auto sym : scope->GetAllVarSymbols(true)) {
+        memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
+      }
+    }
+    auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
+    memory_state::RestoreSnapshot(saved);
+    return state;
+  };
+
+  // A "skip" starts another iteration of the loop it continues:
+  // the innermost, or with "exit"s before it, the one after the
+  // loops they leave. Its state is a way into that iteration, as
+  // the body's end is.
+  if (TokSkip != nullptr and TokSeqExit.size() < loops.size()) {
+    auto &continued = loops[loops.size() - 1 - TokSeqExit.size()];
+    continued.Skips += 1;
+    continued.SkipStates.emplace_back(TokSkip.get(), state_leaving_to(TokSeqExit.size() + 1));
+  }
 
   // Check the memory state of the expression if it is present.
   // Expression is being moved into outer context, so strict
   // memory checks.
   if (Expr != nullptr) {
     Expr->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(
-      *Expr, *TokSeqExit.Back(), *sm, true, true, true, true, meta);
+    mem_utils::ValidateSymbolMemory(
+      *Expr, *TokSeqExit.back(), *sm, meta);
+  }
+
+  // An "exit" (with no "skip") is a path out of the loop it
+  // targets, and what memory looks like here is what that loop
+  // leaves behind on it. "exit exit" targets the loop two back.
+  if (TokSkip == nullptr and not TokSeqExit.empty() and TokSeqExit.size() <= loops.size()) {
+    loops[loops.size() - TokSeqExit.size()].ExitStates.emplace_back(
+      TokSeqExit.back().get(), state_leaving_to(TokSeqExit.size()));
   }
 
   // Like a "ret", this leaves several scopes at once, so their
   // closing braces are never reached on this path and their own
   // checks never see it.
-  const auto exit_point = TokSeqExit.IsEmpty()
+  const auto exit_point = TokSeqExit.empty()
     ? static_cast<Ast const*>(TokSkip.get())
-    : static_cast<Ast const*>(TokSeqExit.Back().get());
-  analyse::utils::linear_utils::CheckLiveUpToLoop(
-    *exit_point, TokSeqExit.IsEmpty() ? "Loop skip" : "Loop exit",
-    TokSeqExit.Len(), TokSkip != nullptr, *sm, meta);
+    : static_cast<Ast const*>(TokSeqExit.back().get());
+  linear_utils::CheckLiveUpToLoop(
+    *exit_point, TokSeqExit.empty() ? "Loop skip" : "Loop exit",
+    TokSeqExit.size(), TokSkip != nullptr, *sm, meta);
 }
 
 auto LoopControlFlowStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
-  using analyse::errors::SppInternalCompilerError;
 
   // The loop stack is ordered outermost-first, so the innermost
   // enclosing loop is the back element.
-  const auto num_exits = TokSeqExit.Len();
+  const auto num_exits = TokSeqExit.size();
   const auto has_skip = TokSkip != nullptr;
-  const auto num_loops = meta->LlvmLoopStack.Len();
+  const auto num_loops = meta->LlvmLoopStack.size();
 
   // Generate the attached expression (if present) before the
   // branch, so the value is available to the phi node.
@@ -193,7 +238,7 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   if (target.Phi != nullptr) {
     // A "!" value never reaches the phi, but the edge still needs
     // an operand of the phi's type.
-    const auto incoming_val = llvm_val != nullptr and Expr != nullptr and Expr->InferTypeRef(sm, meta).IsNever
+    const auto incoming_val = llvm_val != nullptr and _ExprIsNever
       ? llvm::PoisonValue::get(target.Phi->getType())
       : llvm_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
@@ -220,8 +265,8 @@ auto LoopControlFlowStatementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // If there is an attached expression, return its type,
   // otherwise Void.
-  using generate::common_types::VoidType;
-  return Expr != nullptr ? Expr->InferType(sm, meta) : VoidType(PosStart());
+  using generate::common_types_precompiled::VoidAt;
+  return Expr != nullptr ? Expr->InferType(sm, meta) : VoidAt(PosStart());
 }
 
 auto LoopControlFlowStatementAst::InferTypeRef(

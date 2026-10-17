@@ -29,9 +29,15 @@ SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAs
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
+  SPP_ATTR_NODISCARD auto CloneSignature() const -> Unique<FunctionPrototypeAst> override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto IsCoroutine() const -> bool override;
+
+private:
+  SPP_ATTR_NODISCARD auto _CloneWithImpl(
+    decltype(Impl) &&impl) const -> Unique<SubroutinePrototypeAst>;
 };

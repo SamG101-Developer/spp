@@ -133,3 +133,92 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x = p.x
     }
 )");
+
+// Calling a "FunMov" consumes it, so calling one held through a borrow moves it out of the borrow, as a method taking
+// "self" by value would (N1.6). A "FunMut" needs "&mut", a "FunRef" only "&".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_fun_mov_called_through_an_index_borrow,
+    SppMoveFromBorrowedMemoryError, R"(
+    fun f(v: &mut std::vector::Vec[FunMov[(), S32]]) -> S32 {
+        let r = (v[0_uz])()
+        ret r
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_fun_mov_called_through_a_mutable_index_borrow,
+    SppMoveFromBorrowedMemoryError, R"(
+    fun f(v: &mut std::vector::Vec[FunMov[(), S32]]) -> S32 {
+        let r = (v[mut 0_uz])()
+        ret r
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_fun_mov_called_through_a_borrowed_parameter,
+    SppMoveFromBorrowedMemoryError, R"(
+    fun f(g: &FunMov[(), S32]) -> S32 {
+        ret g()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_fun_mov_called_through_a_mutably_borrowed_parameter,
+    SppMoveFromBorrowedMemoryError, R"(
+    fun f(g: &mut FunMov[(), S32]) -> S32 {
+        ret g()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_valid_fun_mut_called_through_a_mutable_index_borrow, R"(
+    fun f(v: &mut std::vector::Vec[FunMut[(), S32]]) -> S32 {
+        let r = (v[mut 0_uz])()
+        ret r
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_valid_fun_ref_called_through_an_index_borrow, R"(
+    fun f(v: &std::vector::Vec[FunRef[(), S32]]) -> S32 {
+        let r = (v[0_uz])()
+        ret r
+    }
+)");
+
+// Red: "v[i]" is a "&T" whatever "v" is, but a "&mut" argument is checked against its root symbol ("v", here mutable),
+// so mutating through the index borrow is accepted - by a "&mut self" method or by calling a "FunMut". See
+// docs/next-steps.md N1.11 (the lowering of "v[mut i]" itself reaches a "&mut" argument through "fwd_ref").
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_mut_self_method_called_through_an_index_borrow,
+    SppInvalidMutationError, R"(
+    cls IdxTok {
+        !public n: S32
+    }
+
+    sup IdxTok {
+        !public fun bump(&mut self) -> Void { self.n = self.n + 1 }
+    }
+
+    fun f(v: &mut std::vector::Vec[IdxTok]) -> Void {
+        v[0_uz].bump()
+    }
+)");
+
+// Red: as above, for a "FunMut" called through "v[i]".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_fun_mut_called_through_an_index_borrow,
+    SppInvalidMutationError, R"(
+    fun f(v: &mut std::vector::Vec[FunMut[(), S32]]) -> S32 {
+        let r = (v[0_uz])()
+        ret r
+    }
+)");

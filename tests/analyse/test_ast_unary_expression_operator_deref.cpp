@@ -48,9 +48,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// Writing over a non-Copy value through a borrow drops it, and it cannot be moved out first: it is exchanged instead
+// ("std::mem::ops::replace").
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     UnaryExpressionOperatorDerefAst,
-    test_valid_move_deref_non_copyable_assignment_target, R"(
+    test_invalid_move_deref_non_copyable_assignment_target,
+    SppLinearValueNotConsumedError, R"(
     fun f(x: &mut Str) -> Void {
         x@ = Str::from("hello")
     }

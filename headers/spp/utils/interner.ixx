@@ -28,4 +28,8 @@ namespace spp::utils {
   /// outlive the call.
   SPP_EXP_FUN SPP_ATTR_HOT
   auto Intern(StrView name) -> InternedId;
+
+  /// The name an id was interned from. The view lives as long
+  /// as the interner, which is the whole process.
+  SPP_EXP_FUN auto InternedText(InternedId id) -> StrView;
 }

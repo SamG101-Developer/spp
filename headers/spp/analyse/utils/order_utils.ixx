@@ -6,8 +6,8 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-use(spp::asts::mixins, struct OrderableAst);
 use(spp::asts, struct Ast);
+use(spp::asts::mixins, struct OrderableAst);
 
 namespace spp::analyse::utils::order_utils {
   /// Order arguments in the order [positional, keyword]. Return

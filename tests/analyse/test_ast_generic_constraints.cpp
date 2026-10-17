@@ -179,6 +179,52 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     sup [X: A] C ext B[X] { }
 )");
 
+// A "sup" block's parameters reach the target's by the arguments it writes ("B[S, T]"), not by name: the block's "T"
+// below is the class's "S", so the class's constraint on its "T" is checked against the block's "S".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_sup_constraint_swapped_names,
+    SppGenericConstraintError, R"(
+    cls A { }
+    cls B[T: A, S] { }
+    sup [S, T: A] B[S, T] { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_sup_constraint_swapped_names, R"(
+    cls A { }
+    cls B[T: A, S] { }
+    sup [S: A, T] B[S, T] { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_ext_constraint_swapped_names,
+    SppGenericConstraintError, R"(
+    cls A { }
+    cls B[T: A, S] { }
+    cls C[T, S] { }
+    sup [S, T: A] C[S, T] ext B[S, T] { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_ext_constraint_swapped_names, R"(
+    cls A { }
+    cls B[T: A, S] { }
+    cls C[T, S] { }
+    sup [S: A, T] C[T, S] ext B[S, T] { }
+)");
+
+// A comp parameter's constraint is its type: the class's "n" is the block's "m".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstGenericConstraints,
+    test_valid_sup_comp_param_renamed, R"(
+    cls A[cmp n: USize] { }
+    sup [cmp m: USize] A[m] { }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstGenericConstraints,
     test_invalid_sup_function_for_constraint_mismatch,

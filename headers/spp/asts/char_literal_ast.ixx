@@ -15,7 +15,7 @@ use(spp::asts, struct TokenAst);
 use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CharLiteralAst);
 
   /// The optional "b" prefix, converting the char into a U8
@@ -46,4 +46,4 @@ SPP_EXP_CLS struct spp::asts::CharLiteralAst final : LiteralAst {
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
-SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CharLiteralAst);
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CharLiteralAst)

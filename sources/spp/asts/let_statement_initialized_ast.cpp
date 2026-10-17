@@ -8,11 +8,17 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
-import spp.analyse.utils.func_utils;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.type_compare;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
+import spp.asts.local_variable_destructure_array_ast;
+import spp.asts.local_variable_destructure_attribute_binding_ast;
+import spp.asts.local_variable_destructure_object_ast;
+import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
+import spp.asts.local_variable_destructure_tuple_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -71,23 +77,51 @@ auto LetStatementInitializedAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+namespace {
+  /**
+   * The names a destructure binds, as the code after it sees them. "ExtractNames" gives an aliased binding by the
+   * attribute it reads ("val" for "val as val1"), which is what matching the attributes needs, but two such bindings
+   * of the one attribute ("Some(val as a), Some(val as b)") bind different names.
+   * @param var The destructure (or single identifier) to walk.
+   * @param out The bound names, appended to in binding order.
+   */
+  auto CollectBoundNames(LocalVariableAst const &var, spp::Vec<IdentifierAst const*> &out) -> void {
+    if (auto const *single = var.To<LocalVariableSingleIdentifierAst>(); single != nullptr) {
+      out.emplace_back(single->Alias != nullptr ? single->Alias->Name.get() : single->Name.get());
+    }
+    else if (auto const *tup = var.To<LocalVariableDestructureTupleAst>(); tup != nullptr) {
+      for (auto const &elem : tup->Elems) { CollectBoundNames(*elem, out); }
+    }
+    else if (auto const *arr = var.To<LocalVariableDestructureArrayAst>(); arr != nullptr) {
+      for (auto const &elem : arr->Elems) { CollectBoundNames(*elem, out); }
+    }
+    else if (auto const *obj = var.To<LocalVariableDestructureObjectAst>(); obj != nullptr) {
+      for (auto const &elem : obj->Elems) { CollectBoundNames(*elem, out); }
+    }
+    else if (auto const *attr = var.To<LocalVariableDestructureAttributeBindingAst>(); attr != nullptr) {
+      CollectBoundNames(*attr->Val, out);
+    }
+    else if (auto const *rest = var.To<LocalVariableDestructureSkipMultipleArgumentsAst>();
+      rest != nullptr and rest->Binding != nullptr) {
+      CollectBoundNames(*rest->Binding, out);
+    }
+  }
+}
+
 auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppInvalidLocalVariableTypeAnnotationError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_compare::TypeEq;
-  using analyse::utils::type_utils::ResolveWrittenType;
+  IMPORT_UTILS;
 
   // An explicit type can only be applied if the left-hand-side
   // is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
     Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
+    ERR_ARGS(*Type, *Var));
 
   // Analyse the type if it has been given.
+  const auto written_type = Type;
   if (Type != nullptr) {
-    Type = ResolveWrittenType(*Type, *sm, *meta);
+    Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
   }
 
   // Add the type into the return type overload resolver.
@@ -99,8 +133,8 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   // Check the value is a valid expression type.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
-    not IsPrimaryExprTypeValid(*Val, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
+    ERR_ARGS(*Val.get()));
 
   meta->AssignmentTarget = Var->ExtractName();
 
@@ -109,15 +143,34 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   if (Type != nullptr) {
     meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
-    RaiseIf<analyse::errors::SppTypeMismatchError>(
-      not TypeEq(*Type, *val_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Val, *val_type));
+    if (not type_compare::Assignable(
+      TypeRef::Of(*Type, *sm->CurrentScope),
+      TypeRef::Of(*val_type, *sm->CurrentScope),
+      *sm->CurrentScope, *sm->CurrentScope)) {
+      // Shown as written, with the type it resolved to beside it where they differ ("S32 (aka ...)").
+      const auto resolved = TypeRef::Of(*Type, *sm->CurrentScope).AstIn(*sm->CurrentScope);
+      const auto shown = resolved != nullptr ? resolved->WithSourceSpanOf(*written_type) : Type;
+      Raise<SppTypeMismatchError>(ERR_ARGS(*written_type, *shown, *Val, *val_type));
+    }
 
     // A function named as the value stands for the overload
     // the declared type asks for.
-    analyse::utils::func_utils::InstantiateFunctionValue(
+    fn_values::InstantiateFnValue(
       TypeRef::Of(*val_type, *sm->CurrentScope),
       TypeRef::Of(*Type, *sm->CurrentScope), sm, meta);
+  }
+
+  // A destructure binds each name once. A repeat was bound
+  // over the first silently, in a "let" and in a case pattern
+  // (which lowers to one of these) alike.
+  auto bound_names = Vec<IdentifierAst const*>();
+  CollectBoundNames(*Var, bound_names);
+  for (auto i = 0uz; i < bound_names.size(); ++i) {
+    for (auto j = i + 1; j < bound_names.size(); ++j) {
+      RaiseIf<SppIdentifierDuplicateError>(
+        *bound_names[i] == *bound_names[j],
+        ERR_ARGS(*bound_names[i], *bound_names[j], "destructure binding"));
+    }
   }
 
   meta->LetStatementExplicitType = Type;
@@ -137,18 +190,9 @@ auto LetStatementInitializedAst::Stage8_CheckMemory(
 
 auto LetStatementInitializedAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Fix variable shadowing, where a newer version of the symbol
-  // is gotten because stage7 added it, when we are trying to use
-  // the original.
-  auto shadowed = Vec<Shared<VariableSymbol>>();
-  for (auto const &target : Var->ExtractNames()) {
-    if (auto sym = sm->CurrentScope->RemVarSymbol(target.get()); sym != nullptr) {
-      shadowed.EmplaceBack(std::move(sym));
-    }
-  }
-
+  // The value is resolved before the binding is declared (the
+  // variable declares it once the value is done).
   Val->Stage9_CompTimeResolve(sm, meta);
-  for (auto const &sym : shadowed) { sm->CurrentScope->AddVarSymbol(sym); }
 
   // Assign the comptime value to the variable.
   const auto _meta_guard = MetaGuard(meta);

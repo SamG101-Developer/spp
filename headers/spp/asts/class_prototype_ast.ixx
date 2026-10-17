@@ -83,16 +83,25 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto RegisterGenericSubstitution(Scope *scope, Unique<ClassPrototypeAst> &&new_ast) -> void;
+  /// One generic instantiation of this class: the scope it lives in and the substituted prototype, kept alive here
+  /// (as "FunctionPrototypeAst::GenericSubstitution" keeps a function's).
+  struct GenericSubstitution {
+    Scope *InstanceScope = nullptr;
+    Unique<ClassPrototypeAst> Proto;
+  };
 
-  SPP_ATTR_NODISCARD auto GetClsSym() const -> Shared<TypeSymbol>;
+  /// File a built instantiation against this class.
+  auto AddGnSubstitution(GenericSubstitution &&sub) -> GenericSubstitution&;
+
+  SPP_ATTR_NODISCARD auto GetClsSymbol() const -> Shared<TypeSymbol>;
 
   auto FillLlvmLayout(ScopeManager const *sm, TypeSymbol const *type_sym, codegen::LlvmCtx const *ctx) const -> void;
 
 private:
-  Vec<Pair<Scope*, Unique<ClassPrototypeAst>>> _GenericSubstitutions;
+  /// A list, as "FunctionPrototypeAst::_GnSubstitutions": an instantiation can be filed while the list is walked.
+  std::list<GenericSubstitution> _GnSubstitutions;
 
-  Shared<TypeSymbol> _ClsSym;
+  Shared<TypeSymbol> _ClsSymbol;
 
   auto _GenerateSymbols(ScopeManager *sm) -> TypeSymbol*;
 };

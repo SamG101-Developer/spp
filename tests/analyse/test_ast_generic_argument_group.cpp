@@ -114,6 +114,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself also discarded the result)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstGenericArgumentGroup,
     test_use_comp_generic_variadic_properly, R"(
@@ -122,7 +123,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g[cmp ..n: Bool]() -> A[n] { ret A[n]() }
 
     fun f() -> Void {
-        g[false, true, false]()
+        std::mem::ops::drop(g[false, true, false]())
     }
 )");
 
@@ -133,6 +134,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
+        std::mem::ops::drop(type1)
         type1 = Type[T=Bool, U=Str]()
         std::mem::ops::drop(type1)
     }
@@ -145,6 +147,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut type1 = Type[Bool, Str]()
+        std::mem::ops::drop(type1)
         type1 = Type[U=Str, T=Bool]()
         std::mem::ops::drop(type1)
     }
@@ -173,6 +176,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let mut x = g[Str]()
+        std::mem::ops::drop(x)
         x = Some(val=Str::from("hello"))
         std::mem::ops::drop(x)
     }

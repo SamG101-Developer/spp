@@ -216,8 +216,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
 // The four below pin down that a comp parameter is substituted by the scope that declares it, even where two nested
 // scopes spell theirs the same. Type substitution matches a parameter by "ParamId" and comp substitution still matches
-// by spelling ("IdentifierAst::SubstituteGenericsExpr"), which looks like a hygiene hole and is not one: every driver
-// of "SubstituteGenericsExpr" substitutes an expression against the arguments of the very scope that wrote it, and one
+// by spelling ("IdentifierAst::ReadExpr"), which looks like a hygiene hole and is not one: every driver
+// of "ReadExpr" substitutes an expression against the arguments of the very scope that wrote it, and one
 // name is one parameter within a scope. Each same-spelling test is paired with a distinct-spelling control, so a
 // failure says whether the spelling is what broke it. The comp value is surfaced through a type, because that is what
 // makes a wrong binding observable to the analyser rather than only to a running program.

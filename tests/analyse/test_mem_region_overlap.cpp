@@ -175,3 +175,144 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::swap(u[mut i], v[mut i])
     }
 )");
+
+// A subscript or a slice reaches a part of its value chosen at run time, so it overlaps anything else taken from the
+// same value, whatever method it lowers to ("index_mut", "index_ref", "slice_*"). These pin that a subscript or a
+// slice names its whole value.
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_mutable_subscript_and_shared_subscript,
+  SppMemoryOverlapUsageError, R"(
+    fun g(a: &mut S32, b: &S32) -> Void { }
+
+    fun f() -> Void {
+        let mut v = [1, 2, 3]
+        let i = 0_uz
+        let j = 1_uz
+        g(v[mut i], v[j])
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_mutable_subscript_and_shared_slice,
+  SppMemoryOverlapUsageError, R"(
+    fun g(a: &mut S32, b: &View[S32]) -> Void { }
+
+    fun f(mut v: Vec[S32]) -> Void {
+        let i = 0_uz
+        g(v[mut i], v[1_uz to 2_uz])
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_mutable_slice_and_shared_subscript,
+  SppMemoryOverlapUsageError, R"(
+    fun g(a: &mut View[S32], b: &S32) -> Void { }
+
+    fun f(mut v: Vec[S32]) -> Void {
+        let i = 0_uz
+        g(v[mut 1_uz to 2_uz], v[i])
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_mutable_slice_and_shared_slice,
+  SppMemoryOverlapUsageError, R"(
+    fun g(a: &mut View[S32], b: &View[S32]) -> Void { }
+
+    fun f(mut v: Vec[S32]) -> Void {
+        g(v[mut 0_uz to 1_uz], v[1_uz to 2_uz])
+        std::mem::ops::drop(v)
+    }
+)");
+
+// A borrow yielded by a method call can point anywhere inside its receiver: the call is opaque. Comparing the method
+// by name made "p.a_mut()" and "p.b" two places, and "p.a_mut()" and "p.b_ref()" too, though "a_mut" is free to yield
+// "&mut self.b".
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_yielded_mutable_borrow_and_a_field_of_its_receiver,
+  SppMemoryOverlapUsageError, R"(
+    cls P {
+        !public a: S32
+        !public b: S32
+    }
+
+    sup P {
+        !public cor a_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
+            gen &mut self.a
+        }
+    }
+
+    fun g(x: &mut S32, y: &S32) -> Void { }
+
+    fun f() -> Void {
+        let mut p = P(a=1, b=2)
+        g(p.a_mut(), &p.b)
+        std::mem::ops::drop(p)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestMemRegionOverlap,
+  test_invalid_yielded_mutable_borrow_and_another_yielded_borrow,
+  SppMemoryOverlapUsageError, R"(
+    cls P {
+        !public a: S32
+        !public b: S32
+    }
+
+    sup P {
+        !public cor a_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
+            gen &mut self.a
+        }
+
+        !public cor b_ref(&self) -> std::generator::GenOnce[&S32] {
+            gen &self.b
+        }
+    }
+
+    fun g(x: &mut S32, y: &S32) -> Void { }
+
+    fun f() -> Void {
+        let mut p = P(a=1, b=2)
+        g(p.a_mut(), p.b_ref())
+        std::mem::ops::drop(p)
+    }
+)");
+
+// A field still separates: a call under one field cannot reach a sibling field.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestMemRegionOverlap,
+  test_valid_yielded_mutable_borrow_and_a_sibling_field, R"(
+    cls Q {
+        !public a: S32
+    }
+
+    sup Q {
+        !public cor a_mut(&mut self) -> std::generator::GenOnce[&mut S32] {
+            gen &mut self.a
+        }
+    }
+
+    cls P {
+        !public q: Q
+        !public b: S32
+    }
+
+    fun g(x: &mut S32, y: &S32) -> Void { }
+
+    fun f() -> Void {
+        let mut p = P(q=Q(a=1), b=2)
+        g(p.q.a_mut(), &p.b)
+        std::mem::ops::drop(p)
+    }
+)");

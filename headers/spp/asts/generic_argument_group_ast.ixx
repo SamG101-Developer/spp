@@ -2,7 +2,6 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.generic_argument_group_ast;
-import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.utils.ptr;
@@ -11,12 +10,15 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(GenericArgumentGroupAst);
 use(spp::asts, struct ExpressionAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct ExprSubst);
+use(spp::analyse::scopes, struct GenericSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericArgumentGroupAst);
 
   /// The "[" token that opens the generic argument group.
@@ -32,8 +34,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   static auto NewEmpty() -> Unique<GenericArgumentGroupAst>;
 
   static auto FromParams(GenericParameterGroupAst const &generic_params) -> Unique<GenericArgumentGroupAst>;
-
-  static auto FromMap(analyse::utils::type_compare::GenericInferenceMap const &map) -> Unique<GenericArgumentGroupAst>;
 
   GenericArgumentGroupAst(
     decltype(TokL) &&tok_l,
@@ -55,7 +55,7 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   /// The keyword argument named "key", of either kind.
   auto At(const char *key) const -> GenericArgumentAst const*;
 
-  auto MergeGenerics(decltype(Args) &&other_args) -> void;
+  auto MergeArgs(decltype(Args) &&other_args) -> void;
 
   SPP_ATTR_NODISCARD auto GetTypeArgs() const -> Vec<GenericArgumentAst*>;
 

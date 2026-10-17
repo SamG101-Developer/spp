@@ -330,10 +330,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// A "Void" value is no value: overload matching drops it, as it drops a "Void" parameter (so a generic instantiated
+// with "T=Void" takes nothing), and "takes" is then left without its "a".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     FunctionCallArgumentAst,
     test_invalid_void_value_as_argument,
-    SppInvalidVoidValueError, R"(
+    SppFunctionCallNoValidSignaturesError, R"(
     fun g() -> Void { }
 
     fun takes(a: Bool) -> Void { }

@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.strings;
 import spp.utils.types;
@@ -89,10 +90,10 @@ auto FloatLiteralAst::ToString() const -> Str {
 }
 
 auto FloatLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *) -> void {
+  ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "f32" : Type;
-  ValidateBounds(*this, *sm->CurrentScope);
+  ValidateBounds(*this);
 }
 
 auto FloatLiteralAst::BigVal() const -> numex::BigDec {
@@ -108,8 +109,8 @@ auto FloatLiteralAst::BigVal() const -> numex::BigDec {
 }
 
 auto FloatLiteralAst::ValidateBounds(
-  Ast const &owner, Scope const &scope) const -> void {
-  using analyse::errors::SppFloatOutOfBoundsError;
+  Ast const &owner) const -> void {
+  using namespace spp::analyse::errors;
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.
@@ -117,21 +118,22 @@ auto FloatLiteralAst::ValidateBounds(
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,
-    {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
+    ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto FloatLiteralAst::FromBigVal(
-  numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst> {
+  numex::BigDec const &value, Str const &type, const Opt<std::uint64_t> places) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
-  const auto digits = (is_negative ? -value : value).Decimal(kDecimalPlaces.at(type));
+  const auto digits = (is_negative ? -value : value).Decimal(
+    places.has_value() ? *places : kDecimalPlaces.at(type));
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);
   auto frac_part = point == Str::npos ? Str("0") : digits.substr(point + 1);
 
   auto sign_tok = is_negative
-    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::tok_to_string(lex::SppTokenType::TK_SUB))
+    ? MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_SUB, spp::lex::TokToString(lex::SppTokenType::TK_SUB))
     : nullptr;
   return MakeUnique<FloatLiteralAst>(
     std::move(sign_tok),
@@ -145,7 +147,7 @@ auto FloatLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
-  meta->CmpResult = AstClone(this);
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto FloatLiteralAst::Stage11_CodeGen(
@@ -153,7 +155,7 @@ auto FloatLiteralAst::Stage11_CodeGen(
   using spp::utils::strings::NormalizeFloatString;
 
   // Get the type of the float literal.
-  const auto type_sym = InferTypeRef(sm, meta).Sym;
+  const auto type_sym = InferTypeRef(sm, meta).Symbol;
   auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
 
   // If come from stage10 cmp statement, register the float
@@ -179,10 +181,10 @@ auto FloatLiteralAst::Stage11_CodeGen(
   return co_float;
 }
 
-auto FloatLiteralAst::_PrecompiledTypeSym(
-  ScopeManager *sm) const -> TypeSymbol* {
+auto FloatLiteralAst::_PrecompiledType(
+  ScopeManager *sm) const -> TypeAst const& {
   //
-  using analyse::errors::SppInternalCompilerError;
+  using namespace spp::analyse::errors;
   using namespace generate::common_types_precompiled;
 
   // Map the type string literal to the correct SPP type.
@@ -194,22 +196,21 @@ auto FloatLiteralAst::_PrecompiledTypeSym(
   else if (Type == "f64") { spp_type = F64.get(); }
   else if (Type == "f128") { spp_type = F128.get(); }
   else {
-    Raise<SppInternalCompilerError>(
-      {sm->CurrentScope},
-      ERR_ARGS(*this, "invalid float literal type"));
+    Ice(*this, *sm->CurrentScope, "invalid float literal type");
   }
 
-  return sm->CurrentScope->GetTypeSymbol(spp_type);
+  return *spp_type;
 }
 
 auto FloatLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
-  return _PrecompiledTypeSym(sm)->FqName();
+  // Named as written ("S32"), not as the instance the alias stands for.
+  return sm->CurrentScope->FindTypeSymbol(&_PrecompiledType(sm))->FqName();
 }
 
 auto FloatLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
-  return TypeRef::OfSym(*_PrecompiledTypeSym(sm), *sm->CurrentScope);
+  return TypeRef::Of(_PrecompiledType(sm), *sm->CurrentScope);
 }
 
 SPP_MOD_END

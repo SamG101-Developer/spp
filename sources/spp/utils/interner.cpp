@@ -43,3 +43,10 @@ auto spp::utils::Intern(
   state.Ids.emplace(StrView(owned), id);
   return id;
 }
+
+auto spp::utils::InternedText(
+  const InternedId id)
+  -> StrView {
+  // Ids are handed out in the order names are stored, so an id is its name's index.
+  return State().Storage[static_cast<std::size_t>(id)];
+}

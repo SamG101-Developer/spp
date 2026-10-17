@@ -48,7 +48,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
   /// The superclass this type is being extended from. Its
   /// attributes and methods become available on the
   /// superimposed type.
-  Shared<TypeAst> SuperClass;
+  Shared<TypeAst> SuperCls;
 
   /// The body of the superimposition: the methods (each a
   /// FunctionPrototypeAst) being added to the type.
@@ -59,7 +59,7 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
     decltype(GnParamGroup) &&generic_param_group,
     decltype(Name) name,
     decltype(TokExt) &&tok_ext,
-    decltype(SuperClass) super_class,
+    decltype(SuperCls) super_class,
     decltype(Impl) &&impl);
 
   ~SupPrototypeExtensionAst() override;
@@ -85,6 +85,13 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  /// Check every method, type and "cmp" in the block names
+  /// one on the super class to override. Run over every block
+  /// before stage 6 pre-analyses any, so an override that
+  /// matches nothing is reported before a use of the type it
+  /// leaves abstract.
+  auto CheckExtensionMembers(ScopeManager &sm, CompilerMetaData *meta) -> void;
 
   auto CheckCyclicExtension(TypeSymbol const &sup_sym, Scope &check_scope) const -> void;
 

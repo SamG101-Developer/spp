@@ -23,6 +23,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -48,22 +49,15 @@ ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   ArrayLiteralExplicitElementsAst const &other) const -> Ordering {
   // If two explicit array asts don't have the same size, they
-  // cannot be equal. Early guard to prevent wasting time on
-  // elements.
-  if (Elems.Len() != other.Elems.Len()) { return Ordering::less; }
-  auto eq = [](auto const &pair) {
-    return *genex::get<0>(pair) == *genex::get<1>(pair);
-  };
+  // cannot be equal.
+  if (Elems.size() != other.Elems.size()) { return Ordering::less; }
 
   // Ensure each element of the two array literals are equal.
   // The length checks prevents trailing elements.
-  const auto temp = genex::views::zip(
-    Elems | genex::views::ptr,
-    other.Elems | genex::views::ptr) | genex::to<Vec>();
-  if (genex::all_of(temp, eq)) {
-    return Ordering::equal;
+  for (auto i = 0uz; i < Elems.size(); ++i) {
+    if (*Elems[i] != *other.Elems[i]) { return Ordering::less; }
   }
-  return Ordering::less;
+  return Ordering::equal;
 }
 
 auto ArrayLiteralExplicitElementsAst::Equals(
@@ -74,12 +68,12 @@ auto ArrayLiteralExplicitElementsAst::Equals(
 
 auto ArrayLiteralExplicitElementsAst::PosStart() const -> std::size_t {
   // Use the "[" token.
-  return TokL != nullptr ? TokL->PosStart() : Elems.IsEmpty() ? 0 : Elems.Front()->PosStart();
+  return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
 auto ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
-  return TokR != nullptr ? TokR->PosEnd() : Elems.IsEmpty() ? 0 : Elems.Back()->PosEnd();
+  return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
 auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
@@ -98,24 +92,19 @@ auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+/// [CHECKED]
 auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppInvalidPrimaryExpressionError;
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppTypeMismatchError;
-  using analyse::utils::expr_utils::IsPrimaryExprTypeValid;
-  using analyse::utils::type_predicates::IsTypeArr;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_compare::TypeEq;
+  IMPORT_UTILS;
 
   // Analyse the element inside the array. Also enforce that
   // the element is an acceptable primary expression, ie not
-  // a TypeAst or a TokenAst.
+  // a non-zero-TypeAst, or a TokenAst.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
-      not IsPrimaryExprTypeValid(*elem, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*elem));
+      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
+      ERR_ARGS(*elem));
   }
 
   // Determine the "correct type" that all elements will be
@@ -124,15 +113,15 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   // otherwise just use the 0th element.
   const auto z_elem = Elems[0].get();
   const auto from_target = meta->AssignmentTargetType != nullptr and
-    IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
+    type_predicates::IsTypeArray(TypeRef::ForKindCheck(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto z_type = from_target
     ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
     : z_elem->InferType(sm, meta);
 
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*z_type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, "array element type"));
+    type_predicates::IsTypeBorrowed(*z_type, *sm),
+    ERR_ARGS(*z_elem, *z_type, "array element type"));
 
   // Check all elements have the same type as the "correct
   // type". When the type came from the 0th element, that
@@ -143,25 +132,28 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     auto c_type = c_elem->InferType(sm, meta);
 
     RaiseIf<SppTypeMismatchError>(
-      not TypeEq(*z_type, *c_type, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
+      not type_compare::Assignable(
+        TypeRef::Of(*z_type, *sm->CurrentScope), TypeRef::Of(*c_type, *sm->CurrentScope), *sm->CurrentScope,
+        *sm->CurrentScope),
+      ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
   // Analyse the inferred array type to generate the generic
   // implementation for future analysis; the first occurrence of
   // Vec[S32] will not exist in the symbol table, so add it now.
-  InferType(sm, meta)->Stage7_AnalyseSemantics(sm, meta);
+  _InferredType = _BuildType(sm, meta);
 }
 
+/// [CHECKED]
 auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Alias the common utils functions and types.
-  using analyse::utils::mem_utils::ValidateSymbolMemory;
+  IMPORT_UTILS;
 
   // Check the memory of each element in the array literal.
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
-    ValidateSymbolMemory(*elem, *elem, *sm, true, true, true, false, meta);
+    mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, meta, {.MarkMoves = false});
   }
 }
 
@@ -173,19 +165,19 @@ auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
   auto cmp_elems = Vec<Unique<ExpressionAst>>();
   for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
     elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CmpResult);
-    cmp_elems.EmplaceBack(std::move(meta->CmpResult));
+    Elems[i] = AstClone(meta->CompTimeResult);
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
   }
 
   // Wrap the comp-time array value, in the translated
   // asts derived from requesting comp-time evaluation.
-  meta->CmpResult = MakeUnique<ArrayLiteralExplicitElementsAst>(
+  meta->CompTimeResult = MakeUnique<ArrayLiteralExplicitElementsAst>(
     nullptr, std::move(cmp_elems), nullptr);
 }
 
 auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using spp::utils::Uid;
+  IMPORT_UTILS_AND_UID;
 
   // Runtime allocation. This pathway generates each element
   // and then uses alloca into the entry block of the
@@ -195,11 +187,11 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // Collect the llvm generated versions of the elements,
     // ensuring the validity of each element (debug only).
     auto llvm_rt_elems = Vec<llvm::Value*>{};
-    llvm_rt_elems.Reserve(Elems.Len());
+    llvm_rt_elems.reserve(Elems.size());
     for (auto const &spp_elem : Elems) {
       const auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
       SPP_ASSERT(llvm_rt_elem != nullptr);
-      llvm_rt_elems.EmplaceBack(llvm_rt_elem);
+      llvm_rt_elems.emplace_back(llvm_rt_elem);
     }
 
     // Create the array type. The array type wraps the llvm
@@ -208,7 +200,7 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // type.
     const auto llvm_rt_elem_ty = llvm_rt_elems[0]->getType();
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
-      llvm_rt_elem_ty, llvm_rt_elems.Len());
+      llvm_rt_elem_ty, llvm_rt_elems.size());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
 
     // If every element came back a constant then so is the
@@ -220,26 +212,26 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 
     if (all_elems_constant) {
       auto llvm_ct_elems = Vec<llvm::Constant*>{};
-      llvm_ct_elems.Reserve(llvm_rt_elems.Len());
+      llvm_ct_elems.reserve(llvm_rt_elems.size());
       for (auto *llvm_rt_elem : llvm_rt_elems) {
         const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
           llvm_rt_elem);
         SPP_ASSERT(llvm_ct_elem != nullptr);
-        llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+        llvm_ct_elems.emplace_back(llvm_ct_elem);
       }
       return llvm::ConstantArray::get(
-        llvm_rt_arr_ty, llvm_ct_elems.ToStdVector());
+        llvm_rt_arr_ty, llvm_ct_elems);
     }
 
     // Allocate the array into the enclosing function using
     // the uniform entry alloca function.
-    const auto uid = "." + Uid(this);
+    const auto uid = "." + Uid();
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
 
     // Finally, place the runtime generated elements in the
     // array allocation, using the GEP and store commands.
-    for (auto i = 0uz; i < llvm_rt_elems.Len(); ++i) {
+    for (auto i = 0uz; i < llvm_rt_elems.size(); ++i) {
       const auto idx0 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, 0));
       const auto idx1 = llvm::ConstantInt::get(*ctx->Context, llvm::APInt(64, i));
       const auto llvm_rt_elem_ptr = ctx->Builder.CreateGEP(
@@ -262,12 +254,12 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // ensuring the validity of each element after a constant
     // cast (debug only).
     auto llvm_ct_elems = Vec<llvm::Constant*>{};
-    llvm_ct_elems.Reserve(Elems.Len());
+    llvm_ct_elems.reserve(Elems.size());
     for (auto const &spp_elem : Elems) {
       const auto llvm_ct_elem = llvm::cast<llvm::Constant>(
         spp_elem->Stage11_CodeGen(sm, meta, ctx));
       SPP_ASSERT(llvm_ct_elem != nullptr);
-      llvm_ct_elems.EmplaceBack(llvm_ct_elem);
+      llvm_ct_elems.emplace_back(llvm_ct_elem);
     }
 
     // Create the array type. The array type wraps the llvm
@@ -276,20 +268,34 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     // [T * n] type.
     const auto llvm_ct_elem_ty = llvm_ct_elems[0]->getType();
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(
-      llvm_ct_elem_ty, llvm_ct_elems.Len());
+      llvm_ct_elem_ty, llvm_ct_elems.size());
     SPP_ASSERT(llvm_ct_arr_ty != nullptr);
 
     // Allocate the array into the enclosing function using
     // the llvm constant array creation.
     const auto arr_alloc = llvm::ConstantArray::get(
-      llvm_ct_arr_ty, llvm_ct_elems.ToStdVector());
+      llvm_ct_arr_ty, llvm_ct_elems);
     return arr_alloc;
   }
 }
 
 auto ArrayLiteralExplicitElementsAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  using analyse::utils::type_predicates::IsTypeArr;
+  // The type stage 7 settled on; an array not analysed yet has its
+  // type built as it is.
+  return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
+}
+
+auto ArrayLiteralExplicitElementsAst::InferTypeRef(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
+  // The array type is built as syntax ("Arr[T, n]", "_BuildType"); resolved where it is read.
+  const auto type = InferType(sm, meta);
+  return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
+}
+
+auto ArrayLiteralExplicitElementsAst::_BuildType(
+  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  IMPORT_UTILS;
 
   // Create a "T" type and "n" size, for the array type. If
   // a pre-defined array type has been given (ie the assignment
@@ -297,12 +303,13 @@ auto ArrayLiteralExplicitElementsAst::InferType(
   // element type is preserved; otherwise use the 0th element's
   // inferred type.
   auto size_tok = MakeUnique<TokenAst>(
-    TokL->PosStart(), lex::SppTokenType::LX_NUMBER, std::to_string(Elems.Len()));
+    TokL->PosStart(), lex::SppTokenType::LX_NUMBER,
+    std::to_string(Elems.size()));
   auto size_gen = MakeUnique<IntegerLiteralAst>(
     nullptr, std::move(size_tok), "uz");
 
   auto elem_gen = meta->AssignmentTargetType != nullptr
-    and IsTypeArr(TypeRef::OfHead(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
+    and type_predicates::IsTypeArray(TypeRef::ForKindCheck(*meta->AssignmentTargetType, *sm->CurrentScope), *sm->CurrentScope)
     ? AstCloneShared(meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal)
     : Elems[0]->InferType(sm, meta);
 
@@ -313,12 +320,14 @@ auto ArrayLiteralExplicitElementsAst::InferType(
   return array_type;
 }
 
-auto ArrayLiteralExplicitElementsAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ArrayLiteralExplicitElementsAst::ReadExpr(
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
-  elems.Reserve(Elems.Len());
-  for (auto const &elem : Elems) { elems.EmplaceBack(AstClone(elem->SubstituteGenericsExpr(args))); }
+  elems.reserve(Elems.size());
+  for (auto const &elem : Elems) {
+    elems.emplace_back(AstClone(elem->ReadExpr(sub)));
+  }
   return MakeShared<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL), std::move(elems), AstClone(TokR));
 }

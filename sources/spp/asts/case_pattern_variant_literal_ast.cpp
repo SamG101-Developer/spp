@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_pattern_variant_literal_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.utils.case_utils;
 import spp.asts.convention_ref_ast;
 import spp.asts.fold_expression_ast;
@@ -65,30 +67,31 @@ auto CasePatternVariantLiteralAst::Stage8_CheckMemory(
 
 auto CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqCompTime;
+  IMPORT_UTILS;
 
   // Transform the pattern into comptime values; all need to be
   // true.
-  auto comptime_transforms = CreateAndAnalysePatternEqCompTime(
+  auto comptime_transforms = case_utils::CreateAndAnalysePatternEqCompTime(
     {this}, sm, meta);
 
   // Return the single result (only one literal will be here).
-  meta->CmpResult = std::move(comptime_transforms[0]);
+  meta->CompTimeResult = std::move(comptime_transforms[0]);
 }
 
 auto CasePatternVariantLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
-  using analyse::utils::case_utils::CreateAndAnalysePatternEqFuncsLlvm;
-  const auto llvm_master_transform = CreateAndAnalysePatternEqFuncsLlvm(
+  IMPORT_UTILS;
+  const auto llvm_master_transform = case_utils::CreateAndAnalysePatternEqFnsLlvm(
     {this}, sm, meta, ctx);
   return llvm_master_transform[0];
 }
 
 auto CasePatternVariantLiteralAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
+  IMPORT_UTILS_AND_UID;
   // Create the local variable literal binding AST.
-  const auto uid = spp::utils::Uid(this);
+  const auto uid = Uid();
   auto var_name = MakeShared<IdentifierAst>(PosStart(), uid);
   auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
     nullptr, std::move(var_name), nullptr);

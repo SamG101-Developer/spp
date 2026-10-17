@@ -37,7 +37,6 @@ auto FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> {
     AstClone(Conv),
     AstClone(TokUnpack),
     AstClone(Val));
-  ast->SetSelfType(GetSelfType());
   return ast;
 }
 

@@ -37,6 +37,7 @@ Todo
 [Nn]amespaces?
 [Oo]ptionals
 [Pp]arameterization
+[Pp]reprocessors?
 [Rr]eachability
 [Rr]eassociation
 [Rr]ebindable
@@ -54,6 +55,7 @@ Todo
 [Ss]ubstring
 [Ss]uperimpositions?
 [Tt]oolchains?
+[Tt]uples?
 [Uu]ntaken
 [Uu]serspaces?
 [Uu]noptimised
@@ -78,6 +80,7 @@ syscall
 yielder
 vtables?
 Asan
+LSan
 MSan
 Tsan
 UBsan
@@ -98,3 +101,6 @@ sccache
 cppcheck
 [Uu]npruned
 [Aa]llowlists?
+ReadIn
+Uids?
+[Vv]algrind

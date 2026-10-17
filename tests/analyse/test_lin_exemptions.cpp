@@ -32,11 +32,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A closure that captures by mutable borrow cannot be moved at all - the borrow rules forbid it - so requiring it to
-// be consumed would demand something the language will not allow, leaving no way to write the value.
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+// A closure that captures by mutable borrow was once exempt: it cannot be moved away, so consuming it seemed to demand
+// a move the language forbids. It owns its environment, though, and a drop ends it and its loans together (M9.3), so
+// it is owed like any other value. Pinned here so the old exemption does not quietly return.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestLinearExemptions,
-    test_valid_mut_capturing_closure_not_reported, R"(
+    test_invalid_mut_capturing_closure_no_longer_exempt,
+    SppLinearValueNotConsumedError, R"(
     fun f() -> Void {
         let mut c = 2
         let lambda = (x: S32 caps &mut c) { x }
@@ -79,7 +81,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cls Marker { }
 
     fun f() -> Void {
-        let m = Marker()
+        let m = Marker
     }
 )");
 

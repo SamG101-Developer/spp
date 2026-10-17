@@ -4,10 +4,7 @@
 # same push lands on an existing tag and must not build a second
 # set of binaries for it.
 set -euo pipefail
-
-VERSION_FILE="${VERSION_FILE:-VERSION}"
-CHANGELOG_DIR="${CHANGELOG_DIR:-changelog}"
-SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+source .github/scripts/lib/version.sh
 
 emit() {
   {
@@ -19,12 +16,12 @@ emit() {
 }
 
 [ -f "$VERSION_FILE" ] || emit false "" "no ${VERSION_FILE}; nothing to release"
-version="$(tr -d '[:space:]' < "$VERSION_FILE")"
+version="$(read_version)"
 
 # The PR gate rejects both, so reaching them means a direct push to
 # master. Skip rather than fail: a red release job on master is
 # noise nobody can fix by re-running it.
-[[ "$version" =~ $SEMVER_RE ]] \
+is_semver "$version" \
   || emit false "" "${VERSION_FILE} contains '${version}', which is not a version; not releasing"
 [ -f "${CHANGELOG_DIR}/${version}.md" ] \
   || emit false "" "${CHANGELOG_DIR}/${version}.md is missing; not releasing ${version}"

@@ -9,6 +9,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
+use_ns(spp::analyse::utils);
+
 SPP_MOD_BEGIN
 CompilerStages::CompilerStages() = default;
 
@@ -70,14 +72,13 @@ auto CompilerStages::Stage8_CheckMemory(
 }
 
 auto CompilerStages::Stage9_CompTimeResolve(
-  ScopeManager *sm,
+  ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.
-  using analyse::errors::SppInvalidComptimeOperationError;
-  Raise<SppInvalidComptimeOperationError>(
-    {sm->CurrentScope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
+  using namespace spp::analyse::errors;
+  Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(dynamic_cast<Ast&>(*this)));
 }
 
 auto CompilerStages::Stage10_PreCodeGen(

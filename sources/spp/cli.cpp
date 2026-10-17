@@ -5,15 +5,17 @@ module;
 #include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
-  if (not handle_validate(is_exe)) { return; }
+  if (not HandleValidate(is_exe)) { std::exit(1); }
 
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
-  if (not handle_validate(is_exe)) { return __VA_ARGS__; }
+  if (not HandleValidate(is_exe)) { return __VA_ARGS__; }
 
 #define SPP_CLI_NULL \
   bp::v1::std_out > bp::v1::null
 
 module spp.cli;
+import spp.analyse.errors.diagnostic_sink;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
 import spp.compiler.compiler;
@@ -21,9 +23,14 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
 import spp.lex.tokens;
+import spp.lsp.diagnostic;
+import spp.lsp.resolution_index;
+import spp.parse.errors.parser_error;
+import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import cli11;
 import genex;
 import tomlpp;
@@ -54,81 +61,67 @@ std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" 
 
 namespace spp::cli {
   namespace {
-    /**
-     * Iterate a directory that may not be there. The optional folders are only created inside this project, so a
-     * dependency legitimately has none of them and walking one must not throw.
-     */
-    auto SafeDirectoryIterator(std::filesystem::path const &dir) -> std::filesystem::directory_iterator {
+    /// Iterate a directory that may not be there. The optional
+    /// folders are only created inside this project, so a
+    /// dependency legitimately has none of them and walking one
+    /// must not throw.
+    auto SafeDirectoryIterator(Path const &dir) -> std::filesystem::directory_iterator {
       return std::filesystem::exists(dir)
         ? std::filesystem::directory_iterator(dir)
         : std::filesystem::directory_iterator();
     }
 
-    /**
-     * Run a compilation, reporting a mistake in the source being compiled as the mistake it is.
-     * @param[in,out] c The compiler to run.
-     * @return @c true if the build produced its artefact; @c false once the error has been printed, and for a back-end
-     * failure - a module llvm rejects, an object it cannot write, a linker that returns non-zero - which reports
-     * itself as it happens rather than by throwing.
-     */
+    /// Run a compilation and report a mistake in the source being
+    /// compiled.
     auto CompileReportingErrors(
-      spp::compiler::Compiler &c)
-      -> bool {
+      compiler::Compiler &c, Str const &message_format = "human") -> bool {
+      // Json is asked for by something reading the output rather
+      // than someone looking at it, so it catches in every build:
+      // a debugger is not what is on the other end of the pipe.
+      // Used by the IDEA plugin.
+      if (message_format == "json") {
+        return lsp::CompileReportingJson(c);
+      }
+
 #if SPP_DEBUG
-      // A debug build deliberately does not: "Compiler::Compile" leaves
-      // its own catch out under the same condition, so the stack is still
-      // standing where the throw happened and a debugger can be pointed
-      // at it. That build is the compiler's own; this is the one a
-      // program is compiled with.
+      // A debug build deliberately does not: "Compiler::Compile"
+      // leaves its own catch out under the same condition, so the
+      // stack is still standing where the throw happened and a
+      // debugger can be pointed at it. That build is the compiler's
+      // own; this is the one a program is compiled with.
       return c.Compile();
 #else
       try {
         return c.Compile();
       }
-      catch (spp::utils::errors::AbstractError const &e) {
+      catch (utils::errors::AbstractError const &e) {
+        std::cerr << e.what() << "\n";
+        return false;
+      }
+      catch (InternalCompilerError const &e) {
         std::cerr << e.what() << "\n";
         return false;
       }
 #endif
     }
 
-    /**
-     * Wrap a command so the process it starts cannot exhaust the machine.
-     *
-     * @n
-     * The allocator already models running out of memory - @c GlobalAlloc::allocate maps a null @c malloc to
-     * @c AllocOomErr - but on linux that branch is unreachable by default: overcommit hands out address space that has
-     * no memory behind it, @c malloc succeeds, and the process is killed by the kernel when it touches the pages. A
-     * compiled program with a runaway allocation therefore does not fail, it takes the machine down with it, and the
-     * failure surfaces in @c dmesg rather than anywhere the user is looking.
-     *
-     * An address-space limit on the child restores the contract the allocator was written against: @c malloc returns
-     * null at the cap, @c AllocOomErr propagates, and the program reports itself. The limit is set on the command
-     * rather than on this process so the compiler keeps its own budget, and it is set through the shell because that
-     * is what @c std::system starts anyway.
-     *
-     * @param command The command to run.
-     * @return The command, prefixed with the limit, on the platforms whose shell can set one.
-     */
+    /// Cap the memory of a command this runs (the program "spp
+    /// run" starts), from "SPP_MEMORY_LIMIT_KB" (0 for none): a
+    /// runaway allocation in the compiled program then stops it,
+    /// rather than exhausting the machine.
     auto WithMemoryLimit(Str const &command) -> Str {
 #if SPP_PLATFORM_WINDOWS
       return command;
 #else
-      // A run that needs more than this is not one this is meant to catch, and the value can be raised - or removed
-      // with a zero - for the run that legitimately does.
-      constexpr auto default_kb = 4ull * 1024 * 1024;
+      constexpr auto default_kb = 16ull * 1024 * 1024;
       const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
       const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
       return limit_kb == 0 ? command : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
 #endif
     }
 
-    /**
-     * Run a git invocation, reporting a non-zero exit rather than discarding it. A failed fetch leaves the "vcs" folder
-     * empty, which every later stage accepts, so the only symptom is that each imported symbol becomes undefined.
-     * @param args The arguments to pass to git.
-     * @return @c true when git exited cleanly.
-     */
+    /// Run a git command invocation, reporting a non-zero exit
+    /// rather than discarding it. Wraps all git command calls.
     auto RunGit(Str const &args) -> bool {
       const auto command = "git " + args;
       if (const auto status = std::system(command.c_str()); status != 0) {
@@ -139,7 +132,7 @@ namespace spp::cli {
     }
 
     auto HostOf(Str const &url) -> Str {
-      auto rest = spp::StrView(url);
+      auto rest = StrView(url);
       if (const auto scheme = rest.find("://"); scheme != StrView::npos) { rest.remove_prefix(scheme + 3); }
 
       // Only a "user@" before the first "/" is credentials;
@@ -149,7 +142,7 @@ namespace spp::cli {
         at != StrView::npos and (slash == StrView::npos or at < slash)) {
         rest.remove_prefix(at + 1);
       }
-      return spp::Str(rest.substr(0, rest.find_first_of(":/?")));
+      return Str(rest.substr(0, rest.find_first_of(":/?")));
     }
 
     auto IsRemoteReachable(Str const &url) -> bool {
@@ -165,10 +158,106 @@ namespace spp::cli {
 #endif
       return std::system(command.c_str()) == 0;
     }
+
+    /// Fill this project's "ffi" folder from its dependencies':
+    /// each package a checkout ships replaces the project's copy
+    /// whole, so a file the package no longer has (a library from
+    /// an older layout) goes with it. Done whenever this project
+    /// is validated (so on every build, fetched or not, before its
+    /// "ffi" folder is checked) and after a fetch. A project's own
+    /// packages are left alone.
+    auto SyncVcsFfi(Path const &cwd) -> void {
+      for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
+        for (auto const &package : SafeDirectoryIterator(vcs_dir.path() / FFI_FOLDER)) {
+          if (not package.is_directory()) { continue; }
+          const auto target = cwd / FFI_FOLDER / package.path().filename();
+          std::filesystem::remove_all(target);
+          std::filesystem::create_directories(target.parent_path());
+          std::filesystem::copy(package.path(), target, std::filesystem::copy_options::recursive);
+        }
+      }
+    }
+
+    /// Check this project's "ffi" packages are laid out as the
+    /// compiler reads them: a stub, and a folder per target that
+    /// holds the library named for its platform. Checked after
+    /// the dependencies are fetched, as their packages are copied
+    /// in ("SyncVcsFfi"), and a stale checkout's would otherwise
+    /// stop the fetch that brings the new ones.
+    auto ValidateFfi(Path const &cwd) -> bool {
+      using namespace std::string_literals;
+      for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
+        if (not std::filesystem::is_directory(ffi_dir)) {
+          std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
+            ffi_dir.path().filename()) + "\n";
+          return false;
+        }
+
+        const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
+
+        // Check for a stub file for each ffi package. This is what
+        // s++ uses (s++ code) to hook into the shared library.
+        if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
+          std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
+          return false;
+        }
+
+        // Everything else is a folder per target, named the one way
+        // the compiler spells it, holding the library named for that
+        // target's platform. Checked for every target the package
+        // ships rather than only this host's, because a package is
+        // validated where it is made, not only where it is built.
+        auto targets = 0uz;
+        for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
+          const auto found = utils::files::NativeString(entry.path().filename());
+          if (found == STUB_FILE) { continue; }
+
+          // Loose files (a SOURCE, README, LICENSE) are the package's
+          // own business; only its library left outside a target
+          // folder, the old flat layout, is an error.
+          if (not entry.is_directory()) {
+            const auto misplaced = genex::any_of(Arr<StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
+              return found == utils::files::SharedLibraryName(lib_name, ext);
+            });
+            if (not misplaced) { continue; }
+            std::cerr
+              << "Error: 'ffi/" + lib_name + "/" + found + "' is not in a target folder.\n"
+              << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+              << codegen::HostFfiFolderName() << "/'.\n";
+            return false;
+          }
+
+          if (not codegen::IsFfiFolderName(found.c_str())) {
+            std::cerr
+              << "Error: 'ffi/" + lib_name + "/" + found + "' does not name a target.\n"
+              << "  A target folder is '<arch>-<os>[-<env>]', spelled as the compiler spells it; this host's is '"
+              << codegen::HostFfiFolderName() << "'.\n";
+            return false;
+          }
+
+          const auto expected = utils::files::SharedLibraryName(
+            lib_name, codegen::SharedLibraryExtension(found.c_str()));
+          if (not std::filesystem::exists(entry.path() / expected)) {
+            std::cerr << "Error: 'ffi/" + lib_name + "/" + found + "' has no '" + expected + "'.\n";
+            return false;
+          }
+          targets += 1;
+        }
+
+        if (targets == 0) {
+          std::cerr
+            << "Error: 'ffi/" + lib_name + "' ships no library for any target.\n"
+            << "  A library lives in the folder for its target, such as 'ffi/" + lib_name + "/"
+            << codegen::HostFfiFolderName() << "/'.\n";
+          return false;
+        }
+      }
+      return true;
+    }
   }
 }
 
-auto spp::cli::run_cli(
+auto spp::cli::RunCli(
   const std::int32_t argc,
   char **argv)
   -> std::int32_t {
@@ -176,13 +265,6 @@ auto spp::cli::run_cli(
   // is provided.
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
-
-  // Declared so that it parses and shows up in the help, but read in "main" rather than here: the working directory
-  // has to be settled before any subcommand callback runs, and every one of them resolves the project from it.
-  auto project_dir = Str();
-  app.add_option(
-    "--dir", project_dir,
-    "Project directory to work in; the sample project beside this binary by default.");
 
   // One variable per subcommand, each holding its own
   // default. A single shared one takes whichever default
@@ -198,6 +280,19 @@ auto spp::cli::run_cli(
   auto run_target = Str();
   auto clean_target = Str();
 
+  // How a failure is reported: as the blocks a person reads, or
+  // as one diagnostic object per error for whatever is reading
+  // the output - the editor integration, today.
+  auto build_message_format = Str("human");
+
+  // Both are for whatever is driving the compiler rather than
+  // for a person: skip the dependency fetch a build normally
+  // starts with, and stop once the analysis is done.
+  auto build_skip_vcs = false;
+  auto build_analyse_only = false;
+  auto build_index_files = Vec<Str>();
+  auto build_index_project = false;
+
   // No example triple: which ones resolve depends on the backends
   // this binary was linked with, so an example here would be wrong
   // for a default build. Passing an unrecognised one lists what
@@ -206,22 +301,47 @@ auto spp::cli::run_cli(
     "Target triple to build for; the host by default. Pass an unknown one to list what this build supports. A "
     "target other than the host is compiled and an object emitted, but not linked - see the note the build prints.";
 
+  constexpr auto message_format_help =
+    "How errors are reported: 'human' for the annotated source blocks, or 'json' for one diagnostic object per error.";
+
   app.add_subcommand("init", "Initialize the new project")
      ->fallthrough()
-     ->callback(handle_init);
+     ->callback([] { if (not HandleInit()) { throw CLI::RuntimeError(1); } });
 
   app.add_subcommand("vcs", "Initialize version control for the project")
      ->fallthrough()
-     ->callback([] { if (not handle_vcs()) { throw CLI::RuntimeError(1); } });
+     ->callback([] { if (not HandleVcs()) { throw CLI::RuntimeError(1); } });
 
   const auto build_cmd = app.add_subcommand("build", "Build the project")->fallthrough();
   build_cmd->add_option("-m,--mode", build_mode, "Build mode (dev or rel)")
            ->check(CLI::IsMember({"dev", "rel"}))
            ->default_val("dev");
   build_cmd->add_option("-t,--target", build_target, target_help);
-  build_cmd->callback([&build_mode, &build_target] {
-    if (not handle_build(build_mode, build_target)) { throw CLI::RuntimeError(1); }
-  });
+  build_cmd->add_option("--message-format", build_message_format, message_format_help)
+           ->check(CLI::IsMember({"human", "json"}))
+           ->default_val("human");
+  build_cmd->add_flag(
+    "--skip-vcs", build_skip_vcs,
+    "Do not fetch the [vcs] dependencies before building");
+  build_cmd->add_flag(
+    "--analyse-only", build_analyse_only,
+    "Stop once the analysis is done: report errors, but generate and write nothing");
+  build_cmd->add_option(
+    "--index-file", build_index_files,
+    "Also report what every name written in this file resolved to; may be given more than once. Needs "
+    "'--message-format=json'");
+  build_cmd->add_flag(
+    "--index-project", build_index_project,
+    "Report what every name in the project's own files resolved to - the same compile answers for all of them");
+  build_cmd->callback(
+    [&build_mode, &build_target, &build_message_format, &build_skip_vcs, &build_analyse_only, &build_index_files,
+      &build_index_project] {
+      if (not HandleBuild(
+        build_mode, build_target, build_skip_vcs, build_message_format, build_analyse_only, build_index_files,
+        build_index_project)) {
+        throw CLI::RuntimeError(1);
+      }
+    });
 
   const auto run_cmd = app.add_subcommand("run", "Run the project")->fallthrough();
   run_cmd->add_option("-m,--mode", run_mode, "Run mode (dev or rel)")
@@ -229,7 +349,7 @@ auto spp::cli::run_cli(
          ->default_val("dev");
   run_cmd->add_option("-t,--target", run_target, target_help);
   run_cmd->callback([&run_mode, &run_target] {
-    if (not handle_run(run_mode, run_target)) { throw CLI::RuntimeError(1); }
+    if (not HandleRun(run_mode, run_target)) { throw CLI::RuntimeError(1); }
   });
 
   const auto clean_cmd = app.add_subcommand("clean", "Clean the project")->fallthrough();
@@ -239,12 +359,13 @@ auto spp::cli::run_cli(
   clean_cmd->add_option(
     "-t,--target", clean_target,
     "Only clean this target's tree; every target's by default");
-  clean_cmd->callback([&clean_mode, &clean_target] { handle_clean(clean_mode, clean_target); });
+  clean_cmd->callback([&clean_mode, &clean_target] { HandleClean(clean_mode, clean_target); });
 
   auto test_name_filter = Str();
   auto test_group_filter = Str();
-  auto test_libs = std::vector<Str>();
+  auto test_libs = Vec<Str>();
   auto test_all_libs = false;
+  auto test_runner = Str();
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
@@ -258,16 +379,23 @@ auto spp::cli::run_cli(
   test_cmd->add_flag(
     "--all-libs", test_all_libs,
     "Also run the unit tests of every [vcs] library");
+  test_cmd->add_option(
+    "--runner", test_runner,
+    "Run the test executable under this command, e.g. \"valgrind --error-exitcode=9\" (lifts the memory cap)");
 
-  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs] {
-    handle_test(
+  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner] {
+    HandleTest(
       test_name_filter, test_group_filter,
-      Vec(test_libs.begin(), test_libs.end()), test_all_libs);
+      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
   });
 
   app.add_subcommand("validate", "Validate the project")
      ->fallthrough()
-     ->callback([] { if (not handle_validate(false)) { throw CLI::RuntimeError(1); } });
+     ->callback([] {
+       if (not HandleValidate(false) or not ValidateFfi(std::filesystem::current_path())) {
+         throw CLI::RuntimeError(1);
+       }
+     });
 
   app.add_subcommand("config", "List every section and key 'spp.toml' accepts")
      ->fallthrough()
@@ -275,7 +403,7 @@ auto spp::cli::run_cli(
 
   app.add_subcommand("version", "Show version information")
      ->fallthrough()
-     ->callback(handle_version);
+     ->callback(HandleVersion);
 
   // Parse the command line arguments.
   try {
@@ -291,13 +419,13 @@ auto spp::cli::run_cli(
   return 0;
 }
 
-auto spp::cli::handle_init()
-  -> void {
+auto spp::cli::HandleInit()
+  -> bool {
   // Check if the current directory is empty or not.
   const auto cwd = std::filesystem::current_path();
   if (not std::filesystem::is_empty(cwd)) {
     std::cerr << "Error: The current directory is not empty. Please run this command in an empty directory.\n";
-    return;
+    return false;
   }
 
   // Create the directory structure (folders).
@@ -311,11 +439,12 @@ auto spp::cli::handle_init()
   std::filesystem::create_directory(cwd / SRC_FOLDER / cwd.filename());
 
   // Fill in "main.spp" and "spp.toml" with template content.
-  utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, format_default_file_contents(MAIN_FILE_CONTENTS));
-  utils::files::WriteFile(cwd / CONFIG_FILE, create_default_config_for(utils::files::DisplayString(cwd.filename())));
+  utils::files::WriteFile(cwd / SRC_FOLDER / MAIN_FILE, FormatDefaultFileContents(MAIN_FILE_CONTENTS));
+  utils::files::WriteFile(cwd / CONFIG_FILE, CreateDefaultConfigFor(utils::files::DisplayString(cwd.filename())));
+  return true;
 }
 
-auto spp::cli::handle_vcs()
+auto spp::cli::HandleVcs()
   -> bool {
   // Validate the project structure first.
   using namespace std::string_literals;
@@ -375,38 +504,31 @@ auto spp::cli::handle_vcs()
       std::cout << "Updated "s + repo_name + " from " + repo_url + " (" + repo_branch + ")" + "\n";
     }
 
-    // Copy all DLLs from the VCS's FFI folder into this
-    // project's FFI folder.
-    auto ffi_repo_folder = repo_folder / FFI_FOLDER;
-    if (std::filesystem::exists(ffi_repo_folder)) {
-      for (auto const &entry : std::filesystem::directory_iterator(ffi_repo_folder)) {
-        std::filesystem::copy(
-          entry.path(), cwd / FFI_FOLDER / entry.path().filename(),
-          std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing);
-      }
-    }
   }
 
-  // Move back into the original working directory.
+  // Move back into the original working directory, and take
+  // the packages the checkouts now ship.
   std::filesystem::current_path(cwd);
+  SyncVcsFfi(cwd);
   return ok;
 }
 
-auto spp::cli::handle_build(
-  Str const &mode,
-  Str const &target,
-  const bool skip_vcs)
-  -> bool {
+auto spp::cli::HandleBuild(
+  Str const &mode, Str const &target, const bool skip_vcs,
+  Str const &message_format, const bool analyse_only,
+  Vec<Str> const &index_files, const bool index_project) -> bool {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
 
   // Choose the target before anything is compiled: every module
-  // carries the triple and the data layout it was built for, and
-  // those are resolved once, on first use.
+  // carries the triple and the data layout it was built for,
+  // and those are resolved once, on first use.
   if (not codegen::SelectTarget(target.c_str())) { return false; }
 
-  // Before anything is generated, not after: if llvm cannot spell an intrinsic name, every module holding one is
-  // rejected by the verifier with a complaint about the name, and the cause is nowhere in that message.
+  // Before anything is generated, not after: if llvm cannot
+  // spell an intrinsic name, every module holding one is rejected
+  // by the verifier with a complaint about the name, and the
+  // cause is nowhere in that message.
   codegen::AssertIntrinsicNamingIsSound();
 
   // Create the inner directory (rel or dev).
@@ -418,20 +540,25 @@ auto spp::cli::handle_build(
 
   // Remove the executable first, so a build that fails leaves
   // nothing behind for "run" to pick up and execute as if it
-  // were the build that just happened.
-  std::filesystem::remove(out.ExecutablePath());
+  // were the build that just happened. An analysis-only run
+  // produces no executable and must not disturb the one a real
+  // build left there - an editor analysing on every save would
+  // otherwise keep deleting it. Stages 1-9 inclusive.
+  if (not analyse_only) { std::filesystem::remove(out.ExecutablePath()); }
 
   // Handle VCS if not skipped. Building against a half-fetched
   // "vcs" folder reports every imported symbol as undefined
   // rather than the fetch failure that caused it, so stop here
   // instead.
-  if (not skip_vcs and not handle_vcs()) {
+  if (not skip_vcs and not HandleVcs()) {
     std::cerr << "Error: Aborting the build; the [vcs] dependencies could not be fetched.\n";
     return false;
   }
 
-  // Revalidate (after including the VCS folders).
+  // Revalidate (after including the VCS folders), and check
+  // the ffi packages the fetch brought.
   SPP_VALIDATE_STRUCTURE_OR(false, false);
+  if (not ValidateFfi(std::filesystem::current_path())) { return false; }
   const auto build_type =
     toml::parse_file(CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
 
@@ -451,24 +578,27 @@ auto spp::cli::handle_build(
     return false;
   }
 
-  // Compile the code.
+  // Compile the code. Call the resolution index hooks depending
+  // on what is being indexed (project, specific files, etc).
   auto c = compiler::Compiler(
     mode == "dev" ? compiler::Compiler::Mode::DEV : compiler::Compiler::Mode::REL,
     build_type == "exe" ? compiler::Compiler::BuildType::EXE : compiler::Compiler::BuildType::LIB);
-  return CompileReportingErrors(c);
+
+  c.SetAnalyseOnly(analyse_only);
+  if (index_project) { lsp::resolution_index::EnableProject(); }
+  else { lsp::resolution_index::EnableFiles(index_files); }
+  return CompileReportingErrors(c, message_format);
 }
 
-auto spp::cli::handle_run(
-  Str const &mode,
-  Str const &target)
-  -> bool {
+auto spp::cli::HandleRun(
+  Str const &mode, Str const &target) -> bool {
   // Build the project first (skip VCS). Don't run the old
   // binary when the current code causes an error.
-  if (not handle_build(mode, target, false)) { return false; }
+  if (not HandleBuild(mode, target, false)) { return false; }
 
-  // Nothing this machine can execute comes out of a cross build,
-  // so say that rather than reporting the missing executable as
-  // though the build had gone wrong.
+  // Nothing this machine can execute comes out of a cross
+  // build, so say that rather than reporting the missing
+  // executable as though the build had gone wrong.
   if (not codegen::TargetIsHost()) {
     std::cerr
       << "Error: Cannot run a build for '" << codegen::TargetFolderName()
@@ -512,10 +642,8 @@ auto spp::cli::handle_run(
   std::exit(exit_code);
 }
 
-auto spp::cli::handle_clean(
-  Str const &mode,
-  Str const &target)
-  -> void {
+auto spp::cli::HandleClean(
+  Str const &mode, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
@@ -527,11 +655,11 @@ auto spp::cli::handle_clean(
   auto targets = Vec<Str>();
   if (not target.empty()) {
     if (not codegen::SelectTarget(target.c_str())) { return; }
-    targets.EmplaceBack(codegen::TargetFolderName());
+    targets.emplace_back(codegen::TargetFolderName());
   }
   else {
     for (auto const &entry : SafeDirectoryIterator(cwd / OUT_FOLDER)) {
-      if (entry.is_directory()) { targets.EmplaceBack(utils::files::NativeString(entry.path().filename())); }
+      if (entry.is_directory()) { targets.emplace_back(utils::files::NativeString(entry.path().filename())); }
     }
   }
 
@@ -554,23 +682,22 @@ auto spp::cli::handle_clean(
   }
 }
 
-auto spp::cli::handle_test(
-  Str const &name_filter,
-  Str const &group_filter,
-  Vec<Str> const &libs,
-  const bool all_libs)
-  -> void {
+auto spp::cli::HandleTest(
+  Str const &name_filter, Str const &group_filter,
+  Vec<Str> const &libs, const bool all_libs,
+  Str const &runner) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
   // Fetch the dependencies, as an ordinary build does: a
   // test build compiles the same sources plus the "tst"
   // folder.
-  if (not handle_vcs()) {
+  if (not HandleVcs()) {
     std::cerr << "Error: Aborting the test build; the [vcs] dependencies could not be fetched.\n";
     return;
   }
   SPP_VALIDATE_STRUCTURE(false);
+  if (not ValidateFfi(std::filesystem::current_path())) { std::exit(1); }
 
   // A test build compiles at "rel", so it must look for its
   // executable there too - see the Compiler constructed below.
@@ -592,7 +719,7 @@ auto spp::cli::handle_test(
     std::exit(1);
   }
 
-  const auto scope = compiler::TestScope{.project = true, .all_libs = all_libs, .libs = libs};
+  const auto scope = compiler::TestScope{.Project = true, .AllLibs = all_libs, .Libs = libs};
   auto c = compiler::Compiler(
     compiler::Compiler::Mode::REL, compiler::Compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
@@ -620,9 +747,13 @@ auto spp::cli::handle_test(
   // The selector is set on the command rather than in this
   // process, so nothing has to be unset afterwards and the
   // whole-suite run is plain.
-  const auto run = [&exe](Str const &only) {
-    const auto command = only.empty() ? exe : "SPP_TEST_ONLY=" + only + " " + exe;
-    const auto status = std::system(WithMemoryLimit(command).c_str());
+  // A runner ("valgrind ...") goes in front of the executable, and
+  // takes the memory cap off: it reserves far more address space
+  // than the program it runs, and would be killed by the cap.
+  const auto run = [&exe, &runner](Str const &only) {
+    const auto target = runner.empty() ? exe : runner + " " + exe;
+    const auto command = only.empty() ? target : "SPP_TEST_ONLY=" + only + " " + target;
+    const auto status = std::system((runner.empty() ? WithMemoryLimit(command) : command).c_str());
     const auto exited_normally = (status & 0x7F) == 0;
     return exited_normally ? (status >> 8) & 0xFF : -1;
   };
@@ -642,11 +773,11 @@ auto spp::cli::handle_test(
 
   auto failed = Vec<Str>();
   for (auto const &name : c.TestNames()) {
-    if (run(name) != 0) { failed.EmplaceBack(name); }
+    if (run(name) != 0) { failed.emplace_back(name); }
   }
 
-  std::cout << "\n" << (c.TestCount() - failed.Len()) << "/" << c.TestCount() << " test(s) passed." << std::endl;
-  if (failed.IsEmpty()) {
+  std::cout << "\n" << (c.TestCount() - failed.size()) << "/" << c.TestCount() << " test(s) passed." << std::endl;
+  if (failed.empty()) {
     // Every test passes on its own, so what failed is something
     // they share rather than any one of them.
     std::cerr << "The suite failed as a whole but every test passes alone - suspect shared state or the harness.\n";
@@ -658,10 +789,8 @@ auto spp::cli::handle_test(
   std::exit(1);
 }
 
-auto spp::cli::handle_validate(
-  const bool is_exe,
-  const bool create_missing)
-  -> bool {
+auto spp::cli::HandleValidate(
+  const bool is_exe, const bool create_missing) -> bool {
   using namespace std::string_literals;
 
   // Check for the key folders/files.
@@ -679,9 +808,10 @@ auto spp::cli::handle_validate(
     return false;
   }
 
-  // Create the other folders if they don't exist, but only in this
-  // project - a dependency's checkout is a fetched artifact, and
-  // filling it with empty folders makes its working tree dirty.
+  // Create the other folders if they don't exist, and fill "ffi"
+  // from the dependencies, but only in this project - a
+  // dependency's checkout is a fetched artifact, and filling it
+  // with empty folders makes its working tree dirty.
   if (create_missing) {
     if (not std::filesystem::exists(cwd / OUT_FOLDER)) {
       std::filesystem::create_directory(cwd / OUT_FOLDER);
@@ -695,6 +825,7 @@ auto spp::cli::handle_validate(
     if (not std::filesystem::exists(cwd / TST_FOLDER)) {
       std::filesystem::create_directory(cwd / TST_FOLDER);
     }
+    SyncVcsFfi(cwd);
   }
 
   // Check the file against the schema: every section and key
@@ -716,7 +847,7 @@ auto spp::cli::handle_validate(
   // Check the version follows "major.minor.patch" format.
   const auto version = project->at("version").value<Str>().value_or("");
   const auto version_parts = version | genex::views::split('.') | genex::to<Vec>();
-  if (version_parts.Len() != 3) {
+  if (version_parts.size() != 3) {
     std::cerr << "Error: Invalid version format in spp.toml. Version must follow 'major.minor.patch' format.\n";
     return false;
   }
@@ -732,73 +863,30 @@ auto spp::cli::handle_validate(
   for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
     if (not vcs_dir.is_directory()) { continue; }
     std::filesystem::current_path(vcs_dir.path());
-    handle_validate(false, false);
+    HandleValidate(false, false);
     std::filesystem::current_path(cwd);
-  }
-
-  // Check the FFI subfolders are structured properly.
-  for (auto const &ffi_dir : SafeDirectoryIterator(cwd / FFI_FOLDER)) {
-    if (not std::filesystem::is_directory(ffi_dir)) {
-      std::cerr << "Error: Non-directory found in 'ffi' folder: "s + utils::files::DisplayString(
-        ffi_dir.path().filename()) + "\n";
-      return false;
-    }
-
-    const auto lib_name = utils::files::NativeString(ffi_dir.path().filename());
-
-    // Check for a stub file for each ffi package. This is what
-    // s++ uses (s++ code) to hook into the shared library.
-    if (not std::filesystem::exists(ffi_dir.path() / STUB_FILE)) {
-      std::cerr << "Error: Missing '"s + STUB_FILE + "' file in 'ffi/" + lib_name + "' folder.\n";
-      return false;
-    }
-
-    // Collect the shared library binaries within the folder, and
-    // get the expected library binary name and extension that will
-    // be checked against.
-    const auto expected = utils::files::SharedLibraryName(lib_name);
-    if (std::filesystem::exists(ffi_dir.path() / expected)) { continue; }
-
-    auto found_names = Str();
-    for (auto const &entry : SafeDirectoryIterator(ffi_dir.path())) {
-      if (not entry.is_regular_file()) { continue; }
-      const auto found = utils::files::NativeString(entry.path().filename());
-      if (found == STUB_FILE) { continue; }
-      found_names += (found_names.empty() ? "" : ", ") + found;
-    }
-
-    std::cerr
-      << "Error: 'ffi/" + lib_name + "' has no '" + expected + "'; it holds "
-      + (found_names.empty() ? Str("nothing but its stub") : found_names) + ".\n"
-      << "  A package is linked through the library named for it, so one built for another platform does not "
-      << "stand in for this host's.\n";
-    return false;
   }
 
   // All checks passed.
   return true;
 }
 
-auto spp::cli::handle_version()
-  -> void {
+auto spp::cli::HandleVersion() -> void {
   // Print the version information.
   std::cout << "SPP version " << SPP_VERSION << "\n";
 }
 
-auto spp::cli::create_default_config_for(
-  Str const &project_name)
-  -> Str {
+auto spp::cli::CreateDefaultConfigFor(
+  Str const &project_name) -> Str {
   // Inject the project name into the config template.
-  auto contents = format_default_file_contents(CONFIG_FILE_CONTENTS);
+  auto contents = FormatDefaultFileContents(CONFIG_FILE_CONTENTS);
   const auto pos = contents.find('$');
   contents.replace(pos, 1, project_name);
   return contents;
 }
 
-auto spp::cli::run_cpp_google_test(
-  Str const &mode,
-  Str &&main_code)
-  -> Map<Str, Str> {
+auto spp::cli::RunCppGoogleTest(
+  Str const &mode, Str &&main_code) -> Map<Str, Str> {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
@@ -815,18 +903,17 @@ auto spp::cli::run_cpp_google_test(
   // Discarded on purpose: this path verifies rather than builds, and a
   // verification that fails throws out of here rather than answering.
   const auto c = compiler::Compiler::ForCppGoogleTest(m, std::move(main_code));
-  static_cast<void>(c->Compile());
+  ignore = c->Compile();
   return c->CompTimeConstants();
 }
 
-auto spp::cli::format_default_file_contents(
-  const StrView contents)
-  -> Str {
+auto spp::cli::FormatDefaultFileContents(
+  const StrView contents) -> Str {
   return Str(contents);
   // // Remove the first newline, and replace "    " with "".
   // auto out = Str();
   // for (const auto&line: contents | genex::views::split('\n')) {
-  //     if (line.Len() <= 0) { continue; }
+  //     if (line.size() <= 0) { continue; }
   //     auto formatted = line | genex::to<Str>();
   //     formatted.replace(formatted.find("    "), 4, "");
   // }

@@ -51,7 +51,7 @@ SPP_EXP_CLS enum class spp::asts::AstKind : std::uint8_t {
   kGenericArgumentGroupAst,
   kGenericParameterAst,
   kGenericParameterGroupAst,
-  kGenericParameterTypeInlineConstraintsAst,
+  kGenericParameterTypeConstraintsAst,
   kInnerScopeAst,
   kClassImplementationAst,
   kSupImplementationAst,

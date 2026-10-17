@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Create the release and attach one binary per platform. The tag is
-# created here rather than before the builds, so a red matrix
-# leaves no tag behind and the next push retries cleanly.
+# Create the release with one binary per platform and the attested SHA256SUMS. The tag is created
+# here, so a red lane leaves no tag behind and the next push retries cleanly.
 set -euo pipefail
+source .github/scripts/lib/version.sh
 
-CHANGELOG_DIR="${CHANGELOG_DIR:-changelog}"
 DIST_DIR="${DIST_DIR:-dist}"
 notes="${CHANGELOG_DIR}/${VERSION}.md"
 
@@ -28,4 +27,7 @@ gh release create "v${VERSION}" \
   echo
   # shellcheck disable=SC2016  # the backticks are markdown for the summary, not a substitution
   printf -- '- `%s`\n' "${assets[@]##*/}"
+  echo
+  # shellcheck disable=SC2016
+  printf 'Verify a download with `gh attestation verify <file> --repo %s`.\n' "$GITHUB_REPOSITORY"
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"

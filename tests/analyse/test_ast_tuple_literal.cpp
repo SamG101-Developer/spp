@@ -76,3 +76,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         drop(p)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestTupleLiteralAst,
+  test_valid_empty_tuple_literal_then_a_statement, R"(
+    fun f() -> Void {
+        let a = ()
+        std::mem::ops::drop(a)
+    }
+)");

@@ -12,10 +12,10 @@ import spp.parse.errors.parser_error;
 
 #define SPP_TEST_SHOULD_PASS_SYNTACTIC(name, code) \
     TEST(SppParser, name) {                        \
-        auto ast = INJECT_CODE(code, parse);       \
+        auto ast = INJECT_CODE(code, Parse);       \
     }
 
 #define SPP_TEST_SHOULD_FAIL_SYNTACTIC(name, code)                                  \
     TEST(SppParser, name) {                                                         \
-        EXPECT_THROW(INJECT_CODE(code, parse), spp::parse::errors::SppSyntaxError); \
+        EXPECT_THROW(INJECT_CODE(code, Parse), spp::parse::errors::SppSyntaxError); \
     }

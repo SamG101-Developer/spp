@@ -1,0 +1,275 @@
+# One build, then gtest (mode x shard) and STL conformance as
+# their own jobs, against its digest-checked binaries.
+
+name: lane
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Runner image; one listed under [runner] in .github/dependencies.toml."
+        required: false
+        type: string
+        default: "ubuntu-24.04"
+      compiler:
+        description: "Compiler (gcc | clang | msvc | clang-cl); its version comes from the manifest."
+        required: false
+        type: string
+        default: "gcc"
+      variant:
+        description: "Names the build tree's cache entry. Sonar restores it by this name."
+        required: false
+        type: string
+        default: "release"
+      build-type:
+        required: false
+        type: string
+        default: "Release"
+      modes:
+        description: "Space-separated s++ modes (rel | dev) the gtest suite runs in, each against the same build."
+        required: false
+        type: string
+        default: "rel dev"
+      shard-count:
+        description: "Jobs each mode's gtest sweep is split across."
+        required: false
+        type: number
+        default: 4
+      stl-conformance:
+        description: "Run `spp init` / `spp build` / `spp test --all-libs` against the build."
+        required: false
+        type: boolean
+        default: true
+      valgrind:
+        description: "Run chosen `!test` groups under valgrind (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
+      cmake-flags:
+        description: "Extra CMake flags for the build, e.g. sanitizers. Give such a build its own variant."
+        required: false
+        type: string
+        default: ""
+      gtest-filter:
+        description: "A --gtest_filter pattern for the gtest jobs; every test when empty."
+        required: false
+        type: string
+        default: ""
+      asan-options:
+        description: "ASAN_OPTIONS for the gtest jobs of a sanitized build; ASan's defaults when empty."
+        required: false
+        type: string
+        default: ""
+
+    # The release collects each lane's staged spp by these, after
+    # the whole lane - tests included - is green.
+    outputs:
+      artifact:
+        description: "Name of the lane's staged binaries artifact."
+        value: ${{ jobs.build.outputs.artifact }}
+      spp-sha256:
+        description: "sha256 of the staged spp."
+        value: ${{ jobs.build.outputs.spp-sha256 }}
+      tests-sha256:
+        description: "sha256 of the staged spp_tests."
+        value: ${{ jobs.build.outputs.tests-sha256 }}
+
+permissions: { }
+
+# Windows otherwise defaults `run` to PowerShell.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.compile.outputs.artifact }}
+      tests: ${{ steps.plan.outputs.tests }}
+      spp-sha256: ${{ steps.compile.outputs.spp-sha256 }}
+      tests-sha256: ${{ steps.compile.outputs.tests-sha256 }}
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants
+      # go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      # Full history: restore-mtimes walks it to date the sources for
+      # the incremental build.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Plan the lane
+        id: plan
+        env:
+          MODES: ${{ inputs.modes }}
+          SHARD_COUNT: ${{ inputs.shard-count }}
+        run: bash .github/scripts/test/plan-gtest.sh
+
+      - name: Build
+        id: compile
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ inputs.os }}
+          compiler: ${{ inputs.compiler }}
+          variant: ${{ inputs.variant }}
+          build-type: ${{ inputs.build-type }}
+          cmake-flags: ${{ inputs.cmake-flags }}
+          stage: true
+
+  gtest:
+    name: gtest
+    needs: [ build ]
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build.outputs.tests) }}
+    env:
+      SPP_TEST_MODE: ${{ matrix.mode }}
+      ASAN_OPTIONS: ${{ inputs.asan-options }}
+    steps:
+      # Installs nothing, so no sudo; egress stays on audit until its
+      # endpoints are known.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      # The test fixtures, at the same commit the binaries were built
+      # from.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
+
+      - name: Run tests
+        id: tests
+        uses: ./.github/actions/run-tests
+        with:
+          shard-count: ${{ inputs.shard-count }}
+          shard-index: ${{ matrix.shard }}
+          filter: ${{ inputs.gtest-filter }}
+
+      - name: Upload test logs on failure
+        if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: testlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}-${{ matrix.mode }}-shard${{ matrix.shard }}
+          path: tests/test_output
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # STL conformance once per lane: it never reads SPP_TEST_MODE.
+  stl:
+    name: stl conformance
+    needs: [ build ]
+    if: inputs.stl-conformance
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
+
+      - name: s++ STL conformance
+        run: bash .github/scripts/test/stl-conformance.sh
+
+  # The compiled code's memory, under valgrind, over the groups
+  # that make and drop frames, environments and buffers.
+  # Advisory until it has run clean for a while.
+  valgrind:
+    name: valgrind groups
+    needs: [ build ]
+    if: inputs.valgrind && startsWith(inputs.os, 'ubuntu')
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      # Builds valgrind into the home directory, but needs sudo
+      # for libc6-dbg, which valgrind reads only from /usr/lib/debug.
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
+
+      - name: Set up Python and load pins
+        uses: ./.github/actions/setup-python
+
+      - name: Cache valgrind
+        id: valgrind-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.tools/valgrind
+          key: valgrind-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+
+      - name: Install valgrind (cache miss)
+        if: steps.valgrind-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-valgrind-linux.sh
+
+      - name: Expose valgrind
+        run: |
+          echo "$SPP_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_VALGRIND_PREFIX/bin/valgrind" --version
+
+      - name: Install glibc debug symbols
+        run: bash .github/scripts/setup/install-glibc-debuginfo-linux.sh
+
+      - name: s++ test groups under valgrind
+        run: bash .github/scripts/test/valgrind-groups.sh

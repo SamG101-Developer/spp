@@ -16,11 +16,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// FIXED (the test itself leaked)
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestUseStatementAst,
     test_valid_use_statement_via_prelude_reduction_use_generic_2,
     R"(
-    fun f[T, cmp n: USize](a: Arr[T, n]) -> Void { }
+    fun f[T, cmp n: USize](a: Arr[T, n]) -> Void { std::mem::ops::drop(a) }
 )");
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

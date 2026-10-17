@@ -114,3 +114,85 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let b = call_once(g, 2)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  ClosureCaptures,
+  test_invalid_move_capture_of_an_outer_value_inside_a_loop,
+  SppUninitializedMemoryUseError, "s", R"(
+    fun run[F: std::function::FunMov[(), Void]](f: F) -> Void { f() }
+
+    fun f() -> Void {
+        let s = Str::from("x")
+        loop true {
+            run((caps s) std::mem::ops::drop(s))
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_move_capture_consumed_in_the_body_inside_a_loop, R"(
+    fun run[F: std::function::FunMov[(), Void]](f: F) -> Void { f() }
+
+    fun f() -> Void {
+        loop true {
+            let s = Str::from("x")
+            run((caps s) std::mem::ops::drop(s))
+            exit
+        }
+    }
+)");
+
+// The loop body is checked twice; the closure's own copy of a capture is re-initialised for the second pass, as a
+// parameter is (the "exit" above means that test never reaches one).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_move_capture_consumed_in_the_body_on_every_iteration, R"(
+    fun run[F: std::function::FunMov[(), Void]](f: F) -> Void { f() }
+
+    fun f(b: Bool) -> Void {
+        loop b {
+            let s = Str::from("x")
+            run((caps s) std::mem::ops::drop(s))
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureCaptures,
+  test_invalid_move_closure_called_on_every_iteration,
+  SppUninitializedMemoryUseError, R"(
+    fun f(b: Bool) -> Void {
+        let s = Str::from("x")
+        let c = (caps s) std::mem::ops::drop(s)
+        loop b {
+            c()
+        }
+    }
+)");
+
+// A borrowed capture is a borrow held for as long as the closure lives, so the original cannot be used against it
+// in the meantime.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureCaptures,
+  test_invalid_read_original_while_mut_captured,
+  SppMemoryOverlapUsageError, R"(
+    fun f() -> Void {
+        let mut x = 1
+        let mut c = (caps &mut x) { }
+        let y = x
+        c()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureCaptures,
+  test_invalid_mutate_original_while_ref_captured,
+  SppMovingEscapingBorrowedMemoryError, R"(
+    fun f() -> Void {
+        let mut x = 1
+        let c = (caps &x) { }
+        x = 5
+        c()
+    }
+)");

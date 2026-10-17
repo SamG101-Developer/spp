@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <optional>
 
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
@@ -27,6 +28,8 @@
 
 #include <spp/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
+
+import spp.utils.ice;
 
 namespace {
   /** What a coroutine intrinsic's name starts with; see @c PendingCoroUses . */
@@ -216,7 +219,7 @@ namespace {
    */
   auto InitializeAllBackends()
     -> void {
-    static const auto once = [] {
+    [[maybe_unused]] static const auto once = [] {
 #if defined(SPP_ALL_TARGETS)
       // All targets, including the host. This is used for
       // the CI pipeline cross-compilation checks, and for
@@ -233,7 +236,6 @@ namespace {
 #endif
       return true;
     }();
-    (void)once;
   }
 
   /**
@@ -347,6 +349,38 @@ namespace {
     return machine;
   }
 
+  /**
+   * The ffi folder name of @p triple : "<arch>-<os>[-<env>]". Built from the parsed enums and LLVM's literal names for
+   * them, never from a string LLVM hands back, and with no vendor, because the vendor never changes what a library
+   * links against.
+   */
+  auto FfiFolderOf(
+    llvm::Triple const &triple)
+    -> std::string {
+    auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
+    folder += "-";
+    folder += triple.isMacOSX() ? "macos" : llvm::Triple::getOSTypeName(triple.getOS()).str();
+    if (triple.getEnvironment() != llvm::Triple::UnknownEnvironment) {
+      folder += "-";
+      folder += llvm::Triple::getEnvironmentTypeName(triple.getEnvironment()).str();
+    }
+    return folder;
+  }
+
+  /**
+   * The triple an ffi folder name spells, parsed positionally rather than through normalize(), whose result comes
+   * back over-long across the LLVM boundary. Empty when @p folder is not two or three components.
+   */
+  auto TripleOfFfiFolder(
+    std::string const &folder)
+    -> std::optional<llvm::Triple> {
+    auto parts = llvm::SmallVector<llvm::StringRef, 4>();
+    llvm::StringRef(folder).split(parts, '-');
+    if (parts.size() == 2) { return llvm::Triple(parts[0], "unknown", parts[1]); }
+    if (parts.size() == 3) { return llvm::Triple(parts[0], "unknown", parts[1], parts[2]); }
+    return std::nullopt;
+  }
+
   /** The attribute a backend reads to decide whether a prologue probes, and the value asking it to do so inline. */
   constexpr auto kProbeStackAttr = llvm::StringLiteral("probe-stack");
   constexpr auto kProbeStackInlineAsm = llvm::StringLiteral("inline-asm");
@@ -411,6 +445,39 @@ auto spp::codegen::TargetIsHost()
 auto spp::codegen::TargetFolderName()
   -> char const* {
   return SelectedFolderName().c_str();
+}
+
+auto spp::codegen::FfiFolderName()
+  -> char const* {
+  static const auto folder = FfiFolderOf(TargetTriple());
+  return folder.c_str();
+}
+
+auto spp::codegen::HostFfiFolderName()
+  -> char const* {
+  static const auto folder = FfiFolderOf(HostTriple());
+  return folder.c_str();
+}
+
+auto spp::codegen::IsFfiFolderName(
+  char const *folder)
+  -> bool {
+  const auto spelled = std::string(folder);
+  const auto triple = TripleOfFfiFolder(spelled);
+  if (not triple.has_value()) { return false; }
+  if (triple->getArch() == llvm::Triple::UnknownArch) { return false; }
+  if (triple->getOS() == llvm::Triple::UnknownOS) { return false; }
+  return FfiFolderOf(*triple) == spelled;
+}
+
+auto spp::codegen::SharedLibraryExtension(
+  char const *folder)
+  -> char const* {
+  const auto triple = TripleOfFfiFolder(folder);
+  SPP_ASSERT(triple.has_value());
+  if (triple->isOSWindows()) { return "dll"; }
+  if (triple->isOSDarwin()) { return "dylib"; }
+  return "so";
 }
 
 auto spp::codegen::ApplyTargetToModule(
@@ -545,24 +612,15 @@ auto spp::codegen::EmitCEntryPoint(
   void *llvm_module,
   char const *spp_main_name,
   const bool split_stacks)
-  -> bool {
+  -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
 
-  // Failsafe "main" check for missing "main", but S++ semantic
-  // analysis should have picked this up earlier.
+  // Analysis has already checked "main" exists and is the only
+  // one, so either failing here is a compiler bug.
   const auto spp_main = llvm_mod.getFunction(spp_main_name);
-  if (spp_main == nullptr) {
-    llvm::errs() << "No entry point named " << spp_main_name << " in the module\n";
-    return false;
-  }
-
-  // Failsafe "main" check for duplicate "main", but S++ semantic
-  // analysis should have picked this up earlier.
-  if (llvm_mod.getFunction("main") != nullptr) {
-    llvm::errs() << "The module already declares a C entry point\n";
-    return false;
-  }
+  if (spp_main == nullptr) { spp::Ice(std::string("no entry point named ") + spp_main_name + " in the module"); }
+  if (llvm_mod.getFunction("main") != nullptr) { spp::Ice("the module already declares a C entry point"); }
 
   const auto i32_ty = llvm::Type::getInt32Ty(ctx);
   const auto ptr_ty = llvm::PointerType::get(ctx, 0);
@@ -577,11 +635,9 @@ auto spp::codegen::EmitCEntryPoint(
 
   auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", main_fn));
 
-  // Failsafe "main" check for 0-arg "main", but S++ semantic
-  // analysis should have picked this up earlier.
+  // Analysis has already checked "main" takes no arguments.
   if (spp_main->arg_size() != 0) {
-    llvm::errs() << "The entry point " << spp_main_name << " takes arguments; it must take none\n";
-    return false;
+    spp::Ice(std::string("the entry point ") + spp_main_name + " takes arguments; it must take none");
   }
 
   // Todo: This might break performance.
@@ -596,7 +652,6 @@ auto spp::codegen::EmitCEntryPoint(
   // the sppc::exit class of functions can be used to actually
   // exit with a non-0 code.
   builder.CreateRet(llvm::ConstantInt::get(i32_ty, 0));
-  return true;
 }
 
 auto spp::codegen::ApplyStackProtector(

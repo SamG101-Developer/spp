@@ -11,7 +11,7 @@ auto spp::codegen::DropValuelessFields(
   // arises without anything odd being written: the "val" of a
   // "Pass[T=Void]" is still an attribute, still named and
   // still destructured, and simply has nothing behind it.
-  return genex::views::iota(0uz, field_types.Len())
+  return genex::views::iota(0uz, field_types.size())
     | genex::views::filter([&](auto const i) { return not IsValuelessType(field_types[i]); })
     | genex::to<Vec>();
 }
@@ -41,9 +41,9 @@ auto spp::codegen::SortMembersForSppLayout(
   // Build the sorted types and the index map. A dropped field
   // has no physical position, so its declaration index is simply
   // absent from the map.
-  auto sorted_types = Vec<llvm::Type*>(order.Len());
-  auto index_map = Map<std::size_t, std::size_t>(order.Len());
-  for (auto new_idx = 0uz; new_idx < order.Len(); new_idx++) {
+  auto sorted_types = Vec<llvm::Type*>(order.size());
+  auto index_map = Map<std::size_t, std::size_t>(order.size());
+  for (auto new_idx = 0uz; new_idx < order.size(); new_idx++) {
     sorted_types[new_idx] = field_types[order[new_idx]];
     index_map[order[new_idx]] = new_idx;
   }
@@ -52,7 +52,7 @@ auto spp::codegen::SortMembersForSppLayout(
 }
 
 auto spp::codegen::GetPhysicalFieldIndex(
-  LlvmTypeSymInfo const &sym_info,
+  LlvmTypeSymbolInfo const &sym_info,
   const std::size_t decl_index)
   -> std::uint32_t {
   // An empty map means the layout preserved the declaration

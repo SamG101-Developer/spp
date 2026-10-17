@@ -33,7 +33,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_value_comp_identifier_noncopyanle,
-  SppMovingComptimeConstantMemoryError, R"(
+  SppMovingCompTimeConstantMemoryError, R"(
     cls MyClass {
         !public x: Bool
     }
@@ -83,7 +83,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     cmp x: S32 = y + 1
     cmp y: S32 = x + 1
 )");
@@ -91,14 +91,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_self_referential_dependency,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     cmp x: S32 = x + 1
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_three_way,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     cmp a: S32 = b + 1
     cmp b: S32 = c + 1
     cmp c: S32 = a + 1
@@ -107,7 +107,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_through_array_element,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     cmp arr: Arr[S32, 2_uz] = [b, 2]
     cmp b: S32 = arr.0
 )");
@@ -115,7 +115,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   CmpStatementAst,
   test_invalid_circular_dependency_through_tuple_element,
-  SppCompileTimeConstantError, R"(
+  SppCompTimeConstantError, R"(
     cmp tup: (S32, S32) = (b, 2)
     cmp b: S32 = tup.0
 )");

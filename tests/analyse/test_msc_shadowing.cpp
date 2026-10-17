@@ -4,9 +4,9 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestShadowing,
   test_shadow_create_inner_doesnt_use_outer,
   SppUninitializedMemoryUseError, R"(
-    fun f() -> Void {
+    fun f(b: Bool) -> Void {
         let x: Bool
-        loop true {
+        loop b {
             let x = false
         }
         let y = x
@@ -20,6 +20,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let x: Bool
         loop true {
             x = false
+            exit
         }
         let y = x
     }
@@ -130,5 +131,49 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun consume(&self, s: std::string::Str) -> Void {
             drop(s)
         }
+    }
+)");
+
+// A name means the binding written before the point reading it, in every stage, not only the one that made the
+// symbols: each "let" declares its binding where it is written (see "Scope::HideLetBindings"). A destructure that
+// shadows its own inputs reads them through its hidden temporary, which a per-"let" patch never covered - the value
+// "(b, a)" read the new "a" and "b" from stage 8 on.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
+  test_shadow_same_scope_destructure_swaps_its_own_inputs, R"(
+    fun f() -> Void {
+        let (a, b) = (Str::from("1"), Str::from("2"))
+        let (a, b) = (b, a)
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
+  test_shadow_same_scope_destructure_swaps_its_own_inputs_copyable, R"(
+    fun f() -> (S32, S32) {
+        let (a, b) = (1, 2)
+        let (a, b) = (b, a)
+        ret (a, b)
+    }
+)");
+
+// An "is" narrows its subject from where it is written onwards. Stage 7 left the narrowed symbol filed for the whole
+// scope, so a "case" over the subject before the "is" was checked and generated against it already narrowed to
+// "Some", not the "Opt" it is.
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestShadowing,
+  test_is_narrowing_does_not_reach_back_before_the_is, R"(
+    fun f(o: Opt[Str]) -> S32 {
+        let n = case o of {
+            is Some[Str](&val) { 1 }
+            else { 0 }
+        }
+        let b = o is Some[Str](&val)
+        std::mem::ops::drop(o)
+        ret n
     }
 )");

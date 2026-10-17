@@ -67,6 +67,7 @@ configure_file(
 option(SPP_WERROR "Treat compiler warnings as errors" ON)
 option(SPP_BUILD_TESTS "Build the unit tests" ON)
 option(SPP_ALL_TARGETS "Link every LLVM backend" OFF)
+option(SPP_STATIC_RUNTIME "Link the C++ runtime and mimalloc statically" OFF)
 set(SPP_SANITIZER
   ""
   CACHE STRING
@@ -74,13 +75,22 @@ set(SPP_SANITIZER
 )
 
 # Apply sanitizer flags to every target defined below.
+set(_spp_sanitized OFF)
 if (SPP_SANITIZER)
+  set(_spp_sanitized ON)
   string(REPLACE "+" "," _SPP_SAN_LIST "${SPP_SANITIZER}")
   add_compile_options(
     -fsanitize=${_SPP_SAN_LIST}
     -fno-omit-frame-pointer
     -fno-optimize-sibling-calls)
   add_link_options(-fsanitize=${_SPP_SAN_LIST})
+  if (_SPP_SAN_LIST MATCHES "undefined")
+    add_compile_options(-fno-sanitize-recover=undefined)
+  endif ()
+endif ()
+
+if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_link_options(-static-libstdc++ -static-libgcc -Wl,--as-needed)
 endif ()
 
 if (NOT MSVC)
@@ -91,8 +101,23 @@ endif ()
 # Only allow mimalloc for release, non-sanitizer, non-macOS builds.
 set(
   SPP_NO_MIMALLOC_GENEX
-  $<OR:$<CONFIG:Debug>,$<BOOL:${SPP_SANITIZER}>,$<PLATFORM_ID:Darwin>>)
+  $<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
+
+# Stengthen the debug and asan builds.
+add_compile_options(
+  $<$<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>>:-D_GLIBCXX_ASSERTIONS>)
+
+if (SPP_STATIC_RUNTIME)
+  set(SPP_MIMALLOC_TARGET mimalloc-static)
+  # The static archive defines new/delete itself (MI_OVERRIDE),
+  # except against the Windows DLL CRT.
+  if (NOT WIN32)
+    add_compile_definitions(SPP_MIMALLOC_STATIC)
+  endif ()
+else ()
+  set(SPP_MIMALLOC_TARGET mimalloc)
+endif ()
 
 if (NOT APPLE)
   set(CMAKE_LINKER_TYPE LLD)
@@ -105,7 +130,6 @@ if (WIN32)
   find_package(LibXml2 CONFIG REQUIRED)
   find_package(pthreads4w CONFIG REQUIRED)
 endif ()
-find_package(Boost 1.91.0 REQUIRED COMPONENTS preprocessor)
 find_package(LLVM 23.1.0 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(mimalloc CONFIG REQUIRED)
@@ -114,6 +138,7 @@ find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(stringzilla CONFIG REQUIRED)
+find_package(small_vector CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
 find_package(ColEx CONFIG REQUIRED)
@@ -195,6 +220,10 @@ else ()
 
   if (SPP_WERROR)
     target_compile_options(${PROJECT_NAME}_lib PRIVATE -Werror)
+    if (_spp_sanitized)
+      target_compile_options(
+        ${PROJECT_NAME}_lib PRIVATE -Wno-error=disabled-optimization)
+    endif ()
   endif ()
 endif ()
 
@@ -241,7 +270,6 @@ target_include_directories(
 target_link_libraries(
   ${PROJECT_NAME}_lib
   PUBLIC
-  Boost::preprocessor
   LLVMCore
   LLVMSupport
   LLVMCodeGen
@@ -255,12 +283,14 @@ target_link_libraries(
   LLVMTarget
   ${LLVM_NATIVE_LIBS}
   Threads::Threads
-  $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:mimalloc>
+  $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
+  $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:${SPP_MIMALLOC_TARGET}>
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
   magic_enum::magic_enum
   stringzilla::header
+  gch::small_vector
   CLI11::CLI11
   ColEx::ColEx
   GenEx::GenEx

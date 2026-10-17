@@ -51,7 +51,7 @@ auto UseStatementAst::Clone() const -> Unique<Ast> {
 auto UseStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
-  SPP_STRING_APPEND_RAW(not Annotations.IsEmpty() ? "\n" : "");
+  SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
   SPP_STRING_APPEND(TokUse).append(" ");
   SPP_STRING_APPEND(OldType);
   SPP_STRING_END;
@@ -72,13 +72,14 @@ auto UseStatementAst::Stage2_GenTopLvlScopes(
 
   // Create the type statement AST conversion.
   const auto new_type = dynamic_shared_cast<TypeIdentifierAst>(
-    OldType->LastTypePart()->WithoutGenerics());
+    OldType->LastTypePart()->WithoutGns());
 
   _Conversion = MakeUnique<TypeStatementAst>(
     std::move(Annotations), nullptr, new_type, nullptr, nullptr, AstCloneShared(OldType));
   _Conversion->MarkFromUseStatement();
   _Conversion->Stage2_GenTopLvlScopes(sm, meta);
   _Generated = true;
+  _Scope = _Conversion->GetAstScope();
 }
 
 auto UseStatementAst::Stage3_GenTopLvlAliases(

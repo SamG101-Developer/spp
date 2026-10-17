@@ -35,8 +35,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordNotAst final : Pos
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
-
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;

@@ -12,6 +12,8 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_ns(spp::analyse::utils);
+
 SPP_MOD_BEGIN
 auto ClassImplementationAst::NewEmpty() -> Unique<ClassImplementationAst> {
   // Empty AST.
@@ -60,7 +62,7 @@ auto ClassImplementationAst::Stage5_LoadSupScopes(
 
 auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppIdentifierDuplicateError;
+  using namespace spp::analyse::errors;
 
   // Pre-analyse semantics for each member.
   for (auto const &m : Members) { m->Stage6_PreAnalyseSemantics(sm, meta); }
@@ -76,8 +78,8 @@ auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicates.IsEmpty(),
-    {sm->CurrentScope}, ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
+    not duplicates.empty(),
+    ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
 }
 
 auto ClassImplementationAst::Stage7_AnalyseSemantics(

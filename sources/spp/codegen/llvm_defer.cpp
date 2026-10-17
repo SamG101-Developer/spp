@@ -24,7 +24,7 @@ auto spp::codegen::EmitDeferredScope(
   // Reverse order: the statements run last-registered-first, so a value deferred after another is released first.
   // Read from the reached list rather than from every "defer" the scope contains, so an exit part-way through runs
   // only what control actually registered on its way here.
-  for (auto i = scope.DeferredReached.Len(); i > 0uz; --i) {
+  for (auto i = scope.DeferredReached.size(); i > 0uz; --i) {
     scope.DeferredReached[i - 1uz]->Expr->Stage11_CodeGen(sm, meta, ctx);
   }
 }

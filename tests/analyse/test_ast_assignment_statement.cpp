@@ -339,3 +339,59 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_NO_MAIN(
         o.inner.val = Str::new()
     }
 )");
+
+// An immutable may be given its value once on each path: the branches of a "case" are alternatives, not a sequence.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AssignmentStatementAst,
+  test_valid_non_initialized_immutable_given_its_value_once_per_branch, R"(
+    fun f(c: Bool) -> S32 {
+        let x: S32
+        case c { x = 1 } else { x = 2 }
+        ret x
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AssignmentStatementAst,
+  test_invalid_non_initialized_immutable_given_a_value_on_some_path_then_assigned,
+  SppInvalidMutationError, R"(
+    fun f(c: Bool) -> Void {
+        let x: S32
+        case c { x = 1 }
+        x = 2
+    }
+)");
+
+// Moving the value out does not make an immutable take another one.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AssignmentStatementAst,
+  test_invalid_non_initialized_immutable_given_then_moved_then_assigned,
+  SppInvalidMutationError, R"(
+    fun take(s: Str) -> Void { }
+
+    fun f() -> Void {
+        let x: Str
+        x = Str::from("a")
+        take(x)
+        x = Str::from("b")
+        take(x)
+    }
+)");
+
+// Given and moved on one path, never given on the other: on the join neither path holds it, but one gave it a value.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AssignmentStatementAst,
+  test_invalid_non_initialized_immutable_given_then_moved_on_one_path_then_assigned,
+  SppInvalidMutationError, R"(
+    fun take(s: Str) -> Void { }
+
+    fun f(c: Bool) -> Void {
+        let x: Str
+        case c { } else {
+            x = Str::from("a")
+            take(x)
+        }
+        x = Str::from("b")
+        take(x)
+    }
+)");

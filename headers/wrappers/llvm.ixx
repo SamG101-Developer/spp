@@ -23,6 +23,7 @@ export namespace llvm {
   using ::llvm::verifyFunction;
   using ::llvm::verifyModule;
   using ::llvm::raw_fd_ostream;
+  using ::llvm::raw_string_ostream;
   using ::llvm::fltSemantics;
 
   using ::llvm::Align;

@@ -22,7 +22,8 @@ SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
   /// All statements are inferred as the Void type, so the
   /// method is implemented here, rather than on every
   /// statement ast.
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// Test if the statement always terminates control flow with
   /// the "ret" instruction. For blocks, the final member is
