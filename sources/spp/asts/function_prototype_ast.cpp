@@ -221,9 +221,12 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
       }
     }
 
-    func->Target->addFnAttr(ReturnType->IsNeverType()
-      ? llvm::Attribute::NoReturn
-      : llvm::Attribute::WillReturn);
+    // The "willreturn" can't be auto added because of
+    // functions that can crash (ie overflowing "+",
+    // index/slice out of bounds, etc).
+    if (ReturnType->IsNeverType()) {
+      func->Target->addFnAttr(llvm::Attribute::NoReturn);
+    }
 
     // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse (detect recursion in stage7)
     //  ZExt, SExt?
