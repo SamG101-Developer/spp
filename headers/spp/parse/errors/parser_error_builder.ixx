@@ -81,10 +81,13 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     if (token_set_str.empty()) { token_set_str = "something else"; }
 
     // Replace the "£" with the string tokens, completing
-    // the error message.
+    // the error message. A message with no "£" says what is
+    // wrong without them, and is complete as it is.
     constexpr auto placeholder = StrView("£");
     auto err_msg = this->_ErrObj->Header;
-    err_msg.replace(err_msg.find(placeholder), placeholder.size(), std::move(token_set_str));
+    if (const auto at = err_msg.find(placeholder); at != Str::npos) {
+      err_msg.replace(at, placeholder.size(), std::move(token_set_str));
+    }
 
     // Inject the error message into the error object for
     // this builder, and call the internal raise steps for

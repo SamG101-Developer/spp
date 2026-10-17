@@ -25,6 +25,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.uid;
 import genex;
@@ -261,9 +262,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // - the same way the missing-allocation check below does. Todo:
   // This *can* trigger when a symbol is used on the left and right
   // like "let x = x.something()" when rebinding symbol names.
-  RaiseIf<SppInternalCompilerError>(
-    var_sym == nullptr, {sm->CurrentScope},
-    ERR_ARGS(*this, "Target identifier has no symbol"));
+  if (var_sym == nullptr) { Ice(*this, *sm->CurrentScope, "Target identifier has no symbol"); }
 
   // Void identifiers could be created via generic
   // implementation, to prevent any usages of it as this
@@ -276,9 +275,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // A symbol with no address by this point is an internal
   // error. Report it as one rather than asserting, so the
   // failure names the identifier.
-  RaiseIf<SppInternalCompilerError>(
-    var_sym->LlvmInfo->Alloca == nullptr, {sm->CurrentScope},
-    ERR_ARGS(*this, "Target identifier has no allocation"));
+  if (var_sym->LlvmInfo->Alloca == nullptr) { Ice(*this, *sm->CurrentScope, "Target identifier has no allocation"); }
 
   // Handle local variable allocation extraction + load.
   // This is from normal "let" statements via their local
@@ -312,9 +309,7 @@ auto IdentifierAst::Stage11_CodeGen(
 
   // If the variable is neither local nor global, this is an
   // internal compiler error.
-  Raise<SppInternalCompilerError>(
-    {sm->CurrentScope},
-    ERR_ARGS(*this, "Target identifier ie neither local nor global"));
+  Ice(*this, *sm->CurrentScope, "Target identifier ie neither local nor global");
 }
 
 auto IdentifierAst::InferType(

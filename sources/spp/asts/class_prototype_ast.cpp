@@ -33,6 +33,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import genex;
 import llvm;
 
@@ -164,7 +165,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   // analyse their targets in Stage4) copied the default
   // visibility, and are shared by identity across modules.
   const auto sync = [this](TypeSymbol *sym) {
-    if (sym == nullptr) { return; }
+    if (sym == nullptr) { Ice(*Name, "class has no type symbol by stage 5"); }
     sym->Visibility = Visibility.first;
     for (auto const &[_, inst] : sym->Instances) { inst->Visibility = Visibility.first; }
   };
@@ -414,7 +415,7 @@ static auto ApplyStructLayout(
       break;
     }
     default: {
-      std::unreachable();
+      spp::Ice(std::format("unhandled struct layout: {}", static_cast<int>(layout)));
     }
   }
 }

@@ -37,6 +37,7 @@ import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
@@ -185,11 +186,13 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     const auto lhs_type_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Symbol;
 
     const auto no_env_msg = Str(
-      "No generator environment was registered for this resumption, and none could be rebuilt from the value. The "
-      "resumed value is generator-typed but carries no coroutine handle, so there is nothing to resume");
-    RaiseIf<SppInternalCompilerError>(
-      lhs_type_sym == nullptr or lhs_type_sym->LlvmInfo->LlvmType == nullptr,
-      {sm->CurrentScope}, ERR_ARGS(*this, no_env_msg));
+      "No generator environment was registered for this resumption, "
+      "and none could be rebuilt from the value. The resumed value is "
+      "generator-typed but carries no coroutine handle, so there is "
+      "nothing to resume");
+    if (lhs_type_sym == nullptr or lhs_type_sym->LlvmInfo->LlvmType == nullptr) {
+      Ice(*this, *sm->CurrentScope, no_env_msg);
+    }
 
     // A generator whose only field is the handle lowers to the
     // handle itself, a plain pointer, so there is no struct to
@@ -300,11 +303,12 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     res_ref, TypeRef::Of(*done_type, *sm->CurrentScope), *sm->CurrentScope);
 
   const auto bad_shape_msg = Str(
-    "The result of a resumption is not the \"Yield or GenDone\" variant it has to be, so there is no discriminant "
+    "The result of a resumption is not the \"Yield or GenDone\" "
+    "variant it has to be, so there is no discriminant "
     "to tag the yielded value or the finished case into");
-  RaiseIf<SppInternalCompilerError>(
-    llvm_res_ty == nullptr or (not yield_tag.has_value() and not yield_is_variant) or not done_tag.has_value(),
-    {sm->CurrentScope}, ERR_ARGS(*this, bad_shape_msg));
+  if (llvm_res_ty == nullptr or (not yield_tag.has_value() and not yield_is_variant) or not done_tag.has_value()) {
+    Ice(*this, *sm->CurrentScope, bad_shape_msg);
+  }
 
   // The resumption just made put this value in the slot.
   ctx->Builder.SetInsertPoint(yielded_bb);

@@ -8,6 +8,7 @@ import spp.asts.convention_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.utils.ice;
 import genex;
 import std;
 
@@ -50,6 +51,9 @@ namespace {
   /// but what it bound is still read ("GenericSolver::_Match" on a bare parameter, whose constraints are reported
   /// later, once everything is bound).
   auto BindType(const std::uint64_t param_id, const sc::TypeId given, Ctx &ctx) -> bool {
+    // Nothing that does not key can be bound: a pack's tuple where the program has no visible "Tup" ("TupleIdOf")
+    // does not unify, rather than counting as bound to no type.
+    if (given == nullptr) { return false; }
     for (auto const &[p, bound] : ctx.Bindings.TypeParams) { if (p == param_id) { return bound == given; } }
     auto const *const param = sc::FindGnTypeParamById(param_id);
     ctx.Bindings.TypeParams.emplace_back(param_id, given);
@@ -104,7 +108,7 @@ namespace {
     if (elems.empty()) { return sc::TypeRef::Of(*tup, scope).Id; }
     auto key = sc::TypeKey();
     for (auto i = 0uz; i < elems.size(); ++i) {
-      if (elems[i] == nullptr) { return nullptr; }
+      if (elems[i] == nullptr) { spp::Ice("tuple element identity is null while gathering a type pack"); }
       key.Push(sc::TypeKey::Tag::Pos, i);
       key.PushTypePart(elems[i]);
     }

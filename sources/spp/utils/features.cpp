@@ -3,6 +3,7 @@ module;
 
 module spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import spp.utils.strings;
 import genex;
 import tomlpp;
@@ -77,7 +78,7 @@ namespace {
       case spp::utils::features::ValueKind::Bool: return "a boolean";
       case spp::utils::features::ValueKind::String: return "a string";
       case spp::utils::features::ValueKind::Table: return "a table";
-      default: return "a value";
+      default: spp::Ice("unknown config value kind");
     }
   }
 
@@ -290,8 +291,8 @@ auto spp::utils::features::Validate(
   Path const &config,
   Vec<Str> &errors)
   -> bool {
-  // Check the spp toml is present. Failsafe but needed
-  // so we don't get worse errors downstream.
+  // The project has to have an "spp.toml"; without one there is
+  // nothing to check, and that is reported.
   if (not std::filesystem::exists(config)) {
     errors.emplace_back("no 'spp.toml' here");
     return false;
@@ -379,9 +380,9 @@ auto spp::utils::features::Load(
 auto spp::utils::features::Enabled(
   const ConfigKey key)
   -> bool {
-  // If the flags aren't ready, apply the default values
-  // before-hand, as a failsafe. This also fills non-required
-  // flag's values with their default.
+  // Asked before a project's "spp.toml" was loaded (the unit
+  // tests, and anything read before "Load"), the defaults stand.
+  // This also fills non-required flag's values with their default.
   if (not FlagsReady()) { ApplyDefaults(); }
 
   // Get the flags's value, and ensure the flag was actually

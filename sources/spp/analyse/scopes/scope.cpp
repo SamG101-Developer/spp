@@ -57,6 +57,7 @@ import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.utils.algorithms;
 import spp.utils.error_formatter;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.ptr;
 import genex;
@@ -1463,15 +1464,14 @@ auto Scope::ArgsIdOf(
     if (arg->KeywordName() != nullptr) {
       auto const &name = *arg->KeywordName()->ToUnchecked<TypeIdentifierAst>();
       if (const auto id = param_named(name); id.has_value()) { key.Push(TypeKey::Tag::Arg, *id); }
-      else { Raise<errors::SppInternalCompilerError>({this}, ERR_ARGS(name, "generic argument names no parameter")); }
+      else { Ice(name, *this, "generic argument names no parameter"); }
     }
 
     // A positional argument binding a parameter (not a pack, whose
     // elements stay positional): that parameter, declared (stage 2)
     // before anything is keyed.
     else if (param != nullptr and not param->IsVariadic()) {
-      RaiseIf<errors::SppInternalCompilerError>(
-        param->ParamId() == 0, {this}, ERR_ARGS(*param, "generic parameter keyed before it is declared"));
+      if (param->ParamId() == 0) { Ice(*param, *this, "generic parameter keyed before it is declared"); }
       key.Push(TypeKey::Tag::Arg, param->ParamId());
     }
 
@@ -1682,10 +1682,8 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
         break;
       }
 
-      // Failsafe (should never be reached by case-enum member
-      // exhaustion).
       default:
-        return nullptr;
+        Ice(std::format("unhandled type key tag: {}", static_cast<int>(head.Kind)));
     }
   }
 
@@ -1783,10 +1781,8 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
           nullptr, MakeShared<IdentifierAst>(0uz, node.Text)));
     }
 
-    // Failsafe (should never be reached by case-enum member
-    // exhaustion).
     default:
-      return nullptr;
+      Ice(std::format("unhandled comp key part: {}", static_cast<int>(node.Kind)));
   }
 }
 

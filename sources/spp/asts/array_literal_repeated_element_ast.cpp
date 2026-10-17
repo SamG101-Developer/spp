@@ -23,6 +23,7 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import llvm;
 

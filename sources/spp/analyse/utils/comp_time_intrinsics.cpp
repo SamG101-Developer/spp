@@ -29,6 +29,7 @@ import spp.codegen.llvm_size;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
+import spp.utils.ice;
 import genex;
 import numex.big_dec;
 import numex.big_int;
@@ -61,11 +62,12 @@ namespace spp::analyse::utils::comp_time_intrinsics {
         ? FloatLiteralAst::kBounds.contains(name)
         : IntegerLiteralAst::kBounds.contains(name);
 
-      // ICE failsafe to prevent worse downstream errors.
+      // Every width the language has a sized number type for has
+      // bounds ("kBounds"); one without is a compiler bug.
       if (not known) {
         SPP_ASSERT(types[0]->Symbol != nullptr);
         const auto type = types[0]->Symbol->FqName();
-        Raise<errors::SppInternalCompilerError>({sm.CurrentScope}, ERR_ARGS(*type, "no numeric bounds for this type"));
+        Ice(*type, *sm.CurrentScope, "no numeric bounds for this type");
       }
       return name;
     }

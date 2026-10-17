@@ -26,6 +26,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import spp.utils.ptr;
 import genex;
 

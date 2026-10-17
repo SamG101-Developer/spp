@@ -16,6 +16,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.strings;
 import spp.utils.types;
@@ -195,9 +196,7 @@ auto FloatLiteralAst::_PrecompiledType(
   else if (Type == "f64") { spp_type = F64.get(); }
   else if (Type == "f128") { spp_type = F128.get(); }
   else {
-    Raise<SppInternalCompilerError>(
-      {sm->CurrentScope},
-      ERR_ARGS(*this, "invalid float literal type"));
+    Ice(*this, *sm->CurrentScope, "invalid float literal type");
   }
 
   return *spp_type;

@@ -28,6 +28,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -56,7 +57,7 @@ namespace spp::analyse::utils::destructure_utils {
       // Get the outermost (root) symbol for the value being
       // destructured.
       const auto sym = sm.CurrentScope->FindVarSymbolOutermost(*val).first;
-      if (sym == nullptr) { return; }
+      if (sym == nullptr) { Ice(*val, *sm.CurrentScope, "destructured place has no root variable symbol"); }
 
       // Destructuring a borrow reads through it. The value behind
       // it belongs to someone else, so it is not consumed here.
@@ -110,7 +111,7 @@ namespace spp::analyse::utils::destructure_utils {
       // Every part the bindings read came off the temporary, so
       // between them they took all of it.
       const auto sym = sm.CurrentScope->FindVarSymbol(&tmp_name);
-      if (sym == nullptr) { return; }
+      if (sym == nullptr) { Ice(tmp_name, *sm.CurrentScope, "destructure temporary has no symbol"); }
       memory_state::StateOf(*sm.CurrentScope, *sym).MovedBy(tmp_name);
     }
 
@@ -201,9 +202,7 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     "The hidden temporary for this destructure has no symbol in the scope being generated. Its binding was introduced "
     "during semantic analysis, so the destructure is being generated against a different scope to the one it was "
     "analysed in");
-  RaiseIf<errors::SppInternalCompilerError>(
-    sym == nullptr, {sm.CurrentScope},
-    ERR_ARGS(*tmp_name, no_tmp_msg));
+  if (sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, no_tmp_msg); }
 
   const auto type_sym = sym->TypeRefIn(*sm.CurrentScope).Symbol;
   const auto llvm_type = GetLlvmType(*type_sym, ctx);

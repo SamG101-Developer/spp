@@ -20,6 +20,7 @@ import spp.asts.identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.utils.ice;
 import genex;
 import std;
 
@@ -40,7 +41,9 @@ namespace spp::analyse::utils::linear_utils {
       // to the closure's environment, which is read again on every call - it is the closure value that is held to
       // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
       if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
-      if (sym.Type == nullptr or sym.MemInfo == nullptr) { return false; }
+      if (sym.Type == nullptr or sym.MemInfo == nullptr) {
+        Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
+      }
 
       // A "!" value never exists: the code binding it cannot finish.
       if (sym.Type->IsNeverType()) { return false; }
@@ -220,7 +223,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwritePart(
   using errors::SppLinearValueNotConsumedError;
 
   // A "Copy" part is never owed.
-  if (sym.MemInfo == nullptr or sym.Type == nullptr) { return; }
+  if (sym.MemInfo == nullptr or sym.Type == nullptr) { Ice(part, *sm.CurrentScope, "assigned variable has no type"); }
   const auto part_ref = part.InferTypeRef(&sm, meta);
   if (part_ref.Symbol == nullptr or part_ref.Symbol->IsCopyable()) { return; }
 

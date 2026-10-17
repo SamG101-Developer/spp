@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.utils.error_formatter;
 import spp.utils.errors;
+import spp.utils.ice;
 import spp.utils.types;
 import colex;
 import genex;
@@ -182,8 +183,7 @@ private:
         return std::move(parts.Tag);
       }
       default:
-        std::unreachable();
+        Ice(std::format("unhandled error information kind {}", static_cast<int>(parts.Kind)));
     }
-    return "";
   }
 };

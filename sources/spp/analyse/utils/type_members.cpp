@@ -33,6 +33,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.ptr;
 import genex;
@@ -489,14 +490,12 @@ auto spp::analyse::utils::type_members::IndexBoundOf(
   // compile-time "n", always known once resolved.
   // Todo: What about variadic tuples? Per-proto analysis catches this?
   //  Add some unit tests to check.
-  using errors::SppInternalCompilerError;
   if (const auto elems = IndexableLen(ref, scope); elems.has_value()) { return *elems; }
 
-  // Cause an ICE if we reach this state. Should be impossible but
-  // just a failsafe: the caller has already checked the kind.
+  // The caller has already checked the kind, so anything else
+  // is a compiler bug.
   constexpr auto err_msg = "Non indexable type used in index check";
-  Raise<SppInternalCompilerError>(
-    {&scope}, ERR_ARGS(*ref.Symbol->FqName(), err_msg));
+  Ice(*ref.Symbol->FqName(), scope, err_msg);
 }
 
 auto spp::analyse::utils::type_members::GetNthTypeOfIndexableType(
@@ -504,16 +503,14 @@ auto spp::analyse::utils::type_members::GetNthTypeOfIndexableType(
   TypeRef const &ref,
   Scope const &scope)
   -> TypeRef {
-  using errors::SppInternalCompilerError;
   if (type_predicates::IsTypeCompTimeIndexable(ref, scope)) {
     return IndexableElem(ref, scope, index);
   }
 
-  // Cause an ICE if we reach this state. Should be impossible but
-  // just a failsafe: the caller has already checked the kind.
+  // The caller has already checked the kind, so anything else
+  // is a compiler bug.
   constexpr auto err_msg = "Non indexable type used in index check";
-  Raise<SppInternalCompilerError>(
-    {&scope}, ERR_ARGS(*ref.Symbol->FqName(), err_msg));
+  Ice(*ref.Symbol->FqName(), scope, err_msg);
 }
 
 auto spp::analyse::utils::type_members::OrderVariantMembers(

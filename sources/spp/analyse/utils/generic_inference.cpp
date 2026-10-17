@@ -32,6 +32,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
+import spp.utils.ice;
 import spp.utils.interner;
 import genex;
 
@@ -393,14 +394,13 @@ auto GenericSolver::_Bindings(
 
 auto GenericSolver::Give(
   Vec<Unique<GenericArgumentAst>> args) -> void {
-  using errors::SppInternalCompilerError;
   // Taken by value, so the caller's list is emptied rather
   // than left holding moved-from arguments.
   for (auto &arg : args) {
     // ICE if we bug the argument ast translations.
     if (arg->KeywordName() == nullptr or (not arg->IsTypeArg() and not arg->IsCompArg())) {
       const auto err = "generic argument '" + arg->ToString() + "' is still positional where a binding is expected";
-      Raise<SppInternalCompilerError>({_Sm->CurrentScope}, ERR_ARGS(*arg, err));
+      Ice(*arg, *_Sm->CurrentScope, err);
     }
 
     // A layer given earlier outranks this one: the first binding
@@ -409,7 +409,7 @@ auto GenericSolver::Give(
     const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->KeywordName());
     if (not name->IsSelfType() and name->StampedTypeId() == nullptr) {
       const auto err = "generic argument '" + arg->ToString() + "' is not named by its parameter's identity";
-      Raise<SppInternalCompilerError>({_Sm->CurrentScope}, ERR_ARGS(*arg, err));
+      Ice(*arg, *_Sm->CurrentScope, err);
     }
     auto entry = name->IsSelfType() ? _TakeSelf(false) : _Find(*name);
     if (entry == nullptr and name->IsSelfType()) { continue; }
@@ -1043,8 +1043,7 @@ auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
     const auto id = entry.get() == _Self ? 0 : _EntryParamId(*entry);
     if (id != 0 or entry.get() == _Self) { key.Push(TypeKey::Tag::Arg, id); }
     else {
-      Raise<errors::SppInternalCompilerError>(
-        {_Sm->CurrentScope}, ERR_ARGS(*entry->Name, "solved generic argument names no parameter"));
+      Ice(*entry->Name, *_Sm->CurrentScope, "solved generic argument names no parameter");
     }
 
     if (not entry->TypeVals.empty()) {
@@ -1118,7 +1117,7 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
     const auto stamped = arg->KeywordName()->StampedTypeId();
     if (stamped == nullptr or not param_index.contains(scopes::HeadOf(stamped).TypeParamId)) {
       const auto err = Str("generic argument is not named by its parameter's identity");
-      Raise<errors::SppInternalCompilerError>({sm.CurrentScope}, ERR_ARGS(*arg, err));
+      Ice(*arg, *sm.CurrentScope, err);
     }
   }
   const auto index_of = [&](GenericArgumentAst const &arg) {

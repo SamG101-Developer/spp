@@ -1571,7 +1571,10 @@ auto spp::parse::ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_pre
         if (auto r = try_tok([this] { return ParseKeywordOr(); }, 2)) return std::move(*r);
         break;
       case RT::KW_AND:
-        if (auto r = try_tok([this] { return ParseKeywordAnd(); }, 1)) return std::move(*r);
+        // "A and B" would be an intersection type, which the language
+        // does not have: the type ends before the "and", which is
+        // reported if nothing else can read it.
+        _StoreSpecificError(peek, "Intersection types (\"A and B\") are not supported");
         break;
       default: break;
     }
@@ -2860,6 +2863,17 @@ auto spp::parse::ParserSpp::_StoreError(
     return true;
   }
   return false;
+}
+
+auto spp::parse::ParserSpp::_StoreSpecificError(
+  const std::size_t pos,
+  Str &&err_str) const
+  -> void {
+  if (pos >= _ErrorBuilder->Pos) {
+    _ErrorBuilder->WithArgs(std::move(err_str));
+    _ErrorBuilder->Tokens.clear();
+    _ErrorBuilder->Pos = pos;
+  }
 }
 
 auto spp::parse::ParserSpp::_LineFeedAhead() const

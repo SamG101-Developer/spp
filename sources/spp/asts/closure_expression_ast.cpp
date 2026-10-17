@@ -40,6 +40,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
@@ -98,7 +99,9 @@ auto ClosureExpressionAst::ToString() const -> Str {
 }
 
 auto ClosureExpressionAst::HasBorrowedCaptures() const -> bool {
-  if (PcGroup == nullptr or PcGroup->CaptureGroup == nullptr) { return false; }
+  if (PcGroup == nullptr or PcGroup->CaptureGroup == nullptr) {
+    Ice(*this, "closure has nullptr parameter or capture group");
+  }
 
   // True if one or most of the captures is a borrow, not
   // a move convention.
@@ -526,7 +529,9 @@ auto ClosureExpressionAst::_MakeMockType(
   // has to resolve before there is anything to attach to.
   const auto fun_type = _FnType(sm, meta);
   const auto fun_sym = sm->CurrentScope->FindTypeSymbol(fun_type.get());
-  if (fun_sym == nullptr or fun_sym->LinkedScope == nullptr) { return fun_type; }
+  if (fun_sym == nullptr or fun_sym->LinkedScope == nullptr) {
+    Ice(*this, *sm->CurrentScope, "closure's function type has nullptr type symbol or scope");
+  }
 
   // Registered globally rather than against the frame or the
   // module the closure was written in. A closure handed to a

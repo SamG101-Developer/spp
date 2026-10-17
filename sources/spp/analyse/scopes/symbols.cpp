@@ -36,6 +36,7 @@ import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.ptr;
 import genex;
@@ -664,7 +665,7 @@ auto TypeSymbol::AsBound() const -> TypeSymbol* {
 }
 
 auto AliasInfo::DeclaredIn() const -> Scope* {
-  if (WrittenIn == nullptr) { return nullptr; }
+  if (WrittenIn == nullptr) { Ice("alias has no scope it was written in"); }
   return WrittenIn->AstNode != nullptr and WrittenIn->AstNode == Stmt ? WrittenIn->Parent : WrittenIn;
 }
 

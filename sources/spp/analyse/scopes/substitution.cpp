@@ -6,6 +6,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.asts.generate.common_types_precompiled;
+import spp.utils.ice;
 import spp.utils.types;
 import genex;
 import std;
@@ -86,7 +87,7 @@ namespace spp::analyse::scopes {
       // spreads into no elements, an "Inst" into its arguments,
       // and anything else (another class) is not a tuple.
       const auto bound = BoundTypeOf(subst, head.TypeParamId);
-      if (bound == nullptr) { return Nullopt; }
+      if (bound == nullptr) { Ice("type pack parameter listed in a substitution with no bound type"); }
       auto elems = Vec<TypeId>();
       if (HeadOf(bound).Kind == TypeKey::Tag::Symbol) {
         return HeadOf(bound).Ptr == TupTemplate() ? Opt(elems) : Nullopt;
@@ -190,7 +191,9 @@ namespace spp::analyse::scopes {
           // the template symbol (off the head), and finally the
           // args, themselves re-written. Intern the result.
           case TypeKey::Tag::Inst: {
-            if (head.Symbol() == nullptr or head.Args == nullptr) { return nullptr; }
+            if (head.Symbol() == nullptr or head.Args == nullptr) {
+              Ice("instantiation identity has no template or arguments");
+            }
             const auto args = RewriteArgsId(head.Args, subst, subst_id);
             if (args == nullptr) { return nullptr; }
             auto key = TypeKey();
@@ -205,7 +208,7 @@ namespace spp::analyse::scopes {
           // and finally the members. Intern the result. The members
           // are flattened, deduplicated and stable-sorted.
           case TypeKey::Tag::Variant: {
-            if (head.Symbol() == nullptr) { return nullptr; }
+            if (head.Symbol() == nullptr) { Ice("variant identity has no template symbol"); }
             auto members = Vec<TypeId>();
             for (const auto written : head.Members) {
               const auto member = RewriteTypeId(written, subst, subst_id);

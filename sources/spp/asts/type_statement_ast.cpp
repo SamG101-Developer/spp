@@ -32,6 +32,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import genex;
 
 SPP_MOD_BEGIN

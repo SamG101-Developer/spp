@@ -45,6 +45,7 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.algorithms;
+import spp.utils.ice;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;

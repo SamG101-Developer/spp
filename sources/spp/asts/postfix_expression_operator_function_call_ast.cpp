@@ -65,6 +65,7 @@ import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -528,8 +529,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
   const auto uid = "." + Uid();
   const auto o = "Call target has no llvm declaration: " + Target()->PrintSignature("");
-  RaiseIf<SppInternalCompilerError>(
-    Target()->GetLlvmFn() == nullptr, {sm->CurrentScope}, ERR_ARGS(*this, o));
+  if (Target()->GetLlvmFn() == nullptr) { Ice(*this, *sm->CurrentScope, o); }
 
   // Because we have individual modules for each compilation
   // unit, the declaration for the target has to be added to

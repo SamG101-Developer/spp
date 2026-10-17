@@ -149,7 +149,7 @@ auto spp::lsp::DiagnosticFrom(
         break;
       }
 
-      default: std::unreachable();
+      default: Ice(std::format("unhandled error information kind {}", static_cast<int>(info.Kind)));
     }
   }
   return diagnostic;
@@ -169,6 +169,24 @@ auto spp::lsp::DiagnosticFrom(
     .Message = error.Message.empty() ? StripAnsi(error.Header) : StripAnsi(error.Message),
     .Primary = true
   });
+  return diagnostic;
+}
+
+auto spp::lsp::DiagnosticFrom(
+  InternalCompilerError const &error)
+  -> Diagnostic {
+  // Labelled where the compiler was looking, when it said; the
+  // note says where in the compiler it was raised.
+  auto diagnostic = Diagnostic();
+  diagnostic.Code = "ICE";
+  diagnostic.Title = "Internal Compiler Error";
+  if (error.Span.has_value()) {
+    diagnostic.Labels.emplace_back(DiagnosticLabel{
+      .Span = *error.Span, .Message = error.Message, .Primary = true});
+  }
+  diagnostic.Note = error.Message + " (raised at " + error.RaisedAt.file_name() + ":"
+    + std::to_string(error.RaisedAt.line()) + ")";
+  diagnostic.Help = "This is a bug in the compiler, not in your code. Please report it with the code that caused it.";
   return diagnostic;
 }
 
@@ -280,6 +298,17 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
   }
 
   catch (parse::errors::SyntacticError const &e) {
+    std::cout << ToJson(DiagnosticFrom(e)) << "\n";
+    sink::Enable(false);
+    return false;
+  }
+
+  // A compiler bug stops the compile wherever it is raised; what
+  // was collected before it is still reported.
+  catch (InternalCompilerError const &e) {
+    for (auto const &error : sink::Collected()) {
+      std::cout << ToJson(DiagnosticFrom(error)) << "\n";
+    }
     std::cout << ToJson(DiagnosticFrom(e)) << "\n";
     sink::Enable(false);
     return false;

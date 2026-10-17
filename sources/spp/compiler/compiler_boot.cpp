@@ -40,6 +40,7 @@ import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 import spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import genex;
 import llvm;
 
@@ -353,9 +354,10 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
     // is about what codegen produced rather than about what a pass
     // made of it.
     const auto verify = [&](Str const &when) {
-      if (not llvm::verifyModule(*ctx->Module, &llvm::errs())) { return true; }
-      llvm::errs() << "Invalid module" << when << ": " << ctx->Module->getName() << "\n";
-      invalid_modules.emplace_back(ctx->Module->getName().str());
+      auto details = Str();
+      auto stream = llvm::raw_string_ostream(details);
+      if (not llvm::verifyModule(*ctx->Module, &stream)) { return true; }
+      invalid_modules.emplace_back(ctx->Module->getName().str() + when + ":\n" + details);
       return false;
     };
 
@@ -382,14 +384,12 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   }
 
   // Report on all the modules now that they have been built.
-  // All invalid modules are reported before aborting.
+  // All invalid modules are reported together: code generation
+  // made invalid IR, which is a compiler bug.
   if (not invalid_modules.empty()) {
-    llvm::errs() << invalid_modules.size() << " invalid module(s):\n";
-    for (auto const &name : invalid_modules) { llvm::errs() << "  " << name << "\n"; }
-    if (VerifyOnly) {
-      throw std::runtime_error(std::to_string(invalid_modules.size()) + " invalid module(s), see the verifier above");
-    }
-    std::abort();
+    auto report = std::to_string(invalid_modules.size()) + " invalid module(s) from code generation:";
+    for (auto const &module : invalid_modules) { report += "\n" + module; }
+    Ice(report);
   }
 
   // Link every module together now that all of them have been
@@ -419,18 +419,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // creates one meta-module containing all the definitions.
   for (auto const &ctx : _LlvmCtxs | genex::views::ptr) {
     if (codegen::LinkIntoLtoModule(lto_module.get(), ctx->Module.get())) { continue; }
-    llvm::errs() << "Failed to link module into the lto module: " << ctx->Module->getName() << "\n";
-    if (VerifyOnly) { throw std::runtime_error("Failed to link module into the lto module"); }
-    return false;
+    Ice("could not link module " + ctx->Module->getName().str() + " into the lto module");
   }
 
   // Do a final pass on the lto module before internalizing. This
   // checks for errors in the combined module.
-  if (llvm::verifyModule(*lto_module, &llvm::errs())) {
-    llvm::errs() << "Invalid lto module\n";
-    if (VerifyOnly) { throw std::runtime_error("Invalid lto module, see the verifier above"); }
-    return false;
-  }
+  auto lto_details = Str();
+  auto lto_stream = llvm::raw_string_ostream(lto_details);
+  if (llvm::verifyModule(*lto_module, &lto_stream)) { Ice("invalid lto module:\n" + lto_details); }
 
   // The unit tests stop here: the combined module is valid, and
   // optimising, emitting and linking it would add nothing more.
@@ -440,14 +436,12 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // optimizing. The C entry point is added before internalizing,
   // so that it is the thing being kept and the s++ one it calls is
   // free to be internalized into it along with everything else.
-  auto has_entry_point = false;
-  if (const auto entry = _EntryPointLlvmName(); not entry.empty()) {
-    has_entry_point = codegen::EmitCEntryPoint(
+  const auto entry = _EntryPointLlvmName();
+  const auto has_entry_point = not entry.empty();
+  if (has_entry_point) {
+    codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
       utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit));
-  }
-
-  if (has_entry_point) {
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }

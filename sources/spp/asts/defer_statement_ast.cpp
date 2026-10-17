@@ -17,6 +17,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import genex;
 
 SPP_MOD_BEGIN
@@ -120,7 +121,7 @@ auto DeferStatementAst::CheckAtExit(
   // consumes, and what it only reads or borrows - against the
   // state the exit is reached with. Its names mean what they do
   // where it is written, so the walk is replayed from there.
-  if (_DeferScope == nullptr) { return; }
+  if (_DeferScope == nullptr) { Ice(*this, *sm.CurrentScope, "defer registered for an exit has no recorded scope"); }
   auto tm = sm.NewManagerAt(*_DeferPosition);
 
   auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);

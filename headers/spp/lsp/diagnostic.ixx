@@ -7,6 +7,7 @@ import spp.compiler.compiler;
 import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
 import spp.utils.error_formatter;
+import spp.utils.ice;
 import spp.utils.types;
 import std;
 
@@ -48,6 +49,12 @@ namespace spp::lsp {
   /// reports one place and one expected-token message, so
   /// this has a single label and no context.
   SPP_EXP_FUN auto DiagnosticFrom(parse::errors::SyntacticError const &error) -> Diagnostic;
+
+  /// Read an internal compiler error as a diagnostic: where in the
+  /// program the compiler was looking, if it said, and where in the
+  /// compiler it was raised, so an editor shows it rather than the
+  /// server stopping.
+  SPP_EXP_FUN auto DiagnosticFrom(InternalCompilerError const &error) -> Diagnostic;
 
   /// Render a diagnostic as one line of json.
   SPP_EXP_FUN auto ToJson(Diagnostic const &diagnostic) -> Str;

@@ -16,6 +16,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_fn;
+import spp.utils.ice;
 import spp.utils.types;
 import spp.utils.uid;
 import llvm;

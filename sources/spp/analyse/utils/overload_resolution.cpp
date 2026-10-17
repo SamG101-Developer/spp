@@ -63,6 +63,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.algorithms;
+import spp.utils.ice;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
@@ -490,7 +491,7 @@ namespace spp::analyse::utils::overload_resolution {
         : fns != nullptr
         ? fns->GnParamGroup.get()
         : nullptr;
-      if (params == nullptr) { return {}; }
+      if (params == nullptr) { Ice(*sup_scope->AstNode, *sup_scope, "sup block has no generic parameter group"); }
       auto bound = scopes::GenericSubst();
       const auto matches = [&](const scopes::TypeId candidate_id, Scope const &candidate_scope) {
         auto inferred = scopes::GenericSubst();
@@ -1574,9 +1575,7 @@ auto spp::analyse::utils::overload_resolution::MethodsOf(
       // scope for it.
       const auto proto = AstBody(sup_ast)[0]->To<FunctionPrototypeAst>();
       const auto block = BlockOf(*sup_scope, *sup_ast);
-      RaiseIf<errors::SppInternalCompilerError>(
-        block == nullptr, {sup_scope},
-        ERR_ARGS(*sup_ast, "method has no block in the scope it was reached through"));
+      if (block == nullptr) { Ice(*sup_ast, *sup_scope, "method has no block in the scope it was reached through"); }
 
       found.emplace_back(MethodEntry{
         .FnScope = block,

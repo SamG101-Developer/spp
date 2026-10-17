@@ -283,6 +283,7 @@ target_link_libraries(
   LLVMTarget
   ${LLVM_NATIVE_LIBS}
   Threads::Threads
+  $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
   $<$<NOT:${SPP_NO_MIMALLOC_GENEX}>:${SPP_MIMALLOC_TARGET}>
   unordered_dense::unordered_dense
   tomlplusplus::tomlplusplus

@@ -45,6 +45,7 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
+import spp.utils.ice;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
@@ -555,9 +556,7 @@ namespace spp::analyse::utils::monomorphization {
         const auto args = scopes::ArgsOf(args_id);
 
         for (auto const &arg : args) {
-          RaiseIf<errors::SppInternalCompilerError>(
-            not arg.Named, {sm->CurrentScope},
-            ERR_ARGS(*scope.AstNode, "Unnamed generic argument at instantiation"));
+          if (not arg.Named) { Ice(*scope.AstNode, *sm->CurrentScope, "Unnamed generic argument at instantiation"); }
         }
 
         // Create a new generic type symbol per generic type arg,
@@ -1000,6 +999,9 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
     new_alias = MakeShared<AliasInfo>(*old_cls_sym->Alias); // Copy
     const auto target = aliases::InstanceTargetIdOf(*old_cls_sym, args_id);
     new_alias->Resolved = target != nullptr ? sm->CurrentScope->TypeAstOf(target) : nullptr;
+    if (new_alias->Resolved == nullptr) {
+      Ice(*old_cls_sym->Name, *sm->CurrentScope, "an instance of a generic alias has no target");
+    }
     new_alias->Resolved->Stage7_AnalyseSemantics(sm, meta);
     // TODO: Remove generic parameters that have been given arguments (not always all generic args)?
   }

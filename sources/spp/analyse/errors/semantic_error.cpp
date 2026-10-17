@@ -83,8 +83,8 @@ namespace spp::analyse::errors {
     /// name, and its qualified type as an "aka": "S32 (aka
     /// std::num::sized_integer::SizedInteger[...])".
     auto TypeForMessage(Ast const &ast) -> Str {
-      // Stringify the ast, and as a failsafe, return the string
-      // for non-type asts (shouldn't reach this function).
+      // Stringify the ast; one that is not a type (an expression
+      // some errors name in the same slot) is named as written.
       auto full = ast.ToString();
       const auto type = ast.To<TypeAst>();
       if (type == nullptr) { return full; }
@@ -1152,15 +1152,6 @@ SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
   AddFooter(
     "This expression cannot be evaluated at compile-time.",
     "Modify the expression/target to be compile-time compatible.");
-}
-
-SppInternalCompilerError::SppInternalCompilerError(
-  Ast const &ast, const StrView message) {
-  AddHeader(1000, "Internal Compiler Error");
-  AddErr(&ast, "Ast defined here");
-  AddFooter(
-    "An internal compiler error has occurred: " + INLINE_NOTE(message),
-    "Please report this issue to the SPP development team with the relevant code context");
 }
 
 SppGenericConstraintError::SppGenericConstraintError(

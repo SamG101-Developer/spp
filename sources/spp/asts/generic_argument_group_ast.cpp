@@ -22,6 +22,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.ptr;
 import genex;
 
@@ -201,7 +202,7 @@ auto GenericArgumentGroupAst::MergeArgs(
   for (auto &&other_arg : std::move(other_args)) {
     if (other_arg->KeywordName() == nullptr) {
       const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
-      Raise<SppInternalCompilerError>({}, ERR_ARGS(*other_arg, err));
+      Ice(*other_arg, err);
     }
     const auto *name = other_arg->KeywordName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
     if (At(name) != nullptr) { continue; }

@@ -1144,3 +1144,17 @@ SPP_TEST_SHOULD_FAIL_SYNTACTIC(
         let f = Foo::$Bar
     }
 )");
+
+// An "and" between two types would be an intersection type, which the language does not have: it is a syntax error
+// naming that, not a type the compiler cannot build.
+TEST(SppParser, ParseIntersectionTypeIsNotSupported) {
+  try {
+    INJECT_CODE(R"(
+    fun f(x: A and B) -> Void { }
+)", Parse);
+    ADD_FAILURE() << "Expected a syntax error";
+  }
+  catch (spp::parse::errors::SppSyntaxError const &e) {
+    EXPECT_NE(e.Message.find("Intersection types (\"A and B\") are not supported"), spp::Str::npos) << e.Message;
+  }
+}

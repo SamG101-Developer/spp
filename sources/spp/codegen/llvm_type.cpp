@@ -29,6 +29,7 @@ import spp.codegen.llvm_size;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.types;
 import genex;
 import llvm;
@@ -55,9 +56,8 @@ namespace spp::codegen {
         case 32: { return llvm::APFloatBase::IEEEsingle(); }
         case 64: { return llvm::APFloatBase::IEEEdouble(); }
         case 128: { return llvm::APFloatBase::IEEEquad(); }
-        default: std::unreachable();
+        default: Ice(std::format("no float semantics for a {}-bit float", bit_width));
       }
-      std::unreachable();
     }
 
     /**

@@ -17,6 +17,7 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.utils.ice;
 import spp.utils.types;
 import genex;
 import llvm;
@@ -60,7 +61,9 @@ namespace spp::codegen {
       // used to get the llvm type information from.
       const auto target_sym = target.Symbol;
       const auto source_sym = source.Symbol;
-      if (target_sym == nullptr or source_sym == nullptr) { return nullptr; }
+      if (target_sym == nullptr or source_sym == nullptr) {
+        Ice("structural coercion between types with no type symbol");
+      }
 
       // Extract the llvm type information needed for the
       // field mapping / rebuilding.
@@ -365,7 +368,7 @@ auto spp::codegen::NarrowVariant(
   if (not IsTypeVariant(target, scope) or not IsTypeVariant(source, scope)) { return {nullptr, nullptr}; }
   const auto source_llvm_type = GetLlvmTypeOf(source.WithoutConvention(), ctx);
   const auto target_llvm_type = GetLlvmTypeOf(target.WithoutConvention(), ctx);
-  if (source_llvm_type == nullptr or target_llvm_type == nullptr) { return {nullptr, nullptr}; }
+  if (source_llvm_type == nullptr or target_llvm_type == nullptr) { Ice("variant has no llvm type while narrowing"); }
 
   // Where each of the target's members sits in the source. Any
   // member the source lacks means this is not a sub-variant.

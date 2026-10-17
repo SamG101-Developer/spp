@@ -29,6 +29,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import genex;
 
 SPP_MOD_BEGIN
@@ -50,8 +51,7 @@ auto GenericArgumentAst::FromSymbol(
   // A binding, as the type it is bound to: its scope's type, else the value recorded for it. Only a binding is an
   // argument ("Scope::GetGns" skips the rest).
   auto const *const linked = sym.LinkedSymbol();
-  RaiseIf<SppInternalCompilerError>(
-    linked == &sym and sym.BoundTypeVal == nullptr, {}, ERR_ARGS(*sym.Name, "Generic argument from an unbound symbol"));
+  if (linked == &sym and sym.BoundTypeVal == nullptr) { Ice(*sym.Name, "Generic argument from an unbound symbol"); }
   auto value = linked != &sym
     ? linked->FqName()->WithConvention(ConventionAstOf(sym.Convention))
     : AstCloneShared(sym.BoundTypeVal);
@@ -63,7 +63,7 @@ auto GenericArgumentAst::FromSymbol(
   IMPORT_UTILS;
   // "FromSymbol" for a comp binding, as the value it is bound to.
   auto const *const bound = sym.BoundCompVal();
-  RaiseIf<SppInternalCompilerError>(bound == nullptr, {}, ERR_ARGS(*sym.Name, "Generic argument from an unbound symbol"));
+  if (bound == nullptr) { Ice(*sym.Name, "Generic argument from an unbound symbol"); }
   Shared<ExpressionAst> value = AstClone(bound);
   if (const auto value_as_type = value->To<TypeIdentifierAst>(); value_as_type != nullptr) {
     value = IdentifierAst::FromType(*value_as_type);

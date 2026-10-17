@@ -101,7 +101,6 @@ use(spp::analyse::errors, struct SppMissingMainFunctionError);
 use(spp::analyse::errors, struct SppInvalidVoidValueError);
 use(spp::analyse::errors, struct SppBorrowLifetimeIncreaseError);
 use(spp::analyse::errors, struct SppInvalidCompTimeOperationError);
-use(spp::analyse::errors, struct SppInternalCompilerError);
 use(spp::analyse::errors, struct SppGenericConstraintError);
 use(spp::analyse::errors, struct SppAnnotationTargetNotAnAnnotationError);
 use(spp::analyse::errors, struct SppAnnotationTargetNotACmpFunctionError);
@@ -619,10 +618,6 @@ SPP_EXP_CLS struct spp::analyse::errors::SppBorrowLifetimeIncreaseError final : 
 SPP_EXP_CLS struct spp::analyse::errors::SppInvalidCompTimeOperationError final : SemanticError {
   // Todo: Check other comptime error: merge?
   explicit SppInvalidCompTimeOperationError(Ast const &ast);
-};
-
-SPP_EXP_CLS struct spp::analyse::errors::SppInternalCompilerError final : SemanticError {
-  explicit SppInternalCompilerError(Ast const &ast, StrView message);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericConstraintError final : SemanticError {

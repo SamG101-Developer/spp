@@ -14,6 +14,7 @@ import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
+import spp.utils.ice;
 import genex;
 
 namespace spp::analyse::utils::visibility_utils {
@@ -29,9 +30,8 @@ namespace spp::analyse::utils::visibility_utils {
         case V::kPackage: return "package";
         case V::kProtected: return "protected";
         case V::kPrivate: return "private";
-        default: std::unreachable();
+        default: Ice(std::format("unhandled visibility: {}", static_cast<int>(vis)));
       }
-      std::unreachable();
     }
 
     /// [CHECKED]

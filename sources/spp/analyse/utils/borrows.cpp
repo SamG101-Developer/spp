@@ -118,8 +118,8 @@ auto spp::analyse::utils::borrows::CheckAgainstLoans(
 auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
   FunctionCallArgumentAst const &arg, VariableSymbol const *const sym, memory_state::LoanSet &call_loans,
   ScopeManager &sm, meta::CompilerMetaData *const meta) -> void {
-  // Failsafe for symbolic borrows, which are already handled;
-  // this handles unnamed borrow creators, like vec[mut 5] etc.
+  // A borrow of a named symbol is checked with the symbol; this
+  // handles unnamed borrow creators, like vec[mut 5] etc.
   if (sym != nullptr) { return; }
 
   // Get the convention from the inference. For owned symbols,

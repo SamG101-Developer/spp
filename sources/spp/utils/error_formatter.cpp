@@ -4,6 +4,7 @@ module;
 module spp.utils.error_formatter;
 import spp.asts.ast;
 import spp.lex.tokens;
+import spp.utils.ice;
 import colex;
 import genex;
 import std;
@@ -186,11 +187,14 @@ auto spp::utils::errors::ErrorFormatter::_LocateRawPos(
   -> _RawLocation {
   using lex::RawTokenType;
 
-  // Failsafe on ast sizes, which needs looking into - should
-  // never actually hit this. When we do fuzzing, convert this
-  // into an error and check it never throws.
+  // A span of over 1000 tokens (a whole function or class) is
+  // quoted by its first token, so the report stays readable. A
+  // position past this file's tokens is an ast from another file
+  // given to this file's formatter, which is a compiler bug.
   ast_size = ast_size > 1000 ? 1 : ast_size;
-  ast_start_pos = ast_start_pos > _Tokens.size() ? _Tokens.size() - 1 : ast_start_pos;
+  if (ast_start_pos > _Tokens.size()) {
+    Ice(std::format("an ast at token {} quoted from a file of {} tokens", ast_start_pos, _Tokens.size()));
+  }
 
   // Synthetic/generated ASTs have no real source position
   // (pos == 0 is the lexer's prepended newline sentinel),

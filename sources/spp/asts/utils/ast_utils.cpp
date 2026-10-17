@@ -23,6 +23,7 @@ import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
@@ -43,7 +44,7 @@ auto spp::asts::AstName(Ast *ast) -> Shared<TypeAst> {
   if (auto name = AstNameOrNull(ast); name != nullptr) {
     return name;
   }
-  throw std::runtime_error("ast_name: Unsupported AST type " + Str(typeid(*ast).name()));
+  Ice(*ast, "AstName: this kind of ast has no name");
 }
 
 auto spp::asts::AstBody(
@@ -69,7 +70,7 @@ auto spp::asts::AstBody(
   // (sup scopes are constraints).
   if (ast == nullptr) { return {}; }
 
-  throw std::runtime_error("ast_body: Unsupported AST type");
+  Ice(*ast, "AstBody: this kind of ast has no body");
 }
 
 auto spp::asts::IsRuntimeMemberAccess(

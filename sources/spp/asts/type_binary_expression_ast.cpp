@@ -7,6 +7,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 
 SPP_MOD_BEGIN
 TypeBinaryExpressionAst::TypeBinaryExpressionAst(
@@ -59,9 +60,9 @@ auto TypeBinaryExpressionAst::Convert() -> Unique<TypeAst> {
     return AstClone(type);
   }
 
-  // todo: unsupported feature error for intersection ("and") types.
-
-  std::unreachable();
+  // The parser makes a binary type from "or" alone: an "and" type is
+  // a syntax error ("ParseBinaryTypeExpression").
+  Ice(*TokOp, "a binary type from an operator other than \"or\"");
 }
 
 SPP_MOD_END

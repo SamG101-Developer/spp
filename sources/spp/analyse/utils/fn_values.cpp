@@ -74,8 +74,7 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
     return {proto->Name, block};
   }
 
-  // Failsafe against no matches (doubt this will ever
-  // be reached even, but c++ type safety).
+  // No overload block: a closure's mock, which has no name.
   return {nullptr, nullptr};
 }
 

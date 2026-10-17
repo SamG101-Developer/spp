@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.lsp.resolution_index;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
@@ -632,7 +633,7 @@ auto spp::lsp::resolution_index::RecordExpression(
   // the inference gets deferred.
   auto type = Shared<TypeAst>(nullptr);
   try { type = infer(); }
-  catch (...) { return; }
+  catch (analyse::errors::SemanticError const &) { return; }
   if (type == nullptr) { return; }
 
   // What the expression produced is what a "." on it reaches

@@ -17,6 +17,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
+import spp.utils.ice;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN

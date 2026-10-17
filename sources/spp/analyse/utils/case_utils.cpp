@@ -217,7 +217,8 @@ namespace spp::analyse::utils::case_utils {
     /// field refined in turn.
     auto Refine(
       TypeRef const &type, Scope const &type_scope, Column const &col) -> Pat {
-      // Failsafe for non-symbol types, return an opaque pattern.
+      // A destructure type that does not resolve (a user error its
+      // own analysis reports) is a pattern coverage gives up on.
       if (type.Symbol == nullptr or col.Ref.Symbol == nullptr) { return OpaquePat(); }
 
       // If the two types are directly equal, ie Str vs Str, then
@@ -242,8 +243,9 @@ namespace spp::analyse::utils::case_utils {
         // skip them.
         if (member.Template() != type.Template()) { continue; }
 
-        // Failsafe to ensure that there are a matching number of
-        // fields. This will go when we migrate to ICE.
+        // One template can still give two arities (a tuple, or a
+        // variadic member against a pattern type of another), which
+        // coverage cannot line up, so it gives up on the pattern.
         const auto type_parts = type_members::GetAllParts(type, type_scope);
         const auto member_cols = FieldsOf(col, m);
         if (type_parts.size() != member_cols.size()) { return OpaquePat(); }
@@ -303,8 +305,9 @@ namespace spp::analyse::utils::case_utils {
     /// and a ".." as however many fields it stands for.
     auto PositionalPat(
       Vec<Unique<CasePatternVariantAst>> const &elems, Column const &col, Scope const &scope) -> Pat {
-      // Failsafe, should be caught earlier. Non comptime indexable
-      // types can not support ()/[] destructuring.
+      // A ()/[] destructure of a column that is not comp-time
+      // indexable is a user error the destructure's own analysis
+      // reports; coverage gives up on it.
       if (col.Ref.Symbol == nullptr or not type_predicates::IsTypeCompTimeIndexable(col.Ref, *col.Where)) {
         return OpaquePat();
       }

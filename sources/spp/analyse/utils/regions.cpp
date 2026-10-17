@@ -19,6 +19,7 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.utils.ast_utils;
+import spp.utils.ice;
 import genex;
 import std;
 
@@ -186,7 +187,7 @@ auto spp::analyse::utils::regions::FirstUnaccountedPart(
   VariableSymbol const &sym, Place const &region,
   ScopeManager const &sm) -> Str {
   // Nothing to walk without a type.
-  if (sym.Type == nullptr) { return Str(); }
+  if (sym.Type == nullptr) { Ice(*sym.Name, *sm.CurrentScope, "destructured variable has no type"); }
 
   // Walk the whole region, so that "a.b.c" lands on the type
   // of "c" and the scope that type resolves in.

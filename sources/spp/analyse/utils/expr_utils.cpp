@@ -19,6 +19,7 @@ import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
+import spp.utils.ice;
 import genex;
 import std;
 
@@ -82,7 +83,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
     meta->IgnoreMissingElseBranchForInference = true;
     return expr->InferType(&tm, meta);
   }();
-  if (type == nullptr) { return; }
+  if (type == nullptr) { Ice(member, *scope, "discarded expression has no inferred type"); }
 
   const auto type_name = type->ToString();
   if (IsTypeVoid(TypeRef::ForKindCheck(*type, *scope), *scope) or type->IsNeverType()) { return; }

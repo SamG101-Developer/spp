@@ -26,17 +26,12 @@
   #define SPP_ATTR_COLD [[gnu::cold]]
 #endif
 
-#if SPP_DEBUG
-#define SPP_ASSERT(x)                                                                                   \
-  do {                                                                                                  \
-    if (!(x)) {                                                                                         \
-      std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
-      std::abort();                                                                                     \
-    }                                                                                                   \
+// An invariant of the compiler's own state, checked in every build: one that does not hold is an internal compiler
+// error ("spp::Ice", "spp.utils.ice"), reported at the assertion with the call stack.
+#define SPP_ASSERT(x)                                     \
+  do {                                                    \
+    if (not(x)) { ::spp::Ice("Assertion failed: " #x); }  \
   } while (0)
-#else
-#define SPP_ASSERT(x) do {} while (0)
-#endif
 
 #if SPP_DEBUG
 #define SPP_LOG(x)                                                                                        \

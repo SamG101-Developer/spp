@@ -28,6 +28,7 @@ import spp.asts.identifier_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
+import spp.utils.ice;
 import genex;
 
 namespace spp::analyse::utils::drop_utils {
@@ -258,7 +259,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Nothing taken out of it is nothing to put back.
   if (memory_state::StateOf(*sm.CurrentScope, sym).PartialMoves.empty()) { return; }
-  if (sym.Type == nullptr) { return; }
+  if (sym.Type == nullptr) { Ice(exit_point, *sm.CurrentScope, "partly moved variable has no type"); }
 
   // A borrow does not own what it points at, so the value
   // behind it is not this scope's to destroy.

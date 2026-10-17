@@ -30,6 +30,7 @@ import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import cli11;
 import genex;
 import tomlpp;
@@ -97,14 +98,17 @@ namespace spp::cli {
         std::cerr << e.what() << "\n";
         return false;
       }
+      catch (InternalCompilerError const &e) {
+        std::cerr << e.what() << "\n";
+        return false;
+      }
 #endif
     }
 
-    /// Force a memory limit on the process. This was originally
-    /// required for when the early STD was extremely bugged,
-    /// causing allocations that blew up WSL by overwriting
-    /// critical process memory space (not sure how). Not required
-    /// anymore I don't think. Good failsafe?
+    /// Cap the memory of a command this runs (the program "spp
+    /// run" starts), from "SPP_MEMORY_LIMIT_KB" (0 for none): a
+    /// runaway allocation in the compiled program then stops it,
+    /// rather than exhausting the machine.
     auto WithMemoryLimit(Str const &command) -> Str {
 #if SPP_PLATFORM_WINDOWS
       return command;

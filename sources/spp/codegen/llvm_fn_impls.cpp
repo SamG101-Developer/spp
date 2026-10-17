@@ -37,6 +37,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
+import spp.utils.ice;
 import spp.utils.types;
 import spp.utils.uid;
 import llvm;
@@ -164,7 +165,7 @@ namespace {
         break;
       case llvm::Intrinsic::umul_with_overflow: op = "umul";
         break;
-      default: std::unreachable();
+      default: spp::Ice("not a checked arithmetic intrinsic");
     }
 
     const auto name = std::format("llvm.{}.with.overflow.i{}", op, ty->getIntegerBitWidth());
@@ -215,7 +216,7 @@ namespace {
         break;
       case BinOp::UMulChecked: intrinsic = llvm::Intrinsic::umul_with_overflow;
         break;
-      default: std::unreachable();
+      default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
     }
 
     const auto pair = ctx->Builder.CreateCall(
@@ -289,7 +290,7 @@ namespace {
         break;
       case BinOp::UMulChecked: code = 0x15;
         break;
-      default: std::unreachable();
+      default: spp::Ice(std::format("not a checked arithmetic BinOp: {}", static_cast<int>(op)));
     }
 
     auto *const fn = ctx->Builder.GetInsertBlock()->getParent();
@@ -417,10 +418,8 @@ auto spp::codegen::fn_impls::ApplyBinOp(
     case BinOp::USubChecked:
     case BinOp::SMulChecked:
     case BinOp::UMulChecked: return EmitCheckedArith(ctx, op, a, b);
-    default: throw std::runtime_error(std::format("Unsupported BinOp type: {}", name));
+    default: Ice(std::format("Unsupported BinOp type: {}", name));
   }
-  SPP_ASSERT(false);
-  return nullptr;
 }
 
 auto spp::codegen::fn_impls::ApplyUnOp(
@@ -430,10 +429,8 @@ auto spp::codegen::fn_impls::ApplyUnOp(
     case UnOp::Neg: return ctx->Builder.CreateNeg(a, name);
     case UnOp::Not: return ctx->Builder.CreateNot(a, name);
     case UnOp::FNeg: return ctx->Builder.CreateFNeg(a, name);
-    default: throw std::runtime_error(std::format("Unsupported UnOp type: {}", name));
+    default: Ice(std::format("Unsupported UnOp type: {}", name));
   }
-  SPP_ASSERT(false);
-  return nullptr;
 }
 
 auto spp::codegen::fn_impls::ApplyConvOp(
@@ -450,10 +447,8 @@ auto spp::codegen::fn_impls::ApplyConvOp(
     case ConvOp::BitCast: return ctx->Builder.CreateBitCast(a, dest_ty, name);
     case ConvOp::FPToSI: return ctx->Builder.CreateFPToSI(a, dest_ty, name);
     case ConvOp::FPToUI: return ctx->Builder.CreateFPToUI(a, dest_ty, name);
-    default: throw std::runtime_error(std::format("Unsupported ConvOp type: {}", name));
+    default: Ice(std::format("Unsupported ConvOp type: {}", name));
   }
-  SPP_ASSERT(false);
-  return nullptr;
 }
 
 auto spp::codegen::fn_impls::SimpleIntrinsicBinop(
@@ -590,7 +585,7 @@ namespace {
       case ConvOp::FPToUI: return src->isFloatingPointTy() and dst->isIntegerTy();
       case ConvOp::BitCast: return src->isPtrOrPtrVectorTy() == dst->isPtrOrPtrVectorTy()
           and (src->isPtrOrPtrVectorTy() or src->getPrimitiveSizeInBits() == dst->getPrimitiveSizeInBits());
-      default: std::unreachable();
+      default: spp::Ice(std::format("unhandled ConvOp: {}", static_cast<int>(op)));
     }
   }
 }
@@ -653,10 +648,8 @@ auto spp::codegen::fn_impls::ApplyAtomicRmwOp(
     case AtomicRmwOp::FSub: return llvm::AtomicRMWInst::FSub;
     case AtomicRmwOp::FMax: return llvm::AtomicRMWInst::FMax;
     case AtomicRmwOp::FMin: return llvm::AtomicRMWInst::FMin;
-    default: throw std::runtime_error(std::format("Unsupported AtomicRmwOp type: {}", static_cast<int>(op)));
+    default: Ice(std::format("Unsupported AtomicRmwOp type: {}", static_cast<int>(op)));
   }
-  SPP_ASSERT(false);
-  return llvm::AtomicRMWInst::Xchg;
 }
 
 /**
@@ -774,7 +767,7 @@ auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCallOverflow(
       break;
     case llvm::Intrinsic::umul_with_overflow: op = BinOp::UMulChecked;
       break;
-    default: std::unreachable();
+    default: Ice("not a checked arithmetic intrinsic");
   }
 
   // "ret_ty" is the named struct every "(T, Bool)" tuple shares, so the two halves are packed into one of those

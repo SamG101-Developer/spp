@@ -27,6 +27,7 @@ import spp.asts.type_postfix_expression_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.ptr;
 import genex;
@@ -48,7 +49,7 @@ namespace spp::analyse::utils::type_resolution {
     auto ReadTypeDefault(
       GenericParameterAst const &param, GenericSubst bindings,
       Scope const &written_in, Scope const &read_in) -> Shared<TypeAst> {
-      if (param.TypeDefault == nullptr) { return nullptr; }
+      if (param.TypeDefault == nullptr) { Ice(param, "optional type parameter has no default"); }
       return ReadTypeOrNull(*param.TypeDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
     }
   }
@@ -122,7 +123,7 @@ auto spp::analyse::utils::type_resolution::ReadType(
 auto spp::analyse::utils::type_resolution::ReadCompDefault(
   GenericParameterAst const &param, GenericSubst bindings,
   Scope const &written_in, Scope const &read_in) -> Shared<ExpressionAst> {
-  if (param.WrittenCompDefault == nullptr) { return nullptr; }
+  if (param.WrittenCompDefault == nullptr) { Ice(param, "optional comp parameter has no written default"); }
   return ReadComp(*param.WrittenCompDefault, ExprSubst::Across(written_in, std::move(bindings), read_in));
 }
 

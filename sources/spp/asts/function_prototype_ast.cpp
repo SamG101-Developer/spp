@@ -64,6 +64,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import genex;
 
 namespace {
@@ -146,8 +147,7 @@ auto FunctionPrototypeAst::PosEnd() const -> std::size_t {
 
 auto FunctionPrototypeAst::Clone() const -> Unique<Ast> {
   // FunctionPrototypeAst is abstract, so cloning it is not allowed.
-  throw std::runtime_error(
-    "Use SubroutinePrototypeAst or CoroutinePrototypeAst instead");
+  Ice(*this, "FunctionPrototypeAst is abstract: clone the SubroutinePrototypeAst or CoroutinePrototypeAst");
 }
 
 auto FunctionPrototypeAst::ToString() const -> Str {
@@ -537,12 +537,10 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
     const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
     const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
     const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
-    RaiseIf<SppInternalCompilerError>(
-      builtin == codegen::builtins::kBuiltinFuncs.end(), {sm->CurrentScope}, ERR_ARGS(*Name, err1));
+    if (builtin == codegen::builtins::kBuiltinFuncs.end()) { Ice(*Name, *sm->CurrentScope, err1); }
 
     const auto err2 = "compiler_builtin function '" + name + "' missing builtin comptime implementation";
-    RaiseIf<SppInternalCompilerError>(
-      TokCmp != nullptr and builtin->second.CompTimeImpl == nullptr, {sm->CurrentScope}, ERR_ARGS(*TokCmp, err2));
+    if (TokCmp != nullptr and builtin->second.CompTimeImpl == nullptr) { Ice(*TokCmp, *sm->CurrentScope, err2); }
 
     auto lowered_impl = FunctionImplementationLoweredAst::NewEmpty();
     lowered_impl->SetBuiltin(&builtin->second);
@@ -806,8 +804,7 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   // 6), and the instantiation's implementation is a clone of it.
   auto const *const lowered = sub_proto.Impl->To<FunctionImplementationLoweredAst>();
   const auto err = Str("compiler_builtin instantiation was not lowered");
-  RaiseIf<SppInternalCompilerError>(
-    lowered == nullptr or lowered->Builtin() == nullptr, {tm.CurrentScope}, ERR_ARGS(*sub_proto.Name, err));
+  if (lowered == nullptr or lowered->Builtin() == nullptr) { Ice(*sub_proto.Name, *tm.CurrentScope, err); }
   if (lowered->Builtin()->DropsGn.empty()) { return; }
 
   // The generic is what the instantiation bound, and the scope
@@ -988,7 +985,7 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
     return {FunRefType(PosStart(), TupleType(PosStart(), std::move(param_types)), return_type), Str("call_ref")};
   }
 
-  std::unreachable();
+  Ice(*FnParamGroup->GetSelfParam(), "unhandled \"self\" convention");
 }
 
 auto FunctionPrototypeAst::_IsPureGn(

@@ -24,6 +24,7 @@ import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
+import spp.utils.ice;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN

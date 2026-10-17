@@ -33,6 +33,7 @@ import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.utils.algorithms;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;

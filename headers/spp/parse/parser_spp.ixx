@@ -550,6 +550,12 @@ private:
   /// the parsing.
   auto _StoreError(std::size_t pos, Str &&err_str) const -> bool;
 
+  /// Store an error that says more than which tokens were
+  /// expected (a construct the language does not have): kept
+  /// unless an error lies further on, and over an expected-token
+  /// one at the same position.
+  auto _StoreSpecificError(std::size_t pos, Str &&err_str) const -> void;
+
   /// Check if a line feed sits between the token just parsed
   /// and the next one. Tokens usually skip line feeds freely,
   /// so the postfix operators that open with a bracket use

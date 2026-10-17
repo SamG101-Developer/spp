@@ -30,6 +30,7 @@ import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import genex;
 import llvm;
 

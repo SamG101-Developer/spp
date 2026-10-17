@@ -25,6 +25,7 @@ import spp.compiler.compiler_boot;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
+import spp.utils.ice;
 import spp.utils.progress;
 import genex;
 import std;
@@ -195,7 +196,7 @@ auto spp::compiler::Compiler::CollectCompTimeConstants() -> void {
   // A "cmp" outside the main module belongs to a dependency,
   // and modules are not held in any particular order, so the
   // main module is found by its path rather than by position.
-  if (_ScopeManager == nullptr) { return; }
+  if (_ScopeManager == nullptr) { Ice("comp-time constants collected with no scope manager"); }
 
   const auto main_path = _Modules->RootPath() / "src" / "main.spp";
   const auto modules = _Modules->GetModules();

@@ -28,6 +28,8 @@
 #include <spp/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
 
+import spp.utils.ice;
+
 namespace {
   /** What a coroutine intrinsic's name starts with; see @c PendingCoroUses . */
   constexpr auto kCoroIntrinsicPrefix = llvm::StringLiteral("llvm.coro.");
@@ -544,24 +546,15 @@ auto spp::codegen::EmitCEntryPoint(
   void *llvm_module,
   char const *spp_main_name,
   const bool split_stacks)
-  -> bool {
+  -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
 
-  // Failsafe "main" check for missing "main", but S++ semantic
-  // analysis should have picked this up earlier.
+  // Analysis has already checked "main" exists and is the only
+  // one, so either failing here is a compiler bug.
   const auto spp_main = llvm_mod.getFunction(spp_main_name);
-  if (spp_main == nullptr) {
-    llvm::errs() << "No entry point named " << spp_main_name << " in the module\n";
-    return false;
-  }
-
-  // Failsafe "main" check for duplicate "main", but S++ semantic
-  // analysis should have picked this up earlier.
-  if (llvm_mod.getFunction("main") != nullptr) {
-    llvm::errs() << "The module already declares a C entry point\n";
-    return false;
-  }
+  if (spp_main == nullptr) { spp::Ice(std::string("no entry point named ") + spp_main_name + " in the module"); }
+  if (llvm_mod.getFunction("main") != nullptr) { spp::Ice("the module already declares a C entry point"); }
 
   const auto i32_ty = llvm::Type::getInt32Ty(ctx);
   const auto ptr_ty = llvm::PointerType::get(ctx, 0);
@@ -576,11 +569,9 @@ auto spp::codegen::EmitCEntryPoint(
 
   auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(ctx, "entry", main_fn));
 
-  // Failsafe "main" check for 0-arg "main", but S++ semantic
-  // analysis should have picked this up earlier.
+  // Analysis has already checked "main" takes no arguments.
   if (spp_main->arg_size() != 0) {
-    llvm::errs() << "The entry point " << spp_main_name << " takes arguments; it must take none\n";
-    return false;
+    spp::Ice(std::string("the entry point ") + spp_main_name + " takes arguments; it must take none");
   }
 
   // Todo: This might break performance.
@@ -595,7 +586,6 @@ auto spp::codegen::EmitCEntryPoint(
   // the sppc::exit class of functions can be used to actually
   // exit with a non-0 code.
   builder.CreateRet(llvm::ConstantInt::get(i32_ty, 0));
-  return true;
 }
 
 auto spp::codegen::ApplyStackProtector(

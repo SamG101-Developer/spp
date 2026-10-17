@@ -6,6 +6,7 @@ module spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
+import spp.utils.ice;
 import std;
 
 SPP_MOD_BEGIN
@@ -104,7 +105,7 @@ auto ScopeManager::SkipSubtree(
   Scope *scope) -> bool {
   // A member with no scope of its own consumed none of the
   // walk, so there is nothing to skip.
-  if (scope == nullptr) { return true; }
+  if (scope == nullptr) { Ice("skipping the subtree of a null scope"); }
 
   // Advance from wherever in the subtree the walk has got to,
   // onto its final descendant, and stand on the scope skipped.

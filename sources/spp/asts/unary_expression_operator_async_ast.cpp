@@ -45,6 +45,7 @@ import spp.codegen.llvm_type;
 import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
+import spp.utils.ice;
 
 SPP_MOD_BEGIN
 UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
@@ -246,12 +247,9 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 
 auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Failsafe - Todo: is this ever hittable? Not sure if it is
-  // needed
-  if (_TransformedFn == nullptr) {
-    meta->UnaryExpressionRhs->Stage8_CheckMemory(sm, meta);
-    return;
-  }
+  // Stage 7 always builds the transformation, or raises; a
+  // member that raised is not checked again.
+  if (_TransformedFn == nullptr) { Ice(*this, *sm->CurrentScope, "async expression checked before it was lowered"); }
 
   // Map the analysis to the inner transformation ast - the mapped
   // closure.

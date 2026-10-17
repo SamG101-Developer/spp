@@ -1,6 +1,7 @@
 module spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
+import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.types;
 import genex;
@@ -78,7 +79,7 @@ auto spp::analyse::scopes::FoldCompValues(
   // type ("U32"), so a shift is typed by the value shifted alone.
   const auto l = lhs.AsInt();
   const auto r = rhs.AsInt();
-  if (l == nullptr or r == nullptr) { return Nullopt; }
+  if (l == nullptr or r == nullptr) { Ice("folding comp values that are neither bool, float nor integer"); }
   auto const &a = *l;
   auto const &b = *r;
   auto const &l_type = lhs.Text;

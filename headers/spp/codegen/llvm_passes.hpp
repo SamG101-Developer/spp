@@ -116,8 +116,7 @@ namespace spp::codegen {
   /// "ApplySafeStack" is asked to do later: a program whose
   /// functions read an unsafe stack pointer that was never set
   /// up writes its first split frame through a null one.
-  /// Answers whether the entry point was added.
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> bool;
+  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> void;
 
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,

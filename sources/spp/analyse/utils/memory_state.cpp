@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.regions;
 import spp.asts.ast;
+import spp.utils.ice;
 import spp.utils.ptr;
 import genex;
 import std;
@@ -106,9 +107,7 @@ auto MemoryState::PartMovedBy(
   regions::PlaceAt const &part) -> void {
   // A partial move is of an attribute chain rooted at a symbol,
   // which always has a place: one without is a bug upstream.
-  RaiseIf<errors::SppInternalCompilerError>(
-    not part.Of.has_value(), {},
-    ERR_ARGS(*part.Site, "a partial move with no place"));
+  if (not part.Of.has_value()) { Ice(*part.Site, "a partial move with no place"); }
 
   // Taken on every path from here, so whatever the paths
   // before took inside it no longer matters.
@@ -315,7 +314,8 @@ auto spp::analyse::utils::memory_state::MakeLoan(
 auto spp::analyse::utils::memory_state::FlowOf(
   Scope const &scope) -> FlowState* {
   // Move up through a scopes ancestors, until a flow is
-  // found, starting in the given scope. Nullptr failsafe.
+  // found, starting in the given scope. Outside any body there
+  // is none.
   for (auto at = &scope; at != nullptr; at = at->Parent) {
     if (at->Flow != nullptr) { return at->Flow.get(); }
   }

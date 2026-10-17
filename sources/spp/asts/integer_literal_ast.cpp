@@ -15,6 +15,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.strings;
 import spp.utils.types;
@@ -195,9 +196,7 @@ auto IntegerLiteralAst::_PrecompiledType(
   else if (Type == "u256") { spp_type = U256.get(); }
   else if (Type == "uz") { spp_type = USIZE.get(); }
   else {
-    Raise<SppInternalCompilerError>(
-      {sm->CurrentScope},
-      ERR_ARGS(*this, "invalid integer literal type"));
+    Ice(*this, *sm->CurrentScope, "invalid integer literal type");
   }
 
   return *spp_type;
