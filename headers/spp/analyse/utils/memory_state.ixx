@@ -190,15 +190,17 @@ SPP_EXP_CLS struct spp::analyse::utils::memory_state::ScopeSnapshot {
   LoanSet Loans;
 };
 
-/// A loop being checked: the "skip"s that continue it (each a way
-/// into another iteration besides the body's end), what a plain
-/// "skip" left moved (those paths begin the next iteration too),
-/// and the state at each "exit" that leaves it ("exit exit" leaves
-/// the loop two back), which the loop joins into the state after
-/// it.
+/// A loop being checked, as one pass over its body leaves it: the
+/// state at each "skip" that continues it ("exit skip" continues
+/// the loop one back), a way into the next iteration beside the
+/// body's end that the loop joins into the state that iteration
+/// begins with; and the state at each "exit" that leaves it ("exit
+/// exit" leaves the loop two back), which the loop joins into the
+/// state after it. Each is taken with the loans of the scopes it
+/// leaves released. "Skips" counts the "skip"s seen in every pass.
 SPP_EXP_CLS struct spp::analyse::utils::memory_state::LoopFrame {
   std::size_t Skips = 0;
-  Vec<Pair<VariableSymbol*, Ast const*>> SkipMoves;
+  Vec<Pair<Ast const*, ScopeSnapshot>> SkipStates;
   Vec<Pair<Ast const*, ScopeSnapshot>> ExitStates;
 };
 

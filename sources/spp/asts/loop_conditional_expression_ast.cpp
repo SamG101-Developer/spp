@@ -138,12 +138,13 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
 
   mem_utils::ValidateSymbolMemory(*Cond, *TokLoop, *sm, meta);
 
-  // The state the loop was entered with, for the path that
-  // never runs the body.
+  // What is visible as the loop is entered, and what the body's
+  // flow has touched by then: the symbols a loop's head is over.
   const auto pre_loop_state = memory_state::SnapshotSymbols(sm->CurrentScope->GetAllVarSymbols(), *sm->CurrentScope);
 
-  // What lives outside the loop: the symbols visible at it, and every one the body's flow had touched by then (hidden
-  // by a shadowing "let" or not). These are the states joined after it.
+  // What lives outside the loop: the symbols visible at it, and
+  // every one the body's flow had touched by then (hidden by a
+  // shadowing "let" or not). These are the states joined after it.
   auto outer_syms = Vec<VariableSymbol*>();
   auto seen = Set<VariableSymbol const*>();
   for (auto const &[sym, _] : pre_loop_state.Symbols) {
@@ -153,51 +154,124 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
     if (seen.insert(sym).second) { outer_syms.emplace_back(const_cast<VariableSymbol*>(sym)); }
   }
 
-  // This loop's frame in the body's flow, by position: a loop nested in the body pushes its own after it.
+  // This loop's frame in the body's flow, by position: a loop
+  // nested in the body pushes its own after it.
   auto &flow = *memory_state::FlowOf(*sm->CurrentScope);
   const auto frame_at = flow.Loops.size();
   flow.Loops.emplace_back();
 
   // One pass over the condition and body: one iteration, from the
-  // state the symbols are in now.
+  // state the symbols are in now. The "skip"s and "exit"s it meets
+  // are its own: a later pass begins from more than this one did,
+  // so its edges stand for this one's.
   const auto run_iteration = [&](ScopeManager &walk) {
+    flow.Loops[frame_at].SkipStates.clear();
+    flow.Loops[frame_at].ExitStates.clear();
     Cond->Stage8_CheckMemory(&walk, meta);
     Body->Stage8_CheckMemory(&walk, meta);
-
-    // What a "skip" left moved is how the next iteration can begin
-    // too, even if the body's end puts it back. Only for what lives
-    // outside the loop: a "let" in the body is declared afresh.
-    for (auto const &[sym, skip] : flow.Loops[frame_at].SkipMoves) {
-      auto &state = memory_state::StateOf(*sm->CurrentScope, *sym);
-      if (seen.contains(sym) and state.AstMoved == nullptr) {
-        state.MaybeInit = memory_state::PathsDisagree{.First = const_cast<Ast*>(skip), .Other = this};
-      }
-    }
   };
+
+  // The state the loop was entered with, for each outer symbol, and
+  // the loans held then: where the first iteration begins, and the
+  // condition can end the loop before any.
+  using HeadStates = Vec<Pair<VariableSymbol*, MemoryState>>;
+  auto entry = HeadStates();
+  for (auto *const sym : outer_syms) { entry.emplace_back(sym, memory_state::StateOf(*sm->CurrentScope, *sym)); }
+  const auto entry_loans = memory_state::LoansOf(*sm->CurrentScope);
   run_iteration(*sm);
 
-  // Each next iteration begins with what the one before left behind,
-  // until that stops changing: then every iteration has been seen. A
-  // body that never reaches its end (it always leaves by "exit" or
-  // "ret", or is "!") has no next iteration unless a "skip" starts
-  // one. The bound only guards against a state that never settles;
-  // each pass has checked another iteration by then.
+  // Every later iteration begins from one of the ways back round, as
+  // a pass over the body leaves them: the body's end (unless it never
+  // finishes: it always leaves by "exit" or "ret", or is "!") and each
+  // "skip". The second iteration's head ("back") is what the first pass
+  // left on them, joined; each later pass joins in what it leaves, so
+  // the head only grows more uncertain, and each pass checks the body
+  // against any number of iterations before it. It settles when a pass
+  // adds nothing: a pass that does not settle makes some outer symbol's
+  // state or the loans more uncertain, and each can become so only a
+  // few times, so the bound is a compiler bug's, not a program's.
+  auto back = Opt<HeadStates>();
+  auto back_loans = memory_state::LoanSet();
   const auto body_diverges = expr_utils::Diverges(*Body, sm, meta);
   if (not body_diverges or flow.Loops[frame_at].Skips != 0) {
-    constexpr auto max_iterations = 8;
-    for (auto iteration = 1; iteration < max_iterations; ++iteration) {
-      const auto entry = memory_state::SnapshotSymbols(outer_syms, *sm->CurrentScope);
+    const auto max_passes = 8 * (outer_syms.size() + 1);
+    for (auto pass = 1uz;; ++pass) {
+      if (pass > max_passes) {
+        Ice(*this, *sm->CurrentScope, std::format("loop memory state still changing after {} passes", max_passes));
+      }
+
+      // The ways back round this pass left: "nullptr" is the state now,
+      // the body's end.
+      auto edges = Vec<Pair<Ast*, ScopeSnapshot const*>>();
+      if (not body_diverges) { edges.emplace_back(Body.get(), nullptr); }
+      for (auto const &[skip, skip_state] : flow.Loops[frame_at].SkipStates) {
+        edges.emplace_back(const_cast<Ast*>(skip), &skip_state);
+      }
+      if (edges.empty()) { break; }
+
+      // Joined into the head so far (none, after the first pass).
+      auto next = back.value_or(HeadStates());
+      if (not back.has_value()) {
+        for (auto *const sym : outer_syms) { next.emplace_back(sym, MemoryState()); }
+      }
+      for (auto i = 0uz; i < next.size(); ++i) {
+        auto *const sym = next[i].first;
+        const auto on = [&](Pair<Ast*, ScopeSnapshot const*> const &edge) {
+          const auto state = edge.second == nullptr
+            ? memory_state::StateOf(*sm->CurrentScope, *sym)
+            : memory_state::StateIn(*edge.second, *sym);
+          return memory_state::SettleFullyTaken(state, *sym, *sm->CurrentScope);
+        };
+        auto first = 0uz;
+        if (not back.has_value()) { next[i].second = on(edges[0]); first = 1; }
+        for (auto e = first; e < edges.size(); ++e) {
+          memory_state::Join(next[i].second, on(edges[e]), edges[0].first, edges[e].first);
+        }
+      }
+      const auto loans_on = [&](Pair<Ast*, ScopeSnapshot const*> const &edge) {
+        return edge.second == nullptr ? memory_state::LoansOf(*sm->CurrentScope) : edge.second->Loans;
+      };
+      auto next_loans = back.has_value() ? back_loans : loans_on(edges[0]);
+      for (auto e = back.has_value() ? 0uz : 1uz; e < edges.size(); ++e) {
+        memory_state::JoinLoans(next_loans, loans_on(edges[e]), edges[0].first, edges[e].first);
+      }
+
+      const auto settled = back.has_value() and memory_state::SameLoans(next_loans, back_loans) and genex::all_of(
+        genex::views::zip(*back, next), [](auto const &x) {
+          return memory_state::SameShape(get<0>(x).second, get<1>(x).second);
+        });
+      if (settled) { break; }
+
+      // Begin the next iteration from the joined head.
+      back = std::move(next);
+      back_loans = std::move(next_loans);
+      for (auto const &[sym, state] : *back) { memory_state::StateOf(*sm->CurrentScope, *sym) = state; }
+      memory_state::LoansOf(*sm->CurrentScope) = back_loans;
       auto tm = sm->NewManagerAt(body_start);
       run_iteration(tm);
-      const auto settled = genex::all_of(entry.Symbols, [sm](auto const &x) {
-        return memory_state::SameShape(x.second, memory_state::StateOf(*sm->CurrentScope, *x.first));
-      }) and memory_state::SameLoans(entry.Loans, memory_state::LoansOf(*sm->CurrentScope));
-      if (settled) { break; }
     }
   }
 
   const auto frame = std::move(flow.Loops[frame_at]);
   flow.Loops.pop_back();
+
+  // A condition other than "true" can end the loop, at its head: the
+  // state any iteration (or none) begins with, the entry joined with
+  // the settled head of the later ones. An "else" block runs from
+  // there.
+  const auto cond_bool = Cond->To<BooleanLiteralAst>();
+  const auto cond_can_end = cond_bool == nullptr or not cond_bool->IsTrue();
+  if (cond_can_end) {
+    for (auto i = 0uz; i < entry.size(); ++i) {
+      auto *const sym = entry[i].first;
+      auto state = memory_state::SettleFullyTaken(entry[i].second, *sym, *sm->CurrentScope);
+      if (back.has_value()) { memory_state::Join(state, (*back)[i].second, TokLoop.get(), Body.get()); }
+      memory_state::StateOf(*sm->CurrentScope, *sym) = state;
+    }
+    auto loans = entry_loans;
+    if (back.has_value()) { memory_state::JoinLoans(loans, back_loans, TokLoop.get(), Body.get()); }
+    memory_state::LoansOf(*sm->CurrentScope) = std::move(loans);
+  }
 
   // Check the else block if it exists.
   if (ElseBlock != nullptr) {
@@ -205,23 +279,17 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   }
 
   // The state after the loop is the merge of every path out of
-  // it, as for the branches of a "case". A condition other than
-  // "true" can end the loop: before the first iteration (the
-  // state it was entered with), or after one that reached the
-  // body's end (the state now). An "else" block is where both
-  // of those go, so its end stands for them. Every "exit" is a
-  // path out too, with the state it was reached in.
-  const auto cond_bool = Cond->To<BooleanLiteralAst>();
-  const auto cond_can_end = cond_bool == nullptr or not cond_bool->IsTrue();
-  const auto body_end_reached = not body_diverges or frame.Skips != 0;
-
+  // it, as for the branches of a "case": the head, where the
+  // condition ends it (through the "else" block, whose end then
+  // stands for it), and every "exit", with the state it was
+  // reached in.
+  //
   // Each path's state for one symbol: "nullptr" is the state it
   // is in now, which needs no restoring.
   auto paths = Vec<Pair<Ast const*, ScopeSnapshot const*>>();
-  if (cond_can_end and ElseBlock != nullptr) { paths.emplace_back(ElseBlock.get(), nullptr); }
-  if (cond_can_end and ElseBlock == nullptr) {
-    if (body_end_reached) { paths.emplace_back(Body.get(), nullptr); }
-    paths.emplace_back(TokLoop.get(), &pre_loop_state);
+  if (cond_can_end) {
+    const auto through = ElseBlock != nullptr ? static_cast<Ast const*>(ElseBlock.get()) : TokLoop.get();
+    paths.emplace_back(through, nullptr);
   }
   for (auto const &[exit_tok, state] : frame.ExitStates) { paths.emplace_back(exit_tok, &state); }
 

@@ -137,18 +137,34 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   IMPORT_UTILS;
   auto &loops = memory_state::FlowOf(*sm->CurrentScope)->Loops;
 
+  // What memory looks like on the edge to the "n"th loop out (1 is
+  // the innermost): the state here, with what the scopes inside
+  // that loop's own scope held released, as each of their ends
+  // would; the loop's own scope outlives the edge. The walk carries
+  // on past this statement, so its state is put back.
+  const auto state_leaving_to = [&](const std::size_t n) {
+    const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
+    auto loops_seen = 0uz;
+    for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
+      const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
+      if (is_loop and ++loops_seen == n) { break; }
+      for (const auto sym : scope->GetAllVarSymbols(true)) {
+        memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
+      }
+    }
+    auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
+    memory_state::RestoreSnapshot(saved);
+    return state;
+  };
+
   // A "skip" starts another iteration of the loop it continues:
-  // the innermost, or with "exit"s before it, the one after
-  // the loops they leave. A plain "skip" also records what it
-  // left moved: those paths begin the next iteration.
+  // the innermost, or with "exit"s before it, the one after the
+  // loops they leave. Its state is a way into that iteration, as
+  // the body's end is.
   if (TokSkip != nullptr and TokSeqExit.size() < loops.size()) {
     auto &continued = loops[loops.size() - 1 - TokSeqExit.size()];
     continued.Skips += 1;
-    if (TokSeqExit.empty()) {
-      for (auto const &[sym, state] : memory_state::FlowOf(*sm->CurrentScope)->States) {
-        if (state.AstMoved != nullptr) { continued.SkipMoves.emplace_back(const_cast<VariableSymbol*>(sym), this); }
-      }
-    }
+    continued.SkipStates.emplace_back(TokSkip.get(), state_leaving_to(TokSeqExit.size() + 1));
   }
 
   // Check the memory state of the expression if it is present.
@@ -163,24 +179,9 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
   // An "exit" (with no "skip") is a path out of the loop it
   // targets, and what memory looks like here is what that loop
   // leaves behind on it. "exit exit" targets the loop two back.
-  // It leaves the loop's inner scopes without reaching their
-  // ends, so what their symbols hold is released on this edge,
-  // as each end would; the loop's own scope outlives the "exit".
-  // The walk carries on past this statement, so its state is
-  // put back.
   if (TokSkip == nullptr and not TokSeqExit.empty() and TokSeqExit.size() <= loops.size()) {
-    const auto saved = memory_state::SnapshotFlow(*sm->CurrentScope);
-    auto loops_seen = 0uz;
-    for (auto scope = sm->CurrentScope; scope != nullptr; scope = scope->Parent) {
-      const auto is_loop = AstAs<LoopConditionalExpressionAst>(scope->AstNode) != nullptr;
-      if (is_loop and ++loops_seen == TokSeqExit.size()) { break; }
-      for (const auto sym : scope->GetAllVarSymbols(true)) {
-        memory_state::ReleaseLoans(memory_state::LoansOf(*scope), *sym);
-      }
-    }
-    auto state = memory_state::SnapshotFlow(*sm->CurrentScope);
-    memory_state::RestoreSnapshot(saved);
-    loops[loops.size() - TokSeqExit.size()].ExitStates.emplace_back(TokSeqExit.back().get(), std::move(state));
+    loops[loops.size() - TokSeqExit.size()].ExitStates.emplace_back(
+      TokSeqExit.back().get(), state_leaving_to(TokSeqExit.size()));
   }
 
   // Like a "ret", this leaves several scopes at once, so their
