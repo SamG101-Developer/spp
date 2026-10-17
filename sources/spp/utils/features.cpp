@@ -46,7 +46,7 @@ namespace {
    * retrieve its section, but `[a.b.c]` is invalid and therefore returns `nullptr`.
    */
   auto FindSection(
-    spp::StrView name)
+    const spp::StrView name)
     -> spp::utils::features::SectionSpec const* {
     for (auto const &section : spp::utils::features::Schema()) {
       if (section.Name == name) { return &section; }
@@ -59,7 +59,7 @@ namespace {
    * reuses the compiler's string comparison usually reserved for "unidentified symbol" within the compilation process.
    */
   auto Suggest(
-    spp::StrView name,
+    const spp::StrView name,
     spp::Vec<spp::Str> const &choices)
     -> spp::Str {
     const auto closest = spp::utils::strings::ClosestMatch(name, choices);
@@ -277,8 +277,9 @@ auto spp::utils::features::Schema()
           .Kind = ValueKind::Bool,
           .Required = false,
           .Default = true,
-          .Help = "Make every section that only startup writes read-only once startup is over, and leave the stack "
-                  "non-executable, the code its own mapping, and the program unopenable by dlopen."
+          .Help = "Make every section that only startup writes read-only once startup is over, leave the stack "
+                  "non-executable and the code its own mapping, and fail the link on a text relocation or a "
+                  "writable-and-executable segment."
         },
       },
       .FreeForm = false,
@@ -409,7 +410,7 @@ auto spp::utils::features::HelpText()
       continue;
     }
     for (auto const &k : section.Keys) {
-      out += "    " + Str(k.Name);
+      out += "    - " + Str(k.Name);
       out += k.Kind == ValueKind::Bool
         ? Str(" = ") + (k.Default ? "true" : "false") + "  (default)"
         : k.Required
