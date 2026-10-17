@@ -121,7 +121,7 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   // rewrites it.
   RaiseIf<SppInvalidDefaultValueError>(
     DefaultVal != nullptr and not DefaultVal->IsAllowedInDefault(),
-    {sm->CurrentScope}, ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
+    ERR_ARGS(*DefaultVal, "attribute", "object initializer"));
 
   // Check the type is valid before scopes are attached.
   Type = type_resolution::AnalyseWrittenType(
@@ -131,7 +131,7 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   // Ensure that the field type doesn't have a convention.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*Type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
+    ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
 }
 
 auto ClassAttributeAst::Stage7_AnalyseSemantics(
@@ -149,7 +149,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
   if (not Type->IsSelfType()) {
     RaiseIf<SppSecondClassBorrowViolationError>(
       type_predicates::IsTypeBorrowed(*Type, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
+      ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
   }
   var_sym->Type = Type;
 
@@ -162,8 +162,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
       TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
       *sm->CurrentScope, *sm->CurrentScope)) {
       const auto default_type = DefaultVal->InferType(sm, meta);
-      Raise<SppTypeMismatchError>(
-        {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+      Raise<SppTypeMismatchError>(ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
     }
   }
 }

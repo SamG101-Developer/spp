@@ -119,7 +119,6 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
   //  "CoroutinePrototypeAst" sets up; until then they are refused.
   RaiseIf<SppFeatureNotYetSupportedError>(
     Tok != nullptr and Tok->TokenType == lex::SppTokenType::KW_COR,
-    {sm->CurrentScope},
     ERR_ARGS(NotYetSupportedFeature::CoroutineClosure, *this, *Tok));
 
   // Save the current scope for later resetting.
@@ -210,7 +209,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // borrow check.
     RaiseIf<SppSecondClassBorrowViolationError>(
       Tok->TokenType == lex::SppTokenType::KW_FUN and type_predicates::IsTypeBorrowed(*_TrueRetType, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*this, *_TrueRetType, "function return type"));
+      ERR_ARGS(*this, *_TrueRetType, "function return type"));
   }
   meta->Restore();
 

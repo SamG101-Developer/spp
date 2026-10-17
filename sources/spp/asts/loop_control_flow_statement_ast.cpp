@@ -84,7 +84,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   // to the number of control statements. Outside any loop
   // there is no loop to point at, so the statement stands in.
   RaiseIf<SppLoopTooManyControlFlowStatementsError>(
-    num_controls > nested_loop_depth, {sm->CurrentScope},
+    num_controls > nested_loop_depth,
     ERR_ARGS(
       meta->LoopCurrentAst != nullptr ? static_cast<Ast const&>(*meta->LoopCurrentAst->TokLoop) : *this,
       *this, num_controls, nested_loop_depth));
@@ -99,7 +99,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       Expr->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
         Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-        {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+        ERR_ARGS(*Expr.get()));
 
       expr_type = Expr->InferType(sm, meta);
       _ExprIsNever = expr_type->IsNeverType();
@@ -121,7 +121,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
           not type_compare::Assignable(
             TypeRef::Of(*expr_type, *sm->CurrentScope), TypeRef::Of(*that_expr_type, *that_scope), *sm->CurrentScope,
             *that_scope),
-          {sm->CurrentScope, that_scope}, ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+          ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
       }
     }
     else {

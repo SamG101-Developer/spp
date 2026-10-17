@@ -181,7 +181,7 @@ namespace spp::analyse::utils::sup_attachment {
         for (auto const *type_stmt : SupStatementsOf(scope).Types) {
           for (auto const &[new_type, new_type_scope] : new_types) {
             RaiseIf<errors::SppIdentifierDuplicateError>(
-              *new_type == *type_stmt->NewType, {new_type_scope, scope},
+              *new_type == *type_stmt->NewType,
               ERR_ARGS(*new_type, *type_stmt->NewType, "associated type"));
           }
           new_types.emplace_back(type_stmt->NewType, scope);
@@ -194,7 +194,7 @@ namespace spp::analyse::utils::sup_attachment {
         for (auto const *cmp_stmt : SupStatementsOf(scope).Cmps) {
           for (auto const &[new_cmp, new_cmp_scope] : new_cmps) {
             RaiseIf<errors::SppIdentifierDuplicateError>(
-              *new_cmp == *cmp_stmt->Name, {new_cmp_scope, scope},
+              *new_cmp == *cmp_stmt->Name,
               ERR_ARGS(*new_cmp, *cmp_stmt->Name, "comptime constant"));
           }
           new_cmps.emplace_back(cmp_stmt->Name, scope);

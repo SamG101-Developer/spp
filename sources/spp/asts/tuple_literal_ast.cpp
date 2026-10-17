@@ -93,7 +93,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*elem));
+      ERR_ARGS(*elem));
   }
 
   // Check all the elements are owned by the tuple, not borrowed.
@@ -101,7 +101,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
     auto elem_type = elem->InferType(sm, meta);
     RaiseIf<SppSecondClassBorrowViolationError>(
       type_predicates::IsTypeBorrowed(*elem_type, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*elem, *elem_type, "tuple element type"));
+      ERR_ARGS(*elem, *elem_type, "tuple element type"));
   }
 
   // Analyse the inferred tuple type to generate the generic implementation.

@@ -116,7 +116,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   if (type_sym == nullptr) {
     if (raise) {
       const auto type = spell();
-      Raise<SppExpressionNotGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+      Raise<SppExpressionNotGeneratorError>(ERR_ARGS(expr, *type, what));
     }
     return TypeRef();
   }
@@ -131,7 +131,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   if (generator_candidates.empty()) {
     if (raise) {
       const auto type = spell();
-      Raise<SppExpressionNotGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+      Raise<SppExpressionNotGeneratorError>(ERR_ARGS(expr, *type, what));
     }
     return TypeRef();
   }
@@ -142,7 +142,7 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
   if (generator_candidates.size() > 1) {
     if (raise) {
       const auto type = spell();
-      Raise<SppExpressionAmbiguousGeneratorError>({&scope}, ERR_ARGS(expr, *type, what));
+      Raise<SppExpressionAmbiguousGeneratorError>(ERR_ARGS(expr, *type, what));
     }
     return TypeRef();
   }
@@ -185,7 +185,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
   const auto holds_done = genex::any_of(
     members, [&](auto const &m) { return m.Symbol != nullptr and TypeEq(m, done_ref, scope, scope); });
   if (holds_done) {
-    Raise<errors::SppYieldTypeContainsGenDoneError>({&scope}, ERR_ARGS(expr, ErrTypeAt(yield_ref, expr), what));
+    Raise<errors::SppYieldTypeContainsGenDoneError>(ERR_ARGS(expr, ErrTypeAt(yield_ref, expr, scope), what));
   }
 }
 
@@ -212,7 +212,7 @@ auto spp::analyse::utils::marker_sups::FindTrySup(
   if (try_type_candidates.empty()) {
     if (raise) {
       const auto type = spell();
-      Raise<errors::SppExpressionNotTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type));
+      Raise<errors::SppExpressionNotTryError>(ERR_ARGS(expr, *type));
     }
     return TypeRef();
   }
@@ -223,7 +223,7 @@ auto spp::analyse::utils::marker_sups::FindTrySup(
   if (try_type_candidates.size() > 1) {
     if (raise) {
       const auto type = spell();
-      Raise<errors::SppExpressionAmbiguousTryError>({sm.CurrentScope}, ERR_ARGS(expr, *type, what));
+      Raise<errors::SppExpressionAmbiguousTryError>(ERR_ARGS(expr, *type, what));
     }
     return TypeRef();
   }

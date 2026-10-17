@@ -274,7 +274,7 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // convention, as this violates second class borrow
   // rules.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*CompType, *sm), {sm->CurrentScope},
+    type_predicates::IsTypeBorrowed(*CompType, *sm),
     ERR_ARGS(*CompType, *CompType, "generic comp argument"));
 }
 
@@ -309,7 +309,7 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
     TypeRef::Of(*CompType, *sm->CurrentScope), CompDefault->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto default_type = CompDefault->InferType(sm, meta);
-    Raise<SppTypeMismatchError>({sm->CurrentScope}, ERR_ARGS(*CompType, *CompType, *CompDefault, *default_type));
+    Raise<SppTypeMismatchError>(ERR_ARGS(*CompType, *CompType, *CompDefault, *default_type));
   }
 }
 

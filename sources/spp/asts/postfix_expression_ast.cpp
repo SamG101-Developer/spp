@@ -101,7 +101,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
       Lhs->Stage7_AnalyseSemantics(sm, meta);
       RaiseIf<SppInvalidPrimaryExpressionError>(
         not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-        {sm->CurrentScope}, ERR_ARGS(*Lhs.get()));
+        ERR_ARGS(*Lhs.get()));
     }
   }
 

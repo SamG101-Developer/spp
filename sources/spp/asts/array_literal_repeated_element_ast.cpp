@@ -113,7 +113,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   Elem->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Elem));
+    ERR_ARGS(*Elem));
   const auto elem_type = Elem->InferType(sm, meta);
   const auto elem_type_sym = Elem->InferTypeRef(sm, meta).Symbol;
 
@@ -121,13 +121,13 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   // repeated in the array.
   RaiseIf<SppNonCopyableTypeError>(
     not elem_type_sym->IsCopyable(),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Elem, *elem_type));
+    ERR_ARGS(*this, *Elem, *elem_type));
 
   // Ensure the element's type is not a borrow type, as array
   // elements cannot be borrows.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*elem_type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
+    ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
 
   // A literal size is the array's size as it is.
   if (Size->To<LiteralAst>() != nullptr) {
@@ -146,7 +146,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*_AnalysedSize, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*_AnalysedSize));
+    ERR_ARGS(*_AnalysedSize));
 
   // In a template, the size may depend on a generic that has no
   // value yet ("n + 1_uz", or a "case" reading "n"), so it is not
@@ -169,7 +169,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
   RaiseIf<SppCompTimeConstantError>(
     meta->CompTimeResult == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*_AnalysedSize));
+    ERR_ARGS(*_AnalysedSize));
   Size = AstClone(meta->CompTimeResult);
 
   _ArrayType = ArrayType(TokL->PosStart(), AstCloneShared(elem_type), AstClone(Size));

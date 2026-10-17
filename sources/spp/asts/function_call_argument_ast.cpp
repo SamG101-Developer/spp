@@ -37,7 +37,7 @@ auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Val));
+    ERR_ARGS(*Val));
 }
 
 auto FunctionCallArgumentAst::Stage8_CheckMemory(

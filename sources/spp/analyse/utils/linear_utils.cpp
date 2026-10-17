@@ -139,8 +139,7 @@ auto spp::analyse::utils::linear_utils::CheckScopeExit(
     // it.
     const auto sym_name = sym->Name->ToString();
     const auto type_name = sym->Type->WithoutGns()->ToString();
-    Raise<SppLinearValueNotConsumedError>(
-      {sm.CurrentScope}, ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
+    Raise<SppLinearValueNotConsumedError>(ERR_ARGS(*def, exit_point, StrView(sym_name), StrView(type_name), exit_what));
   }
 }
 
@@ -212,8 +211,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwrite(
   // it.
   const auto sym_name = sym.Name->ToString();
   const auto type_name = sym.Type->WithoutGns()->ToString();
-  Raise<SppLinearValueNotConsumedError>(
-    {sm.CurrentScope}, ERR_ARGS(*sym.Name, site, StrView(sym_name), StrView(type_name), site_what));
+  Raise<SppLinearValueNotConsumedError>(ERR_ARGS(*sym.Name, site, StrView(sym_name), StrView(type_name), site_what));
 }
 
 auto spp::analyse::utils::linear_utils::CheckOverwritePart(
@@ -245,8 +243,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwritePart(
   const auto place = regions::PlaceOf(part, *sm.CurrentScope);
   if (not place.has_value()) { return; }
   if (regions::RegionConsumed(*place, part_ref, *sm.CurrentScope, state.PartialMoves)) { return; }
-  Raise<SppLinearValueNotConsumedError>(
-    {sm.CurrentScope}, ERR_ARGS(part, site, StrView(part_name), StrView(type_name), site_what));
+  Raise<SppLinearValueNotConsumedError>(ERR_ARGS(part, site, StrView(part_name), StrView(type_name), site_what));
 }
 
 auto spp::analyse::utils::linear_utils::IsLinearTemporary(
@@ -270,7 +267,7 @@ auto spp::analyse::utils::linear_utils::RaiseTemporaryNotConsumed(
   // Held in a local so the view handed to the error outlives
   // it.
   const auto type_name = temp.InferTypeRef(&sm, meta).Symbol->FqName()->WithoutGns()->ToString();
-  Raise<SppLinearValueNotConsumedError>({sm.CurrentScope}, ERR_ARGS(temp, site, StrView(type_name), site_what));
+  Raise<SppLinearValueNotConsumedError>(ERR_ARGS(temp, site, StrView(type_name), site_what));
 }
 
 auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
@@ -305,8 +302,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
     sub = sub->RequestedBy;
   }
   if (sub != nullptr and sub->RequiredAt != nullptr and sub->RequiredIn != nullptr) {
-    Raise<SppLinearValueNotConsumedError>(
-      {sm.CurrentScope, sub->RequiredIn}, ERR_ARGS(part, *sub->RequiredAt, StrView(type_name)));
+    Raise<SppLinearValueNotConsumedError>(ERR_ARGS(part, *sub->RequiredAt, StrView(type_name)));
   }
-  Raise<SppLinearValueNotConsumedError>({sm.CurrentScope}, ERR_ARGS(part, StrView(type_name)));
+  Raise<SppLinearValueNotConsumedError>(ERR_ARGS(part, StrView(type_name)));
 }

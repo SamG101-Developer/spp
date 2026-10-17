@@ -122,7 +122,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   if (Lhs->To<FoldExpressionAst>()) {
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Rhs));
+      ERR_ARGS(*Rhs));
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
@@ -130,7 +130,6 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     if (not type_predicates::IsTypeTuple(rhs_tuple_ref, *sm->CurrentScope)) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppMemberAccessNonIndexableError>(
-        {sm->CurrentScope},
         ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
     }
 
@@ -140,7 +139,6 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     if (rhs_num_elems < 2) {
       const auto rhs_tuple_type = Rhs->InferType(sm, meta);
       Raise<SppInvalidBinaryFoldExpressionError>(
-        {sm->CurrentScope},
         ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
     }
 
@@ -170,14 +168,15 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   else if (Rhs->To<FoldExpressionAst>()) {
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Lhs));
+      ERR_ARGS(*Lhs));
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
     const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
     if (not type_predicates::IsTypeTuple(lhs_tuple_ref, *sm->CurrentScope)) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
+      Raise<SppMemberAccessNonIndexableError>(
+        ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
     }
 
     // Get the parts of the tuple, and check there are at
@@ -185,7 +184,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().size();
     if (lhs_num_elems < 2) {
       const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppInvalidBinaryFoldExpressionError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
+      Raise<SppInvalidBinaryFoldExpressionError>(
+        ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
     }
 
     auto new_asts = Vec<Unique<PostfixExpressionAst>>();
@@ -223,11 +223,11 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Lhs));
+      ERR_ARGS(*Lhs));
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Rhs));
+      ERR_ARGS(*Rhs));
 
     // "and" and "or" are not mapped to a method; they are built
     // in, like "not", for short-circuiting. Both operands must
@@ -251,11 +251,11 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
       // else's - the temporary they came back in would be gone before the error was built.
       if (not type_predicates::IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto lhs_ty = Lhs->InferType(sm, meta);
-        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Lhs, *lhs_ty, what));
+        Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Lhs, *lhs_ty, what));
       }
       if (not type_predicates::IsTypeBool(Rhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
         const auto rhs_ty = Rhs->InferType(sm, meta);
-        Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Rhs, *rhs_ty, what));
+        Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Rhs, *rhs_ty, what));
       }
 
       _LogicalAnalysed = true;

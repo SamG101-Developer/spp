@@ -152,7 +152,7 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
   // annotations.
   if (fq_name == "std::annotations::annotation") {
     RaiseIf<SppAnnotationTargetNotACmpFunctionError>(
-      not(func_ctx and func_ctx->TokCmp), {_Scope},
+      not(func_ctx and func_ctx->TokCmp),
       ERR_ARGS(*this, *_Ctx));
     func_ctx->MarkAsAnnotation();
     func_ctx->GetAnnotationInfo()->Definition = this;
@@ -318,7 +318,6 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   const auto overload = fn_ptr->Target();
   RaiseIf<SppAnnotationTargetNotAnAnnotationError>(
     not overload->GetAnnotationInfo(),
-    {fn_ptr->TargetScope() != nullptr ? fn_ptr->TargetScope() : _Scope, _Scope},
     ERR_ARGS(*this, *overload));
 
   // Stamp the overload as the "target" of this annotation. This
@@ -360,37 +359,37 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   // targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<ClassPrototypeAst>() and not(allowed_ctx & AnnotationInfo::kClassContext),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when free functions are not
   // valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_mod_ctx and not(allowed_ctx & AnnotationInfo::kFunctionCtx),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when methods are not valid
   // targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_sup_ctx and not(allowed_ctx & AnnotationInfo::kMethodCtx),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when overriding methods are
   // not valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<FunctionPrototypeAst>() and outer_ext_ctx and not(allowed_ctx & AnnotationInfo::kExtensionContext),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when type statements are not
   // valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<TypeStatementAst>() and not(allowed_ctx & AnnotationInfo::kTypeStmtCtx),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 
   // Error for incompatible asts when cmp statements are not
   // valid targets.
   RaiseIf<SppCalledAnnotationAppliedToInvalidAstError>(
     _Ctx->To<CmpStatementAst>() and not(allowed_ctx & AnnotationInfo::kCmpStmtCtx),
-    {annotation_scope, sm->CurrentScope, sm->CurrentScope}, ERR_ARGS(*_Ctx, *this, *target));
+    ERR_ARGS(*_Ctx, *this, *target));
 }
 
 SPP_MOD_END

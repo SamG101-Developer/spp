@@ -92,7 +92,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   // Check this type isn't a borrow violation.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*Type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
+    ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
   const auto named_cls_sym = sm->CurrentScope->FindHeadSymbol(*Type);
 
   // "Self(...)" names the class it stands for, and the
@@ -108,7 +108,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   // If the type is a variant type, prevent instantiation.
   RaiseIf<SppObjectInitializerVariantError>(
     type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*base_cls_sym, *sm->CurrentScope), *sm->CurrentScope),
-    {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
+    ERR_ARGS(*Source.OriginalType));
 
   // A zero type has exactly one value, written as the type's name
   // ("None", not "None()"). The rule is about what the author
@@ -127,7 +127,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     if (resolved == nullptr or resolved->IsSelf()) { resolved = written; }
     RaiseIf<SppObjectInitializerZeroTypeError>(
       written != nullptr and not written->IsGn() and resolved != nullptr and resolved->IsZeroType(),
-      {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType));
+      ERR_ARGS(*this, *Source.OriginalType));
   }
 
   // Prepare the object initializer arguments. The type is passed
@@ -168,7 +168,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
     [&] { return Type; }, "object initializer", false).Symbol;
   if (gen_sym != nullptr) {
     const auto gen_type = gen_sym->FqName();
-    Raise<SppObjectInitializerGeneratorError>({sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *gen_type));
+    Raise<SppObjectInitializerGeneratorError>(ERR_ARGS(*Source.OriginalType, *gen_type));
   }
 
   const auto _meta_guard = MetaGuard(meta);

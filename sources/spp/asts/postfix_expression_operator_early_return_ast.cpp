@@ -82,7 +82,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // already in progress.
   RaiseIf<SppDeferTerminatesError>(
     meta->WithinDeferTok != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*meta->WithinDeferTok, *this));
+    ERR_ARGS(*meta->WithinDeferTok, *this));
 
   const auto uid = "." + Uid();
   auto temp_name = MakeShared<IdentifierAst>(PosStart(), "$temp" + uid);
@@ -199,10 +199,9 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
       not type_compare::Assignable(
         TypeRef::Of(*meta->EnclosingFnRetType.back(), *meta->EnclosingFnScope),
         residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
-      {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
         *meta->EnclosingFnSourceRetType.back(), *meta->EnclosingFnRetType.back(),
-        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
+        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
   }
 
   // Todo: Tidy!
@@ -215,10 +214,10 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
 
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(yield_ref, residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
-      {meta->EnclosingFnScope, sm->CurrentScope},
       ERR_ARGS(
-        *meta->EnclosingFnSourceRetType.back(), ErrTypeAt(yield_ref, *meta->EnclosingFnSourceRetType.back()),
-        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs)));
+        *meta->EnclosingFnSourceRetType.back(), ErrTypeAt(
+          yield_ref, *meta->EnclosingFnSourceRetType.back(), *meta->EnclosingFnScope),
+        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
   }
 }
 

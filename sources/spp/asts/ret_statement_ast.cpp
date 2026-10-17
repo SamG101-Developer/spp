@@ -82,13 +82,13 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
   // Analyse the expression.
   RaiseIf<SppInvalidPrimaryExpressionError>(
     Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Expr));
+    ERR_ARGS(*Expr));
 
   // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
   const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppCoroutineContainsReturnStatementError>(
     function_flavour->TokenType != lex::SppTokenType::KW_FUN and Expr != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokRet));
+    ERR_ARGS(*function_flavour, *TokRet));
 
   // Analyse the expression if it exists, and determine the type of the expression.
   auto expr_type = VoidAt(PosStart());
@@ -139,7 +139,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
       *meta->EnclosingFnScope, *sm->CurrentScope);
     const auto expr_for_err = Expr ? Expr->To<Ast>() : TokRet->To<Ast>();
     RaiseIf<SppTypeMismatchError>(
-      not direct_match, {meta->EnclosingFnScope, sm->CurrentScope},
+      not direct_match,
       ERR_ARGS(*Source._OriginalRetType, *_RetType, *expr_for_err, *expr_type));
 
     // A function named as the value stands for the overload the
@@ -236,7 +236,7 @@ auto RetStatementAst::EmitReturn(
     const auto block = ctx->Builder.GetInsertBlock();
     RaiseIf<SppGenOnceFinishesWithoutYieldingError>(
       block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
-      {sm->CurrentScope}, ERR_ARGS(site));
+      ERR_ARGS(site));
 
     ctx->Builder.CreateRetVoid();
     return nullptr;

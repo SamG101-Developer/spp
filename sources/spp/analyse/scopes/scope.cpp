@@ -915,17 +915,12 @@ auto Scope::AddVarSymbolCheckConflict(
       auto const &mine = existing_from_prelude ? *sym : *existing_sym;
       RaiseIf<errors::SppIdentifierDuplicateError>(
         not is_functional and not is_shadowed_import,
-        {mine.ScopeDefinedIn ? mine.ScopeDefinedIn : this},
         ERR_ARGS(*mine.Name, "comptime variable identifier", mine.IsImport()));
     }
 
     // Standard raise for non-functional symbols.
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional and not is_shadowed_import,
-      {
-        existing_sym->ScopeDefinedIn ? existing_sym->ScopeDefinedIn : this,
-        sym->ScopeDefinedIn ? sym->ScopeDefinedIn : this
-      },
       ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
   }
 
@@ -963,17 +958,12 @@ auto Scope::AddTypeSymbolCheckConflict(
       auto const &mine = existing_from_prelude ? *sym : *existing_sym;
       RaiseIf<errors::SppIdentifierDuplicateError>(
         not is_functional,
-        {mine.ScopeDefinedIn ? mine.ScopeDefinedIn : this},
         ERR_ARGS(*mine.Name, "type identifier", mine.IsImport()));
     }
 
     // Standard raise for non-functional symbols.
     RaiseIf<errors::SppIdentifierDuplicateError>(
       not is_functional,
-      {
-        existing_sym->ScopeDefinedIn ? existing_sym->ScopeDefinedIn : this,
-        sym->ScopeDefinedIn ? sym->ScopeDefinedIn : this
-      },
       ERR_ARGS(*existing_sym->Name, *sym->Name, "type identifier"));
   }
 
@@ -996,7 +986,7 @@ auto Scope::AddNsSymbolCheckConflict(
   // then raise an error.
   const auto existing_sym = FindNsSymbol(sym->Name.get(), true);
   RaiseIf<errors::SppIdentifierDuplicateError>(
-    existing_sym != nullptr, {this},
+    existing_sym != nullptr,
     ERR_ARGS(*existing_sym->Name, *sym->Name, "namespace identifier"));
   InternalTable.NsTable.Add(sym->Name.get(), sym);
 }

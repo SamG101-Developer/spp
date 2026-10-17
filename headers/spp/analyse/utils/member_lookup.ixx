@@ -42,23 +42,20 @@ namespace spp::analyse::utils::member_lookup {
   auto RaiseMissingIdentifierAndClosestOptions(
     IdentifierAst const &identifier,
     Vec<VariableSymbol*> const &var_symbols,
-    Vec<NamespaceSymbol*> const &ns_symbols,
-    ScopeManager const &sm)
+    Vec<NamespaceSymbol*> const &ns_symbols)
     -> void;
 
   /// "Scope::FindTypeSymbol" for "type" in "scope", raising an unknown-identifier error (with the closest names) for
   /// its last part when there is none.
   SPP_EXP_FUN auto FindTypeSymbolOrError(
     Scope const &scope,
-    TypeAst const &type,
-    ScopeManager const &sm)
+    TypeAst const &type)
     -> TypeSymbol*;
 
   /// "FindTypeSymbolOrError" for a namespace: the symbol "ns" names in "scope".
   SPP_EXP_FUN auto FindNsSymbolOrError(
     Scope const &scope,
-    IdentifierAst const &ns,
-    ScopeManager const &sm)
+    IdentifierAst const &ns)
     -> NamespaceSymbol*;
 
   /// Whether a member can be reached using a given form. This
@@ -128,15 +125,13 @@ namespace spp::analyse::utils::member_lookup {
   /// based on the number of scopes providing a value.
   SPP_EXP_FUN auto RaiseIfAmbiguous(
     Vec<DeclaringVarScope> const &closest,
-    Ast const &access,
-    ScopeManager const &sm)
+    Ast const &access)
     -> void;
 
   /// Report if there is an ambiguity for type lookup, based
   /// on the number of scopes providing a value.
   SPP_EXP_FUN auto RaiseIfAmbiguous(
     Vec<DeclaringTypeScope> const &closest,
-    Ast const &access,
-    ScopeManager const &sm)
+    Ast const &access)
     -> void;
 }

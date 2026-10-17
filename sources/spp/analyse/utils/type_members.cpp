@@ -242,8 +242,7 @@ auto spp::analyse::utils::type_members::GetAllAttrs(
 auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
   CmpStatementAst const &cmp_member,
   Scope &cls_scope,
-  Scope const &own_scope,
-  ScopeManager const &sm)
+  Scope const &own_scope)
   -> void {
   //
   using errors::SppSuperimpositionExtensionCmpStatementInvalidError;
@@ -270,7 +269,7 @@ auto spp::analyse::utils::type_members::CheckShadowedCmpAgreesInType(
       not type_compare::TypeEq(
         sym->TypeRefIn(*declared.Where), TypeRef::Of(*cmp_member.Type, own_scope),
         *declared.Where, own_scope),
-      {declared.Where, sm.CurrentScope}, ERR_ARGS(cmp_member, *sym->Name));
+      ERR_ARGS(cmp_member, *sym->Name));
   }
 }
 

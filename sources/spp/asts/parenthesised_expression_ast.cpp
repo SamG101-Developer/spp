@@ -59,7 +59,7 @@ auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+    ERR_ARGS(*Expr.get()));
 }
 
 auto ParenthesisedExpressionAst::Stage8_CheckMemory(

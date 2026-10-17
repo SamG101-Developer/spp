@@ -88,7 +88,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   if (lhs_ref.KindSymbol() == nullptr
     or not lhs_ref.IsA(*FUT, *sm->CurrentScope)) {
     const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    Raise<SppAwaitTargetNotFutureError>({sm->CurrentScope}, ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
+    Raise<SppAwaitTargetNotFutureError>(ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
   }
 
   // Map to the private "await_" method, so the wait

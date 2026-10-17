@@ -74,12 +74,10 @@ namespace spp::analyse::utils::overload_resolution {
     /// [CHECKED]
     /// Reject the first keyword argument naming no parameter,
     /// reported against the first parameter (or the argument
-    /// itself, when there are none). The parameter is shown
-    /// from "fn_scope", the callee's, which is another file
-    /// than the call for any function not declared beside it.
+    /// itself, when there are none).
     auto EnforceFnArgNamesKnown(
       Vec<Shared<IdentifierAst>> const &param_names, Vec<IdentifierAst*> const &arg_names,
-      FunctionParameterGroupAst const &params, Scope const *fn_scope, ScopeManager const &sm) -> void {
+      FunctionParameterGroupAst const &params) -> void {
       // Loop through each arg name, and raise an error if
       // there is not a parameter that can match the argument's
       // name.
@@ -90,7 +88,6 @@ namespace spp::analyse::utils::overload_resolution {
           : static_cast<Ast const&>(*params.Params[0]);
 
         Raise<errors::SppArgumentNameInvalidError>(
-          {params.Params.empty() ? sm.CurrentScope : fn_scope, sm.CurrentScope},
           ERR_ARGS(param_ctx, StrView("fn param"), *arg_name, StrView("fn arg")));
       }
     }
@@ -154,7 +151,7 @@ namespace spp::analyse::utils::overload_resolution {
       // If the lhs is an identifier, it must be a variable
       // symbol, not a namespace symbol.
       if (lhs_as_ident and sm.CurrentScope->FindVarSymbol(lhs_as_ident) == nullptr) {
-        RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {}, sm);
+        RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {});
       }
 
       // Variables that will be set in each branch, and
@@ -190,7 +187,7 @@ namespace spp::analyse::utils::overload_resolution {
         // the type off of it before it is even analysed.
         const auto fn_owner_sym = fn_owner_scope->FindVarSymbol(fn_name.get());
         if (fn_owner_sym == nullptr) {
-          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(), {}, sm);
+          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(), {});
         }
         fn_owner_type = fn_owner_sym->Type;
       }
@@ -615,7 +612,7 @@ namespace spp::analyse::utils::overload_resolution {
         | genex::views::transform([](auto *x) { return x->ExtractName(); })
         | genex::to<Vec>();
 
-      EnforceFnArgNamesKnown(all_p_names, a_names, fn_params, &callee_scope, *sm);
+      EnforceFnArgNamesKnown(all_p_names, a_names, fn_params);
 
       // Each argument, keyed by the parameter it is for: a keyword
       // one by the parameter it names, and the positional ones by
@@ -771,27 +768,23 @@ namespace spp::analyse::utils::overload_resolution {
      * @param func_param_names_req The required parameters' names.
      * @param func_arg_names The call's keyword argument names.
      * @param fn_call The call being checked, used as the error's context for a missing argument.
-     * @param fn_scope The candidate's scope, where its parameters are written.
-     * @param sm The scope manager, positioned at the call site.
      */
     auto CheckArgNamesAgainstParams(
       FunctionParameterGroupAst const &func_params,
       Vec<Shared<IdentifierAst>> const &func_param_names,
       Vec<Shared<IdentifierAst>> const &func_param_names_req,
       Vec<IdentifierAst*> const &func_arg_names,
-      PostfixExpressionOperatorFunctionCallAst const &fn_call,
-      Scope const *fn_scope,
-      ScopeManager const *sm)
+      PostfixExpressionOperatorFunctionCallAst const &fn_call)
       -> void {
       using errors::SppArgumentMissingError;
 
-      EnforceFnArgNamesKnown(func_param_names, func_arg_names, func_params, fn_scope, *sm);
+      EnforceFnArgNamesKnown(func_param_names, func_arg_names, func_params);
 
       const auto missing_params = func_param_names_req
         | genex::views::not_in(func_arg_names, genex::meta::deref, genex::meta::deref)
         | genex::to<Vec>();
       RaiseIf<SppArgumentMissingError>(
-        not missing_params.empty(), {fn_scope, sm->CurrentScope},
+        not missing_params.empty(),
         ERR_ARGS(*missing_params[0], "parameter", fn_call, "argument"));
     }
 
@@ -861,7 +854,7 @@ namespace spp::analyse::utils::overload_resolution {
         | genex::views::transform([](auto const *slot) { return slot->Name.get(); })
         | genex::to<Vec>();
       CheckArgNamesAgainstParams(
-        *func_params, func_param_names, func_param_names_req, func_arg_names, fn_call, fn_scope, sm);
+        *func_params, func_param_names, func_param_names_req, func_arg_names, fn_call);
 
       // An argument whose template parameter names a generic inferred from the arguments chose that parameter's type,
       // rather than being held to it ("MatchRank::Bound").
@@ -894,7 +887,7 @@ namespace spp::analyse::utils::overload_resolution {
               // Named only for the error, and held here: "ERR_ARGS" keeps references, not the copy.
               if (not matches) {
                 const auto a_type = arg.Val->InferType(sm, meta)->WithoutConvention();
-                Raise<SppTypeMismatchError>({fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *receiver, arg, *a_type));
+                Raise<SppTypeMismatchError>(ERR_ARGS(*param, *receiver, arg, *a_type));
               }
             }
           }
@@ -996,8 +989,7 @@ namespace spp::analyse::utils::overload_resolution {
           if (not binds_to_match) {
             // Held here: "ERR_ARGS" keeps references.
             const auto shown = param->To<FunctionParameterVariadicAst>() != nullptr ? p_written : spelled();
-            Raise<SppTypeMismatchError>(
-              {fn_scope, sm->CurrentScope}, ERR_ARGS(*param, *shown, SlotSite(*slot, fn_args), *a_type));
+            Raise<SppTypeMismatchError>(ERR_ARGS(*param, *shown, SlotSite(*slot, fn_args), *a_type));
           }
           continue;
         }
@@ -1159,7 +1151,7 @@ namespace spp::analyse::utils::overload_resolution {
           | genex::to<Vec>();
 
         Raise<errors::SppFunctionCallNoValidSignaturesError>(
-          {sm->CurrentScope}, ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature()),
+          ERR_ARGS(fn_call, failed_signatures_and_errors, arg_usage_signature()),
           std::move(sub_errors));
       }
 
@@ -1171,8 +1163,7 @@ namespace spp::analyse::utils::overload_resolution {
           | genex::views::join
           | genex::to<Str>());
 
-        Raise<errors::SppFunctionCallOverloadAmbiguousError>(
-          {sm->CurrentScope}, ERR_ARGS(fn_call, signatures, arg_usage_signature()));
+        Raise<errors::SppFunctionCallOverloadAmbiguousError>(ERR_ARGS(fn_call, signatures, arg_usage_signature()));
       }
     }
 
@@ -1199,7 +1190,6 @@ namespace spp::analyse::utils::overload_resolution {
       // too many arguments (for a non-variadic function).
       RaiseIf<SppFunctionCallTooManyArgumentsError>(
         fn_args.Args.size() > fn_proto->FnParamGroup->Params.size() and not is_variadic_fn,
-        {fn_scope, sm->CurrentScope},
         ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.size(), fn_call, fn_args.Args.size()));
 
       // Add a generic solver for the function generics. The order
@@ -1210,8 +1200,7 @@ namespace spp::analyse::utils::overload_resolution {
       // any generic symbols in scope are the pre-bound ones.
       auto solver = generic_inference::GenericSolver(*fn_proto->GnParamGroup, *fn_scope, *sm, *meta);
       solver.Give(std::move(generic_inference::NamedGnArgs(
-        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, *fn_scope,
-        *fn_proto->Name, *sm, *meta)->Args));
+        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, *fn_proto->Name, *sm, *meta)->Args));
       solver.Give(
         ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : site.OwnerType.get(), *sm),
         *sm->CurrentScope);

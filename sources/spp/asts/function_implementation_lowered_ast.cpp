@@ -55,7 +55,7 @@ auto FunctionImplementationLoweredAst::SetProtoPtr(
 }
 
 auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
-  Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
+  Vec<Unique<ExpressionAst>> const &args, CompilerMetaData const *meta) const -> void {
   IMPORT_UTILS;
 
   // The dividing builtins all take the divisor second. Their
@@ -83,15 +83,13 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   // wrote; neither this builtin nor its folded divisor is
   // written there.
   if (meta->CompTimeCallSite != nullptr) {
-    RaiseIf<SppDivisionByZeroError>(
-      is_zero, {meta->CompTimeCallSiteScope}, ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite));
+    RaiseIf<SppDivisionByZeroError>(is_zero, ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite));
   }
-  RaiseIf<SppDivisionByZeroError>(
-    is_zero, {sm->CurrentScope}, ERR_ARGS(*this, divisor));
+  RaiseIf<SppDivisionByZeroError>(is_zero, ERR_ARGS(*this, divisor));
 }
 
 auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
-  Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, CompilerMetaData const *meta) const -> void {
+  Vec<Unique<ExpressionAst>> const &args, CompilerMetaData const *meta) const -> void {
   IMPORT_UTILS;
 
   // The shifting builtins take the amount second,
@@ -117,11 +115,10 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   const auto too_wide = amount->BigVal() >= numex::BigInt(width);
   if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppShiftAmountOutOfBoundsError>(
-      too_wide, {meta->CompTimeCallSiteScope},
+      too_wide,
       ERR_ARGS(*meta->CompTimeCallSite, *meta->CompTimeCallSite, value->Type, width));
   }
-  RaiseIf<SppShiftAmountOutOfBoundsError>(
-    too_wide, {sm->CurrentScope}, ERR_ARGS(*this, *args[1], value->Type, width));
+  RaiseIf<SppShiftAmountOutOfBoundsError>(too_wide, ERR_ARGS(*this, *args[1], value->Type, width));
 }
 
 auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
@@ -153,8 +150,8 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   // runs. As this is the one place every comp-time builtin
   // is invoked from, all operand analysis must be fired
   // off from here.
-  _ValidateZeroDivision(extracted_args, sm, meta);
-  _ValidateShiftAmount(extracted_args, sm, meta);
+  _ValidateZeroDivision(extracted_args, meta);
+  _ValidateShiftAmount(extracted_args, meta);
   meta->CompTimeResult =
     lowered_cmp_code
     .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)

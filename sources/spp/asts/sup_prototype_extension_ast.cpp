@@ -238,12 +238,12 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   SuperCls->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*SuperCls, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *SuperCls, "superimposition supertype"));
+    ERR_ARGS(*this, *SuperCls, "superimposition supertype"));
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
   RaiseIf<SppGenericTypeInvalidUsageError>(
-    sup_sym->IsGn(), {sm->CurrentScope},
+    sup_sym->IsGn(),
     ERR_ARGS(*SuperCls, *SuperCls, "superimposition supertype"));
 
   // A marker is restricted to the package declaring the type:
@@ -265,7 +265,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 
     RaiseIf<SppSuperimpositionExternalMarkerExtensionError>(
       is_marker and owner_package != PackageOfScope(sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*Name, *SuperCls));
+      ERR_ARGS(*Name, *SuperCls));
   }
 
   // Load the implementation and move out of the scope.
@@ -356,17 +356,10 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       using generate::common_types_precompiled::COPY;
       if (TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)
         and cls_sym->LinkedScope != nullptr) {
-        // Each attribute is shown from the class declaring it (an inherited one's can be in another file): the two
-        // walks line up index for index ("GetAllAttrAsts").
-        const auto attrs = type_members::GetAllAttrs(*cls_sym);
-        const auto attr_asts = type_members::GetAllAttrAsts(*cls_sym);
-        for (auto i = 0uz; i < attr_asts.size(); ++i) {
-          auto const *const attr = attr_asts[i];
+        for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
           const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
-          auto const *const attr_scope = i < attrs.size() ? spp::get<2>(attrs[i]) : nullptr;
           RaiseIf<SppGenericConstraintError>(
             attr_sym != nullptr and not attr_sym->IsGn() and not attr_sym->IsCopyable(),
-            {sm->CurrentScope, attr_scope != nullptr ? attr_scope : sm->CurrentScope},
             ERR_ARGS(*SuperCls, *attr->Type));
         }
       }
@@ -435,14 +428,13 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
 
       // Check the base method exists.
       RaiseIf<SppSuperimpositionExtensionMethodInvalidError>(
-        base_method == nullptr, {_Scope},
+        base_method == nullptr,
         ERR_ARGS(*this_method->Name, *SuperCls));
 
       // Check the base method is virtual or abstract.
       // The base method is shown from the super class, which can be in another file than this block.
       RaiseIf<SppSuperimpositionExtensionNonVirtualMethodOverriddenError>(
         not(base_method->AbstractAnnotation or base_method->VirtualAnnotation),
-        {sup_sym->LinkedScope != nullptr ? sup_sym->LinkedScope : _Scope, _Scope, _Scope},
         ERR_ARGS(*this_method->Name, *base_method->Name, *SuperCls));
 
       // Sync up the annotations from the base function.
@@ -461,7 +453,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
 
       // Check to see if the base type exists.
       RaiseIf<SppSuperimpositionExtensionTypeStatementInvalidError>(
-        base_type == nullptr, {_Scope, member->GetAstScope()},
+        base_type == nullptr,
         ERR_ARGS(*type_member, *SuperCls));
     }
 
@@ -475,13 +467,13 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
       // as part of an extension, it's "overriding" the
       // declaration.
       RaiseIf<SppSuperimpositionExtensionCmpStatementInvalidError>(
-        base_const == nullptr, {_Scope},
+        base_const == nullptr,
         ERR_ARGS(*cmp_member, *SuperCls));
 
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
       type_members::CheckShadowedCmpAgreesInType(
-        *cmp_member, *cls_sym->LinkedScope, *_Scope, sm);
+        *cmp_member, *cls_sym->LinkedScope, *_Scope);
     }
   }
 }
@@ -495,7 +487,7 @@ auto SupPrototypeExtensionAst::CheckCyclicExtension(
   // The extension closing the cycle is shown from its own
   // block, which can be in another file than this one.
   RaiseIf<SppSuperimpositionCyclicExtensionError>(
-    cycle.second != nullptr, {cycle.first != nullptr ? cycle.first : &check_scope, &check_scope},
+    cycle.second != nullptr,
     ERR_ARGS(*cycle.second->SuperCls, *SuperCls));
 }
 
@@ -509,8 +501,7 @@ auto SupPrototypeExtensionAst::CheckDoubleExtension(
   if (cls_sym.IsMock()) { return; }
   const auto twin = FindMatchingExtension(cls_sym.LinkedScope->DirectSupScopes, *SuperCls, *Name, check_scope, false);
   if (twin.second != nullptr) {
-    Raise<SppSuperimpositionDoubleExtensionError>(
-      {twin.first, &check_scope}, ERR_ARGS(*twin.second->SuperCls, *SuperCls));
+    Raise<SppSuperimpositionDoubleExtensionError>(ERR_ARGS(*twin.second->SuperCls, *SuperCls));
   }
 }
 
@@ -528,7 +519,7 @@ auto SupPrototypeExtensionAst::CheckSelfExtension(
   // identity, read where both are written.
   const auto name_id = check_scope.TypeIdOf(*Name);
   RaiseIf<SppSuperimpositionSelfExtensionError>(
-    name_id != nullptr and name_id == check_scope.TypeIdOf(*SuperCls), {&check_scope},
+    name_id != nullptr and name_id == check_scope.TypeIdOf(*SuperCls),
     ERR_ARGS(*Name, *SuperCls));
 }
 

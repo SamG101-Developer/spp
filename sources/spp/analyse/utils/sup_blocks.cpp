@@ -48,8 +48,7 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
   using errors::SppSuperimpositionOptionalGenericParameterError;
   using errors::SppSuperimpositionUnconstrainedGenericParameterError;
   const auto optional = params.GetOptionalParams();
-  RaiseIf<SppSuperimpositionOptionalGenericParameterError>(
-    not optional.empty(), {sm.CurrentScope}, ERR_ARGS(*optional[0]));
+  RaiseIf<SppSuperimpositionOptionalGenericParameterError>(not optional.empty(), ERR_ARGS(*optional[0]));
   if (naming_types.empty()) { return; }
 
   const auto unconstrained = params.GetAllParams()
@@ -59,8 +58,7 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
       });
     })
     | genex::to<Vec>();
-  RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(
-    not unconstrained.empty(), {sm.CurrentScope}, ERR_ARGS(*unconstrained[0]));
+  RaiseIf<SppSuperimpositionUnconstrainedGenericParameterError>(not unconstrained.empty(), ERR_ARGS(*unconstrained[0]));
 }
 
 auto spp::analyse::utils::sup_blocks::LoadTarget(
@@ -73,7 +71,7 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
   }
   RaiseIf<errors::SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*name, sm),
-    {sm.CurrentScope}, ERR_ARGS(block, *name, "superimposition type"));
+    ERR_ARGS(block, *name, "superimposition type"));
 
   // A "$" mock keeps its bare name: it is declared in the
   // module of the mock class it names.

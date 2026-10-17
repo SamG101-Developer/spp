@@ -27,20 +27,22 @@ namespace spp::analyse::errors {
 
 namespace spp {
   /// A resolved type given to an error in place of a type ast:
-  /// named where the error is raised ("TypeRef::AstIn") and placed
-  /// at "At", so an error that points at the type points there.
+  /// named as seen from "In" ("TypeRef::AstIn") and placed at
+  /// "At", so an error that points at the type points there.
   /// Held by value, as "ERR_ARGS" builds its arguments before the
   /// error is. Made by "ErrTypeAt".
   SPP_EXP_CLS template <typename R = analyse::scopes::TypeRef>
   struct ErrType {
     R Ref;
     asts::Ast const *At = nullptr;
+    analyse::scopes::Scope const *In = nullptr;
   };
 
-  /// "ref" for an error message, placed at "at" ("ErrType").
+  /// "ref" for an error message, named in "in" and placed at "at"
+  /// ("ErrType").
   SPP_EXP_FUN template <typename R>
-  auto ErrTypeAt(R const &ref, asts::Ast const &at) -> ErrType<R> {
-    return {ref, &at};
+  auto ErrTypeAt(R const &ref, asts::Ast const &at, analyse::scopes::Scope const &in) -> ErrType<R> {
+    return {ref, &at, &in};
   }
 
   /// Build the arguments tuple from the parameter pack, which
@@ -58,17 +60,18 @@ namespace spp {
     constexpr auto kIsErrType<ErrType<R>> = true;
   }
 
-  /// Raise an error with a list of scopes, a deferred argument
-  /// binder, and any sub-errors.
+  /// Raise an error from a deferred argument binder, and any
+  /// sub-errors. Each ast the error quotes is quoted from the file
+  /// it was parsed from, so no scope is needed to find it.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
   SPP_ATTR_COLD SPP_ATTR_NORETURN
-  auto Raise(Vec<Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
-    // A resolved type ("ErrType") is named where the error is
-    // raised, the first scope, and kept alive for the build.
+  auto Raise(A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
+    // A resolved type ("ErrType") is named in the scope it was
+    // given, and kept alive for the build.
     auto named = Vec<Shared<void const>>();
     const auto adapt = [&]<typename T>(T &&arg) -> decltype(auto) {
       if constexpr (detail::kIsErrType<std::remove_cvref_t<T>>) {
-        auto type = arg.Ref.AstIn(*scopes[0]);
+        auto type = arg.Ref.AstIn(*arg.In);
         SPP_ASSERT(type != nullptr);
         if (arg.At != nullptr) { type = type->WithSourceSpanAt(*arg.At); }
         named.emplace_back(type);
@@ -80,20 +83,17 @@ namespace spp {
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))
-          .WithArgs(adapt(std::forward<Args2>(unpacked_args))...).raises_from_vec(scopes);
+          .WithArgs(adapt(std::forward<Args2>(unpacked_args))...).Raise();
       },
       std::forward<A>(arg_binder)());
     std::unreachable();
   }
 
-  /// Raise an error if a condition is met. This is just a tidier
-  /// version of "if (...) { Raise ... }", but it does eagerly
-  /// evaluate the scopes which is sometimes an issue for nullptr
-  /// usage, if the condition checks for a non-nullptr pointer
-  /// that the scope belongs to.
+  /// Raise an error if a condition is met: a tidier "if (...) {
+  /// Raise ... }". The arguments are bound only if it is.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
+  auto RaiseIf(const bool condition, A &&arg_binder) -> void {
+    if (condition) { Raise<E>(std::forward<A>(arg_binder)); }
   }
 }
 
@@ -111,41 +111,41 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     return *this;
   }
 
-  /// The internal master "Raise" method for errors. This cycles
-  /// formatters to meet the number of asts present, and trims
-  /// the formatter list. Then, it runs the error information
-  /// through the standard stringification process, before using
-  /// the abstract raise function.
+  /// The internal master "Raise" method for errors. It quotes
+  /// each block through its ast's file, runs the error
+  /// information through the standard stringification process,
+  /// then uses the abstract raise function.
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
     // Each block that quotes source (an error and its context) is
     // quoted through the file its ast was parsed from, which its
-    // position names ("ErrorFormatter::Owning"), whatever scopes
-    // the error was raised with. An ast no file holds (generated)
-    // takes the scopes' formatters, in order, cycling when there
-    // are fewer scopes than blocks. The header and footer quote
-    // nothing, so they take no formatter. Todo: Can we get rid of
-    // scopes then for the formatter?
+    // position names ("ErrorFormatter::Owning"). An ast no file
+    // holds (generated) is written out instead. The header and
+    // footer quote nothing, so they take no formatter.
     auto messages = Vec<Str>();
-    auto next = 0uz;
+    auto unowned = Vec<ErrorInformation*>();
+    auto file = Str();
     for (auto &info : cast_error->ErrorInfo) {
       auto formatter = static_cast<utils::errors::ErrorFormatter*>(nullptr);
       if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
         formatter = utils::errors::ErrorFormatter::Owning(info.Ast);
-        if (formatter == nullptr and not this->_ErrFormatters.empty()) {
-          formatter = this->_ErrFormatters[next % this->_ErrFormatters.size()];
-        }
-        ++next;
         if (formatter == nullptr) {
           messages.emplace_back(utils::errors::ErrorFormatter::WithoutSource(info.Ast, info.Tag));
+          unowned.emplace_back(&info);
           continue;
         }
         info.Span = formatter->SpanOfAst(info.Ast);
+        if (file.empty()) { file = info.Span.File; }
       }
       messages.emplace_back(_StringifyErrorInformation(formatter, info));
     }
     cast_error->Messages = std::move(messages);
+
+    // A generated block's diagnostic is filed under the error's
+    // first block from a file, marked as generated, so an editor
+    // shows it beside the rest of the error.
+    for (auto *info : unowned) { info->Span = utils::errors::SourceSpan{.File = file}; }
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.

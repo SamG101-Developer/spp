@@ -49,17 +49,7 @@ struct spp::utils::errors::AbstractErrorBuilder {
     return *this;
   }
 
-  /// Inject the error formatters into the list - this allows
-  /// for inter-module context, using the different module's
-  /// token sets.
-  auto WithFormatters(Vec<ErrorFormatter*> const &formatters) -> AbstractErrorBuilder& {
-    // Bind the error formatters to the builder.
-    _ErrFormatters = formatters;
-    return *this;
-  }
-
-  /// Add a single error formatter to the list, rather then
-  /// set the list to a new one. Todo: Rename.
+  /// Add a single error formatter to the list. Todo: Rename.
   auto WithErrorFormatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder& {
     // Add a single error formatter to the list.
     _ErrFormatters.emplace_back(error_formatter);
@@ -84,7 +74,8 @@ protected:
   /// The error object, constructed when args are provided.
   Unique<T> _ErrObj;
 
-  /// The list of the error formatters for each err object
-  /// internal part.
+  /// The error formatters the builder quotes through (a syntax
+  /// error's file). A semantic error quotes each ast through the
+  /// file it names, so it needs none.
   Vec<ErrorFormatter*> _ErrFormatters;
 };

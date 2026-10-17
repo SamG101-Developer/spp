@@ -171,15 +171,15 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   if (sym != nullptr) { type_resolution::StampComp(*this, *sym); }
 
   if (sym == nullptr and not sm->CurrentScope->HasNsSymbol(this)) {
-    RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", {sm->CurrentScope}, ERR_ARGS(*this));
-    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->GetAllVarSymbols(), {}, *sm);
+    RaiseIf<SppSelfIdentifierInvalidContextError>(Val == "self", ERR_ARGS(*this));
+    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, sm->CurrentScope->GetAllVarSymbols(), {});
   }
 
   // A binding from an "is" read where the match is not known to
   // have succeeded (after the statement, in an "else", on the
   // right of an "or") names nothing there.
   if (sym != nullptr and genex::contains(meta->ExpiredIsBindings, sym)) {
-    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {}, *sm);
+    member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {});
   }
 
   // A parameter's default is analysed where the parameters are
@@ -188,7 +188,7 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   RaiseIf<SppDefaultValueNamesParameterError>(
     meta->ParameterDefaultScope != nullptr and sym != nullptr and sym->Kind == VariableKind::Local
     and meta->ParameterDefaultScope->HasVarSymbol(this, true),
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   // Enforce module-level visibility on the accessed symbol.
   if (sym != nullptr and sym->ScopeDefinedIn != nullptr and sym->ScopeDefinedIn->LinkedTypeSymbol == nullptr) {
@@ -231,14 +231,14 @@ auto IdentifierAst::Stage9_CompTimeResolve(
   auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
   RaiseIf<SppCompTimeConstantError>(
     var_sym != nullptr and value == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   // A constant whose value reaches its own symbol again has
   // no value to resolve to: the walk below would re-enter
   // here for the same symbol and never terminate.
   RaiseIf<SppCompTimeConstantError>(
     genex::contains(_ResolvingCompTimeSymbols, var_sym),
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.

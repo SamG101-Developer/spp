@@ -220,7 +220,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   if (needs_sup_scopes) {
     if (const auto folded = sm->CurrentScope->FoldedCompAstOf(*CompVal); folded != nullptr) {
       if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) {
-        lit->ValidateBounds(*CompVal, *sm->CurrentScope);
+        lit->ValidateBounds(*CompVal);
       }
       type_resolution::StampCompParts(*CompVal, *sm->CurrentScope);
       return;
@@ -245,7 +245,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   }
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(target, *sm),
-    {sm->CurrentScope}, ERR_ARGS(target));
+    ERR_ARGS(target));
 
   // Stamp every comp parameter named here - nested ones too
   // ("n + 1") - with that parameter, so a copy of this argument

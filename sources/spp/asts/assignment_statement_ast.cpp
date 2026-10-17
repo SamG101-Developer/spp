@@ -142,7 +142,6 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
     // symbol, requires an outermost "mut" symbol.
     RaiseIf<SppInvalidMutationError>(
       regions::IsAttr(lhs_expr, sm) and not(lhs_sym->MemInfo->AstBorrowed or lhs_sym->IsMutable),
-      {sm->CurrentScope},
       ERR_ARGS(*lhs_sym->Name, *TokAssign, *lhs_state().AstInitialization, "immutable outer sym"));
 
     // Attribute assignment (ie "x.y = z"), for a borrowed symbol,
@@ -150,14 +149,12 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
     RaiseIf<SppInvalidMutationError>(
       regions::IsAttr(lhs_expr, sm) and lhs_sym->Type->GetConvention() and *lhs_sym->Type->GetConvention() ==
       ConventionTag::REF,
-      {sm->CurrentScope},
       ERR_ARGS(*lhs_sym->Name, *TokAssign, *lhs_state().AstInitialization, "immutable borrow"));
 
     // Dereference assignment (ie "x@ = y") writes through a
     // borrow, so the borrow being dereferenced must be &mut.
     RaiseIf<SppInvalidMutationError>(
       IsDeref(lhs_expr) and lhs_deref_ref.IsBorrowed() and lhs_deref_ref.Conv != ConventionTag::MUT,
-      {sm->CurrentScope},
       ERR_ARGS(*lhs_expr, *TokAssign, *lhs_expr, "immutable index or slice"));
 
     // Ensure the lhs and rhs have the same type.
@@ -167,7 +164,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
     const auto rhs_type = rhs_expr->InferType(sm, meta);
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(lhs_ref, rhs_ref, *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
+      ERR_ARGS(*lhs_expr, *lhs_type, *rhs_expr, *rhs_type));
 
     // A function named as the value stands for the overload the
     // target's type asks for.
@@ -283,7 +280,6 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
 
       RaiseIf<SppInvalidMutationError>(
         not lhs_sym->IsMutable and not never_given,
-        {sm->CurrentScope},
         ERR_ARGS(
           *lhs_sym->Name, *TokAssign,
           *(state.AstInitialization != nullptr ? state.AstInitialization : state.AstMoved), "immutable sym"));
@@ -332,8 +328,7 @@ auto AssignmentStatementAst::Stage9_CompTimeResolve(
 
     // Otherwise, unsupported in the comptime context.
     else {
-      Raise<SppInvalidCompTimeOperationError>(
-        {sm->CurrentScope}, ERR_ARGS(*Lhs[i]));
+      Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*Lhs[i]));
     }
   }
 }

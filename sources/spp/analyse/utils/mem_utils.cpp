@@ -90,8 +90,7 @@ namespace spp::analyse::utils::mem_utils {
       }
       if (options.CheckEscapingBorrowMove and moves_value and not is_borrow
         and genex::any_of(holds, [](auto const *loan) { return not loan->Yielded; })) {
-        Raise<errors::SppMovingEscapingBorrowedMemoryError>(
-          {scope}, ERR_ARGS(*sym.Name, move_ast));
+        Raise<errors::SppMovingEscapingBorrowedMemoryError>(ERR_ARGS(*sym.Name, move_ast));
       }
     }
 
@@ -108,7 +107,7 @@ namespace spp::analyse::utils::mem_utils {
       if (where_moved and flow != nullptr and flow->Deferring.has_value()) {
         auto const &exit = *flow->Deferring;
         Raise<errors::SppDeferConsumesMovedValueError>(
-          {scope}, ERR_ARGS(*exit.Stmt, *where_moved, *exit.ExitPoint, sym.Name->Val, exit.ExitWhat));
+          ERR_ARGS(*exit.Stmt, *where_moved, *exit.ExitPoint, sym.Name->Val, exit.ExitWhat));
       }
     }
 
@@ -124,7 +123,7 @@ namespace spp::analyse::utils::mem_utils {
       auto const &state = memory_state::StateOf(*scope, sym);
       if (const auto maybe = state.MaybeInit; maybe.has_value()) {
         Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-          {scope}, ERR_ARGS(usage, *maybe->First, *maybe->Other, "initialized"));
+          ERR_ARGS(usage, *maybe->First, *maybe->Other, "initialized"));
       }
 
       // A check of the value's presence alone (the object a member is read off) leaves its parts to the read itself.
@@ -135,15 +134,14 @@ namespace spp::analyse::utils::mem_utils {
         const auto reaches = not used.Of.has_value()
           or regions::Relate(*used.Of, *part.Of) != regions::MemRegionRelation::Disjoint;
         RaiseIf<errors::SppInconsistentlyInitializedMemoryUseError>(
-          reaches, {scope}, ERR_ARGS(usage, *paths.First, *paths.Other, "partially moved"));
+          reaches, ERR_ARGS(usage, *paths.First, *paths.Other, "partially moved"));
       }
 
       // A loan of it, or one it holds, on only some of the paths that met.
       for (auto const &loan : memory_state::LoansOf(*scope)) {
         const auto involved = loan.Holder == &sym or (loan.Borrowed.Of.has_value() and loan.Borrowed.Of->Root == &sym);
         if (involved and loan.Maybe.has_value() and not loan.Pending) {
-          Raise<errors::SppInconsistentlyEscapingBorrows>(
-            {scope}, ERR_ARGS(usage, *loan.Maybe->First, *loan.Maybe->Other));
+          Raise<errors::SppInconsistentlyEscapingBorrows>(ERR_ARGS(usage, *loan.Maybe->First, *loan.Maybe->Other));
         }
       }
     }
@@ -206,8 +204,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // Check we aren't trying to move a comptime constant
   // (unless copyable).
   if (options.CheckMove and moves_value and var_sym->IsCompTime()) {
-    Raise<errors::SppMovingCompTimeConstantMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, move_ast));
+    Raise<errors::SppMovingCompTimeConstantMemoryError>(ERR_ARGS(value_ast, move_ast));
   }
 
   // Check the symbol doesn't have any outstanding partial
@@ -216,8 +213,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   if (options.CheckPartialMove and not state.PartialMoves.empty() and value_ast.To<IdentifierAst>() != nullptr) {
     const auto where_init = state.AstInitializationOrigin;
     auto const *const where_pm = state.PartialMoves.front().Site;
-    Raise<errors::SppPartiallyInitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+    Raise<errors::SppPartiallyInitializedMemoryUseError>(ERR_ARGS(value_ast, *where_init, *where_pm));
   }
 
   // Check the symbol doesn't have any outstanding partial
@@ -239,8 +235,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     if (not overlaps.empty()) {
       const auto where_init = state.AstInitializationOrigin;
       auto const *const where_pm = overlaps.front().Site;
-      Raise<errors::SppUninitializedMemoryUseError>(
-        {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+      Raise<errors::SppUninitializedMemoryUseError>(ERR_ARGS(value_ast, *where_init, *where_pm));
     }
   }
 
@@ -249,8 +244,7 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   if (options.CheckMoveFromBorrowedCtx and var_sym->MemInfo->AstBorrowed and value_ast.To<
     IdentifierAst>() == nullptr and not partial_is_copyable) {
     const auto where_borrow = var_sym->MemInfo->AstBorrowed;
-    Raise<errors::SppMoveFromBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_borrow, *where_borrow));
+    Raise<errors::SppMoveFromBorrowedMemoryError>(ERR_ARGS(value_ast, *where_borrow, *where_borrow));
   }
 
   // A narrowed view of a value is that value: consuming
@@ -292,8 +286,7 @@ auto spp::analyse::utils::mem_utils::RaiseIfMoved(
   // being moved), and raise an error with the original
   // initialisation location, and the move location.
   const auto where_init = state.AstInitializationOrigin;
-  Raise<errors::SppUninitializedMemoryUseError>(
-    {scope}, ERR_ARGS(use, *where_init, *where_moved));
+  Raise<errors::SppUninitializedMemoryUseError>(ERR_ARGS(use, *where_init, *where_moved));
 }
 
 /// [CHECKED]

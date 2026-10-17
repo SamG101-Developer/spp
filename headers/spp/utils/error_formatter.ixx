@@ -43,8 +43,7 @@ public:
 
   /// The formatter of a source file. A file's positions are its
   /// own ("PositionOf"): each file is given a range no other file
-  /// has, so any position names the file it came from ("Owning"),
-  /// whichever scope an error was raised with.
+  /// has, so any position names the file it came from ("Owning").
   SPP_ATTR_NODISCARD static auto ForFile(
     Vec<lex::RawToken> tokens, Str file_path,
     std::size_t prelude_token_index) -> Unique<ErrorFormatter>;

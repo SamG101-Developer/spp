@@ -193,7 +193,7 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
         _CondSymbol->TypeRefIn(*sm->CurrentScope),
         TypeRef::Of(*Type, *sm->CurrentScope),
         *sm->CurrentScope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*meta->CaseCondition, *_CondSymbol->Type, *Type, *Type));
+      ERR_ARGS(*meta->CaseCondition, *_CondSymbol->Type, *Type, *Type));
     _FlowSymbol = MakeShared<VariableSymbol>(*_CondSymbol);
     _FlowSymbol->LlvmInfo = _CondSymbol->LlvmInfo;
 

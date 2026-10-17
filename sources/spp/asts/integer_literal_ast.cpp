@@ -78,10 +78,10 @@ auto IntegerLiteralAst::ToString() const -> Str {
 }
 
 auto IntegerLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *) -> void {
+  ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "s32" : Type;
-  ValidateBounds(*this, *sm->CurrentScope);
+  ValidateBounds(*this);
 }
 
 auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
@@ -99,7 +99,7 @@ auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
 }
 
 auto IntegerLiteralAst::ValidateBounds(
-  Ast const &owner, Scope const &scope) const -> void {
+  Ast const &owner) const -> void {
   using namespace spp::analyse::errors;
 
   // A value the type cannot hold is the same error whether
@@ -108,7 +108,7 @@ auto IntegerLiteralAst::ValidateBounds(
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value < lower or value > upper,
-    {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
+    ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto IntegerLiteralAst::FromBigVal(

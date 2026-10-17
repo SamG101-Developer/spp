@@ -72,14 +72,13 @@ auto CompilerStages::Stage8_CheckMemory(
 }
 
 auto CompilerStages::Stage9_CompTimeResolve(
-  ScopeManager *sm,
+  ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.
   using namespace spp::analyse::errors;
-  Raise<SppInvalidCompTimeOperationError>(
-    {sm->CurrentScope}, ERR_ARGS(dynamic_cast<Ast&>(*this)));
+  Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(dynamic_cast<Ast&>(*this)));
 }
 
 auto CompilerStages::Stage10_PreCodeGen(

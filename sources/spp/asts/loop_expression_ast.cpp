@@ -77,7 +77,7 @@ auto LoopExpressionAst::InferType(
         TypeRef::Of(*loop_type, loop_scope),
         TypeRef::Of(*else_type, *sm->CurrentScope),
         loop_scope, *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
+      ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
   }
 
   // Return the loop type.

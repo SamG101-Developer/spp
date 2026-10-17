@@ -64,12 +64,12 @@ auto PatternGuardAst::Stage7_AnalyseSemantics(
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Expr.get()));
+    ERR_ARGS(*Expr.get()));
 
   // Check the guard's type is boolean.
   if (not type_predicates::IsTypeBool(Expr->InferTypeRef(sm, meta), *sm->CurrentScope)) {
     const auto expr_ty = Expr->InferType(sm, meta);
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Expr, *expr_ty, "pattern guard"));
+    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Expr, *expr_ty, "pattern guard"));
   }
 }
 
@@ -91,7 +91,7 @@ auto PatternGuardAst::Stage8_CheckMemory(
     RaiseIf<SppPatternGuardMovesValueError>(
       memory_state::StateIn(before, sym).AstMoved == nullptr
       and memory_state::StateOf(*sm->CurrentScope, sym).AstMoved != nullptr and sym.Name != nullptr,
-      {sm->CurrentScope}, ERR_ARGS(*Expr, *sym.Name));
+      ERR_ARGS(*Expr, *sym.Name));
   };
   if (const auto flow = memory_state::FlowOf(*sm->CurrentScope); flow != nullptr) {
     for (auto const &[sym, _] : flow->States) { check(*sym); }

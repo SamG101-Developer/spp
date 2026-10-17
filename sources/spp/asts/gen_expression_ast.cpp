@@ -98,7 +98,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
     function_flavour->TokenType != lex::SppTokenType::KW_COR,
-    {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
+    ERR_ARGS(*function_flavour, *TokGen));
 
   // Analyse the expression if it exists, and determine
   // the type of the expression.
@@ -129,7 +129,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
 
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*Expr));
+      ERR_ARGS(*Expr));
 
     expr_type = Expr->InferType(sm, meta);
     if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
@@ -186,9 +186,10 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     ? *meta->EnclosingFnSourceRetType.back()->To<Ast>()
     : *To<Ast>();
   RaiseIf<SppYieldedTypeMismatchError>(
-    not direct_match, {sm->CurrentScope},
-    ERR_ARGS(ErrTypeAt(yield_ref, yield_at), ErrTypeAt(yield_ref, yield_at), Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(),
-      *expr_type));
+    not direct_match,
+    ERR_ARGS(
+      ErrTypeAt(yield_ref, yield_at, *sm->CurrentScope), ErrTypeAt(yield_ref, yield_at, *sm->CurrentScope),
+      Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));
 }
 
 auto GenExpressionAst::Stage8_CheckMemory(
@@ -221,7 +222,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
   else if (*Conv == ConventionTag::MUT) {
     // Immutable symbols cannot be mutated.
     RaiseIf<SppInvalidMutationError>(
-      not sym->IsMutable, {sm->CurrentScope},
+      not sym->IsMutable,
       ERR_ARGS(
         *sym->Name, *Conv, *analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
         "immutable symbol"));
@@ -230,7 +231,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
     // cannot be mutated.
     RaiseIf<SppInvalidMutationError>(
       sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-      {sm->CurrentScope}, ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
+      ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
   }
 }
 

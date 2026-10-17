@@ -757,10 +757,6 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// for neither (a generic, a symbol with no prototype).
   SPP_ATTR_NODISCARD auto GnParams() const -> GenericParameterGroupAst*;
 
-  /// The scope "GnParams" is written in: an alias's declaring scope ("AliasInfo::DeclaredIn"), else its class's own.
-  /// Null where there is none.
-  SPP_ATTR_NODISCARD auto GnParamsScope() const -> Scope*;
-
   /// What this symbol stands for: a binding, a parameter or "Self" followed through the scopes it links
   /// ("LinkedSymbol") to the symbol it names; anything else is itself. Stops where the walk comes back round ("Self"
   /// stand-ins naming each other).

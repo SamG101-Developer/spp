@@ -764,7 +764,7 @@ namespace spp::analyse::utils::monomorphization {
     auto EnforceFnInstantiationBounded(
       FunctionPrototypeAst const &tmpl,
       FunctionPrototypeAst::GenericSubstitution const *requested_by,
-      const TypeId args_id, ScopeManager const &sm) -> std::size_t {
+      const TypeId args_id) -> std::size_t {
       // Walk up the request chain until we reach an instance of
       // the same template, and take its depth (+1 for this
       // instance). This counts how many instances of the template
@@ -782,7 +782,7 @@ namespace spp::analyse::utils::monomorphization {
       // instantiation depth for a function.
       spp::RaiseIf<errors::SppGenericInstantiationDepthError>(
         depth > kMaxFnInstantiationDepth,
-        {sm.CurrentScope}, ERR_ARGS(*tmpl.Name));
+        ERR_ARGS(*tmpl.Name));
 
       // Raise an error if we have exceeded the number of parts
       // within the generic args id, which prevents infinite
@@ -790,7 +790,7 @@ namespace spp::analyse::utils::monomorphization {
       auto memo = spp::Map<scopes::TypeId, std::size_t>();
       spp::RaiseIf<errors::SppGenericInstantiationDepthError>(
         SpelledSizeOf(args_id, kMaxFnInstantiationSize, memo) >= kMaxFnInstantiationSize,
-        {sm.CurrentScope}, ERR_ARGS(*tmpl.Name));
+        ERR_ARGS(*tmpl.Name));
 
       // Return the depth so it can be bound into the generic
       // substitution of the function, for further tracking like
@@ -810,11 +810,11 @@ namespace spp::analyse::utils::monomorphization {
 
 SPP_MOD_BEGIN
 spp::analyse::utils::monomorphization::InstantiationDepth::InstantiationDepth(
-  TypeAst const &at, ScopeManager const &sm) {
+  TypeAst const &at) {
   ++instantiation_depth;
   if (instantiation_depth > 128) {
     --instantiation_depth;
-    Raise<errors::SppGenericInstantiationDepthError>({sm.CurrentScope}, ERR_ARGS(at));
+    Raise<errors::SppGenericInstantiationDepthError>(ERR_ARGS(at));
   }
 }
 
@@ -863,7 +863,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
     const auto is_tuple = type_predicates::IsTypeTuple(
       TypeRef::ForKindCheck(*tmpl, *tm.CurrentScope), *tm.CurrentScope);
     if (all_named or is_tuple) {
-      const auto _depth = InstantiationDepth(name, tm);
+      const auto _depth = InstantiationDepth(name);
       const auto _meta_guard = meta::MetaGuard(meta);
       meta->AllowAbstractType = true;
       meta->IgnoreAccessModifierViolations = true;
@@ -1213,7 +1213,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     // analysis (compiler OOM).
     const auto requested_by = FunctionPrototypeAst::AnalysingGnSubstitution();
     const auto depth = EnforceFnInstantiationBounded(
-      *fn_proto, requested_by, id, *sm);
+      *fn_proto, requested_by, id);
 
     // Clone the function prototype's signature (not body),
     // set the non generic pointer, and detach the llvm
@@ -1295,7 +1295,6 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     // Check the new return type isn't a borrow type.
     RaiseIf<SppSecondClassBorrowViolationError>(
       IsTypeBorrowed(*new_fn_proto->ReturnType, tm),
-      {sm->CurrentScope},
       ERR_ARGS(*new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type"));
 
     const auto is_concrete = ComputeIsConcrete(id, *new_fn_proto, instance_self.get(), tm, meta);

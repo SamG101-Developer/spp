@@ -878,7 +878,6 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
       ? static_cast<Ast*>(meta->AssignmentTarget.get())
       : mismatch_branch->Body->FinalMember();
     Raise<SppTypeMismatchError>(
-      {sm.CurrentScope},
       ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
   }
 
@@ -1192,8 +1191,7 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
       auto const *const blamed = branch.Patterns.empty()
         ? static_cast<Ast const*>(&branch)
         : static_cast<Ast const*>(branch.Patterns[0].get());
-      Raise<errors::SppDestructureSkipsOwnedPartError>(
-        {sm.CurrentScope}, ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
+      Raise<errors::SppDestructureSkipsOwnedPartError>(ERR_ARGS(*blamed, *subject->Name, StrView(skipped)));
     }
   }
 

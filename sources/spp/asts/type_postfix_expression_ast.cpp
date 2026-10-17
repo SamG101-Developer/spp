@@ -108,7 +108,7 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   if (not op_nested->Name->IsCompilerGeneratedType()) {
     member_lookup::RaiseIfAmbiguous(
       member_lookup::ClosestScopes(member_lookup::ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name)),
-      *op_nested->Name, *sm);
+      *op_nested->Name);
   }
 
   // Ensure the type exists on the "lhs" part.
@@ -134,7 +134,7 @@ auto TypePostfixExpressionAst::InferType(
 
   // Infer the type of the postfix operation.
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name, *sm)->FqName();
+  return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name)->FqName();
 }
 
 auto TypePostfixExpressionAst::InferTypeRef(
@@ -144,7 +144,7 @@ auto TypePostfixExpressionAst::InferTypeRef(
   Lhs->Stage7_AnalyseSemantics(sm, meta);
   const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
   const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
-  const auto sym = member_lookup::FindTypeSymbolOrError(*lhs_type_sym->LinkedScope, *op_nested->Name, *sm);
+  const auto sym = member_lookup::FindTypeSymbolOrError(*lhs_type_sym->LinkedScope, *op_nested->Name);
   return TypeRef::Of(*sym, *sm->CurrentScope);
 }
 

@@ -70,14 +70,14 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   // type.
   RaiseIf<SppDereferenceNonBorrowedTypeError>(
     lhs_type->GetConvention() == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*TokDeref, *lhs, *lhs_type));
+    ERR_ARGS(*TokDeref, *lhs, *lhs_type));
 
   // Check the right-hand-side expression is a "Copy" type.
   // Todo: Add to unit tests.
   if (not lhs_ref.Symbol->IsCopyable() and not meta->AllowMoveDeref and not is_view) {
     // Held here: "ERR_ARGS" keeps references, not the copy.
     const auto lhs_type_no_conv = lhs_type->WithoutConvention();
-    Raise<SppNonCopyableTypeError>({sm->CurrentScope}, ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
+    Raise<SppNonCopyableTypeError>(ERR_ARGS(*this, *lhs, *lhs_type_no_conv));
   }
 }
 

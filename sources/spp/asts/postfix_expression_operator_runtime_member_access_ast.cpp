@@ -137,7 +137,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     auto const *const lhs_sym = lhs_type != nullptr ? sm->CurrentScope->FindTypeSymbol(lhs_type) : nullptr;
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
       lhs_type != nullptr and not (lhs_sym != nullptr and lhs_sym->IsZeroType()),
-      {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
+      ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
   }
 
   // Numeric index access (for tuples). An unbound pack's length
@@ -153,16 +153,14 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // types).
     if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
       const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(
-        {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
+      Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
     }
 
     // Check the index is within the bounds of the tuple
     // or array.
     if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
       const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-      Raise<SppMemberAccessOutOfBoundsError>(
-        {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));
+      Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));
     }
   }
 
@@ -180,7 +178,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // Check the lhs is a variable and not a namespace.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
       // Todo: this error message uses "Type" -> accept param for ctx (ns)
-      lhs_var_sym == nullptr and lhs_ns_sym != nullptr, {sm->CurrentScope},
+      lhs_var_sym == nullptr and lhs_ns_sym != nullptr,
       ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "namespace"));
 
     // Check whether the target field exists on the type,
@@ -203,13 +201,13 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr);
       if (try_op != nullptr) {
         const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-        Raise<SppExpressionNotTryError>({sm->CurrentScope}, ERR_ARGS(*try_op, *lhs_type));
+        Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *lhs_type));
       }
 
       // Type field was not found on this type, or the
       // forwarding type (includes nested forwarding checks).
       member_lookup::RaiseMissingIdentifierAndClosestOptions(
-        *Name, lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true), {}, *sm);
+        *Name, lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true), {});
     }
 
     auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(*lhs_type_sym->LinkedScope, *Name);
@@ -252,7 +250,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     // a constant of the same name: the two are different members,
     // and only how the access is written says which one was meant.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
-      runtime_members.empty() and not members.empty(), {sm->CurrentScope},
+      runtime_members.empty() and not members.empty(),
       ERR_ARGS(*Name, *TokDot, "constant"));
 
     // If we only have functional types, just return.
@@ -270,7 +268,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member_sym);
     }
 
-    member_lookup::RaiseIfAmbiguous(closest, *Name, *sm);
+    member_lookup::RaiseIfAmbiguous(closest, *Name);
   }
 }
 

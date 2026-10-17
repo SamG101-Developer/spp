@@ -88,7 +88,7 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   const auto function_flavour = meta->EnclosingFnFlavour;
   RaiseIf<SppFunctionSubroutineContainsGenExpressionError>(
     function_flavour->TokenType != lex::SppTokenType::KW_COR,
-    {sm->CurrentScope}, ERR_ARGS(*function_flavour, *TokGen));
+    ERR_ARGS(*function_flavour, *TokGen));
 
   // Desugar the standard "gen with <Expr>" into the expanded
   // "loop _tmp in <Expr> { gen _tmp }". This keeps all "gen"

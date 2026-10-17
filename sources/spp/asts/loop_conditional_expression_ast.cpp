@@ -89,12 +89,12 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   Cond->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Cond));
+    ERR_ARGS(*Cond));
 
   // Check the loop condition is boolean.
   if (not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
     const auto cond_ty = Cond->InferType(sm, meta);
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "loop"));
+    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Cond, *cond_ty, "loop"));
   }
 
   // Set the loop level information into the "meta" object.

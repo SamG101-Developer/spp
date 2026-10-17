@@ -82,8 +82,7 @@ namespace spp::analyse::utils::destructure_utils {
 
         if (const auto skipped = region.has_value() ? regions::FirstUnaccountedPart(*sym, *region, sm) : Str();
           not skipped.empty()) {
-          Raise<errors::SppDestructureSkipsOwnedPartError>(
-            {sm.CurrentScope}, ERR_ARGS(owner, *val, StrView(skipped)));
+          Raise<errors::SppDestructureSkipsOwnedPartError>(ERR_ARGS(owner, *val, StrView(skipped)));
         }
       }
 
@@ -264,7 +263,6 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
             skipped = meta->LetStatementValue->ToString() + skipped.substr(tmp_name->Val.size());
           }
           Raise<errors::SppDestructureSkipsOwnedPartError>(
-            {sm.CurrentScope},
             ERR_ARGS(destructure, *meta->LetStatementValue, StrView(skipped)));
         }
       }
@@ -306,7 +304,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
     | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
     | genex::to<Vec>();
   RaiseIf<errors::SppMultipleRestPatternsError>(
-    multi_arg_skips.size() > 1, {sm->CurrentScope},
+    multi_arg_skips.size() > 1,
     ERR_ARGS(self, *multi_arg_skips[0], *multi_arg_skips[1]));
 
   // The value is of the destructure's kind, with as many elements as are written (fewer only with a "..").

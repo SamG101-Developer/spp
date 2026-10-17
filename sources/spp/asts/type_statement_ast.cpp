@@ -116,7 +116,7 @@ auto TypeStatementAst::Stage2_GenTopLvlScopes(
   // Check there are no conventions on the new type. Todo: Move to later stage? nothing is loaded in atm
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*NewType, *sm, false),
-    {sm->CurrentScope}, ERR_ARGS(*this, *NewType, "type statement new type"));
+    ERR_ARGS(*this, *NewType, "type statement new type"));
 
   // Create the type symbol for this type, that will point to the old type.
   _AliasSymbol = MakeShared<TypeSymbol>(
@@ -174,7 +174,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   // than a name to declare.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*OldType, *sm, false),
-    {sm->CurrentScope}, ERR_ARGS(*this, *OldType, "type statement old type"));
+    ERR_ARGS(*this, *OldType, "type statement old type"));
 
   // Check the "old type" exists (non-generic).
   {

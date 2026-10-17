@@ -186,7 +186,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       auto const &borrowed_at = lhs_sym != nullptr and lhs_sym->MemInfo->AstBorrowed != nullptr
         ? *lhs_sym->MemInfo->AstBorrowed
         : static_cast<Ast const&>(lhs);
-      Raise<SppMoveFromBorrowedMemoryError>({sm->CurrentScope}, ERR_ARGS(lhs, borrowed_at, borrowed_at));
+      Raise<SppMoveFromBorrowedMemoryError>(ERR_ARGS(lhs, borrowed_at, borrowed_at));
     }
 
     // A borrowing call holds its callee as an argument would, with the convention its function type takes.
@@ -242,16 +242,14 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   // is rejected wherever it appears.
   if (const auto test_annotation = _OverloadInfo->Proto->TestAnnotation;
     test_annotation != nullptr and not meta->IsTestHarness) {
-    Raise<SppUnitTestNotCallableError>(
-      {_OverloadInfo->OverloadScope, sm->CurrentScope},
-      ERR_ARGS(*this, *test_annotation));
+    Raise<SppUnitTestNotCallableError>(ERR_ARGS(*this, *test_annotation));
   }
 
   // Check that if we are in a cmp context, that the overload
   // is also cmp.
   RaiseIf<SppInvalidCompTimeOperationError>(
     meta->EnclosingFnCmp != nullptr and _OverloadInfo->Proto->TokCmp == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   // Special case for GenOnce called as a coroutine => auto
   // move into the "Yield" type.
@@ -310,12 +308,12 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   auto const *const fn_proto = _OverloadInfo->Proto->GetNonGnImpl();
   RaiseIf<SppCompTimeConstantError>(
     fn_proto->TokCmp == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   // Todo: For now, don't allow folding in comptime.
   RaiseIf<SppCompTimeConstantError>(
     Fold != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*Fold));
+    ERR_ARGS(*Fold));
 
   // Create the argument map for the function to use: stage 7 left one keyword argument per parameter
   // ("ElaborateCall"), the receiver of a method call included.
@@ -342,7 +340,6 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   // report their errors there rather than inside std.
   const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
   const auto *const outer_site = meta->CompTimeCallSite;
-  auto *const outer_scope = meta->CompTimeCallSiteScope;
 
   // Each nested call is a nested evaluation on the compiler's
   // own stack, so recursion that never bottoms out has to be
@@ -356,13 +353,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   } const depth_guard(cmp_call_depth);
   RaiseIf<SppInvalidCompTimeOperationError>(
     cmp_call_depth > kMaxCompTimeCallDepth,
-    {outer_scope != nullptr ? outer_scope : sm->CurrentScope}, ERR_ARGS(outer_site != nullptr ? *outer_site : *owner));
+    ERR_ARGS(outer_site != nullptr ? *outer_site : *owner));
   {
     const auto _meta_guard = MetaGuard(meta);
-    if (outer_site == nullptr) {
-      meta->CompTimeCallSite = owner;
-      meta->CompTimeCallSiteScope = sm->CurrentScope;
-    }
+    if (outer_site == nullptr) { meta->CompTimeCallSite = owner; }
     meta->CompTimeArgs = std::move(fn_arg_map);
     meta->CompTimeGnTypeArgs = std::move(gn_arg_type_map);
     meta->CompTimeGnCompArgs = std::move(gn_arg_comp_map);
@@ -377,14 +371,13 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   // result that does not fit arrives intact rather than having
   // wrapped on the way out. Checked per call to catch overflow.
   auto const &site = outer_site != nullptr ? *outer_site : *owner;
-  auto const &site_scope = outer_site != nullptr ? *outer_scope : *sm->CurrentScope;
   if (const auto int_result =
     meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<IntegerLiteralAst>() : nullptr) {
-    int_result->ValidateBounds(site, site_scope);
+    int_result->ValidateBounds(site);
   }
   else if (const auto flt_result =
     meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<FloatLiteralAst>() : nullptr) {
-    flt_result->ValidateBounds(site, site_scope);
+    flt_result->ValidateBounds(site);
   }
 
 }

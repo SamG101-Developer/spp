@@ -163,7 +163,7 @@ auto SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
     if (const auto cmp_member = member->To<CmpStatementAst>()) {
       // Check the constant agrees in type with every declaration
       // of that name on the type and its super types.
-      type_members::CheckShadowedCmpAgreesInType(*cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope, *sm);
+      type_members::CheckShadowedCmpAgreesInType(*cmp_member, *cls_sym->LinkedScope, *sm->CurrentScope);
     }
   }
 

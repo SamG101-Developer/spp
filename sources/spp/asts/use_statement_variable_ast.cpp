@@ -112,8 +112,7 @@ auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
   // Todo: alternatives based on lhs of the old var.
   const auto closest_match = spp::utils::strings::ClosestMatch(
     OldVar->ToString(), {});
-  Raise<SppIdentifierUnknownError>(
-    {sm->CurrentScope}, ERR_ARGS(*this, "constant variable", closest_match));
+  Raise<SppIdentifierUnknownError>(ERR_ARGS(*this, "constant variable", closest_match));
 }
 
 auto UseStatementVariableAst::Stage4_ResolveDeclarations(

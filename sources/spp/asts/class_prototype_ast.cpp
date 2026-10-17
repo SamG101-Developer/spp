@@ -210,7 +210,7 @@ auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   // Check the type isn't recursive.
   const auto recursion = type_members::FindRecursiveAttrType(*this, *sm);
   RaiseIf<SppRecursiveTypeError>(
-    recursion != nullptr, {sm->CurrentScope},
+    recursion != nullptr,
     ERR_ARGS(*this, *recursion));
 
   sm->MoveOutOfCurrentScope();
@@ -232,7 +232,7 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   // copying: a marker is still linear unless it is "Copy".
   RaiseIf<SppEmptyBodyRequiredError>(
     ZeroTypeAnnotation != nullptr and not Impl->Members.empty(),
-    {sm->CurrentScope}, ERR_ARGS(
+    ERR_ARGS(
       *ZeroTypeAnnotation, *Impl->Members.front(), "a '!zero_type' class",
       "the type is guaranteed to occupy no storage, and an attribute would give it a size"));
 

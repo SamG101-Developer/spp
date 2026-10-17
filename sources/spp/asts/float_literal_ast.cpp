@@ -90,10 +90,10 @@ auto FloatLiteralAst::ToString() const -> Str {
 }
 
 auto FloatLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *) -> void {
+  ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = Type.empty() ? "f32" : Type;
-  ValidateBounds(*this, *sm->CurrentScope);
+  ValidateBounds(*this);
 }
 
 auto FloatLiteralAst::BigVal() const -> numex::BigDec {
@@ -109,7 +109,7 @@ auto FloatLiteralAst::BigVal() const -> numex::BigDec {
 }
 
 auto FloatLiteralAst::ValidateBounds(
-  Ast const &owner, Scope const &scope) const -> void {
+  Ast const &owner) const -> void {
   using namespace spp::analyse::errors;
 
   // A value the type cannot hold is the same error whether
@@ -118,7 +118,7 @@ auto FloatLiteralAst::ValidateBounds(
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,
-    {&scope}, ERR_ARGS(owner, value, lower, upper, Type));
+    ERR_ARGS(owner, value, lower, upper, Type));
 }
 
 auto FloatLiteralAst::FromBigVal(

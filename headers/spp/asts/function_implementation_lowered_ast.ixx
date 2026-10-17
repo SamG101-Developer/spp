@@ -24,9 +24,9 @@ private:
 
   FunctionPrototypeAst *_ProtoPtr = nullptr;
 
-  auto _ValidateZeroDivision(Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, meta::CompilerMetaData const *meta) const -> void;
+  auto _ValidateZeroDivision(Vec<Unique<ExpressionAst>> const &args, meta::CompilerMetaData const *meta) const -> void;
 
-  auto _ValidateShiftAmount(Vec<Unique<ExpressionAst>> const &args, ScopeManager const *sm, meta::CompilerMetaData const *meta) const -> void;
+  auto _ValidateShiftAmount(Vec<Unique<ExpressionAst>> const &args, meta::CompilerMetaData const *meta) const -> void;
 
 public:
   static auto NewEmpty() -> Unique<FunctionImplementationLoweredAst>;

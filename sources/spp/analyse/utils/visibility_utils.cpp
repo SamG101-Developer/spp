@@ -150,14 +150,13 @@ namespace spp::analyse::utils::visibility_utils {
     /// error, so this isn't always called.
     template <typename Symbol>
     auto RaiseIfNotVisible(
-      const bool visible, Symbol const &sym, Ast const &access_ast, Scope const &owner_scope,
-      ScopeManager const &sm, char const *what) -> void {
+      const bool visible, Symbol const &sym, Ast const &access_ast, char const *what) -> void {
       // Flip the "visible" flag and conditionally raise on it.
       // All the information passed into the function is unified
       // in usage from callers.
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
-        not visible, {DefinitionModuleOf(sym, owner_scope), sm.CurrentScope},
+        not visible,
         ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
     }
   }
@@ -174,7 +173,7 @@ auto spp::analyse::utils::visibility_utils::CheckTypeMemberVisibility(
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
   RaiseIfNotVisible(
     IsTypeMemberVisibleImpl(
-      sym, type_scope, sm, meta), sym, access_ast, type_scope, sm, "symbol");
+      sym, type_scope, sm, meta), sym, access_ast, "symbol");
 }
 
 auto spp::analyse::utils::visibility_utils::IsTypeTypeVisible(
@@ -188,7 +187,7 @@ auto spp::analyse::utils::visibility_utils::CheckTypeTypeVisibility(
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
   RaiseIfNotVisible(
     IsTypeMemberVisibleImpl(
-      sym, type_scope, sm, meta), sym, access_ast, type_scope, sm, "type");
+      sym, type_scope, sm, meta), sym, access_ast, "type");
 }
 
 auto spp::analyse::utils::visibility_utils::IsModuleMemberVisible(
@@ -203,7 +202,7 @@ auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
-      sym, definition_scope, sm, meta), sym, access_ast, definition_scope, sm, "symbol");
+      sym, definition_scope, sm, meta), sym, access_ast, "symbol");
 }
 
 auto spp::analyse::utils::visibility_utils::IsModuleTypeVisible(
@@ -218,5 +217,5 @@ auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
-      sym, definition_scope, sm, meta), sym, access_ast, definition_scope, sm, "type");
+      sym, definition_scope, sm, meta), sym, access_ast, "type");
 }

@@ -177,8 +177,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     const auto unimplemented = unexplained(*abstract.Symbol->LinkedScope);
     const auto self_sym = sm->CurrentScope->FindSelfSymbol();
     if (self_sym == nullptr or self_sym->LinkedScope != resolved_sym->LinkedScope) {
-      Raise<SppAbstractTypeUseError>(
-        {unimplemented[0]->GetAstScope(), sm->CurrentScope}, ERR_ARGS(*this, *unimplemented[0]));
+      Raise<SppAbstractTypeUseError>(ERR_ARGS(*this, *unimplemented[0]));
     }
   };
 
@@ -194,14 +193,14 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // than left to overflow the stack. One growing wider instead
   // ("f[(T, T)]" inside "f[T]") is refused where the function
   // is instantiated (E109).
-  const auto _depth = monomorphization::InstantiationDepth(*this, *sm);
+  const auto _depth = monomorphization::InstantiationDepth(*this);
   RaiseIf<SppHigherOrderGenericsNotSupportedError>(
     IsSelfType() and GnArgGroup != nullptr and not GnArgGroup->Args.empty(),
-    {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
+    ERR_ARGS(*this, *GnArgGroup));
   if (IsSelfType() and meta->CurrentStage < CompilerStage::kAnalyseSemantics) {
     if (meta->CurrentStage >= CompilerStage::kLoadSupScopes) {
       const auto self_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
-      ignore = member_lookup::FindTypeSymbolOrError(*self_scope, *this, *sm);
+      ignore = member_lookup::FindTypeSymbolOrError(*self_scope, *this);
     }
     _HasAnalysed = true;
     return;
@@ -227,11 +226,10 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   RaiseIf<SppFeatureNotYetSupportedError>(
     meta->TypeAnalysisTypeScope != nullptr and scope->LinkedTypeSymbol != nullptr
     and meta->CurrentStage < CompilerStage::kAttachSupScopes and scope->FindHeadSymbol(*this) == nullptr,
-    {scope, sm->CurrentScope},
     ERR_ARGS(NotYetSupportedFeature::NestedTypeBeforeSupScopes, *scope->LinkedTypeSymbol->Name, *this));
 
   const auto type_sym = member_lookup::FindTypeSymbolOrError(
-    *scope, *WithoutGns()->ToUnchecked<TypeIdentifierAst>(), *sm);
+    *scope, *WithoutGns()->ToUnchecked<TypeIdentifierAst>());
 
   // Use the hook to record information for the resolution and
   // completion plugin.
@@ -292,10 +290,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
       and not own_params_alias;
 
     // Name all the generic arguments.
-    auto const *const params_scope = type_sym->GnParamsScope();
-    GnArgGroup = generic_inference::NamedGnArgs(
-      *GnArgGroup, *gn_param_group, params_scope != nullptr ? *params_scope : *sm->CurrentScope, *this, *sm, *meta,
-      is_tuple);
+    GnArgGroup = generic_inference::NamedGnArgs(*GnArgGroup, *gn_param_group, *this, *sm, *meta, is_tuple);
 
     // Analyse the generic arguments. Naming an abstract type as
     // one ("B[A]") produces no value of it; an instantiation that
@@ -342,7 +337,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   else {
     RaiseIf<SppHigherOrderGenericsNotSupportedError>(
       GnArgGroup != nullptr and not GnArgGroup->Args.empty(),
-      {sm->CurrentScope}, ERR_ARGS(*this, *GnArgGroup));
+      ERR_ARGS(*this, *GnArgGroup));
   }
 
   // A variant is the set of its members, so it is normalised

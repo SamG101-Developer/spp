@@ -109,7 +109,7 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// written literal is checked when it is analysed; one that
   /// comp-time arithmetic produced is checked where that
   /// arithmetic is invoked from.
-  auto ValidateBounds(Ast const &owner, Scope const &scope) const -> void;
+  auto ValidateBounds(Ast const &owner) const -> void;
 
 private:
   /// The precompiled type this literal's suffix names ("S32" for "1", "U8" for "1_u8").

@@ -221,7 +221,7 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
     TypeRef::Of(*Type, *sm->CurrentScope), Value->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto inferred_type = Value->InferType(sm, meta);
-    Raise<SppTypeMismatchError>({sm->CurrentScope}, ERR_ARGS(*Type, *Type, *Value, *inferred_type));
+    Raise<SppTypeMismatchError>(ERR_ARGS(*Type, *Type, *Value, *inferred_type));
   }
   sm->MoveOutOfCurrentScope();
 }

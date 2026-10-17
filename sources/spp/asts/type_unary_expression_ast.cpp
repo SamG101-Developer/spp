@@ -91,7 +91,7 @@ auto TypeUnaryExpressionAst::Stage7_AnalyseSemantics(
     const auto tm = sm->NewManagerAt(
       meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope);
     const auto type_scope = member_lookup::FindNsSymbolOrError(
-      *tm.CurrentScope, *op_ns->Ns, *sm)->LinkedScope;
+      *tm.CurrentScope, *op_ns->Ns)->LinkedScope;
     const auto _meta_guard = MetaGuard(meta);
     meta->TypeAnalysisTypeScope = type_scope;
     Rhs->Stage7_AnalyseSemantics(sm, meta);

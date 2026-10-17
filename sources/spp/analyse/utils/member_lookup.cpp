@@ -66,25 +66,21 @@ namespace spp::analyse::utils::member_lookup {
     /// The body both the "RaiseIfAmbiguous" wrap.
     template <typename Entry>
     auto RaiseIfAmbiguousImpl(
-      Vec<Entry> const &closest, Ast const &access,
-      ScopeManager const &sm) -> void {
+      Vec<Entry> const &closest, Ast const &access) -> void {
       // If there is a maximum of 1 scope containing the
       // target identifier/type-identifier, then return.
       // Otherwise, there is an ambiguity, so raise an
       // error.
       using errors::SppAmbiguousMemberAccessError;
       if (closest.size() <= 1) { return; }
-      Raise<SppAmbiguousMemberAccessError>(
-        {closest[0].Where, closest[1].Where, sm.CurrentScope},
-        ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
+      Raise<SppAmbiguousMemberAccessError>(ERR_ARGS(*closest[0].Symbol->Name, *closest[1].Symbol->Name, access));
     }
 
     /// Raise an error for a missing type identifier, and provide
     /// the closest options; a singular place to uniformly handle
     /// these errors.
     SPP_ATTR_COLD SPP_ATTR_NORETURN auto RaiseMissingTypeIdentifierAndClosestOptions(
-      TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols,
-      ScopeManager const &sm) -> void {
+      TypeIdentifierAst const &identifier, Vec<TypeSymbol*> const &symbols) -> void {
       using spp::utils::strings::ClosestMatch;
 
       //
@@ -95,15 +91,14 @@ namespace spp::analyse::utils::member_lookup {
 
       //
       const auto closest_match = ClosestMatch(identifier.Name, alternatives);
-      Raise<errors::SppIdentifierUnknownError>(
-        {sm.CurrentScope}, ERR_ARGS(identifier, "type identifier", closest_match));
+      Raise<errors::SppIdentifierUnknownError>(ERR_ARGS(identifier, "type identifier", closest_match));
     }
   }
 }
 
 auto spp::analyse::utils::member_lookup::RaiseMissingIdentifierAndClosestOptions(
   IdentifierAst const &identifier, Vec<VariableSymbol*> const &var_symbols,
-  Vec<NamespaceSymbol*> const &ns_symbols, ScopeManager const &sm) -> void {
+  Vec<NamespaceSymbol*> const &ns_symbols) -> void {
   using errors::SppIdentifierUnknownError;
   using spp::utils::strings::ClosestMatch;
 
@@ -118,29 +113,26 @@ auto spp::analyse::utils::member_lookup::RaiseMissingIdentifierAndClosestOptions
 
   //
   const auto closest_match = ClosestMatch(identifier.Val, alternatives);
-  Raise<SppIdentifierUnknownError>(
-    {sm.CurrentScope}, ERR_ARGS(identifier, "identifier", closest_match));
+  Raise<SppIdentifierUnknownError>(ERR_ARGS(identifier, "identifier", closest_match));
 }
 
 auto spp::analyse::utils::member_lookup::FindTypeSymbolOrError(
   Scope const &scope,
-  TypeAst const &type,
-  ScopeManager const &sm)
+  TypeAst const &type)
   -> TypeSymbol* {
   const auto sym = scope.FindTypeSymbol(&type);
   if (sym == nullptr) {
-    RaiseMissingTypeIdentifierAndClosestOptions(*type.LastTypePart(), scope.GetAllTypeSymbols(), sm);
+    RaiseMissingTypeIdentifierAndClosestOptions(*type.LastTypePart(), scope.GetAllTypeSymbols());
   }
   return sym;
 }
 
 auto spp::analyse::utils::member_lookup::FindNsSymbolOrError(
   Scope const &scope,
-  IdentifierAst const &ns,
-  ScopeManager const &sm)
+  IdentifierAst const &ns)
   -> NamespaceSymbol* {
   auto *const sym = scope.FindNsSymbol(&ns);
-  if (sym == nullptr) { RaiseMissingIdentifierAndClosestOptions(ns, {}, scope.GetAllNsSymbols(), sm); }
+  if (sym == nullptr) { RaiseMissingIdentifierAndClosestOptions(ns, {}, scope.GetAllNsSymbols()); }
   return sym;
 }
 
@@ -215,18 +207,18 @@ auto spp::analyse::utils::member_lookup::ClosestScopes(
 
 auto spp::analyse::utils::member_lookup::RaiseIfAmbiguous(
   Vec<DeclaringVarScope> const &closest,
-  Ast const &access, ScopeManager const &sm) -> void {
+  Ast const &access) -> void {
   // Wrap the implementation function to raise an error
   // if there are more than 1 scopes at the equal minimum
   // level => ambiguous lookup.
-  RaiseIfAmbiguousImpl(closest, access, sm);
+  RaiseIfAmbiguousImpl(closest, access);
 }
 
 auto spp::analyse::utils::member_lookup::RaiseIfAmbiguous(
   Vec<DeclaringTypeScope> const &closest,
-  Ast const &access, ScopeManager const &sm) -> void {
+  Ast const &access) -> void {
   // Wrap the implementation function to raise an error
   // if there are more than 1 scopes at the equal minimum
   // level => ambiguous lookup.
-  RaiseIfAmbiguousImpl(closest, access, sm);
+  RaiseIfAmbiguousImpl(closest, access);
 }

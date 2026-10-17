@@ -103,7 +103,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
         auto candidates = lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true)
           | genex::views::filter([](auto const &sym) { return sym->Kind == VariableKind::FnMock; })
           | genex::to<Vec>();
-        member_lookup::RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {}, *sm);
+        member_lookup::RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {});
       }
       _LhsTypeSymbol = lhs_fwd_ref_type_sym;
     }
@@ -121,7 +121,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     // than to the type, so it is reached with "." instead.
     const auto member = member_lookup::MemberOf(*_LhsTypeSymbol->LinkedScope, *Name, MemberAccessForm::Static);
     RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-      member != nullptr and not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static), {sm->CurrentScope},
+      member != nullptr and not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static),
       ERR_ARGS(*Name, *TokDblColon, "attribute"));
 
     // Which declaration the access resolves to: the nearest
@@ -148,7 +148,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
         *Name, *sm, *meta, declared_sym != nullptr ? declared_sym : closest[0].Symbol);
     }
 
-    member_lookup::RaiseIfAmbiguous(closest, *Name, *sm);
+    member_lookup::RaiseIfAmbiguous(closest, *Name);
     return;
   }
 
@@ -158,7 +158,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
   // Check the lhs is a namespace and not a variable.
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-    lhs_var_sym != nullptr, {sm->CurrentScope},
+    lhs_var_sym != nullptr,
     ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon, "variable"));
 
   // Check the constant exists inside the namespace.
@@ -167,7 +167,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name.get(), true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(
     Name.get(), true)) {
     member_lookup::RaiseMissingIdentifierAndClosestOptions(
-      *Name, lhs_ns_sym->LinkedScope->GetAllVarSymbols(false, true), lhs_ns_sym->LinkedScope->GetAllNsSymbols(), *sm);
+      *Name, lhs_ns_sym->LinkedScope->GetAllVarSymbols(false, true), lhs_ns_sym->LinkedScope->GetAllNsSymbols());
   }
 
   // Enforce visibility on the accessed namespace symbol.

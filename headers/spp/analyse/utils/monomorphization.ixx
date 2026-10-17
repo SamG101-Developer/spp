@@ -28,7 +28,7 @@ namespace spp::analyse::utils::monomorphization {
   /// overflow the stack.
   SPP_EXP_CLS class InstantiationDepth {
   public:
-    InstantiationDepth(TypeAst const &at, ScopeManager const &sm);
+    InstantiationDepth(TypeAst const &at);
     ~InstantiationDepth();
     InstantiationDepth(InstantiationDepth const &) = delete;
     auto operator=(InstantiationDepth const &) -> InstantiationDepth& = delete;

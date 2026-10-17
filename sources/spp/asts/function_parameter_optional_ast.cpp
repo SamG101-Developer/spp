@@ -85,7 +85,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
 
   RaiseIf<SppInvalidDefaultValueError>(
     not written.IsAllowedInDefault(),
-    {sm->CurrentScope}, ERR_ARGS(written, "parameter", "call"));
+    ERR_ARGS(written, "parameter", "call"));
 
   // Standard ast shape check on what's valid as a primary
   // expression.
@@ -96,7 +96,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
   }
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*DefaultVal, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*DefaultVal));
+    ERR_ARGS(*DefaultVal));
 
   // Do a type check on the default value's type vs the type
   // given; the default's type is only spelled out for the
@@ -105,8 +105,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
     TypeRef::Of(*Type, *sm->CurrentScope), DefaultVal->InferTypeRef(sm, meta),
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto default_type = DefaultVal->InferType(sm, meta);
-    Raise<SppTypeMismatchError>(
-      {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
+    Raise<SppTypeMismatchError>(ERR_ARGS(*Source.OriginalType, *Type, *DefaultVal, *default_type));
   }
   _DefaultAnalysed = true;
 }

@@ -66,7 +66,7 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
   Expr->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Expr));
+    ERR_ARGS(*Expr));
 
   const auto _meta_guard = MetaGuard(meta);
   meta->UnaryExpressionRhs = Expr.get();

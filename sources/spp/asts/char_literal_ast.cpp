@@ -72,7 +72,7 @@ auto CharLiteralAst::ToString() const -> Str {
 }
 
 auto CharLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *) -> void {
+  ScopeManager *, CompilerMetaData *) -> void {
   // A byte-prefixed literal ("b'...'") must decode to a single
   // to prevent truncation by the codegen mask, instead of being
   // rejected here.
@@ -92,13 +92,13 @@ auto CharLiteralAst::Stage7_AnalyseSemantics(
     : 1uz;
   RaiseIf<SppCharLiteralLengthError>(
     content.size() != expected_len,
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
 
   if (BytePrefix != nullptr) {
     const auto code_point = spp::utils::strings::DecodeCharLiteral(Val->TokenData);
     RaiseIf<SppCharLiteralOutOfBoundsError>(
       code_point > 0xFFu,
-      {sm->CurrentScope}, ERR_ARGS(*this, code_point));
+      ERR_ARGS(*this, code_point));
   }
 }
 

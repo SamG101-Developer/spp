@@ -131,7 +131,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not arg_names.empty(), {sm->CurrentScope},
+    not arg_names.empty(),
     ERR_ARGS(*arg_names[0], *arg_names[1], "keyword function-argument"));
 
   // Check the arguments are in the correct order.
@@ -141,7 +141,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(
-    not unordered_args.empty(), {sm->CurrentScope},
+    not unordered_args.empty(),
     ERR_ARGS(unordered_args[1].first, *unordered_args[1].second, unordered_args[0].first, *unordered_args[0].second));
 
   // Expand tuple-expansion arguments ("..tuple" =>
@@ -156,7 +156,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     const auto arg_ref = arg->InferTypeRef(sm, meta);
     if (not type_predicates::IsTypeTuple(arg_ref, *sm->CurrentScope)) {
       const auto arg_type = arg->InferType(sm, meta);
-      Raise<SppExpansionOfNonTupleError>({sm->CurrentScope}, ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
+      Raise<SppExpansionOfNonTupleError>(ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
     }
 
     // Replace the tuple-expansion argument with the expanded
@@ -214,8 +214,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   const auto raise_if_returned = [&](FunctionCallArgumentAst const &arg) {
     if (not into_return or not pins_required) { return; }
     const auto arg_type = arg.Val->InferType(sm, meta);
-    Raise<SppSecondClassBorrowViolationError>(
-      {sm->CurrentScope}, ERR_ARGS(*arg.Val, *arg_type, "returned coroutine argument"));
+    Raise<SppSecondClassBorrowViolationError>(ERR_ARGS(*arg.Val, *arg_type, "returned coroutine argument"));
   };
 
   for (auto const &arg : Args) {
@@ -273,8 +272,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
         auto const *where_borrow = sym != nullptr and sym->MemInfo->AstBorrowed != nullptr
           ? sym->MemInfo->AstBorrowed
           : static_cast<Ast const*>(arg->Val.get());
-        Raise<SppMoveFromBorrowedMemoryError>(
-          {sm->CurrentScope}, ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
+        Raise<SppMoveFromBorrowedMemoryError>(ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
       }
     }
 
@@ -353,7 +351,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
 
       // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
       RaiseIf<SppInvalidMutationError>(
-        not is_sym_mutable, {sm->CurrentScope},
+        not is_sym_mutable,
         ERR_ARGS(
           *sym->Name, *arg->Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
           "immutable symbol"));
@@ -364,7 +362,6 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       //  N1.11 and the red tests in test_mem_move_from_borrowed_ctx.cpp.
       RaiseIf<SppInvalidMutationError>(
         sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-        {sm->CurrentScope},
         ERR_ARGS(*sym->Name, *arg->Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
 
       // A mutable borrow cannot overlap any other borrow.

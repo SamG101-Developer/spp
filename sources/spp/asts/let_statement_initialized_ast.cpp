@@ -116,7 +116,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   // is a single identifier.
   RaiseIf<SppInvalidLocalVariableTypeAnnotationError>(
     Type != nullptr and Var->To<LocalVariableSingleIdentifierAst>() == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*Type, *Var));
+    ERR_ARGS(*Type, *Var));
 
   // Analyse the type if it has been given.
   const auto written_type = Type;
@@ -134,7 +134,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Val.get()));
+    ERR_ARGS(*Val.get()));
 
   meta->AssignmentTarget = Var->ExtractName();
 
@@ -150,7 +150,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
       // Shown as written, with the type it resolved to beside it where they differ ("S32 (aka ...)").
       const auto resolved = TypeRef::Of(*Type, *sm->CurrentScope).AstIn(*sm->CurrentScope);
       const auto shown = resolved != nullptr ? resolved->WithSourceSpanOf(*written_type) : Type;
-      Raise<SppTypeMismatchError>({sm->CurrentScope}, ERR_ARGS(*written_type, *shown, *Val, *val_type));
+      Raise<SppTypeMismatchError>(ERR_ARGS(*written_type, *shown, *Val, *val_type));
     }
 
     // A function named as the value stands for the overload
@@ -168,7 +168,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   for (auto i = 0uz; i < bound_names.size(); ++i) {
     for (auto j = i + 1; j < bound_names.size(); ++j) {
       RaiseIf<SppIdentifierDuplicateError>(
-        *bound_names[i] == *bound_names[j], {sm->CurrentScope},
+        *bound_names[i] == *bound_names[j],
         ERR_ARGS(*bound_names[i], *bound_names[j], "destructure binding"));
     }
   }

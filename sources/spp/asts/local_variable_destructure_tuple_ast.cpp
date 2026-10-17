@@ -83,11 +83,11 @@ auto LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
     .CheckAndCount = [&](ExpressionAst const &val, Shared<TypeAst> const &val_type) -> std::size_t {
       RaiseIf<SppVariableTupleDestructureTupleTypeMismatchError>(
         not type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*val_type, *sm->CurrentScope), *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*this, val, *val_type));
+        ERR_ARGS(*this, val, *val_type));
       return TypeRef::Of(*val_type, *sm->CurrentScope).Symbol->TypeArgRefs().size();
     },
     .RaiseSizeMismatch = [&](const std::size_t lhs, ExpressionAst const &val, const std::size_t rhs) {
-      Raise<SppVariableTupleDestructureTupleSizeMismatchError>({sm->CurrentScope}, ERR_ARGS(*this, lhs, val, rhs));
+      Raise<SppVariableTupleDestructureTupleSizeMismatchError>(ERR_ARGS(*this, lhs, val, rhs));
     },
     .MakeRest = [](Vec<Unique<ExpressionAst>> &&elems) -> Unique<ExpressionAst> {
       return MakeUnique<TupleLiteralAst>(nullptr, std::move(elems), nullptr);

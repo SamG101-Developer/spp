@@ -162,7 +162,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   // Analyse the condition expression.
   RaiseIf<SppInvalidPrimaryExpressionError>(
     not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*Cond));
+    ERR_ARGS(*Cond));
 
   // Without "of", the condition is what the first branch
   // tests directly (against "true", with no operator), so it
@@ -176,7 +176,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   if (tests_condition_directly and not LoweredFromIsExpr
     and not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
     const auto cond_ty = Cond->InferType(sm, meta);
-    Raise<SppExpressionNotBooleanError>({sm->CurrentScope}, ERR_ARGS(*Cond, *cond_ty, "case"));
+    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Cond, *cond_ty, "case"));
   }
 
   // What an "is" in the condition binds only holds in the branch
@@ -196,7 +196,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
     // there is only 1 "else" branch).
     RaiseIf<SppCaseBranchElseNotLastError>(
       branch->Patterns[0]->To<CasePatternVariantElseAst>() and branch != Branches.back(),
-      {sm->CurrentScope}, ERR_ARGS(*branch, *Branches.back()));
+      ERR_ARGS(*branch, *Branches.back()));
 
     // Analyse the branch.
     {
@@ -227,8 +227,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   auto const &coverage = Coverage(sm, meta);
   for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
     if (coverage.Reachable[i] or branch->PosStart() == 0) { continue; }
-    Raise<SppCaseBranchUnreachableError>(
-      {sm->CurrentScope}, ERR_ARGS(*branch, *Branches[coverage.ShadowedBy[i].value_or(i)]));
+    Raise<SppCaseBranchUnreachableError>(ERR_ARGS(*branch, *Branches[coverage.ShadowedBy[i].value_or(i)]));
   }
 
   // Move out of the case expression scope.
@@ -517,7 +516,7 @@ auto CaseExpressionAst::InferType(
     : not case_utils::IsElseBranch(*Branches.back());
   RaiseIf<SppCaseBranchMissingElseError>(
     falls_through and not meta->IgnoreMissingElseBranchForInference,
-    {sm->CurrentScope}, ERR_ARGS(*this, *Branches.back()));
+    ERR_ARGS(*this, *Branches.back()));
 
   // A "case" with no "else" can finish without running any branch at all, so whatever its branches are, it is not
   // "Never": the fall-through path is reachable, and the value it produces on that path is no value. Handing back the

@@ -283,13 +283,9 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
       if (destructor == nullptr) { continue; }
 
       // Held in a local so the view handed to the error
-      // outlives it. The destructor is shown from the "sup"
-      // block declaring it, which can be in another file than
-      // the move.
+      // outlives it.
       const auto owner_name = part_ref.Symbol->FqName()->WithoutGns()->ToString();
-      auto const *const destructor_scope = FindDropOverloadInfo(*part_ref.Symbol->AsBound(), sm, meta).FnScope;
       Raise<errors::SppPartialMoveOfDestructibleValueError>(
-        {destructor_scope != nullptr ? destructor_scope : sm.CurrentScope, sm.CurrentScope, sm.CurrentScope},
         ERR_ARGS(exit_point, *move.Site, *destructor->Name, StrView(owner_name)));
     }
   }

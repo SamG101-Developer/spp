@@ -198,7 +198,7 @@ auto spp::analyse::utils::operator_desugaring::CheckIndexable(
   const auto type_sym = sm->CurrentScope->FindTypeSymbol(lhs_type.get());
   RaiseIf<errors::SppMemberAccessNonIndexableError>(
     type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
-    {sm->CurrentScope}, ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, op));
+    ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, op));
 }
 
 auto spp::analyse::utils::operator_desugaring::MapToMethodCall(

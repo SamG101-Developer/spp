@@ -75,8 +75,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // Leaving the scope is what runs a deferred expression, so
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
-  RaiseIf<SppDeferTerminatesError>(
-    expr_utils::Diverges(*Expr, sm, meta), {sm->CurrentScope}, ERR_ARGS(*TokDefer, *Expr));
+  RaiseIf<SppDeferTerminatesError>(expr_utils::Diverges(*Expr, sm, meta), ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value
@@ -138,7 +137,7 @@ auto DeferStatementAst::CheckAtExit(
 }
 
 auto DeferStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *) -> void {
+  ScopeManager *, CompilerMetaData *) -> void {
   IMPORT_UTILS;
 
   // Only a body being evaluated at compile time reaches this:
@@ -147,8 +146,7 @@ auto DeferStatementAst::Stage9_CompTimeResolve(
   // notion of a scope exit to run the expression at, so rather
   // than silently skipping it, say so.
   // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompTimeFunctionError>(
-    {sm->CurrentScope}, ERR_ARGS(*TokDefer));
+  Raise<SppDeferInCompTimeFunctionError>(ERR_ARGS(*TokDefer));
 }
 
 auto DeferStatementAst::Stage11_CodeGen(

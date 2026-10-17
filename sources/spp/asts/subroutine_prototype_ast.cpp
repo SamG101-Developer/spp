@@ -108,7 +108,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   const auto body_diverges = expr_utils::Diverges(*Impl, sm, meta);
   RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
     not is_void and not annotation_blocks_ret and not body_diverges,
-    {sm->CurrentScope}, ERR_ARGS(*final_member, *ReturnType, *ReturnType));
+    ERR_ARGS(*final_member, *ReturnType, *ReturnType));
 
   // Ffi functions cannot be generic, otherwise we get
   // multiple prototypes for the singular C function,
@@ -116,8 +116,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   if (FfiAnnotation != nullptr) {
     const auto ffi_symbol = GetFfiSymbolName();
     for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
-      Raise<SppFfiGenericParameterError>(
-        {sm->CurrentScope}, ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
+      Raise<SppFfiGenericParameterError>(ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
     }
   }
 

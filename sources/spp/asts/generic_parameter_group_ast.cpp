@@ -151,7 +151,7 @@ auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicate_names.empty(), {sm->CurrentScope},
+    not duplicate_names.empty(),
     ERR_ARGS(*duplicate_names[0], *duplicate_names[1], "generic parameter"));
 
   // Run the generation steps on the parameters in the group.
@@ -215,7 +215,7 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
-    not unordered_params.empty(), {sm->CurrentScope},
+    not unordered_params.empty(),
     ERR_ARGS(
       unordered_params[0].first, *unordered_params[0].second,
       unordered_params[1].first, *unordered_params[1].second));

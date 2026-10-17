@@ -165,10 +165,7 @@ namespace spp::analyse::utils::generic_inference {
   /// trailing variadic parameter takes the rest as a tuple (a lone
   /// argument naming a pack already is that tuple). "written" is
   /// not changed. A tuple's arguments stay positional.
-  /// "params_scope" is where "p_group" is written, which a name
-  /// no parameter has is reported against.
   SPP_EXP_FUN auto NamedGnArgs(
-    GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group,
-    Scope const &params_scope, Ast const &owner, ScopeManager &sm,
+    GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Ast const &owner, ScopeManager &sm,
     meta::CompilerMetaData &meta, bool is_tuple_owner = false) -> Unique<GenericArgumentGroupAst>;
 }

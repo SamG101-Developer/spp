@@ -104,7 +104,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     elem->Stage7_AnalyseSemantics(sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
-      {sm->CurrentScope}, ERR_ARGS(*elem));
+      ERR_ARGS(*elem));
   }
 
   // Determine the "correct type" that all elements will be
@@ -121,7 +121,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
 
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*z_type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, "array element type"));
+    ERR_ARGS(*z_elem, *z_type, "array element type"));
 
   // Check all elements have the same type as the "correct
   // type". When the type came from the 0th element, that
@@ -135,7 +135,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
       not type_compare::Assignable(
         TypeRef::Of(*z_type, *sm->CurrentScope), TypeRef::Of(*c_type, *sm->CurrentScope), *sm->CurrentScope,
         *sm->CurrentScope),
-      {sm->CurrentScope}, ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
+      ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
   }
 
   // Analyse the inferred array type to generate the generic

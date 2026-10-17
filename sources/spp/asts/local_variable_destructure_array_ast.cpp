@@ -85,12 +85,12 @@ auto LocalVariableDestructureArrayAst::Stage7_AnalyseSemantics(
     .CheckAndCount = [&](ExpressionAst const &val, Shared<TypeAst> const &val_type) -> std::size_t {
       RaiseIf<SppVariableArrayDestructureArrayTypeMismatchError>(
         not type_predicates::IsTypeArray(TypeRef::ForKindCheck(*val_type, *sm->CurrentScope), *sm->CurrentScope),
-        {sm->CurrentScope}, ERR_ARGS(*this, val, *val_type));
+        ERR_ARGS(*this, val, *val_type));
       return static_cast<std::size_t>(
         analyse::scopes::U64Of(TypeRef::Of(*val_type, *sm->CurrentScope).Symbol->CompArgId("n")).value());
     },
     .RaiseSizeMismatch = [&](const std::size_t lhs, ExpressionAst const &val, const std::size_t rhs) {
-      Raise<SppVariableArrayDestructureArraySizeMismatchError>({sm->CurrentScope}, ERR_ARGS(*this, lhs, val, rhs));
+      Raise<SppVariableArrayDestructureArraySizeMismatchError>(ERR_ARGS(*this, lhs, val, rhs));
     },
     .MakeRest = [](Vec<Unique<ExpressionAst>> &&elems) -> Unique<ExpressionAst> {
       return MakeUnique<ArrayLiteralExplicitElementsAst>(nullptr, std::move(elems), nullptr);

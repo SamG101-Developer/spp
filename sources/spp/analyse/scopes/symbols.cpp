@@ -614,10 +614,6 @@ auto TypeSymbol::GnParams() const -> GenericParameterGroupAst* {
   return Type != nullptr ? Type->GnParamGroup.get() : nullptr;
 }
 
-auto TypeSymbol::GnParamsScope() const -> Scope* {
-  return Alias != nullptr ? Alias->DeclaredIn() : LinkedScope;
-}
-
 auto TypeSymbol::LinkedSymbol() const -> TypeSymbol* {
   // Borrowed: owned by the scope it links, which outlives any caller.
   return LinkedScope != nullptr and LinkedScope->LinkedTypeSymbol != nullptr

@@ -70,7 +70,7 @@ auto GenericParameterTypeConstraintsAst::Stage4_ResolveDeclarations(
   for (auto const &constraint : Constraints) {
     RaiseIf<SppSecondClassBorrowViolationError>(
       constraint->GetConvention() != nullptr,
-      {sm->CurrentScope}, ERR_ARGS(*this, *this, "generic type constraint"));
+      ERR_ARGS(*this, *this, "generic type constraint"));
 
     // A constraint names a type without ever producing a value
     // of it, so an abstract type is allowed here. This is the

@@ -70,9 +70,8 @@ auto spp::analyse::utils::borrows::ConflictWith(
   // TODO: Document.
   RaiseIf<errors::SppMovingEscapingBorrowedMemoryError>(
     conflict.Moved,
-    {sm.CurrentScope}, ERR_ARGS(*conflict.First, *conflict.Second));
-  Raise<errors::SppMemoryOverlapUsageError>(
-    {sm.CurrentScope}, ERR_ARGS(*conflict.First, *conflict.Second));
+    ERR_ARGS(*conflict.First, *conflict.Second));
+  Raise<errors::SppMemoryOverlapUsageError>(ERR_ARGS(*conflict.First, *conflict.Second));
 }
 
 /// [CHECKED]
@@ -87,9 +86,9 @@ auto spp::analyse::utils::borrows::RaiseIfConflictedUse(
     // TODO: Document.
     RaiseIf<errors::SppMovingEscapingBorrowedMemoryError>(
       conflict.Moved,
-      {&scope}, ERR_ARGS(*conflict.First, *conflict.Second));
+      ERR_ARGS(*conflict.First, *conflict.Second));
     Raise<errors::SppMemoryOverlapUsageError>(
-      {&scope}, ERR_ARGS(*conflict.First, *conflict.Second));
+      ERR_ARGS(*conflict.First, *conflict.Second));
   }
 }
 
@@ -102,7 +101,7 @@ auto spp::analyse::utils::borrows::CheckAgainstLoans(
   // enforce no overlap there.
   for (auto const &loan : call_loans) {
     spp::RaiseIf<errors::SppMemoryOverlapUsageError>(
-      (exclusive or loan.IsMut) and regions::Overlap(loan.Borrowed, place), {sm.CurrentScope},
+      (exclusive or loan.IsMut) and regions::Overlap(loan.Borrowed, place),
       ERR_ARGS(*loan.Borrowed.Site, use));
   }
 
@@ -162,7 +161,7 @@ auto spp::analyse::utils::borrows::EnforceBorrowsOutliveHolder(
   for (const auto loan : carried) {
     const auto root = loan->Borrowed.Of.has_value() ? loan->Borrowed.Of->Root : nullptr;
     RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
-      root != nullptr and StrictlyInside(root->ScopeDefinedIn, holder.ScopeDefinedIn), {sm.CurrentScope},
+      root != nullptr and StrictlyInside(root->ScopeDefinedIn, holder.ScopeDefinedIn),
       ERR_ARGS(owner, *holder.Name, *loan->Borrowed.Site));
   }
 
@@ -172,6 +171,6 @@ auto spp::analyse::utils::borrows::EnforceBorrowsOutliveHolder(
   if (from == nullptr or from->MemInfo->AstBorrowed == nullptr) { return; }
   if (not memory_state::LoansHeldBy(loans, *from).empty()) { return; }
   RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
-    StrictlyInside(from->ScopeDefinedIn, holder.ScopeDefinedIn), {sm.CurrentScope},
+    StrictlyInside(from->ScopeDefinedIn, holder.ScopeDefinedIn),
     ERR_ARGS(owner, *holder.Name, *from->MemInfo->AstBorrowed));
 }

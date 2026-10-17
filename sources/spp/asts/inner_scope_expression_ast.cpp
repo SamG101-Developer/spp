@@ -124,8 +124,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
     // reported rather than whatever else is wrong with it.
-    RaiseIf<SppUnreachableCodeError>(
-      expr_utils::Diverges(*x, sm, meta), {sm->CurrentScope}, ERR_ARGS(*x, *Members[i + 1]));
+    RaiseIf<SppUnreachableCodeError>(expr_utils::Diverges(*x, sm, meta), ERR_ARGS(*x, *Members[i + 1]));
   }
 
   // Every statement but the last has its value discarded; the last

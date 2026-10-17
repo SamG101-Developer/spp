@@ -68,7 +68,7 @@ namespace spp::analyse::utils::type_members {
   /// type.
   SPP_EXP_FUN auto CheckShadowedCmpAgreesInType(
     CmpStatementAst const &cmp_member, Scope &cls_scope,
-    Scope const &own_scope, ScopeManager const &sm) -> void;
+    Scope const &own_scope) -> void;
 
   /**
    * Drop everything @c GetUnimplementedAbstractMethods has remembered. Its cache is keyed on scope addresses, so it

@@ -153,23 +153,22 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     not (_FromCasePattern
       ? type_compare::Assignable(val_ref, type_ref, *sm->CurrentScope, *sm->CurrentScope)
       : type_compare::TypeEq(val_ref, type_ref, *sm->CurrentScope, *sm->CurrentScope)) and not conv_only_mismatch,
-    {sm->CurrentScope}, ERR_ARGS(*val, *val_type, *Type, *Type));
+    ERR_ARGS(*val, *val_type, *Type, *Type));
 
   // Only 1 "multi-skip" allowed in a destructure.
   RaiseIf<SppMultipleRestPatternsError>(
     multi_arg_skips.size() > 1,
-    {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
+    ERR_ARGS(*this, *multi_arg_skips[0], *multi_arg_skips[1]));
 
   // Multi skips cannot be bound.
   RaiseIf<SppVariableObjectDestructureWithBoundRestPatternError>(
     not multi_arg_skips.empty() and multi_arg_skips[0]->Binding != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*this, *multi_arg_skips[0]));
+    ERR_ARGS(*this, *multi_arg_skips[0]));
 
   // Check all attributes are provided unless there is a multi-skip. The attribute is shown from its class, which can be
   // in another file than the destructure.
   RaiseIf<SppArgumentMissingError>(
     not missing_attributes.empty() and multi_arg_skips.empty(),
-    {cls_sym->LinkedScope != nullptr ? cls_sym->LinkedScope : sm->CurrentScope, sm->CurrentScope},
     ERR_ARGS(*missing_attributes[0], "attribute", *this, "destructure argument"));
 
   // Bind the value to a hidden temporary, and index that from

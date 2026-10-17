@@ -56,7 +56,6 @@ auto CompilerMetaData::ResetContext() -> void {
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
   CompTimeCallSite = nullptr;
-  CompTimeCallSiteScope = nullptr;
   ParameterDefaultScope = nullptr;
 }
 
@@ -121,7 +120,6 @@ auto CompilerMetaData::Save() -> void {
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
   s.CompTimeCallSite = CompTimeCallSite;
-  s.CompTimeCallSiteScope = CompTimeCallSiteScope;
   s.ParameterDefaultScope = ParameterDefaultScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
@@ -184,7 +182,6 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
   CompTimeCallSite = state.CompTimeCallSite;
-  CompTimeCallSiteScope = state.CompTimeCallSiteScope;
   ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;

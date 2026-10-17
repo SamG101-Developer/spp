@@ -93,22 +93,22 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 
   // Check there is only 1 "self" parameter.
   RaiseIf<SppMultipleSelfParametersError>(
-    self_params.size() > 1, {sm->CurrentScope},
+    self_params.size() > 1,
     ERR_ARGS(*self_params[0], *self_params[1]));
 
   // Check there is only 1 variadic parameter, and it is last.
   RaiseIf<SppMultipleVariadicParametersError>(
-    variadic_params.size() > 1, {sm->CurrentScope},
+    variadic_params.size() > 1,
     ERR_ARGS(*variadic_params[0], *variadic_params[1]));
 
   // Check there are no duplicate parameter names.
   RaiseIf<SppIdentifierDuplicateError>(
-    not param_names.empty(), {sm->CurrentScope},
+    not param_names.empty(),
     ERR_ARGS(*param_names[0], *param_names[1], "keyword function-argument"));
 
   // Check the parameters are in the correct order.
   RaiseIf<SppOrderInvalidError>(
-    not unordered_params.empty(), {sm->CurrentScope},
+    not unordered_params.empty(),
     ERR_ARGS(
       unordered_params[1].first, *unordered_params[1].second,
       unordered_params[0].first, *unordered_params[0].second));

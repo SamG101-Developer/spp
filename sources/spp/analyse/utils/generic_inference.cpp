@@ -41,17 +41,14 @@ namespace spp::analyse::utils::generic_inference {
     /// [CHECKED]
     /// Reject the first argument name no parameter has, reported
     /// against the first parameter (or the argument itself, when
-    /// there are none). The parameter is shown from "params_scope",
-    /// where it is written - another file than the use site
-    /// ("scope") for any template not declared beside its use.
+    /// there are none).
     auto EnforceGnArgNamesKnown(
-      Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args,
-      Scope const &params_scope, Scope const *scope) -> void {
+      Vec<GenericParameterAst*> const &params, Vec<GenericArgumentAst*> const &args) -> void {
       for (auto const *arg : args) {
         const auto known = genex::any_of(params, [arg](auto const *p) { return *p->Name == *arg->KeywordName(); });
         if (known) { continue; }
         Raise<errors::SppArgumentNameInvalidError>(
-          {params.empty() ? scope : &params_scope, scope}, ERR_ARGS(
+          ERR_ARGS(
             params.empty() ? static_cast<Ast const&>(*arg->KeywordName()) : *params[0], StrView("gn param"),
             *arg->KeywordName(), StrView("gn arg")));
       }
@@ -114,7 +111,7 @@ namespace spp::analyse::utils::generic_inference {
           const auto unsatisfied = type_compare::UnmetConstraint(
             p_cons, TypeRef::Of(target, scope), scopes::IsSelfTypeId(target), scope, scope);
           RaiseIf<SppGenericConstraintError>(
-            unsatisfied != nullptr, {&written_scope, sm.CurrentScope},
+            unsatisfied != nullptr,
             ERR_ARGS(*unsatisfied, *target_ast));
         }
       }
@@ -130,16 +127,15 @@ namespace spp::analyse::utils::generic_inference {
     /// A lone argument naming a pack ("A[Ts]" inside "g[..Ts]")
     /// already is that tuple, so is forwarded as it is ("forwards").
     auto NameArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Scope const &params_scope,
-      Ast const &owner, ScopeManager &sm,
-      meta::CompilerMetaData &meta,
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+      ScopeManager &sm, meta::CompilerMetaData &meta,
       FuncRef<void(GenericArgumentAst &, Vec<GenericArgumentAst*> const &, bool)> pack,
       FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
       const auto keyword_args = args
         | genex::views::ptr
         | genex::views::filter([](auto const *x) { return x->KeywordName() != nullptr; })
         | genex::to<Vec>();
-      EnforceGnArgNamesKnown(params, keyword_args, params_scope, sm.CurrentScope);
+      EnforceGnArgNamesKnown(params, keyword_args);
 
       // Each argument names its parameter by identity as well as by
       // name: a keyword argument's name, matched to its parameter
@@ -170,7 +166,7 @@ namespace spp::analyse::utils::generic_inference {
         if (positional->KeywordName() != nullptr) { continue; }
         auto const *const param = targets[i];
         RaiseIf<errors::SppGenericArgumentTooManyError>(
-          param == nullptr, {params.empty() ? sm.CurrentScope : &params_scope, sm.CurrentScope, sm.CurrentScope},
+          param == nullptr,
           ERR_ARGS(params.empty() ? owner : *params[0], owner, *positional));
         auto named = MakeUnique<GenericArgumentAst>(name_of(*param), nullptr, nullptr, nullptr);
 
@@ -192,9 +188,8 @@ namespace spp::analyse::utils::generic_inference {
     /// to "Tup[Bool, U8]" is "A[S32, Bool, U8]"). Each is
     /// analysed once types resolve.
     auto NameTypeArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params,
-      Scope const &params_scope, Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta)
-      -> void {
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
       const auto analyse = [&](GenericArgumentAst &named) {
         if (meta.CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
           named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
@@ -218,7 +213,7 @@ namespace spp::analyse::utils::generic_inference {
         named.TypeVal = AstCloneShared(positional.TypeVal);
         analyse(named);
       };
-      NameArgs(args, params, params_scope, owner, sm, meta, pack, bind);
+      NameArgs(args, params, owner, sm, meta, pack, bind);
     }
 
     /// "NameTypeArgs" for comp arguments: a bound comp pack is spread into its elements. A literal or a name is analysed
@@ -227,9 +222,8 @@ namespace spp::analyse::utils::generic_inference {
     /// analysed here - analysing it consumes it - but by the argument's own "AnalyseCompVal", which folds it or checks
     /// a copy.
     auto NameCompArgs(
-      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params,
-      Scope const &params_scope, Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta)
-      -> void {
+      Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
+      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
       const auto pack = [&](GenericArgumentAst &named, Vec<GenericArgumentAst*> const &rest, const bool forwards) {
         if (forwards) {
           named.CompVal = AstCloneShared(rest[0]->CompVal);
@@ -253,7 +247,7 @@ namespace spp::analyse::utils::generic_inference {
           val.Stage7_AnalyseSemantics(&sm, &meta);
         }
       };
-      NameArgs(args, params, params_scope, owner, sm, meta, pack, bind);
+      NameArgs(args, params, owner, sm, meta, pack, bind);
     }
   }
 }
@@ -767,7 +761,7 @@ auto GenericSolver::_ReadConstraints() -> bool {
           });
         if (constraint_drives_inference) {
           const auto inferred_type = _AstOf(entry->TypeVals[0]);
-          Raise<SppGenericConstraintError>({_OwnerScope, sm.CurrentScope}, ERR_ARGS(*constraint, *inferred_type));
+          Raise<SppGenericConstraintError>(ERR_ARGS(*constraint, *inferred_type));
         }
       }
       newly_bound = _OfferAll(inferred, entry->TypeVals[0].Written, [](auto const &e) { return e.IsBound(); })
@@ -844,19 +838,17 @@ auto GenericSolver::_EnforceNoConflicts() const -> void {
   using errors::SppGenericParameterConflictError;
   auto const &scope = *_Sm->CurrentScope;
   for (auto const &entry : _Entries) {
-    // A parameter is shown where it is declared ("_OwnerScope"); a name that is no parameter where it was given.
-    const auto scopes = Vec<Scope const*>{entry->Param != nullptr ? _OwnerScope : &scope, &scope};
     auto const &types = entry->TypeVals;
     for (auto i = 1uz; i < types.size(); ++i) {
       if (types[0].Id == nullptr or types[i].Id == nullptr or types[0].Id == types[i].Id) { continue; }
       const auto first = _AstOf(types[0]);
       const auto other = _AstOf(types[i]);
-      Raise<SppGenericParameterConflictError>(scopes, ERR_ARGS(*entry->Name, *first, *other));
+      Raise<SppGenericParameterConflictError>(ERR_ARGS(*entry->Name, *first, *other));
     }
     auto const &comps = entry->CompVals;
     for (auto i = 1uz; i < comps.size(); ++i) {
       RaiseIf<SppGenericParameterConflictError>(
-        scope.CompIdOf(*comps[i]) != scope.CompIdOf(*comps[0]), scopes, ERR_ARGS(*entry->Name, *comps[0], *comps[i]));
+        scope.CompIdOf(*comps[i]) != scope.CompIdOf(*comps[0]), ERR_ARGS(*entry->Name, *comps[0], *comps[i]));
     }
   }
 }
@@ -869,8 +861,7 @@ auto GenericSolver::_EnforceAllInferred(
     for (auto const &entry : _Entries) {
       if (entry->Param == nullptr or entry->IsTypeParam() != want_type) { continue; }
       const auto bound = want_type ? not entry->TypeVals.empty() : not entry->CompVals.empty();
-      RaiseIf<SppGenericParameterNotInferredError>(
-        not bound, {_Sm->CurrentScope, _OwnerScope}, ERR_ARGS(*entry->Name, owner));
+      RaiseIf<SppGenericParameterNotInferredError>(not bound, ERR_ARGS(*entry->Name, owner));
     }
   }
 }
@@ -955,7 +946,7 @@ auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -
       for (auto const &inner : a_sym != nullptr ? a_sym->TypeArgRefs() : Vec<TypeRef>()) {
         RaiseIf<SppTypeMismatchError>(
           not type_compare::Assignable(p_ref, inner, *sm.CurrentScope, *sm.CurrentScope),
-          {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*entry->Param, *p_type, *value, ErrTypeAt(inner, *value)));
+          ERR_ARGS(*entry->Param, *p_type, *value, ErrTypeAt(inner, *value, *_OwnerScope)));
       }
       continue;
     }
@@ -963,7 +954,7 @@ auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -
       not type_compare::Assignable(
         TypeRef::Of(*p_type, *sm.CurrentScope), TypeRef::Of(*raw_a_type, *sm.CurrentScope), *sm.CurrentScope,
         *sm.CurrentScope),
-      {_OwnerScope, sm.CurrentScope}, ERR_ARGS(*entry->Param, *p_type, *value, *raw_a_type));
+      ERR_ARGS(*entry->Param, *p_type, *value, *raw_a_type));
   }
 }
 
@@ -1090,8 +1081,7 @@ SPP_MOD_END
 
 /// [CHECKED]
 auto spp::analyse::utils::generic_inference::NamedGnArgs(
-  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group,
-  Scope const &params_scope, Ast const &owner, ScopeManager &sm,
+  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Ast const &owner, ScopeManager &sm,
   meta::CompilerMetaData &meta, const bool is_tuple_owner) -> Unique<GenericArgumentGroupAst> {
   // A tuple's arguments stay positional.
   auto named = AstClone(&written);
@@ -1104,8 +1094,8 @@ auto spp::analyse::utils::generic_inference::NamedGnArgs(
   for (auto &&arg : std::move(named->Args)) {
     (arg->IsCompArg() ? comp_args : type_args).emplace_back(std::move(arg));
   }
-  NameCompArgs(comp_args, p_group.GetCompParams(), params_scope, owner, sm, meta);
-  NameTypeArgs(type_args, p_group.GetTypeParams(), params_scope, owner, sm, meta);
+  NameCompArgs(comp_args, p_group.GetCompParams(), owner, sm, meta);
+  NameTypeArgs(type_args, p_group.GetTypeParams(), owner, sm, meta);
   named->Args = std::move(comp_args);
   named->Args.append_range(genex::views::move(type_args));
 

@@ -316,12 +316,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// frame and saves and restores it around its body.
   bool CompTimeReturned = false;
 
-  /// The outermost call a comp-time evaluation started from, and
-  /// the scope it was written in. An error raised while a nested
-  /// call is evaluated (std's arithmetic, an intrinsic) reports
-  /// here, where the user wrote the expression.
+  /// The outermost call a comp-time evaluation started from. An
+  /// error raised while a nested call is evaluated (std's
+  /// arithmetic, an intrinsic) reports here, where the user wrote
+  /// the expression.
   Ast const *CompTimeCallSite = nullptr;
-  Scope *CompTimeCallSiteScope = nullptr;
 
   /// Ignore access modifier violations during analysis. This is
   /// for when certain asts map to functions private on STD types,

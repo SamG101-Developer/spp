@@ -79,7 +79,7 @@ auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
 
   RaiseIf<SppIdentifierDuplicateError>(
     not duplicates.empty(),
-    {sm->CurrentScope}, ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
+    ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
 }
 
 auto ClassImplementationAst::Stage7_AnalyseSemantics(

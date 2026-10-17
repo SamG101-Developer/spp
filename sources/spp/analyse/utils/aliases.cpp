@@ -42,7 +42,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
   // Each head along the alias chain, raising on a bad identifier
   // rather than crashing on it.
   const auto lookup = [&](TypeAst const &ty) {
-    return member_lookup::FindTypeSymbolOrError(*tracking_scope, *ty.WithoutGns(), *sm);
+    return member_lookup::FindTypeSymbolOrError(*tracking_scope, *ty.WithoutGns());
   };
 
   // An alias named inside its own target's arguments ("type X =
@@ -58,7 +58,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
     for (auto const &arg : alias_stmt.OldType->LastTypePart()->GnArgGroup->Args) {
       RaiseIf<errors::SppTypeAliasCyclicError>(
         arg->IsTypeArg() and type_predicates::AnyTypePart(*arg->TypeVal, names_self),
-        {sm->CurrentScope}, ERR_ARGS(alias_stmt, *arg));
+        ERR_ARGS(alias_stmt, *arg));
     }
   }
 
@@ -84,11 +84,10 @@ auto spp::analyse::utils::aliases::StatementTarget(
   auto const *const carrier = old_sym->UseTarget();
   const auto is_tuple = type_predicates::IsTypeTuple(
     TypeRef::ForKindCheck(*carrier, *sm->CurrentScope), *sm->CurrentScope);
-  auto const *const params_scope = carrier->GnParamsScope();
   auto named = generic_inference::NamedGnArgs(
     *old_type->LastTypePart()->GnArgGroup,
     carrier->GnParams() != nullptr ? *carrier->GnParams() : *GenericParameterGroupAst::NewEmpty(),
-    params_scope != nullptr ? *params_scope : *sm->CurrentScope, *old_type, *sm, *meta, is_tuple);
+    *old_type, *sm, *meta, is_tuple);
   auto attach = carrier->Alias != nullptr and not carrier->Alias->IsFromUseStmt
     ? filter_params(*carrier->Alias->Params, *named)
     : GenericParameterGroupAst::NewEmptyShared();
@@ -102,12 +101,8 @@ auto spp::analyse::utils::aliases::StatementTarget(
   auto followed_aliases = Vec{&alias_stmt};
   auto *final_sym = old_sym;
   while (final_sym->Alias != nullptr) {
-    // The alias closing the cycle is shown from where it is
-    // declared, which can be another file than this one.
-    auto const *const closing_scope = final_sym->Alias->DeclaredIn();
     RaiseIf<errors::SppTypeAliasCyclicError>(
       genex::contains(followed_aliases, final_sym->Alias->Stmt),
-      {sm->CurrentScope, closing_scope != nullptr ? closing_scope : sm->CurrentScope},
       ERR_ARGS(alias_stmt, *final_sym->Alias->Stmt));
     followed_aliases.emplace_back(final_sym->Alias->Stmt);
     tracking_scope = final_sym->ScopeDefinedIn;

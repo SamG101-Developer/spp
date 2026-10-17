@@ -385,7 +385,7 @@ auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   // as error.
   RaiseIf<SppSelfIdentifierInvalidContextError>(
     _Ctx->To<ModulePrototypeAst>() and FnParamGroup->GetSelfParam() != nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*FnParamGroup->GetSelfParam()));
+    ERR_ARGS(*FnParamGroup->GetSelfParam()));
 
   // Run steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -435,7 +435,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
           // visibility.
           RaiseIf<SppFunctionOverloadVisibilityMismatchError>(
             mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.first,
-            {sm->CurrentScope}, ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
+            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
           mock_sym->Visibility = Visibility.first;
           mock_sym->VisibilityAnnotation = Visibility.second;
         }
@@ -451,7 +451,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   // a convention.
   RaiseIf<SppSecondClassBorrowViolationError>(
     type_predicates::IsTypeBorrowed(*ReturnType, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
+    ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
 
   sm->MoveOutOfCurrentScope();
 }
@@ -490,7 +490,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   const auto [conflict, conflict_scope] = fn_signatures::CheckForConflictingOverload(
     *sm->CurrentScope, type_scope, *this, *sm, meta);
   RaiseIf<SppFunctionPrototypeConflictError>(
-    conflict, {conflict_scope != nullptr ? conflict_scope : sm->CurrentScope, sm->CurrentScope},
+    conflict,
     ERR_ARGS(*conflict, *this));
 
   // New version
@@ -580,8 +580,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // has no view of the rest of the prototype.
   if (TestAnnotation != nullptr) {
     const auto bad = [&](const StrView requirement) {
-      Raise<SppUnitTestInvalidSignatureError>(
-        {sm->CurrentScope}, ERR_ARGS(*TestAnnotation, *Name, requirement));
+      Raise<SppUnitTestInvalidSignatureError>(ERR_ARGS(*TestAnnotation, *Name, requirement));
     };
     if (TokCmp != nullptr) { bad("is a 'cmp' function"); }
     if (not FnParamGroup->Params.empty()) { bad("declares parameters"); }
@@ -595,14 +594,14 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // expressible in S++.
   RaiseIf<SppEmptyBodyRequiredError>(
     FfiAnnotation != nullptr and not Impl->Members.empty(),
-    {sm->CurrentScope}, ERR_ARGS(
+    ERR_ARGS(
       *FfiAnnotation, *Impl->Members.front(), "an '!ffi' function", "the linker resolves the implementation from C"));
 
   // An abstract function body is never ran (unreachable)
   // so must be empty.
   RaiseIf<SppEmptyBodyRequiredError>(
     AbstractAnnotation != nullptr and not Impl->Members.empty(),
-    {sm->CurrentScope}, ERR_ARGS(
+    ERR_ARGS(
       *AbstractAnnotation, *Impl->Members.front(), "an '!abstract_method' method", "abstract methods aren't callable"));
 
   // Analyse the generic parameter group, and the parameter

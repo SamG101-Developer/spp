@@ -64,7 +64,7 @@ auto ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
   // over a type, which is invalid as type initialization.
   RaiseIf<SppObjectInitializerInvalidArgumentError>(
     Val->To<IdentifierAst>() == nullptr,
-    {sm->CurrentScope}, ERR_ARGS(*this));
+    ERR_ARGS(*this));
   ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(sm, meta);
 }
 

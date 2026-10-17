@@ -156,12 +156,12 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   const auto keyword_args = GetKeywordArgs();
   const auto type_arg_names = DuplicateNames(keyword_args, false);
   RaiseIf<SppIdentifierDuplicateError>(
-    not type_arg_names.empty(), {sm->CurrentScope},
+    not type_arg_names.empty(),
     ERR_ARGS(*type_arg_names[0], *type_arg_names[1], "keyword generic type argument"));
 
   const auto comp_arg_names = DuplicateNames(keyword_args, true);
   RaiseIf<SppIdentifierDuplicateError>(
-    not comp_arg_names.empty(), {sm->CurrentScope},
+    not comp_arg_names.empty(),
     ERR_ARGS(*comp_arg_names[0], *comp_arg_names[1], "keyword generic comp argument"));
 
   // Check the arguments are in the correct order.
@@ -171,7 +171,7 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(
-    not unordered_args.empty(), {sm->CurrentScope},
+    not unordered_args.empty(),
     ERR_ARGS(unordered_args[0].first, *unordered_args[0].second, unordered_args[1].first, *unordered_args[1].second));
 
   // Analyse the arguments.

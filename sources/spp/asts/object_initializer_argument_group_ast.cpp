@@ -110,7 +110,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppObjectInitializerMultipleAutofillArgumentsError>(
-    af_args.size() > 1, {sm->CurrentScope},
+    af_args.size() > 1,
     ERR_ARGS(*af_args[0], *af_args[1]));
 
   // Ensure there are no duplicate member names. This needs to
@@ -123,7 +123,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppIdentifierDuplicateError>(
-    not duplicates.empty(), {sm->CurrentScope},
+    not duplicates.empty(),
     ERR_ARGS(*duplicates[0], *duplicates[1], "keyword object initializer argument"));
 
   // Check there are no invalidly named arguments.
@@ -137,7 +137,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
     | genex::to<Vec>();
 
   RaiseIf<SppArgumentNameInvalidError>(
-    not invalid_args.empty(), {sm->CurrentScope},
+    not invalid_args.empty(),
     ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
 
   // The generic arguments written on the type, named after the
@@ -157,8 +157,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   }
   else if (own_params != nullptr and written_group != nullptr and not written_group->Args.empty()) {
     const auto written_args = generic_inference::NamedGnArgs(
-      *written_group, *own_params, cls_sym->LinkedScope != nullptr ? *cls_sym->LinkedScope : *sm->CurrentScope,
-      *meta->ObjectInitType, *sm, *meta);
+      *written_group, *own_params, *meta->ObjectInitType, *sm, *meta);
     // Analysed before they are keyed, so a written "Str" is the
     // instance with its defaults ("Str[GlobalAlloc]").
     written_args->Stage7_AnalyseSemantics(sm, meta);
@@ -223,9 +222,6 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // can be in another file than the initializer.
     RaiseIf<SppAmbiguousMemberAccessError>(
       matching_attrs.size() > 1,
-      matching_attrs.size() > 1
-        ? Vec<Scope const*>{spp::get<2>(matching_attrs[0]), spp::get<2>(matching_attrs[1]), sm->CurrentScope}
-        : Vec<Scope const*>{sm->CurrentScope},
       ERR_ARGS(*spp::get<0>(matching_attrs[0]), *spp::get<0>(matching_attrs[1]), *this));
 
     auto [attr, attr_ref, attr_scope] = matching_attrs[0];
@@ -248,7 +244,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     const auto arg_ref = TypeRef::Of(*arg_type, *sm->CurrentScope);
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(attr_ref, arg_ref, *attr_scope, *sm->CurrentScope),
-      {attr_scope, sm->CurrentScope}, ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
+      ERR_ARGS(*attr, *attr_type, *arg, *arg_type));
 
     // A function named as the value stands for the overload the
     // attribute's type asks for.
@@ -263,8 +259,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
       *sm->CurrentScope, *sm->CurrentScope)) {
       // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
       const auto af_arg_type = af_arg->Val->InferType(sm, meta);
-      Raise<SppTypeMismatchError>(
-        {sm->CurrentScope}, ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
+      Raise<SppTypeMismatchError>(ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
     }
   }
 
@@ -313,7 +308,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
     // Todo: Actually, make a method on the scope manager: "TempIn(scope, closure)".
     const auto outer_scope = sm->CurrentScope;
     sm->CurrentScope = val_scope;
-    WRAP_ERROR(val->Stage7_AnalyseSemantics(sm, meta), outer_scope);
+    WRAP_ERROR(val->Stage7_AnalyseSemantics(sm, meta));
     sm->CurrentScope = outer_scope;
 
     // Add the compiler generated argument.

@@ -87,7 +87,7 @@ auto spp::analyse::utils::expr_utils::ValidateDiscardedValue(
 
   const auto type_name = type->ToString();
   if (IsTypeVoid(TypeRef::ForKindCheck(*type, *scope), *scope) or type->IsNeverType()) { return; }
-  Raise<SppDiscardedValueError>({scope}, ERR_ARGS(member, StrView(type_name)));
+  Raise<SppDiscardedValueError>(ERR_ARGS(member, StrView(type_name)));
 }
 
 /// [CHECKED]

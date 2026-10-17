@@ -617,12 +617,12 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 
   // Check that the "main" function exists,
   catch (analyse::errors::SppIdentifierUnknownError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>(ERR_ARGS());
   }
 
   // Check that if the "main" function exists, the signature is compatible.
   catch (analyse::errors::SppFunctionCallNoValidSignaturesError const &) {
-    Raise<analyse::errors::SppMissingMainFunctionError>({sm->GlobalScope()}, ERR_ARGS());
+    Raise<analyse::errors::SppMissingMainFunctionError>(ERR_ARGS());
   }
 
   sm->RestartWalk();
