@@ -485,8 +485,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 }
 
 auto spp::compiler::CompilerBoot::_LinkExecutable(
-  OutLayout const &out)
-  -> bool {
+  OutLayout const &out) -> bool {
   // The object holds calls into the ffi runtime and nothing
   // else external, so the link is the object plus whatever
   // shared libraries the project's packages ship.
@@ -513,11 +512,13 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 
   // Binary hardening, done by attaching flags to the linker.
   FEATURE_GATE(BinaryLinkHarden) {
-    command += " -pie";                     // No fixed load address to write an exploit against.
-    command += " -Wl,-z,relro,-z,now";      // Read-only after startup, and nothing left to bind later.
-    command += " -Wl,-z,noexecstack";       // The stack is data; say so in the header rather than by accident.
-    command += " -Wl,-z,separate-code";     // Code in its own mapping, so no data shares a page with it.
-    command += " -Wl,-z,defs";              // A symbol nothing defines is a link error, not a run-time surprise.
+    command += " -pie"; // No fixed load address to write an exploit against.
+    command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
+    command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
+    command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
+    command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
+    command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
+    command += " -Wl,--error-rwx-segments"; // No segment is ever writable and executable at once.
   }
 
   // "-z nodlopen" is not here on purpose: it sets a flag on a shared
