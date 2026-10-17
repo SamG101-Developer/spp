@@ -61,6 +61,7 @@ namespace {
     GeneratorSend = 3,
     SliceOrder = 4,
     SliceEnd = 5,
+    FloatToInt = 6,
     SignedAdd = 0x10,
     UnsignedAdd = 0x11,
     SignedSub = 0x12,
@@ -110,6 +111,57 @@ namespace {
         b != nullptr ? ctx->Builder.CreateZExtOrTrunc(b, i64_ty) : zero
       });
     ctx->Builder.CreateUnreachable();
+  }
+
+  /// Fail the check unless "value", truncated toward zero, is
+  /// in the integer type's range: anything else (too large,
+  /// an infinity, NaN) is poison to "fptosi"/"fptoui", so it
+  /// aborts like an overflowing "+" rather than converting to
+  /// a value llvm may assume is anything. The bounds are the
+  /// powers of two around the range, exact in every float
+  /// format unless past its largest, where they round to an
+  /// infinity and the lower compare is made strict to keep
+  /// that infinity out.
+  auto EmitFloatToIntCheck(
+    LlvmCtx *const ctx, llvm::Value *value, llvm::Type *int_ty, const bool is_signed) -> void {
+    const auto uid = "." + spp::utils::Uid();
+    const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto float_ty = value->getType();
+    const auto &sem = float_ty->getFltSemantics();
+    const auto width = int_ty->getIntegerBitWidth();
+    const auto power = [&](const bool negative, const unsigned exp) {
+      auto result = llvm::APFloat(sem);
+      result.convertFromAPInt(
+        llvm::APInt::getOneBitSet(width + 1, exp), false, llvm::APFloat::rmNearestTiesToEven);
+      if (negative) { result.changeSign(); }
+      return result;
+    };
+    const auto lo = is_signed ? power(true, width - 1) : llvm::APFloat::getZero(sem);
+    const auto hi = power(false, is_signed ? width - 1 : width);
+
+    // Ordered compares, so NaN fails both.
+    const auto truncated = ctx->Builder.CreateUnaryIntrinsic(
+      llvm::Intrinsic::trunc, value, nullptr, "conv.float.trunc" + uid);
+    const auto lo_val = llvm::ConstantFP::get(float_ty, lo);
+    const auto lo_ok = lo.isInfinity()
+      ? ctx->Builder.CreateFCmpOGT(truncated, lo_val, "conv.float.lo_ok" + uid)
+      : ctx->Builder.CreateFCmpOGE(truncated, lo_val, "conv.float.lo_ok" + uid);
+    const auto hi_ok = ctx->Builder.CreateFCmpOLT(
+      truncated, llvm::ConstantFP::get(float_ty, hi), "conv.float.hi_ok" + uid);
+
+    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+    const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.ok" + uid, fn);
+    const auto bad_bb = llvm::BasicBlock::Create(*ctx->Context, "conv.float.bad" + uid, fn);
+    ctx->Builder.CreateCondBr(ctx->Builder.CreateAnd(lo_ok, hi_ok, "conv.float.in_range" + uid), ok_bb, bad_bb);
+
+    // Reported by the type it was converting to, as the crash
+    // path cannot format a float.
+    ctx->Builder.SetInsertPoint(bad_bb);
+    EmitCheckFailed(
+      ctx, RuntimeCheck::FloatToInt,
+      llvm::ConstantInt::get(i64_ty, static_cast<std::uint64_t>(width)),
+      llvm::ConstantInt::get(i64_ty, is_signed ? 1 : 0));
+    ctx->Builder.SetInsertPoint(ok_bb);
   }
 
   /// [CHECKED]
@@ -581,6 +633,9 @@ auto spp::codegen::fn_impls::SimpleIntrinsicConv(
   if (not ConvOpIsDefined(op, src_ty, ty)) {
     EmitCheckFailed(ctx, RuntimeCheck::Conversion);
     return;
+  }
+  if (op == ConvOp::FPToSI or op == ConvOp::FPToUI) {
+    EmitFloatToIntCheck(ctx, operand, ty, op == ConvOp::FPToSI);
   }
   ctx->Builder.CreateRet(ApplyConvOp(ctx, op, operand, ty));
 }
