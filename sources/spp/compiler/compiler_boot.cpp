@@ -439,7 +439,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
       utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit),
-      utils::features::Enabled(utils::features::ConfigKey::MemoryMapDenyWx));
+      utils::features::Enabled(utils::features::ConfigKey::MemoryMapDenyWx),
+      utils::features::Enabled(utils::features::ConfigKey::MemoryMapSeal));
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
@@ -470,6 +471,15 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(MemoryStackProtect) { codegen::ApplyStackProtector(lto_module.get()); }
   FEATURE_GATE(MemoryStackProbe) { codegen::ApplyStackClashProtection(lto_module.get()); }
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
+  FEATURE_GATE(BinaryCodegenSls) {
+    if (not codegen::TargetHasSlsHardening()) {
+      llvm::errs()
+        << "This target has no straight-line speculation hardening.\n"
+        << "  To build without it, set 'sls = false' under [binary.codegen] in spp.toml.\n";
+      return false;
+    }
+    codegen::ApplySlsHardening(lto_module.get());
+  }
   codegen::ApplyUnwindTables(lto_module.get());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 

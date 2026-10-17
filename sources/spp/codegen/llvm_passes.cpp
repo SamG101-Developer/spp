@@ -79,12 +79,15 @@ namespace {
    * s++ frame exists before this returns, and none can be built after it without one.
    * @param[in] deny_wx Also deny the process writable-and-executable memory, last, so every mapping start-up makes
    * is made before the policy is in place and nothing s++ runs before it.
+   * @param[in] seal Also seal every loaded object's code, constants and relocated data, after the steps that map
+   * memory, so nothing start-up leaves behind can be remapped or made writable again.
    * @return The shim, existing or new.
    */
   auto RuntimeInitShim(
     llvm::Module &llvm_mod,
     const bool split_stacks,
-    const bool deny_wx)
+    const bool deny_wx,
+    const bool seal)
     -> llvm::Function* {
     if (auto *const existing = llvm_mod.getFunction(kRuntimeInitShim)) { return existing; }
 
@@ -97,9 +100,10 @@ namespace {
     // The start-up steps, in order. Each is an "int(void)"
     // runtime function answering 0 when it succeeded, and
     // anything else is the code the process exits with.
-    auto steps = llvm::SmallVector<llvm::StringRef, 3>{"sppc_init"};
+    auto steps = llvm::SmallVector<llvm::StringRef, 4>{"sppc_init"};
     if (split_stacks) { steps.emplace_back("sppc_unsafe_stack_up"); }
     if (deny_wx) { steps.emplace_back("sppc_deny_wx"); }
+    if (seal) { steps.emplace_back("sppc_seal_segments"); }
 
     // Create the shim, a non-parameter, void-returning
     // function with internal linkage, which will be
@@ -546,7 +550,8 @@ auto spp::codegen::EmitCEntryPoint(
   void *llvm_module,
   char const *spp_main_name,
   const bool split_stacks,
-  const bool deny_wx)
+  const bool deny_wx,
+  const bool seal)
   -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
@@ -579,7 +584,7 @@ auto spp::codegen::EmitCEntryPoint(
   if (split_stacks) { spp_main->addFnAttr(llvm::Attribute::NoInline); }
 
   const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);
-  builder.CreateCall(RuntimeInitShim(llvm_mod, split_stacks, deny_wx), {});
+  builder.CreateCall(RuntimeInitShim(llvm_mod, split_stacks, deny_wx, seal), {});
   builder.CreateCall(llvm_mod.getOrInsertFunction("atexit", atexit_ty), {RuntimeCleanupShim(llvm_mod)});
   builder.CreateCall(spp_main, {});
 
@@ -602,6 +607,36 @@ auto spp::codegen::ApplyStackProtector(
     if (fn.isDeclaration() or fn.hasFnAttribute(llvm::Attribute::Naked)) { continue; }
     if (fn.hasFnAttribute(llvm::Attribute::StackProtectStrong)) { continue; }
     fn.addFnAttr(llvm::Attribute::StackProtectStrong);
+    stamped += 1;
+  }
+  return stamped;
+}
+
+auto spp::codegen::TargetHasSlsHardening()
+  -> bool {
+  return TargetTriple().isX86() or TargetTriple().isAArch64();
+}
+
+auto spp::codegen::ApplySlsHardening(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  // The features name the branches the trap follows: returns
+  // and indirect jumps on x86, returns, indirect branches and
+  // indirect calls on AArch64. Added to whatever features a
+  // function already carries, as the backend reads them per
+  // function rather than off the target machine.
+  const auto features = TargetTriple().isX86()
+    ? llvm::StringRef("+harden-sls-ret,+harden-sls-ijmp")
+    : llvm::StringRef("+harden-sls-retbr,+harden-sls-blr");
+
+  auto stamped = 0UL;
+  for (auto &fn : llvm_mod) {
+    if (fn.isDeclaration()) { continue; }
+    const auto existing = fn.getFnAttribute("target-features").getValueAsString();
+    if (existing.contains(features)) { continue; }
+    fn.addFnAttr("target-features", existing.empty() ? features.str() : (existing + "," + features).str());
     stamped += 1;
   }
   return stamped;

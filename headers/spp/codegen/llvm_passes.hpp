@@ -72,6 +72,20 @@ namespace spp::codegen {
   /// way past. Answers how many functions were given one.
   auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
 
+  /// Whether the selected target has straight-line speculation
+  /// hardening for "ApplySlsHardening" to turn on: x86 and
+  /// AArch64 do, nothing else llvm targets does.
+  auto TargetHasSlsHardening() -> bool;
+
+  /// Harden every function in an "llvm::Module" (passed as an
+  /// opaque pointer) against straight-line speculation: a trap
+  /// straight after every return and indirect jump, so the
+  /// bytes that follow one are never run speculatively as the
+  /// gadget they would otherwise be. Code size only; the trap
+  /// is never reached architecturally. Answers how many
+  /// functions were hardened.
+  auto ApplySlsHardening(void *llvm_module) -> unsigned long;
+
   /// Split every function's frame in two: the objects a callee
   /// could write past stay on a separate "unsafe" stack, and
   /// the frame the hardware knows about - the return address,
@@ -137,7 +151,12 @@ namespace spp::codegen {
   /// "deny_wx" denies the process writable-and-executable
   /// memory as the last start-up step (MDWE, Linux 6.6+); a
   /// kernel without it fails the program at start-up.
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks, bool deny_wx) -> void;
+  ///
+  /// "seal" seals every loaded object's code, constants and
+  /// relocated data after that (mseal, Linux 6.10+), with the
+  /// same failure on an older kernel.
+  auto EmitCEntryPoint(
+    void *llvm_module, char const *spp_main_name, bool split_stacks, bool deny_wx, bool seal) -> void;
 
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,

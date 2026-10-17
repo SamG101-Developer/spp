@@ -281,6 +281,33 @@ auto spp::utils::features::Schema()
                   "but not its children. Needs Linux 6.6; on an older kernel the program fails at startup until "
                   "this is turned off."
         },
+        KeySpec{
+          .Key = ConfigKey::MemoryMapSeal,
+          .Name = "seal",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Seal the code, constants and relocated data of everything loaded at startup, so none of it can be "
+                  "unmapped, remapped or made writable again. Needs Linux 6.10; on an older kernel the program fails "
+                  "at startup until this is turned off."
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
+      .Name = "binary.codegen",
+      .Help = "What the code generator is asked to emit around the instructions themselves.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenSls,
+          .Name = "sls",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Put a trap straight after every return and indirect jump, so the bytes after one are never run "
+                  "speculatively. Code size only. x86 and AArch64; any other target fails the build until this is "
+                  "turned off."
+        },
       },
       .FreeForm = false,
     },
