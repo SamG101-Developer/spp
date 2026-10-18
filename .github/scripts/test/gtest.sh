@@ -23,12 +23,12 @@ if ! [ -f "$runner" ]; then
 fi
 
 # Resolved before the cd below, so the logs stay where the
-# upload steps expect them.
-mkdir -p tests/test_output
-log_dir="$(cd tests/test_output && pwd)"
+# upload steps expect them: tests/gtest-parallel-logs, as a
+# local tests/compiler/run.sh leaves them.
+log_dir="${PWD}/tests"
 
 # The tests read and write their fixture relative to the cwd,
-# as .tools/run-unit-tests.sh does.
+# as tests/compiler/run.sh does.
 work_dir="${PWD}/tests/test_outputs"
 mkdir -p "$work_dir"
 cd "$work_dir"

@@ -14,5 +14,4 @@ __pycache__/
 
 # test fixture project and per-test logs
 tests/test_outputs/
-tests/test_output/
 tests/gtest-parallel-logs/

@@ -145,6 +145,7 @@ jobs:
     uses: ./.github/workflows/_lane.yaml
     with:
       valgrind: true
+      codegen: true
 
   # Aspirational toolchains: they run and report red on
   # failure, but are deliberately omitted from ci-success,

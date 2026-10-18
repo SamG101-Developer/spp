@@ -45,6 +45,11 @@ on:
         required: false
         type: boolean
         default: false
+      codegen:
+        description: "Run the tests/codegen hardening checks against the build (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
       cmake-flags:
         description: "Extra CMake flags for the build, e.g. sanitizers. Give such a build its own variant."
         required: false
@@ -179,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}-${{ matrix.mode }}-shard${{ matrix.shard }}
-          path: tests/test_output
+          path: tests/gtest-parallel-logs
           if-no-files-found: ignore
           retention-days: 3
 
@@ -273,3 +278,41 @@ jobs:
 
       - name: s++ test groups under valgrind
         run: bash .github/scripts/test/valgrind-groups.sh
+
+  # What the compiler emits, built and run: canaries, sealing,
+  # W^X, scrubbing, SLS, the abort path, ffi unwinding and
+  # reproducibility, each against its key turned off. Advisory
+  # until it has run clean on the hosted kernel, which seal and
+  # deny_wx depend on.
+  codegen:
+    name: codegen checks
+    needs: [ build ]
+    if: inputs.codegen && startsWith(inputs.os, 'ubuntu')
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      # Installs nothing: cc, c++ and objdump are on the image.
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
+
+      - name: Codegen checks
+        run: bash tests/codegen/run.sh build/spp

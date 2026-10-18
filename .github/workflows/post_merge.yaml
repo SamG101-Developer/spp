@@ -103,6 +103,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/_lane.yaml
+    with:
+      codegen: true
 
   # Only a push that bumped VERSION, or a manual dispatch, is a
   # release candidate. Without this an unpublished version is

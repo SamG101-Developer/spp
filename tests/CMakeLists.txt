@@ -1,8 +1,10 @@
-# Build the test executable.
+# Build the test executable from tests/compiler only: the other
+# folders hold suites run outside gtest, whose C and C++ sources
+# are fixtures for the programs they build.
 file(
   GLOB_RECURSE TEST_SOURCES
   CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/compiler/*.cpp"
 )
 add_executable(${PROJECT_NAME}_tests ${TEST_SOURCES})
 
