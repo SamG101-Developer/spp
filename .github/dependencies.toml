@@ -142,7 +142,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "40a62947d3e23f46cbc863afdcc6f5c933d5ed10"
+commit = "0e95fe8200adbf0e033d0c0818eea473e1d4d346"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -184,7 +184,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "07c9f13b15a70c367a406e1cfe2c363aa1b66894"
+commit = "fb7eb86af71afde547c13d062e5aebfa27fc45c5"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
