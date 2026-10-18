@@ -62,6 +62,7 @@ namespace {
     SliceOrder = 4,
     SliceEnd = 5,
     FloatToInt = 6,
+    FfiUnwind = 7,
     SignedAdd = 0x10,
     UnsignedAdd = 0x11,
     SignedSub = 0x12,

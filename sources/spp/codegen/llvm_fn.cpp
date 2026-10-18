@@ -25,11 +25,18 @@ auto spp::codegen::GetOrAddTargetIntoCurrentModule(
 
   // Otherwise, create a matching declaration of the target
   // function in the current module for continuous reusing.
-  return llvm::Function::Create(
+  // Its attributes come with it: an "!ffi" function has no
+  // definition anywhere, so when the modules are linked this
+  // declaration may be the one kept, and the "spp-ffi" marker,
+  // "nounwind" or "noreturn" must not be lost with it.
+  const auto mirror = llvm::Function::Create(
     target.getFunctionType(),
     llvm::Function::ExternalLinkage,
     name,
     &current_module);
+  mirror->setAttributes(target.getAttributes());
+  mirror->setCallingConv(target.getCallingConv());
+  return mirror;
 }
 
 auto spp::codegen::GetOrAddGlobalIntoCurrentModule(

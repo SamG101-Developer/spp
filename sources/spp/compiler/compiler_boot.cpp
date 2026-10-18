@@ -474,6 +474,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(MemoryStackSplit) { codegen::ApplySafeStack(lto_module.get()); }
   FEATURE_GATE(BinaryCodegenSls) { if (not codegen::ApplySlsHardening(lto_module.get())) { return false; } }
   FEATURE_GATE(BinaryCodegenScrub) { if (not codegen::ApplyRegisterScrubbing(lto_module.get())) { return false; } }
+  codegen::ApplyFfiUnwindGuard(lto_module.get());
   codegen::ApplyUnwindTables(lto_module.get());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 

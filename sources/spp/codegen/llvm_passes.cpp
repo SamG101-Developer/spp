@@ -6,6 +6,7 @@
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
@@ -25,6 +26,7 @@
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 #include <spp/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
@@ -673,6 +675,61 @@ auto spp::codegen::ApplyRegisterScrubbing(
     fn.addFnAttr("zero-call-used-regs", "used-gpr");
   }
   return true;
+}
+
+auto spp::codegen::ApplyFfiUnwindGuard(
+  void *llvm_module)
+  -> unsigned long {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  auto &ctx = llvm_mod.getContext();
+  const auto i32_ty = llvm::Type::getInt32Ty(ctx);
+  const auto i64_ty = llvm::Type::getInt64Ty(ctx);
+  const auto ptr_ty = llvm::PointerType::get(ctx, 0);
+
+  // Collected first, as guarding a call splits the block it is
+  // in. A "musttail" call has nowhere to land, so it stays.
+  auto calls = std::vector<llvm::CallInst*>();
+  for (auto &fn : llvm_mod) {
+    for (auto &inst : llvm::instructions(fn)) {
+      const auto call = llvm::dyn_cast<llvm::CallInst>(&inst);
+      if (call == nullptr or call->isMustTailCall()) { continue; }
+      const auto callee = call->getCalledFunction();
+      if (callee != nullptr and callee->hasFnAttribute(kFfiFnAttr)) { calls.emplace_back(call); }
+    }
+  }
+  if (calls.empty()) { return 0; }
+
+  // C's personality: it runs cleanups, which is all a guard
+  // is, and it is libgcc's, which every program already loads.
+  // An exception nothing catches is never handed to a cleanup,
+  // and ends in "std::terminate" instead - an abort either way.
+  auto personality = llvm_mod.getOrInsertFunction(
+    "__gcc_personality_v0", llvm::FunctionType::get(i32_ty, {}, true));
+  auto check_failed = llvm_mod.getOrInsertFunction(
+    "sppc_check_failed", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty, i64_ty, i64_ty}, false));
+  if (const auto fn = llvm::dyn_cast<llvm::Function>(check_failed.getCallee())) {
+    fn->setDoesNotReturn();
+    fn->setDoesNotThrow();
+    fn->addFnAttr(llvm::Attribute::Cold);
+  }
+
+  // One landing pad per call, so the report can name the
+  // function the exception came out of. 7 is the runtime's
+  // SPPC_CHECK_FFI_UNWIND (RuntimeCheck::FfiUnwind).
+  for (const auto call : calls) {
+    const auto fn = call->getFunction();
+    if (not fn->hasPersonalityFn()) { fn->setPersonalityFn(llvm::cast<llvm::Constant>(personality.getCallee())); }
+    const auto pad_bb = llvm::BasicBlock::Create(ctx, "ffi.unwound", fn);
+    auto builder = llvm::IRBuilder<>(pad_bb);
+    builder.CreateLandingPad(llvm::StructType::get(ptr_ty, i32_ty), 0)->setCleanup(true);
+    const auto name = builder.CreateGlobalString(call->getCalledFunction()->getName(), "ffi.name");
+    builder.CreateCall(check_failed, {
+      llvm::ConstantInt::get(i32_ty, 7), builder.CreatePtrToInt(name, i64_ty), llvm::ConstantInt::get(i64_ty, 0)
+    })->setDoesNotReturn();
+    builder.CreateUnreachable();
+    llvm::changeToInvokeAndSplitBasicBlock(call, pad_bb);
+  }
+  return calls.size();
 }
 
 auto spp::codegen::ApplyStackClashProtection(

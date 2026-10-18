@@ -4,6 +4,10 @@
 /// because a TU-local entity is reached.
 
 namespace spp::codegen {
+  /// Marks the declaration of an "!ffi" function, whose calls
+  /// "ApplyFfiUnwindGuard" turns into guarded invokes.
+  inline constexpr char const kFfiFnAttr[] = "spp-ffi";
+
   /// Choose the triple every module is built for. Must be
   /// called before any code generation: the target machine,
   /// the triple and the data layout are each resolved once, on
@@ -92,6 +96,17 @@ namespace spp::codegen {
   /// the key that turns it off and answers false, which fails
   /// the build.
   auto ApplyRegisterScrubbing(void *llvm_module) -> bool;
+
+  /// Make every call to an "!ffi" function in an "llvm::Module"
+  /// (passed as an opaque pointer) an invoke whose unwind edge
+  /// fails the "unwound into s++" check, naming the function.
+  /// Foreign code can throw (a C++ library), and an exception
+  /// a C++ frame further out catches would otherwise unwind
+  /// through the s++ frames between, running none of their
+  /// defers and consuming none of their linear values. Free on
+  /// the path that returns: the edge is unwind-table data.
+  /// Answers how many calls were guarded.
+  auto ApplyFfiUnwindGuard(void *llvm_module) -> unsigned long;
 
   /// Split every function's frame in two: the objects a callee
   /// could write past stay on a separate "unsafe" stack, and

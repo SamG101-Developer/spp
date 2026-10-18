@@ -1,6 +1,7 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 #include <spp/codegen/macros.hpp>
 
 module spp.asts.function_prototype_ast;
@@ -207,8 +208,12 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     const auto func = MakeShared<codegen::LlvmFnWrapper>(created_llvm_func);
 
     // Apply standard optimization flags for the function,
-    // and read the inline annotation if its present.
-    func->Target->addFnAttr(llvm::Attribute::NoUnwind);
+    // and read the inline annotation if its present. An s++
+    // function never unwinds; a foreign one may (a C++ library
+    // can throw), so it is marked for "ApplyFfiUnwindGuard"
+    // to guard its calls rather than claimed not to.
+    if (ffi_symbol.empty()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
+    else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
     if (InlineAnnotation.first != nullptr) {
       if (InlineAnnotation.second == A::kLlvmInline) {
         func->Target->addFnAttr(llvm::Attribute::InlineHint);
