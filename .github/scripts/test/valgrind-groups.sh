@@ -18,7 +18,11 @@ std_groups=(
   std/string std/regression std/noalias
 )
 
+# Valgrind translates the program into executable memory it maps
+# inside the program's own process, so W^X (MDWE) refuses its
+# later mappings, and it does not know mseal. Both are off here.
 scratch_project "$exe" valgrind
+printf '\n[memory.map]\ndeny_wx = false\nseal = false\n' >> spp.toml
 failed=()
 for group in "${std_groups[@]}"; do
   echo "::group::${group}"

@@ -105,6 +105,17 @@ namespace spp::cli {
 #endif
     }
 
+    /// Adopt this project's feature settings. Only this one: how
+    /// a dependency configured itself is a property of that
+    /// dependency's own build, and what comes out of here is
+    /// one program, generated once.
+    auto LoadProjectFeatures() -> bool {
+      auto config_errors = Vec<Str>();
+      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) { return true; }
+      for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
+      return false;
+    }
+
     /// Cap the memory of a command this runs (the program "spp
     /// run" starts), from "SPP_MEMORY_LIMIT_KB" (0 for none): a
     /// runaway allocation in the compiled program then stops it,
@@ -470,15 +481,7 @@ auto spp::cli::HandleBuild(
     return false;
   }
 
-  // Adopt this project's feature settings. Only this one: how
-  // a dependency configured itself is a property of that
-  // dependency's own build, and what comes out of here is
-  // one program, generated once.
-  auto config_errors = Vec<Str>();
-  if (not utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) {
-    for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
-    return false;
-  }
+  if (not LoadProjectFeatures()) { return false; }
 
   // Compile the code. Call the resolution index hooks depending
   // on what is being indexed (project, specific files, etc).
@@ -600,6 +603,10 @@ auto spp::cli::HandleTest(
   }
   SPP_VALIDATE_STRUCTURE(false);
   if (not compiler::ffi::Validate(std::filesystem::current_path())) { std::exit(1); }
+
+  // A test build is built like any other, so the project's
+  // feature settings apply to it too.
+  if (not LoadProjectFeatures()) { std::exit(1); }
 
   // A test build compiles at "rel", so it must look for its
   // executable there too - see the Compiler constructed below.

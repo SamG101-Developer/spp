@@ -68,8 +68,8 @@ jobs:
       matrix:
         target:
           - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32" }
-          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e" }
-          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64" }
+          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub" }
+          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub" }
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
           - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
     steps:
@@ -94,7 +94,8 @@ jobs:
           spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
 
       # Emit the codegen for a cross-compiled target and check it
-      # is for the correct target.
+      # is for the correct target. "off" lists the [binary.codegen]
+      # keys the target has no backend support for.
       - name: Emit and check ${{ matrix.target.triple }}
         id: emit
         run: >-
@@ -102,6 +103,7 @@ jobs:
           '${{ matrix.target.triple }}'
           '${{ matrix.target.arch }}'
           '${{ matrix.target.layout }}'
+          '${{ matrix.target.off }}'
 
       # Upload the emitted IR on failure, so it can be inspected.
       - name: Upload emitted IR on failure

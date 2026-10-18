@@ -446,6 +446,14 @@ auto spp::codegen::ApplyTargetToModule(
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   llvm_mod.setTargetTriple(machine->getTargetTriple());
   llvm_mod.setDataLayout(machine->createDataLayout());
+
+  // The machine's PIC relocation model is not enough on its own:
+  // a module with no PIC level counts as non-PIC, so an external
+  // global (AArch64's "__stack_chk_guard") is read directly, which
+  // a PIE link rejects. The PIE level keeps the module's own
+  // symbols direct; COFF has no PIE, as with clang.
+  llvm_mod.setPICLevel(llvm::PICLevel::BigPIC);
+  if (not machine->getTargetTriple().isOSBinFormatCOFF()) { llvm_mod.setPIELevel(llvm::PIELevel::Large); }
 }
 
 auto spp::codegen::RunCoroLoweringPipeline(

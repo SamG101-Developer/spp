@@ -14,6 +14,7 @@ source .github/scripts/lib/scratch-project.sh
 TRIPLE="$1"
 EXPECT_ARCH="$2"
 EXPECT_LAYOUT="$3"
+CODEGEN_OFF="${4:-}"
 
 SPP="${PWD}/build/spp"
 if ! [ -x "$SPP" ]; then
@@ -24,6 +25,13 @@ fi
 # One name for every target: the triple's dashes are not a usable
 # module folder, and each target is its own job anyway.
 scratch_project "$SPP" cross
+
+# Hardening the target's backend cannot emit fails the build, so
+# those keys are switched off rather than skipped.
+if [ -n "$CODEGEN_OFF" ]; then
+  printf '\n[binary.codegen]\n' >> spp.toml
+  for key in $CODEGEN_OFF; do printf '%s = false\n' "$key" >> spp.toml; done
+fi
 
 echo "::group::spp build --target ${TRIPLE}"
 LOG="$("$SPP" build -m rel --target "$TRIPLE" 2>&1 | tr '\r' '\n' || true)"
