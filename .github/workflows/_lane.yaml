@@ -103,7 +103,7 @@ jobs:
       # go without it.
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
 
@@ -151,7 +151,7 @@ jobs:
       # endpoints are known.
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
           disable-sudo: true
@@ -181,7 +181,7 @@ jobs:
 
       - name: Upload test logs on failure
         if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: testlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}-${{ matrix.mode }}-shard${{ matrix.shard }}
           path: tests/gtest-parallel-logs
@@ -200,7 +200,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
           disable-sudo: true
@@ -237,7 +237,7 @@ jobs:
       # Builds valgrind into the home directory, but needs sudo
       # for libc6-dbg, which valgrind reads only from /usr/lib/debug.
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
 
@@ -296,7 +296,7 @@ jobs:
     steps:
       # Installs nothing: cc, c++ and objdump are on the image.
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
           disable-sudo: true
