@@ -37,7 +37,9 @@ export namespace llvm {
   using ::llvm::AtomicRMWInst;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
+  using ::llvm::CallInst;
   using ::llvm::Constant;
+  using ::llvm::ConstantAsMetadata;
   using ::llvm::ConstantArray;
   using ::llvm::ConstantDataArray;
   using ::llvm::ConstantInt;
@@ -57,7 +59,10 @@ export namespace llvm {
   using ::llvm::LLVMContext;
   using ::llvm::MachineFunction;
   using ::llvm::MaybeAlign;
+  using ::llvm::MDNode;
+  using ::llvm::Metadata;
   using ::llvm::Module;
+  using ::llvm::OperandBundleDef;
   using ::llvm::PointerType;
   using ::llvm::PHINode;
   using ::llvm::SmallVector;

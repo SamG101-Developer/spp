@@ -28,6 +28,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -229,6 +230,13 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     return nullptr;
   }
   llvm_func_target->setPresplitCoroutine();
+
+  // What resuming or destroying the generator will check its
+  // functions against: its own generator type.
+  const auto gen_sup = marker_sups::FindGenSup(
+    TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope, *ReturnType,
+    [&] { return ReturnType; }, "coroutine return type");
+  codegen::StampCfiCoroutine(*llvm_func_target, gen_sup);
 
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(

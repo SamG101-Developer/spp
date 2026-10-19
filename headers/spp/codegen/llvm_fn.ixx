@@ -28,8 +28,7 @@ namespace spp::codegen {
   /// to be done. Either way, the declaration is returned.
   SPP_EXP_FUN auto GetOrAddTargetIntoCurrentModule(
     llvm::Function const &target,
-    llvm::Module &current_module)
-    -> llvm::Function*;
+    llvm::Module &current_module) -> llvm::Function*;
 
   /// The global constant equivalent of the above function;
   /// "cmp" statements can be defined in one module, and accessed
@@ -38,8 +37,7 @@ namespace spp::codegen {
   /// definition still remains in one place.
   SPP_EXP_FUN auto GetOrAddGlobalIntoCurrentModule(
     llvm::GlobalVariable const &target,
-    llvm::Module &current_module)
-    -> llvm::GlobalVariable*;
+    llvm::Module &current_module) -> llvm::GlobalVariable*;
 
   /// Get the module that code is currently being emitted into.
   /// This is the module owning the function that the builder
@@ -49,26 +47,27 @@ namespace spp::codegen {
   /// module that declared the base version of it. For example,
   /// all "Vec[U8]" functions, whilst initially used in the "Str"
   /// module, are defined in the "Vec" module.
-  SPP_EXP_FUN auto GetEmissionModule(LlvmCtx const &ctx) -> llvm::Module*;
+  SPP_EXP_FUN auto GetEmissionModule(
+    LlvmCtx const &ctx) -> llvm::Module*;
 
   /// Build the value that a function genuinely is, when used
   /// as one: the same "{ fn_ptr, env_ptr }" that a closure is.
   /// The pointer is to a thunk rather than to "target", as a
   /// call through the pair passes the environment first, and
   /// a plain function doesn't have a parameter for it. The
-  /// thunk is emitted once per module, and reused after that.
-  SPP_EXP_FUN auto BuildFnValue(llvm::Function const &target, LlvmCtx *ctx) -> llvm::Constant*;
+  /// thunk is emitted once per module and function type
+  /// ("fn_sup", which its control-flow type comes from), and
+  /// reused after that.
+  SPP_EXP_FUN auto BuildFnValue(
+    llvm::Function const &target, TypeRef const &fn_sup,
+    LlvmCtx const *ctx) -> llvm::Constant*;
 
   /// Like the variant coercion function, a value naming a
   /// function that going into a function type, is replaced by
   /// the pair for the overload, that analysis chose there.
   SPP_EXP_FUN auto CoerceToFnValue(
-    llvm::Value *llvm_val,
-    TypeRef const &target,
-    TypeRef const &source,
-    ScopeManager const &sm,
-    LlvmCtx *ctx)
-    -> llvm::Value*;
+    llvm::Value *llvm_val, TypeRef const &target, TypeRef const &source,
+    ScopeManager const &sm, LlvmCtx const *ctx) -> llvm::Value*;
 
   /// A closure's environment: a leading "i8" saying whether the
   /// environment owns its storage (heap, 1) or not (stack, 0),
@@ -77,18 +76,55 @@ namespace spp::codegen {
   /// out: every closure of one signature shares its type, and a
   /// "FunRef" passed as a "FunMov" is freed as one.
   SPP_EXP_FUN auto ClosureEnvType(
-    Vec<llvm::Type*> const &capture_tys, StrView name, LlvmCtx *ctx) -> llvm::StructType*;
+    Vec<llvm::Type*> const &capture_tys, StrView name,
+    LlvmCtx const *ctx) -> llvm::StructType*;
 
   /// Make a closure's environment of type "env_ty" - on the heap
   /// when it may outlive the frame making it, else on the stack -
   /// and record which in its header.
   SPP_EXP_FUN auto EmitNewClosureEnv(
-    llvm::StructType *env_ty, bool on_heap, StrView name, LlvmCtx *ctx) -> llvm::Value*;
+    llvm::StructType *env_ty, bool on_heap, StrView name,
+    LlvmCtx *ctx) -> llvm::Value*;
+
+  /// Which of a generator's two functions a call through its
+  /// frame reaches: the one resuming it, or the one destroying
+  /// it. Each has its own control-flow type.
+  SPP_EXP_CLS enum class CoroEdge { Resume, Destroy };
+
+  /// Record that "fn" is called indirectly as a value whose
+  /// function type is "fn_sup" ("FindFnSup"), which "ApplyCfi"
+  /// turns into the type a call checks for. Recorded as
+  /// "metadata" on the function. The type is a hash of the
+  /// function type's "Args" and "Out", the s++ signature, not
+  /// of which "FunXXX" it is, as a "FunRef" can be passed as a
+  /// "FunMov" (constrained generic).
+  SPP_EXP_FUN auto StampCfiFn(
+    llvm::Function &fn, TypeRef const &fn_sup) -> void;
+
+  /// Record a coroutine's generator. The lowering splits it into
+  /// the functions resuming and destroying it, which keep this,
+  /// and "ApplyCfi" types each of them by which it is.
+  SPP_EXP_FUN auto StampCfiCoroutine(
+    llvm::Function &ramp, TypeRef const &gen_sup) -> void;
+
+  /// The operand bundle an indirect call through a value whose
+  /// function type is "fn_sup" carries, so the backend checks
+  /// that what it reaches was stamped with the same type (KCFI).
+  SPP_EXP_FUN auto CfiFnCallBundles(
+    TypeRef const &fn_sup, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef>;
+
+  /// The same for resuming or destroying a generator whose
+  /// generator type is "gen_sup" ("FindGenSup"), which the
+  /// coroutine lowering turns into a call through its frame.
+  SPP_EXP_FUN auto CfiGenCallBundles(
+    TypeRef const &gen_sup, CoroEdge edge, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef>;
 
   /// The field of a closure's environment holding capture "i".
-  SPP_EXP_FUN auto ClosureEnvCaptureIndex(std::size_t i) -> unsigned;
+  SPP_EXP_FUN auto ClosureEnvCaptureIndex(
+    std::size_t i) -> unsigned;
 
   /// Free a closure's environment, if it has one and it owns its
   /// storage: what consuming or dropping a "FunMov" does.
-  SPP_EXP_FUN auto EmitReleaseClosureEnv(llvm::Value *env, LlvmCtx *ctx) -> void;
+  SPP_EXP_FUN auto EmitReleaseClosureEnv(
+    llvm::Value *env, LlvmCtx *ctx) -> void;
 }

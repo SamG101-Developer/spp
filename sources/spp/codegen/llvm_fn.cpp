@@ -1,15 +1,77 @@
 module;
-#include <spp/macros.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 module spp.codegen.llvm_fn;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.fn_values;
+import spp.analyse.utils.marker_sups;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_mangle;
+import spp.utils.features;
 import spp.utils.types;
 import std;
+
+namespace spp::codegen {
+  namespace {
+    /// A 32-bit FNV-1a hash: stable across builds and platforms,
+    /// so a build stays reproducible.
+    auto Fnv32(const StrView text) -> std::uint32_t {
+      auto hash = 2166136261u;
+      for (const auto c : text) {
+        hash ^= static_cast<unsigned char>(c);
+        hash *= 16777619u;
+      }
+      return hash;
+    }
+
+    /// Metadata holding "types", each as an "i32".
+    auto CfiMd(llvm::LLVMContext &ctx, const std::initializer_list<std::uint32_t> types) -> llvm::MDNode* {
+      auto ops = spp::Vec<llvm::Metadata*>();
+      const auto i32 = llvm::Type::getInt32Ty(ctx);
+      for (const auto t : types) {
+        ops.emplace_back(llvm::ConstantAsMetadata::get(llvm::ConstantInt::get(i32, t)));
+      }
+      return llvm::MDNode::get(ctx, ops);
+    }
+
+    /// [CHECKED]
+    /// The control-flow-integrity type of a function type ("FindFnSup").
+    auto CfiFnType(
+      TypeRef const &fn_sup) -> std::uint32_t {
+      // Get the "Args" tuple type, the "Out" return type,
+      // mangled and hashed for CFI.
+      const auto args = fn_sup.Symbol->TypeArgRef("Args");
+      const auto out = fn_sup.Symbol->TypeArgRef("Out");
+      return Fnv32(
+        "fn " + mangle::MangleTypeName(*args.Symbol) +
+        " -> " + mangle::MangleTypeName(*out.Symbol));
+    }
+
+    /// The control-flow-integrity type of one of a generator's two
+    /// functions ("FindGenSup").
+    auto CfiGenType(
+      TypeRef const &gen_sup, const CoroEdge edge) -> std::uint32_t {
+      const auto which = edge == CoroEdge::Destroy ? "destroy " : "resume ";
+      return Fnv32(which + mangle::MangleTypeName(*gen_sup.Symbol));
+    }
+
+    /// The "kcfi" operand bundle checking for "type"; none when
+    /// the feature is off.
+    auto KcfiBundles(
+      const std::uint32_t type, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
+      if (not utils::features::Enabled(utils::features::ConfigKey::BinaryCodegenCfi)) { return {}; }
+      auto bundles = Vec<llvm::OperandBundleDef>();
+      bundles.emplace_back(
+        "kcfi", Vec<llvm::Value*>{
+          llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), type)
+        });
+      return bundles;
+    }
+  }
+}
 
 auto spp::codegen::GetOrAddTargetIntoCurrentModule(
   llvm::Function const &target,
@@ -61,16 +123,50 @@ auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   return declaration;
 }
 
+/// [CHECKED]
+auto spp::codegen::StampCfiFn(
+  llvm::Function &fn, TypeRef const &fn_sup) -> void {
+  // Stamp the CFI hashed type ("CfiFnType") onto the function
+  // in its metadata, for later retrieval.
+  fn.setMetadata(kCfiMd, CfiMd(fn.getContext(), {CfiFnType(fn_sup)}));
+}
+
+/// [CHECKED]
+auto spp::codegen::StampCfiCoroutine(
+  llvm::Function &ramp, TypeRef const &gen_sup) -> void {
+  // Stamp the CFI hashed type ("CfiGenType") onto the function
+  // in its metadata, for later retrieval.
+  const auto resume = CfiGenType(gen_sup, CoroEdge::Resume);
+  const auto destroy = CfiGenType(gen_sup, CoroEdge::Destroy);
+  ramp.setMetadata(kCfiCoroMd, CfiMd(ramp.getContext(), {resume, destroy}));
+}
+
+auto spp::codegen::CfiFnCallBundles(
+  TypeRef const &fn_sup,
+  LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
+  return KcfiBundles(CfiFnType(fn_sup), ctx);
+}
+
+auto spp::codegen::CfiGenCallBundles(
+  TypeRef const &gen_sup, const CoroEdge edge,
+  LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
+  return KcfiBundles(CfiGenType(gen_sup, edge), ctx);
+}
+
 auto spp::codegen::BuildFnValue(
-  llvm::Function const &target,
-  LlvmCtx *ctx)
-  -> llvm::Constant* {
+  llvm::Function const &target, TypeRef const &fn_sup,
+  LlvmCtx const *ctx) -> llvm::Constant* {
   // The thunk takes the environment pointer and drops it, then
-  // forwards everything else to the function unchanged.
+  // forwards everything else to the function unchanged. One
+  // function can be the value of two function types, which are
+  // two types to call it as, so the thunk is per type.
   const auto module = GetEmissionModule(*ctx);
   const auto callee = GetOrAddTargetIntoCurrentModule(target, *module);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto thunk_name = callee->getName().str() + ".as_value";
+  auto type_hex = Str(8, '0');
+  auto t = CfiFnType(fn_sup);
+  for (auto i = 8uz; i > 0; --i, t >>= 4) { type_hex[i - 1] = "0123456789abcdef"[t & 0xfu]; }
+  const auto thunk_name = callee->getName().str() + ".as_value." + type_hex;
 
   auto thunk = module->getFunction(thunk_name);
   if (thunk == nullptr) {
@@ -80,7 +176,8 @@ auto spp::codegen::BuildFnValue(
     thunk = llvm::Function::Create(
       llvm::FunctionType::get(callee->getReturnType(), thunk_param_tys, false),
       llvm::GlobalValue::InternalLinkage, thunk_name, module);
-    auto builder = llvm::IRBuilder<>(llvm::BasicBlock::Create(*ctx->Context, "entry", thunk));
+    StampCfiFn(*thunk, fn_sup);
+    auto builder = llvm::IRBuilder(llvm::BasicBlock::Create(*ctx->Context, "entry", thunk));
     auto forwarded = spp::Vec<llvm::Value*>();
     for (auto &arg : thunk->args()) {
       if (arg.getArgNo() > 0) { forwarded.push_back(&arg); }
@@ -96,24 +193,21 @@ auto spp::codegen::BuildFnValue(
 }
 
 auto spp::codegen::CoerceToFnValue(
-  llvm::Value *llvm_val,
-  analyse::scopes::TypeRef const &target,
-  analyse::scopes::TypeRef const &source,
-  analyse::scopes::ScopeManager const &sm,
-  LlvmCtx *ctx)
-  -> llvm::Value* {
+  llvm::Value *llvm_val, TypeRef const &target,
+  TypeRef const &source, ScopeManager const &sm,
+  LlvmCtx const *ctx) -> llvm::Value* {
   // A named function carries nothing at runtime, so whatever was
   // loaded for it is dropped and the chosen overload built.
   const auto fn = llvm_val != nullptr
     ? analyse::utils::fn_values::FindFnValue(source, target, sm)
     : nullptr;
   if (fn == nullptr or fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) { return llvm_val; }
-  return BuildFnValue(*fn->GetLlvmFn()->Target, ctx);
+  const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
+  return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
 }
 
 auto spp::codegen::GetEmissionModule(
-  LlvmCtx const &ctx)
-  -> llvm::Module* {
+  LlvmCtx const &ctx) -> llvm::Module* {
   // Outside a function body (a "cmp" initializer, say) there is
   // nothing being emitted into, so the context's own module is
   // the only answer.
@@ -123,7 +217,8 @@ auto spp::codegen::GetEmissionModule(
 }
 
 auto spp::codegen::ClosureEnvType(
-  Vec<llvm::Type*> const &capture_tys, const StrView name, LlvmCtx *ctx) -> llvm::StructType* {
+  Vec<llvm::Type*> const &capture_tys, const StrView name,
+  LlvmCtx const *ctx) -> llvm::StructType* {
   // The ownership header first, then the captures in order.
   auto fields = Vec<llvm::Type*>{llvm::Type::getInt8Ty(*ctx->Context)};
   fields.append_range(capture_tys);
@@ -131,7 +226,8 @@ auto spp::codegen::ClosureEnvType(
 }
 
 auto spp::codegen::EmitNewClosureEnv(
-  llvm::StructType *const env_ty, const bool on_heap, const StrView name, LlvmCtx *ctx) -> llvm::Value* {
+  llvm::StructType *const env_ty, const bool on_heap,
+  const StrView name, LlvmCtx *ctx) -> llvm::Value* {
   // The stack, unless the environment may outlive this frame.
   auto env = static_cast<llvm::Value*>(nullptr);
   if (not on_heap) {

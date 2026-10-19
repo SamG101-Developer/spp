@@ -61,7 +61,10 @@ auto spp::codegen::EmitDrop(
     ctx->Builder.CreateCondBr(ctx->Builder.CreateIsNotNull(handle, "drop.gen.ok" + uid), live_bb, done_bb);
 
     ctx->Builder.SetInsertPoint(live_bb);
-    ctx->Builder.CreateIntrinsic(llvm::Intrinsic::coro_destroy, {}, {handle}, {}, "");
+    const auto coro_destroy = llvm::Intrinsic::getOrInsertDeclaration(
+      GetEmissionModule(*ctx), llvm::Intrinsic::coro_destroy);
+    ctx->Builder.CreateCall(
+      coro_destroy, {handle}, CfiGenCallBundles(type, CoroEdge::Destroy, ctx));
     ctx->Builder.CreateBr(done_bb);
     ctx->Builder.SetInsertPoint(done_bb);
     return;

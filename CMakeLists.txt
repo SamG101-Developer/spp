@@ -94,7 +94,6 @@ if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif ()
 
 if (NOT MSVC)
-  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127228
   add_compile_options(-fvisibility-inlines-hidden)
 endif ()
 

@@ -19,6 +19,8 @@ namespace spp::utils::features {
     MemoryMapSeal,
     BinaryCodegenSls,
     BinaryCodegenScrub,
+    BinaryCodegenCfi,
+    BinaryCodegenJumpTableBounds,
     BinaryLinkHarden,
   };
 

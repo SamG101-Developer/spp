@@ -468,7 +468,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // "Opt[U]" asked for. So it is read off the value's type here, not the type the call resolved through.
     const auto expected_ret_ref = InferTypeRef(sm, meta);
     auto actual_ret_ref = expected_ret_ref;
-    if (const auto fn_sup = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope); fn_sup.Symbol != nullptr) {
+    const auto fn_sup = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope);
+    if (fn_sup.Symbol != nullptr) {
       if (const auto out = fn_sup.Symbol->TypeArgRef("Out"); out.Symbol != nullptr) { actual_ret_ref = out; }
     }
 
@@ -490,7 +491,9 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // A call returning Void cannot be given a name (llvm forbids
     // naming void values).
     if (closure_ret_ty->isVoidTy()) {
-      const auto void_call = ctx->Builder.CreateCall(closure_fn_ty, fn_ptr, closure_args);
+      const auto void_call = ctx->Builder.CreateCall(
+        closure_fn_ty, fn_ptr, closure_args,
+        codegen::CfiFnCallBundles(fn_sup, ctx));
       release_env();
       return void_call;
     }
@@ -498,7 +501,9 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // Build the proper (named) call and then do the variant
     // coercion.
     const auto closure_call = ctx->Builder.CreateCall(
-      closure_fn_ty, fn_ptr, closure_args, "closure.call" + closure_uid);
+      closure_fn_ty, fn_ptr, closure_args,
+      codegen::CfiFnCallBundles(fn_sup, ctx),
+      "closure.call" + closure_uid);
     release_env();
     return codegen::CoerceToVariant(
       closure_call, expected_ret_ref, actual_ret_ref, *sm->CurrentScope,

@@ -8,6 +8,14 @@ namespace spp::codegen {
   /// "ApplyFfiUnwindGuard" turns into guarded invokes.
   inline constexpr char const kFfiFnAttr[] = "spp-ffi";
 
+  /// The control-flow-integrity type a function is called as
+  /// ("StampCfiFn").
+  inline constexpr char const kCfiMd[] = "spp.cfi";
+
+  /// A coroutine's resume and destroy types, which the functions
+  /// its lowering splits it into keep ("StampCfiCoroutine").
+  inline constexpr char const kCfiCoroMd[] = "spp.cfi.coro";
+
   /// Choose the triple every module is built for. Must be
   /// called before any code generation: the target machine,
   /// the triple and the data layout are each resolved once, on
@@ -108,6 +116,29 @@ namespace spp::codegen {
   /// Answers how many calls were guarded.
   auto ApplyFfiUnwindGuard(void *llvm_module) -> unsigned long;
 
+  /// Check every indirect call in an "llvm::Module" (passed as
+  /// an opaque pointer) against the s++ signature of what it
+  /// reaches (KCFI): each function recorded as callable
+  /// indirectly carries its type just before its entry, and
+  /// each call compares it with the type it recorded, trapping
+  /// on a mismatch, so a corrupted function pointer or
+  /// coroutine frame reaches only a function of the same type.
+  /// A load and a compare per call. x86 and AArch64 only: on
+  /// any other target this reports the key that turns it off
+  /// and answers false, which fails the build.
+  auto ApplyCfi(void *llvm_module) -> bool;
+
+  /// Keep every switch in an "llvm::Module" (passed as an opaque
+  /// pointer) from jumping through an entry past the end of its
+  /// jump table when the bounds check before it is mispredicted.
+  /// On AArch64 the table stays and its index is clamped without
+  /// a branch; x86 has no such lowering, so its switches are
+  /// built without tables, as compares, which also leaves no
+  /// indirect jump for anything to steer. A few instructions per
+  /// switch. On any other target this reports the key that turns
+  /// it off and answers false, which fails the build.
+  auto ApplyJumpTableBounds(void *llvm_module) -> bool;
+
   /// Split every function's frame in two: the objects a callee
   /// could write past stay on a separate "unsafe" stack, and
   /// the frame the hardware knows about - the return address,
@@ -140,9 +171,10 @@ namespace spp::codegen {
   /// name, and stop if it cannot.
   ///
   /// The names come from "Intrinsic::getName" as a
-  /// "std::string", and a libstdc++ incompatibility makes that
-  /// come back padded with uninitialised bytes (see
-  /// "libstdcxx_string_compat.cpp"). While it bites, no
+  /// "std::string", and a libstdc++ incompatibility (GCC bug
+  /// 127228) makes that come back padded with uninitialised
+  /// bytes; "-fvisibility-inlines-hidden" (CMakeLists.txt)
+  /// keeps this compiler clear of it. While it bites, no
   /// overloaded intrinsic can be named correctly and every
   /// module holding one is rejected - by the verifier, whose
   /// complaint is about the name and says nothing about why it
@@ -151,9 +183,8 @@ namespace spp::codegen {
   /// several layers downstream.
   ///
   /// Runs its check once per process, so it costs nothing to
-  /// call wherever it is convenient. The diagnosis is printed
-  /// in any build; the assertion that stops on it is a debug
-  /// one.
+  /// call wherever it is convenient. The diagnosis is printed,
+  /// and the build stopped, in any build.
   auto AssertIntrinsicNamingIsSound() -> void;
 
   /// Add a C "main" to the combined "llvm::Module" (passed as

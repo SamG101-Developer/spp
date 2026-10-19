@@ -46,7 +46,7 @@ namespace spp::analyse::utils::marker_sups {
     auto FindMarkerSups(
       TypeRef const &ref,
       Scope const &scope,
-      FuncRef<bool(TypeRef const&)> is_marker)
+      FuncRef<bool(TypeRef const &)> is_marker)
       -> Vec<TypeRef> {
       auto found = Vec<TypeRef>();
       if (is_marker(ref)) { found.emplace_back(ref); }
@@ -59,9 +59,7 @@ namespace spp::analyse::utils::marker_sups {
 }
 
 auto spp::analyse::utils::marker_sups::FindFnSup(
-  TypeAst const &type,
-  Scope const &scope)
-  -> TypeRef {
+  TypeAst const &type, Scope const &scope) -> TypeRef {
   //
   const auto type_sym = scope.FindTypeSymbol(&type);
 
@@ -95,13 +93,9 @@ auto spp::analyse::utils::marker_sups::FindFnSup(
 }
 
 auto spp::analyse::utils::marker_sups::FindGenSup(
-  TypeRef const &ref,
-  Scope const &scope,
-  ExpressionAst const &expr,
-  FuncRef<Shared<TypeAst>()> spell,
-  StrView what,
-  const bool raise)
-  -> TypeRef {
+  TypeRef const &ref, Scope const &scope,
+  ExpressionAst const &expr, FuncRef<Shared<TypeAst>()> spell,
+  StrView what, const bool raise) -> TypeRef {
   //
   using errors::SppExpressionNotGeneratorError;
   using errors::SppExpressionAmbiguousGeneratorError;

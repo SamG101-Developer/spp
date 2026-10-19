@@ -318,6 +318,28 @@ auto spp::utils::features::Schema()
                   "nothing it computed is left behind. A few instructions on every return. x86 and AArch64; any "
                   "other target fails the build until this is turned off."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenCfi,
+          .Name = "cfi",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Check, before every indirect call (a closure, a function value, resuming or destroying a "
+                  "generator), that the function it reaches has the s++ signature the call expects, and stop the "
+                  "program if not. A load and a compare per call. x86 and AArch64; any other target fails the build "
+                  "until this is turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenJumpTableBounds,
+          .Name = "jump_table_bounds",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Keep a switch from jumping through an entry past the end of its jump table, even speculatively. "
+                  "On AArch64 the index is clamped without a branch; on x86 switches are built without jump tables, "
+                  "as compares. A few instructions per switch. Any other target fails the build until this is "
+                  "turned off."
+        },
       },
       .FreeForm = false,
     },

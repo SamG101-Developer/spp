@@ -12,6 +12,7 @@ import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -319,6 +320,11 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   const auto llvm_fn = llvm::Function::Create(
     llvm_fn_ty, llvm::Function::InternalLinkage,
     codegen::mangle::MangleClosureName(enclosing, index), emission_module);
+
+  // What a call through the closure's value will check its
+  // function against: its own function type's signature.
+  const auto fn_sup = marker_sups::FindFnSup(*InferType(sm, meta), *sm->CurrentScope);
+  codegen::StampCfiFn(*llvm_fn, fn_sup);
 
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 

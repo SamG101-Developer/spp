@@ -196,48 +196,6 @@ namespace {
   }
 
   /// [CHECKED]
-  /// Convert the intrinsic into a "llvm.<intrinsic>" (fully
-  /// qualified), to get the overflow information too.
-  auto OverflowIntrinsic(
-    LlvmCtx const *ctx, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
-    llvm::Type *ty) -> llvm::Function* {
-    // Operation name mapper based off of the intrinsic name. It
-    // gives the final part of the fully qualified version.
-    auto op = spp::StrView();
-    switch (intrinsic) {
-      case llvm::Intrinsic::sadd_with_overflow: op = "sadd";
-        break;
-      case llvm::Intrinsic::uadd_with_overflow: op = "uadd";
-        break;
-      case llvm::Intrinsic::ssub_with_overflow: op = "ssub";
-        break;
-      case llvm::Intrinsic::usub_with_overflow: op = "usub";
-        break;
-      case llvm::Intrinsic::smul_with_overflow: op = "smul";
-        break;
-      case llvm::Intrinsic::umul_with_overflow: op = "umul";
-        break;
-      default: spp::Ice("not a checked arithmetic intrinsic");
-    }
-
-    // Create the fully qualified name, and get its function.
-    // Given it exists, return it.
-    const auto name = std::format("llvm.{}.with.overflow.i{}", op, ty->getIntegerBitWidth());
-    if (const auto declared = ctx->Module->getFunction(name); declared != nullptr) {
-      return declared;
-    }
-
-    // Otherwise, create it with external linkage for a library
-    // to provide implementation.
-    const auto ret_ty = llvm::StructType::get(
-      *ctx->Context, {ty, llvm::Type::getInt1Ty(*ctx->Context)});
-    const auto fn_ty = llvm::FunctionType::get(
-      ret_ty, {ty, ty}, false);
-    return llvm::Function::Create(
-      fn_ty, llvm::Function::ExternalLinkage, name, ctx->Module.get());
-  }
-
-  /// [CHECKED]
   /// The lowest level part of an arithmetic operation, with
   /// additional information for if it overflowed or not. This
   /// flows up to all math calling functions.
@@ -271,7 +229,7 @@ namespace {
     // types. Because of the S++ type system, the left and
     // right operands will be the same type.
     const auto pair = ctx->Builder.CreateCall(
-      OverflowIntrinsic(ctx, intrinsic, a->getType()),
+      llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {a->getType()}),
       {a, b}, "arith.checked" + uid);
 
     // Return a pair of function calls to get the value

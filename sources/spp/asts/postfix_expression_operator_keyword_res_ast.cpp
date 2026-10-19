@@ -33,6 +33,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
@@ -265,7 +266,11 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // value is read after resuming, never before. A "GenOnce" is guaranteed to yield exactly once, so it has no
   // finished case to report.
   const auto resume = [&] {
-    ctx->Builder.CreateIntrinsic(llvm::Intrinsic::coro_resume, {}, {llvm_generator_env->Handle}, {}, "");
+    const auto coro_resume = llvm::Intrinsic::getOrInsertDeclaration(
+      codegen::GetEmissionModule(*ctx), llvm::Intrinsic::coro_resume);
+    ctx->Builder.CreateCall(
+      coro_resume, {llvm_generator_env->Handle},
+      codegen::CfiGenCallBundles(gen, codegen::CoroEdge::Resume, ctx));
   };
   if (is_once) {
     resume();
