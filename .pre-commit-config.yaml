@@ -213,8 +213,20 @@ repos:
       - id: check-github-actions
       - id: check-dependabot
 
-#  Todo: Wait for https://github.com/suzuki-shunsuke/pinact/pull/971 to be merged
-#  - repo: https://github.com/suzuki-shunsuke/pinact
-#    rev: v4.1.0
-#    hooks:
-#      - id: pinact
+  - repo: local
+    hooks:
+      - id: pinact
+        name: pin actions with version comments
+        entry: pinact run
+        language: golang
+        language_version: "1.27.1"
+        additional_dependencies: [ "github.com/suzuki-shunsuke/pinact/v5/cmd/pinact@v5.0.0" ]
+        files: '^\.github/(workflows|actions)/.*\.ya?ml$'
+
+      - id: pinact-check
+        name: check actions are pinned with version comments
+        entry: pinact run --fix=false --no-api
+        language: golang
+        language_version: "1.27.1"
+        additional_dependencies: [ "github.com/suzuki-shunsuke/pinact/v5/cmd/pinact@v5.0.0" ]
+        files: '^\.github/(workflows|actions)/.*\.ya?ml$'

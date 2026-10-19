@@ -81,7 +81,7 @@ runs:
 
     # Falls back to the newest tree for this variant on this branch, then on the base branch.
     - name: Restore build tree
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
@@ -105,7 +105,7 @@ runs:
 
     - name: Upload build logs on failure
       if: failure()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}
         path: build-logs
@@ -116,7 +116,7 @@ runs:
     - name: Save build tree
       if: ${{ always() && steps.configure.outcome == 'success' }}
       continue-on-error: true
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
@@ -134,7 +134,7 @@ runs:
     # One day: this run's test jobs, and on a release its collect job, are the only readers.
     - name: Upload binaries for the test jobs
       if: inputs.stage == 'true'
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ steps.stage.outputs.artifact }}
         path: staged-bin
