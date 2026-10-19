@@ -7,12 +7,12 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  SPP_EXP_CLS struct LlvmTypeSymInfo {
+  SPP_EXP_CLS struct LlvmTypeSymbolInfo {
     llvm::Type *LlvmType = nullptr;
     Map<std::size_t, std::size_t> FieldIndexMap;
   };
 
-  SPP_EXP_CLS struct LlvmVarSymInfo {
+  SPP_EXP_CLS struct LlvmVarSymbolInfo {
     /// The llvm allocation for the local variable a variable
     /// symbol represents.
     llvm::Value *Alloca = nullptr;

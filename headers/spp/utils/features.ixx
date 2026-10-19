@@ -15,6 +15,12 @@ namespace spp::utils::features {
     MemoryStackProtect,
     MemoryStackProbe,
     MemoryStackSplit,
+    MemoryMapDenyWx,
+    MemoryMapSeal,
+    BinaryCodegenSls,
+    BinaryCodegenScrub,
+    BinaryCodegenCfi,
+    BinaryCodegenJumpTableBounds,
     BinaryLinkHarden,
   };
 
@@ -54,12 +60,12 @@ namespace spp::utils::features {
   /// found, all the valid section names are reported. If,
   /// within a valid section, an invalid key is found, then all
   /// the valid keys for that section are reported.
-  SPP_EXP_FUN auto Validate(std::filesystem::path const &config, Vec<Str> &errors) -> bool;
+  SPP_EXP_FUN auto Validate(Path const &config, Vec<Str> &errors) -> bool;
 
   /// Load a config and load the values from the toml settings
   /// into the feature system within C++. This is a single
   /// place to dynamically set all the feature values.
-  SPP_EXP_FUN auto Load(std::filesystem::path const &config, Vec<Str> &errors) -> bool;
+  SPP_EXP_FUN auto Load(Path const &config, Vec<Str> &errors) -> bool;
 
   /// Check whether a feature is enabled, either from the
   /// defaults, or the config overrides.
@@ -72,4 +78,10 @@ namespace spp::utils::features {
   /// The entire schema as a listing, for the command "spp
   /// config", and for the tail of a validation failure.
   SPP_EXP_FUN auto HelpText() -> Str;
+
+  /// Every on/off key and the value it has for this build,
+  /// default or set, as "section.key = value" lines in schema
+  /// order: what a built program records about itself, so a
+  /// key added to the schema is recorded with no more work.
+  SPP_EXP_FUN auto EffectiveSettings() -> Str;
 }

@@ -10,6 +10,8 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorStaticMemberAccessAst);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
@@ -39,10 +41,19 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorStaticMemberAccessAst fin
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
-  TypeSymbol *_LhsTypeSym;
+  TypeSymbol *_LhsTypeSymbol;
+
+  /// The namespace a namespace left-hand-side resolved to, kept so a
+  /// copy of this access analysed elsewhere (a parameter default at
+  /// a call site) still reaches it, as the lhs may be relative.
+  Scope const *_LhsNsScope;
+
+  auto LhsNsScope(ScopeManager const *sm, CompilerMetaData const *meta) -> Scope const*;
 };

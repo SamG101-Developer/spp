@@ -26,17 +26,12 @@
   #define SPP_ATTR_COLD [[gnu::cold]]
 #endif
 
-#if SPP_DEBUG
-#define SPP_ASSERT(x)                                                                                   \
-  do {                                                                                                  \
-    if (!(x)) {                                                                                         \
-      std::cerr << "Assertion failed: " #x ", file " << __FILE__ << ", line " << __LINE__ << std::endl; \
-      std::abort();                                                                                     \
-    }                                                                                                   \
+// An invariant of the compiler's own state, checked in every build: one that does not hold is an internal compiler
+// error ("spp::Ice", "spp.utils.ice"), reported at the assertion with the call stack.
+#define SPP_ASSERT(x)                                     \
+  do {                                                    \
+    if (not(x)) { ::spp::Ice("Assertion failed: " #x); }  \
   } while (0)
-#else
-#define SPP_ASSERT(x) do {} while (0)
-#endif
 
 #if SPP_DEBUG
 #define SPP_LOG(x)                                                                                        \
@@ -117,10 +112,10 @@
 #if SPP_COMPILER_GCC
 
 #define SPP_GCC_VTABLE_FIX_BASE \
-  virtual auto _spp_key_function() const -> void
+  virtual auto _spp_key_function() const -> void;
 
 #define SPP_GCC_VTABLE_FIX \
-  auto _spp_key_function() const -> void override
+  auto _spp_key_function() const -> void override;
 
 #define SPP_GCC_VTABLE_FIX_IMPL(Type)             \
   SPP_MOD_BEGIN                                   \
@@ -160,4 +155,5 @@
   using namespace ns
 
 #define use_ns(ns) \
+  namespace ns {} \
   using namespace ns

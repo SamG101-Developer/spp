@@ -16,7 +16,7 @@ namespace spp::analyse::scopes {
   namespace {
     /// For an IdentifierAst, get the interned id, optimal for
     /// comparisons.
-    SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+    SPP_ATTR_ALWAYS_INLINE inline auto SymbolKey(
       IdentifierAst const *sym_name) noexcept -> spp::utils::InternedId {
       return sym_name->NameId();
     }
@@ -24,7 +24,7 @@ namespace spp::analyse::scopes {
     /// For a TypeIdentifierAst, get the string-based view over
     /// the entire type. They are mutated so we can't "intern"
     /// them - hash the view instead.
-    SPP_ATTR_ALWAYS_INLINE SPP_ATTR_HOT inline auto SymbolKey(
+    SPP_ATTR_ALWAYS_INLINE inline auto SymbolKey(
       TypeIdentifierAst const *sym_name) -> StrView {
       return sym_name->ToView();
     }
@@ -37,6 +37,48 @@ IndividualSymbolTable<I, S>::IndividualSymbolTable() :
 }
 
 template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::IndexParam(
+  S *sym) -> void {
+  // A binding outranks the parameter it binds, which a cloned table may also hold. A namespace is neither.
+  if constexpr (std::is_same_v<S, NamespaceSymbol>) { return; }
+  else {
+    const auto id = sym->ParamId();
+    if (id == 0) { return; }
+    auto &slot = _ByParam[id];
+    if (slot == nullptr or sym->BindsParamId != 0 or slot->BindsParamId == 0) { slot = sym; }
+  }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::UnindexParam(
+  S const *sym) -> void {
+  if constexpr (std::is_same_v<S, NamespaceSymbol>) { return; }
+  else {
+    const auto id = sym->ParamId();
+    if (id == 0) { return; }
+    const auto it = _ByParam.find(id);
+    if (it == _ByParam.end() or it->second != sym) { return; }
+    _ByParam.erase(it);
+    for (auto const &[_, other] : _Table) {
+      if (other.get() != sym and other->ParamId() == id) { IndexParam(other.get()); }
+    }
+  }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::ReindexParams() -> void {
+  _ByParam.clear();
+  for (auto const &[_, sym] : _Table) { IndexParam(sym.get()); }
+}
+
+template <typename I, typename S>
+auto IndividualSymbolTable<I, S>::FindByParam(
+  const std::uint64_t id) const -> S* {
+  const auto it = _ByParam.find(id);
+  return it != _ByParam.end() ? it->second : nullptr;
+}
+
+template <typename I, typename S>
 IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
 
 template <typename I, typename S>
@@ -45,6 +87,7 @@ auto IndividualSymbolTable<I, S>::ShallowCopyFrom(
   // Copying the map copies the shared pointers, so both
   // tables name the same symbol objects.
   _Table = that._Table;
+  _ByParam = that._ByParam;
 }
 
 template <typename I, typename S>
@@ -59,6 +102,7 @@ auto IndividualSymbolTable<I, S>::DeepCopyFrom(
   for (auto const &[k, v] : that._Table) {
     _Table.emplace(k, v->NeedsDeepCopy() ? MakeShared<S>(*v) : v);
   }
+  ReindexParams();
 }
 
 template <typename I, typename S>
@@ -69,11 +113,13 @@ auto IndividualSymbolTable<I, S>::Add(
   const auto key = SymbolKey(sym_name);
   auto it = _Table.find(key);
   if (it != _Table.end()) {
+    UnindexParam(it->second.get());
     it->second = sym;
   }
   else {
     _Table.emplace(key, sym);
   }
+  IndexParam(sym.get());
 }
 
 template <typename I, typename S>
@@ -84,13 +130,14 @@ auto IndividualSymbolTable<I, S>::Rem(
   if (it != _Table.end()) {
     auto sym = it->second;
     _Table.erase(it);
+    UnindexParam(sym.get());
     return sym;
   }
   return nullptr;
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::Get(
+auto IndividualSymbolTable<I, S>::Find(
   I const *sym_name) const -> S* {
   // Get a symbol from the table, borrowed rather than owned,
   // so a lookup costs no refcount traffic.
@@ -101,7 +148,7 @@ auto IndividualSymbolTable<I, S>::Get(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::All() const -> Vec<S*> {
+auto IndividualSymbolTable<I, S>::GetAll() const -> Vec<S*> {
   // Generate all symbols in the table.
   return _Table
     | genex::views::transform([](auto const &pair) { return pair.second.get(); })
@@ -115,17 +162,17 @@ SymbolTable::~SymbolTable() = default;
 auto SymbolTable::ShallowCopyFrom(
   SymbolTable const &that) -> void {
   // Share the symbols of every table.
-  NsTbl.ShallowCopyFrom(that.NsTbl);
-  TypeTbl.ShallowCopyFrom(that.TypeTbl);
-  VarTbl.ShallowCopyFrom(that.VarTbl);
+  NsTable.ShallowCopyFrom(that.NsTable);
+  TypeTable.ShallowCopyFrom(that.TypeTable);
+  VarTable.ShallowCopyFrom(that.VarTable);
 }
 
 auto SymbolTable::DeepCopyFrom(
   SymbolTable const &that) -> void {
   // Copy the symbols of every table.
-  NsTbl.DeepCopyFrom(that.NsTbl);
-  TypeTbl.DeepCopyFrom(that.TypeTbl);
-  VarTbl.DeepCopyFrom(that.VarTbl);
+  NsTable.DeepCopyFrom(that.NsTable);
+  TypeTable.DeepCopyFrom(that.TypeTable);
+  VarTable.DeepCopyFrom(that.VarTable);
 }
 
 CLANG_STRICT_TEMPLATE_FULLY_QUALIFIED_INSTANTIATION

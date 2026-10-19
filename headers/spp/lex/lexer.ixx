@@ -35,7 +35,7 @@ private:
   /// The source code (one module at a time).
   Str _Code;
 
-  /// Where the prelude starts in m_code
+  /// Where the prelude starts in _Code
   std::size_t _PreludeCharOffset = Str::npos;
 
   /// Where the prelude starts by token index

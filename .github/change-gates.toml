@@ -1,0 +1,103 @@
+[code]
+skip = [
+  "docs/*",
+  ".vale/*",
+  ".idea/*",
+  "*.md",
+  ".gitignore",
+  "pyproject.toml",
+  "uv.lock",
+  "VERSION",
+  "changelog/*",
+  ".github/*",
+]
+also = [
+  ".github/dependencies.toml",
+  ".github/change-gates.toml",
+  ".github/scripts/lib/*",
+  ".github/actions/detect-changes/*",
+  ".github/scripts/ci/classify-changes.py",
+]
+
+[pins]
+paths = [".github/workflows/*.yaml", ".github/actions/*"]
+
+[sets]
+toolchain = [
+  ".github/actions/setup-python/*",
+  ".github/actions/setup-toolchain/*",
+  ".github/actions/build-cache-key/*",
+  ".github/actions/configure-cmake/*",
+  ".github/scripts/setup/*",
+  ".github/scripts/build/compose-cache-key.sh",
+  ".github/scripts/build/configure.sh",
+]
+
+[gate.release_gate]
+paths = [
+  "VERSION",
+  "changelog/*",
+  ".github/workflows/pr.yaml",
+  ".github/scripts/release/check-version.sh",
+]
+
+[gate.cppcheck]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_cppcheck.yaml",
+  ".github/actions/setup-python/*",
+  ".github/scripts/setup/install-cppcheck.sh",
+  ".github/scripts/scan/cppcheck.sh",
+]
+
+[gate.compile]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/post_merge.yaml",
+  ".github/workflows/_lane.yaml",
+  ".github/actions/compile/*",
+  ".github/actions/setup-runtime/*",
+  ".github/actions/restore-mtimes/*",
+  ".github/actions/run-tests/*",
+  ".github/scripts/build/*",
+  ".github/scripts/test/plan-gtest.sh",
+  ".github/scripts/test/gtest.sh",
+  ".github/scripts/test/stl-conformance.sh",
+]
+include = ["toolchain"]
+
+[gate.cross_codegen]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_cross_codegen.yaml",
+  ".github/actions/restore-mtimes/*",
+  ".github/actions/compile/*",
+  ".github/actions/setup-runtime/*",
+  ".github/scripts/build/*",
+  ".github/scripts/test/cross-codegen.sh",
+]
+include = ["toolchain"]
+
+[gate.security]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_security.yaml",
+  ".github/scripts/scan/osv.sh",
+  ".github/scripts/scan/osv-pins.py",
+  ".github/scripts/scan/gitleaks.sh",
+]
+include = ["toolchain"]
+pinnable = true
+
+[gate.sonar]
+paths = [
+  ".github/workflows/pr.yaml",
+  ".github/workflows/post_merge.yaml",
+  ".github/workflows/_sonar.yaml",
+  ".github/actions/restore-mtimes/*",
+]
+include = ["toolchain"]
+
+[gate.version]
+paths = ["VERSION"]
+code = false

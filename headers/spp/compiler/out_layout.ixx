@@ -16,7 +16,7 @@ namespace spp::compiler {
  */
 SPP_EXP_CLS struct spp::compiler::OutLayout {
   /** The project root: the directory holding "src", "out", "vcs" and so on. */
-  std::filesystem::path Root;
+  Path Root;
 
   /** The normalised target triple, which names the folder each mode sits under. */
   Str Target;
@@ -26,31 +26,31 @@ SPP_EXP_CLS struct spp::compiler::OutLayout {
 
   /** @c \<root\>/out : every target's tree, which is what a @c clean with no target named has to sweep. */
   SPP_ATTR_NODISCARD auto AllTargetsRoot() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\> : the root of this build's artifacts, and all a @c clean has to remove. */
   SPP_ATTR_NODISCARD auto OutRoot() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\>/llvm : the per-module ir tree, with the combined module and object beside. */
   SPP_ATTR_NODISCARD auto LlvmRoot() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\>/lib : where an ffi library is staged so it travels with the executable. */
   SPP_ATTR_NODISCARD auto LibRoot() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\>/llvm/lto.ll : every module linked into one, as text. */
   SPP_ATTR_NODISCARD auto LtoIrFile() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\>/llvm/spp.o : the object emitted from the combined module. */
   SPP_ATTR_NODISCARD auto ObjectFile() const
-    -> std::filesystem::path;
+    -> Path;
 
   /** @c \<root\>/out/\<target\>/\<mode\>/\<name\> : the linked executable. */
   SPP_ATTR_NODISCARD auto ExecutablePath() const
-    -> std::filesystem::path;
+    -> Path;
 
   /**
    * The name the linked executable is given: the project's own folder name, so a project in "foo/" builds "foo".

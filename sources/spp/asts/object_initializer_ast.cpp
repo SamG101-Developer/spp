@@ -8,9 +8,11 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.type_resolution;
 import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
@@ -21,15 +23,17 @@ import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_func;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.utils.algorithms;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -63,7 +67,7 @@ auto ObjectInitializerAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<ObjectInitializerAst>(
     AstClone(Type),
     AstClone(ArgGroup));
-  ast->Source.OriginalType = Source.OriginalType;
+  ast->Source = Source;
   return ast;
 }
 
@@ -76,25 +80,20 @@ auto ObjectInitializerAst::ToString() const -> Str {
 
 auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::errors::SppSecondClassBorrowViolationError;
-  using analyse::errors::SppObjectInitializerVariantError;
-  using analyse::errors::SppObjectInitializerGeneratorError;
-  using analyse::utils::type_predicates::IsTypeBorrowed;
-  using analyse::utils::type_predicates::IsTypeVariant;
-  using analyse::utils::type_utils::GetGenAndYieldTypes;
+  IMPORT_UTILS;
 
   // Get the base class symbol (no generics) and check it exists.
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->SkipTypeAnalysisGenericChecks = true;
-    Type->WithoutGenerics()->Stage7_AnalyseSemantics(sm, meta);
+    meta->SkipTypeAnalysisGnChecks = true;
+    Type->WithoutGns()->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Check this type isn't a borrow violation.
   RaiseIf<SppSecondClassBorrowViolationError>(
-    IsTypeBorrowed(*Type, *sm),
-    {sm->CurrentScope}, ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
-  const auto named_cls_sym = sm->CurrentScope->GetTypeSymbol(Type->WithoutGenerics().get());
+    type_predicates::IsTypeBorrowed(*Type, *sm),
+    ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
+  const auto named_cls_sym = sm->CurrentScope->FindHeadSymbol(*Type);
 
   // "Self(...)" names the class it stands for, and the
   // attribute walk below reads that class's prototype - which
@@ -103,57 +102,73 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   // the dummy scope standing in for it rather than to a
   // class, so "A()" is left alone and takes the generic path.
   const auto base_cls_sym = Type->IsSelfType() and named_cls_sym != nullptr
-    ? named_cls_sym->AsClassSymbol()
+    ? named_cls_sym->AsBound()
     : named_cls_sym;
 
   // If the type is a variant type, prevent instantiation.
   RaiseIf<SppObjectInitializerVariantError>(
-    IsTypeVariant(*base_cls_sym, *sm->CurrentScope),
-    {sm->CurrentScope}, ERR_ARGS(*Source.OriginalType));
+    type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*base_cls_sym, *sm->CurrentScope), *sm->CurrentScope),
+    ERR_ARGS(*Source.OriginalType));
 
-  // Prepare the object initializer arguments.
+  // A zero type has exactly one value, written as the type's name
+  // ("None", not "None()"). The rule is about what the author
+  // wrote: a generic parameter ("A()", or a "Self" standing for
+  // one) may become a zero type, and is the only way to ask for a
+  // value of whatever it becomes, so it is never an error - in the
+  // template, or in an instance, where it is bound to an argument.
+  if (Source.IsWritten) {
+    auto const *written = named_cls_sym;
+    if (written != nullptr and written->IsSelf() and written->LinkedSymbol() != nullptr) {
+      written = written->LinkedSymbol();
+    }
+    // An alias resolves to what it names; a "Self" to the type it
+    // was followed to above.
+    auto const *resolved = TypeRef::Of(*Type, *sm->CurrentScope).Symbol;
+    if (resolved == nullptr or resolved->IsSelf()) { resolved = written; }
+    RaiseIf<SppObjectInitializerZeroTypeError>(
+      written != nullptr and not written->IsGn() and resolved != nullptr and resolved->IsZeroType(),
+      ERR_ARGS(*this, *Source.OriginalType));
+  }
+
+  // Prepare the object initializer arguments. The type is passed
+  // as written, generics and all: the class is found without
+  // them, but an argument that is an overloaded call reads the
+  // attribute's type through them ("MyType[T=Str](a=g())").
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->ObjectInitType = Type->WithoutGenerics();
+    meta->ObjectInitType = Type;
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
-  // Determine the generic inference source and target
-  // values.
-  auto generic_infer_source = ArgGroup->Args
-    | genex::views::transform([sm, meta](auto const &x) {
-      return MakePair(x->Name, x->Val->InferType(sm, meta));
-    })
-    | genex::to<Vec>();
-
-  auto generic_infer_target = not base_cls_sym->IsTypeGeneric()
-    ? base_cls_sym->Type->Impl->Members
-    | genex::views::ptr
-    | genex::views::cast_dynamic<ClassAttributeAst*>()
-    | genex::views::transform([&](auto const &x) {
-      return MakePair(x->Name, base_cls_sym->LinkedScope->GetTypeSymbol(x->Type.get())->FqName());
-    })
-    | genex::to<Vec>()
-    : spp::Vec<std::pair<std::shared_ptr<IdentifierAst>, std::shared_ptr<TypeAst>>>();
-
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->InferSource = MakeShared<GenericInferenceBindings>(
-      generic_infer_source.begin(), generic_infer_source.end());
-    meta->InferTarget = MakeShared<GenericInferenceBindings>(
-      generic_infer_target.begin(), generic_infer_target.end());
-    Type = analyse::utils::type_utils::SubstituteSelfType(*Type, *sm->CurrentScope, *meta)->WithSourceSpanOf(*Type);
-    Type->Stage7_AnalyseSemantics(sm, meta);
-    Type = sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithSourceSpanOf(*Type);
+  // The attributes' types are what the type's arguments are inferred from: each argument's type (pointed at the
+  // argument, so a conflict names where it came from rather than "<generated code>") against the declared type of the
+  // attribute it initialises.
+  auto equations = Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>>();
+  if (not base_cls_sym->IsGn()) {
+    for (const auto attr : base_cls_sym->Type->Impl->Members
+         | genex::views::ptr
+         | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+      const auto attr_sym = base_cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
+      if (attr_sym == nullptr) { continue; }
+      for (auto const &arg : ArgGroup->Args) {
+        if (arg->Name == nullptr or *arg->Name != *attr->Name) { continue; }
+        equations.emplace_back(attr->Name, arg->Val->InferType(sm, meta)->WithSourceSpanAt(*arg->Val), attr_sym->FqName());
+      }
+    }
   }
 
+  Type = self_type::SubstituteSelf(*Type, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope)
+    ->WithSourceSpanOf(*Type);
+  Type->LastTypePart()->InferFromAttributes(std::move(equations));
+  Type->Stage7_AnalyseSemantics(sm, meta);
+
   // A generator cannot be initialized either.
-  const auto [gen_sym, _, _] = GetGenAndYieldTypes(
+  auto const *const gen_sym = marker_sups::FindGenSup(
     TypeRef::Of(*Type, *sm->CurrentScope), *sm->CurrentScope, *Source.OriginalType,
-    [&] { return Type; }, "object initializer", false);
+    [&] { return Type; }, "object initializer", false).Symbol;
   if (gen_sym != nullptr) {
     const auto gen_type = gen_sym->FqName();
-    Raise<SppObjectInitializerGeneratorError>({sm->CurrentScope}, ERR_ARGS(*Source.OriginalType, *gen_type));
+    Raise<SppObjectInitializerGeneratorError>(ERR_ARGS(*Source.OriginalType, *gen_type));
   }
 
   const auto _meta_guard = MetaGuard(meta);
@@ -173,30 +188,30 @@ auto ObjectInitializerAst::Stage9_CompTimeResolve(
   auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
   for (auto const &elem : ArgGroup->Args) {
     elem->Stage9_CompTimeResolve(sm, meta);
-    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(elem->Name, nullptr, std::move(meta->CmpResult));
-    cmp_elems->Args.EmplaceBack(std::move(cmp_arg));
+    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
+      elem->Name, nullptr, std::move(meta->CompTimeResult));
+    cmp_elems->Args.emplace_back(std::move(cmp_arg));
   }
 
   // Wrap the compile-time array value.
-  meta->CmpResult = MakeUnique<ObjectInitializerAst>(
+  meta->CompTimeResult = MakeUnique<ObjectInitializerAst>(
     Type, std::move(cmp_elems));
 }
 
 auto ObjectInitializerAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  using analyse::utils::type_members::GetAllAttrs;
-  using analyse::utils::type_predicates::GetSuperimposedFatPointerFieldCount;
+  IMPORT_UTILS_AND_UID;
 
   // Create an empty struct based on the llvm type - will
   // never be a borrow so always stack allocated, not a
   // pointer.
-  const auto uid = "." + spp::utils::Uid(this);
-  const auto type_sym = sm->CurrentScope->GetTypeSymbol(Type.get());
+  const auto uid = "." + Uid();
+  const auto type_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
 
   const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
-  const auto attrs = GetAllAttrs(*type_sym);
+  const auto attrs = type_members::GetAllAttrs(*type_sym);
   const auto attr_names = attrs
     | spp::views::tuple_nth<0>
     | genex::to<Vec>();
@@ -210,7 +225,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // compiler-known primitives (which don't even lower to
   // structs) and the fat pointer types. Also the base
   // cases for the recursive default initialization.
-  if (attr_names.IsEmpty()) { return llvm::Constant::getNullValue(llvm_type); }
+  if (attr_names.empty()) { return llvm::Constant::getNullValue(llvm_type); }
 
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
   // that interface's fat-pointer fields prepended ahead of
@@ -218,7 +233,8 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // ever fills in the class's own attributes, never the
   // synthesized fields, so every declared index has to be
   // shifted past them.
-  const auto fat_pointer_field_count = GetSuperimposedFatPointerFieldCount(*type_sym);
+  const auto fat_pointer_field_count = type_members::GetSuperimposedFatPointerFieldCount(
+    *type_sym);
 
   // Where an argument's attribute sits in the type's own
   // declaration order. Every argument names an attribute -
@@ -226,8 +242,18 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // always finds it.
   const auto spp_attr_index_of = [&](IdentifierAst const &name) {
     const auto index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
-    SPP_ASSERT(index >= 0);
-    return static_cast<std::size_t>(index);
+    SPP_ASSERT(index.has_value());
+    return *index;
+  };
+
+  // An attribute whose type carries no value ("v: T" at
+  // "T=Void") has no field: the layout leaves it out
+  // ("llvm_layout"), so it is given nothing, though what
+  // it is given is still generated (a call returning "Void"
+  // still runs).
+  const auto is_valueless = [&](const std::size_t attr_index) {
+    auto const &attr_ref = spp::get<1>(attrs[attr_index]);
+    return attr_ref.Symbol != nullptr and codegen::IsValuelessType(codegen::GetLlvmTypeOf(attr_ref, ctx));
   };
 
   // The physical field order isn't the declaration order,
@@ -246,28 +272,26 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     // as a whole is constant cannot be known until they have
     // been.
     auto arg_values = Vec<Pair<std::uint32_t, llvm::Value*>>();
-    arg_values.Reserve(ArgGroup->Args.Len());
+    arg_values.reserve(ArgGroup->Args.size());
     for (auto const &arg : ArgGroup->Args) {
-      // No value for Void type arguments (from the generic
-      // implementations), so skip them.
       auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-      if (val == nullptr) { continue; }
+      const auto attr_index = spp_attr_index_of(*arg->Name);
+      if (val == nullptr or is_valueless(attr_index)) { continue; }
 
       // An attribute whose type is a variant takes any one of
       // its member types, and the value has to be tagged and
       // widened on the way in - the same coercion a by-value
       // argument gets at a function call.
-      const auto attr_index = spp_attr_index_of(*arg->Name);
-      if (const auto attr_type_sym = spp::get<1>(attrs[attr_index]); attr_type_sym != nullptr) {
-        val = codegen::CoerceToFunctionValue(
-          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+      if (auto const &attr_ref = spp::get<1>(attrs[attr_index]); attr_ref.Symbol != nullptr) {
+        val = codegen::CoerceToFnValue(
+          val, attr_ref,
           arg->Val->InferTypeRef(sm, meta), *sm, ctx);
         val = codegen::CoerceToVariant(
-          val, TypeRef::Of(*attr_type_sym->FqName(), *sm->CurrentScope),
+          val, attr_ref,
           arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
       }
 
-      arg_values.EmplaceBack(MakePair(llvm_attr_index(attr_index), val));
+      arg_values.emplace_back(MakePair(llvm_attr_index(attr_index), val));
     }
 
     // If every field is filled by a constant of the right
@@ -276,7 +300,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     const auto llvm_struct_type = llvm::dyn_cast<llvm::StructType>(llvm_type);
     auto llvm_ct_fields = Vec<llvm::Constant*>(
       llvm_struct_type != nullptr ? llvm_struct_type->getNumElements() : 0uz, nullptr);
-    auto all_fields_constant = llvm_struct_type != nullptr and arg_values.Len() == llvm_ct_fields.Len();
+    auto all_fields_constant = llvm_struct_type != nullptr and arg_values.size() == llvm_ct_fields.size();
 
     if (all_fields_constant) {
       for (auto const &[index, val] : arg_values) {
@@ -289,7 +313,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     }
 
     if (all_fields_constant and genex::all_of(llvm_ct_fields, [](auto const *f) { return f != nullptr; })) {
-      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_fields.ToStdVector());
+      return llvm::ConstantStruct::get(llvm_struct_type, llvm_ct_fields);
     }
 
     // Set each field value in the aggregate.
@@ -315,58 +339,39 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-    if (comp_val == nullptr) { continue; }
-    comp_fields[llvm_attr_index(spp_attr_index_of(*arg->Name))] = llvm::cast<llvm::Constant>(comp_val);
+    const auto attr_index = spp_attr_index_of(*arg->Name);
+    if (comp_val == nullptr or is_valueless(attr_index)) { continue; }
+    comp_fields[llvm_attr_index(attr_index)] = llvm::cast<llvm::Constant>(comp_val);
   }
 
   // Anything the arguments did not cover - a synthesized
   // fat-pointer field, or an attribute this initializer
   // leaves out, still needs a value, because a constant has
   // to give one for every field.
-  for (auto i = 0uz; i < comp_fields.Len(); ++i) {
+  for (auto i = 0uz; i < comp_fields.size(); ++i) {
     if (comp_fields[i] != nullptr) { continue; }
     comp_fields[i] = llvm::Constant::getNullValue(
       struct_type->getElementType(static_cast<unsigned>(i)));
   }
 
   // Return the constant struct.
-  return llvm::ConstantStruct::get(struct_type, comp_fields.ToStdVector());
-}
-
-auto ObjectInitializerAst::InferType(
-  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
-  // The type of the object initializer is the type being
-  // initialized. The conventions are added for dummy types
-  // being created into values during other ast's analysis.
-  // Types cannot be instantiated as borrows in user code.
-  // Todo: tidy this by splitting into lines.
-  return sm->CurrentScope->GetTypeSymbol(Type.get())->FqName()->WithConvention(AstClone(Type->GetConvention()));
+  return llvm::ConstantStruct::get(struct_type, comp_fields);
 }
 
 auto ObjectInitializerAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The type being initialized, held as written.
-  auto ref = TypeRef::OfSym(*sm->CurrentScope->GetTypeSymbol(Type.get()), *sm->CurrentScope);
-  if (auto const *conv = Type->GetConvention(); conv != nullptr) {
-    ref.Conv = conv->Tag();
-    ref.IsNever = false;
-  }
-  return ref;
+  return TypeRef::Of(*Type, *sm->CurrentScope);
 }
 
-auto ObjectInitializerAst::InferTypeForDisplay(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // Use the source original type.
-  return Source.OriginalType;
-}
-
-auto ObjectInitializerAst::SubstituteGenericsExpr(
-  Vec<GenericArgumentAst*> const &args) const -> Shared<ExpressionAst> {
+auto ObjectInitializerAst::ReadExpr(
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The initialiser names its type outright, and each
   // of its arguments is an expression in its own right.
   auto arg_group = AstClone(ArgGroup);
-  for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->SubstituteGenericsExpr(args)); }
-  return MakeShared<ObjectInitializerAst>(Type->SubstituteGenerics(args), std::move(arg_group));
+  for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->ReadExpr(sub)); }
+  return MakeShared<ObjectInitializerAst>(
+    analyse::utils::type_resolution::ReadType(*Type, sub), std::move(arg_group));
 }
 
 auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {

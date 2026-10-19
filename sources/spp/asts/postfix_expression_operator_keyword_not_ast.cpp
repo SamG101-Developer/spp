@@ -13,10 +13,10 @@ import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.utils.ice;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -56,14 +56,12 @@ auto PostfixExpressionOperatorKeywordNotAst::ToString() const -> Str {
 auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  using analyse::errors::SppExpressionNotBooleanError;
-  using analyse::utils::type_predicates::IsTypeBool;
+  IMPORT_UTILS;
 
   // Check the left-hand-side is an owned boolean expression.
-  if (not IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-    Raise<SppExpressionNotBooleanError>(
-      {sm->CurrentScope},
-      ERR_ARGS(*meta->PostfixExpressionLhs, *meta->PostfixExpressionLhs->InferType(sm, meta), "not expression"));
+  if (not type_predicates::IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_ty, "not expression"));
   }
 }
 
@@ -71,18 +69,19 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The "lhs" will be boolean based on previous analysis.
   meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
-  const auto cmp_lhs_bool = meta->CmpResult->To<BooleanLiteralAst>();
+  const auto cmp_lhs_bool = meta->CompTimeResult->To<BooleanLiteralAst>();
 
   // Extract the value inside the boolean and invert it.
   const auto p = PosStart();
-  meta->CmpResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
+  meta->CompTimeResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Generate the left-hand-side expression, which analysis has
   // guaranteed is a boolean, owned or borrowed.
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + Uid();
   const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(lhs_val != nullptr);
 
@@ -93,13 +92,6 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
 
   // Use a "not" instruction to invert the expression on the lhs.
   return ctx->Builder.CreateNot(lhs_val, "not" + uid);
-}
-
-auto PostfixExpressionOperatorKeywordNotAst::InferType(
-  ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
-  // The type of a "not" expression is always boolean.
-  using generate::common_types::BooleanType;
-  return BooleanType(PosStart());
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::InferTypeRef(

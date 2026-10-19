@@ -9,6 +9,7 @@ SPP_AST_COMMON_FWD_DECL(PrimaryExpressionAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::analyse::scopes, struct TypeRef);

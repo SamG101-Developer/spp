@@ -121,7 +121,6 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
 auto ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the parameters into the current scope.
-  meta->CurrentLambdaOuterScope = sm->CurrentScope;
   sm->MoveToNextScope();
   ParamGroup->Stage11_CodeGen(sm, meta, ctx);
   CaptureGroup->Stage11_CodeGen(sm, meta, ctx);

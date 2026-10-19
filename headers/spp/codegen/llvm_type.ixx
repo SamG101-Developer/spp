@@ -23,7 +23,7 @@ namespace spp::codegen {
     ClassPrototypeAst const *cls_proto, ScopeManager const &sm, LlvmCtx const *ctx) -> void;
 
   /// Lower the type owned by the "scope", filling the LLVM type
-  /// information on the scopes "TySym". Taking the scope
+  /// information on the scopes "LinkedTypeSymbol". Taking the scope
   /// rather than a class prototype is important for a generic
   /// instantiation: the symbols "type" still names the template
   /// it instantiates, rather than targeting the actual generic
@@ -59,12 +59,4 @@ namespace spp::codegen {
   /// nothing to store, load, or hand off to a phi.
   SPP_EXP_FUN auto IsValuelessType(
     llvm::Type const *type) -> bool;
-
-  /// Get the fat field pointers on a type. The "FunXXX" and
-  /// "GenXXX" types have special fat pointer fields on, as do
-  /// any types that extend from these two types. Return the
-  /// "{ fn_ptr, env_ptr }" pair in a 1-item vector (for future
-  /// expansion).
-  SPP_EXP_FUN auto GetFatPointerFields(
-    TypeSymbol const &sym, Scope const &scope, LlvmCtx const *ctx) -> std::optional<Vec<llvm::Type*>>;
 }

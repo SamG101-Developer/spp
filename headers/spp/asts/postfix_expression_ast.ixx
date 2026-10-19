@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(PostfixExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorAst);
@@ -50,8 +51,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;

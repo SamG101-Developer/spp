@@ -44,7 +44,6 @@ auto FunctionCallArgumentKeywordAst::Clone() const -> Unique<Ast> {
     AstClone(TokAssign),
     AstClone(Conv),
     AstClone(Val));
-  ast->SetSelfType(GetSelfType());
   return ast;
 }
 

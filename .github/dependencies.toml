@@ -1,5 +1,5 @@
 # Every version, commit and digest the pipeline depends on. Loaded by .github/scripts/lib/pins.py and refreshed by
-# .github/scripts/security/refresh-pins.sh.
+# .github/scripts/maint/refresh-pins.sh.
 #
 # Each [pin.<name>] table exports its version/commit/tag/asset/sha256 keys into the job environment as
 # <NAME>_<KEY>, uppercased with dashes as underscores: pin.osv-scanner.sha256 becomes OSV_SCANNER_SHA256.
@@ -69,22 +69,15 @@ sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
 developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
-# Prebuilt from MarkusJx/prebuilt-boost, so one digest per
-# runner.
-[pin.boost]
-version = "1.92.0"
-osv-ecosystem = "OSS-Fuzz"
-osv-name = "boost"
-sha256-ubuntu-2404 = "9e95ffa5c2de721acc9e91db67c0393058b16cf643047462d719a41a76958b8c"
-sha256-ubuntu-2204-arm64 = "8eeeb9c33af4d1d70c046f46557f95e389e1b549d5853bc2c4e3b55f21e1e136"
-sha256-macos-15 = "57897ee9a536a8cb159f635a6d59ed2e1e7705408bdc9c058c1e078c15ad7ebf"
-sha256-macos-26 = "71d0bbe7466921d0989777a7a01c7955225b7afde00fd5b687c8790a67886f2a"
-sha256-windows-2025 = "e3db0d60785471a624c29a444b5cb42fcbd3363d8a4dd92cf12739603ebdba5e"
-sha256-windows-2022 = "1dbbd1d7ac3fcabec5e4b24d3b1bc3143cd1b57aead2436276f2c56acb48ea5d"
-
 [pin.doxygen]
 version = "1.17.0"
 sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
+
+# Built from the release tarball: the runner's apt valgrind trails
+# upstream by years.
+[pin.valgrind]
+version = "3.27.1"
+sha256 = "5d589152eb8071c02feab8ce6ab719e431a1fbc3e2b1700f5432632a8b9264dc"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -94,8 +87,8 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
 [pin.osv-scanner]
-version = "2.6.0"
-sha256 = "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108"
+version = "2.7.0"
+sha256 = "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
 
 # Keep the version in step with the gitleaks rev in
 # .pre-commit-config.yaml.
@@ -107,11 +100,9 @@ sha256 = "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
 # cannot parse C++20 modules. Pinned by commit because
 # GitHub's generated tag archives are not byte-stable.
 [pin.cppcheck]
-version = "2.21.1"
-commit = "904cfdcf774c44b17db789c8a212e2f1c69fc833"
+version = "2.22.0"
+commit = "a436ca35ed1887bee789765122b65ed2d7a7e045"
 
-# Install prefixes, exported as SPP_<KEY>_PREFIX. {home}
-# expands at load time.
 [runner]
 linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
@@ -122,9 +113,11 @@ macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
 
+# Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
 [prefix]
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
+valgrind = "{home}/.tools/valgrind"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
 llvm-deps-win = "{home}/llvm-deps"
@@ -133,15 +126,12 @@ cppcheck = "{home}/.tools/cppcheck"
 [cache.build]
 generation = "v3"
 
-[cache.cross]
-generation = "v1"
-
 # The header/CMake dependencies, installed in order by
 # install-small-libs.sh.
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "760cfb829243e09e564752b35faae0e4625ef861"
+commit = "ddd49116e63be7345b448351cad153653a712fdb"
 
 [[library]]
 name = "mimalloc"
@@ -152,7 +142,7 @@ cmake-flags = ["-DMI_SECURE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "c41152e62092c16cf4fc4625becacc3eb9d9319f"
+commit = "0e95fe8200adbf0e033d0c0818eea473e1d4d346"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -163,7 +153,7 @@ commit = "1e8829b793b66ad17011732a146b8077d379b011"
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "adf50a7880514138442b6ab4f31e783f42d3243a"
+commit = "5de969c9005938a27a34d3af3ea5923d18679ad8"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -172,7 +162,7 @@ cmake-flags = [
 [[library]]
 name = "stringzilla"
 repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "7fed3fb4201a34962cd456a4033bebc5ea09e74e"
+commit = "86d73f1021e6cce022c3cceb1f7837eb50338774"
 cmake-flags = [
   "-DSTRINGZILLA_INSTALL=ON",
   "-DSTRINGZILLA_BUILD_TEST=OFF",
@@ -183,15 +173,24 @@ cmake-flags = [
 ]
 
 [[library]]
+name = "small_vector"
+repo = "https://github.com/gharveymn/small_vector.git"
+commit = "efcab60e5360b699f45d2a44dcb9a79bba40c356"
+cmake-flags = [
+  "-DGCH_SMALL_VECTOR_ENABLE_TESTS=OFF",
+  "-DGCH_SMALL_VECTOR_ENABLE_BENCHMARKS=OFF",
+]
+
+[[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "6076763c74089466bbfa7ce88a52374464d32e88"
+commit = "fb7eb86af71afde547c13d062e5aebfa27fc45c5"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
 name = "range-v3"
 repo = "https://github.com/ericniebler/range-v3.git"
-commit = "108f93c279c8f9cec175dac361084983d0176e99"
+commit = "5ba39112d2eafbb3c851a16a537f29b445022998"
 cmake-flags = [
   "-DRANGE_V3_TESTS=OFF",
   "-DRANGE_V3_EXAMPLES=OFF",
@@ -211,10 +210,10 @@ commit = "badae2b5e668084412cef496283a345bd8bd9744"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "aeb9e018ac33cb336f97916eef4602ece2816f88"
+commit = "3a267d801cb7a2b647256ffa93bd203c7083dae0"
 
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "ac33b7bfb64ed60a25adbb9c0fd2d201a89e6bb4"
+commit = "6e20c779c7508456afc5e928005b1f687109ac2a"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]

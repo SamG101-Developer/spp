@@ -23,5 +23,5 @@ SPP_EXP_CLS struct spp::asts::mixins::OrderableAst {
 
 private:
   /// The order tag of this orderable AST.
-  utils::OrderableTag m_order_tag;
+  utils::OrderableTag _OrderTag;
 };

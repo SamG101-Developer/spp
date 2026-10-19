@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct BooleanLiteralAst);
@@ -62,24 +63,10 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
 
   SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<IdentifierAst*>;
 
-  /// Rewrite every generic name written inside this expression
-  /// against a set of arguments, answering with a new tree rather
-  /// than writing into this one. The expression counterpart of
-  /// "TypeAst::SubstituteGenerics", one level up: the nodes that
-  /// do real work are the ones holding a type, and they delegate
-  /// to the type version.
-  ///
-  /// Needed wherever an expression is carried out of the scope
-  /// that wrote it - a generic parameter's default, a function
-  /// parameter's default - because its names are then read
-  /// somewhere that has never heard of them. A default of
-  /// "{Self::mo_seq_cst}" materialised at a call site is read
-  /// where "Self" names nothing at all.
-  ///
-  /// An empty set answers with a plain clone. The clone is
-  /// shared rather than unique, because a reader downstream
-  /// takes a "shared_from_this" of whatever it is given.
-  SPP_ATTR_NODISCARD virtual auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  /// Look through expression asts for types in the asts, such
+  /// as the object initializer ast containing a type. Lots of
+  /// asts override this to look into its members.
+  SPP_ATTR_NODISCARD virtual auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst>;
 };

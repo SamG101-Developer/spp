@@ -58,5 +58,11 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+private:
+  /// Whether the exited value is "!", found when it is analysed.
+  /// Kept rather than asked for again during code generation,
+  /// where a re-inference was intermittently crashing.
+  bool _ExprIsNever = false;
+
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };

@@ -10,7 +10,7 @@ use(spp::lex, enum class SppTokenType : std::uint8_t);
 use(spp::lex, class RawToken);
 
 namespace spp::lex {
-  SPP_EXP_FUN auto tok_to_string(SppTokenType token) noexcept -> Str;
+  SPP_EXP_FUN auto TokToString(SppTokenType token) noexcept -> Str;
 }
 
 // TODO: Rename all constants to kConstant format.
@@ -46,7 +46,6 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   TK_APOSTROPHE,
   TK_QUOTATION_MARK,
   TK_EXCLAMATION_MARK,
-  TK_DOLLAR_SIGN,
   TK_SPACE,
   TK_LINE_FEED,
 
@@ -184,7 +183,6 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
   TK_QUOTATION_MARK,
   TK_UNDERSCORE,
   TK_EXCLAMATION_MARK,
-  TK_DOLLAR,
   TK_SPACE,
   TK_NEWLINE,
 
@@ -193,13 +191,13 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
 
 SPP_EXP_CLS class spp::lex::RawToken {
 public:
-  RawTokenType type;
-  Str data;
+  RawTokenType Type;
+  Str Data;
 
   RawToken(RawTokenType type, Str data);
 };
 
-SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> Str {
+SPP_EXP_FUN auto spp::lex::TokToString(const SppTokenType token) noexcept -> Str {
   switch (token) {
     case SppTokenType::LX_CHARACTER: return "";
     case SppTokenType::LX_DIGIT: return "";
@@ -292,7 +290,6 @@ SPP_EXP_FUN auto spp::lex::tok_to_string(const SppTokenType token) noexcept -> S
     case SppTokenType::TK_QUOTATION_MARK: return "\"";
     case SppTokenType::TK_UNDERSCORE: return "_";
     case SppTokenType::TK_EXCLAMATION_MARK: return "!";
-    case SppTokenType::TK_DOLLAR: return "$";
     case SppTokenType::TK_SPACE: return " ";
     case SppTokenType::TK_NEWLINE: return "\n";
     case SppTokenType::SP_NO_TOK: return "";

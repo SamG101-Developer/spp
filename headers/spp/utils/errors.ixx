@@ -15,8 +15,8 @@ use(spp::utils::errors, template <typename T> struct AbstractErrorBuilder;);
 /// the key features of an error raised in the S++ compiler;
 /// either a syntactic or semantic error as of right now.
 SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
-  Vec<Str> messages;
-  Str final_message;
+  Vec<Str> Messages;
+  Str FinalMessage;
 
   SPP_ATTR_COLD AbstractError() : std::runtime_error("") {}
 
@@ -29,7 +29,7 @@ SPP_EXP_CLS struct spp::utils::errors::AbstractError : std::runtime_error {
   /// Override the string ".what()" for C++ compatibility in
   /// the error system.
   auto what() const noexcept -> const char* override {
-    return final_message.c_str();
+    return FinalMessage.c_str();
   }
 };
 
@@ -49,20 +49,10 @@ struct spp::utils::errors::AbstractErrorBuilder {
     return *this;
   }
 
-  /// Inject the error formatters into the list - this allows
-  /// for inter-module context, using the different module's
-  /// token sets.
-  auto WithFormatters(Vec<ErrorFormatter*> const &formatters) -> AbstractErrorBuilder& {
-    // Bind the error formatters to the builder.
-    _ErrFormatters = formatters;
-    return *this;
-  }
-
-  /// Add a single error formatter to the list, rather then
-  /// set the list to a new one. Todo: Rename.
+  /// Add a single error formatter to the list. Todo: Rename.
   auto WithErrorFormatter(ErrorFormatter *error_formatter) -> AbstractErrorBuilder& {
     // Add a single error formatter to the list.
-    _ErrFormatters.EmplaceBack(error_formatter);
+    _ErrFormatters.emplace_back(error_formatter);
     return *this;
   }
 
@@ -74,7 +64,7 @@ struct spp::utils::errors::AbstractErrorBuilder {
     // Throw the error object. Terminated with an explicit reset: the
     // message is written in colour, so the reset is needed so the
     // console can go back to how it was once s++ is done.
-    this->_ErrObj->final_message = (this->_ErrObj->messages
+    this->_ErrObj->FinalMessage = (this->_ErrObj->Messages
       | genex::views::join_with('\n')
       | genex::to<Str>()) + "\x1b[0m";
     throw T(*_ErrObj);
@@ -84,7 +74,8 @@ protected:
   /// The error object, constructed when args are provided.
   Unique<T> _ErrObj;
 
-  /// The list of the error formatters for each err object
-  /// internal part.
+  /// The error formatters the builder quotes through (a syntax
+  /// error's file). A semantic error quotes each ast through the
+  /// file it names, so it needs none.
   Vec<ErrorFormatter*> _ErrFormatters;
 };

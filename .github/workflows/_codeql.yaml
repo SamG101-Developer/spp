@@ -1,7 +1,8 @@
+# Split out of _security.yaml so it can sit behind cppcheck
+# without holding the cheap scans up: it builds the whole
+# project under its extractor, which makes it the one
+# security job worth gating on something faster.
 name: codeql
-
-# Split out of _security.yaml so it can sit behind cppcheck without holding the cheap scans up: it builds the whole
-# project under its extractor, which makes it the one security job worth gating on something faster.
 
 on:
   workflow_call:
@@ -38,8 +39,10 @@ jobs:
       - name: Set up Python and load pins
         uses: ./.github/actions/setup-python
 
-      # Tracks the manifest's GCC rather than naming a compiler of its own. No compiler cache: a hit skips the real
-      # compiler, and the extractor never sees the translation unit.
+      # Tracks the manifest's GCC rather than naming a compiler
+      # of its own. No compiler cache: a hit skips the real
+      # compiler, and the extractor never sees the translation
+      # unit.
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
@@ -48,6 +51,8 @@ jobs:
           version: ${{ env.GCC_VERSION }}
           compiler-cache: "false"
 
+      # Get CodeQL ready, from their own action. Specify the C++
+      # language, the config file, and queries to run.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:
@@ -56,6 +61,7 @@ jobs:
           config-file: ./.github/codeql-config.yaml
           queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
 
+      # Configure a Debug build, and build it.
       - name: Configure
         uses: ./.github/actions/configure-cmake
         with:
@@ -64,6 +70,8 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      # Run the CodeQL analysis action, which will upload the
+      # results too.
       - name: Analyze
         uses: github/codeql-action/analyze@e58424170fb0262c8d7ed60a2e84b9bffe205c67
         with:

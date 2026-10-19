@@ -18,7 +18,7 @@ import genex;
 import std;
 
 auto spp::utils::files::DisplayString(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
 #if _GLIBCXX_RELEASE >= 17
   return path.display_string();
@@ -28,7 +28,7 @@ auto spp::utils::files::DisplayString(
 }
 
 auto spp::utils::files::NativeString(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
 #if _GLIBCXX_RELEASE >= 17
   return path.native_encoded_string();
@@ -38,7 +38,7 @@ auto spp::utils::files::NativeString(
 }
 
 auto spp::utils::files::ReadFile(
-  std::filesystem::path const &path)
+  Path const &path)
   -> Str {
   // Create an input file stream.
   auto in = std::ifstream(path, std::ios::in);
@@ -48,7 +48,7 @@ auto spp::utils::files::ReadFile(
 }
 
 auto spp::utils::files::WriteFile(
-  std::filesystem::path const &path,
+  Path const &path,
   Str const &content)
   -> void {
   // Create an output file stream.
@@ -62,7 +62,7 @@ spp::utils::files::FileLock::~FileLock() {
 }
 
 auto spp::utils::files::FileLock::Acquire(
-  std::filesystem::path const &path,
+  Path const &path,
   const bool exclusive)
   -> bool {
   // A second lock from the same object would leak the first
@@ -90,7 +90,7 @@ auto spp::utils::files::FileLock::Acquire(
     return false;
   }
 
-  m_handle = reinterpret_cast<std::intptr_t>(handle);
+  _Handle = reinterpret_cast<std::intptr_t>(handle);
   return true;
 #else
   auto const fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
@@ -101,52 +101,52 @@ auto spp::utils::files::FileLock::Acquire(
     return false;
   }
 
-  m_handle = fd;
+  _Handle = fd;
   return true;
 #endif
 }
 
 auto spp::utils::files::FileLock::LockShared(
-  std::filesystem::path const &path)
+  Path const &path)
   -> bool {
   return Acquire(path, false);
 }
 
 auto spp::utils::files::FileLock::LockExclusive(
-  std::filesystem::path const &path)
+  Path const &path)
   -> bool {
   return Acquire(path, true);
 }
 
 auto spp::utils::files::FileLock::Unlock()
   -> void {
-  if (m_handle == -1) { return; }
+  if (_Handle == -1) { return; }
 
 #if SPP_PLATFORM_WINDOWS
-  auto const handle = reinterpret_cast<HANDLE>(m_handle);
+  auto const handle = reinterpret_cast<HANDLE>(_Handle);
   auto overlapped = OVERLAPPED{};
   ::UnlockFileEx(handle, 0, MAXDWORD, MAXDWORD, &overlapped);
   ::CloseHandle(handle);
 #else
-  auto const fd = static_cast<int>(m_handle);
+  auto const fd = static_cast<int>(_Handle);
   ::flock(fd, LOCK_UN);
   ::close(fd);
 #endif
 
-  m_handle = -1;
+  _Handle = -1;
 }
 SPP_MOD_END
 
 auto spp::utils::files::GlobSpp(
-  std::filesystem::path const &path)
-  -> Vec<std::filesystem::path> {
+  Path const &path)
+  -> Vec<Path> {
   // Use the filesystem iterator to recursively walk the path,
   // finding all ".spp" files.
-  auto paths = Vec<std::filesystem::path>();
+  auto paths = Vec<Path>();
   for (auto const &entry : std::filesystem::recursive_directory_iterator(path)) {
     if (not entry.is_regular_file()) { continue; }
     if (entry.path().extension() != ".spp") { continue; }
-    paths.EmplaceBack(entry.path());
+    paths.emplace_back(entry.path());
   }
 
   // Normalise file order across machines for consistent erroring
@@ -155,23 +155,9 @@ auto spp::utils::files::GlobSpp(
   return paths;
 }
 
-auto spp::utils::files::SharedLibraryExtension()
-  -> Str {
-#if SPP_PLATFORM_WINDOWS
-  return "dll";
-#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
-  return "dylib";
-#else
-  return "so";
-#endif
-}
-
 auto spp::utils::files::SharedLibraryName(
-  const StrView package)
+  const StrView package, const StrView extension)
   -> Str {
-#if SPP_PLATFORM_WINDOWS
-  return Str(package) + "." + SharedLibraryExtension();
-#else
-  return "lib" + Str(package) + "." + SharedLibraryExtension();
-#endif
+  const auto prefix = extension == "dll" ? "" : "lib";
+  return prefix + Str(package) + "." + Str(extension);
 }

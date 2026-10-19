@@ -1,0 +1,3 @@
+# Suppressions for valgrind-groups.sh. Each entry names what it hides and why it is not a bug in generated code.
+# None needed yet: the chosen groups ran clean (2026-10-11). The threading and networking groups are left out rather
+# than suppressed - io_uring and raw sockets need a look of their own under valgrind.

@@ -8,13 +8,16 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.utils.error_formatter;
 import spp.utils.errors;
+import spp.utils.ice;
 import spp.utils.types;
 import colex;
 import genex;
 import std;
 
 use(spp::asts, struct Ast);
+use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeRef);
 
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
@@ -23,6 +26,25 @@ namespace spp::analyse::errors {
 }
 
 namespace spp {
+  /// A resolved type given to an error in place of a type ast:
+  /// named as seen from "In" ("TypeRef::AstIn") and placed at
+  /// "At", so an error that points at the type points there.
+  /// Held by value, as "ERR_ARGS" builds its arguments before the
+  /// error is. Made by "ErrTypeAt".
+  SPP_EXP_CLS template <typename R = analyse::scopes::TypeRef>
+  struct ErrType {
+    R Ref;
+    asts::Ast const *At = nullptr;
+    analyse::scopes::Scope const *In = nullptr;
+  };
+
+  /// "ref" for an error message, named in "in" and placed at "at"
+  /// ("ErrType").
+  SPP_EXP_FUN template <typename R>
+  auto ErrTypeAt(R const &ref, asts::Ast const &at, analyse::scopes::Scope const &in) -> ErrType<R> {
+    return {ref, &at, &in};
+  }
+
   /// Build the arguments tuple from the parameter pack, which
   /// will be passed into the semantic error builder.
   SPP_EXP_FUN template <typename... Args>
@@ -30,36 +52,48 @@ namespace spp {
     return {std::forward<Args>(args)...};
   }
 
-  /// Raise an error with a list of scopes, a deferred argument
-  /// binder, and any sub-errors.
+  namespace detail {
+    template <typename T>
+    constexpr auto kIsErrType = false;
+
+    template <typename R>
+    constexpr auto kIsErrType<ErrType<R>> = true;
+  }
+
+  /// Raise an error from a deferred argument binder, and any
+  /// sub-errors. Each ast the error quotes is quoted from the file
+  /// it was parsed from, so no scope is needed to find it.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
   SPP_ATTR_COLD SPP_ATTR_NORETURN
-  auto Raise(Vec<Scope const*> const &scopes, A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
-    std::apply(
+  auto Raise(A &&arg_binder, Vec<Str> sub_errors = {}) -> void {
+    // A resolved type ("ErrType") is named in the scope it was
+    // given, and kept alive for the build.
+    auto named = Vec<Shared<void const>>();
+    const auto adapt = [&]<typename T>(T &&arg) -> decltype(auto) {
+      if constexpr (detail::kIsErrType<std::remove_cvref_t<T>>) {
+        auto type = arg.Ref.AstIn(*arg.In);
+        SPP_ASSERT(type != nullptr);
+        if (arg.At != nullptr) { type = type->WithSourceSpanAt(*arg.At); }
+        named.emplace_back(type);
+        return static_cast<asts::Ast const&>(*type);
+      }
+      else { return std::forward<T>(arg); }
+    };
+    apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))
-          .WithArgs(std::forward<Args2>(unpacked_args)...).raises_from_vec(scopes);
+          .WithArgs(adapt(std::forward<Args2>(unpacked_args))...).Raise();
       },
       std::forward<A>(arg_binder)());
     std::unreachable();
   }
 
-  /// Raise an error if a condition is met. This is just a tidier
-  /// version of "if (...) { Raise ... }", but it does eagerly
-  /// evaluate the scopes which is sometimes an issue for nullptr
-  /// usage, if the condition checks for a non-nullptr pointer
-  /// that the scope belongs to.
+  /// Raise an error if a condition is met: a tidier "if (...) {
+  /// Raise ... }". The arguments are bound only if it is.
   SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseIf(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
-  }
-
-  /// The opposite to the "RaiseIf" - this only raises an error
-  /// if the condition is false.
-  SPP_EXP_FUN template <typename E, typename A> requires std::derived_from<E, analyse::errors::SemanticError>
-  auto RaiseUnless(const bool condition, Vec<Scope const*> const &scopes, A &&arg_binder) -> void {
-    if (not condition) { Raise<E>(std::move(scopes), std::forward<A>(arg_binder)); }
+  auto RaiseIf(const bool condition, A &&arg_binder) -> void {
+    if (condition) { Raise<E>(std::forward<A>(arg_binder)); }
   }
 }
 
@@ -77,36 +111,49 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     return *this;
   }
 
-  /// The internal master "Raise" method for errors. This cycles
-  /// formatters to meet the number of asts present, and trims
-  /// the formatter list. Then, it runs the error information
-  /// through the standard stringification process, before using
-  /// the abstract raise function.
+  /// The internal master "Raise" method for errors. It quotes
+  /// each block through its ast's file, runs the error
+  /// information through the standard stringification process,
+  /// then uses the abstract raise function.
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
 
-    // Pair the scopes' formatters, in order, with the blocks that
-    // quote source (an error and its context), cycling when there
-    // are fewer scopes than blocks. The header and footer quote
-    // nothing, so they take no formatter; counting them used to
-    // swap the two scopes of every two-scope error.
+    // Each block that quotes source (an error and its context) is
+    // quoted through the file its ast was parsed from, which its
+    // position names ("ErrorFormatter::Owning"). An ast no file
+    // holds (generated) is written out instead. The header and
+    // footer quote nothing, so they take no formatter.
     auto messages = Vec<Str>();
-    auto next = 0uz;
-    for (auto const &info : cast_error->ErrorInfo) {
-      if (this->_ErrFormatters.IsEmpty()) { break; }
-      auto *const formatter = this->_ErrFormatters[next % this->_ErrFormatters.Len()];
-      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) { ++next; }
-      messages.EmplaceBack(_StringifyErrorInformation(formatter, info));
+    auto unowned = Vec<ErrorInformation*>();
+    auto file = Str();
+    for (auto &info : cast_error->ErrorInfo) {
+      auto formatter = static_cast<utils::errors::ErrorFormatter*>(nullptr);
+      if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
+        formatter = utils::errors::ErrorFormatter::Owning(info.Ast);
+        if (formatter == nullptr) {
+          messages.emplace_back(utils::errors::ErrorFormatter::WithoutSource(info.Ast, info.Tag));
+          unowned.emplace_back(&info);
+          continue;
+        }
+        info.Span = formatter->SpanOfAst(info.Ast);
+        if (file.empty()) { file = info.Span.File; }
+      }
+      messages.emplace_back(_StringifyErrorInformation(formatter, info));
     }
-    cast_error->messages = std::move(messages);
+    cast_error->Messages = std::move(messages);
+
+    // A generated block's diagnostic is filed under the error's
+    // first block from a file, marked as generated, so an editor
+    // shows it beside the rest of the error.
+    for (auto *info : unowned) { info->Span = utils::errors::SourceSpan{.File = file}; }
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.
     auto i = 1;
     for (auto const &msg : _SubErrors) {
-      auto header = std::string(50, '-') + colex::st_underline + std::string("\n\nCandidate ") + std::to_string(i)
+      auto header = Str(50, '-') + colex::st_underline + Str("\n\nCandidate ") + std::to_string(i)
         + ":\n" + colex::reset;
-      cast_error->messages.EmplaceBack(header + msg);
+      cast_error->Messages.emplace_back(header + msg);
       ++i;
     }
 
@@ -115,7 +162,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   }
 
 private:
-  /// List of sub-errors. Todo: are these even used anymore?
+  /// List of sub-errors (the failed overloads of a call).
   Vec<Str> _SubErrors;
 
   static auto _StringifyErrorInformation(
@@ -124,26 +171,29 @@ private:
     -> Str {
     using namespace std::string_literals;
 
-    switch (auto [ast, kind, tag, msg] = info; kind) {
+    // A copy, because the rendering moves the strings out of it,
+    // and the error keeps its own for the consumers that read
+    // the information rather than the message.
+    auto parts = info;
+    switch (parts.Kind) {
       case ErrorInformationKind::ERROR: {
-        return formatter->ErrorAst(ast, std::move(msg), std::move(tag));
+        return formatter->ErrorAst(parts.Ast, std::move(parts.Msg), std::move(parts.Tag));
       }
       case ErrorInformationKind::CONTEXT: {
-        return formatter->ErrorAstMinimal(ast, std::move(tag));
+        return formatter->ErrorAstMinimal(parts.Ast, std::move(parts.Tag));
       }
       case ErrorInformationKind::HEADER: {
-        return (colex::fg_bright_white & colex::st_bold) + std::move(msg) + ": "s + std::move(tag) + "\n"s;
+        return (colex::fg_bright_white & colex::st_bold) + std::move(parts.Msg) + ": "s + std::move(parts.Tag) + "\n"s;
       }
       case ErrorInformationKind::FOOTER: {
-        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(tag) + "\n"s +
-          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(msg) + "\n"s;
+        return (colex::fg_bright_cyan & colex::st_bold) + "= Note: " + std::move(parts.Tag) + "\n"s +
+          (colex::fg_bright_red & colex::st_bold) + "= Help: " + std::move(parts.Msg) + "\n"s;
       }
       case ErrorInformationKind::WRAPPED: {
-        return std::move(tag);
+        return std::move(parts.Tag);
       }
       default:
-        std::unreachable();
+        Ice(std::format("unhandled error information kind {}", static_cast<int>(parts.Kind)));
     }
-    return "";
   }
 };

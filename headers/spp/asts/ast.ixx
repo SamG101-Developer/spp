@@ -20,7 +20,7 @@ use(spp::asts::meta, struct CompilerMetaData);
 /// token position, clone, casting, stringification, etc.
 GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
-  SPP_GCC_VTABLE_FIX_BASE;
+  SPP_GCC_VTABLE_FIX_BASE
   ~Ast() override;
 
   /// The starting position in the source code that this ast

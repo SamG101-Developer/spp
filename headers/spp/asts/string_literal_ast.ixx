@@ -15,7 +15,7 @@ use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(StringLiteralAst);
 
   /// The optional "b" prefix, converting the string into a

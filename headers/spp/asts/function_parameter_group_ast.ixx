@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(FunctionParameterGroupAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct FunctionParameterAst);
 use(spp::asts, struct FunctionParameterOptionalAst);
 use(spp::asts, struct FunctionParameterRequiredAst);
@@ -52,7 +53,16 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*>;
 
-  SPP_ATTR_NODISCARD auto GetVariadicParams() const -> FunctionParameterVariadicAst*;
+  SPP_ATTR_NODISCARD auto GetVariadicParam() const -> FunctionParameterVariadicAst*;
 
   SPP_ATTR_NODISCARD auto GetNonSelfParams() const -> Vec<FunctionParameterAst*>;
+
+  /// Whether "param"'s type is "Void" read in "scope": a value of
+  /// type "Void" is no value, so a parameter of it is no parameter.
+  SPP_ATTR_NODISCARD static auto IsVoidParam(FunctionParameterAst const &param, Scope const &scope) -> bool;
+
+  /// Remove the parameters whose type is "Void" in "scope". Done by
+  /// the prototype that owns this group, once its parameter types
+  /// are known.
+  auto RemoveVoidParams(Scope const &scope) -> void;
 };

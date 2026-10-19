@@ -7,305 +7,244 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.mem_info_utils;
+import spp.analyse.utils.borrows;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.regions;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.array_literal_repeated_element_ast;
 import spp.asts.ast;
-import spp.asts.case_expression_branch_ast;
-import spp.asts.case_pattern_variant_ast;
-import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
-import spp.asts.inner_scope_expression_ast;
-import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_keyword_res_ast;
-import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
-import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
 namespace spp::analyse::utils::mem_utils {
   namespace {
-    /**
-     * Raise if any borrow a value carries would out-live what it borrows from, once that value is held by @p lhs .
-     *
-     * @n
-     * A coroutine handle keeps the borrows its call was given alive for as long as the handle lives, so putting one
-     * into a symbol declared further out moves those borrows past the frame that owns what they point at. Each is
-     * checked on its own: one borrow out-living its source is enough, however many the handle carries.
-     *
-     * @param escaping_borrows The borrows the value carries.
-     * @param lhs The symbol the value is being put into.
-     * @param owner The ast to report the error against.
-     * @param sm The scope manager, for resolving each borrow's source.
-     */
-    auto EnforceEscapingBorrowsOutlive(
-      Vec<Tup<Ast const*, bool, Scope*>> const &escaping_borrows,
-      VariableSymbol const &lhs,
-      Ast *owner,
-      ScopeManager const &sm)
-      -> void {
-      //
-      using errors::SppBorrowLifetimeIncreaseError;
-      const auto lhs_init_scope = lhs.ScopeDefinedIn;
-      if (lhs_init_scope == nullptr) { return; }
+    /// [CHECKED]
+    /// Raise if using "sym" here breaks a loan: one of it (held by
+    /// a coroutine, a future, a closure, or the binding a yielded
+    /// or indexed borrow went to), or one it holds itself.
+    auto RaiseIfBadEscapingBorrow(
+      VariableSymbol const &sym, Ast const &value_ast, Ast const &move_ast, const bool moves_value,
+      SymbolMemoryOptions const &options, ScopeManager const &sm) -> void {
+      if (not options.CheckMove) { return; }
+      auto const *const scope = sm.CurrentScope;
+      auto &loans = memory_state::LoansOf(*scope);
+      const auto is_on_sym = [&](memory_state::Loan const &loan) {
+        return not loan.Pending and loan.Borrowed.Of.has_value() and loan.Borrowed.Of->Root == &sym;
+      };
 
-      for (auto const &[e, _, _] : escaping_borrows) {
-        const auto source_sym = sm.CurrentScope->GetVarSymbolOutermost(*e).first;
-        if (source_sym == nullptr or source_sym->ScopeDefinedIn == nullptr) { continue; }
+      // Check we aren't trying to move a value something still
+      // holds a loan of: the holder would be left pointing at
+      // nothing, if it is used again ("ConflictWith").
+      if (moves_value) {
+        for (auto &loan : loans) {
+          if (not is_on_sym(loan)) { continue; }
+          borrows::ConflictWith(
+            loan, memory_state::LoanConflict{.Moved = true, .First = loan.Holder->Name.get(), .Second = &move_ast}, sm);
+        }
+      }
 
-        // The source out-lives the destination exactly when its scope is one the destination sits inside of, which is
-        // what finding it among the destination's ancestors says.
-        const auto found_at = genex::position(
-          lhs_init_scope->Ancestors(), genex::operations::eq_fixed{source_sym->ScopeDefinedIn});
-        spp::RaiseIf<SppBorrowLifetimeIncreaseError>(
-          found_at < 0, {sm.CurrentScope}, ERR_ARGS(*owner, *lhs.Name, *e));
+      // Copying a value out reads it, which a "&mut" loan of it
+      // rules out just as it rules out borrowing it: the holder
+      // may be writing to it. Only a name or an attribute path
+      // reads the memory itself; a call, index or slice off it
+      // is checked against the loans as the call it is.
+      const auto reads_memory = value_ast.To<IdentifierAst>() != nullptr or regions::IsAttr(&value_ast, &sm);
+      if (not moves_value and reads_memory) {
+        const auto value_place = regions::PlaceAtOf(value_ast, *scope);
+        for (auto &loan : loans) {
+          if (not is_on_sym(loan) or not loan.IsMut or not regions::Overlap(loan.Borrowed, value_place)) { continue; }
+          borrows::ConflictWith(
+            loan, memory_state::LoanConflict{.Moved = false, .First = loan.Borrowed.Site, .Second = &value_ast}, sm);
+        }
+      }
+
+      // Check we aren't trying to move the holder of a loan. It
+      // keeps the borrows alive, so moving it propagates them out
+      // of the frame that owns the borrowed values. A holder that
+      // is itself a borrow (a pattern binding "&val", an index
+      // borrow, a borrow a generator yielded) only passes the
+      // borrow on, to whatever it is given to ("TransferLoans").
+      const auto holds = memory_state::LoansHeldBy(loans, sym);
+      const auto is_borrow = sym.MemInfo->AstBorrowed != nullptr
+        or (sym.Type != nullptr and sym.Type->GetConvention() != nullptr);
+
+      // A borrow binding passed on somewhere other than a call (which holds it only while it runs) - a block's or a
+      // branch's result - leaves its loans with nothing tracking where the borrow went: they are live from here on.
+      // Handed on by name ("let z = b"), the loans move to the new holder and are tracked again ("TransferLoans").
+      // A narrowed view ("b" inside "case b of { is &mut S32(..) }") passes on what the symbol it narrows holds. The
+      // binding itself is what is passed on (a borrow reads as "Copy" by what it points at, so "moves_value" does not
+      // say this).
+      const auto passes_on = options.MarkMoves and value_ast.To<IdentifierAst>() != nullptr;
+      if (passes_on and is_borrow and move_ast.To<FunctionCallArgumentAst>() == nullptr) {
+        for (auto const *s = &sym; s != nullptr; s = s->NarrowsSymbol.get()) {
+          for (auto &loan : loans) {
+            if (loan.Holder == s) { loan.Escaped = true; }
+          }
+        }
+      }
+      if (options.CheckEscapingBorrowMove and moves_value and not is_borrow
+        and genex::any_of(holds, [](auto const *loan) { return not loan->Yielded; })) {
+        Raise<errors::SppMovingEscapingBorrowedMemoryError>(ERR_ARGS(*sym.Name, move_ast));
       }
     }
 
-    auto SameRegionSection(
-      IdentifierAst const &step,
-      IdentifierAst const *other)
-      -> bool {
-      // Compare identifier name ids.
-      return step.NameId() == other->NameId();
+    /// [CHECKED]
+    /// Specialized move check involving deferred values, as
+    /// we have a special error. No value used in the analysis
+    /// of the expression being deferred, can be uninitialised.
+    auto RaiseIfMovedDeferred(
+      VariableSymbol const &sym, Scope const *scope) -> void {
+      // Get the where location, and if it is present, then
+      // the value has been moved. In the defer context, throw.
+      const auto where_moved = memory_state::StateOf(*scope, sym).AstMoved;
+      auto const *const flow = memory_state::FlowOf(*scope);
+      if (where_moved and flow != nullptr and flow->Deferring.has_value()) {
+        auto const &exit = *flow->Deferring;
+        Raise<errors::SppDeferConsumesMovedValueError>(
+          ERR_ARGS(*exit.Stmt, *where_moved, *exit.ExitPoint, sym.Name->Val, exit.ExitWhat));
+      }
     }
 
+    /// [CHECKED]
+    /// Raise if "sym" was initialized, moved, partially moved,
+    /// or holding an escaping borrow on only some of the paths
+    /// reaching "usage" (the branches of a "case", the ways
+    /// out of a loop). A part maybe moved only matters to a use
+    /// that reaches it: "p.b" is whole on every path even where
+    /// "p.a" was taken on one of them.
+    auto RaiseIfInconsistent(
+      VariableSymbol const &sym, Ast const &usage, SymbolMemoryOptions const &options, Scope const *scope) -> void {
+      auto const &state = memory_state::StateOf(*scope, sym);
+      if (const auto maybe = state.MaybeInit; maybe.has_value()) {
+        Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
+          ERR_ARGS(usage, *maybe->First, *maybe->Other, "initialized"));
+      }
+
+      // A check of the value's presence alone (the object a member is read off) leaves its parts to the read itself.
+      const auto used = regions::PlaceAtOf(usage, *scope);
+      for (auto const &[part, paths] : options.CheckPartialMove
+           ? state.MaybePartialMoves
+           : Vec<memory_state::MaybeMovedPart>()) {
+        const auto reaches = not used.Of.has_value()
+          or regions::Relate(*used.Of, *part.Of) != regions::MemRegionRelation::Disjoint;
+        RaiseIf<errors::SppInconsistentlyInitializedMemoryUseError>(
+          reaches, ERR_ARGS(usage, *paths.First, *paths.Other, "partially moved"));
+      }
+
+      // A loan of it, or one it holds, on only some of the paths that met.
+      for (auto const &loan : memory_state::LoansOf(*scope)) {
+        const auto involved = loan.Holder == &sym or (loan.Borrowed.Of.has_value() and loan.Borrowed.Of->Root == &sym);
+        if (involved and loan.Maybe.has_value() and not loan.Pending) {
+          Raise<errors::SppInconsistentlyEscapingBorrows>(ERR_ARGS(usage, *loan.Maybe->First, *loan.Maybe->Other));
+        }
+      }
+    }
   }
-}
-
-auto spp::analyse::utils::mem_utils::RegionPath(
-  Ast const &ast)
-  -> Vec<IdentifierAst*> {
-  // Get the expression parts from the ast, provided it casts
-  // validly to the expression ast variant.
-  auto const *const expr = ast.To<ExpressionAst>();
-  return expr != nullptr ? expr->ExprParts() : Vec<IdentifierAst*>();
-}
-
-auto spp::analyse::utils::mem_utils::MemRegionRelate(
-  Vec<IdentifierAst*> const &r1,
-  Vec<IdentifierAst*> const &r2)
-  -> MemRegionRelation {
-  // Failsafe - nothing to name is nothing to share: a
-  // temporary owns a region no other expression has a
-  // spelling for. This should never happen.
-  if (r1.IsEmpty() or r2.IsEmpty()) { return MemRegionRelation::Disjoint; }
-
-  // Iterate through the two paths and look for a mismatch
-  // at an equal level, ie "a" vs "b", or "a.b" vs "a.c" on
-  // the second part.
-  for (auto i = 0uz; i < std::min(r1.Len(), r2.Len()); ++i) {
-    if (not SameRegionSection(*r1[i], r2[i])) { return MemRegionRelation::Disjoint; }
-  }
-
-  // If there were no equal-level mismatches, then by length
-  // check who contains who. Two regions of the same path ie
-  // "a" and "a" are marked as "contains".
-  return r1.Len() <= r2.Len()
-    ? MemRegionRelation::Contains
-    : MemRegionRelation::ContainedBy;
-}
-
-auto spp::analyse::utils::mem_utils::MemRegionOverlap(
-  Ast const &ast_1,
-  Ast const &ast_2)
-  -> bool {
-  // Either holding the other is an overlap, so anything
-  // but "no relation" is one.
-  return MemRegionRelate(RegionPath(ast_1), RegionPath(ast_2)) !=
-    MemRegionRelation::Disjoint;
-}
-
-auto spp::analyse::utils::mem_utils::ValidateUnnamedArgumentBorrow(
-  FunctionCallArgumentAst const &arg,
-  VariableSymbol const *const sym,
-  Vec<Ast const*> &borrows_ref,
-  Vec<Ast const*> &borrows_mut,
-  ScopeManager &sm,
-  meta::CompilerMetaData *const meta)
-  -> void {
-  //
-  using errors::SppMemoryOverlapUsageError;
-
-  // A borrow with a name is one the caller's own branches
-  // take, or one being passed along rather than taken here.
-  // Only the nameless case is this one's.
-  if (sym != nullptr) { return; }
-
-  // The convention as written, or, where nothing is written,
-  // the one the argument's type carries - which is where a
-  // subscript keeps it.
-  const auto conv = arg.Conv != nullptr ? arg.Conv->Tag() : arg.Val->InferTypeRef(&sm, meta).Conv;
-  if (conv == ConventionTag::MOV) { return; }
-
-  // A mutable borrow meets every other borrow of the region;
-  // an immutable one meets only a mutable.
-  const auto is_mut = conv == ConventionTag::MUT;
-  auto candidates = is_mut
-    ? genex::views::concat(borrows_ref, borrows_mut) | genex::to<Vec>()
-    : borrows_mut;
-
-  auto overlaps = candidates
-    | genex::views::filter([&arg](auto const &x) { return MemRegionOverlap(*x, *arg.Val); })
-    | genex::to<Vec>();
-
-  spp::RaiseIf<SppMemoryOverlapUsageError>(
-    not overlaps.IsEmpty(), {sm.CurrentScope},
-    ERR_ARGS(*overlaps[0], *arg.Val));
-
-  (is_mut ? borrows_mut : borrows_ref).EmplaceBack(arg.Val.get());
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
-  ExpressionAst &value_ast,
-  Ast const &move_ast,
+  ExpressionAst &value_ast, Ast const &move_ast,
   ScopeManager &sm,
-  const bool check_move,
-  const bool check_partial_move,
-  const bool check_move_from_borrowed_ctx,
-  const bool mark_moves,
   meta::CompilerMetaData *meta,
-  const bool check_escaping_borrow_move,
-  const bool place_is_written) -> void {
-  // For tuple and array literals, recursively analyse each element.
-  if (auto const *arr_literal = value_ast.To<ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
+  SymbolMemoryOptions const &options) -> void {
+  // For tuple and array literals, recursively analyse each
+  // element, with all checks enabled, except the pass-through
+  // "MarkMoves".
+  if (const auto arr_literal = value_ast.To<ArrayLiteralRepeatedElementAst>(); arr_literal != nullptr) {
     const auto x = arr_literal->Elem.get();
-    ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
+    ValidateSymbolMemory(*x, move_ast, sm, meta, {.MarkMoves = options.MarkMoves});
     return;
   }
-  if (auto const *arr_literal = value_ast.To<ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
+  if (const auto arr_literal = value_ast.To<ArrayLiteralExplicitElementsAst>(); arr_literal != nullptr) {
     for (auto &&x : arr_literal->Elems) {
-      ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
+      ValidateSymbolMemory(*x, move_ast, sm, meta, {.MarkMoves = options.MarkMoves});
     }
     return;
   }
-  if (auto const *tup_literal = value_ast.To<TupleLiteralAst>(); tup_literal != nullptr) {
+  if (const auto tup_literal = value_ast.To<TupleLiteralAst>(); tup_literal != nullptr) {
     for (auto &&x : tup_literal->Elems) {
-      ValidateSymbolMemory(*x, move_ast, sm, true, true, true, mark_moves, meta);
+      ValidateSymbolMemory(*x, move_ast, sm, meta, {.MarkMoves = options.MarkMoves});
     }
     return;
   }
 
-  // Get the symbol representing the outermost part of the expression being moved. Non-symbolic => temporary value.
-  auto [var_sym, var_scope] = sm.CurrentScope->GetVarSymbolOutermost(value_ast);
+  // Get the symbol representing the outermost part of the
+  // expression being moved. Non-symbolic => temporary value.
+  auto [var_sym, var_scope] = sm.CurrentScope->FindVarSymbolOutermost(value_ast);
   if (var_sym == nullptr) { return; }
-  const auto copies = var_sym->TypeRefIn(*var_scope).Sym->IsCopyable();
-  const auto partial_copies = var_scope->GetTypeSymbol(value_ast.InferType(&sm, meta).get())->IsCopyable();
 
-  // A move only actually occurs when the accessed value is non-copyable.
-  const auto moves_value = value_ast.To<IdentifierAst>() != nullptr ? not copies : not partial_copies;
+  // A holder used again after a conflict with one of its
+  // loans means the loan was live then (M9.2).
+  borrows::RaiseIfConflictedUse(*var_sym, *sm.CurrentScope);
+  const auto value_type_sym = value_ast.InferTypeRef(&sm, meta).Symbol;
+  const auto outer_is_copyable = var_sym->TypeRefIn(*var_scope).Symbol->IsCopyable();
+  const auto partial_is_copyable = value_type_sym != nullptr and value_type_sym->IsCopyable();
 
-  // Check for inconsistent memory initialization (from branching).
-  if (var_sym->MemInfo->IsInconsistentlyInitialized.has_value()) {
-    const auto pair = *var_sym->MemInfo->IsInconsistentlyInitialized;
-    Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.first, *pair.second, "initialized"));
-  }
+  // A move only occurs when the value is an identifier that's
+  // not copyable, or a field that's not copyable (ie overall
+  // not partially copyable).
+  const auto moves_value = value_ast.To<IdentifierAst>() != nullptr
+    ? not outer_is_copyable
+    : not partial_is_copyable;
 
-  // Check for inconsistent memory moving (from branching).
-  if (var_sym->MemInfo->IsInconsistentlyMoved.has_value()) {
-    const auto pair = *var_sym->MemInfo->IsInconsistentlyMoved;
-    Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.first, *pair.second, "moved"));
-  }
-
-  // Check for inconsistent partial memory moving (from branching).
-  if (var_sym->MemInfo->IsInconsistentlyPartiallyMoved.has_value()) {
-    const auto pair = *var_sym->MemInfo->IsInconsistentlyPartiallyMoved;
-    Raise<errors::SppInconsistentlyInitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.first, *pair.second, "partially moved"));
-  }
-
-  // Check for inconsistent escaping borrows (from branching).
-  if (var_sym->MemInfo->IsInconsistentlyBorrowEscaping.has_value()) {
-    const auto pair = *var_sym->MemInfo->IsInconsistentlyBorrowEscaping;
-    Raise<errors::SppInconsistentlyEscapingBorrows>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *pair.first, *pair.second));
-  }
-
-  // Check the symbol hasn't already been moved.
-  if (spp::get<0>(var_sym->MemInfo->AstMoved) != nullptr) {
-    const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
-    const auto [where_moved, _] = var_sym->MemInfo->AstMoved;
-    Raise<errors::SppUninitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_moved));
-  }
-
-  // Check we aren't trying to move an escaping borrow
-  // (unless copyable).
-  if (check_move and moves_value and not var_sym->MemInfo->AstContainersOfEscapingBorrows.IsEmpty()) {
-    const auto [where_contained, _] = var_sym->MemInfo->AstContainersOfEscapingBorrows[0];
-    Raise<errors::SppMovingEscapingBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(*where_contained, move_ast));
-  }
-
-  // Check we aren't trying to move the container of an
-  // escaping borrow (unless copyable). The container keeps
-  // the borrows alive, so moving it propagates them out of
-  // the frame that owns the borrowed values.
-  if (check_escaping_borrow_move and check_move and moves_value
-    and not var_sym->MemInfo->AstContainedEscapingBorrows.IsEmpty()) {
-    Raise<errors::SppMovingEscapingBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(*var_sym->Name, move_ast));
-  }
+  // Check for inconsistent memory states (from branching),
+  // deferred values being moved, general moves, escaping
+  // borrows being moved.
+  RaiseIfInconsistent(*var_sym, value_ast, options, sm.CurrentScope);
+  RaiseIfMovedDeferred(*var_sym, sm.CurrentScope);
+  RaiseIfMoved(*var_sym, value_ast, sm.CurrentScope);
+  RaiseIfBadEscapingBorrow(*var_sym, value_ast, move_ast, moves_value, options, sm);
 
   // Check we aren't trying to move a comptime constant
   // (unless copyable).
-  if (check_move and moves_value and var_sym->IsCompTime()) {
-    Raise<errors::SppMovingComptimeConstantMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, move_ast));
+  if (options.CheckMove and moves_value and var_sym->IsCompTime()) {
+    Raise<errors::SppMovingCompTimeConstantMemoryError>(ERR_ARGS(value_ast, move_ast));
   }
 
   // Check the symbol doesn't have any outstanding partial
   // moved (moving a partially moved object).
-  if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<IdentifierAst>() !=
-    nullptr) {
-    const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
-    const auto where_pm = var_sym->MemInfo->AstPartialMoves.Front();
-    Raise<errors::SppPartiallyInitializedMemoryUseError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+  auto const &state = memory_state::StateOf(*sm.CurrentScope, *var_sym);
+  if (options.CheckPartialMove and not state.PartialMoves.empty() and value_ast.To<IdentifierAst>() != nullptr) {
+    const auto where_init = state.AstInitializationOrigin;
+    auto const *const where_pm = state.PartialMoves.front().Site;
+    Raise<errors::SppPartiallyInitializedMemoryUseError>(ERR_ARGS(value_ast, *where_init, *where_pm));
   }
 
   // Check the symbol doesn't have any outstanding partial
   // moves (directly moving a partial move).
-  if (check_partial_move and not var_sym->MemInfo->AstPartialMoves.IsEmpty() and value_ast.To<IdentifierAst>() ==
-    nullptr) {
+  if (options.CheckPartialMove and not state.PartialMoves.empty() and value_ast.To<IdentifierAst>() == nullptr) {
     // "Contains" covers the move naming the place exactly
     // as well as the move naming something the place sits
     // inside of. Writing "o.inner.val" puts the first back
     // but cannot put "o.inner" back, so a write keeps only
     // the second.
-    const auto steps = RegionPath(value_ast);
-    const auto overlaps = var_sym->MemInfo->AstPartialMoves
+    const auto place = regions::PlaceOf(value_ast, *sm.CurrentScope);
+    const auto overlaps = state.PartialMoves
       | genex::views::filter([&](auto const &x) {
-        const auto path = RegionPath(*x);
-        return MemRegionRelate(path, steps) == MemRegionRelation::Contains
-          and (not place_is_written or path.Len() < steps.Len());
+        return place.has_value()
+          and regions::Relate(*x.Of, *place) == regions::MemRegionRelation::Contains
+          and (not options.IsPlaceWritten or x.Of->Steps.size() < place->Steps.size());
       })
       | genex::to<Vec>();
-    if (not overlaps.IsEmpty()) {
-      const auto [where_init, _] = var_sym->MemInfo->AstInitializationOrigin;
-      const auto where_pm = overlaps.Front();
-      Raise<errors::SppUninitializedMemoryUseError>(
-        {sm.CurrentScope}, ERR_ARGS(value_ast, *where_init, *where_pm));
+    if (not overlaps.empty()) {
+      const auto where_init = state.AstInitializationOrigin;
+      auto const *const where_pm = overlaps.front().Site;
+      Raise<errors::SppUninitializedMemoryUseError>(ERR_ARGS(value_ast, *where_init, *where_pm));
     }
   }
 
   // Check the symbol isn't being moved from a borrowed
   // context.
-  if (check_move_from_borrowed_ctx and spp::get<0>(var_sym->MemInfo->AstBorrowed) and value_ast.To<
-    IdentifierAst>() == nullptr and not partial_copies) {
-    const auto [where_borrow, _] = var_sym->MemInfo->AstBorrowed;
-    Raise<errors::SppMoveFromBorrowedMemoryError>(
-      {sm.CurrentScope}, ERR_ARGS(value_ast, *where_borrow, *where_borrow));
+  if (options.CheckMoveFromBorrowedCtx and var_sym->MemInfo->AstBorrowed and value_ast.To<
+    IdentifierAst>() == nullptr and not partial_is_copyable) {
+    const auto where_borrow = var_sym->MemInfo->AstBorrowed;
+    Raise<errors::SppMoveFromBorrowedMemoryError>(ERR_ARGS(value_ast, *where_borrow, *where_borrow));
   }
 
   // A narrowed view of a value is that value: consuming
@@ -314,13 +253,13 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // for it. Walked up the chain, since a pattern can narrow
   // what an enclosing pattern already narrowed.
   const auto mark_chain = [](const auto sym, auto &&mark) {
-    for (auto *s = sym; s != nullptr; s = s->NarrowsSym.get()) { mark(s); }
+    for (auto *s = sym; s != nullptr; s = s->NarrowsSymbol.get()) { mark(s); }
   };
 
   // Mark the symbol as moved/partially-moved if it is not
   // copyable.
-  if (mark_moves and value_ast.To<IdentifierAst>() != nullptr and not copies) {
-    mark_chain(var_sym, [&](const auto s) { s->MemInfo->MovedBy(value_ast, sm.CurrentScope); });
+  if (options.MarkMoves and value_ast.To<IdentifierAst>() != nullptr and not outer_is_copyable) {
+    mark_chain(var_sym, [&](const auto s) { memory_state::StateOf(*sm.CurrentScope, *s).MovedBy(value_ast); });
   }
 
   // Only whole moves carry up the chain. A pattern binding
@@ -329,64 +268,38 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // far as anything outside the branch is concerned - and
   // marking it otherwise makes the subject itself unreadable
   // at the "case" that introduced the narrowing.
-  else if (mark_moves and value_ast.To<IdentifierAst>() == nullptr and not partial_copies) {
-    var_sym->MemInfo->AstPartialMoves.EmplaceBack(&value_ast);
+  else if (options.MarkMoves and value_ast.To<IdentifierAst>() == nullptr and not partial_is_copyable) {
+    memory_state::StateOf(*sm.CurrentScope, *var_sym).PartMovedBy(regions::PlaceAtOf(value_ast, *sm.CurrentScope));
   }
 }
 
-auto spp::analyse::utils::mem_utils::PreventBorrowLifetimeExtension(
-  Ast const &rhs_expr,
-  VariableSymbol const *lhs_outermost,
-  VariableSymbol const *rhs_outermost,
-  Ast *owner,
-  ScopeManager const &sm,
-  const bool override_borrow)
-  -> void {
-  // Todo: A similar version of this function will be needed for "return" statements as-well as the currently used "="
-  //  statements.
+/// [CHECKED]
+auto spp::analyse::utils::mem_utils::RaiseIfMoved(
+  VariableSymbol const &sym, Ast const &use, Scope const *scope) -> void {
+  // Get the state of the symbol, and get where is was
+  // moved (by ast). If it is not moved, return.
+  auto const &state = memory_state::StateOf(*scope, sym);
+  const auto where_moved = state.AstMoved;
+  if (where_moved == nullptr) { return; }
 
-  // Prevent a borrow being placed into a value with a longer
-  // lifetime.
-  const auto is_rhs_borrow = override_borrow or (
-    rhs_outermost and spp::get<0>(rhs_outermost->MemInfo->AstBorrowed) != nullptr);
-  if (lhs_outermost != nullptr and rhs_outermost != nullptr and is_rhs_borrow) {
-    const auto has_borrow_scope = spp::get<1>(rhs_outermost->MemInfo->AstBorrowed);
-    const auto rhs_borrow_scope = has_borrow_scope ? has_borrow_scope : sm.CurrentScope;
-    const auto lhs_init_scope = lhs_outermost->ScopeDefinedIn;
-    if (lhs_init_scope != nullptr) {
-      const auto scope_depth_difference = genex::position(
-        lhs_init_scope->Ancestors(), genex::operations::eq_fixed{rhs_borrow_scope});
-      const auto has_borrow_ast = spp::get<0>(rhs_outermost->MemInfo->AstBorrowed);
-      RaiseIf<errors::SppBorrowLifetimeIncreaseError>(
-        scope_depth_difference < 0, {sm.CurrentScope},
-        ERR_ARGS(*owner, *lhs_outermost->Name, *(has_borrow_ast ? has_borrow_ast : &rhs_expr)));
-    }
-  }
+  // Otherwise, get where it was initialised (prior to
+  // being moved), and raise an error with the original
+  // initialisation location, and the move location.
+  const auto where_init = state.AstInitializationOrigin;
+  Raise<errors::SppUninitializedMemoryUseError>(ERR_ARGS(use, *where_init, *where_moved));
+}
 
-  // Ensure a value that contains escaping borrows isn't
-  // increasing the escaping borrows' lifetimes.
-  else if (lhs_outermost != nullptr and rhs_outermost != nullptr) {
-    EnforceEscapingBorrowsOutlive(
-      rhs_outermost->MemInfo->AstContainedEscapingBorrows, *lhs_outermost, owner, sm);
-  }
+/// [CHECKED]
+auto spp::analyse::utils::mem_utils::AssignmentTargetSymbol(
+  Scope const &scope, meta::CompilerMetaData const &meta) -> VariableSymbol* {
+  // Get the assignment target symbol off of the meta
+  // context.
+  if (meta.AssignmentTarget == nullptr) { return nullptr; }
+  const auto declaring = meta.AssignmentTargetSymbol;
 
-  // The same, for a right-hand side that names no symbol of
-  // its own. A call written straight into the destination
-  // ("x = c(&s)") has nowhere to record what it carries but
-  // the destination itself, so the borrows are read back off
-  // there rather than off a handle the source never bound.
-  else if (lhs_outermost != nullptr and rhs_expr.To<PostfixExpressionAst>() != nullptr) {
-    EnforceEscapingBorrowsOutlive(
-      lhs_outermost->MemInfo->AstContainedEscapingBorrows, *lhs_outermost, owner, sm);
-  }
-
-  // Ensure a value that contains escaping borrows isn't
-  // increasing the escaping borrows' lifetimes for "gen.res()"
-  // As the borrow is a temporary (no scope), the topmost
-  // branch uses "current scope".
-  else if (const auto pf = rhs_expr.To<PostfixExpressionAst>(); pf and pf->Op->To<
-    PostfixExpressionOperatorKeywordResAst>()) {
-    const auto new_rhs_sym = sm.CurrentScope->GetVarSymbolOutermost(*pf->Lhs).first;
-    PreventBorrowLifetimeExtension(*pf->Lhs, lhs_outermost, new_rhs_sym, owner, sm, true);
-  }
+  // If not present, and an assignment target is, try
+  // and query it off the scope.
+  return declaring != nullptr and declaring->Name->NameId() == meta.AssignmentTarget->NameId()
+    ? declaring
+    : scope.FindVarSymbolOutermost(*meta.AssignmentTarget).first;
 }

@@ -10,6 +10,8 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(ArrayLiteralExplicitElementsAst);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
@@ -18,7 +20,7 @@ use(spp::asts, struct TypeAst);
 /// a variable number of elements. This maps to the Arr[T, n]
 /// type.
 SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiteralAst {
-  SPP_GCC_VTABLE_FIX;
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ArrayLiteralExplicitElementsAst);
 
   /// The opening "[" token.
@@ -76,17 +78,29 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralExplicitElementsAst final : ArrayLiter
   /// analyse the type to trigger a generic instantiation.
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
+  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+
   /// Move through the elements to substitute generics in
   /// as they might contain postfix ops that need to be
   /// checked.
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   /// Arrays can be used ina runtime default context, only
   /// if all of the elements are allowed to be used in a
   /// runtime default context.
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+private:
+  /// The type, built and analysed once in stage 7. Rebuilding it
+  /// for every "InferType" analysed it again each time, codegen
+  /// included, and re-decided it in whatever context the caller
+  /// happened to be in.
+  Shared<TypeAst> _InferredType;
+
+  /// Build and analyse the type from the elements.
+  auto _BuildType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ArrayLiteralExplicitElementsAst)

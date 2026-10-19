@@ -3,6 +3,7 @@ module;
 
 module spp.utils.features;
 import spp.utils.files;
+import spp.utils.ice;
 import spp.utils.strings;
 import genex;
 import tomlpp;
@@ -45,7 +46,7 @@ namespace {
    * retrieve its section, but `[a.b.c]` is invalid and therefore returns `nullptr`.
    */
   auto FindSection(
-    spp::StrView name)
+    const spp::StrView name)
     -> spp::utils::features::SectionSpec const* {
     for (auto const &section : spp::utils::features::Schema()) {
       if (section.Name == name) { return &section; }
@@ -58,7 +59,7 @@ namespace {
    * reuses the compiler's string comparison usually reserved for "unidentified symbol" within the compilation process.
    */
   auto Suggest(
-    spp::StrView name,
+    const spp::StrView name,
     spp::Vec<spp::Str> const &choices)
     -> spp::Str {
     const auto closest = spp::utils::strings::ClosestMatch(name, choices);
@@ -77,7 +78,7 @@ namespace {
       case spp::utils::features::ValueKind::Bool: return "a boolean";
       case spp::utils::features::ValueKind::String: return "a string";
       case spp::utils::features::ValueKind::Table: return "a table";
-      default: return "a value";
+      default: spp::Ice("unknown config value kind");
     }
   }
 
@@ -85,10 +86,8 @@ namespace {
    * Walk the config, reporting anything the schema does not describe.
    */
   auto WalkTable(
-    auto const &table,
-    spp::Str const &prefix,
-    spp::Vec<spp::Str> &errors)
-    -> void {
+    auto const &table, spp::Str const &prefix,
+    spp::Vec<spp::Str> &errors) -> void {
     //
     using namespace spp::utils::features;
 
@@ -97,7 +96,7 @@ namespace {
     // is a container rather than a mistake.
     auto section_names = spp::Vec<spp::Str>();
     for (auto const &section : Schema()) {
-      section_names.EmplaceBack(spp::Str(section.Name));
+      section_names.emplace_back(spp::Str(section.Name));
     }
 
     for (auto &&[raw_key, node] : table) {
@@ -108,12 +107,12 @@ namespace {
         // A section: everything under it must be one of its keys, and the keys it must have must be there.
         auto const *const inner = node.as_table();
         if (inner == nullptr) {
-          errors.EmplaceBack("'[" + path + "]' must be a section, not a value");
+          errors.emplace_back("'[" + path + "]' must be a section, not a value");
           continue;
         }
 
         auto key_names = spp::Vec<spp::Str>();
-        for (auto const &k : section->Keys) { key_names.EmplaceBack(spp::Str(k.Name)); }
+        for (auto const &k : section->Keys) { key_names.emplace_back(spp::Str(k.Name)); }
 
         for (auto &&[raw_inner_key, inner_node] : *inner) {
           const auto inner_key = spp::Str(raw_inner_key.str());
@@ -127,9 +126,9 @@ namespace {
 
           if (spec == nullptr) {
             if (section->FreeForm) { continue; }
-            errors.EmplaceBack(
+            errors.emplace_back(
               "unknown key '" + inner_key + "' in [" + path + "]" + Suggest(inner_key, key_names)
-              + "\n    [" + path + "] accepts: " + (key_names.IsEmpty()
+              + "\n    [" + path + "] accepts: " + (key_names.empty()
                 ? spp::Str("(nothing)")
                 : [&] {
                   auto joined = spp::Str();
@@ -146,13 +145,13 @@ namespace {
             ? inner_node.is_string()
             : inner_node.is_table();
           if (not ok) {
-            errors.EmplaceBack("'" + inner_key + "' in [" + path + "] must be " + spp::Str(KindName(spec->Kind)));
+            errors.emplace_back("'" + inner_key + "' in [" + path + "] must be " + spp::Str(KindName(spec->Kind)));
           }
         }
 
         for (auto const &k : section->Keys) {
           if (k.Required and not inner->contains(k.Name)) {
-            errors.EmplaceBack("[" + path + "] is missing the required key '" + spp::Str(k.Name) + "'");
+            errors.emplace_back("[" + path + "] is missing the required key '" + spp::Str(k.Name) + "'");
           }
         }
         continue;
@@ -180,7 +179,7 @@ namespace {
         walk = descend;
       }
 
-      errors.EmplaceBack(
+      errors.emplace_back(
         "unknown section '[" + written + "]'" + Suggest(written, section_names)
         + "\n    known sections: " + [&] {
           auto joined = spp::Str();
@@ -191,8 +190,7 @@ namespace {
   }
 }
 
-auto spp::utils::features::Schema()
-  -> Vec<SectionSpec> const& {
+auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
   // Written out rather than registered from the places that
   // read it, so that the whole surface of a project file is
   // one thing to read, and so a feature cannot exist without
@@ -267,6 +265,82 @@ auto spp::utils::features::Schema()
       .FreeForm = false,
     },
     SectionSpec{
+      .Name = "memory.map",
+      .Help = "Protections applied to the process's memory mappings.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::MemoryMapDenyWx,
+          .Name = "deny_wx",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Refuse any mapping that is, or later becomes, both writable and executable, for this process "
+          "but not its children. Needs Linux 6.6; on an older kernel the program fails at startup until "
+          "this is turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::MemoryMapSeal,
+          .Name = "seal",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Seal the code, constants and relocated data of everything loaded at startup, so none of it can be "
+          "unmapped, remapped or made writable again. Needs Linux 6.10; on an older kernel the program fails "
+          "at startup until this is turned off."
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
+      .Name = "binary.codegen",
+      .Help = "What the code generator is asked to emit around the instructions themselves.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenSls,
+          .Name = "sls",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Put a trap straight after every return and indirect jump, so the bytes after one are never run "
+          "speculatively. Code size only. x86 and AArch64; any other target fails the build until this is "
+          "turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenScrub,
+          .Name = "scrub",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Zero the registers a function used, and its caller does not keep, just before it returns, so "
+          "nothing it computed is left behind. A few instructions on every return. x86 and AArch64; any "
+          "other target fails the build until this is turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenCfi,
+          .Name = "cfi",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Check, before every indirect call (a closure, a function value, resuming or destroying a "
+          "generator), that the function it reaches has the s++ signature the call expects, and stop the "
+          "program if not. A load and a compare per call. x86 and AArch64; any other target fails the build "
+          "until this is turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenJumpTableBounds,
+          .Name = "jump_table_bounds",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Keep a switch from jumping through an entry past the end of its jump table, even speculatively. "
+          "On AArch64 the index is clamped without a branch; on x86 switches are built without jump tables, "
+          "as compares. A few instructions per switch. Any other target fails the build until this is "
+          "turned off."
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
       .Name = "binary.link",
       .Help = "What the linker is asked to make of the sections code generation produced.",
       .Keys = Vec<KeySpec>{
@@ -276,8 +350,9 @@ auto spp::utils::features::Schema()
           .Kind = ValueKind::Bool,
           .Required = false,
           .Default = true,
-          .Help = "Make every section that only startup writes read-only once startup is over, and leave the stack "
-                  "non-executable, the code its own mapping, and the program unopenable by dlopen."
+          .Help = "Make every section that only startup writes read-only once startup is over, leave the stack "
+          "non-executable and the code its own mapping, and fail the link on a text relocation or a "
+          "writable-and-executable segment."
         },
       },
       .FreeForm = false,
@@ -287,13 +362,11 @@ auto spp::utils::features::Schema()
 }
 
 auto spp::utils::features::Validate(
-  std::filesystem::path const &config,
-  Vec<Str> &errors)
-  -> bool {
-  // Check the spp toml is present. Failsafe but needed
-  // so we don't get worse errors downstream.
+  Path const &config, Vec<Str> &errors) -> bool {
+  // The project has to have an "spp.toml"; without one there is
+  // nothing to check, and that is reported.
   if (not std::filesystem::exists(config)) {
-    errors.EmplaceBack("no 'spp.toml' here");
+    errors.emplace_back("no 'spp.toml' here");
     return false;
   }
 
@@ -304,36 +377,33 @@ auto spp::utils::features::Validate(
   // the semantic errors.
   try {
     const auto parsed = toml::parse_file(utils::files::NativeString(config));
-    toml::table const &root = parsed;
+    auto const &root = parsed;
     WalkTable(root, Str(), errors);
   }
   catch (std::exception const &e) {
-    errors.EmplaceBack(Str("could not read 'spp.toml': ") + e.what());
+    errors.emplace_back(Str("could not read 'spp.toml': ") + e.what());
   }
 
   // Validity of semantics is enforced by the tracking
   // list remaining empty.
-  return errors.IsEmpty();
+  return errors.empty();
 }
 
 auto spp::utils::features::Load(
-  std::filesystem::path const &config,
-  Vec<Str> &errors)
-  -> bool {
+  Path const &config, Vec<Str> &errors) -> bool {
   Reset();
   if (not Validate(config, errors)) { return false; }
 
   // Prase the toml file and get the current feature set
   // for modification.
   const auto parsed = toml::parse_file(utils::files::NativeString(config));
-  toml::table const &root = parsed;
+  auto const &root = parsed;
   auto &flags = CurrentFlags();
 
   // Iterate through the schema; there will be no key/value
   // pairs in the validated toml (or section names), that
   // don't exist in the schema.
   for (auto const &section : Schema()) {
-
     // Move through the keys of the section.
     for (auto const &k : section.Keys) {
       if (k.Kind != ValueKind::Bool) { continue; }
@@ -377,11 +447,10 @@ auto spp::utils::features::Load(
 }
 
 auto spp::utils::features::Enabled(
-  const ConfigKey key)
-  -> bool {
-  // If the flags aren't ready, apply the default values
-  // before-hand, as a failsafe. This also fills non-required
-  // flag's values with their default.
+  const ConfigKey key) -> bool {
+  // Asked before a project's "spp.toml" was loaded (the unit
+  // tests, and anything read before "Load"), the defaults stand.
+  // This also fills non-required flag's values with their default.
   if (not FlagsReady()) { ApplyDefaults(); }
 
   // Get the flags's value, and ensure the flag was actually
@@ -391,15 +460,13 @@ auto spp::utils::features::Enabled(
   return it->second;
 }
 
-auto spp::utils::features::Reset()
-  -> void {
+auto spp::utils::features::Reset() -> void {
   // Clear all the flags' values, and set the default in.
   CurrentFlags().clear();
   ApplyDefaults();
 }
 
-auto spp::utils::features::HelpText()
-  -> Str {
+auto spp::utils::features::HelpText() -> Str {
   auto out = Str("Sections and keys accepted in 'spp.toml':\n");
   for (auto const &section : Schema()) {
     out += "\n  [" + Str(section.Name) + "]\n    " + Str(section.Help) + "\n";
@@ -408,13 +475,24 @@ auto spp::utils::features::HelpText()
       continue;
     }
     for (auto const &k : section.Keys) {
-      out += "    " + Str(k.Name);
+      out += "    - " + Str(k.Name);
       out += k.Kind == ValueKind::Bool
         ? Str(" = ") + (k.Default ? "true" : "false") + "  (default)"
         : k.Required
         ? Str("  (required)")
         : Str();
       out += "\n      " + Str(k.Help) + "\n";
+    }
+  }
+  return out;
+}
+
+auto spp::utils::features::EffectiveSettings() -> Str {
+  auto out = Str();
+  for (auto const &section : Schema()) {
+    for (auto const &k : section.Keys) {
+      if (k.Kind != ValueKind::Bool) { continue; }
+      out += Str(section.Name) + "." + Str(k.Name) + " = " + (Enabled(k.Key) ? "true" : "false") + "\n";
     }
   }
   return out;

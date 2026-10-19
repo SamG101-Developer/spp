@@ -10,6 +10,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(BinaryExpressionAst);
+use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
@@ -43,6 +44,12 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// which have some special behaviour - no function mapping,
   /// direct LLVM intrinsics, for short-circuiting.
   SPP_ATTR_NODISCARD auto IsLogicalOperator() const -> bool;
+
+  /// The two operands to the binary expression, left-hand-side
+  /// and right-hand-side, held until their owning pointers
+  /// are moved into the function call.
+  SPP_ATTR_NODISCARD auto Operands() const
+    -> Pair<ExpressionAst const*, ExpressionAst const*>;
 
   BinaryExpressionAst(
     decltype(Lhs) &&lhs,
@@ -79,8 +86,8 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 
   /// Do the substitution of the left and right side operators.
   /// Todo: Do we need to use function mapping here?
-  SPP_ATTR_NODISCARD auto SubstituteGenericsExpr(
-    Vec<GenericArgumentAst*> const &args) const
+  SPP_ATTR_NODISCARD auto ReadExpr(
+    ExprSubst const &sub) const
     -> Shared<ExpressionAst> override;
 
   /// Check the left and right side are safe to use in runtime
@@ -91,7 +98,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
 private:
   /// The compiler-generated function call representing the
   /// operation. Stays nullptr for the logical operators.
-  Shared<PostfixExpressionAst> _MappedFunc;
+  Shared<PostfixExpressionAst> _MappedFn;
 
   /// When we collapse comparisons with temporaries, we need
   /// to store them so they aren't cloned: "a < f() < b" needs
@@ -99,7 +106,7 @@ private:
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
 
   /// Check whether a logical operator has been analysed - the
-  /// mirror of checking if "_MappedFunc" is not nullptr.
+  /// mirror of checking if "_MappedFn" is not nullptr.
   bool _LogicalAnalysed;
 
   /// Track if this binary operation is a logic "and"/"or"

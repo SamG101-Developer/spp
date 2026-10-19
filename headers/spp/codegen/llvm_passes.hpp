@@ -4,6 +4,18 @@
 /// because a TU-local entity is reached.
 
 namespace spp::codegen {
+  /// Marks the declaration of an "!ffi" function, whose calls
+  /// "ApplyFfiUnwindGuard" turns into guarded invokes.
+  inline constexpr char const kFfiFnAttr[] = "spp-ffi";
+
+  /// The control-flow-integrity type a function is called as
+  /// ("StampCfiFn").
+  inline constexpr char const kCfiMd[] = "spp.cfi";
+
+  /// A coroutine's resume and destroy types, which the functions
+  /// its lowering splits it into keep ("StampCfiCoroutine").
+  inline constexpr char const kCfiCoroMd[] = "spp.cfi.coro";
+
   /// Choose the triple every module is built for. Must be
   /// called before any code generation: the target machine,
   /// the triple and the data layout are each resolved once, on
@@ -26,13 +38,30 @@ namespace spp::codegen {
   /// ffi runtimes a project ships are host objects.
   auto TargetIsHost() -> bool;
 
-  /// The selected target as a directory name, which names its
-  /// folder in the "out" tree. Validated as a single path
-  /// component by "SelectTarget", and deliberately not read
-  /// back off llvm - see the note on the definition. Never
-  /// empty, because an unselected target is the host's own
-  /// triple.
+  /// The selected target as a folder name: "<arch>-<os>[-<env>]",
+  /// such as "x86_64-linux-gnu", "aarch64-macos" or
+  /// "x86_64-windows-msvc". It names the target's folder in the
+  /// "out" tree, and the folder an ffi package ships its library
+  /// for the target in. One spelling per target, however the
+  /// target was asked for. Fixes the target to the host if read
+  /// before "SelectTarget".
   auto TargetFolderName() -> char const*;
+
+  /// The host's folder name, in the same spelling. Safe to read
+  /// before "SelectTarget", which "TargetFolderName" is not.
+  auto HostFolderName() -> char const*;
+
+  /// Whether "folder" is the canonical folder name of some
+  /// target with a known architecture and operating system.
+  /// Another spelling of a known target ("arm64-linux-gnu",
+  /// "x86_64-darwin") is not, because the compiler would never
+  /// look in it.
+  auto IsTargetFolderName(char const *folder) -> bool;
+
+  /// The extension a shared library carries on the target a
+  /// folder names, without the leading dot: "so", "dylib" or
+  /// "dll". "folder" must pass "IsTargetFolderName".
+  auto SharedLibraryExtension(char const *folder) -> char const*;
 
   /// Stamp an "llvm::Module" (passed as an opaque pointer)
   /// with the selected target's triple and data layout.
@@ -54,6 +83,61 @@ namespace spp::codegen {
   /// canary cannot see, because nothing was overwritten on the
   /// way past. Answers how many functions were given one.
   auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
+
+  /// Harden every function in an "llvm::Module" (passed as an
+  /// opaque pointer) against straight-line speculation: a trap
+  /// straight after every return and indirect jump, so the
+  /// bytes that follow one are never run speculatively as the
+  /// gadget they would otherwise be. Code size only; the trap
+  /// is never reached architecturally. x86 and AArch64 only:
+  /// on any other target this reports the key that turns it
+  /// off and answers false, which fails the build.
+  auto ApplySlsHardening(void *llvm_module) -> bool;
+
+  /// Make every function in an "llvm::Module" (passed as an
+  /// opaque pointer) zero the general-purpose registers it used
+  /// and its caller does not expect kept, just before it
+  /// returns, so a pointer or secret it computed is not left
+  /// for whatever runs next, and a return-oriented chain finds
+  /// none of them preloaded. A few "xor"s on every return.
+  /// x86 and AArch64 only: on any other target this reports
+  /// the key that turns it off and answers false, which fails
+  /// the build.
+  auto ApplyRegisterScrubbing(void *llvm_module) -> bool;
+
+  /// Make every call to an "!ffi" function in an "llvm::Module"
+  /// (passed as an opaque pointer) an invoke whose unwind edge
+  /// fails the "unwound into s++" check, naming the function.
+  /// Foreign code can throw (a C++ library), and an exception
+  /// a C++ frame further out catches would otherwise unwind
+  /// through the s++ frames between, running none of their
+  /// defers and consuming none of their linear values. Free on
+  /// the path that returns: the edge is unwind-table data.
+  /// Answers how many calls were guarded.
+  auto ApplyFfiUnwindGuard(void *llvm_module) -> unsigned long;
+
+  /// Check every indirect call in an "llvm::Module" (passed as
+  /// an opaque pointer) against the s++ signature of what it
+  /// reaches (KCFI): each function recorded as callable
+  /// indirectly carries its type just before its entry, and
+  /// each call compares it with the type it recorded, trapping
+  /// on a mismatch, so a corrupted function pointer or
+  /// coroutine frame reaches only a function of the same type.
+  /// A load and a compare per call. x86 and AArch64 only: on
+  /// any other target this reports the key that turns it off
+  /// and answers false, which fails the build.
+  auto ApplyCfi(void *llvm_module) -> bool;
+
+  /// Keep every switch in an "llvm::Module" (passed as an opaque
+  /// pointer) from jumping through an entry past the end of its
+  /// jump table when the bounds check before it is mispredicted.
+  /// On AArch64 the table stays and its index is clamped without
+  /// a branch; x86 has no such lowering, so its switches are
+  /// built without tables, as compares, which also leaves no
+  /// indirect jump for anything to steer. A few instructions per
+  /// switch. On any other target this reports the key that turns
+  /// it off and answers false, which fails the build.
+  auto ApplyJumpTableBounds(void *llvm_module) -> bool;
 
   /// Split every function's frame in two: the objects a callee
   /// could write past stay on a separate "unsafe" stack, and
@@ -78,6 +162,22 @@ namespace spp::codegen {
   /// only. Answers how many functions were given one.
   auto ApplyUnwindTables(void *llvm_module) -> unsigned long;
 
+  /// Record in an "llvm::Module" (passed as an opaque pointer)
+  /// what the program was built with ("record": one fact per
+  /// line), for "spp audit" to read back out of the executable
+  /// ("ReadHardeningRecord"). On ELF it is a note, which "strip"
+  /// keeps; elsewhere a section of its own. No paths or times
+  /// go in, so a build stays reproducible.
+  auto EmitHardeningRecord(void *llvm_module, char const *record) -> void;
+
+  /// The hardening record of the built program at "path": the
+  /// text "EmitHardeningRecord" was given, or empty when it has
+  /// none (not built by spp, or by one from before records were
+  /// written). Null, with "error" set, when the file cannot be
+  /// read as an object at all. Both strings are valid until the
+  /// next call.
+  auto ReadHardeningRecord(char const *path, char const **error) -> char const*;
+
   /// Emit an "llvm::Module" (passed as an opaque pointer) as a
   /// native object file at "path". Answers whether the object
   /// file was written.
@@ -87,9 +187,10 @@ namespace spp::codegen {
   /// name, and stop if it cannot.
   ///
   /// The names come from "Intrinsic::getName" as a
-  /// "std::string", and a libstdc++ incompatibility makes that
-  /// come back padded with uninitialised bytes (see
-  /// "libstdcxx_string_compat.cpp"). While it bites, no
+  /// "std::string", and a libstdc++ incompatibility (GCC bug
+  /// 127228) makes that come back padded with uninitialised
+  /// bytes; "-fvisibility-inlines-hidden" (CMakeLists.txt)
+  /// keeps this compiler clear of it. While it bites, no
   /// overloaded intrinsic can be named correctly and every
   /// module holding one is rejected - by the verifier, whose
   /// complaint is about the name and says nothing about why it
@@ -98,9 +199,8 @@ namespace spp::codegen {
   /// several layers downstream.
   ///
   /// Runs its check once per process, so it costs nothing to
-  /// call wherever it is convenient. The diagnosis is printed
-  /// in any build; the assertion that stops on it is a debug
-  /// one.
+  /// call wherever it is convenient. The diagnosis is printed,
+  /// and the build stopped, in any build.
   auto AssertIntrinsicNamingIsSound() -> void;
 
   /// Add a C "main" to the combined "llvm::Module" (passed as
@@ -116,8 +216,16 @@ namespace spp::codegen {
   /// "ApplySafeStack" is asked to do later: a program whose
   /// functions read an unsafe stack pointer that was never set
   /// up writes its first split frame through a null one.
-  /// Answers whether the entry point was added.
-  auto EmitCEntryPoint(void *llvm_module, char const *spp_main_name, bool split_stacks) -> bool;
+  ///
+  /// "deny_wx" denies the process writable-and-executable
+  /// memory as the last start-up step (MDWE, Linux 6.6+); a
+  /// kernel without it fails the program at start-up.
+  ///
+  /// "seal" seals every loaded object's code, constants and
+  /// relocated data after that (mseal, Linux 6.10+), with the
+  /// same failure on an older kernel.
+  auto EmitCEntryPoint(
+    void *llvm_module, char const *spp_main_name, bool split_stacks, bool deny_wx, bool seal) -> void;
 
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,

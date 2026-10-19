@@ -1,11 +1,14 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.let_statement_uninitialized_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.type_utils;
+import spp.analyse.utils.memory_state;
+import spp.analyse.utils.type_resolution;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.object_initializer_argument_group_ast;
@@ -64,10 +67,10 @@ auto LetStatementUninitializedAst::ToString() const -> Str {
 
 auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  using analyse::utils::type_utils::ResolveWrittenType;
+  IMPORT_UTILS;
 
   // Analyse the type, and create a mock value for analysis.
-  Type = ResolveWrittenType(*Type, *sm, *meta);
+  Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta);
   const auto mock_init = MakeUnique<ObjectInitializerAst>(
     Type, nullptr);
 
@@ -81,16 +84,22 @@ auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
 
 auto LetStatementUninitializedAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
   // Check the variable for memory issues.
   const auto _meta_guard = MetaGuard(meta);
   meta->LetStatementValue = nullptr;
   meta->LetStatementFromUninitialized = true;
   Var->Stage8_CheckMemory(sm, meta);
 
-  // Mark all the parts as uninitialized.
+  // Mark all the parts as uninitialized, and never given a
+  // value (a loop body's second time round declares them
+  // afresh).
   for (auto const &v : Var->ExtractNames()) {
-    sm->CurrentScope->GetVarSymbol(v.get())->MemInfo->MovedBy(
-      *this, sm->CurrentScope);
+    auto &state = memory_state::StateOf(
+      *sm->CurrentScope, *sm->CurrentScope->FindVarSymbol(v.get()));
+    state.MovedBy(*this);
+    state.Given = false;
   }
 }
 

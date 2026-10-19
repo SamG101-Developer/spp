@@ -2,30 +2,17 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.utils.strings;
-import spp.utils.traits;
 import spp.utils.types;
 import std;
-
-namespace std {
-  SPP_EXP_FUN template <typename T> requires spp::utils::traits::floating_point<T>
-  auto to_string(const T value) -> std::string {
-    std::array<char, 128> buf;
-    auto [ptr, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), value);
-    return std::string(buf.data(), ptr);
-  }
-}
 
 namespace spp::utils::strings {
   /// Check if a character is alphanumeric (a-z, A-Z, 0-9) or
   /// an underscore.
   SPP_EXP_FUN auto IsAlNum(char c) -> bool;
 
-  /// Convert a string from snake_case to PascalCase.
-  SPP_EXP_FUN auto SnakeToPascal(Str const &) -> Str;
-
   /// Find the closest match to "query" among "choices", or
-  /// "std::nullopt" if nothing matches.
-  SPP_EXP_FUN auto ClosestMatch(StrView query, Vec<Str> const &choices) -> std::optional<Str>;
+  /// "Nullopt" if nothing matches.
+  SPP_EXP_FUN SPP_ATTR_COLD auto ClosestMatch(StrView query, Vec<Str> const &choices) -> Opt<Str>;
 
   auto Levenshtein(StrView s1, StrView s2) -> std::size_t;
 
@@ -46,9 +33,9 @@ namespace spp::utils::strings {
   /// there is none.
   SPP_EXP_FUN auto NormalizeFloatString(StrView s1, StrView s2, StrView exp = "") -> Str;
 
-  /// Strip every underscore from a numeric string, so the boost
-  /// constructors can be called cleanly on it, for integers or
-  /// rationals.
+  /// Strip every underscore from a numeric string, so the numex
+  /// BigInt/BigDec constructors can be called cleanly on it, for
+  /// integers or rationals.
   SPP_EXP_FUN auto NormaliseAnyString(StrView s1) -> Str;
 
   /// Decode a single-quoted char literal token (quotes

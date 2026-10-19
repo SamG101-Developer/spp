@@ -1,8 +1,5 @@
 #pragma once
 
-#include <boost/preprocessor.hpp>
-#include <boost/preprocessor/enum.hpp>
-
 #define PARSE_ONCE(out, f) \
     auto out = f();        \
     if (out == nullptr) { return nullptr; }
@@ -37,7 +34,7 @@
                 break;                         \
             }                                  \
             else {                             \
-                out.EmplaceBack(std::move(ast)); \
+                out.emplace_back(std::move(ast)); \
                 done_1_parse = true;           \
                 temp_index = _Pos;             \
             }                                  \
@@ -46,24 +43,34 @@
 
 #define PARSE_ONE_OR_MORE(out, f, s) \
     PARSE_ZERO_OR_MORE(out, f, s)    \
-    if (out.IsEmpty()) {             \
+    if (out.empty()) {             \
         return nullptr;              \
     }
 
 #define PARSE_TWO_OR_MORE(out, f, s) \
     PARSE_ONE_OR_MORE(out, f, s)     \
-    if (out.Len() < 2) {             \
+    if (out.size() < 2) {             \
         return nullptr;              \
     }
 
 #define PARSE_NEGATE(invalid)                \
     if (_Pos < _TokensLen) {                 \
-        if (_Tokens[_Pos].type == invalid) { \
+        if (_Tokens[_Pos].Type == invalid) { \
             return nullptr;                  \
         }                                    \
     }
 
-#define PARSE_ALTERNATE_TRY(_1, base_type, method)       \
+// Apply m(d, x) to each x in the variadic list; 256 rescans, so up to 256 elements.
+#define SPP_PP_PARENS ()
+#define SPP_PP_EXPAND(...) SPP_PP_EXPAND3(SPP_PP_EXPAND3(SPP_PP_EXPAND3(SPP_PP_EXPAND3(__VA_ARGS__))))
+#define SPP_PP_EXPAND3(...) SPP_PP_EXPAND2(SPP_PP_EXPAND2(SPP_PP_EXPAND2(SPP_PP_EXPAND2(__VA_ARGS__))))
+#define SPP_PP_EXPAND2(...) SPP_PP_EXPAND1(SPP_PP_EXPAND1(SPP_PP_EXPAND1(SPP_PP_EXPAND1(__VA_ARGS__))))
+#define SPP_PP_EXPAND1(...) __VA_ARGS__
+#define SPP_PP_FOR_EACH(m, d, ...) __VA_OPT__(SPP_PP_EXPAND(SPP_PP_FOR_EACH_HELPER(m, d, __VA_ARGS__)))
+#define SPP_PP_FOR_EACH_HELPER(m, d, a, ...) m(d, a) __VA_OPT__(SPP_PP_FOR_EACH_AGAIN SPP_PP_PARENS(m, d, __VA_ARGS__))
+#define SPP_PP_FOR_EACH_AGAIN() SPP_PP_FOR_EACH_HELPER
+
+#define PARSE_ALTERNATE_TRY(base_type, method)           \
     {                                                    \
         const auto _alt_pos = _Pos;                      \
         auto _alt_tmp = method();                        \
@@ -77,24 +84,15 @@
 #define PARSE_ALTERNATE(out, base_type, ...)       \
     auto _pa = Unique<base_type>(nullptr);         \
     do {                                           \
-        BOOST_PP_SEQ_FOR_EACH(                     \
+        SPP_PP_FOR_EACH(                           \
             PARSE_ALTERNATE_TRY, base_type,        \
-            BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
+            __VA_ARGS__)                           \
         return nullptr;                            \
     } while (false);                               \
     auto out = std::move(_pa);
 
 #define FORWARD_AST(ast) \
     ast
-
-#define CREATE_AST(T, ...) \
-    MakeUnique<T>(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
-
-#define CREATE_AST_CUSTOM(T, static_func, ...) \
-    T::static_func(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(MOVE_AST_FOR_CREATION, BOOST_PP_EMPTY(), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
-
-#define MOVE_AST_FOR_CREATION(_1, _2, ast) \
-    std::move(ast)
 
 #define INJECT_CODE(code, method) \
     spp::parse::ParserSpp(spp::lex::Lexer((code)).Lex()).method()

@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.case_expression_branch_ast;
 import spp.analyse.errors.semantic_error;
@@ -7,6 +8,8 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.case_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -25,6 +28,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
@@ -50,12 +54,12 @@ CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
 auto CaseExpressionBranchAst::PosStart() const -> std::size_t {
   // Use the op or first pattern
-  return Op ? Op->PosStart() : Patterns.Front()->PosStart();
+  return Op ? Op->PosStart() : Patterns.front()->PosStart();
 }
 
 auto CaseExpressionBranchAst::PosEnd() const -> std::size_t {
   // Use the final pattern.
-  return Patterns.Back()->PosEnd();
+  return Patterns.back()->PosEnd();
 }
 
 auto CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
@@ -114,15 +118,15 @@ auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   // Build the comparison the branch actually tests, over the
   // real operands. This is to retained, rather than needing to
   // rebuild at codegen time. Only needed for "case ... of".
-  _MappedPatFuncs = Vec<Unique<BinaryExpressionAst>>(Patterns.Len());
+  _MappedPatFns = Vec<Unique<BinaryExpressionAst>>(Patterns.size());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       if (pe == nullptr) { continue; }
 
-      _MappedPatFuncs[i] = MakeUnique<BinaryExpressionAst>(
+      _MappedPatFns[i] = MakeUnique<BinaryExpressionAst>(
         AstClone(meta->CaseCondition), AstClone(Op), AstClone(pe->Expr));
-      _MappedPatFuncs[i]->Stage7_AnalyseSemantics(sm, meta);
+      _MappedPatFns[i]->Stage7_AnalyseSemantics(sm, meta);
     }
   }
 
@@ -139,10 +143,21 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
   // Move into the branch's scope.
   sm->MoveToNextScope();
 
-  // Check the patterns, guard and body.
+  // Check the patterns and guard, then the match edge they
+  // lead to (what the branch does with the "case" subject),
+  // then the body.
+  IMPORT_UTILS;
   for (auto const &p : Patterns) { p->Stage8_CheckMemory(sm, meta); }
   if (Guard) { Guard->Stage8_CheckMemory(sm, meta); }
+  case_utils::ApplySubjectOnMatch(*this, *sm, *meta);
   Body->Stage8_CheckMemory(sm, meta);
+
+  // The pattern's bindings end with the branch, and so do
+  // the loans they hold.
+  auto &loans = memory_state::LoansOf(*sm->CurrentScope);
+  for (const auto sym : sm->CurrentScope->GetAllVarSymbols(true)) {
+    memory_state::ReleaseLoans(loans, *sym);
+  }
 
   // Move out of the branch's scope.
   sm->MoveOutOfCurrentScope();
@@ -155,30 +170,30 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
   sm->MoveToNextScope();
   const auto tests_condition_directly =
     Op == nullptr
-    and not Patterns.IsEmpty()
+    and not Patterns.empty()
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
   for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
     auto *tested = tests_condition_directly and meta->CaseCondition != nullptr
       ? static_cast<Ast*>(meta->CaseCondition)
-      : i < _MappedPatFuncs.Len() and _MappedPatFuncs[i] != nullptr
-      ? static_cast<Ast*>(_MappedPatFuncs[i].get())
+      : i < _MappedPatFns.size() and _MappedPatFns[i] != nullptr
+      ? static_cast<Ast*>(_MappedPatFns[i].get())
       : static_cast<Ast*>(pattern);
     tested->Stage9_CompTimeResolve(sm, meta);
 
     // Determine if this branch is not a match (false).
-    const auto cmp_pat_bool = meta->CmpResult ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
+    const auto cmp_pat_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
     if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
-      sm->ExhaustScope();
+      ignore = sm->SkipSubtree(sm->CurrentScope);
       continue;
     }
 
     // Check with the branch guard if it exists.
     if (Guard != nullptr) {
       Guard->Stage9_CompTimeResolve(sm, meta);
-      const auto cmp_guard_bool = meta->CmpResult ? meta->CmpResult->To<BooleanLiteralAst>() : nullptr;
+      const auto cmp_guard_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
       if (not cmp_guard_bool or not cmp_guard_bool->IsTrue()) {
-        sm->ExhaustScope();
+        ignore = sm->SkipSubtree(sm->CurrentScope);
         continue;
       }
     }
@@ -190,16 +205,17 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
   }
 
   // None of the patterns on this branch matched.
-  meta->CmpResult = nullptr;
+  meta->CompTimeResult = nullptr;
   sm->MoveOutOfCurrentScope();
 }
 
 auto CaseExpressionBranchAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS_AND_UID;
   // Generate the branch architecture. Start by defining blocks
   // for the branch's "body" and "next" (after body) zones.
   sm->MoveToNextScope();
-  const auto uid = "." + spp::utils::Uid(this);
+  const auto uid = "." + Uid();
   const auto func = ctx->Builder.GetInsertBlock()->getParent();
   const auto body_bb = llvm::BasicBlock::Create(
     *ctx->Context, "case.branch.body" + uid, func);
@@ -238,8 +254,8 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   // For a desugared iterable loop, reaching this branch means
   // the generator yielded, so the enclosing loop counts as
   // having been entered and its "else" block must not run.
-  if (_ForIterLoopYield and not meta->LlvmLoopStack.IsEmpty()) {
-    if (const auto entered_flag = meta->LlvmLoopStack.Back().EnteredFlag; entered_flag != nullptr) {
+  if (_ForIterLoopYield and not meta->LlvmLoopStack.empty()) {
+    if (const auto entered_flag = meta->LlvmLoopStack.back().EnteredFlag; entered_flag != nullptr) {
       ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
     }
   }
@@ -254,10 +270,16 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   // receive a Some[T] in one branch, and a None in another. In
   // this case the member value has to be tagged and copied into
   // the variant's payload (a bit-cast cannot express that).
+  // A named function is likewise built into the function value
+  // the target's type asks for, one branch at a time, as each
+  // branch may name a different one.
   if (meta->AssignmentTarget != nullptr and meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
+    const auto target_ref = TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope);
+    const auto body_ref = Body->InferTypeRef(sm, meta);
+    llvm_val = codegen::CoerceToFnValue(
+      llvm_val, target_ref, body_ref, *sm, ctx);
     llvm_val = codegen::CoerceToVariant(
-      llvm_val, TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope),
-      Body->InferTypeRef(sm, meta), *sm->CurrentScope, "case.branch.variant" + uid, ctx);
+      llvm_val, target_ref, body_ref, *sm->CurrentScope, "case.branch.variant" + uid, ctx);
   }
 
   // Add a special case for the "!" type being used as the
@@ -312,7 +334,7 @@ auto CaseExpressionBranchAst::_CodegenCombinePatterns(
   // when c is true". Skip the pattern codegen.
   const auto tests_condition_directly =
     Op == nullptr
-    and not Patterns.IsEmpty()
+    and not Patterns.empty()
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
   if (tests_condition_directly and meta->LlvmCaseCondition != nullptr) {
@@ -322,8 +344,8 @@ auto CaseExpressionBranchAst::_CodegenCombinePatterns(
   // Reuse either the generated pattern combinations, or the normal
   // pattern codegen if there was no combinations performed.
   const auto codegen_pattern = [&](const std::size_t i) -> llvm::Value* {
-    return i < _MappedPatFuncs.Len() and _MappedPatFuncs[i] != nullptr
-      ? _MappedPatFuncs[i]->Stage11_CodeGen(sm, meta, ctx)
+    return i < _MappedPatFns.size() and _MappedPatFns[i] != nullptr
+      ? _MappedPatFns[i]->Stage11_CodeGen(sm, meta, ctx)
       : Patterns[i]->Stage11_CodeGen(sm, meta, ctx);
   };
 
@@ -334,7 +356,7 @@ auto CaseExpressionBranchAst::_CodegenCombinePatterns(
   // a false guard. The guard is executed before this from the case
   // expression ast.
   auto llvm_combined_pattern = codegen_pattern(0);
-  for (auto i = 1uz; i < Patterns.Len(); ++i) {
+  for (auto i = 1uz; i < Patterns.size(); ++i) {
     llvm_combined_pattern = ctx->Builder.CreateOr(llvm_combined_pattern, codegen_pattern(i));
   }
   return llvm_combined_pattern;

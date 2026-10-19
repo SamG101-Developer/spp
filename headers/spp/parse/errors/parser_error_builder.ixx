@@ -24,13 +24,8 @@ namespace spp::parse::errors {
   /// token. Used in error messages about parsing. Must be TU
   /// local (not hidden) for below usage - might be GCC bug.
   SPP_ATTR_COLD inline auto TokenTypeForMessage(
-    const lex::SppTokenType token)
-    -> Str {
+    const lex::SppTokenType token) -> Str {
     switch (token) {
-      // Special case - compiler injected so needed, but not
-      // user-writable so don't offer it as an alternative.
-      case lex::SppTokenType::TK_DOLLAR: return {};
-
       case lex::SppTokenType::LX_IDENTIFIER: return "an identifier";
       case lex::SppTokenType::LX_NUMBER: return "a number";
       case lex::SppTokenType::LX_STRING: return "a string";
@@ -38,7 +33,7 @@ namespace spp::parse::errors {
       case lex::SppTokenType::LX_CHARACTER: return "a character";
       case lex::SppTokenType::LX_DIGIT: return "a digit";
       default: {
-        auto const spelling = lex::tok_to_string(token);
+        auto const spelling = lex::TokToString(token);
         return spelling.empty() ? Str() : "'" + spelling + "'";
       }
     }
@@ -73,7 +68,7 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
       auto name = TokenTypeForMessage(token);
       if (name.empty()) { continue; }
       if (genex::contains(token_names, name)) { continue; }
-      token_names.EmplaceBack(std::move(name));
+      token_names.emplace_back(std::move(name));
     }
     token_names |= genex::actions::sort;
 
@@ -85,17 +80,26 @@ struct spp::parse::errors::SyntacticErrorBuilder final : utils::errors::Abstract
     if (token_set_str.empty()) { token_set_str = "something else"; }
 
     // Replace the "£" with the string tokens, completing
-    // the error message. Todo: Make "£" a constant.
+    // the error message. A message with no "£" says what is
+    // wrong without them, and is complete as it is.
     constexpr auto placeholder = StrView("£");
-    auto err_msg = this->_ErrObj->header;
-    err_msg.replace(err_msg.find(placeholder), placeholder.size(), std::move(token_set_str));
+    auto err_msg = this->_ErrObj->Header;
+    if (const auto at = err_msg.find(placeholder); at != Str::npos) {
+      err_msg.replace(at, placeholder.size(), std::move(token_set_str));
+    }
 
     // Inject the error message into the error object for
     // this builder, and call the internal raise steps for
     // the abstract builder.
-    this->_ErrObj->messages = {
+    this->_ErrObj->Message = err_msg;
+
+    // "Pos" is the parser's token index; the formatter reads
+    // the position a token of its file has.
+    const auto position = this->_ErrFormatters[0]->PositionOf(Pos);
+    this->_ErrObj->Span = this->_ErrFormatters[0]->SpanOfRawPos(position, 1);
+    this->_ErrObj->Messages = {
       this->_ErrFormatters[0]->ErrorRawPos(
-        Pos, 1, std::move(err_msg), "Syntax error")
+        position, 1, std::move(err_msg), "Syntax error")
     };
     utils::errors::AbstractErrorBuilder<T>::Raise();
   }
