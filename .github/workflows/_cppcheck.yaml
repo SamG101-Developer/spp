@@ -21,7 +21,7 @@ jobs:
       # Audit, not block: this job gates the builds, so an
       # endpoint missing from the list would stop every merge.
       - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
         with:
           egress-policy: audit
 
@@ -47,7 +47,7 @@ jobs:
       # GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
+        uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9
         with:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}
