@@ -33,7 +33,6 @@ allow = [
   "headers/spp/utils/types.ixx",
   "headers/wrappers",
   "headers/spp/codegen/llvm_passes.hpp",
-  "sources/spp/codegen/llvm_passes.cpp",
 ]
 
 [rule.suggest]
@@ -72,7 +71,6 @@ allow = [
   "headers/spp/utils/types.ixx",
   "headers/wrappers",
   "headers/spp/codegen/llvm_passes.hpp",
-  "sources/spp/codegen/llvm_passes.cpp",
 ]
 
 [rule.suggest]

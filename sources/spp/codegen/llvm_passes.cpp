@@ -1,7 +1,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <optional>
 
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Analysis/CGSCCPassManager.h>
@@ -31,6 +30,7 @@
 #include <spp/codegen/llvm_passes.hpp>
 
 import spp.utils.ice;
+import spp.utils.types;
 
 namespace spp::codegen {
   namespace {
@@ -185,10 +185,10 @@ namespace spp::codegen {
     /// "SelectTarget". If it is empty, then it's the host, as
     /// "TargetTriple" specifies. Only written once, before
     /// codegen begins.
-    auto SelectedTriple() -> std::string& {
+    auto SelectedTriple() -> Str& {
       // Static string returned as a mutable reference for
       // writing into.
-      static auto triple = std::string();
+      static auto triple = Str();
       return triple;
     }
 
@@ -260,7 +260,7 @@ namespace spp::codegen {
       InitializeAllBackends();
       auto printed = 0u;
       for (const auto candidate : kSuggestedTriples) {
-        auto error = std::string();
+        auto error = Str();
         const auto triple = llvm::Triple(llvm::Triple::normalize(candidate));
         if (llvm::TargetRegistry::lookupTarget(triple, error) == nullptr) { continue; }
         llvm::errs() << "  " << candidate << "\n";
@@ -280,7 +280,7 @@ namespace spp::codegen {
 
         // Get the target triple (what we are compiling for),
         // and lookup the target for it.
-        auto error = std::string();
+        auto error = Str();
         const auto &triple = TargetTriple();
         const auto *target = llvm::TargetRegistry::lookupTarget(triple, error);
         if (target == nullptr) {
@@ -300,7 +300,7 @@ namespace spp::codegen {
     /// Create the folder for the triple: "<arch>-<os>[-<env>]",
     /// built from the parsed enums.
     auto FolderOf(
-      llvm::Triple const &triple) -> std::string {
+      llvm::Triple const &triple) -> Str {
       auto folder = llvm::Triple::getArchTypeName(triple.getArch()).str();
       folder += "-";
       folder += triple.isMacOSX()
@@ -316,10 +316,10 @@ namespace spp::codegen {
     /// Convert a folder name into a llvm triple (optional because
     /// it could fail).
     auto TripleOfFolder(
-      std::string const &folder) -> std::optional<llvm::Triple> {
+      Str const &folder) -> Opt<llvm::Triple> {
       auto parts = llvm::SmallVector<llvm::StringRef, 4>();
       llvm::StringRef(folder).split(parts, '-');
-      if (parts.size() != 2 and parts.size() != 3) { return std::nullopt; }
+      if (parts.size() != 2 and parts.size() != 3) { return Nullopt; }
       return llvm::Triple(llvm::Triple::normalize(folder));
     }
 
@@ -353,7 +353,7 @@ auto spp::codegen::SelectTarget(
   char const *triple) -> bool {
   // An empty request is the host, which is what the target
   // resolves to on its own when nothing has been selected.
-  const auto requested = std::string(triple != nullptr ? triple : "");
+  const auto requested = Str(triple != nullptr ? triple : "");
   if (requested.empty()) { return true; }
 
   // Normalised before the lookup, so a short name ("riscv64",
@@ -361,7 +361,7 @@ auto spp::codegen::SelectTarget(
   InitializeAllBackends();
   const auto normalized = llvm::Triple::normalize(requested);
 
-  auto error = std::string();
+  auto error = Str();
   if (llvm::TargetRegistry::lookupTarget(llvm::Triple(normalized), error) == nullptr) {
     llvm::errs()
       << "No llvm backend for target '" << requested << "' (normalised: " << normalized << "): " << error << "\n"
@@ -411,7 +411,7 @@ auto spp::codegen::HostFolderName() -> char const* {
 /// [CHECKED]
 auto spp::codegen::IsTargetFolderName(
   char const *folder) -> bool {
-  const auto spelled = std::string(folder);
+  const auto spelled = Str(folder);
   const auto triple = TripleOfFolder(spelled);
   if (not triple.has_value()) { return false; }
   if (triple->getArch() == llvm::Triple::UnknownArch) { return false; }
@@ -487,7 +487,7 @@ auto spp::codegen::RunCoroLoweringPipeline(
   // coroutine would trap on entry for want of a frame. Stop
   // here instead, naming what was left.
   if (const auto pending = PendingCoroUses(llvm_mod); pending != 0) {
-    auto left = std::string();
+    auto left = Str();
     for (auto const &fn : llvm_mod) {
       if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix) or fn.use_empty()) { continue; }
       left += (left.empty() ? "" : ", ") + fn.getName().str() + " (" + std::to_string(fn.getNumUses()) + ")";
@@ -578,7 +578,7 @@ auto spp::codegen::EmitCEntryPoint(
   // Analysis has already checked "main" exists and is the only
   // one, so either failing here is a compiler bug.
   const auto spp_main = llvm_mod.getFunction(spp_main_name);
-  if (spp_main == nullptr) { spp::Ice(std::string("no entry point named ") + spp_main_name + " in the module"); }
+  if (spp_main == nullptr) { spp::Ice(Str("no entry point named ") + spp_main_name + " in the module"); }
   if (llvm_mod.getFunction("main") != nullptr) { spp::Ice("the module already declares a C entry point"); }
 
   const auto i32_ty = llvm::Type::getInt32Ty(ctx);
@@ -596,7 +596,7 @@ auto spp::codegen::EmitCEntryPoint(
 
   // Analysis has already checked "main" takes no arguments.
   if (spp_main->arg_size() != 0) {
-    spp::Ice(std::string("the entry point ") + spp_main_name + " takes arguments; it must take none");
+    spp::Ice(Str("the entry point ") + spp_main_name + " takes arguments; it must take none");
   }
 
   // Todo: This might break performance.
@@ -760,7 +760,7 @@ auto spp::codegen::ApplyFfiUnwindGuard(
 
   // Collected first, as guarding a call splits the block it is
   // in. A "musttail" call has nowhere to land, so it stays.
-  auto calls = std::vector<llvm::CallInst*>();
+  auto calls = Vec<llvm::CallInst*>();
   for (auto &fn : llvm_mod) {
     for (auto &inst : llvm::instructions(fn)) {
       const auto call = llvm::dyn_cast<llvm::CallInst>(&inst);
