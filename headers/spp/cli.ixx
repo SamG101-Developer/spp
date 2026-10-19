@@ -81,6 +81,12 @@ namespace spp::cli {
 
   SPP_EXP_FUN auto HandleVersion() -> void;
 
+  /// Print the hardening record of a program spp built: what it
+  /// was built with, read back out of the executable. Reports a
+  /// file that is not an executable, or one with no record.
+  SPP_EXP_FUN auto HandleAudit(
+    Str const &path) -> bool;
+
   SPP_EXP_FUN auto CreateDefaultConfigFor(
     Str const &project_name) -> Str;
 

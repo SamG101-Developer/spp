@@ -12,6 +12,7 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <llvm/Object/ObjectFile.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/TargetSelect.h>
@@ -25,6 +26,7 @@
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvm/Transforms/Utils/ModuleUtils.h>
 
 #include <spp/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
@@ -339,6 +341,23 @@ namespace spp::codegen {
     /// type (KCFI): x86-64 and AArch64 can.
     auto TargetHasKcfi() -> bool {
       return TargetTriple().getArch() == llvm::Triple::x86_64 or TargetTriple().isAArch64();
+    }
+
+    /// Where a program's hardening record lives: an ELF note,
+    /// which "strip" keeps, or a section of its own elsewhere.
+    constexpr auto kHardeningNoteSection = llvm::StringLiteral(".note.spp.hardening");
+    constexpr auto kHardeningMachOSection = llvm::StringLiteral("__spp_hardening");
+    constexpr auto kHardeningCoffSection = llvm::StringLiteral(".spphard");
+
+    /// The owner the hardening record's ELF note names, and the
+    /// note's type under that owner.
+    constexpr auto kHardeningNoteOwner = llvm::StringLiteral("SPP");
+    constexpr auto kHardeningNoteType = 1U;
+
+    /// "n" rounded up to the four bytes every part of an ELF
+    /// note is padded to.
+    constexpr auto NotePadded(const std::size_t n) -> std::size_t {
+      return (n + 3) & ~std::size_t{3};
     }
 
     /// The type operand "i" of a control-flow-integrity record
@@ -892,6 +911,104 @@ auto spp::codegen::AssertIntrinsicNamingIsSound() -> void {
   }();
 
   SPP_ASSERT(checked);
+}
+
+auto spp::codegen::EmitHardeningRecord(
+  void *llvm_module,
+  char const *record)
+  -> void {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  auto &ctx = llvm_mod.getContext();
+  const auto &triple = TargetTriple();
+  const auto text = llvm::StringRef(record);
+
+  // On ELF, a note: its owner's name and the record each padded
+  // to four bytes, behind a header of their sizes and the note's
+  // type, in the target's byte order.
+  auto bytes = Str();
+  auto section = llvm::StringRef();
+  if (triple.isOSBinFormatELF()) {
+    const auto little = llvm_mod.getDataLayout().isLittleEndian();
+    const auto put32 = [&](const std::uint32_t v) {
+      for (auto i = 0U; i < 4U; ++i) { bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i)))); }
+    };
+    const auto owner_size = kHardeningNoteOwner.size() + 1;
+    put32(static_cast<std::uint32_t>(owner_size));
+    put32(static_cast<std::uint32_t>(text.size()));
+    put32(kHardeningNoteType);
+    bytes += kHardeningNoteOwner;
+    bytes.resize(12 + NotePadded(owner_size), '\0');
+    bytes += text;
+    bytes.resize(12 + NotePadded(owner_size) + NotePadded(text.size()), '\0');
+    section = kHardeningNoteSection;
+  }
+  else {
+    bytes = text.str();
+    section = triple.isOSBinFormatMachO() ? llvm::StringRef("__TEXT,__spp_hardening") : llvm::StringRef(kHardeningCoffSection);
+  }
+
+  // Nothing refers to it, so it is kept by being "used".
+  const auto init = llvm::ConstantDataArray::getString(ctx, bytes, /*AddNull=*/false);
+  const auto global = new llvm::GlobalVariable(
+    llvm_mod, init->getType(), true, llvm::GlobalValue::PrivateLinkage, init, "spp.hardening");
+  global->setSection(section);
+  global->setAlignment(llvm::Align(4));
+  llvm::appendToUsed(llvm_mod, {global});
+}
+
+auto spp::codegen::ReadHardeningRecord(
+  char const *path,
+  char const **error)
+  -> char const* {
+  static auto record = Str();
+  static auto failure = Str();
+  record.clear();
+
+  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  if (not object) {
+    failure = llvm::toString(object.takeError());
+    *error = failure.c_str();
+    return nullptr;
+  }
+
+  auto const &file = *object->getBinary();
+  for (auto const &sec : file.sections()) {
+    auto name = sec.getName();
+    if (not name) {
+      llvm::consumeError(name.takeError());
+      continue;
+    }
+    if (*name != kHardeningNoteSection and *name != kHardeningMachOSection and *name != kHardeningCoffSection) {
+      continue;
+    }
+    auto contents = sec.getContents();
+    if (not contents) {
+      failure = llvm::toString(contents.takeError());
+      *error = failure.c_str();
+      return nullptr;
+    }
+
+    // An ELF note's record follows its header and owner's name.
+    auto data = *contents;
+    if (file.isELF()) {
+      const auto get32 = [&](const std::size_t at) {
+        auto v = std::uint32_t{0};
+        for (auto i = 0U; i < 4U; ++i) {
+          const auto byte = static_cast<std::uint32_t>(static_cast<unsigned char>(data[at + i]));
+          v |= byte << (8U * (file.isLittleEndian() ? i : 3U - i));
+        }
+        return v;
+      };
+      if (data.size() < 12) { break; }
+      const auto desc_at = 12 + NotePadded(get32(0));
+      const auto desc_size = get32(4);
+      if (desc_at + desc_size > data.size()) { break; }
+      data = data.substr(desc_at, desc_size);
+    }
+    record = data.str();
+    break;
+  }
+  return record.c_str();
 }
 
 auto spp::codegen::EmitObjectFile(

@@ -316,6 +316,11 @@ auto spp::cli::RunCli(
      ->fallthrough()
      ->callback([] { std::cout << utils::features::HelpText(); });
 
+  auto audit_path = Str();
+  const auto audit_cmd = app.add_subcommand("audit", "Show what a program spp built was built with")->fallthrough();
+  audit_cmd->add_option("executable", audit_path, "The program to read")->required();
+  audit_cmd->callback([&audit_path] { if (not HandleAudit(audit_path)) { throw CLI::RuntimeError(1); } });
+
   app.add_subcommand("version", "Show version information")
      ->fallthrough()
      ->callback(HandleVersion);
@@ -775,6 +780,26 @@ auto spp::cli::HandleValidate(
   }
 
   // All checks passed.
+  return true;
+}
+
+auto spp::cli::HandleAudit(
+  Str const &path) -> bool {
+  // The record is written by every build ("EmitHardeningRecord");
+  // a program without one predates it or was not built by spp.
+  auto error = static_cast<char const*>(nullptr);
+  const auto record = codegen::ReadHardeningRecord(path.c_str(), &error);
+  if (record == nullptr) {
+    std::cerr << "Error: '" << path << "' cannot be read as a program: " << error << "\n";
+    return false;
+  }
+  if (*record == '\0') {
+    std::cerr
+      << "Error: '" << path << "' has no hardening record.\n"
+      << "  It was not built by spp, or by an spp from before records were written.\n";
+    return false;
+  }
+  std::cout << record;
   return true;
 }
 

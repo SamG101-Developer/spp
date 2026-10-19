@@ -78,4 +78,10 @@ namespace spp::utils::features {
   /// The entire schema as a listing, for the command "spp
   /// config", and for the tail of a validation failure.
   SPP_EXP_FUN auto HelpText() -> Str;
+
+  /// Every on/off key and the value it has for this build,
+  /// default or set, as "section.key = value" lines in schema
+  /// order: what a built program records about itself, so a
+  /// key added to the schema is recorded with no more work.
+  SPP_EXP_FUN auto EffectiveSettings() -> Str;
 }

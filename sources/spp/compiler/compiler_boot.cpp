@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/version.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/codegen/llvm_passes.hpp>
 #include <spp/compiler/macros.hpp>
@@ -469,6 +470,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(BinaryCodegenJumpTableBounds) { if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; } }
   codegen::ApplyFfiUnwindGuard(lto_module.get());
   codegen::ApplyUnwindTables(lto_module.get());
+
+  // What the program was built with, for "spp audit" to read
+  // back out of it: every on/off key, set or defaulted.
+  const auto record = std::format(
+    "spp {}\ntarget {}\nmode {}\n{}", SPP_VERSION, codegen::TargetFolderName(), out.Mode,
+    utils::features::EffectiveSettings());
+  codegen::EmitHardeningRecord(lto_module.get(), record.c_str());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 
   // A cross build stops at the object, no linking available for
