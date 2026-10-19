@@ -1,18 +1,38 @@
 module;
+#include <llvm/ADT/StringSet.h>
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/Object/ELFObjectFile.h>
+#include <llvm/Object/ObjectFile.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/Transforms/Utils/Local.h>
+#include <llvm/Transforms/Utils/ModuleUtils.h>
 
 export module llvm;
 
 export namespace llvm {
+  // The free operators ("StringRef == StringRef", "Twine +"):
+  // found by argument-dependent lookup only if exported.
+  using ::llvm::operator==;
+  using ::llvm::operator!=;
+  using ::llvm::operator<;
+  using ::llvm::operator+;
+
   using ::llvm::cast;
   using ::llvm::dyn_cast;
   using ::llvm::dyn_cast_or_null;
@@ -22,6 +42,17 @@ export namespace llvm {
   using ::llvm::install_fatal_error_handler;
   using ::llvm::verifyFunction;
   using ::llvm::verifyModule;
+  using ::llvm::appendToUsed;
+  using ::llvm::changeToInvokeAndSplitBasicBlock;
+  using ::llvm::consumeError;
+  using ::llvm::instructions;
+  using ::llvm::toString;
+  using ::llvm::InitializeAllAsmPrinters;
+  using ::llvm::InitializeAllTargetInfos;
+  using ::llvm::InitializeAllTargetMCs;
+  using ::llvm::InitializeAllTargets;
+  using ::llvm::InitializeNativeTarget;
+  using ::llvm::InitializeNativeTargetAsmPrinter;
   using ::llvm::raw_fd_ostream;
   using ::llvm::raw_string_ostream;
   using ::llvm::fltSemantics;
@@ -37,7 +68,9 @@ export namespace llvm {
   using ::llvm::AtomicRMWInst;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
+  using ::llvm::CallBase;
   using ::llvm::CallInst;
+  using ::llvm::CodeGenFileType;
   using ::llvm::Constant;
   using ::llvm::ConstantAsMetadata;
   using ::llvm::ConstantArray;
@@ -60,29 +93,70 @@ export namespace llvm {
   using ::llvm::MachineFunction;
   using ::llvm::MaybeAlign;
   using ::llvm::MDNode;
+  using ::llvm::MDString;
   using ::llvm::Metadata;
   using ::llvm::Module;
   using ::llvm::OperandBundleDef;
   using ::llvm::PointerType;
   using ::llvm::PHINode;
   using ::llvm::SmallVector;
+  using ::llvm::StringLiteral;
+  using ::llvm::StringRef;
+  using ::llvm::StringSet;
   using ::llvm::StructType;
+  using ::llvm::Target;
+  using ::llvm::TargetMachine;
+  using ::llvm::TargetOptions;
+  using ::llvm::TargetRegistry;
   using ::llvm::TargetSubtargetInfo;
   using ::llvm::Triple;
   using ::llvm::Type;
   using ::llvm::TypeSize;
   using ::llvm::PoisonValue;
   using ::llvm::UndefValue;
+  using ::llvm::UWTableKind;
   using ::llvm::Value;
 
   using ::llvm::DS_Warning;
   using ::llvm::DS_Error;
 
+  namespace sys {
+    using ::llvm::sys::getDefaultTargetTriple;
+  }
+
   namespace sys::fs {
     using ::llvm::sys::fs::OpenFlags;
+    using ::llvm::sys::fs::OF_None;
+  }
+
+  namespace legacy {
+    using ::llvm::legacy::PassManager;
+  }
+
+  namespace mdconst {
+    using ::llvm::mdconst::extract;
+  }
+
+  namespace object {
+    using ::llvm::object::ELFObjectFileBase;
+    using ::llvm::object::ObjectFile;
+    using ::llvm::object::SymbolRef;
+  }
+
+  namespace PICLevel {
+    using ::llvm::PICLevel::BigPIC;
+  }
+
+  namespace PIELevel {
+    using ::llvm::PIELevel::Large;
+  }
+
+  namespace Reloc {
+    using ::llvm::Reloc::PIC_;
   }
 
   namespace Intrinsic {
+    using ::llvm::Intrinsic::getName;
     using ::llvm::Intrinsic::getOrInsertDeclaration;
     using ::llvm::Intrinsic::IndependentIntrinsics;
 

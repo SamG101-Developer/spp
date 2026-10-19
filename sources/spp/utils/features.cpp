@@ -354,6 +354,16 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "non-executable and the code its own mapping, and fail the link on a text relocation or a "
           "writable-and-executable segment."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryLinkFortifiedFfi,
+          .Name = "fortified_ffi",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Fail the link against an ffi library that calls, unchecked, a libc function libc has a checked "
+          "version of (memcpy, sprintf, printf, ...), as one built without _FORTIFY_SOURCE does. ELF libraries "
+          "against glibc only. Rebuild the library with -O2 -D_FORTIFY_SOURCE=3, or turn this off."
+        },
       },
       .FreeForm = false,
     },

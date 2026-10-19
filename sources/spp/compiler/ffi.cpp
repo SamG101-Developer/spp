@@ -1,8 +1,9 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.ffi;
+import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_target;
 import spp.utils.files;
 import genex;
 import std;
@@ -151,4 +152,19 @@ auto spp::compiler::ffi::Libraries(
     return Nullopt;
   }
   return libraries;
+}
+
+auto spp::compiler::ffi::CheckFortified(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto plain = codegen::UnfortifiedImport(utils::files::NativeString(library).c_str());
+    if (plain == nullptr) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " calls '" << plain << "' unchecked: it was built without "
+      << "_FORTIFY_SOURCE.\n"
+      << "  Rebuild it with -O2 -D_FORTIFY_SOURCE=3, or set 'fortified_ffi = false' under [binary.link] in "
+      << "spp.toml.\n";
+    return false;
+  }
+  return true;
 }

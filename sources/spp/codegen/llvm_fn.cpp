@@ -1,5 +1,4 @@
 module;
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.codegen.llvm_fn;
 import spp.analyse.scopes.scope_manager;
@@ -9,6 +8,7 @@ import spp.analyse.utils.marker_sups;
 import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
 import spp.utils.features;
 import spp.utils.types;

@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
 #include <spp/analyse/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
+#include <spp/codegen/llvm_pipeline.hpp>
 #include <spp/compiler/macros.hpp>
 #include <spp/parse/macros.hpp>
 
@@ -32,7 +32,12 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_artefact;
 import spp.codegen.llvm_ctx;
+import spp.codegen.llvm_entry;
+import spp.codegen.llvm_harden_codegen;
+import spp.codegen.llvm_harden_memory;
+import spp.codegen.llvm_target;
 import spp.compiler.ffi;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
@@ -503,6 +508,7 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
 
   const auto libraries = ffi::Libraries(out.Root);
   if (not libraries.has_value()) { return false; }
+  FEATURE_GATE(BinaryLinkFortifiedFfi) { if (not ffi::CheckFortified(out.Root, *libraries)) { return false; } }
 
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
   for (auto const &lib : *libraries) {

@@ -1,7 +1,6 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 #include <spp/codegen/macros.hpp>
 
 module spp.asts.function_prototype_ast;
@@ -61,6 +60,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.codegen.builtins;
+import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;

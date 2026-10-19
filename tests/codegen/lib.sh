@@ -74,7 +74,8 @@ add_ffi() {
     local cc=cc
     [[ "${source}" == *.cpp ]] && cc=c++
     mkdir -p "${dir}/ffi/${pkg}/${HOST_FFI}"
-    "${cc}" -shared -fPIC -O0 -Wl,-z,relro,-z,now -o "${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so" "${source}"
+    "${cc}" -shared -fPIC -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
+        -o "${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so" "${source}"
     cat > "${dir}/ffi/${pkg}/stub.spp"
 }
 

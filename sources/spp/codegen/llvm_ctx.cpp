@@ -1,9 +1,9 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.codegen.llvm_ctx;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_target;
 
 SPP_MOD_BEGIN
 spp::codegen::LlvmCtx::LlvmCtx(

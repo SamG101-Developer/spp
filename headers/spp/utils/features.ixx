@@ -22,6 +22,7 @@ namespace spp::utils::features {
     BinaryCodegenCfi,
     BinaryCodegenJumpTableBounds,
     BinaryLinkHarden,
+    BinaryLinkFortifiedFfi,
   };
 
   SPP_EXP_CLS struct KeySpec {

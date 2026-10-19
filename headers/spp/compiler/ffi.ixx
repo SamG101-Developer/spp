@@ -22,4 +22,10 @@ namespace spp::compiler::ffi {
   /// when a package has none - reported, rather than a link that
   /// quietly leaves it out.
   SPP_EXP_FUN auto Libraries(Path const &root) -> Opt<Vec<Path>>;
+
+  /// Check every library "Libraries" answered was built with
+  /// fortified libc calls ("codegen::UnfortifiedImport"),
+  /// reporting the first that was not, with what it calls
+  /// unchecked and how to fix it, and answering false.
+  SPP_EXP_FUN auto CheckFortified(Path const &root, Vec<Path> const &libraries) -> bool;
 }

@@ -2,7 +2,6 @@ module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
   if (not HandleValidate(is_exe)) { std::exit(1); }
@@ -18,6 +17,8 @@ import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
+import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_target;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
 import spp.compiler.ffi;
