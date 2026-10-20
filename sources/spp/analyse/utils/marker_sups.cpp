@@ -257,8 +257,8 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ScopeManager *sm,
   meta::CompilerMetaData *meta)
   -> Unique<PostfixExpressionAst> {
-  // The receiver is analysed a second time in the built call (it is a clone of an already analysed expression), which
-  // is what the other operators that map themselves onto a method call do too.
+  // The built call is over a clone of the analysed receiver, which
+  // carries its analysis.
   if (not CanForward(receiver_ref, *sm->CurrentScope)) { return nullptr; }
   return BuildFwdCall(AstClone(&receiver), receiver_ref, sm, meta);
 }
@@ -285,10 +285,16 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   // expression evaluates to the borrow of the forwarded-to value.
   auto field_name = MakeUnique<IdentifierAst>(
     receiver->PosStart(), wants_mut or fwd_ref_target.Symbol == nullptr ? "fwd_mut" : "fwd_ref");
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(std::move(receiver), std::move(field));
-  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-  auto fwd_call = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+    nullptr, std::move(field_name));
+
+  // The receiver is analysed already, so the call does not analyse it again (that would open its scopes twice).
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    std::move(receiver), std::move(field));
+  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, nullptr, nullptr);
+  auto fwd_call = MakeUnique<PostfixExpressionAst>(
+    std::move(member_access), std::move(func_call));
 
   // Analyse the built call, so that it can be inferred from and generated like any other analysed expression.
   fwd_call->Stage7_AnalyseSemantics(sm, meta);
