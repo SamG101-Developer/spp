@@ -76,13 +76,16 @@ auto ArrayLiteralRepeatedElementAst::PosEnd() const -> std::size_t {
 }
 
 auto ArrayLiteralRepeatedElementAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<ArrayLiteralRepeatedElementAst>(
+  auto ast = MakeUnique<ArrayLiteralRepeatedElementAst>(
     AstClone(TokL),
     AstClone(Elem),
     AstClone(TokSemicolon),
     AstClone(Size),
     AstClone(TokR));
+  ast->_SizeScope = _SizeScope;
+  ast->_AnalysedSize = AstClone(_AnalysedSize);
+  ast->_ArrayType = _ArrayType;
+  return ast;
 }
 
 auto ArrayLiteralRepeatedElementAst::ToString() const -> Str {
@@ -108,6 +111,11 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types::ArrayType;
+
+  // What a clone carried over is this analysis's to remake.
+  _SizeScope = nullptr;
+  _AnalysedSize = nullptr;
+  _ArrayType = nullptr;
 
   // Analyse the repeated element.
   Elem->Stage7_AnalyseSemantics(sm, meta);
