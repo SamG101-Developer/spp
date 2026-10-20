@@ -138,9 +138,23 @@ export namespace llvm {
   }
 
   namespace object {
+    using ::llvm::object::ELF32BE;
+    using ::llvm::object::ELF32LE;
+    using ::llvm::object::ELF64BE;
+    using ::llvm::object::ELF64LE;
+    using ::llvm::object::ELFObjectFile;
     using ::llvm::object::ELFObjectFileBase;
     using ::llvm::object::ObjectFile;
     using ::llvm::object::SymbolRef;
+  }
+
+  namespace ELF {
+    using ::llvm::ELF::DF_1_NOW;
+    using ::llvm::ELF::DF_BIND_NOW;
+    using ::llvm::ELF::DT_BIND_NOW;
+    using ::llvm::ELF::DT_FLAGS;
+    using ::llvm::ELF::DT_FLAGS_1;
+    using ::llvm::ELF::PT_GNU_RELRO;
   }
 
   namespace PICLevel {
