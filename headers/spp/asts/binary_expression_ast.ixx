@@ -102,7 +102,8 @@ private:
 
   /// When we collapse comparisons with temporaries, we need
   /// to store them so they aren't cloned: "a < f() < b" needs
-  /// to materialize "f()".
+  /// to materialize "f()". A fold's tuple operand is held the
+  /// same way: ".. + f()" reads each element off one "f()".
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
 
   /// Check whether a logical operator has been analysed - the
@@ -112,4 +113,11 @@ private:
   /// Track if this binary operation is a logic "and"/"or"
   /// operation or not.
   bool _IsLogical;
+
+  /// Analyse a fold's tuple operand, once: anything but a name is
+  /// bound to a temporary (see "_ChainTemps"), which @p operand
+  /// then names, as the fold reads an element off it per element.
+  auto _BindFoldOperand(
+    Unique<ExpressionAst> &operand, ScopeManager *sm,
+    CompilerMetaData *meta) -> void;
 };

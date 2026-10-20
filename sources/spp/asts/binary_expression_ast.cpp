@@ -20,6 +20,8 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -111,6 +113,23 @@ auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
   return _IsLogical;
 }
 
+auto BinaryExpressionAst::_BindFoldOperand(
+  Unique<ExpressionAst> &operand, ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // A name is read in place. Anything else is evaluated once,
+  // into a temporary, rather than once per element read off
+  // it.
+  if (operand->To<IdentifierAst>() == nullptr) {
+    auto temp_name = MakeShared<IdentifierAst>(operand->PosStart(), "$fold." + spp::utils::Uid());
+    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
+    auto temp_let = MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(temp_var), nullptr, nullptr, std::move(operand));
+    temp_let->Stage7_AnalyseSemantics(sm, meta);
+    _ChainTemps.emplace_back(std::move(temp_let));
+    operand = AstClone(temp_name);
+  }
+  operand->Stage7_AnalyseSemantics(sm, meta);
+}
+
 auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -120,6 +139,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
   // Handle lhs-folding.
   if (Lhs->To<FoldExpressionAst>()) {
+    _BindFoldOperand(Rhs, sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
       ERR_ARGS(*Rhs));
@@ -166,6 +186,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
 
   // Handle rhs-folding.
   else if (Rhs->To<FoldExpressionAst>()) {
+    _BindFoldOperand(Lhs, sm, meta);
     RaiseIf<SppInvalidPrimaryExpressionError>(
       not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
       ERR_ARGS(*Lhs));
