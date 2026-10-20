@@ -166,7 +166,6 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     const auto expr_ref = TypeRef::Of(*expr_type, *sm->CurrentScope);
     if (auto fwd_call = marker_sups::BuildFwdCall(*Expr, expr_ref, sm, meta); fwd_call != nullptr) {
       Expr = std::move(fwd_call);
-      Expr->Stage7_AnalyseSemantics(sm, meta);
       expr_type = Expr->InferType(sm, meta);
       if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
     }
