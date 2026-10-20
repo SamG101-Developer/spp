@@ -365,4 +365,9 @@ auto PostfixExpressionOperatorKeywordResAst::IsAllowedInDefault() const -> bool 
   return true;
 }
 
+auto PostfixExpressionOperatorKeywordResAst::WalksOperand() const -> bool {
+  // Checked through "send", over the operand.
+  return true;
+}
+
 SPP_MOD_END

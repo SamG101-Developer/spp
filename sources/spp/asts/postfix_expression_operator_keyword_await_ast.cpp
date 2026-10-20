@@ -181,4 +181,9 @@ auto PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const -> boo
   return true;
 }
 
+auto PostfixExpressionOperatorKeywordAwaitAst::WalksOperand() const -> bool {
+  // Checked through "await_", over the operand.
+  return true;
+}
+
 SPP_MOD_END

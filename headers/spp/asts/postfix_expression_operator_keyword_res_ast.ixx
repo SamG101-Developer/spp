@@ -39,6 +39,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
 
   ~PostfixExpressionOperatorKeywordResAst() override;
 
+  SPP_ATTR_NODISCARD auto WalksOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;

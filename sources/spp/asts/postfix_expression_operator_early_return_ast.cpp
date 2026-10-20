@@ -37,6 +37,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 
 SPP_MOD_BEGIN
@@ -89,7 +90,8 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
 
   // Build the materializing left-hand-side to contain the
   // lhs of the postfix expression.
-  auto lhs_copy = AstClone(meta->PostfixExpressionLhs);
+  SPP_ASSERT(WrittenOperand != nullptr);
+  auto lhs_copy = std::move(WrittenOperand);
   const auto analysed_lhs = lhs_copy.get();
 
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
@@ -278,6 +280,11 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
   return marker_sups::FindTrySup(
     lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
     "early return").Symbol->TypeArgRef("Value");
+}
+
+auto PostfixExpressionOperatorEarlyReturnAst::RebuildsOperand() const -> bool {
+  // The "case" is built from the "?" operand.
+  return true;
 }
 
 SPP_MOD_END

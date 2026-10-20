@@ -6,9 +6,11 @@ module spp.asts.unary_expression_operator_async_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.async_utils;
+import spp.analyse.utils.expr_utils;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -71,6 +73,8 @@ auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<UnaryExpressionOperatorAsyncAst>(
     AstClone(TokAsync));
   ast->_TransformedFn = AstClone(_TransformedFn);
+  ast->_TypedOperand = AstClone(_TypedOperand);
+  ast->_OperandScope = _OperandScope;
   return ast;
 }
 
@@ -84,15 +88,37 @@ auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+auto UnaryExpressionOperatorAsyncAst::_SkipOperandScope(
+  ScopeManager *sm) const -> void {
+  if (_OperandScope == nullptr) { return; }
+  sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _OperandScope);
+  ignore = sm->SkipSubtree(sm->CurrentScope);
+  sm->MoveOutOfCurrentScope();
+}
+
 auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
 
+  // The operand is analysed on a copy, in a scope of its own,
+  // only to type the future.
+  SPP_ASSERT(WrittenOperand != nullptr);
+  auto scope_name = ScopeBlockName::FromParts("async-operand", {}, WrittenOperand->PosStart());
+  sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+  _OperandScope = sm->CurrentScope;
+  _TypedOperand = AstClone(WrittenOperand);
+  _TypedOperand->Stage7_AnalyseSemantics(sm, meta);
+  RaiseIf<SppInvalidPrimaryExpressionError>(
+    not expr_utils::IsPrimaryExprTypeValid(*_TypedOperand, *sm),
+    ERR_ARGS(*_TypedOperand));
+  sm->MoveOutOfCurrentScope();
+
   // Check that the right-hand-side to the "async" keyword is
   // a function call ast. This blocks things like "async 123"
   // before any downstream errors occur.
-  const auto rhs = meta->UnaryExpressionRhs->To<PostfixExpressionAst>();
+  const auto rhs = _TypedOperand->To<PostfixExpressionAst>();
   const auto rhs_fn_call = rhs != nullptr
     ? rhs->Op->To<PostfixExpressionOperatorFunctionCallAst>()
     : nullptr;
@@ -110,8 +136,8 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 
   // Cast out the rhs into the function call asts, to begin
   // the closure transformation procedure.
-  SPP_ASSERT(Source._OriginalRhs != nullptr);
-  auto inner_call = std::move(Source._OriginalRhs);
+  SPP_ASSERT(WrittenOperand != nullptr);
+  auto inner_call = std::move(WrittenOperand);
   const auto pristine = inner_call->ToUnchecked<PostfixExpressionAst>();
   const auto pristine_call = pristine->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>();
 
@@ -249,17 +275,21 @@ auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Stage 7 always builds the transformation, or raises; a
   // member that raised is not checked again.
-  if (_TransformedFn == nullptr) { Ice(*this, *sm->CurrentScope, "async expression checked before it was lowered"); }
+  if (_TransformedFn == nullptr) {
+    Ice(*this, *sm->CurrentScope, "async expression checked before it was lowered");
+  }
 
-  // Map the analysis to the inner transformation ast - the mapped
-  // closure.
+  // Map the analysis to the inner transformation ast - the
+  // mapped closure.
+  _SkipOperandScope(sm);
   _TransformedFn->Stage8_CheckMemory(sm, meta);
 }
 
 auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // Generate the mapped object initialization, which handles the
-  // sppc lowering.
+  // Generate the mapped object initialization, which handles
+  // the sppc lowering.
+  _SkipOperandScope(sm);
   const auto value = _TransformedFn->Stage11_CodeGen(sm, meta, ctx);
   return value;
 }
@@ -269,8 +299,10 @@ auto UnaryExpressionOperatorAsyncAst::InferType(
   //
   using generate::common_types::FutureType;
 
-  // Wrap the function call inside a "Future" type.
-  auto inner_type = meta->UnaryExpressionRhs->InferType(sm, meta);
+  // Wrap the function call inside a "Future" type, typed off the
+  // analysed copy of it.
+  auto *const typed = _TypedOperand != nullptr ? _TypedOperand.get() : meta->UnaryExpressionRhs;
+  auto inner_type = typed->InferType(sm, meta);
   auto future_type = FutureType(
     TokAsync->PosStart(), std::move(inner_type));
   future_type->Stage7_AnalyseSemantics(sm, meta);
@@ -287,6 +319,11 @@ auto UnaryExpressionOperatorAsyncAst::InferTypeRef(
 auto UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {
   // Lowers into a closure => not allowed as a default.
   return false;
+}
+
+auto UnaryExpressionOperatorAsyncAst::RebuildsOperand() const -> bool {
+  // The closure is built from the call as written.
+  return true;
 }
 
 SPP_MOD_END

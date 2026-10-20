@@ -137,4 +137,9 @@ auto PostfixExpressionOperatorIndexAst::IsAllowedInDefault() const -> bool {
   return Expr->IsAllowedInDefault();
 }
 
+auto PostfixExpressionOperatorIndexAst::WalksOperand() const -> bool {
+  // Checked through "index_ref"/"index_mut", over the operand.
+  return true;
+}
+
 SPP_MOD_END

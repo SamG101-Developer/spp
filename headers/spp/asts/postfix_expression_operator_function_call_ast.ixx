@@ -56,6 +56,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   ~PostfixExpressionOperatorFunctionCallAst() override;
 
+  SPP_ATTR_NODISCARD auto WalksOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -69,8 +71,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Unique<PostfixExpressionOperatorAst> override;
+    ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> override;
 
   auto MarkAsAsync(Ast *async_token) -> void;
 

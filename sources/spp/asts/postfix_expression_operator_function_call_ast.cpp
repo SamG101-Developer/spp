@@ -930,4 +930,9 @@ auto PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const -> boo
     FnArgGroup->IsAllowedInDefault() and Fold == nullptr;
 }
 
+auto PostfixExpressionOperatorFunctionCallAst::WalksOperand() const -> bool {
+  // A method call checks its receiver as its "self" argument.
+  return HasReceiver();
+}
+
 SPP_MOD_END

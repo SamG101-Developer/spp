@@ -28,6 +28,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorEarlyReturnAst final : Po
 
   ~PostfixExpressionOperatorEarlyReturnAst() override;
 
+  SPP_ATTR_NODISCARD auto RebuildsOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
