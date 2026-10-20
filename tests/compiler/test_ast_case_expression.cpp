@@ -670,7 +670,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Exhaustiveness: a "case" that matches every value of its subject needs no "else" ("case_utils::CoverageOf"), and a
+// Exhaustiveness: a "case" that matches every value of its subject needs no "else" ("PatternSolver"), and a
 // branch after every value is matched can never run, so it is an error.
 
 SPP_TEST_SHOULD_PASS_SEMANTIC(

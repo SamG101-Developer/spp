@@ -369,3 +369,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+// A literal in the payload of a subject that is not a name: it is checked at its path in the subject, not through a
+// narrowed name, which only a name has.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectAst,
+  test_valid_literal_in_the_payload_of_a_subject_that_is_not_a_name, R"(
+    fun make(n: S32) -> Opt[S32] {
+        ret Some[S32](val=n)
+    }
+
+    fun f(n: S32) -> S32 {
+        ret case make(n) of {
+            is Some[S32](val=5) { 1 }
+            is Some[S32](val) { 2 }
+            is None() { 3 }
+        }
+    }
+)");

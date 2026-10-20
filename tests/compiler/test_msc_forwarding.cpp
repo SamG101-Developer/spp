@@ -202,3 +202,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(w)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestForwarding,
+    test_invalid_forwarding_through_an_early_return,
+    SppLinearValueNotConsumedError, R"(
+    fun g() -> Opt[Vec[U64]] { ret None }
+    fun f() -> Opt[USize] {
+        let n = g()?.len()
+        ret Some(val=n)
+    }
+)");

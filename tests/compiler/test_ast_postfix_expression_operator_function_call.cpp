@@ -699,3 +699,26 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g()
     }
 )");
+
+// A fold's arguments are analysed as written only to type them, in a scope the later stages skip, and a folded tuple
+// that is not a name is evaluated once into a temporary. A "?" argument's scopes used to be opened again by each
+// folded call, and the walks went into the wrong ones.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_postfix_function_folding_over_an_early_return, R"(
+    fun f(a: S32) -> S32 { ret a }
+    fun g(o: Opt[(S32, S32)]) -> Opt[S32] {
+        let r = f(o?)..
+        ret Some(val=r.0 + r.1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_postfix_function_folding_over_a_call, R"(
+    fun f(a: S32, b: USize) -> S32 { ret a }
+    fun t() -> (S32, S32, S32) { ret (1, 2, 3) }
+    fun g() -> Void {
+        let r = f(t(), 0_uz)..
+    }
+)");

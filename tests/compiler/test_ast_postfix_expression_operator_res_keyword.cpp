@@ -240,3 +240,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
         loop x in g { }
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_on_an_early_return,
+    SppLinearValueNotConsumedError, R"(
+    fun f(o: Opt[Gen[S32]]) -> Opt[S32] {
+        let x = o?.res()
+        ret None
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_on_a_block,
+    SppLinearValueNotConsumedError, R"(
+    cor g() -> Gen[S32] {
+        gen 1
+    }
+
+    fun f() -> Void {
+        let mut a = g()
+        let x = { a }.res()
+    }
+)");

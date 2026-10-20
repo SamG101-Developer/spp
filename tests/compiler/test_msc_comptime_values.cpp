@@ -243,6 +243,37 @@ SPP_TEST_CMP_VALUES(
   cmp fallthrough: S32 = f([2, 3, 4])
 )", {"matched", "5_s32"}, {"fallthrough", "24_s32"});
 
+// A variant's pattern at compile time: its tag is checked before it binds, and the binding reads the subject narrowed
+// to the member (which once had no comptime value, the narrowing being copied before the subject had one).
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_variant_checks_the_tag, R"(
+  cmp fun f(x: Res[S32, Bool]) -> S32 {
+    ret case x of {
+      is Pass[S32](val) { val }
+      is Fail[Bool](err) { 0 }
+    }
+  }
+
+  cmp passed: S32 = f(Pass[S32](val=4))
+  cmp failed: S32 = f(Fail[Bool](err=true))
+)", {"passed", "4_s32"}, {"failed", "0_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_variant_with_a_literal_in_its_payload, R"(
+  cmp fun f(x: Opt[S32]) -> S32 {
+    ret case x of {
+      is Some[S32](val=5) { 1 }
+      is Some[S32](val) { 2 }
+      else { 3 }
+    }
+  }
+
+  cmp five: S32 = f(Some[S32](val=5))
+  cmp six: S32 = f(Some[S32](val=6))
+)", {"five", "1_s32"}, {"six", "2_s32"});
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_loop_in_comptime_function,

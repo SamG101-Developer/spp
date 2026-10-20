@@ -621,3 +621,43 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(y)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_an_async_expression, R"(
+    fun h() -> Str { ret Str::from("x") }
+    fun g() -> Void {
+        let s = (async h()).await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_a_block, R"(
+    fun h() -> Str { ret Str::from("x") }
+    fun g() -> Void {
+        let s = { async h() }.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_an_early_return, R"(
+    fun g(o: Opt[std::future::Fut[Str]]) -> Opt[Str] {
+        let s = o?.await
+        ret Some(val=s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_with_an_early_return_in_an_argument, R"(
+    fun h(x: U64) -> U64 { ret x }
+    fun g(o: Opt[U64]) -> Opt[U64] {
+        let fut = async h(o?)
+        let v = fut.await
+        ret Some(val=v)
+    }
+)");
