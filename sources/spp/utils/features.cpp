@@ -364,6 +364,17 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "version of (memcpy, sprintf, printf, ...), as one built without _FORTIFY_SOURCE does. ELF libraries "
           "against glibc only. Rebuild the library with -O2 -D_FORTIFY_SOURCE=3, or turn this off."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryLinkRelroFfi,
+          .Name = "relro_ffi",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Fail the link against an ffi library linked without full RELRO (a PT_GNU_RELRO segment and "
+          "BIND_NOW), whose relocated data, its GOT included, would stay writable after startup where the "
+          "program's own does not. ELF libraries only. Relink the library with -Wl,-z,relro,-z,now, or turn "
+          "this off."
+        },
       },
       .FreeForm = false,
     },

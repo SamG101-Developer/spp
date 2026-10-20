@@ -509,6 +509,7 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto libraries = ffi::Libraries(out.Root);
   if (not libraries.has_value()) { return false; }
   FEATURE_GATE(BinaryLinkFortifiedFfi) { if (not ffi::CheckFortified(out.Root, *libraries)) { return false; } }
+  FEATURE_GATE(BinaryLinkRelroFfi) { if (not ffi::CheckRelro(out.Root, *libraries)) { return false; } }
 
   auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
   for (auto const &lib : *libraries) {

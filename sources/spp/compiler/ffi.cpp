@@ -168,3 +168,17 @@ auto spp::compiler::ffi::CheckFortified(
   }
   return true;
 }
+
+auto spp::compiler::ffi::CheckRelro(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto missing = codegen::UnhardenedLink(utils::files::NativeString(library).c_str());
+    if (missing == nullptr) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " was linked without " << missing << ": its relocated data stays "
+      << "writable after startup.\n"
+      << "  Relink it with -Wl,-z,relro,-z,now, or set 'relro_ffi = false' under [binary.link] in spp.toml.\n";
+    return false;
+  }
+  return true;
+}

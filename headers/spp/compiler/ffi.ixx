@@ -28,4 +28,10 @@ namespace spp::compiler::ffi {
   /// reporting the first that was not, with what it calls
   /// unchecked and how to fix it, and answering false.
   SPP_EXP_FUN auto CheckFortified(Path const &root, Vec<Path> const &libraries) -> bool;
+
+  /// Check every library "Libraries" answered was linked with
+  /// full RELRO ("codegen::UnhardenedLink"), reporting the first
+  /// that was not, with what it lacks and how to fix it, and
+  /// answering false.
+  SPP_EXP_FUN auto CheckRelro(Path const &root, Vec<Path> const &libraries) -> bool;
 }
