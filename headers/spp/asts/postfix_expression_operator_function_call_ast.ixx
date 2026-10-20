@@ -24,6 +24,7 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
@@ -131,6 +132,20 @@ private:
   /// already holds.
   Unique<FunctionCallArgumentGroupAst> _CalleeArgGroup;
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
+
+  /// The scope a fold's arguments are analysed in, as written: only
+  /// to type them and find the tuples folded over, as each folded
+  /// call analyses arguments of its own. Their scopes ("?", a block)
+  /// are kept in this one, which the later stages skip as one.
+  Scope *_FoldArgsScope = nullptr;
+
+  /// A folded tuple argument that is not a name, evaluated once into
+  /// a temporary that each folded call reads its element off.
+  Vec<Unique<LetStatementInitializedAst>> _FoldTemps;
+
+  /// Step the walk past "_FoldArgsScope", before the temporaries'
+  /// and the folded calls' scopes (it was created before them).
+  auto _SkipFoldArgsScope(ScopeManager *sm) const -> void;
 
   Ast *_IsAsync;
   bool _IsCoroAndAutoResume;

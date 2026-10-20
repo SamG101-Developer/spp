@@ -97,7 +97,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   auto name = MakeUnique<IdentifierAst>(PosStart(), "await_");
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, std::move(name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
     AstClone(meta->PostfixExpressionLhs), std::move(field));
 
   // Convert the "await_" field into a function call by
@@ -168,7 +168,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
-  analyse::scopes::ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Nothing inside the operator is an expression, so there is
   // nothing to substitute into.
   return MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(

@@ -48,8 +48,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Unique<PostfixExpressionOperatorAst> override;
+    ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 

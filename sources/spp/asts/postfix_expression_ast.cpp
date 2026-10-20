@@ -20,6 +20,8 @@ import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_index_ast;
+import spp.asts.postfix_expression_operator_keyword_await_ast;
+import spp.asts.postfix_expression_operator_keyword_res_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
@@ -41,6 +43,15 @@ PostfixExpressionAst::PostfixExpressionAst(
 
 PostfixExpressionAst::~PostfixExpressionAst() = default;
 
+auto PostfixExpressionAst::NewOverAnalysedLhs(
+  decltype(Lhs) &&lhs, decltype(Op) &&op) -> Unique<PostfixExpressionAst> {
+  // The lhs is a clone of an analysed operand, so it carries its
+  // analysis; analysing it again would open its scopes twice.
+  auto out = MakeUnique<PostfixExpressionAst>(std::move(lhs), std::move(op));
+  out->_LhsAnalysed = true;
+  return out;
+}
+
 auto PostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
   return Lhs->PosStart();
@@ -53,9 +64,11 @@ auto PostfixExpressionAst::PosEnd() const -> std::size_t {
 
 auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionAst>(
+  auto ast = MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(Op));
+  ast->_LhsAnalysed = _LhsAnalysed;
+  return ast;
 }
 
 auto PostfixExpressionAst::ToString() const -> Str {
@@ -98,10 +111,12 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
       // Standard analysis of the lhs (which is not a type), and
       // checking that the lhs is a valid form of primary expression.
-      Lhs->Stage7_AnalyseSemantics(sm, meta);
-      RaiseIf<SppInvalidPrimaryExpressionError>(
-        not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-        ERR_ARGS(*Lhs.get()));
+      if (not _LhsAnalysed) {
+        Lhs->Stage7_AnalyseSemantics(sm, meta);
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+          not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+          ERR_ARGS(*Lhs.get()));
+      }
     }
   }
 
@@ -156,6 +171,17 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   if (
     Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or
     Op->To<PostfixExpressionOperatorSliceAst>() != nullptr) {
+    Op->Stage8_CheckMemory(sm, meta);
+    return;
+  }
+
+  // "await" and "res" check their lhs as the "self" of the call
+  // they map to, as a method call does, which walks its scopes.
+  if (
+    Op->To<PostfixExpressionOperatorKeywordAwaitAst>() != nullptr or
+    Op->To<PostfixExpressionOperatorKeywordResAst>() != nullptr) {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->PostfixExpressionLhs = Lhs.get();
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
@@ -252,7 +278,7 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
 }
 
 auto PostfixExpressionAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or

@@ -99,9 +99,12 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
 
   // Check the argument (send value) is valid, by passing it into the ".send" function call.
   auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(send));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(FnArgGroup), nullptr);
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+    nullptr, std::move(send));
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    AstClone(meta->PostfixExpressionLhs), std::move(field));
+  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, std::move(FnArgGroup), nullptr);
   func_call->Source.OriginalExpr = this;
   _MappedFn = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
 
@@ -138,7 +141,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
 
   // A "&mut" borrow this resume yields, bound to a name, is a
   // loan on the generator until the next resume.
-  auto holder = gen_sym != nullptr ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
+  const auto holder = gen_sym != nullptr ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
   if (holder != nullptr) {
     const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
@@ -344,7 +347,7 @@ auto PostfixExpressionOperatorKeywordResAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorKeywordResAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // The potential resume arguments are expressions.
   auto fn_arg_group = AstClone(FnArgGroup);
   for (auto const &fn_arg : fn_arg_group->Args) {

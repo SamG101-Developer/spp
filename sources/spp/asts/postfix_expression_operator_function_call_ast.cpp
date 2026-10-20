@@ -6,6 +6,7 @@ module spp.asts.postfix_expression_operator_function_call_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
+import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
@@ -43,6 +44,9 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.integer_literal_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -114,6 +118,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   ast->_CalleeArgGroup = AstClone(_CalleeArgGroup);
   ast->_IsAsync = _IsAsync;
   ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
+  ast->_FoldArgsScope = _FoldArgsScope;
+  ast->_FoldTemps = AstCloneVec(_FoldTemps);
   ast->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
   return ast;
 }
@@ -148,7 +154,18 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     solver.emplace(*this, *meta->PostfixExpressionLhs, *sm, *meta);
     FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes();
+
+    // A fold's arguments are analysed in a scope of their own (see
+    // "_FoldArgsScope").
+    _FoldArgsScope = nullptr;
+    _FoldTemps.clear();
+    if (Fold != nullptr) {
+      auto scope_name = analyse::scopes::ScopeBlockName::FromParts("fold-args", {}, FnArgGroup->PosStart());
+      sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
+      _FoldArgsScope = sm->CurrentScope;
+    }
     FnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+    if (Fold != nullptr) { sm->MoveOutOfCurrentScope(); }
   }
 
   // If we are function folding, create transformed asts.
@@ -270,6 +287,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   // If a fold is taking place, analyse the folded
   // transformations.
   if (Fold != nullptr) {
+    _SkipFoldArgsScope(sm);
+    for (auto const &temp : _FoldTemps) { temp->Stage8_CheckMemory(sm, meta); }
     for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
     return;
   }
@@ -394,6 +413,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // is typed as. An inner scope built here to hold them would step
   // the scope walk into a scope that was never created.
   if (Fold != nullptr) {
+    _SkipFoldArgsScope(sm);
+    for (auto const &temp : _FoldTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) {
       auto pf = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), AstClone(ast));
@@ -804,6 +825,15 @@ auto PostfixExpressionOperatorFunctionCallAst::IsAsync() const -> bool {
   return _IsAsync != nullptr;
 }
 
+auto PostfixExpressionOperatorFunctionCallAst::_SkipFoldArgsScope(
+  ScopeManager *sm) const -> void {
+  if (_FoldArgsScope == nullptr) { return; }
+  sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _FoldArgsScope);
+  ignore = sm->SkipSubtree(sm->CurrentScope);
+  sm->MoveOutOfCurrentScope();
+}
+
 auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
   ScopeManager *sm, CompilerMetaData *meta) -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> {
   IMPORT_UTILS;
@@ -812,8 +842,9 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
   auto folded_arg_types = Vec<TypeAst*>{};
   auto folded_tup_lens = Vec<std::size_t>{};
   auto fold_indexes = Vec<std::size_t>{};
+  auto args_sm = sm->NewManagerAt(_FoldArgsScope);
   for (auto [i, arg] : FnArgGroup->GetAllArgs() | genex::views::enumerate) {
-    auto arg_type = arg->InferType(sm, meta);
+    auto arg_type = arg->InferType(&args_sm, meta);
     if (type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*arg_type, *sm->CurrentScope), *sm->CurrentScope)) {
       fold_indexes.emplace_back(i);
       folded_args.emplace_back(arg);
@@ -822,22 +853,42 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
     }
   }
 
+  // A folded tuple that is not a name is evaluated once, into a
+  // temporary, and each folded call reads its element off that.
+  auto folded_names = Vec<Shared<IdentifierAst>>{};
+  for (const auto arg : folded_args) {
+    if (const auto name = arg->Val->To<IdentifierAst>(); name != nullptr) {
+      folded_names.emplace_back(AstCloneShared(name));
+      continue;
+    }
+    auto temp_name = MakeShared<IdentifierAst>(arg->Val->PosStart(), "$fold." + spp::utils::Uid());
+    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
+    auto temp_let = MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(temp_var), nullptr, nullptr, AstClone(arg->Val));
+    temp_let->Stage7_AnalyseSemantics(sm, meta);
+    _FoldTemps.emplace_back(std::move(temp_let));
+    folded_names.emplace_back(std::move(temp_name));
+  }
+
   // Build the unrolled AST transformations.
   const auto smallest_tuple = genex::min_element(folded_tup_lens);
   auto transformed_asts = Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>{};
   for (auto i = 0uz; i < smallest_tuple; ++i) {
     auto new_arg_group = AstClone(FnArgGroup);
-    for (const auto fold_index : fold_indexes) {
+    for (auto j = 0uz; j < fold_indexes.size(); ++j) {
       // Create the postfix access into the tuple.
+      const auto fold_index = fold_indexes[j];
       auto id = MakeUnique<IdentifierAst>(new_arg_group->Args[fold_index]->Val->PosEnd(), std::to_string(i));
       auto ma = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(id));
-      auto pf = MakeUnique<PostfixExpressionAst>(std::move(new_arg_group->Args[fold_index]->Val), std::move(ma));
+      auto pf = MakeUnique<PostfixExpressionAst>(AstClone(folded_names[j]), std::move(ma));
       new_arg_group->Args[fold_index]->Val = std::move(pf);
     }
 
     auto transformed_ast = AstClone(this);
     transformed_ast->FnArgGroup = std::move(new_arg_group);
     transformed_ast->Fold = nullptr;
+    transformed_ast->_FoldArgsScope = nullptr;
+    transformed_ast->_FoldTemps.clear();
     transformed_asts.emplace_back(std::move(transformed_ast));
   }
 
