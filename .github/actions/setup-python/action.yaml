@@ -1,11 +1,17 @@
 # Get Python ready for all the tasks that the runner needs to
 # do.
 name: setup-python
-description: "Install the pinned Python, then publish every pin in .github/dependencies.toml into the job environment."
+description: "Install current bash on macOS and the pinned Python, then publish every pin in .github/dependencies.toml into the job environment."
 
 runs:
   using: composite
   steps:
+    # First, as every job calls this action before any script runs.
+    - name: Install current bash (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: bash .github/scripts/setup/install-bash-macos.sh
+
     # Bash, not pins.py: the interpreter that would read the
     # manifest is the thing being installed.
     - name: Read pinned Python version
