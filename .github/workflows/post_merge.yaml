@@ -162,6 +162,7 @@ jobs:
       compiler: gcc
       modes: rel
       shard-count: 1
+      pack: true
 
   release-macos-arm64:
     name: Release · macos-arm64
@@ -175,6 +176,7 @@ jobs:
       compiler: clang
       modes: rel
       shard-count: 1
+      pack: true
 
   release-windows-x64:
     name: Release · windows-x64
@@ -188,6 +190,7 @@ jobs:
       compiler: msvc
       modes: rel
       shard-count: 1
+      pack: true
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release.
