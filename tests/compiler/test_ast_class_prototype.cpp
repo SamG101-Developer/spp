@@ -171,3 +171,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f(x: RecG) -> Void { std::mem::ops::drop(x) }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClassPrototypeAst,
+  test_invalid_recursive_definition_through_self,
+  SppRecursiveTypeError, R"(
+    cls Node {
+        !public next: Self
+    }
+)");

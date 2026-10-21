@@ -477,3 +477,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 //         fun f() -> A { }
 //     }
 // )");
+
+// A marker annotation applies to a class, not to an alias of one.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AnnotationAst_BuiltinZeroType,
+  test_invalid_zero_type_on_type_alias,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
+    cls Plain { }
+
+    sup Plain ext Copy { }
+
+    !zero_type
+    type Marker = Plain
+)");

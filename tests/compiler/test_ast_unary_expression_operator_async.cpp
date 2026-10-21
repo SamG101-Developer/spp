@@ -661,3 +661,90 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret Some(val=v)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_call_of_a_computed_callable, R"(
+    fun inc(n: S32) -> S32 { ret n + 1 }
+    fun pick() -> FunRef[(S32,), S32] { ret inc }
+    fun g() -> Void {
+        let f = async (pick())(1)
+        std::mem::ops::drop(f)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_two_borrowed_arguments, R"(
+    fun f(a: &StrView, b: &StrView) -> Str { ret Str::from(a) }
+    fun g() -> Void {
+        let x = Str::from("hello")
+        let y = Str::from("world")
+        let future = async f(&x, &y)
+        let s = future.await
+        std::mem::ops::drop(s)
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_consuming_method_on_a_temporary, R"(
+    cls A { }
+    sup A {
+        !public
+        fun consume(self) -> Str {
+            std::mem::ops::drop(self)
+            ret Str::from("hello")
+        }
+    }
+    fun make() -> A { ret A() }
+    fun g() -> Void {
+        let future = async make().consume()
+        let s = future.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_consuming_method_on_an_attribute, R"(
+    cls A { }
+    sup A {
+        !public
+        fun consume(self) -> Str {
+            std::mem::ops::drop(self)
+            ret Str::from("hello")
+        }
+    }
+    cls B { !public a: A }
+    fun g() -> Void {
+        let b = B(a=A())
+        let future = async b.a.consume()
+        let s = future.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_static_constant_as_argument_and_receiver, R"(
+    cls C { }
+    sup C ext Copy { }
+    sup C {
+        !public
+        fun eat(self) -> S32 { ret 1 }
+    }
+    cls M { }
+    sup M {
+        !public cmp c: C = C()
+    }
+    fun f(a: &C) -> S32 { ret 2 }
+    fun g() -> Void {
+        let f1 = async f(&M::c)
+        let x = f1.await
+        let f2 = async M::c.eat()
+        let y = f2.await
+    }
+)");

@@ -1067,3 +1067,38 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_float_value_branch_unreachable,
+  SppCaseBranchUnreachableError, R"(
+    fun f(x: F64) -> S32 {
+        case x of {
+            == 1.5_f64 { ret 1 }
+            == 1.50_f64 { ret 2 }
+            else { ret 3 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CaseExpressionAst,
+  test_invalid_repeated_string_value_branch_unreachable,
+  SppCaseBranchUnreachableError, R"(
+    fun f(s: &StrView) -> S32 {
+        case s of {
+            == "a" { ret 1 }
+            == "a" { ret 2 }
+            else { ret 3 }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CaseExpressionAst,
+  test_valid_branches_take_the_widest_variant_type, R"(
+    fun f(b: Bool, narrow: S32 or Bool, wide: S32 or Bool or U64) -> Void {
+        let mut x = case b { narrow } else { wide }
+        x = 1_u64
+    }
+)");

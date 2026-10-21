@@ -239,3 +239,29 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g[cmp ..n: Bool]() -> Bool { ret n.2 }
     fun f() -> Void { let b = g[true, false]() }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterGroupAst,
+  test_valid_tuple_destructuring_parameters_with_skips, R"(
+    fun first((a, _, ..): (S32, S32, S32, S32)) -> S32 {
+        ret a
+    }
+
+    fun sum_rest((a, ..others): (S32, S32, S32)) -> S32 {
+        let (b, c) = others
+        ret a + b + c
+    }
+
+    fun f() -> S32 {
+        ret first((1, 2, 3, 4)) + sum_rest((1, 2, 3))
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterGroupAst,
+  test_valid_destructured_parameter_in_generic_function, R"(
+    fun swap[T]((a, b): (T, T)) -> (T, T) { ret (b, a) }
+    fun f() -> Void {
+        let x = swap((1, 2))
+    }
+)");

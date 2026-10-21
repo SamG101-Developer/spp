@@ -620,3 +620,246 @@ SPP_TEST_CMP_VALUES(
   cmp a: Bool = b'a' == 97_u8
   cmp b: Bool = b'a' == b'b'
 )", {"a", "true"}, {"b", "false"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_integer_intrinsics_from_std_methods, R"(
+  cmp neg: S32 = (5).neg()
+  cmp ne: Bool = 3 != 4
+  cmp le: Bool = 4 <= 4
+  cmp ge: Bool = 3 >= 4
+  cmp mx: S32 = (3).max(9)
+  cmp mn: S32 = (3).min(9)
+  cmp ord_lt: S32 = (3).ord(&9)
+  cmp ord_eq: S32 = (9).ord(&9)
+  cmp ord_gt: S32 = (10).ord(&9)
+  cmp bnot: S32 = (5).bit_not()
+)", {"neg", "-5_s32"}, {"ne", "true"}, {"le", "true"}, {"ge", "false"}, {"mx", "9_s32"}, {"mn", "3_s32"},
+  {"ord_lt", "-1_s32"}, {"ord_eq", "0_s32"}, {"ord_gt", "1_s32"}, {"bnot", "-6_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_float_comparisons_and_intrinsics, R"(
+  cmp eq: Bool = 1.5_f64 == 1.5_f64
+  cmp ne: Bool = 1.5_f64 != 2.5_f64
+  cmp lt: Bool = 1.5_f64 < 2.5_f64
+  cmp le: Bool = 1.5_f64 <= 1.5_f64
+  cmp gt: Bool = 1.5_f64 > 2.5_f64
+  cmp ge: Bool = 1.5_f64 >= 2.5_f64
+  cmp rem: F64 = 7.5_f64 % 2.0_f64
+  cmp neg: F64 = (2.5_f64).neg()
+  cmp abs: F64 = (-2.5_f64).abs()
+  cmp mx: F64 = (2.5_f64).max(3.5_f64)
+  cmp mn: F64 = (2.5_f64).min(3.5_f64)
+)", {"eq", "true"}, {"ne", "true"}, {"lt", "true"}, {"le", "true"}, {"gt", "false"}, {"ge", "false"},
+  {"rem", "1.5_f64"}, {"neg", "-2.5_f64"}, {"abs", "2.5_f64"}, {"mx", "3.5_f64"}, {"mn", "2.5_f64"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_size_of_and_align_of, R"(
+  cmp sz: USize = std::mem::ops::size_of[U64]()
+  cmp al: USize = std::mem::ops::align_of[U32]()
+)", {"sz", "8_uz"}, {"al", "4_uz"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_reassignment_namespace_constant_chains_and_pointer_sized_shift, R"(
+  cmp fun twice(n: S32) -> S32 {
+    let mut x = n
+    x = x * 2
+    ret x
+  }
+
+  cmp a: S32 = twice(21)
+  cmp p: USize = std::fs::path::path_max
+  cmp chained: Bool = 1 < 2 < 3
+  cmp chained_false: Bool = 3 < 2 < 4
+  cmp and_short: Bool = 2 < 1 and 1 < 2
+  cmp or_short: Bool = 1 < 2 or 2 < 1
+  cmp shl: USize = 1_uz << 4_u32
+)", {"a", "42_s32"}, {"p", "4096_uz"}, {"chained", "true"}, {"chained_false", "false"}, {"and_short", "false"},
+  {"or_short", "true"}, {"shl", "16_uz"});
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestCompTimeValues,
+  test_invalid_shift_of_pointer_sized_integer_by_its_width,
+  SppShiftAmountOutOfBoundsError, R"(
+  cmp a: USize = 1_uz << 64_u32
+)");
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_repeated_array_literal, R"(
+  cmp a: Arr[S32, 3_uz] = [7; 3_uz]
+)", {"a", "[7_s32; 3_uz]"});
+
+// Todo: red - a compound assignment in a "cmp fun" leaves its target unchanged: the "&mut self" argument is copied
+//  into the comptime arguments and never written back.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_integer_compound_assignment, R"(
+  cmp fun compound(n: S32) -> S32 {
+    let mut x = n
+    x += 3
+    x -= 1
+    x *= 4
+    x /= 2
+    x %= 7
+    ret x
+  }
+
+  cmp a: S32 = compound(5)
+)", {"a", "0_s32"});
+
+// Todo: red - as "test_integer_compound_assignment".
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_integer_bitwise_compound_assignment, R"(
+  cmp fun bits(n: U32) -> U32 {
+    let mut x = n
+    x <<= 4_u32
+    x >>= 1_u32
+    x |= 1_u32
+    x &= 13_u32
+    x ^= 6_u32
+    ret x
+  }
+
+  cmp a: U32 = bits(3_u32)
+)", {"a", "15_u32"});
+
+// Todo: red - as "test_integer_compound_assignment".
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_bit_not_assign, R"(
+  cmp fun flip(n: S32) -> S32 {
+    let mut x = n
+    x.bit_not_assign()
+    ret x
+  }
+
+  cmp a: S32 = flip(5)
+)", {"a", "-6_s32"});
+
+// Todo: red - as "test_integer_compound_assignment".
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_float_compound_assignment, R"(
+  cmp fun floats(n: F64) -> F64 {
+    let mut x = n
+    x += 1.5_f64
+    x -= 0.5_f64
+    x *= 3.0_f64
+    x /= 2.0_f64
+    x %= 4.0_f64
+    ret x
+  }
+
+  cmp a: F64 = floats(2.0_f64)
+)", {"a", "0.5_f64"});
+
+// Todo: red - comptime "bit_not" negates the BigInt, which is only right for a signed type: an unsigned one needs
+//  2^w - 1 - x, and gets a negative value rejected as out of bounds (E17).
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_unsigned_bit_not, R"(
+  cmp a: U32 = (15_u32).bit_not()
+)", {"a", "4294967280_u32"});
+
+// Todo: red - "S32::zero()" and the other numeric constants abort the compiler ("map::at" in the bounds check): the
+//  comptime constants are untyped literals, and ignore Self's width.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_numeric_type_constants, R"(
+  cmp a: S32 = S32::zero()
+  cmp b: S32 = S32::one()
+  cmp c: S32 = S32::neg_one()
+  cmp d: U8 = U8::one()
+  cmp e: F32 = F32::zero()
+  cmp f: F32 = F32::one()
+  cmp g: F32 = F32::neg_one()
+)", {"a", "0_s32"}, {"b", "1_s32"}, {"c", "-1_s32"}, {"d", "1_u8"}, {"e", "0.0_f32"}, {"f", "1.0_f32"},
+  {"g", "-1.0_f32"});
+
+// Todo: red - a comptime call runs the template's body, so a comp generic it returns stays the unbound "n" (and a
+//  comparison of it aborts the compiler with "bad_cast").
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_comp_generic_argument_in_call, R"(
+  cmp fun get[cmp n: S32]() -> S32 { ret n }
+  cmp a: S32 = get[5]()
+)", {"a", "5_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_of_object_destructure_with_a_guard, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  cmp fun f(p: Point) -> S32 {
+    ret case p of {
+      is Point(x, y) and x == 1 { y }
+      is Point(x, y) { x + y }
+    }
+  }
+
+  cmp guarded: S32 = f(Point(x=1, y=5))
+  cmp unguarded: S32 = f(Point(x=2, y=5))
+)", {"guarded", "5_s32"}, {"unguarded", "7_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_case_with_guards_in_a_module_constant, R"(
+  cmp a: S32 = case (1, 2) of {
+      is (x, y) and x == 2 { 10 }
+      is (x, y) and y == 2 { 20 }
+      else { 30 }
+  }
+)", {"a", "20_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_let_object_destructure_with_aliases, R"(
+  cls Point {
+    !public x: S32
+    !public y: S32
+  }
+
+  cmp fun f(p: Point) -> S32 {
+    let Point(x as a, y as b) = p
+    let c = a * 10 + b
+    ret c
+  }
+
+  cmp a: S32 = f(Point(x=1, y=2))
+)", {"a", "12_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_valueless_return_in_a_comptime_call, R"(
+  cmp fun g(n: S32) -> Void {
+    ret
+  }
+
+  cmp fun f(n: S32) -> S32 {
+    g(n)
+    ret n
+  }
+
+  cmp a: S32 = f(1)
+)", {"a", "1_s32"});
+
+// Todo: red - a comptime "x is <pattern>" raises E3 on "x" when the pattern matches (the narrowed "x" has no comptime
+//  value); the same test written as a "case" folds.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_is_expression_on_a_variant, R"(
+  cmp fun f(x: Res[S32, Bool]) -> Bool {
+    ret x is Pass[S32](..)
+  }
+
+  cmp passed: Bool = f(Pass[S32](val=4))
+  cmp failed: Bool = f(Fail[Bool](err=true))
+)", {"passed", "true"}, {"failed", "false"});

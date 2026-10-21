@@ -172,3 +172,29 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         c()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LoopControlFlowStatementAst,
+  test_valid_valued_exit_after_a_diverging_exit, R"(
+    fun f(c: Bool) -> S32 {
+        let x = loop true {
+            case c { exit std::abort::abort() }
+            exit 5
+        }
+        ret x
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  LoopControlFlowStatementAst,
+  test_invalid_exit_type_mismatch_after_a_diverging_exit,
+  SppTypeMismatchError, R"(
+    fun f(c: Bool, d: Bool) -> S32 {
+        let x = loop true {
+            case c { exit std::abort::abort() }
+            case d { exit 5 }
+            exit false
+        }
+        ret x
+    }
+)");

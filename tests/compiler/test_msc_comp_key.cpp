@@ -465,3 +465,89 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret Box[3_uz]::n == 4_uz and Box[5_uz]::n == 6_uz
     }
 )");
+
+// The integer comparisons and shifts fold to values in a return type, each instantiation with its own binding.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_integer_comparisons_and_shifts_fold, R"(
+    cls A[cmp n: USize] { }
+    cls C[cmp b: Bool] { }
+    fun f[cmp n: USize]() -> A[n << 2_u32] { ret A[n << 2_u32]() }
+    fun h[cmp n: USize]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+    fun k[cmp n: USize]() -> C[n != 1_uz] { ret C[n != 1_uz]() }
+    fun k2[cmp n: USize]() -> C[n <= 1_uz] { ret C[n <= 1_uz]() }
+    fun k3[cmp n: USize]() -> C[n >= 1_uz] { ret C[n >= 1_uz]() }
+    fun g() -> Void {
+        let x: A[12_uz] = f[3_uz]()
+        let y: A[2_uz] = h[4_uz]()
+        let z: C[true] = k[2_uz]()
+        let w: C[false] = k2[2_uz]()
+        let v: C[true] = k3[2_uz]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+        std::mem::ops::drop(z)
+        std::mem::ops::drop(w)
+        std::mem::ops::drop(v)
+    }
+)");
+
+// Bool inequality and the float orderings fold to bool comp arguments.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_bool_and_float_comparisons_fold, R"(
+    cls C[cmp b: Bool] { }
+    fun k[cmp b: Bool]() -> C[b != true] { ret C[b != true]() }
+    fun f1[cmp x: F64]() -> C[x <= 1.0_f64] { ret C[x <= 1.0_f64]() }
+    fun f2[cmp x: F64]() -> C[x > 1.0_f64] { ret C[x > 1.0_f64]() }
+    fun f3[cmp x: F64]() -> C[x >= 1.0_f64] { ret C[x >= 1.0_f64]() }
+    fun g() -> Void {
+        let a: C[true] = k[false]()
+        let b: C[false] = f1[2.0_f64]()
+        let c: C[true] = f2[2.0_f64]()
+        let d: C[true] = f3[1.0_f64]()
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
+        std::mem::ops::drop(d)
+    }
+)");
+
+// Todo: red - "and" (and "or") in a comp argument segfaults the compiler: "CompOperatorToken" has no keyword
+//  operators, so "CompAstOf" answers null, which "CreateGnCompSymbol" then infers the type of.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_logical_and_in_a_comp_argument, R"(
+    cls C[cmp b: Bool] { }
+    fun g() -> Void {
+        let x: C[true and false] = C[false]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+// A class attribute's type may name a constant of the class through "Self".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_self_member_in_an_attribute_type, R"(
+    cls A[cmp n: USize] { }
+    cls X { !public a: A[Self::n] }
+    sup X { !public cmp n: USize = 4_uz }
+    fun g() -> Void {
+        let x = X(a=A[4_uz]())
+        std::mem::ops::drop(x)
+    }
+)");
+
+// Todo: red - segfaults: the attribute's type "A[Self::n]" names an instance not made yet, so "AstIn" answers null
+//  in the object initializer's argument check. With "A[4_uz]" made first, the mismatch is E1 as it should be.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestCompKey,
+    test_invalid_self_member_in_an_attribute_type_mismatch,
+    SppTypeMismatchError, R"(
+    cls A[cmp n: USize] { }
+    cls X { !public a: A[Self::n] }
+    sup X { !public cmp n: USize = 4_uz }
+    fun g() -> Void {
+        let x = X(a=A[8_uz]())
+        std::mem::ops::drop(x)
+    }
+)");

@@ -70,3 +70,21 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = b'\x0bb'
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CharLiteralAst,
+  test_valid_char_literal_two_and_four_byte_unicode, R"(
+    fun f() -> Void {
+        let a = 'é'
+        let b = '😀'
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CharLiteralAst,
+  test_invalid_empty_char_literal,
+  SppCharLiteralLengthError, R"(
+    fun f() -> Void {
+        let a = ''
+    }
+)");

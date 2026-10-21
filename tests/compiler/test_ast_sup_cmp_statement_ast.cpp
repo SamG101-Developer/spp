@@ -128,3 +128,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let u: Unit[S32] = Unit[S32]::empty
     }
 )");
+
+// Todo: red - cyclic constants overflow the stack (FindCompMemberId and Scope::CompIdOf call each other); the
+//  "reading" guard in "comp_generics::FindCompMemberId" never fires. There is no cyclic-constant error yet: E3 stands
+//  in for it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_invalid_cyclic_constants,
+    SppCompTimeConstantError, R"(
+    cls M { }
+    sup M {
+        !public cmp a: S32 = Self::b
+        !public cmp b: S32 = Self::a
+    }
+)");

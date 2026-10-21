@@ -213,3 +213,16 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret g(x)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CoroutinePrototypeAst,
+  test_valid_ret_after_gen_in_gen_once, R"(
+    cor f() -> GenOnce[S32] {
+        gen 1
+        ret
+    }
+
+    fun g() -> S32 {
+        ret f()
+    }
+)");

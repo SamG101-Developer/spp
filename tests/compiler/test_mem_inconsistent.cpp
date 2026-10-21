@@ -537,3 +537,24 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(y)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstMemoryInconsistent,
+  test_invalid_memory_partially_moved_in_nested_case,
+  SppInconsistentlyInitializedMemoryUseError, R"(
+    cls Point {
+        !public x: Str
+        !public y: Str
+    }
+    fun f(c: Bool, d: Bool) -> Void {
+        let p = Point(x=Str::from("5"), y=Str::from("5"))
+        case c {
+            case d {
+                std::mem::ops::drop(p.x)
+            }
+            else { }
+        }
+        else { }
+        let r = p
+    }
+)");

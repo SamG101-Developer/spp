@@ -213,3 +213,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret Some(val=n)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestForwarding,
+    test_valid_forwarding_static_member_access_on_type, R"(
+    fun g(v: Vec[S32]) -> Void {
+        let m = Vec[S32]::is_empty
+        std::mem::ops::drop(v)
+    }
+)");

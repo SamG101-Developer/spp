@@ -334,3 +334,71 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         fun f[G: Copy, K: Copy](&self, g: K, k: G) -> G { ret k }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestOverrides,
+  test_valid_override_with_comp_generic, R"(
+    cls Base { }
+    sup Base {
+        !virtual_method
+        !public
+        fun f[cmp n: S32](&self) -> S32 { ret n }
+    }
+    cls Derived { }
+    sup Derived ext Base {
+        fun f[cmp m: S32](&self) -> S32 { ret m + 1 }
+    }
+    fun test_fn() -> Void {
+        let d = Derived()
+        let x = d.f[5]()
+        std::mem::ops::drop(d)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_generic_kind_differs,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls Base { }
+    sup Base {
+        !virtual_method
+        !public
+        fun f[T](&self) -> S32 { ret 1 }
+    }
+    cls Derived { }
+    sup Derived ext Base {
+        fun f[cmp n: S32](&self) -> S32 { ret n }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_destructured_parameter_names_differ,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls Base { }
+    sup Base {
+        !virtual_method
+        !public
+        fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
+    }
+    cls Derived { }
+    sup Derived ext Base {
+        fun f(&self, (a, c): (S32, S32)) -> S32 { ret a }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestOverrides,
+  test_invalid_override_destructured_parameter_arity_differs,
+  SppSuperimpositionExtensionMethodInvalidError, R"(
+    cls Base { }
+    sup Base {
+        !virtual_method
+        !public
+        fun f(&self, (a, b): (S32, S32)) -> S32 { ret a }
+    }
+    cls Derived { }
+    sup Derived ext Base {
+        fun f(&self, (a, b, c): (S32, S32, S32)) -> S32 { ret a }
+    }
+)");

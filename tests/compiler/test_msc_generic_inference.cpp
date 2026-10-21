@@ -670,3 +670,46 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         head(P[S32, Bool, U8]())
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_infer_through_a_borrowed_closure_parameter, R"(
+    fun test[T, F: FunRef[(&T,), Bool]](x: &T, p: F) -> Bool { ret p(x) }
+    fun g() -> Void {
+        let y = 5_s32
+        let b = test(&y, (a: &S32) true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_valid_closure_taking_a_borrow_where_a_mut_borrow_is_given, R"(
+    fun test[T, F: FunRef[(&mut T,), Bool]](x: &mut T, p: F) -> Bool { ret p(x) }
+    fun g() -> Void {
+        let mut y = 5_s32
+        let b = test(&mut y, (a: &S32) true)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestGenericInference_Constraint,
+  test_invalid_closure_taking_a_mut_borrow_where_a_borrow_is_given,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun test[T, F: FunRef[(&T,), Bool]](x: &T, p: F) -> Bool { ret p(x) }
+    fun g() -> Void {
+        let y = 5_s32
+        let b = test(&y, (a: &mut S32) true)
+    }
+)");
+
+// Todo: red - the pack "Rest" binds the whole given variant, not a tuple of the members "Bool" leaves, and is then
+//  dropped in substitution (E51, then E1). "strip[S32](v)" passes.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variant,
+  test_valid_infer_a_variant_pack_parameter, R"(
+    fun strip[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun g() -> Void {
+        let v: S32 or Bool = 1_s32
+        strip(v)
+    }
+)");

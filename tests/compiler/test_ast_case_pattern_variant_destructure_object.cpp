@@ -387,3 +387,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureObjectAst,
+  test_valid_refined_nested_pattern_meets_inner_destructure, R"(
+    fun f(z: Opt[Opt[S32]]) -> S32 {
+        case z of {
+            is Some[Some[S32]](val=Some[S32](val=3)) { ret 1 }
+            is Some[Some[S32]](..) { ret 2 }
+            else { ret 3 }
+        }
+    }
+)");

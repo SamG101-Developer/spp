@@ -89,3 +89,20 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret None
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_open_ended_bounds, R"(
+    fun f(a: Vec[S32]) -> Void {
+        {
+            let x = a[to 2_uz]
+        }
+        {
+            let y = a[1_uz to]
+        }
+        {
+            let z = a[to]
+        }
+        std::mem::ops::drop(a)
+    }
+)");
