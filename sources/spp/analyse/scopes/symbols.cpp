@@ -390,7 +390,6 @@ auto spp::analyse::scopes::NameTypeIdOf(
   return InternTypeKey(std::move(key));
 }
 
-
 auto spp::analyse::scopes::NextGnParamId() -> std::uint64_t {
   // Never zero, which is what a symbol that is not a parameter
   // holds.
@@ -748,7 +747,9 @@ auto TypeSymbol::FqName(
   // argument it was given instead.
   if (Kind == TypeKind::GnTypeArg and LinkedSymbol() != this) {
     auto bound = LinkedSymbol()->FqName();
-    return Convention != ConventionTag::MOV ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention)) : bound;
+    return Convention != ConventionTag::MOV
+      ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention))
+      : bound;
   }
   if (Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr) {
     return BoundTypeVal;
@@ -1135,7 +1136,9 @@ auto TypeRef::AstIn(
   // the symbol exist), and otherwise the scope's "type ast of"
   // for the id.
   if (Id == nullptr) { return nullptr; }
-  auto type = Symbol != nullptr ? AstCloneShared(Symbol->FqName()) : scope.TypeAstOf(Id);
+  auto type = Symbol != nullptr
+    ? AstCloneShared(Symbol->FqName())
+    : scope.TypeAstOf(Id);
   if (type == nullptr or Conv == ConventionTag::MOV) { return type; }
 
   // Given a convention is now guaranteed, build the convention
