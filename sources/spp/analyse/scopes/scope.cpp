@@ -39,6 +39,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -272,7 +273,7 @@ namespace {
            SppTokenType::TK_ADD, SppTokenType::TK_SUB, SppTokenType::TK_MUL, SppTokenType::TK_DIV, SppTokenType::TK_REM,
            SppTokenType::TK_BIT_IOR, SppTokenType::TK_BIT_AND, SppTokenType::TK_BIT_XOR, SppTokenType::TK_BIT_SHL,
            SppTokenType::TK_BIT_SHR, SppTokenType::TK_EQ, SppTokenType::TK_NE, SppTokenType::TK_LT, SppTokenType::TK_LE,
-           SppTokenType::TK_GT, SppTokenType::TK_GE
+           SppTokenType::TK_GT, SppTokenType::TK_GE, SppTokenType::KW_AND, SppTokenType::KW_OR
          }) {
       if (spp::lex::TokToString(tok) == op) { return tok; }
     }
@@ -638,6 +639,22 @@ namespace spp::analyse::scopes {
       return *id;
     }
 
+    /// Whether "expr", keyed as "key", is a "Bool": a bool value,
+    /// a comparison or "and"/"or" (which always make one), or a
+    /// comp parameter declared "Bool".
+    auto IsBoolOperand(ExpressionAst const &expr, CompKey const &key, Scope const &scope) -> bool {
+      using Part = CompKey::Part;
+      if (key.AsBool() != nullptr) { return true; }
+      if (key.Kind == Part::Op) {
+        return genex::contains(Vec<StrView>{"==", "!=", "<", "<=", ">", ">=", "and", "or"}, StrView(key.Text));
+      }
+      if (key.Kind != Part::Param) { return false; }
+      const auto id = expr.To<spp::asts::IdentifierAst>();
+      auto const *const var = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
+      return var != nullptr and var->Type != nullptr
+        and spp::analyse::utils::type_predicates::IsTypeBool(TypeRef::Of(*var->Type, scope), scope);
+    }
+
     /// [CHECKED]
     /// An expression's identity, as a comp key: folded as it is
     /// built, as a type's key is normalised as it is built
@@ -703,6 +720,20 @@ namespace spp::analyse::scopes {
           }
           return CompKey::OfOp(op, InternCompKey(std::move(lhs_key)), InternCompKey(std::move(rhs_key)));
         }
+      }
+
+      // "b.not" on a "Bool" is "b == false": the same value, keyed as
+      // an operation comp keys already fold, rewrite and spell back.
+      // A "not" of anything else is its spelling, as a call is.
+      if (const auto pf = expr.To<PostfixExpressionAst>();
+        pf != nullptr and pf->Op->To<PostfixExpressionOperatorKeywordNotAst>() != nullptr) {
+        auto operand = RawCompKey(*pf->Lhs, scope);
+        if (not IsBoolOperand(*pf->Lhs, operand, scope)) { return RecordedOpaque(expr, scope); }
+        auto false_key = CompKey::OfBool(false);
+        if (operand.Kind == CompKey::Part::Value) {
+          if (auto folded = FoldCompValues("==", operand, false_key); folded.has_value()) { return std::move(*folded); }
+        }
+        return CompKey::OfOp("==", InternCompKey(std::move(operand)), InternCompKey(std::move(false_key)));
       }
 
       // A constant named through a type ("Self::mo_seq_cst",
