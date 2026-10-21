@@ -39,14 +39,16 @@ auto spp::analyse::scopes::FoldCompValues(
   CompKey const &lhs,
   CompKey const &rhs)
   -> Opt<CompKey> {
-  // Two bools compare for equality, and nothing else.
-  // Todo: "and" & "or" for bools?
+  // Two bools compare for equality, and combine by "and" and
+  // "or".
   const auto lhs_bool = lhs.AsBool();
   const auto rhs_bool = rhs.AsBool();
   if (lhs_bool != nullptr or rhs_bool != nullptr) {
     if (lhs_bool == nullptr or rhs_bool == nullptr) { return Nullopt; }
     if (op == "==") { return CompKey::OfBool(*lhs_bool == *rhs_bool); }
     if (op == "!=") { return CompKey::OfBool(*lhs_bool != *rhs_bool); }
+    if (op == "and") { return CompKey::OfBool(*lhs_bool and *rhs_bool); }
+    if (op == "or") { return CompKey::OfBool(*lhs_bool or *rhs_bool); }
     return Nullopt;
   }
 
