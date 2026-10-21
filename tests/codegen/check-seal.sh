@@ -66,7 +66,10 @@ make_project() {
     local dir="$1" seal="$2"
     new_project "${dir}" "
 [memory.map]
-seal = ${seal}"
+seal = ${seal}
+
+[target.floor]
+linux = \"6.10\""
 
     add_ffi "${dir}" probe "${WORK}/probe.c" <<'EOF'
 use std::cffi::CVoid
