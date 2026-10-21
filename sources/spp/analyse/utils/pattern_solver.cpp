@@ -383,8 +383,12 @@ namespace spp::analyse::utils::pattern_solver {
         if (binding == nullptr or binding->Val == nullptr) { continue; }
         const auto f = genex::position(names, [&](auto const &n) { return n == binding->Name->Val; });
         if (not f.has_value()) { return UnknownNode(col, path, &obj); }
+
+        // Read before "field" is moved into "Meet" (c++ argument order
+        // is unspecified, and clang moves it first).
         auto &field = out.Fields[*f];
-        field = Meet(std::move(field), NodeOf(*binding->Val, field.Col, field.Path, scope));
+        auto inner = NodeOf(*binding->Val, field.Col, field.Path, scope);
+        field = Meet(std::move(field), std::move(inner));
       }
       return out;
     }
