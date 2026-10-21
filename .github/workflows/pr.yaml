@@ -176,6 +176,7 @@ jobs:
       compiler: ${{ matrix.compiler }}
       modes: rel
       shard-count: 1
+      pack: true
 
   # Emit for architectures unlike the host - 32-bit, big-endian,
   # non-x86 - and check the object and the datalayout that came
