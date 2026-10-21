@@ -59,11 +59,13 @@ if [ ! -x "${binutils}/as" ]; then
   exit 1
 fi
 
-# SPP_STATIC_RUNTIME links libstdc++.a; -print-file-name echoes the bare name when it is missing.
-if [ "$("$cxx" -print-file-name=libstdc++.a)" = "libstdc++.a" ]; then
-  echo "::error::homebrew ${formula} ships no libstdc++.a; SPP_STATIC_RUNTIME cannot link" >&2
-  exit 1
-fi
+# SPP_STATIC_RUNTIME links these statically (the sanitizer runtimes when sanitized); -print-file-name echoes the bare name when it is missing.
+for archive in libstdc++.a libasan.a libubsan.a; do
+  if [ "$("$cxx" -print-file-name="$archive")" = "$archive" ]; then
+    echo "::error::homebrew ${formula} ships no ${archive}; SPP_STATIC_RUNTIME cannot link" >&2
+    exit 1
+  fi
+done
 
 # Homebrew's specs file appends "--dynamic-linker <brew>/lib/ld.so" and
 # "-rpath <brew>/lib" to every link, which ties the binaries to this
