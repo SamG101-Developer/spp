@@ -29,15 +29,9 @@ option(SPP_WERROR "Treat compiler warnings as errors" ON)
 option(SPP_BUILD_TESTS "Build the unit tests" ON)
 option(SPP_ALL_TARGETS "Link every LLVM backend" OFF)
 option(SPP_STATIC_RUNTIME "Link the C++ runtime and mimalloc statically" OFF)
-option(
-  SPP_USE_DEV_RPATH
-  "Bake in the local dev toolchain rpath (/usr/local/gcc-dev/lib64)"
-  ON)
-set(SPP_SANITIZER
-  ""
-  CACHE STRING
-  "Sanitizers to enable, e.g. 'address,undefined,leak' or 'thread'"
-)
+option(SPP_USE_DEV_RPATH "Bake in the local dev toolchain rpath" ON)
+option(SPP_COVERAGE "Instrument for source-based coverage (clang only)" OFF)
+set(SPP_SANITIZER "" CACHE STRING "Sanitizers to enable")
 
 include(cmake/Toolchain.cmake)
 include(cmake/Runtime.cmake)

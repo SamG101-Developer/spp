@@ -12,6 +12,18 @@ if (SPP_SANITIZER)
   endif ()
 endif ()
 
+# Clang's source-based coverage, not gcov: a run writes its
+# profile wherever LLVM_PROFILE_FILE says, merged later with only
+# the binary and the sources, while gcov's .gcda files land
+# beside the objects, which a test runner does not have.
+if (SPP_COVERAGE)
+  if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR MSVC)
+    message(FATAL_ERROR "SPP_COVERAGE needs clang (not clang-cl)")
+  endif ()
+  add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
+  add_link_options(-fprofile-instr-generate)
+endif ()
+
 if (SPP_STATIC_RUNTIME AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_link_options(-static-libstdc++ -static-libgcc -Wl,--as-needed)
   # GCC links the sanitizer runtimes dynamically (Clang statically),
