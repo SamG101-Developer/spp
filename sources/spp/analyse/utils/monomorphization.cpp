@@ -294,7 +294,8 @@ namespace spp::analyse::utils::monomorphization {
     auto BindingTypeName(
       scopes::TypeIdArg const &arg)
       -> Shared<TypeIdentifierAst> {
-      const auto by_param = arg.Named and arg.Slot != 0;
+      SPP_ASSERT(arg.Named);
+      const auto by_param = arg.Slot != 0;
       if (by_param) {
         if (auto const *const param = scopes::FindGnTypeParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
@@ -309,7 +310,8 @@ namespace spp::analyse::utils::monomorphization {
     auto BindingCompName(
       scopes::TypeIdArg const &arg)
       -> Shared<IdentifierAst> {
-      if (arg.Named and arg.Slot != 0) {
+      SPP_ASSERT(arg.Named);
+      if (arg.Slot != 0) {
         if (auto const *const param = scopes::FindGnCompParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
       return MakeShared<IdentifierAst>(0, scopes::ArgNameOf(arg));
