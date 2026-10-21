@@ -165,7 +165,7 @@ SPP_EXP_CLS struct spp::analyse::errors::ErrorInformation {
   /// answer it is to hand, so that a caught error carries its
   /// own positions and a consumer needs nothing else to place
   /// them.
-  utils::errors::SourceSpan Span = {};
+  spp::utils::errors::SourceSpan Span = {};
 };
 
 /// The base semantic error type forms the basis for all the
@@ -173,7 +173,7 @@ SPP_EXP_CLS struct spp::analyse::errors::ErrorInformation {
 /// All the information appending methods are provided for
 /// easy setup.
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError :
-  utils::errors::AbstractError {
+  spp::utils::errors::AbstractError {
   using AbstractError::AbstractError;
   SPP_ATTR_COLD SemanticError(SemanticError const &) = default;
 

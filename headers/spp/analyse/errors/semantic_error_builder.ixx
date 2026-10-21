@@ -99,7 +99,7 @@ namespace spp {
 
 SPP_EXP_CLS template <typename T> requires std::derived_from<T, spp::analyse::errors::SemanticError>
 struct spp::analyse::errors::SemanticErrorBuilder final :
-  utils::errors::AbstractErrorBuilder<T> {
+  spp::utils::errors::AbstractErrorBuilder<T> {
   SPP_ATTR_COLD SemanticErrorBuilder() = default;
 
   ~SemanticErrorBuilder() override = default;
@@ -127,11 +127,11 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     auto unowned = Vec<ErrorInformation*>();
     auto file = Str();
     for (auto &info : cast_error->ErrorInfo) {
-      auto formatter = static_cast<utils::errors::ErrorFormatter*>(nullptr);
+      auto formatter = static_cast<spp::utils::errors::ErrorFormatter*>(nullptr);
       if (info.Kind == ErrorInformationKind::ERROR or info.Kind == ErrorInformationKind::CONTEXT) {
-        formatter = utils::errors::ErrorFormatter::Owning(info.Ast);
+        formatter = spp::utils::errors::ErrorFormatter::Owning(info.Ast);
         if (formatter == nullptr) {
-          messages.emplace_back(utils::errors::ErrorFormatter::WithoutSource(info.Ast, info.Tag));
+          messages.emplace_back(spp::utils::errors::ErrorFormatter::WithoutSource(info.Ast, info.Tag));
           unowned.emplace_back(&info);
           continue;
         }
@@ -145,7 +145,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     // A generated block's diagnostic is filed under the error's
     // first block from a file, marked as generated, so an editor
     // shows it beside the rest of the error.
-    for (auto *info : unowned) { info->Span = utils::errors::SourceSpan{.File = file}; }
+    for (auto *info : unowned) { info->Span = spp::utils::errors::SourceSpan{.File = file}; }
 
     // Format and append each per-overload sub-error consecutively
     // beneath the main error.
@@ -158,7 +158,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
     }
 
     // Throw the error object.
-    utils::errors::AbstractErrorBuilder<T>::Raise();
+    spp::utils::errors::AbstractErrorBuilder<T>::Raise();
   }
 
 private:
