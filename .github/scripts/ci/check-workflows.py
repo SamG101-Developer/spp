@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Hold every workflow and composite action to the pipeline's security rules (docs/ci-pipeline-refactor.md).
 
+Only the rules zizmor has no audit for: it already fails unpinned `uses:` (unpinned-uses) and checkouts that keep
+the token (artipacked), and pinact holds the version comments.
+
 Run from the repository root; prints one ::error per finding and exits non-zero if there are any.
 """
 
@@ -18,9 +21,7 @@ import pins  # noqa: E402
 WORKFLOWS = Path(".github/workflows")
 ACTIONS = Path(".github/actions")
 
-PINNED = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$")
 HARDEN = "step-security/harden-runner@"
-CHECKOUT = "actions/checkout@"
 DOWNLOAD = "actions/download-artifact@"
 IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?)?\b")
 LINE = "__line__"
@@ -65,10 +66,6 @@ def check_step(path: Path, where: str, step: dict) -> None:
         return
     with_ = step.get("with") or {}
 
-    if not PINNED.match(uses):
-        error(path, step, f"{where}: `{uses}` is not pinned to a full commit")
-    if uses.startswith(CHECKOUT) and with_.get("persist-credentials") is not False:
-        error(path, step, f"{where}: checkout without `persist-credentials: false` leaves the token in .git/config")
     if uses.startswith(DOWNLOAD):
         for key in ("run-id", "github-token"):
             if key in with_:

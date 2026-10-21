@@ -60,9 +60,10 @@ paths = [
   ".github/actions/restore-mtimes/*",
   ".github/actions/run-tests/*",
   ".github/scripts/build/*",
-  ".github/scripts/test/plan-gtest.sh",
+  ".github/scripts/test/plan-tests.sh",
   ".github/scripts/test/gtest.sh",
   ".github/scripts/test/stl-conformance.sh",
+  ".github/scripts/test/valgrind-groups.sh",
 ]
 include = ["toolchain"]
 
