@@ -233,17 +233,17 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   SPP_DEFINE_BUILTIN_FUNC("std.intrinsics.fptoui", StdIntrinsicsFptoui);
   SPP_DEFINE_BUILTIN_FUNC("std.intrinsics.fpclass", StdIntrinsicsFpclass);
 
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.neg_one", StdNumFloatNegOne);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.neg_one", StdNumFloatNegOne, true);
   SPP_DEFINE_BUILTIN_FUNC("std.num.sized_floating_point.SizedFloatingPoint.is_zero", StdNumFloatIsZero);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.zero", StdNumFloatZero);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.zero", StdNumFloatZero, true);
   SPP_DEFINE_BUILTIN_FUNC("std.num.sized_floating_point.SizedFloatingPoint.is_one", StdNumFloatIsOne);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.one", StdNumFloatOne);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer_signed.SizedIntegerSigned.neg_one", StdNumIntNegOne);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_floating_point.SizedFloatingPoint.one", StdNumFloatOne, true);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer_signed.SizedIntegerSigned.neg_one", StdNumIntNegOne, true);
   SPP_DEFINE_BUILTIN_FUNC("std.num.sized_integer.SizedInteger.is_zero", StdNumIntIsZero);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.zero", StdNumIntZero);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.zero", StdNumIntZero, true);
   SPP_DEFINE_BUILTIN_FUNC("std.num.sized_integer.SizedInteger.is_one", StdNumIntIsOne);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.one", StdNumIntOne);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.two", StdNumIntTwo);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.one", StdNumIntOne, true);
+  SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.two", StdNumIntTwo, true);
 
   SPP_DEFINE_BUILTIN_FUNC("std.debug.breakpoint_internal", StdDebugBreakpointInternal);
 
