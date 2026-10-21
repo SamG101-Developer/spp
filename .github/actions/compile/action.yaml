@@ -31,6 +31,10 @@ inputs:
       artifact's name become outputs.
     required: false
     default: "false"
+  check-floor:
+    description: "Fail when the binaries need a newer glibc, kernel or macOS than [floor] in .github/dependencies.toml."
+    required: false
+    default: "false"
 
 outputs:
   artifact:
@@ -102,6 +106,13 @@ runs:
     - name: Check binaries are self-contained
       shell: bash
       run: bash .github/scripts/build/check-self-contained.sh
+
+    - name: Check binaries run on the platform floor
+      if: inputs.check-floor == 'true'
+      shell: bash
+      env:
+        FLOOR_ADVISORY: "true"
+      run: bash .github/scripts/build/check-floor.sh
 
     - name: Upload build logs on failure
       if: failure()

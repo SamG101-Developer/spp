@@ -57,6 +57,11 @@ on:
         required: false
         type: boolean
         default: false
+      check-floor:
+        description: "Fail the build when its binaries need a newer system than [floor] in .github/dependencies.toml."
+        required: false
+        type: boolean
+        default: false
       cmake-flags:
         description: "Extra CMake flags for the build, e.g. sanitizers. Give such a build its own variant."
         required: false
@@ -143,6 +148,7 @@ jobs:
           variant: ${{ inputs.variant }}
           build-type: ${{ inputs.build-type }}
           cmake-flags: ${{ inputs.cmake-flags }}
+          check-floor: ${{ inputs.check-floor }}
           stage: true
 
   # Each cell is one suite; the planner decides which cells this

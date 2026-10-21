@@ -113,6 +113,12 @@ macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
 
+[floor]
+glibc = "2.28"
+linux = "4.18"
+binutils = "2.30"
+macos = "11.0"
+
 # Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
 [prefix]
 local = "{home}/.local"

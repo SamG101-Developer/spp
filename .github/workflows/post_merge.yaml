@@ -105,6 +105,7 @@ jobs:
     uses: ./.github/workflows/_lane.yaml
     with:
       codegen: true
+      check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
   # Only a push that bumped VERSION, or a manual dispatch, is a
   # release candidate. Without this an unpublished version is
@@ -163,6 +164,7 @@ jobs:
       modes: rel
       shard-count: 1
       pack: true
+      check-floor: true
 
   release-macos-arm64:
     name: Release · macos-arm64
@@ -177,6 +179,7 @@ jobs:
       modes: rel
       shard-count: 1
       pack: true
+      check-floor: true
 
   release-windows-x64:
     name: Release · windows-x64
@@ -191,6 +194,7 @@ jobs:
       modes: rel
       shard-count: 1
       pack: true
+      check-floor: true
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release.
