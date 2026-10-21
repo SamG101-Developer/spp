@@ -10,7 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.type_compare;
+import spp.analyse.utils.pattern_solver;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_ast;
@@ -18,13 +18,9 @@ import spp.asts.case_pattern_variant_expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.object_initializer_ast;
 import spp.asts.pattern_guard_ast;
-import spp.asts.statement_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
@@ -32,6 +28,7 @@ import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
@@ -98,34 +95,20 @@ auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
     p->Stage7_AnalyseSemantics(sm, meta);
   }
 
-  // Ensure the functions exist for the comparisons
-  // (whichever op is used except "is"). Todo: Is this
-  // mocking okay? Conventions had to be removed from
-  // LHS, idk about RHS though.
-  if (Op.get() and Op->TokenType != lex::SppTokenType::KW_IS) {
-    for (auto const &p : Patterns) {
-      const auto pe = p->To<CasePatternVariantExpressionAst>();
-      const auto bin_ast = MakeUnique<BinaryExpressionAst>(
-        MakeUnique<ObjectInitializerAst>(
-          AstClone(meta->CaseCondition->InferType(sm, meta)->WithoutConvention()), nullptr),
-        AstClone(Op),
-        MakeUnique<ObjectInitializerAst>(
-          AstClone(pe->Expr->InferType(sm, meta)->WithoutConvention()), nullptr));
-      bin_ast->Stage7_AnalyseSemantics(sm, meta);
-    }
-  }
-
   // Build the comparison the branch actually tests, over the
-  // real operands. This is to retained, rather than needing to
-  // rebuild at codegen time. Only needed for "case ... of".
+  // subject's hidden borrow (so the condition is not evaluated
+  // again) and the operand. This is to retained, rather than
+  // needing to rebuild at codegen time. Only needed for "case
+  // ... of".
   _MappedPatFns = Vec<Unique<BinaryExpressionAst>>(Patterns.size());
   if (Op != nullptr and Op->TokenType != lex::SppTokenType::KW_IS) {
     for (auto const &[i, p] : Patterns | genex::views::ptr | genex::views::enumerate) {
       const auto pe = p->To<CasePatternVariantExpressionAst>();
       if (pe == nullptr) { continue; }
 
-      _MappedPatFns[i] = MakeUnique<BinaryExpressionAst>(
-        AstClone(meta->CaseCondition), AstClone(Op), AstClone(pe->Expr));
+      auto subject = MakeUnique<IdentifierAst>(
+        meta->CaseCondition->PosStart(), analyse::utils::pattern_solver::SubjectValueName());
+      _MappedPatFns[i] = MakeUnique<BinaryExpressionAst>(std::move(subject), AstClone(Op), AstClone(pe->Expr));
       _MappedPatFns[i]->Stage7_AnalyseSemantics(sm, meta);
     }
   }
@@ -173,16 +156,25 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
     and not Patterns.empty()
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
+  SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
   for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
-    auto *tested = tests_condition_directly and meta->CaseCondition != nullptr
+    auto *tested = tests_condition_directly
       ? static_cast<Ast*>(meta->CaseCondition)
-      : i < _MappedPatFns.size() and _MappedPatFns[i] != nullptr
+      : _MappedPatFns[i] != nullptr
       ? static_cast<Ast*>(_MappedPatFns[i].get())
       : static_cast<Ast*>(pattern);
-    tested->Stage9_CompTimeResolve(sm, meta);
 
-    // Determine if this branch is not a match (false).
-    const auto cmp_pat_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
+    // Determine if this branch is not a match (false): the checks
+    // the plan says the pattern makes, before the pattern binds
+    // anything (a binding reads a payload only its tag says is
+    // there), and then the pattern itself.
+    const auto checks_hold = tested != pattern
+      or analyse::utils::case_utils::ResolvePatternChecks(
+        *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
+    if (checks_hold) { tested->Stage9_CompTimeResolve(sm, meta); }
+    const auto cmp_pat_bool = checks_hold and meta->CompTimeResult != nullptr
+      ? meta->CompTimeResult->To<BooleanLiteralAst>()
+      : nullptr;
     if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
       ignore = sm->SkipSubtree(sm->CurrentScope);
       continue;
@@ -316,6 +308,12 @@ auto CaseExpressionBranchAst::MarkForIterLoopYield() -> void {
   _ForIterLoopYield = true;
 }
 
+auto CaseExpressionBranchAst::UsePlan(
+  MatchPlan const *plan, const std::size_t index) -> void {
+  _CasePlan = plan;
+  _CaseIndex = index;
+}
+
 auto CaseExpressionBranchAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward type inference to the body.
@@ -337,16 +335,24 @@ auto CaseExpressionBranchAst::_CodegenCombinePatterns(
     and not Patterns.empty()
     and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
 
-  if (tests_condition_directly and meta->LlvmCaseCondition != nullptr) {
+  if (tests_condition_directly) {
     return meta->LlvmCaseCondition;
   }
 
   // Reuse either the generated pattern combinations, or the normal
-  // pattern codegen if there was no combinations performed.
+  // pattern codegen (its bindings) and then the checks the plan says
+  // it makes (tags, literals).
+  IMPORT_UTILS;
+  SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
   const auto codegen_pattern = [&](const std::size_t i) -> llvm::Value* {
-    return i < _MappedPatFns.size() and _MappedPatFns[i] != nullptr
-      ? _MappedPatFns[i]->Stage11_CodeGen(sm, meta, ctx)
-      : Patterns[i]->Stage11_CodeGen(sm, meta, ctx);
+    if (_MappedPatFns[i] != nullptr) {
+      return _MappedPatFns[i]->Stage11_CodeGen(sm, meta, ctx);
+    }
+    const auto shape = Patterns[i]->Stage11_CodeGen(sm, meta, ctx);
+    if (_CasePlan->Branches[_CaseIndex].Checks[i].empty()) { return shape; }
+    const auto checks = case_utils::EmitPatternChecks(
+      *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta, ctx);
+    return ctx->Builder.CreateAnd(shape, checks);
   };
 
   // If there is only one pattern, generate its condition directly.

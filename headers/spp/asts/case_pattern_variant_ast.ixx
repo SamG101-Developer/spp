@@ -12,7 +12,6 @@ SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);
-use(spp::asts, struct TypeAst);
 
 /// Base class for all case pattern variants. Allows different
 /// variants in the same list, and provides the conversion
@@ -40,29 +39,23 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
   /// only of skips is a shape test and takes nothing.
   SPP_ATTR_NODISCARD virtual auto BindsByMove() const -> bool;
 
-  /// The member of a variant this pattern selects ("is Some[T](..)"),
-  /// if it names a type; nothing for a pattern that names none.
-  SPP_ATTR_NODISCARD virtual auto NarrowsTo() const -> TypeAst const*;
-
 protected:
   /// The "let" statement that case-of-patterns are converted
   /// to, introducing the variables created by the pattern.
   Unique<LetStatementInitializedAst> _MappedLet;
 
-  /// Stage 7 for a destructuring pattern: map it to a "let" over @p cond introducing its bindings, analysed here, then
-  /// analyse the checks its literal elements generate. The nested elements are analysed by the "let".
+  /// Stage 7 for a destructuring pattern: map it to a "let" over @p cond introducing its bindings, analysed here. The
+  /// nested elements are analysed by the "let"; the literals they test are the "case"'s plan's ("PatternSolver").
   auto AnalyseDestructure(
     ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
     ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-  /// Stage 9 for a destructuring pattern: resolve its "let", and match exactly when every element does.
+  /// Stage 9 for a destructuring pattern: resolve its "let". It matches; the "case"'s plan tests its literals.
   auto CompTimeResolveDestructure(
-    Vec<CasePatternVariantAst*> const &elems,
     ScopeManager *sm, CompilerMetaData *meta) const -> void;
 
-  /// Stage 11 for a destructuring pattern: run its "let" over the case condition, introducing the bindings, and answer
-  /// whether every element matches (true for none).
+  /// Stage 11 for a destructuring pattern: run its "let" over the case condition, introducing the bindings. It matches
+  /// ("true"); the "case"'s plan tests its literals.
   auto CodeGenDestructure(
-    Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
-    CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
+    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value*;
 };
