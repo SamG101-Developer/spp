@@ -119,3 +119,12 @@ cron
 debootstrap
 binfmt
 checksummed
+binutils
+io_uring
+seccomp
+errno
+qemu
+libpthread
+libdl
+recv
+repo
