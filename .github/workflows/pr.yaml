@@ -151,7 +151,7 @@ jobs:
   # failure, but are deliberately omitted from ci-success,
   # so they never block a merge.
   platforms:
-    name: Platforms (advisory) · ${{ matrix.os }} ${{ matrix.compiler }}
+    name: ${{ matrix.name }}
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -164,12 +164,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04-arm, compiler: gcc }
-          - { os: ubuntu-24.04-arm, compiler: clang }
-          - { os: ubuntu-24.04, compiler: clang }
-          - { os: macos-15, compiler: clang }
-          - { os: windows-2025, compiler: msvc }
-          - { os: windows-2025, compiler: clang-cl }
+          - { name: linux-arm gcc, os: ubuntu-24.04-arm, compiler: gcc }
+          - { name: linux-arm clang, os: ubuntu-24.04-arm, compiler: clang }
+          - { name: linux clang, os: ubuntu-24.04, compiler: clang }
+          - { name: macos clang, os: macos-15, compiler: clang }
+          - { name: windows msvc, os: windows-2025, compiler: msvc }
+          - { name: windows clang-cl, os: windows-2025, compiler: clang-cl }
     uses: ./.github/workflows/_lane.yaml
     with:
       os: ${{ matrix.os }}
