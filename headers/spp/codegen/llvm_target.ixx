@@ -33,6 +33,10 @@ namespace spp::codegen {
   /// ffi runtimes a project ships are host objects.
   SPP_EXP_FUN auto TargetIsHost() -> bool;
 
+  /// Whether the selected target's operating system is Linux,
+  /// for the measures only a Linux kernel has.
+  SPP_EXP_FUN auto TargetIsLinux() -> bool;
+
   /// The selected target as a folder name: "<arch>-<os>[-<env>]",
   /// such as "x86_64-linux-gnu", "aarch64-macos" or
   /// "x86_64-windows-msvc". It names the target's folder in the

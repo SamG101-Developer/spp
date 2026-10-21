@@ -194,6 +194,11 @@ auto spp::codegen::TargetIsHost() -> bool {
 }
 
 /// [CHECKED]
+auto spp::codegen::TargetIsLinux() -> bool {
+  return TargetTriple().isOSLinux();
+}
+
+/// [CHECKED]
 auto spp::codegen::TargetFolderName() -> char const* {
   // The target folder name is the "folder of" the target triple,
   // ie the target that we are compiling to.
