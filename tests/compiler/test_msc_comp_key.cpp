@@ -129,11 +129,17 @@ TEST(TestCompKey, test_float_values_are_exact_rationals) {
 }
 
 TEST(TestCompKey, test_fold_float_values) {
-  // The four operations fold exactly: a third stays a third, and three of them are one.
-  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(3, 1, "f64")), Float(1, 3, "f64"));
-  EXPECT_EQ(FoldCompValues("/", Float(2, 1, "f64"), Float(6, 1, "f64")), Float(1, 3, "f64"));
+  // An "f32" or "f64" folds on IEEE values, as at run time: a third is the double nearest it, three of those are
+  // one, and "0.1 + 0.2" is not "0.3". Another width folds exactly: a third stays a third.
+  const auto third = Float(3333333333333333, 10000000000000000, "f64");
+  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(3, 1, "f64")), third);
+  EXPECT_EQ(FoldCompValues("/", Float(2, 1, "f64"), Float(6, 1, "f64")), third);
   EXPECT_EQ(FoldCompValues("*", Float(1, 3, "f64"), Float(3, 1, "f64")), Float(1, 1, "f64"));
-  EXPECT_EQ(FoldCompValues("+", Float(1, 10, "f64"), Float(2, 10, "f64")), Float(3, 10, "f64"));
+  EXPECT_EQ(
+    FoldCompValues("+", Float(1, 10, "f64"), Float(2, 10, "f64")),
+    Float(30000000000000004, 100000000000000000, "f64"));
+  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f128"), Float(3, 1, "f128")), Float(1, 3, "f128"));
+  EXPECT_EQ(FoldCompValues("+", Float(1, 10, "f128"), Float(2, 10, "f128")), Float(3, 10, "f128"));
   EXPECT_EQ(FoldCompValues("-", Float(1, 2, "f32"), Float(3, 4, "f32")), Float(-1, 4, "f32"));
   EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(0, 1, "f64")), spp::Nullopt);
 
@@ -143,16 +149,18 @@ TEST(TestCompKey, test_fold_float_values) {
   EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f64"), Int(1, "")), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("%", Float(7, 1, "f64"), Float(2, 1, "f64")), spp::Nullopt);
 
-  // Comparisons fold to bools, on the exact values.
+  // Comparisons fold to bools, on the values the operands stand for.
   EXPECT_EQ(FoldCompValues("<", Float(1, 3, "f64"), Float(34, 100, "f64")), Bool(true));
   EXPECT_EQ(FoldCompValues("==", Float(1, 3, "f64"), Float(2, 6, "f64")), Bool(true));
   EXPECT_EQ(FoldCompValues("!=", Float(1, 3, "f64"), Float(333, 1000, "f64")), Bool(true));
 }
 
 TEST(TestCompKey, test_rewrite_folds_a_float_operation) {
-  // "x * 2.0" with "x" bound to "1.5" is "3.0"; "x / 3.0" with "x" bound to "1.0" is a third.
+  // "x * 2.0" with "x" bound to "1.5" is "3.0"; "x / 3.0" with "x" bound to "1.0" is the double nearest a third.
   EXPECT_EQ(Rewrite(Op(Param(1), "*", Float(2, 1, "f64")), {{1, Float(3, 2, "f64")}}), Id(Float(3, 1, "f64")));
-  EXPECT_EQ(Rewrite(Op(Param(1), "/", Float(3, 1, "f64")), {{1, Float(1, 1, "f64")}}), Id(Float(1, 3, "f64")));
+  EXPECT_EQ(
+    Rewrite(Op(Param(1), "/", Float(3, 1, "f64")), {{1, Float(1, 1, "f64")}}),
+    Id(Float(3333333333333333, 10000000000000000, "f64")));
 }
 
 TEST(TestCompKey, test_rewrite_inside_an_operation) {
@@ -512,8 +520,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - "and" (and "or") in a comp argument segfaults the compiler: "CompOperatorToken" has no keyword
-//  operators, so "CompAstOf" answers null, which "CreateGnCompSymbol" then infers the type of.
+// "and" over comp bools folds like the comparisons do.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCompKey,
     test_valid_logical_and_in_a_comp_argument, R"(
@@ -549,5 +556,58 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun g() -> Void {
         let x = X(a=A[8_uz]())
         std::mem::ops::drop(x)
+    }
+)");
+
+// A right shift in a comp argument is logical, as at run time: "-8 >> 1" in an "S32" is 2147483644.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_right_shift_of_a_negative_comp_argument_is_logical, R"(
+    cls A[cmp n: S32] { }
+    fun h[cmp n: S32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+    fun g() -> Void {
+        let x: A[2147483644_s32] = h[-8_s32]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+// "and" and "or" over comp parameters: kept as operations in the template, folded in each instance.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_logical_operators_over_comp_parameters, R"(
+    cls C[cmp b: Bool] { }
+    fun both[cmp x: Bool, cmp y: Bool]() -> C[x and y] { ret C[x and y]() }
+    fun either[cmp x: Bool, cmp y: Bool]() -> C[x or y] { ret C[x or y]() }
+    fun g() -> Void {
+        let a: C[false] = both[true, false]()
+        let b: C[true] = both[true, true]()
+        let c: C[true] = either[false, true]()
+        let d: C[false] = either[false, false]()
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
+        std::mem::ops::drop(d)
+    }
+)");
+
+// ".not" on a comp bool is "== false": a literal folds where it is written, and a parameter, or an operation over
+// parameters, in each instance.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_not_over_comp_bools, R"(
+    cls C[cmp b: Bool] { }
+    fun flip[cmp x: Bool]() -> C[x.not] { ret C[x.not]() }
+    fun nand[cmp x: Bool, cmp y: Bool]() -> C[(x and y).not] { ret C[(x and y).not]() }
+    fun g() -> Void {
+        let a: C[false] = C[true.not]()
+        let b: C[false] = flip[true]()
+        let c: C[true] = flip[false]()
+        let d: C[false] = nand[true, true]()
+        let e: C[true] = nand[true, false]()
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
+        std::mem::ops::drop(d)
+        std::mem::ops::drop(e)
     }
 )");

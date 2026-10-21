@@ -863,3 +863,22 @@ SPP_TEST_CMP_VALUES(
   cmp s: S32 = std::intrinsics::scmp(&-5_s8, &3_s8)
   cmp w: S32 = std::intrinsics::ucmp(&2_u256, &1_u256)
 )", {"u", "-1_s32"}, {"s", "-1_s32"}, {"w", "1_s32"});
+
+// A right shift is logical, as at run time: a negative value's sign bit moves down too.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_right_shift_of_a_negative_value_is_logical, R"(
+  cmp a: S32 = std::intrinsics::bit_shr(-8_s32, 1_u32)
+  cmp b: S8 = std::intrinsics::bit_shr(-1_s8, 7_u32)
+)", {"a", "2147483644_s32"}, {"b", "1_s8"});
+
+// An "f32" or "f64" folds on its IEEE value, as at run time: "0.1" is the float nearest it, a result is rounded (and
+// "max + 1.0" rounds back to "max"), and a zero keeps its sign.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_float_folding_is_ieee, R"(
+  cmp a: F64 = 0.1_f64 * 3.0_f64
+  cmp b: F64 = std::intrinsics::float_neg(0.0_f64)
+  cmp c: F64 = std::intrinsics::float_max_val[F64]() + 1.0_f64
+)", {"a", "0.30000000000000004_f64"}, {"b", "-0.0_f64"},
+  {"c", "179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0_f64"});

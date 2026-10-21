@@ -129,9 +129,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - cyclic constants overflow the stack (FindCompMemberId and Scope::CompIdOf call each other); the
-//  "reading" guard in "comp_generics::FindCompMemberId" never fires. There is no cyclic-constant error yet: E3 stands
-//  in for it.
+// Constants defined through each other have no value: E3, not a stack overflow.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
     test_invalid_cyclic_constants,
@@ -140,5 +138,27 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup M {
         !public cmp a: S32 = Self::b
         !public cmp b: S32 = Self::a
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_invalid_constant_defined_as_itself,
+    SppCompTimeConstantError, R"(
+    cls M { }
+    sup M {
+        !public cmp a: S32 = Self::a
+    }
+)");
+
+// A cycle through a name and through "Self" is one cycle: both are checked against one stack.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_invalid_cyclic_constants_through_a_name_and_self,
+    SppCompTimeConstantError, R"(
+    cls M { }
+    sup M {
+        !public cmp a: S32 = Self::b
+        !public cmp b: S32 = a
     }
 )");

@@ -248,11 +248,9 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - two aliases naming each other never finish compiling (the existing cycle test only covers
-//  "Vec[RecAlias]"). Disabled, not left red: gtest-parallel has no per-test timeout, so it would hang the suite.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestTypeStatementAst,
-    DISABLED_test_invalid_type_statement_mutually_recursive,
+    test_invalid_type_statement_mutually_recursive,
     SppTypeAliasCyclicError, R"(
     type A = B
     type B = A
@@ -267,4 +265,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun f() -> Void {
         let b: Id[Bool] = true
     }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestTypeStatementAst,
+    test_invalid_type_statement_cycle_of_three,
+    SppTypeAliasCyclicError, R"(
+    type A = B
+    type B = C
+    type C = A
 )");
