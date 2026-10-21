@@ -2,8 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 #if SPP_PLATFORM_UNIX
-#include <dlfcn.h>
-#include <link.h>
+#include <dlfcn.h> // Todo: move to a "sys module
 #endif
 
 module spp.codegen.llvm_artefact;
@@ -35,13 +34,17 @@ namespace spp::codegen {
       static const auto names = [] {
         auto out = llvm::StringSet<>();
 #if SPP_PLATFORM_UNIX
-        const auto handle = dlopen("libc.so.6", RTLD_LAZY | RTLD_NOLOAD);
+        // The directory it was loaded from, and the name it was
+        // opened by; not its link map, as "<link.h>" brings in
+        // "<elf.h>", whose macros take the names of llvm::ELF's.
+        constexpr auto soname = "libc.so.6";
+        const auto handle = dlopen(soname, RTLD_LAZY | RTLD_NOLOAD);
         if (handle == nullptr) { return out; }
-        auto map = static_cast<link_map*>(nullptr);
-        const auto found = dlinfo(handle, RTLD_DI_LINKMAP, &map) == 0 and map != nullptr;
-        const auto path = found ? Str(map->l_name) : Str();
+        char origin[4096] = {};
+        const auto found = dlinfo(handle, RTLD_DI_ORIGIN, origin) == 0;
         dlclose(handle);
-        if (path.empty()) { return out; }
+        if (not found or origin[0] == '\0') { return out; }
+        const auto path = Str(origin) + "/" + soname;
 
         auto object = llvm::object::ObjectFile::createObjectFile(path);
         if (not object) {
@@ -65,6 +68,62 @@ namespace spp::codegen {
         return out;
       }();
       return names;
+    }
+
+    /// What an ELF file lacks of full RELRO: a "PT_GNU_RELRO"
+    /// segment, and binding every symbol at load ("BIND_NOW", in
+    /// any of the three places a linker may say so). Empty when it
+    /// has both, or its headers cannot be read.
+    template <class ELFT>
+    auto RelroGaps(llvm::object::ELFObjectFile<ELFT> const &file) -> Str {
+      // Get the ELF file from the object file, and assume RELRO to
+      // be false.
+      auto const &elf = file.getELFFile();
+      auto relro = false;
+
+      // If any header in the ELF file is RELRO, then update the flag
+      // (ie once true it doesn't become false). Todo: break on true?
+      if (auto headers = elf.program_headers()) {
+        for (auto const &ph : *headers) {
+          relro = relro or ph.p_type == llvm::ELF::PT_GNU_RELRO;
+        }
+      }
+
+      // Otherwise, consume the error and return an empty string, as
+      // there is no handling to be done.
+      else {
+        llvm::consumeError(headers.takeError());
+        return Str();
+      }
+
+      // For each entry in the ELF file's entries, get the tag and the
+      // value, check the tag against known ELF values, and confirm
+      // whether it is an "NOW" variation.
+      auto now = false;
+      if (auto entries = elf.dynamicEntries()) {
+        for (auto const &dyn : *entries) {
+          const auto tag = static_cast<std::uint64_t>(dyn.getTag());
+          const auto val = static_cast<std::uint64_t>(dyn.getVal());
+          now = now
+            or tag == llvm::ELF::DT_BIND_NOW
+            or (tag == llvm::ELF::DT_FLAGS and (val & llvm::ELF::DF_BIND_NOW) != 0)
+            or (tag == llvm::ELF::DT_FLAGS_1 and (val & llvm::ELF::DF_1_NOW) != 0);
+        }
+      }
+
+      // If there are no entries, consume the error and return an empty
+      // string - no handling.
+      else {
+        llvm::consumeError(entries.takeError());
+        return Str();
+      }
+
+      // Based on the RELRO and NOW flags, return the correct value
+      // that provides "gaps" in the RELRO checks.
+      if (not relro and not now) { return "PT_GNU_RELRO and BIND_NOW"; }
+      if (not relro) { return "PT_GNU_RELRO"; }
+      if (not now) { return "BIND_NOW"; }
+      return Str();
     }
 
     /// "n" rounded up to the four bytes every part of an ELF
@@ -94,7 +153,7 @@ auto spp::codegen::EmitHardeningRecord(
     const auto put32 = [&](const std::uint32_t v) {
       for (auto i = 0U; i < 4U; ++i) { bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i)))); }
     };
-    const auto owner_size = kHardeningNoteOwner.size() + 1;
+    constexpr auto owner_size = kHardeningNoteOwner.size() + 1;
     put32(static_cast<std::uint32_t>(owner_size));
     put32(static_cast<std::uint32_t>(text.size()));
     put32(kHardeningNoteType);
@@ -106,7 +165,9 @@ auto spp::codegen::EmitHardeningRecord(
   }
   else {
     bytes = text.str();
-    section = triple.isOSBinFormatMachO() ? llvm::StringRef("__TEXT,__spp_hardening") : llvm::StringRef(kHardeningCoffSection);
+    section = triple.isOSBinFormatMachO()
+      ? llvm::StringRef("__TEXT,__spp_hardening")
+      : llvm::StringRef(kHardeningCoffSection);
   }
 
   // Nothing refers to it, so it is kept by being "used".
@@ -174,16 +235,14 @@ auto spp::codegen::ReadHardeningRecord(
 }
 
 auto spp::codegen::UnfortifiedImport(
-  char const *path)
-  -> char const* {
-  static auto found = Str();
+  char const *path) -> Opt<Str> {
   auto object = llvm::object::ObjectFile::createObjectFile(path);
   if (not object) {
     llvm::consumeError(object.takeError());
-    return nullptr;
+    return Nullopt;
   }
   const auto elf = llvm::dyn_cast<llvm::object::ELFObjectFileBase>(object->getBinary());
-  if (elf == nullptr) { return nullptr; }
+  if (elf == nullptr) { return Nullopt; }
 
   // A library built with fortification imports a checked
   // function wherever it could tell a buffer's size, so one
@@ -201,10 +260,42 @@ auto spp::codegen::UnfortifiedImport(
       continue;
     }
     if ((*flags & llvm::object::SymbolRef::SF_Undefined) == 0) { continue; }
-    if (name->starts_with("__") and name->ends_with("_chk")) { return nullptr; }
+    if (name->starts_with("__") and name->ends_with("_chk")) { return Nullopt; }
     if (plain.empty() and fortifiable.contains(*name)) { plain = name->str(); }
   }
-  if (plain.empty()) { return nullptr; }
-  found = std::move(plain);
-  return found.c_str();
+  if (plain.empty()) { return Nullopt; }
+  return plain;
+}
+
+auto spp::codegen::UnhardenedLink(
+  char const *path) -> Opt<Str> {
+  // If llvm failed to make an object file then consume the error
+  // and return nullopt.
+  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  if (not object) {
+    llvm::consumeError(object.takeError());
+    return Nullopt;
+  }
+
+  // Try the 4 different class and byte orders for the headers. Any
+  // different object type isn't ELF.
+  auto const *const binary = object->getBinary();
+  auto gaps = Str();
+  if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64LE>>(binary)) {
+    gaps = RelroGaps(*e);
+  }
+  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64BE>>(binary)) {
+    gaps = RelroGaps(*e);
+  }
+  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32LE>>(binary)) {
+    gaps = RelroGaps(*e);
+  }
+  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32BE>>(binary)) {
+    gaps = RelroGaps(*e);
+  }
+  else { return Nullopt; }
+
+  // If there are no gaps, there is nothing to report.
+  if (gaps.empty()) { return Nullopt; }
+  return gaps;
 }

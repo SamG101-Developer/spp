@@ -158,9 +158,9 @@ auto spp::compiler::ffi::CheckFortified(
   Path const &root, Vec<Path> const &libraries) -> bool {
   for (auto const &library : libraries) {
     const auto plain = codegen::UnfortifiedImport(utils::files::NativeString(library).c_str());
-    if (plain == nullptr) { continue; }
+    if (not plain.has_value()) { continue; }
     std::cerr
-      << "Error: " << Shown(root, library) << " calls '" << plain << "' unchecked: it was built without "
+      << "Error: " << Shown(root, library) << " calls '" << *plain << "' unchecked: it was built without "
       << "_FORTIFY_SOURCE.\n"
       << "  Rebuild it with -O2 -D_FORTIFY_SOURCE=3, or set 'fortified_ffi = false' under [binary.link] in "
       << "spp.toml.\n";
@@ -173,9 +173,9 @@ auto spp::compiler::ffi::CheckRelro(
   Path const &root, Vec<Path> const &libraries) -> bool {
   for (auto const &library : libraries) {
     const auto missing = codegen::UnhardenedLink(utils::files::NativeString(library).c_str());
-    if (missing == nullptr) { continue; }
+    if (not missing.has_value()) { continue; }
     std::cerr
-      << "Error: " << Shown(root, library) << " was linked without " << missing << ": its relocated data stays "
+      << "Error: " << Shown(root, library) << " was linked without " << *missing << ": its relocated data stays "
       << "writable after startup.\n"
       << "  Relink it with -Wl,-z,relro,-z,now, or set 'relro_ffi = false' under [binary.link] in spp.toml.\n";
     return false;

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_artefact;
+import spp.utils.types;
 
 namespace spp::codegen {
   /// Record in an "llvm::Module" (passed as an opaque pointer)
@@ -25,8 +26,15 @@ namespace spp::codegen {
   /// it imports unchecked that libc has a checked "__X_chk" for,
   /// when it imports some and no checked one at all. Which calls
   /// libc can check is read from libc's own exports, not listed
-  /// here. Null otherwise: fortified, nothing to fortify, or not
+  /// here. None otherwise: fortified, nothing to fortify, or not
   /// an ELF library, which has no such scheme to check for.
-  /// Valid until the next call.
-  SPP_EXP_FUN auto UnfortifiedImport(char const *path) -> char const*;
+  SPP_EXP_FUN auto UnfortifiedImport(char const *path) -> Opt<Str>;
+
+  /// Whether the shared library at "path" was linked without
+  /// full RELRO: answers what it lacks ("PT_GNU_RELRO",
+  /// "BIND_NOW", or both), as a program linked with
+  /// "-z relro -z now" has the one segment made read-only once
+  /// relocated and every symbol bound before that. None when it
+  /// has both, or is not an ELF library, which has no RELRO.
+  SPP_EXP_FUN auto UnhardenedLink(char const *path) -> Opt<Str>;
 }
