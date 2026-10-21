@@ -114,7 +114,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // multiple prototypes for the singular C function,
   // breaking C ABI compatibility.
   if (FfiAnnotation != nullptr) {
-    const auto ffi_symbol = GetFfiSymbolName();
+    const auto ffi_symbol = GetFfiSymbolName().value_or(Str());
     for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
       Raise<SppFfiGenericParameterError>(ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
     }

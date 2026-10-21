@@ -365,7 +365,7 @@ auto spp::analyse::scopes::GnPackParamId(
 
 auto spp::analyse::scopes::ArgNameOf(
   TypeIdArg const &arg) -> Str {
-  if (not arg.Named) { return Str(); }
+  SPP_ASSERT(arg.Named);
   return ParamNameOf(arg.Slot);
 }
 

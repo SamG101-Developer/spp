@@ -180,19 +180,12 @@ auto spp::codegen::EmitHardeningRecord(
 }
 
 auto spp::codegen::ReadHardeningRecord(
-  char const *path,
-  char const **error)
-  -> char const* {
-  static auto record = Str();
-  static auto failure = Str();
-  record.clear();
-
+  char const *path)
+  -> Expected<Opt<Str>, Str> {
   auto object = llvm::object::ObjectFile::createObjectFile(path);
-  if (not object) {
-    failure = llvm::toString(object.takeError());
-    *error = failure.c_str();
-    return nullptr;
-  }
+  if (not object) { return Unexpected(llvm::toString(object.takeError())); }
+
+  auto record = Str();
 
   auto const &file = *object->getBinary();
   for (auto const &sec : file.sections()) {
@@ -205,11 +198,7 @@ auto spp::codegen::ReadHardeningRecord(
       continue;
     }
     auto contents = sec.getContents();
-    if (not contents) {
-      failure = llvm::toString(contents.takeError());
-      *error = failure.c_str();
-      return nullptr;
-    }
+    if (not contents) { return Unexpected(llvm::toString(contents.takeError())); }
 
     // An ELF note's record follows its header and owner's name.
     auto data = *contents;
@@ -231,7 +220,8 @@ auto spp::codegen::ReadHardeningRecord(
     record = data.str();
     break;
   }
-  return record.c_str();
+  if (record.empty()) { return Nullopt; }
+  return record;
 }
 
 auto spp::codegen::UnfortifiedImport(

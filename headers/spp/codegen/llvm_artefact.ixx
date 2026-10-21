@@ -14,12 +14,11 @@ namespace spp::codegen {
   SPP_EXP_FUN auto EmitHardeningRecord(void *llvm_module, char const *record) -> void;
 
   /// The hardening record of the built program at "path": the
-  /// text "EmitHardeningRecord" was given, or empty when it has
+  /// text "EmitHardeningRecord" was given, or none when it has
   /// none (not built by spp, or by one from before records were
-  /// written). Null, with "error" set, when the file cannot be
-  /// read as an object at all. Both strings are valid until the
-  /// next call.
-  SPP_EXP_FUN auto ReadHardeningRecord(char const *path, char const **error) -> char const*;
+  /// written). The error, when the file cannot be read as an
+  /// object at all.
+  SPP_EXP_FUN auto ReadHardeningRecord(char const *path) -> Expected<Opt<Str>, Str>;
 
   /// Whether the shared library at "path" was built without
   /// fortified libc calls (_FORTIFY_SOURCE): answers a function

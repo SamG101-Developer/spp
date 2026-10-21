@@ -788,19 +788,18 @@ auto spp::cli::HandleAudit(
   Str const &path) -> bool {
   // The record is written by every build ("EmitHardeningRecord");
   // a program without one predates it or was not built by spp.
-  auto error = static_cast<char const*>(nullptr);
-  const auto record = codegen::ReadHardeningRecord(path.c_str(), &error);
-  if (record == nullptr) {
-    std::cerr << "Error: '" << path << "' cannot be read as a program: " << error << "\n";
+  const auto record = codegen::ReadHardeningRecord(path.c_str());
+  if (not record.has_value()) {
+    std::cerr << "Error: '" << path << "' cannot be read as a program: " << record.error() << "\n";
     return false;
   }
-  if (*record == '\0') {
+  if (not record->has_value()) {
     std::cerr
       << "Error: '" << path << "' has no hardening record.\n"
       << "  It was not built by spp, or by an spp from before records were written.\n";
     return false;
   }
-  std::cout << record;
+  std::cout << **record;
   return true;
 }
 

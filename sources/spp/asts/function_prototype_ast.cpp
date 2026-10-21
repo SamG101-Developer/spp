@@ -194,8 +194,8 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // Shortcut for ffi functions: only ever one symbol
     // because of the C ABI compatibility. Enforced by the
     // generics ban too.
-    if (not ffi_symbol.empty()) {
-      if (const auto existing = ctx->Module->getFunction(ffi_symbol); existing != nullptr) {
+    if (ffi_symbol.has_value()) {
+      if (const auto existing = ctx->Module->getFunction(*ffi_symbol); existing != nullptr) {
         *_LlvmFn = MakeShared<codegen::LlvmFnWrapper>(existing);
         return *_LlvmFn;
       }
@@ -203,7 +203,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
 
     const auto created_llvm_func = llvm::Function::Create(
       llvm_fun_type, llvm::Function::ExternalLinkage,
-      ffi_symbol.empty() ? codegen::mangle::MangleFnName(*sm->CurrentScope, *this) : ffi_symbol,
+      ffi_symbol.has_value() ? *ffi_symbol : codegen::mangle::MangleFnName(*sm->CurrentScope, *this),
       ctx->Module.get());
     const auto func = MakeShared<codegen::LlvmFnWrapper>(created_llvm_func);
 
@@ -212,7 +212,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // function never unwinds; a foreign one may (a C++ library
     // can throw), so it is marked for "ApplyFfiUnwindGuard"
     // to guard its calls rather than claimed not to.
-    if (ffi_symbol.empty()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
+    if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
     else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
     if (InlineAnnotation.first != nullptr) {
       if (InlineAnnotation.second == A::kLlvmInline) {
@@ -821,13 +821,17 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   drop_utils::EnsureDropInstantiated(TypeRef::Of(*t_ast, *tm.CurrentScope), tm, meta);
 }
 
-auto FunctionPrototypeAst::GetFfiSymbolName() const -> Str {
-  //
-  if (FfiAnnotation == nullptr) { return ""; }
+auto FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
+  // The "symbol" argument of the "!ffi" annotation, when it is
+  // a non-empty string literal.
+  if (FfiAnnotation == nullptr) { return Nullopt; }
   const auto symbol_arg = FfiAnnotation->FnArgGroup->At("symbol");
-  if (symbol_arg == nullptr) { return ""; }
+  if (symbol_arg == nullptr) { return Nullopt; }
   const auto symbol_literal = symbol_arg->Val->To<StringLiteralAst>();
-  return symbol_literal != nullptr ? symbol_literal->CppVal() : Str();
+  if (symbol_literal == nullptr) { return Nullopt; }
+  auto symbol = symbol_literal->CppVal();
+  if (symbol.empty()) { return Nullopt; }
+  return symbol;
 }
 
 auto FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {

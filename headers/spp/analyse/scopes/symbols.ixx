@@ -358,8 +358,8 @@ namespace spp::analyse::scopes {
   /// is spelled again (in a type's name, a mangled name, and a stable order).
   SPP_EXP_CLS auto ParamNameOf(std::uint64_t id) -> Str;
 
-  /// The name a key's named argument is written under: its parameter's ("ParamNameOf"). Empty for a positional
-  /// argument.
+  /// The name a key's named argument is written under: its parameter's ("ParamNameOf"). Only a named argument has
+  /// one.
   SPP_EXP_CLS auto ArgNameOf(TypeIdArg const &arg) -> Str;
 
   /// The identity a type symbol stands for wherever it is named, as a type written naming it means it: a parameter
