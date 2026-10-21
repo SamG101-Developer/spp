@@ -693,8 +693,6 @@ SPP_TEST_CMP_VALUES(
   cmp a: Arr[S32, 3_uz] = [7; 3_uz]
 )", {"a", "[7_s32; 3_uz]"});
 
-// Todo: red - a compound assignment in a "cmp fun" leaves its target unchanged: the "&mut self" argument is copied
-//  into the comptime arguments and never written back.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_integer_compound_assignment, R"(
@@ -711,7 +709,6 @@ SPP_TEST_CMP_VALUES(
   cmp a: S32 = compound(5)
 )", {"a", "0_s32"});
 
-// Todo: red - as "test_integer_compound_assignment".
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_integer_bitwise_compound_assignment, R"(
@@ -728,7 +725,6 @@ SPP_TEST_CMP_VALUES(
   cmp a: U32 = bits(3_u32)
 )", {"a", "15_u32"});
 
-// Todo: red - as "test_integer_compound_assignment".
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_bit_not_assign, R"(
@@ -741,7 +737,6 @@ SPP_TEST_CMP_VALUES(
   cmp a: S32 = flip(5)
 )", {"a", "-6_s32"});
 
-// Todo: red - as "test_integer_compound_assignment".
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_float_compound_assignment, R"(
@@ -758,16 +753,12 @@ SPP_TEST_CMP_VALUES(
   cmp a: F64 = floats(2.0_f64)
 )", {"a", "0.5_f64"});
 
-// Todo: red - comptime "bit_not" negates the BigInt, which is only right for a signed type: an unsigned one needs
-//  2^w - 1 - x, and gets a negative value rejected as out of bounds (E17).
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_unsigned_bit_not, R"(
   cmp a: U32 = (15_u32).bit_not()
 )", {"a", "4294967280_u32"});
 
-// Todo: red - "S32::zero()" and the other numeric constants abort the compiler ("map::at" in the bounds check): the
-//  comptime constants are untyped literals, and ignore Self's width.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_numeric_type_constants, R"(
@@ -863,3 +854,12 @@ SPP_TEST_CMP_VALUES(
   cmp passed: Bool = f(Pass[S32](val=4))
   cmp failed: Bool = f(Fail[Bool](err=true))
 )", {"passed", "true"}, {"failed", "false"});
+
+// A three-way comparison is an "S32" whatever its operands are: "-1" from an unsigned pair, and from a narrow one.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_three_way_comparison_is_s32, R"(
+  cmp u: S32 = std::intrinsics::ucmp(&0_u8, &1_u8)
+  cmp s: S32 = std::intrinsics::scmp(&-5_s8, &3_s8)
+  cmp w: S32 = std::intrinsics::ucmp(&2_u256, &1_u256)
+)", {"u", "-1_s32"}, {"s", "-1_s32"}, {"w", "1_s32"});
