@@ -50,9 +50,10 @@ auto spp::analyse::scopes::FoldCompValues(
     return Nullopt;
   }
 
-  // Two floats fold exactly, by the four operations and the
-  // comparisons; a float never mixes with an integer. The
-  // suffixes combine as an integer's do (below).
+  // Two floats fold by the four operations and the comparisons;
+  // a float never mixes with an integer. The suffixes combine as
+  // an integer's do (below). An "f32" or "f64" folds on its IEEE
+  // values, rounded as at run time; another width exactly.
   const auto lf = lhs.AsFloat();
   const auto rf = rhs.AsFloat();
   if (lf != nullptr or rf != nullptr) {
@@ -60,6 +61,25 @@ auto spp::analyse::scopes::FoldCompValues(
     if (not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return Nullopt; }
     auto const &type = not lhs.Text.empty() ? lhs.Text : rhs.Text;
     const auto of = [&type](numex::BigDec value) { return Opt(CompKey::OfFloat(std::move(value), type)); };
+    if (spp::utils::numbers::IsIeeeFloat(type)) {
+      const auto a = spp::utils::numbers::ReadIeeeFloat(*lf, type);
+      const auto b = spp::utils::numbers::ReadIeeeFloat(*rf, type);
+      const auto of_ieee = [&](const double value) -> Opt<CompKey> {
+        const auto text = spp::utils::numbers::WriteIeeeFloat(value, type);
+        return text.has_value() ? of(numex::BigDec(*text)) : Nullopt;
+      };
+      if (op == "+") { return of_ieee(a + b); }
+      if (op == "-") { return of_ieee(a - b); }
+      if (op == "*") { return of_ieee(a * b); }
+      if (op == "/") { return b == 0.0 ? Nullopt : of_ieee(a / b); }
+      if (op == "==") { return CompKey::OfBool(a == b); }
+      if (op == "!=") { return CompKey::OfBool(a != b); }
+      if (op == "<") { return CompKey::OfBool(a < b); }
+      if (op == "<=") { return CompKey::OfBool(a <= b); }
+      if (op == ">") { return CompKey::OfBool(a > b); }
+      if (op == ">=") { return CompKey::OfBool(a >= b); }
+      return Nullopt;
+    }
     if (op == "+") { return of(*lf + *rf); }
     if (op == "-") { return of(*lf - *rf); }
     if (op == "*") { return of(*lf * *rf); }
