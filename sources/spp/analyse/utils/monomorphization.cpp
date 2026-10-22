@@ -461,6 +461,7 @@ namespace spp::analyse::utils::monomorphization {
       // "2_uz"), and a bound comp generic it names read as what it is bound to where it was keyed ("SizedInteger[w]" in
       // a "[cmp w: U32]" instance binds 32).
       auto bound = sm.CurrentScope->CompAstOf(value);
+      if (bound == nullptr) { Ice(*name, *sm.CurrentScope, "a comp argument's value has no expression to spell it"); }
 
       auto const *const declared = param != nullptr ? param->Type.get() : nullptr;
       const auto declared_id = declared != nullptr ? sm.CurrentScope->TypeIdOf(*declared) : nullptr;
