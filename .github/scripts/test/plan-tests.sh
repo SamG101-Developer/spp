@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Expand a lane's test matrix: one entry per gtest mode and
-# shard, then STL conformance, valgrind and the codegen checks
-# where the lane asks for them, all against one build. With
-# PACK, those last three ride in the last gtest cell instead,
-# where the test job runs every suite of a cell in parallel.
+# shard, then STL conformance, valgrind, the codegen checks and
+# the differential suite where the lane asks for them, all
+# against one build. With PACK, those ride in the last gtest
+# cell instead, where the test job runs every suite of a cell in
+# parallel.
 set -euo pipefail
 
 # These land in GITHUB_OUTPUT as JSON, so they are
 # validated rather than quoted.
 [[ "$SHARD_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "::error::bad shard count '${SHARD_COUNT}'"; exit 1; }
-for flag in STL VALGRIND CODEGEN PACK; do
+for flag in STL VALGRIND CODEGEN DIFFERENTIAL PACK; do
   [[ "${!flag}" =~ ^(true|false)$ ]] || { echo "::error::bad ${flag} flag '${!flag}'"; exit 1; }
 done
 
@@ -18,13 +19,15 @@ read -ra mode_list <<< "$MODES"
 
 # The suites beyond gtest: name, label, timeout, advisory.
 # STL conformance runs once per lane: it never reads
-# SPP_TEST_MODE. Valgrind and the codegen checks are Linux
-# only, and advisory until each has run clean for a while.
+# SPP_TEST_MODE. Valgrind, the codegen checks and the
+# differential suite are Linux only, and advisory until each has
+# run clean for a while.
 extras=()
 [ "$STL" = true ] && extras+=("stl|stl conformance|20|false")
 if [[ "$OS" == ubuntu* ]]; then
   [ "$VALGRIND" = true ] && extras+=("valgrind|valgrind groups|30|true")
   [ "$CODEGEN" = true ] && extras+=("codegen|codegen checks|30|true")
+  [ "$DIFFERENTIAL" = true ] && extras+=("differential|differential suite|30|true")
 fi
 
 entries=()

@@ -146,6 +146,7 @@ jobs:
     with:
       valgrind: true
       codegen: true
+      differential: true
 
   # Aspirational toolchains: they run and report red on
   # failure, but are deliberately omitted from ci-success,

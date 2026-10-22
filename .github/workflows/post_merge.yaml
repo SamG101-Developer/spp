@@ -105,6 +105,7 @@ jobs:
     uses: ./.github/workflows/_lane.yaml
     with:
       codegen: true
+      differential: true
       check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
   # Only a push that bumped VERSION, or a manual dispatch, is a

@@ -1,0 +1,127 @@
+# Case patterns: tuples, nested variants, payload literals, comparisons, arrays, "?" chains, and a subject
+# evaluated once (ported from tests/codegen/check-case-patterns.sh, printing what each match gives).
+fun tuple_variant(t: (Opt[S32], S32)) -> S32 {
+  ret case t of {
+    is (Some[S32](val), y) { val + y }
+    else { 0 }
+  }
+}
+
+fun refined(x: Opt[Opt[S32]]) -> S32 {
+  ret case x of {
+    is Some[Some[S32]](val=Some[S32](val)) { val }
+    is Some[None](..) { 100 }
+    is None() { 200 }
+  }
+}
+
+fun payload_literal(x: Opt[S32]) -> S32 {
+  ret case x of {
+    is Some[S32](val=5) { 1 }
+    is Some[S32](val) { 2 }
+    is None() { 3 }
+  }
+}
+
+fun tuple_payload_literal(t: (Opt[S32], S32)) -> S32 {
+  ret case t of {
+    is (Some[S32](val=7), 1) { 1 }
+    is (Some[S32](val), 1) { 2 }
+    else { 3 }
+  }
+}
+
+fun compare(x: S32) -> S32 {
+  ret case x of {
+    == 3 { 1 }
+    == 4 { 2 }
+    else { 0 }
+  }
+}
+
+fun array_literal(a: Arr[S32, 3_uz]) -> S32 {
+  ret case a of {
+    is [1, b, c] { b + c }
+    is [p, .., 9] { p }
+    else { 0 }
+  }
+}
+
+fun pick(b: Bool) -> Opt[U64] {
+  ret case b { Some(val=10_u64) } else { None }
+}
+
+fun chained_try(t: (S32, S32)) -> Opt[U64] {
+  let y = pick(t is (5, ..))?.add_checked(1_u64)?
+  ret Some(val=y)
+}
+
+fun make() -> (S32, S32) {
+  std::console::println("make")
+  ret (1, 2)
+}
+
+fun evaluated_once() -> S32 {
+  ret case make() of {
+    is (1, x) { x }
+    else { 0 }
+  }
+}
+
+fun show(what: &StrView, got: S32) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  let text = Str::from(got)
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  let none: Opt[S32] = None
+  let some3: Opt[S32] = Some[S32](val=3)
+  show("tuple_variant some", tuple_variant((some3, 2)))
+  show("tuple_variant none", tuple_variant((none, 2)))
+
+  let inner5: Opt[S32] = Some[S32](val=5)
+  let inner_none: Opt[S32] = None
+  let o1: Opt[Opt[S32]] = Some[Opt[S32]](val=inner5)
+  let o2: Opt[Opt[S32]] = Some[Opt[S32]](val=inner_none)
+  let o3: Opt[Opt[S32]] = None
+  show("refined some some", refined(o1))
+  show("refined some none", refined(o2))
+  show("refined none", refined(o3))
+
+  let some5: Opt[S32] = Some[S32](val=5)
+  let some6: Opt[S32] = Some[S32](val=6)
+  let none2: Opt[S32] = None
+  show("payload_literal 5", payload_literal(some5))
+  show("payload_literal 6", payload_literal(some6))
+  show("payload_literal none", payload_literal(none2))
+
+  let some7: Opt[S32] = Some[S32](val=7)
+  let some8: Opt[S32] = Some[S32](val=8)
+  let none3: Opt[S32] = None
+  show("tuple_payload_literal 7", tuple_payload_literal((some7, 1)))
+  show("tuple_payload_literal 8", tuple_payload_literal((some8, 1)))
+  show("tuple_payload_literal none", tuple_payload_literal((none3, 1)))
+
+  show("compare 3", compare(3))
+  show("compare 4", compare(4))
+  show("compare 5", compare(5))
+
+  show("array 123", array_literal([1, 2, 3]))
+  show("array 429", array_literal([4, 2, 9]))
+  show("array 428", array_literal([4, 2, 8]))
+
+  case chained_try((5, 0)) of {
+    is Some[U64](val) { show("chained_try 5 value", case val == 11_u64 { 1 } else { 0 }) }
+    else { show("chained_try 5", 0) }
+  }
+  case chained_try((6, 0)) of {
+    is Some[U64](val) { show("chained_try 6", 0) }
+    else { }
+  }
+
+  show("evaluated_once", evaluated_once())
+  std::console::println("ok")
+}

@@ -1,7 +1,8 @@
 # One build, then one test matrix against its digest-checked
 # binaries: gtest (mode x shard), STL conformance, and on Linux
-# valgrind and the codegen checks when asked for, each in a cell
-# of its own or, with `pack`, beside the last gtest shard.
+# valgrind, the codegen checks and the differential suite when
+# asked for, each in a cell of its own or, with `pack`, beside
+# the last gtest shard.
 
 name: lane
 
@@ -52,8 +53,13 @@ on:
         required: false
         type: boolean
         default: false
+      differential:
+        description: "Run the tests/differential programs at dev and rel and compare them (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
       pack:
-        description: "Run STL conformance, valgrind and the codegen checks in the last gtest cell, in parallel with it, rather than in cells of their own."
+        description: "Run STL conformance, valgrind, the codegen checks and the differential suite in the last gtest cell, in parallel with it, rather than in cells of their own."
         required: false
         type: boolean
         default: false
@@ -136,6 +142,7 @@ jobs:
           STL: ${{ inputs.stl-conformance }}
           VALGRIND: ${{ inputs.valgrind }}
           CODEGEN: ${{ inputs.codegen }}
+          DIFFERENTIAL: ${{ inputs.differential }}
           PACK: ${{ inputs.pack }}
         run: bash .github/scripts/test/plan-tests.sh
 
@@ -153,9 +160,10 @@ jobs:
 
   # Each cell is one suite; the planner decides which cells this
   # lane has, so a suite that does not apply draws no job at all.
-  # Valgrind and the codegen checks are advisory: valgrind until
-  # it has run clean for a while, the codegen checks until they
-  # have on the hosted kernel, which seal and deny_wx depend on.
+  # Valgrind, the codegen checks and the differential suite are
+  # advisory: valgrind and the differential suite until they have
+  # run clean for a while, the codegen checks until they have on
+  # the hosted kernel, which seal and deny_wx depend on.
   test:
     name: ${{ matrix.label }}
     needs: [ build ]
@@ -221,9 +229,10 @@ jobs:
       # Every suite the cell holds, side by side: a packed cell
       # (`pack`) lets the short suites finish while gtest runs on.
       # A failure fails the job at the group's implicit wait, after
-      # the others have finished. Valgrind and the codegen checks
-      # sharing a cell stay advisory through their own
-      # continue-on-error; alone, the job-level one covers them.
+      # the others have finished. Valgrind, the codegen checks and
+      # the differential suite sharing a cell stay advisory through
+      # their own continue-on-error; alone, the job-level one covers
+      # them.
       - parallel:
           - name: Run tests
             id: tests
@@ -256,6 +265,13 @@ jobs:
             if: contains(matrix.suites, 'codegen')
             continue-on-error: ${{ matrix.suites != 'codegen' }}
             run: bash tests/codegen/run.sh build/spp
+
+          # Each program built at dev and at rel, run, and its
+          # output and exit status compared.
+          - name: Differential suite
+            if: contains(matrix.suites, 'differential')
+            continue-on-error: ${{ matrix.suites != 'differential' }}
+            run: bash tests/differential/run.sh build/spp
 
       - name: Upload test logs on failure
         if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}

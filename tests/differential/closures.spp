@@ -1,0 +1,36 @@
+# Closures: a moved capture, a "&mut" capture written through, closures made afresh inside a loop (each its own
+# environment), and a borrowed capture read after its owner changes between calls.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun main() -> Void {
+  let a = 5_u32
+  let add = (b: U32 caps a) a + b
+  show("moved capture", Str::from(add(3_u32)))
+
+  let mut total = 0_u32
+  let mut accumulate = (x: U32 caps &mut total) { total += x }
+  accumulate(4_u32)
+  accumulate(6_u32)
+  std::mem::ops::drop(accumulate)
+  show("mut capture", Str::from(total))
+
+  let mut i = 0_u32
+  let mut sum = 0_u32
+  loop i < 5_u32 {
+    let k = i * 10_u32
+    let f = (y: U32 caps k) k + y
+    sum = sum + f(i)
+    i = i + 1_u32
+  }
+  show("loop captures", Str::from(sum))
+
+  let base = 100_u64
+  let read = (x: U64 caps &base) base * x
+  show("borrowed capture", Str::from(read(7_u64)))
+}
