@@ -14,6 +14,7 @@ import spp.asts.char_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -129,8 +130,10 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   }
 
   auto &lowered_cmp_code = *_Builtin->CompTimeImpl;
+  auto arg_names = Vec<Shared<IdentifierAst>>{};
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
-  for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
+  for (auto &&[name, arg] : meta->CompTimeArgs) {
+    arg_names.emplace_back(name);
     extracted_args.emplace_back(std::move(arg));
   }
 
@@ -155,7 +158,14 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   meta->CompTimeResult =
     lowered_cmp_code
     .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
-    .Invoke(std::move(extracted_args));
+    .Invoke(extracted_args);
+
+  // An "_assign" builtin writes its "&mut" operand in place:
+  // the arguments go back as they were left, for the call to
+  // write back to the places they came from.
+  for (auto i = 0uz; i < arg_names.size(); ++i) {
+    meta->CompTimeArgs[arg_names[i]] = std::move(extracted_args[i]);
+  }
 
   // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()
   //     .with_args(*this)
