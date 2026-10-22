@@ -213,12 +213,12 @@ auto IdentifierAst::Stage9_CompTimeResolve(
   // no value to resolve to: the walk below would re-enter
   // here for the same symbol and never terminate.
   RaiseIf<SppCompTimeConstantError>(
-    genex::contains(_ResolvingCompTimeSymbols, var_sym),
+    analyse::utils::comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
     ERR_ARGS(*this));
 
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
-  const auto guard = ResolvingCompTimeSymbolGuard(var_sym);
+  const auto guard = analyse::utils::comp_generics::CompTimeResolutionGuard(var_sym);
   value->Stage9_CompTimeResolve(&tm, meta);
 }
 
