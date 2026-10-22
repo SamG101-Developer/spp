@@ -185,6 +185,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Handle accessing a symbol on a type.
   if (_LhsTypeSymbol != nullptr) {
     if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
@@ -198,6 +199,14 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
     }
     const auto sym = analyse::utils::member_lookup::MemberOf(
       *_LhsTypeSymbol->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
+
+    // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
+    // as this is impossiblt to provide a value.
+    using comp_generics::CompTimeResolutionGuard;
+    RaiseIf<SppCompTimeConstantError>(
+      CompTimeResolutionGuard::IsResolving(sym),
+      ERR_ARGS(*this));
+    const auto _guard = CompTimeResolutionGuard(sym);
     auto tm = sm->NewManagerAt(_LhsTypeSymbol->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CompTimeResult = AstClone(meta->CompTimeResult);
