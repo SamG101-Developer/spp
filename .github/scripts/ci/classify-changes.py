@@ -38,7 +38,7 @@ class Gate:
     pinnable: bool  # If the gate can be skipped when there are no pins.
     follows_code: bool  # If the gate follows the code gate.
 
-    def __init__(self, name: str, table: dict, sets: dict[str, list[str]]):
+    def __init__(self, name: str, table: dict, sets: dict[str, list[str]]) -> None:
         # Check the table for unknown keys, error if there are
         # any.
         unknown = set(table) - {"paths", "include", "pinnable", "code"}
@@ -139,7 +139,7 @@ def emit(name: str, value: bool) -> None:
     """
 
     text = "true" if value else "false"
-    with open(os.environ.get("GITHUB_OUTPUT") or "/dev/stdout", "a") as out:
+    with Path(os.environ.get("GITHUB_OUTPUT") or "/dev/stdout").open("a") as out:
         out.write(f"{name}={text}\n")
     print(f"  {name:<14} {text}")
 
@@ -260,10 +260,12 @@ def check() -> None:
 
     # Check for invalid files in the patterns, by comparing them to
     # the available files.
-    for where, patterns in named:
-        for pattern in patterns:
-            if not any(fnmatch.fnmatchcase(f, pattern) for f in files):
-                problems.append(f"{where}: '{pattern}' matches no file in the repository")
+    problems.extend(
+        f"{where}: '{pattern}' matches no file in the repository"
+        for where, patterns in named
+        for pattern in patterns
+        if not any(fnmatch.fnmatchcase(f, pattern) for f in files)
+    )
 
     # Group the gates as a set with some fixed options too. Load the
     # outputs from the action.yaml file and compare them to the
@@ -271,10 +273,10 @@ def check() -> None:
     produced = {"code", "ci_pins_only"} | {g.name for g in gates}
     action = yaml.safe_load(ACTION.read_text())
     declared = set(action.get("outputs", {}))
-    for name in sorted(produced - declared):
-        problems.append(f"{ACTION} declares no output for gate '{name}'")
-    for name in sorted(declared - produced):
-        problems.append(f"{ACTION} declares output '{name}', which no gate produces")
+    problems.extend(f"{ACTION} declares no output for gate '{name}'" for name in sorted(produced - declared))
+    problems.extend(
+        f"{ACTION} declares output '{name}', which no gate produces" for name in sorted(declared - produced)
+    )
 
     for caller in CALLERS:
         outputs = yaml.safe_load(caller.read_text())["jobs"]["changes"].get("outputs", {})

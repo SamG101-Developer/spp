@@ -21,6 +21,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 try:
     import tomllib
@@ -56,7 +57,7 @@ FLOOR_KEYS = {"glibc", "linux", "binutils", "macos"}
 FLOOR_VERSION = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"::error::{message}", file=sys.stderr)
     sys.exit(1)
 

@@ -14,9 +14,10 @@ import sys
 from pathlib import Path
 
 import yaml
+from yaml.resolver import BaseResolver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-import pins  # noqa: E402
+import pins
 
 WORKFLOWS = Path(".github/workflows")
 ACTIONS = Path(".github/actions")
@@ -35,11 +36,11 @@ class LineLoader(yaml.SafeLoader):
 
 def _construct_mapping(loader: LineLoader, node: yaml.MappingNode) -> dict:
     mapping = loader.construct_mapping(node, deep=True)
-    mapping[LINE] = node.start_mark.line + 1
+    mapping[LINE] = node.start_mark.line + 1 if node.start_mark is not None else 1
     return mapping
 
 
-LineLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping)
+LineLoader.add_constructor(BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping)
 
 
 def error(path: Path, node: dict | None, message: str) -> None:
@@ -49,7 +50,7 @@ def error(path: Path, node: dict | None, message: str) -> None:
     print(f"::error file={path},line={line}::{message}")
 
 
-def flat_steps(steps: list) -> list[dict]:
+def flat_steps(steps: list | None) -> list[dict]:
     """Steps in order, with the members of a `parallel:` group in place of the group."""
     out: list[dict] = []
     for step in steps or []:
@@ -73,7 +74,7 @@ def check_step(path: Path, where: str, step: dict) -> None:
 
 
 def check_workflow(path: Path) -> None:
-    data = yaml.load(path.read_text(), Loader=LineLoader)  # noqa: S506 - LineLoader is a SafeLoader
+    data = yaml.load(path.read_text(), Loader=LineLoader)  # LineLoader is a SafeLoader
     # The loader adds the line marker to every mapping, `{}` included.
     permissions = data.get("permissions")
     if not isinstance(permissions, dict) or set(permissions) - {LINE}:
@@ -99,7 +100,7 @@ def check_workflow(path: Path) -> None:
 
 
 def check_action(path: Path) -> None:
-    data = yaml.load(path.read_text(), Loader=LineLoader)  # noqa: S506 - LineLoader is a SafeLoader
+    data = yaml.load(path.read_text(), Loader=LineLoader)  # LineLoader is a SafeLoader
     for step in flat_steps((data.get("runs") or {}).get("steps")):
         check_step(path, f"action `{path.parent.name}`", step)
 

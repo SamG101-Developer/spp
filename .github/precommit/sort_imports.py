@@ -29,6 +29,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Callable
+from pathlib import Path
 
 INCLUDE_RE = re.compile(r"^\s*#\s*include\b")
 IMPORT_RE = re.compile(r"^\s*(?:export\s+)?import\b")
@@ -100,12 +101,10 @@ def process(text: str) -> str:
 def main(argv: list[str]) -> int:
     changed = False
     for path in argv[1:]:
-        with open(path, encoding="utf-8") as f:
-            original = f.read()
+        original = Path(path).read_text(encoding="utf-8")
         fixed = process(original)
         if fixed != original:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(fixed)
+            Path(path).write_text(fixed, encoding="utf-8")
             print(f"sorted imports: {path}")
             changed = True
     return 1 if changed else 0

@@ -90,6 +90,11 @@ repos:
         args: [ --fix ]
       - id: ruff-format
 
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: 413d39a1ae22e511c7d094682a0caf1486a49a36  # v0.0.90
+    hooks:
+      - id: ty
+
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: b84c4a0a90bd58c7d82ae8f0d4d5e77b1ddd3ce6  # 0.12.5
     hooks:
