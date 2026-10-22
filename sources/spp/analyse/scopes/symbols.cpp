@@ -664,22 +664,39 @@ auto AliasInfo::DeclaredIn() const -> Scope* {
   return WrittenIn->AstNode != nullptr and WrittenIn->AstNode == Stmt ? WrittenIn->Parent : WrittenIn;
 }
 
+namespace {
+  /// The aliases a chain of them has passed through, to stop on
+  /// one it comes back to. Inline: a chain is short.
+  using PassedAliases = spp::SmallVec<TypeSymbol const*, 4>;
+
+  auto WasPassed(PassedAliases const &passed, TypeSymbol const *const sym) -> bool {
+    for (auto i = 0uz; i < passed.size(); ++i) {
+      if (passed[i] == sym) { return true; }
+    }
+    return false;
+  }
+}
+
 auto TypeSymbol::AliasTarget(
   Scope const &scope, const bool make) const -> TypeSymbol* {
-  // Followed until nothing changes: a cycle ("type A = A") is rejected where it is declared. Read where
-  // it was written first: its linked scope is the target class's own, where the target's spelling can name that
-  // class's parameters instead ("type Mine = Vec[A]" in "sup A", read in "Vec", is "Vec[A=A]").
+  // Followed until nothing changes, or until it comes back to an alias it has passed: a cycle ("type A = B",
+  // "type B = A") is rejected where it is declared ("aliases::StatementTarget"), but can be followed before then (the
+  // borrow check of a target, earlier in the same stage). Read where it was written first: its linked scope is the
+  // target class's own, where the target's spelling can name that class's parameters instead ("type Mine = Vec[A]" in
+  // "sup A", read in "Vec", is "Vec[A=A]").
   const auto read = [make](Scope const *where, TypeAst const &resolved) -> TypeSymbol* {
     if (where == nullptr) { return nullptr; }
     return make ? FindOrMakeTypeSymbol(*where, resolved) : where->FindTypeSymbol(&resolved);
   };
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases{s};
   while (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
     auto const &resolved = *s->Alias->Resolved;
     auto *next = read(s->Alias->WrittenIn, resolved);
     if (next == nullptr) { next = read(s->LinkedScope, resolved); }
     if (next == nullptr) { next = read(&scope, resolved); }
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
@@ -702,12 +719,15 @@ auto TypeSymbol::AliasTargetId(
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {
-  // Followed until nothing changes, as "AliasTarget" is: a cycle of "use"s is rejected where one is declared.
+  // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle of "use"s is rejected where one is
+  // declared, but can be followed before then.
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases{s};
   while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
     and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
