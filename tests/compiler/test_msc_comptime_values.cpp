@@ -870,8 +870,9 @@ SPP_TEST_CMP_VALUES(
   cmp b: S8 = std::intrinsics::bit_shr(-1_s8, 7_u32)
 )", {"a", "2147483644_s32"}, {"b", "1_s8"});
 
-// An "f32" or "f64" folds on its IEEE value, as at run time: "0.1" is the float nearest it, a result is rounded (and
-// "max + 1.0" rounds back to "max"), and a zero keeps its sign.
+// A float folds in its type's format, as at run time: "0.1" is the float nearest it, a result is rounded (and
+// "max + 1.0" rounds back to "max"), and a zero keeps its sign. A result is written with the fewest digits that read
+// back to it, but an integer exactly.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_float_folding_is_ieee, R"(

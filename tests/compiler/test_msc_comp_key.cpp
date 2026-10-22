@@ -31,6 +31,11 @@ namespace {
     return CompKey::OfFloat(numex::BigDec(numex::BigInt(num), numex::BigInt(den)), suffix);
   }
 
+  /// A float value written as a decimal, for one too long for "num / den".
+  auto Float(spp::Str const &text, spp::Str const &suffix) -> CompKey {
+    return CompKey::OfFloat(numex::BigDec(text), suffix);
+  }
+
   auto Param(const std::uint64_t id) -> CompKey { return CompKey::OfParam(id); }
 
   /// A pack and an operation, their parts interned as a node's are.
@@ -129,8 +134,8 @@ TEST(TestCompKey, test_float_values_are_exact_rationals) {
 }
 
 TEST(TestCompKey, test_fold_float_values) {
-  // An "f32" or "f64" folds on IEEE values, as at run time: a third is the double nearest it, three of those are
-  // one, and "0.1 + 0.2" is not "0.3". Another width folds exactly: a third stays a third.
+  // A float folds in its type's format, as at run time: a third is the double nearest it, three of those are one,
+  // and "0.1 + 0.2" is not "0.3". An "f128" is no different, only nearer.
   const auto third = Float(3333333333333333, 10000000000000000, "f64");
   EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(3, 1, "f64")), third);
   EXPECT_EQ(FoldCompValues("/", Float(2, 1, "f64"), Float(6, 1, "f64")), third);
@@ -138,8 +143,12 @@ TEST(TestCompKey, test_fold_float_values) {
   EXPECT_EQ(
     FoldCompValues("+", Float(1, 10, "f64"), Float(2, 10, "f64")),
     Float(30000000000000004, 100000000000000000, "f64"));
-  EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f128"), Float(3, 1, "f128")), Float(1, 3, "f128"));
-  EXPECT_EQ(FoldCompValues("+", Float(1, 10, "f128"), Float(2, 10, "f128")), Float(3, 10, "f128"));
+  EXPECT_EQ(
+    FoldCompValues("/", Float(1, 1, "f128"), Float(3, 1, "f128")),
+    Float("0.3333333333333333333333333333333333", "f128"));
+  EXPECT_EQ(
+    FoldCompValues("+", Float(1, 10, "f128"), Float(2, 10, "f128")),
+    Float("0.30000000000000000000000000000000004", "f128"));
   EXPECT_EQ(FoldCompValues("-", Float(1, 2, "f32"), Float(3, 4, "f32")), Float(-1, 4, "f32"));
   EXPECT_EQ(FoldCompValues("/", Float(1, 1, "f64"), Float(0, 1, "f64")), spp::Nullopt);
 
