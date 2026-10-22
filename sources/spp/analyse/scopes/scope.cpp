@@ -60,8 +60,10 @@ import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.ice;
 import spp.utils.interner;
+import spp.utils.numbers;
 import spp.utils.ptr;
 import genex;
+import llvm;
 import numex.big_dec;
 import numex.big_int;
 
@@ -119,23 +121,6 @@ namespace spp::analyse::scopes {
     /// nothing unresolved. Parameters are allowed: a stamp is read through the bindings where it is read.
     auto IsStampableTypeId(const TypeId id) -> bool {
       return id != nullptr and not id->HasSelf and not id->HasUnresolved;
-    }
-
-    /// The decimal places "value" needs to print exactly, or none when its decimal does not terminate: its denominator
-    /// (in lowest terms) has a prime factor other than 2 and 5.
-    auto ExactDecimalPlaces(numex::BigDec const &value) -> Opt<std::uint64_t> {
-      auto den = value.GetDenominator();
-      auto twos = static_cast<std::uint64_t>(0);
-      auto fives = static_cast<std::uint64_t>(0);
-      while (den % numex::BigInt(2) == numex::BigInt(0)) {
-        den /= numex::BigInt(2);
-        ++twos;
-      }
-      while (den % numex::BigInt(5) == numex::BigInt(0)) {
-        den /= numex::BigInt(5);
-        ++fives;
-      }
-      return den == numex::BigInt(1) ? Opt(std::max(twos, fives)) : Nullopt;
     }
 
     /// The binding a scope gives a generic parameter, by the parameter's identity
