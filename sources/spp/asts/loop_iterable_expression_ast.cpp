@@ -194,10 +194,6 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
       std::move(is_tok), std::move(patterns), nullptr, std::move(Body));
   }();
 
-  // Reaching the branch above is what counts as the loop
-  // having taken an iteration.
-  case_valid_branch->MarkForIterLoopYield();
-
   // Otherwise, the generator is exhausted, so clear the
   // continuation flag.
   // Translated: "<case-of-expr> else { $_ok = false }".
@@ -239,7 +235,6 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   }();
   loop_new->Body->Members.emplace_back(std::move(resume_let));
   loop_new->Body->Members.emplace_back(std::move(case_expr));
-  loop_new->MarkAsIterDesugar();
   _TransformedLoop = std::move(loop_new);
 
   // The iterator is consumed on every way out of the loop:

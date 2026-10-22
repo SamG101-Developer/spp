@@ -1421,6 +1421,18 @@ SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
     "Remove the branch.");
 }
 
+SppLoopMissingElseError::SppLoopMissingElseError(
+  Ast const &loop, Ast const &exit_value) {
+  AddHeader(117, "Loop Missing Else Error");
+  AddCtxForErr(&exit_value, "Loop value given here");
+  AddErr(&loop, "Loop with no else block introduced here");
+  AddFooter(
+    "A loop whose " + INLINE_NOTE("exit") + " gives a value has none when its condition ends it instead, so it needs "
+    "an " + INLINE_NOTE("else") + " block, which runs then, however many times the loop went round.",
+    "Add an " + INLINE_HELP("else") + " block giving the loop's value when it ends without an " +
+    INLINE_HELP("exit") + ".");
+}
+
 SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");

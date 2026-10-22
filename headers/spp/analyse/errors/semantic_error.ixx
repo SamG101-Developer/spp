@@ -124,6 +124,7 @@ use(spp::analyse::errors, struct SppPatternGuardMovesValueError);
 use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
 use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
+use(spp::analyse::errors, struct SppLoopMissingElseError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
 use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
@@ -753,6 +754,10 @@ SPP_EXP_CLS struct spp::analyse::errors::SppDeferInCompTimeFunctionError final :
 SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError final : SemanticError {
   explicit SppLinearValueSkippedInDestructureError(Ast const &skip, Ast const &destructure,
     StrView attr_name, StrView type_name);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppLoopMissingElseError final : SemanticError {
+  explicit SppLoopMissingElseError(Ast const &loop, Ast const &exit_value);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {

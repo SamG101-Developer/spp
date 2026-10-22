@@ -39,18 +39,4 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
 
-  /// Mark this loop as the product of desugaring an iterable
-  /// loop. Such a loop runs its body once more than it yields
-  /// values (the final iteration discovers the generator is
-  /// exhausted), so it must not record itself as "entered" at
-  /// the top of its body; the yield branch of its "case" block
-  /// does that instead. Without this, the "else" block would
-  /// never run, because an empty generator still enters the
-  /// body once.
-  auto MarkAsIterDesugar() -> void;
-
-private:
-  /// Whether this loop was desugared from an iterable loop.
-  /// See "MarkAsIterDesugar".
-  bool _IterDesugar;
 };
