@@ -197,7 +197,9 @@ auto IdentifierAst::Stage9_CompTimeResolve(
 
   // An unbound comp generic has no value yet, and stands for
   // itself - as it does in a template's signature.
-  if (var_sym != nullptr and var_sym->Kind == VariableKind::GnCompParam) {
+  if (var_sym != nullptr
+    and var_sym->Kind == VariableKind::GnCompParam
+    and var_sym->CompTimeValue == nullptr) {
     meta->CompTimeResult = AstClone(this);
     return;
   }
@@ -213,12 +215,12 @@ auto IdentifierAst::Stage9_CompTimeResolve(
   // no value to resolve to: the walk below would re-enter
   // here for the same symbol and never terminate.
   RaiseIf<SppCompTimeConstantError>(
-    analyse::utils::comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
+    comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
     ERR_ARGS(*this));
 
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
-  const auto guard = analyse::utils::comp_generics::CompTimeResolutionGuard(var_sym);
+  const auto guard = comp_generics::CompTimeResolutionGuard(var_sym);
   value->Stage9_CompTimeResolve(&tm, meta);
 }
 
