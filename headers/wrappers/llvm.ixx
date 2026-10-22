@@ -62,6 +62,8 @@ export namespace llvm {
   using ::llvm::APInt;
   using ::llvm::APFloat;
   using ::llvm::APFloatBase;
+  using ::llvm::maxnum;
+  using ::llvm::minnum;
   using ::llvm::ArrayRef;
   using ::llvm::ArrayType;
   using ::llvm::AtomicOrdering;
@@ -95,6 +97,7 @@ export namespace llvm {
   using ::llvm::MDNode;
   using ::llvm::MDString;
   using ::llvm::Metadata;
+  using ::llvm::MetadataAsValue;
   using ::llvm::Module;
   using ::llvm::OperandBundleDef;
   using ::llvm::PointerType;
@@ -184,9 +187,12 @@ export namespace llvm {
     using ::llvm::Intrinsic::atan;
     using ::llvm::Intrinsic::atan2;
     using ::llvm::Intrinsic::ceil;
+    using ::llvm::Intrinsic::convert_from_arbitrary_fp;
+    using ::llvm::Intrinsic::convert_to_arbitrary_fp;
     using ::llvm::Intrinsic::cos;
     using ::llvm::Intrinsic::exp;
     using ::llvm::Intrinsic::exp2;
+    using ::llvm::Intrinsic::fabs;
     using ::llvm::Intrinsic::floor;
     using ::llvm::Intrinsic::log;
     using ::llvm::Intrinsic::log10;
