@@ -107,17 +107,6 @@ auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArg
   return out;
 }
 
-auto FunctionCallArgumentGroupAst::GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*> {
-  // Filter by casting.
-  auto out = Vec<FunctionCallArgumentPositionalAst*>();
-  for (auto const &arg : Args) {
-    if (auto *pos_arg = arg->To<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
-      out.emplace_back(pos_arg);
-    }
-  }
-  return out;
-}
-
 auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
