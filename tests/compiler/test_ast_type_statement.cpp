@@ -256,7 +256,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     type B = A
 )");
 
-// Todo: red - the target is looked up before the alias's own parameters are in scope (E26).
+// An alias may name one of its own parameters: "Id[T]" is "T", whatever "T" is.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestTypeStatementAst,
     test_valid_type_statement_generic_identity, R"(
@@ -264,6 +264,19 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         let b: Id[Bool] = true
+        let v: Id[Vec[S32]] = Vec[S32]::new()
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestTypeStatementAst,
+    test_invalid_type_statement_generic_identity_mismatch,
+    SppTypeMismatchError, R"(
+    type Id[T] = T
+
+    fun f() -> Void {
+        let b: Id[Bool] = 5_s32
     }
 )");
 
