@@ -702,8 +702,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Todo: red - the pack "Rest" binds the whole given variant, not a tuple of the members "Bool" leaves, and is then
-//  dropped in substitution (E51, then E1). "strip[S32](v)" passes.
+// A pack among a variant's members takes the members the others leave, flattened back into the variant.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variant,
   test_valid_infer_a_variant_pack_parameter, R"(
@@ -711,5 +710,26 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void {
         let v: S32 or Bool = 1_s32
         strip(v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variant,
+  test_valid_infer_a_variant_pack_parameter_of_two, R"(
+    fun strip[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun g() -> Void {
+        let v: S32 or Bool or Str = true
+        strip(v)
+    }
+)");
+
+// A pack given explicitly flattens into the variant ("Bool or S32 or Str"), and each member widens into it.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_Variant,
+  test_valid_explicit_variant_pack_argument, R"(
+    fun f[..Rest](x: Bool or Rest) -> Void { std::mem::ops::drop(x) }
+    fun g() -> Void {
+        f[S32, Str](true)
+        f[S32, Str](5_s32)
     }
 )");

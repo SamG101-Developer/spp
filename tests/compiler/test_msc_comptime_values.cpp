@@ -772,8 +772,7 @@ SPP_TEST_CMP_VALUES(
 )", {"a", "0_s32"}, {"b", "1_s32"}, {"c", "-1_s32"}, {"d", "1_u8"}, {"e", "0.0_f32"}, {"f", "1.0_f32"},
   {"g", "-1.0_f32"});
 
-// Todo: red - a comptime call runs the template's body, so a comp generic it returns stays the unbound "n" (and a
-//  comparison of it aborts the compiler with "bad_cast").
+// A comptime call reads its comp generics as the call bound them.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_comp_generic_argument_in_call, R"(
@@ -842,8 +841,7 @@ SPP_TEST_CMP_VALUES(
   cmp a: S32 = f(1)
 )", {"a", "1_s32"});
 
-// Todo: red - a comptime "x is <pattern>" raises E3 on "x" when the pattern matches (the narrowed "x" has no comptime
-//  value); the same test written as a "case" folds.
+// A comptime "x is <pattern>" folds, matching or not: the call reads the parameter "x", not the "x" the "is" narrows.
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_is_expression_on_a_variant, R"(
@@ -882,3 +880,15 @@ SPP_TEST_CMP_VALUES(
   cmp c: F64 = std::intrinsics::float_max_val[F64]() + 1.0_f64
 )", {"a", "0.30000000000000004_f64"}, {"b", "-0.0_f64"},
   {"c", "179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0_f64"});
+
+// Comp generics given by keyword, used in an expression, and passed on to another comptime call.
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_comp_generics_in_comptime_calls, R"(
+  cmp fun get[cmp n: S32]() -> S32 { ret n }
+  cmp fun twice[cmp n: S32]() -> S32 { ret n * 2 }
+  cmp fun outer[cmp m: S32]() -> S32 { ret get[m]() + 1 }
+  cmp a: S32 = get[n=7]()
+  cmp b: S32 = twice[21]()
+  cmp c: S32 = outer[4]()
+)", {"a", "7_s32"}, {"b", "42_s32"}, {"c", "5_s32"});

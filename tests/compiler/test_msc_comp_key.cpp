@@ -544,8 +544,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - segfaults: the attribute's type "A[Self::n]" names an instance not made yet, so "AstIn" answers null
-//  in the object initializer's argument check. With "A[4_uz]" made first, the mismatch is E1 as it should be.
+// The attribute's type "A[Self::n]" is checked as "A[4_uz]" even before anything else makes that instance.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestCompKey,
     test_invalid_self_member_in_an_attribute_type_mismatch,
