@@ -225,32 +225,19 @@ auto AnnotationAst::Stage5_LoadSupScopes(
     if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
   }
 
-  // Mark a type symbol as being "zero type". This can be applied
-  // to a class or a type alias. Todo: does this have an attr count
-  // check?
+  // Mark a class as being "zero type". Todo: does this have an
+  // attr count check?
   else if (fq_name == A::kZeroType and _Ctx->To<ClassPrototypeAst>()) {
     const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
     sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyZeroType = true;
-    if (cls_ctx) { cls_ctx->ZeroTypeAnnotation = this; }
+    cls_ctx->ZeroTypeAnnotation = this;
   }
 
-  else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
-    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->NewType)->IsDirectlyZeroType = true;
-    sm->CurrentScope->FindTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
-  }
-
-  // Mark a type symbol as a thread hazard, so neither it nor
-  // anything holding one may cross a thread boundary.
+  // Mark a class as a thread hazard, so neither it nor anything
+  // holding one may cross a thread boundary.
   else if (fq_name == A::kThreadHazard and _Ctx->To<ClassPrototypeAst>()) {
     const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
     sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyThreadHazard = true;
-  }
-
-  else if (fq_name == A::kThreadHazard and _Ctx->To<TypeStatementAst>()) {
-    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->NewType)->IsDirectlyThreadHazard = true;
-    sm->CurrentScope->FindTypeSymbol(cls_ctx->OldType.get())->IsDirectlyThreadHazard = true;
   }
 
   // Mark a function as being a "unit test" (makes it non-callable
