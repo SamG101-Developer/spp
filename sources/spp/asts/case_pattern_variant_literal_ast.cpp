@@ -46,32 +46,6 @@ auto CasePatternVariantLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CasePatternVariantLiteralAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward analysis into the literal.
-  Literal->Stage7_AnalyseSemantics(sm, meta);
-}
-
-auto CasePatternVariantLiteralAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward memory checks into the literal.
-  Literal->Stage8_CheckMemory(sm, meta);
-}
-
-auto CasePatternVariantLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // The "case"'s plan tests the literal ("PatternSolver"), so the
-  // pattern itself always matches.
-  meta->CompTimeResult = BooleanLiteralAst::True(PosStart());
-}
-
-auto CasePatternVariantLiteralAst::Stage11_CodeGen(
-  ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // The "case"'s plan tests the literal ("PatternSolver"), so the
-  // pattern itself always matches.
-  return llvm::ConstantInt::getTrue(*ctx->Context);
-}
-
 auto CasePatternVariantLiteralAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   IMPORT_UTILS_AND_UID;

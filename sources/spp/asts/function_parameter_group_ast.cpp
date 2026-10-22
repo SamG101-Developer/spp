@@ -156,15 +156,6 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   return out.empty() ? nullptr : out[0];
 }
 
-auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*> {
-  // Filter by casting.
-  auto out = Vec<FunctionParameterRequiredAst*>();
-  for (auto const &param : Params) {
-    if (auto *req_param = param->To<FunctionParameterRequiredAst>()) { out.push_back(req_param); }
-  }
-  return out;
-}
-
 auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();

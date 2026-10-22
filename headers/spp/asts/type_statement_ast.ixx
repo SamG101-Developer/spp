@@ -98,8 +98,6 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 
   auto MarkFromUseStatement() -> void;
 
-  SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
-
   /// Resolve this alias's target now, ahead of its own stage 4:
   /// for an instantiation in an earlier declaration's stage 4
   /// that binds a generic to this alias, so the binding is made

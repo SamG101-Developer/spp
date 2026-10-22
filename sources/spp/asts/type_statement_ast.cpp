@@ -404,8 +404,4 @@ auto TypeStatementAst::MarkFromUseStatement() -> void {
   _FromUseStatement = true;
 }
 
-auto TypeStatementAst::IsFromUseStatement() const -> bool {
-  return _FromUseStatement;
-}
-
 SPP_MOD_END

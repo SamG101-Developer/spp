@@ -7,7 +7,6 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.aliases;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -125,20 +124,6 @@ namespace spp::analyse::utils::pattern_solver {
       // type reference, and bind to the column too. Will be {} for
       // a non-variant type.
       col.VariantMembers = type_members::VariantMemberRefs(col.Ref, where);
-      auto through = col.Ref;
-      const auto is_alias = [](TypeRef const &r) {
-        return r.Symbol != nullptr and r.Symbol->Alias != nullptr;
-      };
-
-      // Move through aliases by identity to the variant behind them
-      // ("Opt[T]" is "Var[..]"). A chain ends: cycles are rejected
-      // where an alias is declared ("aliases::StatementTarget").
-      while (col.VariantMembers.empty() and is_alias(through)) {
-        const auto target = aliases::InstanceTargetIdOf(*through.Symbol, through.Id);
-        if (target == nullptr or target == through.Id) { break; }
-        through = TypeRef::Of(target, where);
-        col.VariantMembers = type_members::VariantMemberRefs(through, where);
-      }
 
       // If there were no variant members, then check if the column
       // is a bool comparison.

@@ -77,9 +77,6 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   SPP_ATTR_NODISCARD auto Target() const -> FunctionPrototypeAst*;
 
-  /// The scope "Target" is declared in (the overload's own), which an error showing the target is formatted against.
-  SPP_ATTR_NODISCARD auto TargetScope() const -> Scope const*;
-
   /// Whether this is a method called on a value ("obj.m(a)"): its
   /// receiver is the "self" argument, first, and the left-hand side
   /// ("obj.m") names the method rather than being a use of "obj".

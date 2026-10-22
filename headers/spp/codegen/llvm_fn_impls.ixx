@@ -301,7 +301,6 @@ export namespace spp::codegen::fn_impls {
   auto StdNumFloatIsZero(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdNumFloatIsOne(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdNumIntIsZero(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNumIntIsOne(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // Fixed values (SimpleGetValue)
   auto StdArrayNew(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -344,7 +343,6 @@ export namespace spp::codegen::fn_impls {
   auto StdIntrinsicsUmulOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // Raw LLVM intrinsic calls, "(T) -> T" (SimpleUnaryIntrinsicCall)
-  auto StdIntrinsicsAbs(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsFsqrt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsFsin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsFcos(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
