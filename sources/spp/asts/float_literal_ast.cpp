@@ -127,6 +127,13 @@ auto FloatLiteralAst::FromBigVal(
   const auto is_negative = value.IsNegative();
   const auto digits = (is_negative ? -value : value).Decimal(
     places.has_value() ? *places : kDecimalPlaces.at(type));
+  return FromText((is_negative ? "-" : "") + digits, type);
+}
+
+auto FloatLiteralAst::FromText(
+  Str const &text, Str const &type) -> Unique<FloatLiteralAst> {
+  const auto is_negative = text.starts_with('-');
+  const auto digits = is_negative ? text.substr(1) : text;
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);

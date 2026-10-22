@@ -91,8 +91,14 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// The exact value of this literal. Comp-time arithmetic works
   /// in this rather than in a fixed-width C++ float, so that a
   /// result the type cannot hold arrives as a value the compiler
-  /// can reject rather than as an infinity.
+  /// can reject rather than as an infinity. An "f32" or "f64" is
+  /// folded on its IEEE value instead ("utils::numbers"), read
+  /// from its text.
   SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigDec;
+
+  /// A literal of "type" from "text" ("[-]digits[.digits]"), with
+  /// the sign as its own token, kept on a zero too.
+  static auto FromText(Str const &text, Str const &type) -> Unique<FloatLiteralAst>;
 
   /// Build a literal of the given type carrying an exact value,
   /// with the sign as its own token. The value is not range
