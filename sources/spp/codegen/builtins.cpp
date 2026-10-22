@@ -132,7 +132,6 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.bit_xor_assign", StdIntrinsicsBitXorAssign);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.bit_not", StdIntrinsicsBitNot);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.bit_not_assign", StdIntrinsicsBitNotAssign);
-  SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.abs", StdIntrinsicsAbs);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.eq", StdIntrinsicsEq);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.oeq", StdIntrinsicsOeq);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.intrinsics.ne", StdIntrinsicsNe);
@@ -241,7 +240,6 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer_signed.SizedIntegerSigned.neg_one", StdNumIntNegOne, true);
   SPP_DEFINE_BUILTIN_FUNC("std.num.sized_integer.SizedInteger.is_zero", StdNumIntIsZero);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.zero", StdNumIntZero, true);
-  SPP_DEFINE_BUILTIN_FUNC("std.num.sized_integer.SizedInteger.is_one", StdNumIntIsOne);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.one", StdNumIntOne, true);
   SPP_DEFINE_BUILTIN_FUNC_CMP("std.num.sized_integer.SizedInteger.two", StdNumIntTwo, true);
 
