@@ -31,30 +31,6 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
-namespace {
-  /// List of the symbols those comp-time values are in the
-  /// process of being resolved. A "cmp" constant is resolved by
-  /// walking the identifiers its value names, so a constant
-  /// that reaches itself is a cycle => error.
-  thread_local spp::Vec<VariableSymbol const*> _ResolvingCompTimeSymbols;
-
-  /// Push a symbol onto the resolution stack for as long as
-  /// the enclosing block runs, including when it is left by a
-  /// thrown semantic error. A caught error must not leave the
-  /// stack claiming a resolution is still in progress.
-  struct ResolvingCompTimeSymbolGuard {
-    explicit ResolvingCompTimeSymbolGuard(
-      VariableSymbol const *const sym) { _ResolvingCompTimeSymbols.emplace_back(sym); }
-
-    ~ResolvingCompTimeSymbolGuard() { _ResolvingCompTimeSymbols.pop_back(); }
-
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard const &) = delete;
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard &&) = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard const &) -> ResolvingCompTimeSymbolGuard& = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard &&) -> ResolvingCompTimeSymbolGuard& = delete;
-  };
-}
-
 SPP_MOD_BEGIN
 auto IdentifierAst::FromType(
   TypeAst const &val) -> Unique<IdentifierAst> {
