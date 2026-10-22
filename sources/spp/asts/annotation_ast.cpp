@@ -325,7 +325,10 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   const auto outer_sup_ctx = _Ctx->GetAstCtx()->To<SupPrototypeFunctionsAst>();
   const auto outer_ext_ctx = _Ctx->GetAstCtx()->To<SupPrototypeExtensionAst>();
 
-  // Todo: Maybe do this in stage7, with stage9 evaluation? needs cmp args.
+  // The mask reads sup constants (attached in stage 5.5) and runs
+  // "cmp" functions (typed in stage 9), so it cannot be checked
+  // before the stage 5 effects. Each of those only modifies a
+  // function or a class, whichever its annotation applies to.
   // Evaluate the context that this annotation can be applied to.
   const auto annotation_scope_name = INJECT_CODE("std::annotations", ParseExpression);
   const auto annotation_scope = const_cast<Scope*>(
