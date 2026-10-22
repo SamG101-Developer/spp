@@ -665,9 +665,13 @@ namespace spp::analyse::scopes {
 
       // A literal is its own value, however it is spelled:
       // "0x10_uz" and "16_uz" are one value, as are "1.5_f64"
-      // and "1.50_f64" (a float as its exact rational).
+      // and "1.50_f64". A float is its value in its type's format,
+      // as a folded one is ("FoldCompValues"), so "0.1_f32" and
+      // "0.05_f32 + 0.05_f32" are one value too. One the type
+      // cannot hold is kept as written, for E16.
       if (const auto lit = expr.To<FloatLiteralAst>(); lit != nullptr) {
-        return CompKey::OfFloat(lit->BigVal(), lit->Type);
+        const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(lit->BigVal(), lit->Type));
+        return CompKey::OfFloat(text.has_value() ? numex::BigDec(*text) : lit->BigVal(), lit->Type);
       }
 
       if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
@@ -1721,11 +1725,8 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
   auto const &node = *id;
   switch (node.Kind) {
     // A value is its literal ("2_uz", "-3_s32", "true"). A float
-    // whose decimal terminates is its literal, exactly; one that
-    // does not ("1.0 / 3.0") has no literal, so it is its numerator
-    // over its denominator, which folds back to the same value
-    // ("FoldCompValues"): a literal cut short would be another
-    // value, so another type.
+    // is a value of its type's format, whose decimal terminates,
+    // so its literal is exact.
     case CompKey::Part::Value: {
       if (auto const *const val = node.AsBool(); val != nullptr) {
         return BooleanLiteralAst::FromCppVal(*val);
@@ -1736,15 +1737,7 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
       }
 
       if (auto const *const val = node.AsFloat(); val != nullptr) {
-        if (const auto places = ExactDecimalPlaces(*val); places.has_value()) {
-          return FloatLiteralAst::FromBigVal(*val, node.Text, *places);
-        }
-        auto num = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetNumerator(), numex::BigInt(1)), node.Text, 0uz);
-        auto den = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetDenominator(), numex::BigInt(1)), node.Text, 0uz);
-        return MakeUnique<BinaryExpressionAst>(
-          std::move(num),
-          MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DIV, lex::TokToString(lex::SppTokenType::TK_DIV)),
-          std::move(den));
+        return FloatLiteralAst::FromBigVal(*val, node.Text);
       }
       return nullptr;
     }
