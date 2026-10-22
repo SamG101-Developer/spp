@@ -32,6 +32,36 @@ namespace spp::utils::numbers {
   SPP_EXP_FUN auto WrapToInteger(
     numex::BigInt const &value, Str const &type) -> Opt<numex::BigInt>;
 
+  /// The "value" shifted right by "count" as the bits of the
+  /// integer "type" (its literal suffix): a logical shift, zeros
+  /// in at the top whatever the sign, as the run-time one is.
+  /// Nothing for an unknown type.
+  SPP_EXP_FUN auto ShiftRightLogical(
+    numex::BigInt const &value, std::uint32_t count, Str const &type) -> Opt<numex::BigInt>;
+
+  /// Whether comp-time arithmetic on floats of "type" (a literal
+  /// suffix) is done on IEEE values, as at run time: "f32" and
+  /// "f64", which have a host format of their own. The other
+  /// widths are folded exactly.
+  SPP_EXP_FUN auto IsIeeeFloat(
+    Str const &type) -> bool;
+
+  /// "text" ("[-]digits.digits") as the nearest value of the IEEE
+  /// float "type", held in a "double" (an "f32" widens exactly):
+  /// rounded as the literal is at run time.
+  SPP_EXP_FUN auto ReadIeeeFloat(
+    StrView text, Str const &type) -> double;
+
+  /// "ReadIeeeFloat" of a value given exactly.
+  SPP_EXP_FUN auto ReadIeeeFloat(
+    numex::BigDec const &value, Str const &type) -> double;
+
+  /// "value" rounded to the IEEE float "type", written as the
+  /// shortest decimal that reads back to it ("-0" for negative
+  /// zero). Nothing when it is not finite.
+  SPP_EXP_FUN auto WriteIeeeFloat(
+    double value, Str const &type) -> Opt<Str>;
+
   /// The "value" as a "u64", when it is one: nothing when
   /// it is negative or past the top of the range.
   SPP_EXP_FUN auto ToU64(

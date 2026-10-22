@@ -98,6 +98,60 @@ auto spp::utils::numbers::WrapToInteger(
   return wrapped;
 }
 
+auto spp::utils::numbers::ShiftRightLogical(
+  numex::BigInt const &value, const std::uint32_t count,
+  Str const &type) -> Opt<numex::BigInt> {
+  // Read the value as its type's bits (a negative one is 2^w
+  // above itself), shift those, and read the result back.
+  const auto bounds = IntegerBounds().find(type);
+  if (bounds == IntegerBounds().end()) { return Nullopt; }
+  auto const &[lower, upper] = bounds->second;
+  const auto modulus = upper - lower + numex::BigInt(1);
+  auto bits = value % modulus;
+  if (bits.IsNegative()) { bits = bits + modulus; }
+  return WrapToInteger(bits >> count, type);
+}
+
+auto spp::utils::numbers::IsIeeeFloat(
+  Str const &type) -> bool {
+  return type == "f32" or type == "f64";
+}
+
+auto spp::utils::numbers::ReadIeeeFloat(
+  const StrView text, Str const &type) -> double {
+  // "from_chars" rounds to nearest, as a literal is read at run
+  // time.
+  if (type == "f32") {
+    auto value = 0.0f;
+    std::from_chars(text.data(), text.data() + text.size(), value);
+    return static_cast<double>(value);
+  }
+  auto value = 0.0;
+  std::from_chars(text.data(), text.data() + text.size(), value);
+  return value;
+}
+
+auto spp::utils::numbers::ReadIeeeFloat(
+  numex::BigDec const &value, Str const &type) -> double {
+  // Every value of the type is a multiple of its smallest subnormal, so its decimal ends by that many places.
+  const auto places = type == "f32" ? 149u : 1074u;
+  const auto magnitude = (value.IsNegative() ? -value : value).Decimal(places);
+  return ReadIeeeFloat((value.IsNegative() ? "-" : "") + magnitude, type);
+}
+
+auto spp::utils::numbers::WriteIeeeFloat(
+  const double value, Str const &type) -> Opt<Str> {
+  // One rounding to the type: arithmetic done in a "double" and
+  // rounded once to an "f32" is the "f32" result.
+  const auto rounded = type == "f32" ? static_cast<double>(static_cast<float>(value)) : value;
+  if (not std::isfinite(rounded)) { return Nullopt; }
+  auto buffer = Arr<char, 1100>();
+  const auto end = type == "f32"
+    ? std::to_chars(buffer.data(), buffer.data() + buffer.size(), static_cast<float>(value), std::chars_format::fixed)
+    : std::to_chars(buffer.data(), buffer.data() + buffer.size(), value, std::chars_format::fixed);
+  return Str(buffer.data(), end.ptr);
+}
+
 /// [CHECKED]
 auto spp::utils::numbers::ToU64(
   numex::BigInt const &value)
