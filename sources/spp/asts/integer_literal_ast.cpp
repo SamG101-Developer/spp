@@ -126,12 +126,6 @@ auto IntegerLiteralAst::FromBigVal(
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
-auto IntegerLiteralAst::FromWrappedBigVal(
-  numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
-  // An unknown type throws, as reading its bounds does.
-  return FromBigVal(utils::numbers::WrapToInteger(value, type).value(), type);
-}
-
 auto IntegerLiteralAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time

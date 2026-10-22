@@ -29,20 +29,6 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// ("utils::numbers::FloatBounds").
   inline static utils::numbers::FloatLimitMap const &kBounds = utils::numbers::FloatBounds();
 
-  /// How many fractional digits it takes to write any value of
-  /// each type exactly, which is the exponent of its smallest
-  /// subnormal: every representable value is a multiple of that,
-  /// so its decimal expansion terminates by then. A comp-time
-  /// division can still produce a recurring value, and this is
-  /// where that one gets cut short.
-  inline static const auto kDecimalPlaces = Map<Str, std::uint64_t>{
-    {Str("f8"), 16},
-    {Str("f16"), 32},
-    {Str("f32"), 160},
-    {Str("f64"), 1100},
-    {Str("f128"), 16500}
-  };
-
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
@@ -98,28 +84,29 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   /// A literal of "type" from "text" ("[-]digits[.digits]"), with
   /// the sign as its own token, kept on a zero too.
-  static auto FromText(Str const &text, Str const &type) -> Unique<FloatLiteralAst>;
+  static auto FromText(
+    Str const &text, Str const &type) -> Unique<FloatLiteralAst>;
 
   /// Build a literal of the given type carrying an exact value,
   /// with the sign as its own token. The value is not range
   /// checked here - what produced it has no scope to report an
   /// error against - so a caller that can compute an out of range
-  /// value pairs this with "ValidateBounds". Printed to "places"
-  /// decimal places when given (enough for an exact value), else
-  /// to the type's own precision.
+  /// value pairs this with "ValidateBounds". Printed to as many
+  /// places as an exact value of the type can need.
   static auto FromBigVal(
-    numex::BigDec const &value, Str const &type,
-    Opt<std::uint64_t> places = Nullopt) -> Unique<FloatLiteralAst>;
+    numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
 
   /// Raise if this literal's value is one its type cannot hold. A
   /// written literal is checked when it is analysed; one that
   /// comp-time arithmetic produced is checked where that
   /// arithmetic is invoked from.
-  auto ValidateBounds(Ast const &owner) const -> void;
+  auto ValidateBounds(
+    Ast const &owner) const -> void;
 
 private:
   /// The precompiled type this literal's suffix names ("S32" for "1", "U8" for "1_u8").
-  auto _PrecompiledType(ScopeManager *sm) const -> TypeAst const&;
+  auto _PrecompiledType(
+    ScopeManager *sm) const -> TypeAst const&;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

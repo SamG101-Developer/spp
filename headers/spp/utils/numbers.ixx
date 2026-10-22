@@ -3,6 +3,7 @@ module;
 
 export module spp.utils.numbers;
 import spp.utils.types;
+import llvm;
 import std;
 import numex.big_dec;
 import numex.big_int;
@@ -32,6 +33,13 @@ namespace spp::utils::numbers {
   SPP_EXP_FUN auto WrapToInteger(
     numex::BigInt const &value, Str const &type) -> Opt<numex::BigInt>;
 
+  /// The "value" shifted left by "count" as the bits of the
+  /// integer "type" (its literal suffix): the bits shifted past
+  /// the top are lost, as the run-time ones are.
+  /// Nothing for an unknown type.
+  SPP_EXP_FUN auto ShiftLeftLogical(
+    numex::BigInt const &value, std::uint32_t count, Str const &type) -> Opt<numex::BigInt>;
+
   /// The "value" shifted right by "count" as the bits of the
   /// integer "type" (its literal suffix): a logical shift, zeros
   /// in at the top whatever the sign, as the run-time one is.
@@ -39,28 +47,31 @@ namespace spp::utils::numbers {
   SPP_EXP_FUN auto ShiftRightLogical(
     numex::BigInt const &value, std::uint32_t count, Str const &type) -> Opt<numex::BigInt>;
 
-  /// Whether comp-time arithmetic on floats of "type" (a literal
-  /// suffix) is done on IEEE values, as at run time: "f32" and
-  /// "f64", which have a host format of their own. The other
-  /// widths are folded exactly.
-  SPP_EXP_FUN auto IsIeeeFloat(
-    Str const &type) -> bool;
+  /// The format of the float "type" (its literal suffix): IEEE
+  /// binary16, 32, 64 and 128, and "f8" as FP8 E4M3 (no infinity,
+  /// largest 448). Comp-time float arithmetic is done in it, so
+  /// it rounds as at run time.
+  SPP_EXP_FUN auto FloatSemantics(
+    Str const &type) -> llvm::fltSemantics const&;
 
-  /// "text" ("[-]digits.digits") as the nearest value of the IEEE
-  /// float "type", held in a "double" (an "f32" widens exactly):
-  /// rounded as the literal is at run time.
-  SPP_EXP_FUN auto ReadIeeeFloat(
-    StrView text, Str const &type) -> double;
+  /// The decimal places an exact value of the float "type" can
+  /// need: those of its smallest subnormal.
+  SPP_EXP_FUN auto FloatDecimalPlaces(
+    Str const &type) -> std::uint64_t;
 
-  /// "ReadIeeeFloat" of a value given exactly.
-  SPP_EXP_FUN auto ReadIeeeFloat(
-    numex::BigDec const &value, Str const &type) -> double;
+  /// "text" ("[-]digits[.digits]") as the nearest value of the
+  /// float "type", rounded as the literal is at run time.
+  SPP_EXP_FUN auto ReadFloat(
+    StrView text, Str const &type) -> llvm::APFloat;
 
-  /// "value" rounded to the IEEE float "type", written as the
-  /// shortest decimal that reads back to it ("-0" for negative
-  /// zero). Nothing when it is not finite.
-  SPP_EXP_FUN auto WriteIeeeFloat(
-    double value, Str const &type) -> Opt<Str>;
+  /// "ReadFloat" of a value given exactly.
+  SPP_EXP_FUN auto ReadFloat(
+    numex::BigDec const &value, Str const &type) -> llvm::APFloat;
+
+  /// "value" as a decimal "[-]digits[.digits]" that reads back to
+  /// it ("-0" for negative zero). Nothing when it is not finite.
+  SPP_EXP_FUN auto WriteFloat(
+    llvm::APFloat const &value) -> Opt<Str>;
 
   /// The "value" as a "u64", when it is one: nothing when
   /// it is negative or past the top of the range.
