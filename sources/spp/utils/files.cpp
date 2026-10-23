@@ -161,3 +161,68 @@ auto spp::utils::files::SharedLibraryName(
   const auto prefix = extension == "dll" ? "" : "lib";
   return prefix + Str(package) + "." + Str(extension);
 }
+
+namespace {
+  /// The directories on PATH, in order.
+  auto PathDirectories() -> spp::Vec<spp::Path> {
+#if SPP_PLATFORM_WINDOWS
+    constexpr auto separator = ';';
+#else
+    constexpr auto separator = ':';
+#endif
+    auto dirs = spp::Vec<spp::Path>();
+    auto const *const raw = std::getenv("PATH");
+    if (raw == nullptr) { return dirs; }
+    auto rest = spp::StrView(raw);
+    while (not rest.empty()) {
+      const auto end = rest.find(separator);
+      const auto dir = rest.substr(0, end);
+      if (not dir.empty()) { dirs.emplace_back(dir); }
+      rest = end == spp::StrView::npos ? spp::StrView() : rest.substr(end + 1);
+    }
+    return dirs;
+  }
+
+  /// Whether "path" is a file this process may run.
+  auto IsExecutable(spp::Path const &path) -> bool {
+    auto ec = std::error_code();
+    if (not std::filesystem::is_regular_file(path, ec)) { return false; }
+#if SPP_PLATFORM_WINDOWS
+    return true;
+#else
+    return access(path.c_str(), X_OK) == 0;
+#endif
+  }
+}
+
+auto spp::utils::files::FindProgram(
+  const StrView name)
+  -> Opt<Path> {
+  for (auto const &dir : PathDirectories()) {
+    if (const auto candidate = dir / name; IsExecutable(candidate)) { return candidate; }
+  }
+  return Nullopt;
+}
+
+auto spp::utils::files::FindNewestVersion(
+  const StrView name)
+  -> Opt<Path> {
+  const auto prefix = Str(name) + "-";
+  auto best = Opt<Path>();
+  auto best_version = 0UL;
+  for (auto const &dir : PathDirectories()) {
+    auto ec = std::error_code();
+    for (auto it = std::filesystem::directory_iterator(dir, ec); not ec and it != std::filesystem::directory_iterator();
+         it.increment(ec)) {
+      const auto file = NativeString(it->path().filename());
+      if (not file.starts_with(prefix) or file.size() == prefix.size()) { continue; }
+      const auto digits = StrView(file).substr(prefix.size());
+      if (not genex::all_of(digits, [](const char c) { return c >= '0' and c <= '9'; })) { continue; }
+      const auto version = std::stoul(Str(digits));
+      if ((best.has_value() and version <= best_version) or not IsExecutable(it->path())) { continue; }
+      best = it->path();
+      best_version = version;
+    }
+  }
+  return best;
+}
