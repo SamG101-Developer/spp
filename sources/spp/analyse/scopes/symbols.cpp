@@ -112,7 +112,22 @@ namespace {
     auto const *const last = type.LastTypePart();
     auto open = scope.FindTypeSymbolById(type.StampedTypeId());
     if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
-    return open != nullptr ? MakeOnRead(scope, *open, scope.ReadIn(open->Id)) : nullptr;
+    if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
+
+    // Stamped before a part of it could be read ("A[Self::n]"
+    // stamped while "Self::n" was still the member, keyed now
+    // as "A[4_uz]"), the stamp names nothing, and not what the
+    // type keys to now: that instantiation is made, from its
+    // template. A stamp that reads as the same identity is an
+    // instantiation not made yet, left to whoever makes it.
+    using namespace spp::analyse::scopes;
+    const auto id = scope.TypeIdOf(type);
+    if (not IsClosedTypeId(id) or HeadOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
+    const auto stamp = last->StampedTypeId();
+    if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
+    auto const *const tmpl = HeadOf(id).Symbol();
+    if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
+    return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
   }
 
   /// Whether a marker annotation was written on this type, or
