@@ -108,6 +108,26 @@ jobs:
       differential: true
       check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
+  # The suites over a clang build that records what they run, for
+  # Sonar below. Too slow for a pull request.
+  coverage:
+    name: Linux clang coverage
+    needs: [ changes ]
+    if: |
+      !cancelled()
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.compile == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      compiler: clang
+      variant: coverage
+      coverage: true
+      modes: rel
+      codegen: true
+      differential: true
+
   # Only a push that bumped VERSION, or a manual dispatch, is a
   # release candidate. Without this an unpublished version is
   # retried by every later push. The tag check then stops a
@@ -400,10 +420,11 @@ jobs:
 
   # Ordered after `linux` so it restores that run's exact-sha
   # tree and only has to re-run the configure step, rather than
-  # racing it and falling back to the previous commit's.
+  # racing it and falling back to the previous commit's. Scans
+  # without coverage if the coverage lane did not report.
   sonar:
     name: Sonar
-    needs: [ changes, linux ]
+    needs: [ changes, linux, coverage ]
     if: |
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
@@ -412,5 +433,7 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/_sonar.yaml
+    with:
+      coverage-artifact: ${{ needs.coverage.outputs.coverage-artifact }}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

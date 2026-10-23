@@ -5,6 +5,7 @@
 [![License](https://img.shields.io/badge/Liscence-S++-orange)](https://github.com/SamG101-Developer/spp/blob/master/LICENSE.md)
 [![License Commercial](https://img.shields.io/badge/Liscence-S++%20Commercial-red)](https://github.com/SamG101-Developer/spp/blob/master/LICENSE.md)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=SamG101-Developer_spp&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=SamG101-Developer_spp)

@@ -64,6 +64,7 @@ paths = [
   ".github/scripts/test/gtest.sh",
   ".github/scripts/test/stl-conformance.sh",
   ".github/scripts/test/valgrind-groups.sh",
+  ".github/scripts/test/coverage-report.sh",
 ]
 include = ["toolchain"]
 
@@ -96,6 +97,7 @@ paths = [
   ".github/workflows/post_merge.yaml",
   ".github/workflows/_sonar.yaml",
   ".github/actions/restore-mtimes/*",
+  ".github/scripts/test/coverage-report.sh",
 ]
 include = ["toolchain"]
 
