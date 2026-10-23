@@ -50,6 +50,10 @@ private:
   /// that is what the later stages walk.
   Unique<ExpressionAst> _TypedOperand;
 
+  /// The future type, "Fut[T]", built and analysed once from
+  /// "_TypedOperand", and what "InferType" answers.
+  Shared<TypeAst> _FutType;
+
   /// The scope "_TypedOperand" is analysed in. Its scopes ("?", a
   /// block in an argument) are kept in this one, which the later
   /// stages skip as one, so they are not mistaken for the closure's.

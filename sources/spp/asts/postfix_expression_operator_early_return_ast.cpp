@@ -8,7 +8,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.marker_sups;
-import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_resolution;
 import spp.asts.case_expression_ast;
 import spp.asts.case_expression_branch_ast;
@@ -92,7 +91,6 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // lhs of the postfix expression.
   SPP_ASSERT(WrittenOperand != nullptr);
   auto lhs_copy = std::move(WrittenOperand);
-  const auto analysed_lhs = lhs_copy.get();
 
   auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
   auto let_stmt = MakeUnique<LetStatementInitializedAst>(
@@ -183,43 +181,6 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     meta->AssignmentTargetType = nullptr;
     meta->ReturnTypeOverloadResolverType = nullptr;
     _TransformedExpr->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // The "Try" checks run against the analysed copy, and so after
-  // the lowering rather than before it. Only that copy has been
-  // through stage 7, and an expression that has not cannot be
-  // asked for its type - a function call has no overload picked
-  // yet, so "_OverloadInfo" is still empty.
-  const auto residual_ref = marker_sups::FindTrySup(
-    analysed_lhs->InferTypeRef(sm, meta), *analysed_lhs, [&] { return analysed_lhs->InferType(sm, meta); }, *sm,
-    "early return").Symbol->TypeArgRef("Residual");
-
-  // Todo: Tidy!
-  // Subroutine return type check.
-  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
-    RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(
-        TypeRef::Of(*meta->EnclosingFnRetType, *meta->EnclosingFnScope),
-        residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
-      ERR_ARGS(
-        *meta->EnclosingFnSourceRetType, *meta->EnclosingFnRetType,
-        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
-  }
-
-  // Todo: Tidy!
-  // Coroutine return type check.
-  else {
-    auto const &ret_type = meta->EnclosingFnRetType;
-    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
-      TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
-      [&] { return ret_type; }, "early return"));
-
-    RaiseIf<SppTypeMismatchError>(
-      not type_compare::Assignable(yield_ref, residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
-      ERR_ARGS(
-        *meta->EnclosingFnSourceRetType, ErrTypeAt(
-          yield_ref, *meta->EnclosingFnSourceRetType, *meta->EnclosingFnScope),
-        *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
   }
 }
 

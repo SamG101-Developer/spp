@@ -74,6 +74,7 @@ auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
     AstClone(TokAsync));
   ast->_TransformedFn = AstClone(_TransformedFn);
   ast->_TypedOperand = AstClone(_TypedOperand);
+  ast->_FutType = _FutType;
   ast->_OperandScope = _OperandScope;
   return ast;
 }
@@ -130,9 +131,12 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 
   // "async f(a, b)" becomes "Fut[T]::spawn(() f(a, b))".
 
-  // Save the future type that will be generated wrapping the
-  // target's type inside.
-  auto fut_type = AstClone(InferType(sm, meta));
+  // The future type wraps the target's type. Built once, here:
+  // "InferType" answers it, and the spawn call is made on it.
+  _FutType = generate::common_types::FutureType(
+    TokAsync->PosStart(), _TypedOperand->InferType(sm, meta));
+  _FutType->Stage7_AnalyseSemantics(sm, meta);
+  auto fut_type = AstClone(_FutType);
 
   // Cast out the rhs into the function call asts, to begin
   // the closure transformation procedure.
@@ -295,18 +299,12 @@ auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
 }
 
 auto UnaryExpressionOperatorAsyncAst::InferType(
-  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  //
-  using generate::common_types::FutureType;
-
-  // Wrap the function call inside a "Future" type, typed off the
-  // analysed copy of it.
-  auto *const typed = _TypedOperand != nullptr ? _TypedOperand.get() : meta->UnaryExpressionRhs;
-  auto inner_type = typed->InferType(sm, meta);
-  auto future_type = FutureType(
-    TokAsync->PosStart(), std::move(inner_type));
-  future_type->Stage7_AnalyseSemantics(sm, meta);
-  return future_type;
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
+  // The future type is built at stage 7, which every query follows.
+  if (_FutType == nullptr) {
+    Ice(*this, *sm->CurrentScope, "async expression typed before it was analysed");
+  }
+  return _FutType;
 }
 
 auto UnaryExpressionOperatorAsyncAst::InferTypeRef(
