@@ -24,7 +24,7 @@ namespace spp::analyse::utils::aliases {
   /// Rejects a cyclic chain.
   SPP_EXP_FUN auto StatementTarget(
     TypeStatementAst const &alias_stmt, bool from_use_stmt, Scope *tracking_scope,
-    ScopeManager const *sm, meta::CompilerMetaData *meta)
+    ScopeManager *sm, meta::CompilerMetaData *meta)
     -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*>;
 
   /// What an alias's instantiation stands for, by identity: the

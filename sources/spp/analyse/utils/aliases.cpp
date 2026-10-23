@@ -25,7 +25,7 @@ import std;
 
 auto spp::analyse::utils::aliases::StatementTarget(
   TypeStatementAst const &alias_stmt, const bool from_use_stmt, Scope *tracking_scope,
-  ScopeManager const *sm, meta::CompilerMetaData *meta)
+  ScopeManager *sm, meta::CompilerMetaData *meta)
   -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*> {
   const auto filter_params = [](GenericParameterGroupAst const &pg, GenericArgumentGroupAst const &ag) {
     auto out = GenericParameterGroupAst::NewEmptyShared();
