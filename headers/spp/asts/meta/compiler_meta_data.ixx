@@ -77,7 +77,7 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// The loop's own scope, where its condition is evaluated. An
   /// "exit" or a "skip" leaves every scope inside it without
   /// reaching their ends, so what they deferred runs at the
-  /// jump ("EmitScopeExit").
+  /// jump ("EmitScopeExit"); an "exit" leaves this one too.
   Scope const *LoopScope = nullptr;
 };
 

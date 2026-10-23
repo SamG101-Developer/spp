@@ -8,6 +8,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::codegen, struct DeferredReached);
 use(spp::codegen, struct LlvmCtx);
 use(spp::codegen, struct LlvmGenerator);
 
@@ -41,6 +42,11 @@ SPP_EXP_CLS struct spp::codegen::LlvmCtx {
 
   /// The current closure scope. Todo: Same issue as above.
   Scope *CurrentClosureScope = nullptr;
+
+  /// The "defer"s the walk has reached in each scope (see
+  /// "llvm_defer"), kept here rather than on the scope, which a
+  /// generic template and its instantiations share.
+  Unique<DeferredReached> Deferred;
 
   /// Build a new context from the module name that is about
   /// to run stage 10/11, emitting into "context".

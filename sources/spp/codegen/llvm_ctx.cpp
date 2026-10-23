@@ -3,6 +3,7 @@ module;
 
 module spp.codegen.llvm_ctx;
 import spp.codegen.llvm_coros;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_target;
 
 SPP_MOD_BEGIN
@@ -10,7 +11,8 @@ spp::codegen::LlvmCtx::LlvmCtx(
   llvm::LLVMContext &context) :
   Context(&context),
   Module(nullptr),
-  Builder(*Context) {
+  Builder(*Context),
+  Deferred(MakeUnique<DeferredReached>()) {
 }
 
 spp::codegen::LlvmCtx::~LlvmCtx() = default;

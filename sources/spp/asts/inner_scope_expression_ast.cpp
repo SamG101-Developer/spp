@@ -231,11 +231,12 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Nothing has been reached in this scope yet. Cleared on entry
+  // Nothing has been reached in this scope yet. Reset on entry
   // rather than left from a previous walk, because a generic
   // base and its instantiations share this scope object across
-  // separate codegen passes.
-  sm->CurrentScope->DeferredReached.clear();
+  // separate codegen passes, and a deferred block is generated
+  // once for each exit that runs it.
+  codegen::EnterDeferScope(*sm->CurrentScope, ctx);
 
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects

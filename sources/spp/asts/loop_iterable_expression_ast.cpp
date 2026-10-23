@@ -50,7 +50,6 @@ import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.uid;
-import genex;
 
 SPP_MOD_BEGIN
 LoopIterableExpressionAst::LoopIterableExpressionAst(
@@ -67,8 +66,6 @@ LoopIterableExpressionAst::LoopIterableExpressionAst(
   _TransformedLet(nullptr),
   _TransformedFlagLet(nullptr),
   _TransformedLoop(nullptr),
-  _IterDefer(nullptr),
-  _IterDrop(nullptr),
   _IterableName(nullptr) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokIn, lex::SppTokenType::KW_IN, "in");
 }
@@ -99,8 +96,6 @@ auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
   ast->_TransformedLet = AstClone(_TransformedLet);
   ast->_TransformedFlagLet = AstClone(_TransformedFlagLet);
   ast->_TransformedLoop = AstClone(_TransformedLoop);
-  ast->_IterDefer = AstClone(_IterDefer);
-  ast->_IterDrop = AstClone(_IterDrop);
   ast->_IterableName = AstCloneShared(_IterableName);
   return ast;
 }
@@ -237,12 +232,10 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   loop_new->Body->Members.emplace_back(std::move(case_expr));
   _TransformedLoop = std::move(loop_new);
 
-  // The iterator is consumed on every way out of the loop:
-  // by a "defer" while the loop runs (the ways that also
-  // leave this scope), then by a drop after it (the rest).
-  // Translated: "defer std::mem::ops::drop($_iter)" /
-  // "std::mem::ops::drop($_iter)".
-  const auto drop_iter = [&]() -> Unique<ExpressionAst> {
+  // The iterator is consumed on every way out of the loop, and
+  // only then, so it is deferred in the loop's own scope.
+  // Translated: "defer std::mem::ops::drop($_iter)".
+  auto drop_iter = [&] {
     auto args = Vec<Unique<FunctionCallArgumentAst>>();
     args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
       nullptr, nullptr, AstClone(iterable_name)));
@@ -250,49 +243,32 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
       nullptr, MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);
     return MakeUnique<PostfixExpressionAst>(
       INJECT_CODE("std::mem::ops::drop", ParseExpression), std::move(call));
-  };
-  _IterDefer = MakeUnique<DeferStatementAst>(nullptr, drop_iter());
-  _IterDrop = drop_iter();
+  }();
+  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(nullptr, std::move(drop_iter));
 
   // Analyse the other initial let statement.
   _TransformedLet = std::move(iterable_let);
-  _IterDefer->Stage7_AnalyseSemantics(sm, meta);
   flag_let->Stage7_AnalyseSemantics(sm, meta);
   _TransformedFlagLet = std::move(flag_let);
   _TransformedLoop->Stage7_AnalyseSemantics(sm, meta);
-  _IterDrop->Stage7_AnalyseSemantics(sm, meta);
 }
 
 auto LoopIterableExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Call the memory check on the transformed loop.
+  // Call the memory check on the transformed loop. Its end drops
+  // the iterator, which ends its loans (the "&mut v" of
+  // "v.iter_mut()").
   _TransformedLet->Stage8_CheckMemory(sm, meta);
-  _IterDefer->Stage8_CheckMemory(sm, meta);
   _TransformedFlagLet->Stage8_CheckMemory(sm, meta);
   _TransformedLoop->Stage8_CheckMemory(sm, meta);
-
-  // The "defer" covers the loop only; after it, the drop
-  // ends the iterator and its loans (the "&mut v" of
-  // "v.iter_mut()").
-  auto &deferred = sm->CurrentScope->Deferred;
-  deferred |= genex::actions::remove_if([this](auto const *d) { return d == _IterDefer.get(); });
-  _IterDrop->Stage8_CheckMemory(sm, meta);
 }
 
 auto LoopIterableExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the code for the transformed loop.
   _TransformedLet->Stage11_CodeGen(sm, meta, ctx);
-  _IterDefer->Stage11_CodeGen(sm, meta, ctx);
   _TransformedFlagLet->Stage11_CodeGen(sm, meta, ctx);
-  const auto loop_val = _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
-
-  // As in stage 8: the "defer" covers the loop only, and the drop
-  // follows it, where the loop can be left at all.
-  auto &reached = sm->CurrentScope->DeferredReached;
-  reached |= genex::actions::remove_if([this](auto const *d) { return d == _IterDefer.get(); });
-  if (not ctx->Builder.GetInsertBlock()->hasTerminator()) { _IterDrop->Stage11_CodeGen(sm, meta, ctx); }
-  return loop_val;
+  return _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto LoopIterableExpressionAst::InferType(

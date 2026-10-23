@@ -219,10 +219,12 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   const auto target = meta->LlvmLoopStack[num_loops - num_exits - (has_skip ? 1 : 0)];
 
   // The jump skips every scope end inside the loop, so what
-  // those scopes deferred runs at the jump. This happens before
-  // the phi edge is recorded, so the incoming block is whatever
-  // it left the builder inserting into.
-  codegen::EmitScopeExit(target.LoopScope, sm, meta, ctx);
+  // those scopes deferred runs at the jump: a "skip" stays in the
+  // loop's own scope, and an "exit" leaves it too. This happens
+  // before the phi edge is recorded, so the incoming block is
+  // whatever it left the builder inserting into.
+  codegen::EmitScopeExit(
+      has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx);
 
   // A "skip" starts the next iteration at the condition check.
   // It never has a value, so no phi node is involved.
