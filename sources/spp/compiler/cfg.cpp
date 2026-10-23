@@ -61,6 +61,7 @@ namespace {
       auto const *const keyword = arg->To<asts::FunctionCallArgumentKeywordAst>();
       if (keyword == nullptr) { Raise<SppCfgUnknownKeyError>(ERR_ARGS(*arg, StrView())); }
 
+      // cppcheck-suppress nullPointerRedundantCheck
       const auto key = keyword->Name->Val;
       const auto is_key = genex::contains(spp::compiler::cfg::CfgKeys(), StrView(key));
       if (not is_key) { Raise<SppCfgUnknownKeyError>(ERR_ARGS(*arg, StrView(key))); }
@@ -69,6 +70,7 @@ namespace {
       if (literal == nullptr) { Raise<SppCfgInvalidValueError>(ERR_ARGS(*arg->Val, StrView(key), "must be a string")); }
 
       // Every alternative named must be a value the key can have.
+      // cppcheck-suppress nullPointerRedundantCheck
       const auto value = literal->CppVal();
       auto rest = StrView(value);
       if (rest.starts_with('!')) { rest.remove_prefix(1); }
