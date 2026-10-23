@@ -10,6 +10,7 @@ module;
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/RuntimeLibcalls.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
@@ -82,6 +83,7 @@ export namespace llvm {
   using ::llvm::ConstantPointerNull;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
+  using ::llvm::DiagnosticHandler;
   using ::llvm::DiagnosticInfo;
   using ::llvm::DiagnosticPrinterRawOStream;
   using ::llvm::Function;
@@ -122,6 +124,11 @@ export namespace llvm {
 
   using ::llvm::DS_Warning;
   using ::llvm::DS_Error;
+
+  namespace RTLIB {
+    using ::llvm::RTLIB::RuntimeLibcallsInfo;
+    using ::llvm::RTLIB::Unsupported;
+  }
 
   namespace sys {
     using ::llvm::sys::getDefaultTargetTriple;
