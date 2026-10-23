@@ -74,11 +74,6 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// exiting with a value.
   llvm::PHINode *Phi = nullptr;
 
-  /// Whether the loop has run its body at least once or not,
-  /// so we know whether to take the "else" block under the
-  /// loop or not.
-  llvm::Value *EnteredFlag = nullptr;
-
   /// The scope that a loop statement is written in; were we
   /// to break out of this loop, this is the scope we'd end
   /// up in. All the scopes between the jump, and this one,
