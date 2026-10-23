@@ -185,7 +185,8 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 
   auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
   if (not registered_is_local) {
-    const auto lhs_type_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Symbol;
+    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    const auto lhs_type_sym = lhs_ref.Symbol;
 
     const auto no_env_msg = Str(
       "No generator environment was registered for this resumption, "
@@ -196,12 +197,13 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
       Ice(*this, *sm->CurrentScope, no_env_msg);
     }
 
-    // A generator whose only field is the handle lowers to the
-    // handle itself, a plain pointer, so there is no struct to
-    // index into - the storage holds the handle directly. That
-    // is the shape a "Gen" returned by an ordinary function has.
+    // "Gen"/"GenOnce" lower to the handle itself, a plain
+    // pointer, so there is no struct to index into - the
+    // storage holds the handle directly. That is the shape a
+    // "Gen" returned by an ordinary function has. A class
+    // superimposing one carries it in its first field.
     const auto llvm_gen_type = lhs_type_sym->LlvmInfo->LlvmType;
-    const auto llvm_handle_ptr = llvm_gen_type->isPointerTy()
+    const auto llvm_handle_ptr = type_predicates::IsTypeGenerator(lhs_ref, *sm->CurrentScope)
       ? llvm_generator_addr
       : ctx->Builder.CreateStructGEP(
         llvm_gen_type, llvm_generator_addr, codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0),

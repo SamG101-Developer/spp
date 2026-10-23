@@ -279,15 +279,9 @@ auto IdentifierAst::Stage11_CodeGen(
   // own under opaque pointers, so the load goes through the
   // symbol's own type instead of through the instruction that
   // produced the address.
-  if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
-    const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
-    SPP_ASSERT(llvm_type != nullptr);
-    return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
-  }
-
-  // If the variable is neither local nor global, this is an
-  // internal compiler error.
-  Ice(*this, *sm->CurrentScope, "Target identifier ie neither local nor global");
+  const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
+  SPP_ASSERT(llvm_type != nullptr);
+  return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
 }
 
 auto IdentifierAst::InferType(

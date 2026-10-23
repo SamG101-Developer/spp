@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -436,11 +437,12 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     // declares of its own, so the handle is packed into that shape before it leaves the function - the caller unwraps
     // it again to drive the coroutine intrinsics.
     const auto llvm_ret_type = llvm_func_target->getReturnType();
-    if (llvm_ret_type->isPointerTy()) {
+    const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
+    if (type_predicates::IsTypeGenerator(
+      TypeRef::ForKindCheck(*ret_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
       ctx->Builder.CreateRet(coro_handle);
     }
     else {
-      const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
       const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
       const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
       ctx->Builder.CreateRet(

@@ -365,10 +365,11 @@ auto ClosureExpressionAst::Stage11_CodeGen(
     // returned as the value it points at - a copyable capture
     // like "(caps &a) -> S32 { a }" - is read through first,
     // the way a borrowed argument is for a by-value parameter.
-    // Todo: Not convinced this is right. Temp workaround.
+    // A closure never returns a borrow (second class), so a
+    // borrowed body is always one of these.
     if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-      if (body_val != nullptr and body_val->getType()->isPointerTy() and not llvm_ret_ty->isPointerTy()
-        and not llvm_ret_ty->isVoidTy()) {
+      const auto body_ref = Body->InferTypeRef(sm, meta);
+      if (body_val != nullptr and body_ref.IsBorrowed() and not llvm_ret_ty->isVoidTy()) {
         body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
       }
 
@@ -377,7 +378,6 @@ auto ClosureExpressionAst::Stage11_CodeGen(
       // return type, and a named function into a function type.
       if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
         const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
-        const auto body_ref = Body->InferTypeRef(sm, meta);
         body_val = codegen::CoerceToFnValue(body_val, ret_ref, body_ref, *sm, ctx);
         body_val = codegen::CoerceToVariant(
           body_val, ret_ref, body_ref, *sm->CurrentScope, "closure.ret.variant" + uid, ctx);

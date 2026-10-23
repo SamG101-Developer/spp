@@ -127,6 +127,7 @@ private:
     ConventionTag Conv;
     TypeSymbol const *Callee;
     Shared<TypeRef> FnSup;
+    bool Borrowed;
   };
 
   Opt<_IndirectInfo> _Indirect;

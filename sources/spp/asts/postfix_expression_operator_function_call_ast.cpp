@@ -204,7 +204,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     _Indirect = _IndirectInfo{
       .FnType = indirect, .Conv = conv, .Callee = callee.Symbol,
       .FnSup = MakeShared<TypeRef>(marker_sups::FindFnSup(
-        *lhs.InferType(sm, meta)->WithConvention(nullptr), *sm->CurrentScope))};
+        *lhs.InferType(sm, meta)->WithConvention(nullptr), *sm->CurrentScope)),
+      .Borrowed = callee.IsBorrowed()};
 
     // A "FunMov" (that is not a "FunMut") is called by value, so
     // calling one held through a borrow ("v[i]", a "&FunMov"
@@ -524,7 +525,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // accordingly.
     auto fn_ptr = static_cast<llvm::Value*>(nullptr);
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
-    if (closure_val->getType()->isPointerTy()) {
+    if (_Indirect->Borrowed) {
       const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*lhs_type_sym, ctx));
       fn_ptr = ctx->Builder.CreateLoad(
         ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, fn_ptr_idx), "closure.fn_ptr" + closure_uid);
@@ -568,7 +569,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // "FunMov::drop" would. Whether there is storage to free is
     // read from the environment itself: a "FunRef" passed as a
     // "FunMov" still has its environment on the caller's stack.
-    const auto consumes_closure = not closure_val->getType()->isPointerTy() and _Indirect->Conv == ConventionTag::MOV;
+    const auto consumes_closure = not _Indirect->Borrowed and _Indirect->Conv == ConventionTag::MOV;
     const auto release_env = [&] {
       if (not consumes_closure or ctx->Builder.GetInsertBlock()->hasTerminator()) { return; }
       codegen::EmitReleaseClosureEnv(env_ptr, ctx);
@@ -677,13 +678,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       ? self_param->Conv == nullptr
       : fn_params[p]->Type->GetConvention() == nullptr);
 
-    if (param_by_value and llvm_arg->getType()->isPointerTy()) {
-      const auto arg_ref = arg->InferTypeRef(sm, meta);
-      if (arg_ref.IsBorrowed()) {
-        if (const auto llvm_arg_type = codegen::GetLlvmTypeOf(arg_ref.WithoutConvention(), ctx);
-          llvm_arg_type != nullptr) {
-          llvm_arg = ctx->Builder.CreateLoad(llvm_arg_type, llvm_arg, "arg.copy" + uid);
-        }
+    if (const auto arg_ref = arg->InferTypeRef(sm, meta); param_by_value and arg_ref.IsBorrowed()) {
+      if (const auto llvm_arg_type = codegen::GetLlvmTypeOf(arg_ref.WithoutConvention(), ctx);
+        llvm_arg_type != nullptr) {
+        llvm_arg = ctx->Builder.CreateLoad(llvm_arg_type, llvm_arg, "arg.copy" + uid);
       }
     }
 
@@ -722,8 +720,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   // element, not as a generator over it). Both need the frame's
   // promise, which is reached through the handle.
   if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
+    // "Gen"/"GenOnce" lower to the bare handle; a class superimposing one carries it in its first field.
     auto llvm_coro_handle = static_cast<llvm::Value*>(llvm_call);
-    if (not llvm_call->getType()->isPointerTy()) {
+    if (not type_predicates::IsTypeGenerator(
+      TypeRef::ForKindCheck(*_CoroRetSym, *sm->CurrentScope), *sm->CurrentScope)) {
       const auto handle_idx = codegen::GetPhysicalFieldIndex(*_CoroRetSym->LlvmInfo, 0);
       llvm_coro_handle = ctx->Builder.CreateExtractValue(
         llvm_call, {handle_idx}, "coro.handle" + uid);
