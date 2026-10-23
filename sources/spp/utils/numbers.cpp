@@ -2,11 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 module spp.utils.numbers;
+import spp.codegen.llvm_target;
 import spp.utils.ice;
 import spp.utils.types;
 import llvm;
 import std;
-import sys;
 import numex.big_dec;
 import numex.big_int;
 
@@ -78,14 +78,14 @@ auto spp::utils::numbers::IntegerBounds() -> IntLimitMap const& {
     {Str("s64"), SignedBounds(64)},
     {Str("s128"), SignedBounds(128)},
     {Str("s256"), SignedBounds(256)},
-    {Str("sz"), SignedBounds(sizeof(sys::ssize_t) * 8)},
+    {Str("sz"), SignedBounds(codegen::TargetPointerBits())},
     {Str("u8"), UnsignedBounds(8)},
     {Str("u16"), UnsignedBounds(16)},
     {Str("u32"), UnsignedBounds(32)},
     {Str("u64"), UnsignedBounds(64)},
     {Str("u128"), UnsignedBounds(128)},
     {Str("u256"), UnsignedBounds(256)},
-    {Str("uz"), UnsignedBounds(sizeof(std::size_t) * 8)},
+    {Str("uz"), UnsignedBounds(codegen::TargetPointerBits())},
   };
   return bounds;
 }
