@@ -106,13 +106,27 @@ namespace spp::cli {
 #endif
     }
 
+    /// Refuse a measure the target cannot have, on by default or
+    /// not: building without it would quietly harden less.
+    auto CheckTargetSupport(Vec<Str> &errors) -> bool {
+      if (utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit) and not codegen::TargetHasSafeStack()) {
+        errors.emplace_back(
+          Str("'split' in [memory.stack] cannot be applied: LLVM has no unsafe stack pointer for ")
+          + codegen::TargetFolderName() + "; set 'split = false'");
+        return false;
+      }
+      return true;
+    }
+
     /// Adopt this project's feature settings. Only this one: how
     /// a dependency configured itself is a property of that
     /// dependency's own build, and what comes out of here is
     /// one program, generated once.
     auto LoadProjectFeatures() -> bool {
       auto config_errors = Vec<Str>();
-      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) { return true; }
+      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)
+        and utils::features::CheckFloor(codegen::TargetIsLinux(), config_errors)
+        and CheckTargetSupport(config_errors)) { return true; }
       for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
       return false;
     }
