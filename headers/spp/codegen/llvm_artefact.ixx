@@ -36,4 +36,15 @@ namespace spp::codegen {
   /// relocated and every symbol bound before that. None when it
   /// has both, or is not an ELF library, which has no RELRO.
   SPP_EXP_FUN auto UnhardenedLink(char const *path) -> Opt<Str>;
+
+  /// Whether the program at "path" was laid out without the
+  /// segment separation "-z separate-code" and W^X ask for:
+  /// answers the first fault found, a segment both writable and
+  /// executable or code sharing a file page with anything else
+  /// (the ELF header included), as mapping the page executable
+  /// makes that executable too. Read from the program headers,
+  /// so a linker that ignored the flags is caught. None when the
+  /// layout is sound or it is not ELF; the error, when it cannot
+  /// be read.
+  SPP_EXP_FUN auto UnhardenedSegments(char const *path) -> Expected<Opt<Str>, Str>;
 }

@@ -126,6 +126,54 @@ namespace spp::codegen {
       return Str();
     }
 
+    /// The first fault in an ELF file's loadable segments, as
+    /// "UnhardenedSegments" describes; empty when there is none.
+    template <class ELFT>
+    auto SegmentFaults(llvm::object::ELFObjectFile<ELFT> const &file) -> Expected<Str, Str> {
+      auto headers = file.getELFFile().program_headers();
+      if (not headers) { return Unexpected(llvm::toString(headers.takeError())); }
+
+      auto loads = Vec<typename ELFT::Phdr>();
+      for (auto const &ph : *headers) {
+        if (ph.p_type == llvm::ELF::PT_LOAD and ph.p_filesz > 0) { loads.emplace_back(ph); }
+      }
+
+      for (auto const &ph : loads) {
+        if ((ph.p_flags & llvm::ELF::PF_W) != 0 and (ph.p_flags & llvm::ELF::PF_X) != 0) {
+          return "a segment both writable and executable";
+        }
+      }
+
+      // Pages are counted at the larger of the two alignments, which
+      // is at least the page size either is mapped with.
+      for (auto const &code : loads) {
+        if ((code.p_flags & llvm::ELF::PF_X) == 0) { continue; }
+        if (code.p_offset == 0) { return "code sharing a page with the ELF header"; }
+        for (auto const &other : loads) {
+          if (&other == &code) { continue; }
+          const auto page = std::max<std::uint64_t>({code.p_align, other.p_align, 1});
+          const auto code_first = code.p_offset / page;
+          const auto code_last = (code.p_offset + code.p_filesz - 1) / page;
+          const auto other_first = other.p_offset / page;
+          const auto other_last = (other.p_offset + other.p_filesz - 1) / page;
+          if (code_first <= other_last and other_first <= code_last) { return "code sharing a page with data"; }
+        }
+      }
+      return Str();
+    }
+
+    /// "f" applied to "binary" as whichever of the four ELF
+    /// classes and byte orders it is; none when it is not ELF.
+    template <class F>
+    auto VisitElf(llvm::object::Binary const *binary, F &&f)
+      -> Opt<std::invoke_result_t<F, llvm::object::ELFObjectFile<llvm::object::ELF64LE> const&>> {
+      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64LE>>(binary)) { return f(*e); }
+      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64BE>>(binary)) { return f(*e); }
+      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32LE>>(binary)) { return f(*e); }
+      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32BE>>(binary)) { return f(*e); }
+      return Nullopt;
+    }
+
     /// "n" rounded up to the four bytes every part of an ELF
     /// note is padded to.
     constexpr auto NotePadded(const std::size_t n) -> std::size_t {
@@ -267,25 +315,22 @@ auto spp::codegen::UnhardenedLink(
     return Nullopt;
   }
 
-  // Try the 4 different class and byte orders for the headers. Any
-  // different object type isn't ELF.
-  auto const *const binary = object->getBinary();
-  auto gaps = Str();
-  if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64LE>>(binary)) {
-    gaps = RelroGaps(*e);
-  }
-  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64BE>>(binary)) {
-    gaps = RelroGaps(*e);
-  }
-  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32LE>>(binary)) {
-    gaps = RelroGaps(*e);
-  }
-  else if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32BE>>(binary)) {
-    gaps = RelroGaps(*e);
-  }
-  else { return Nullopt; }
+  // Anything that is not ELF has no RELRO to check, and no gaps
+  // means nothing to report.
+  const auto gaps = VisitElf(object->getBinary(), [](auto const &e) { return RelroGaps(e); });
+  if (not gaps or gaps->empty()) { return Nullopt; }
+  return *gaps;
+}
 
-  // If there are no gaps, there is nothing to report.
-  if (gaps.empty()) { return Nullopt; }
-  return gaps;
+auto spp::codegen::UnhardenedSegments(
+  char const *path)
+  -> Expected<Opt<Str>, Str> {
+  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  if (not object) { return Unexpected(llvm::toString(object.takeError())); }
+
+  const auto faults = VisitElf(object->getBinary(), [](auto const &e) { return SegmentFaults(e); });
+  if (not faults) { return Nullopt; }
+  if (not *faults) { return Unexpected(faults->error()); }
+  if ((*faults)->empty()) { return Nullopt; }
+  return **faults;
 }
