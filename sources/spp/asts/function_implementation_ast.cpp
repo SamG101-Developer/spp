@@ -63,6 +63,16 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
     arg_sym->CompTimeValue = AstClone(arg_comp);
   }
 
+  // And the comp generics the call bound ("n" for "get[5]()"):
+  // the template's body is what runs, so its comp parameters
+  // are given their values for the call, as its parameters are.
+  for (auto const &[gn_name, gn_value] : meta->CompTimeGnCompValues) {
+    const auto gn_sym = sm->CurrentScope->FindVarSymbol(gn_name.get());
+    if (gn_sym == nullptr or gn_sym->Kind != VariableKind::GnCompParam) { continue; }
+    caller_values.emplace_back(gn_sym, std::move(gn_sym->CompTimeValue));
+    gn_sym->CompTimeValue = sm->CurrentScope->CompAstOf(gn_value);
+  }
+
   // Comptime resolve each member of the inner scope. The call is its own frame: the caller is mid-statement, so its
   // "returned" state has to survive this one rather than be inherited by it.
   const auto caller_returned = meta->CompTimeReturned;
