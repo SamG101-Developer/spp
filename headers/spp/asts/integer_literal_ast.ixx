@@ -24,9 +24,6 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
-  /// The lowest and highest value of each integer type, by suffix: one table, shared with the folding of comp values
-  /// ("utils::numbers::IntegerBounds").
-  inline static utils::numbers::IntLimitMap const &kBounds = utils::numbers::IntegerBounds();
 
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);

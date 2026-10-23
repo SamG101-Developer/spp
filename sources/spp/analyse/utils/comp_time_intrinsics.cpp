@@ -62,11 +62,11 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       SPP_ASSERT(not types.empty());
       const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
       const auto known = is_float
-        ? FloatLiteralAst::kBounds.contains(name)
-        : IntegerLiteralAst::kBounds.contains(name);
+        ? spp::utils::numbers::FloatBounds().contains(name)
+        : spp::utils::numbers::IntegerBounds().contains(name);
 
       // Every width the language has a sized number type for has
-      // bounds ("kBounds"); one without is a compiler bug.
+      // bounds ("utils::numbers"); one without is a compiler bug.
       if (not known) {
         SPP_ASSERT(types[0]->Symbol != nullptr);
         const auto type = types[0]->Symbol->FqName();
@@ -96,7 +96,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       if (const auto text = spp::utils::numbers::WriteFloat(value); text.has_value()) {
         return FloatLiteralAst::FromText(*text, type);
       }
-      auto const &[lower, upper] = FloatLiteralAst::kBounds.at(type);
+      auto const &[lower, upper] = spp::utils::numbers::FloatBounds().at(type);
       return FloatLiteralAst::FromBigVal(value.isNegative() ? lower + lower : upper + upper, type);
     }
 
@@ -443,7 +443,7 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMaxVal(
   // The highest value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
   return IntegerLiteralAst::FromBigVal(
-    IntegerLiteralAst::kBounds.at(name).second, name);
+    spp::utils::numbers::IntegerBounds().at(name).second, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMinVal(
@@ -453,7 +453,7 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMinVal(
   // The lowest value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
   return IntegerLiteralAst::FromBigVal(
-    IntegerLiteralAst::kBounds.at(name).first, name);
+    spp::utils::numbers::IntegerBounds().at(name).first, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMax(
@@ -558,7 +558,8 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmaxVal(
   -> Unique<FloatLiteralAst> {
   // The largest finite value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
-  return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).second, name);
+  return FloatLiteralAst::FromBigVal(
+    spp::utils::numbers::FloatBounds().at(name).second, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFminVal(
@@ -567,7 +568,8 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFminVal(
   -> Unique<FloatLiteralAst> {
   // The most negative finite value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
-  return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).first, name);
+  return FloatLiteralAst::FromBigVal(
+    spp::utils::numbers::FloatBounds().at(name).first, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmax(

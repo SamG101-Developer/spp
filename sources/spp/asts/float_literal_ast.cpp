@@ -114,7 +114,7 @@ auto FloatLiteralAst::ValidateBounds(
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.
-  auto const &[lower, upper] = kBounds.at(Type);
+  auto const &[lower, upper] = utils::numbers::FloatBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,

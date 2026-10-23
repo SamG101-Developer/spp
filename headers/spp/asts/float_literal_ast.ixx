@@ -6,7 +6,6 @@ export module spp.asts.float_literal_ast;
 import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
-import spp.utils.numbers;
 import spp.utils.types;
 import llvm;
 import std;
@@ -25,10 +24,6 @@ use(spp::analyse::scopes, struct TypeSymbol);
 /// given with a postfix type annotation, such as "_f32" or
 /// "_f64"; no postfix defaults the type to "std::BigDec".
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
-  /// The lowest and highest value of each float type, by suffix: one table, kept with the integer one
-  /// ("utils::numbers::FloatBounds").
-  inline static utils::numbers::FloatLimitMap const &kBounds = utils::numbers::FloatBounds();
-
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
