@@ -205,8 +205,13 @@ namespace {
     auto const &g = sc::HeadOf(given);
     if (not ConventionWordEq(g.Conv, d.Conv)) { return false; }
 
-    // A variant pattern takes any of its members.
-    if (ctx.CheckVariant and d.Kind == sc::TypeKey::Tag::Variant) {
+    // A variant pattern takes any of its members. Not when a pack is among them and the given type is a variant too:
+    // the pack takes the members the others leave ("Bool or Rest" given "S32 or Bool" binds "Rest" to "(S32,)"), as
+    // the two are matched whole below, rather than the whole given variant as one member.
+    const auto pattern_has_pack = d.Kind == sc::TypeKey::Tag::Variant
+      and genex::any_of(d.Members, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
+    if (ctx.CheckVariant and d.Kind == sc::TypeKey::Tag::Variant
+      and not (pattern_has_pack and g.Kind == sc::TypeKey::Tag::Variant)) {
       for (const auto member : d.Members) {
         auto saved = ctx.Bindings;
         if (UnifyType(sc::BareOf(given), member, ctx)) { return true; }
