@@ -300,9 +300,18 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     Shared<IdentifierAst>, Unique<ExpressionAst>,
     utils::ptr::ptr_hash<Shared<IdentifierAst>>,
     utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
-  /// The call's generic arguments, each as it resolves at the call site: a type's "TypeRef", a comp value's identity.
+
+  /// The call's generic arguments, each as it resolves at the
+  /// call site: a type's "TypeRef", a comp value's identity.
+  /// What "Self" stands for at the call, if anything, follows
+  /// the type arguments.
   Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
   Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
+
+  /// The call's comp generic arguments by the parameter each
+  /// binds ("n" for "get[5]()"), which the body of a "cmp fun"
+  /// reads its comp parameters as.
+  Vec<Pair<Shared<IdentifierAst>, analyse::scopes::CompId>> CompTimeGnCompValues;
   Unique<ExpressionAst> CompTimeResult;
 
   /// Whether a comp-time "ret" has run, so the blocks and loops

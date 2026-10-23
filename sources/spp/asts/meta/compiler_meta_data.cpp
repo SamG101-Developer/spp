@@ -116,6 +116,8 @@ auto CompilerMetaData::Save() -> void {
   CompTimeGnTypeArgs.clear();
   CompTimeGnCompArgs.swap(s.CompTimeGnCompArgs);
   CompTimeGnCompArgs.clear();
+  CompTimeGnCompValues.swap(s.CompTimeGnCompValues);
+  CompTimeGnCompValues.clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
@@ -177,6 +179,8 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   state.CompTimeGnTypeArgs.clear();
   CompTimeGnCompArgs.swap(state.CompTimeGnCompArgs);
   state.CompTimeGnCompArgs.clear();
+  CompTimeGnCompValues.swap(state.CompTimeGnCompValues);
+  state.CompTimeGnCompValues.clear();
   // Note: CompTimeResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
