@@ -38,6 +38,7 @@ import spp.codegen.llvm_entry;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_harden_memory;
 import spp.codegen.llvm_target;
+import spp.compiler.cfg;
 import spp.compiler.ffi;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
@@ -60,6 +61,30 @@ import llvm;
   auto meta = spp::asts::meta::CompilerMetaData();                      \
   meta.IsTestHarness = mod_in_tree->IsTestHarness;                    \
   meta.CurrentStage = (s)
+
+namespace {
+  /// The command the link runs, the arguments after it: the one
+  /// "[target.linkers]" names for the target; else "cc" for the
+  /// host, and for another target its GNU cross compiler, or the
+  /// newest versioned one. Nothing, reported, when none is on PATH.
+  auto LinkerCommand() -> spp::Opt<spp::Str> {
+    using namespace spp;
+    const auto folder = Str(codegen::TargetFolderName());
+    if (auto named = utils::features::Linker(folder); named.has_value()) { return named; }
+    if (codegen::TargetIsHost()) { return Str("cc"); }
+
+    const auto gcc = Str(codegen::TargetGnuTriple()) + "-gcc";
+    if (utils::files::FindProgram(gcc).has_value()) { return gcc; }
+    if (const auto versioned = utils::files::FindNewestVersion(gcc); versioned.has_value()) {
+      return utils::files::NativeString(versioned->filename());
+    }
+    std::cerr
+      << "Error: no linker for " << folder << ": neither '" << gcc << "' nor '" << gcc << "-N' is on PATH.\n"
+      << "  Install the target's cross compiler (on Debian or Ubuntu, 'gcc-" << codegen::TargetGnuTriple()
+      << "'), or name one under [target.linkers] in spp.toml, as " << folder << " = \"...\".\n";
+    return Nullopt;
+  }
+}
 
 SPP_MOD_BEGIN
 auto spp::compiler::CompilerBoot::Lex(
@@ -87,6 +112,10 @@ auto spp::compiler::CompilerBoot::Parse(
   for (auto const &mod : tree) {
     if (mod->IsTestHarness) { continue; }
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
+
+    // What "!cfg" leaves out of this build goes before any scope
+    // is made, so it never names anything.
+    cfg::ApplyCfg(*mod->ModuleAst, BuildMode);
     _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }
@@ -446,8 +475,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
       utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit),
-      utils::features::Enabled(utils::features::ConfigKey::MemoryMapDenyWx),
-      utils::features::Enabled(utils::features::ConfigKey::MemoryMapSeal));
+      utils::features::Applied(utils::features::ConfigKey::MemoryMapDenyWx, codegen::TargetIsLinux()),
+      utils::features::Applied(utils::features::ConfigKey::MemoryMapSeal, codegen::TargetIsLinux()));
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
@@ -472,7 +501,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(BinaryCodegenSls) { if (not codegen::ApplySlsHardening(lto_module.get())) { return false; } }
   FEATURE_GATE(BinaryCodegenScrub) { if (not codegen::ApplyRegisterScrubbing(lto_module.get())) { return false; } }
   FEATURE_GATE(BinaryCodegenCfi) { if (not codegen::ApplyCfi(lto_module.get())) { return false; } }
-  FEATURE_GATE(BinaryCodegenJumpTableBounds) { if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; } }
+  FEATURE_GATE(BinaryCodegenJumpTableBounds) {
+    if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; }
+  }
   codegen::ApplyFfiUnwindGuard(lto_module.get());
   codegen::ApplyUnwindTables(lto_module.get());
 
@@ -480,18 +511,22 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // back out of it: every on/off key, set or defaulted.
   const auto record = std::format(
     "spp {}\ntarget {}\nmode {}\n{}", SPP_VERSION, codegen::TargetFolderName(), out.Mode,
-    utils::features::EffectiveSettings());
+    utils::features::EffectiveSettings(codegen::TargetIsLinux()));
   codegen::EmitHardeningRecord(lto_module.get(), record.c_str());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
 
-  // A cross build stops at the object, no linking available for
-  // now.
+  // A cross build names its object first, as "spp build --target"
+  // has always printed it. Only a Linux target is linked: the link
+  // below asks an ELF linker for ELF hardening.
   if (not codegen::TargetIsHost()) {
     std::cout
       << "Built object for " << codegen::TargetFolderName() << ": "
-      << utils::files::DisplayString(object_file) << "\n"
-      << "Not linking: a cross build has no linker or ffi runtime for its target here." << std::endl;
-    return true;
+      << utils::files::DisplayString(object_file) << std::endl;
+    if (not codegen::TargetIsLinux()) {
+      std::cout << "Not linking: only a Linux target is linked here, and " << codegen::TargetFolderName()
+        << " is not one." << std::endl;
+      return true;
+    }
   }
   return _LinkExecutable(out);
 }
@@ -506,12 +541,26 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   const auto lib_dir = out.LibRoot();
   std::filesystem::create_directories(lib_dir);
 
+  const auto linker = LinkerCommand();
+  if (not linker.has_value()) { return false; }
   const auto libraries = ffi::Libraries(out.Root);
   if (not libraries.has_value()) { return false; }
-  FEATURE_GATE(BinaryLinkFortifiedFfi) { if (not ffi::CheckFortified(out.Root, *libraries)) { return false; } }
-  FEATURE_GATE(BinaryLinkRelroFfi) { if (not ffi::CheckRelro(out.Root, *libraries)) { return false; } }
 
-  auto command = Str("cc -o ") + utils::files::NativeString(exe_file) + " " + utils::files::NativeString(object_file);
+  // musl has no fortified calls ("__memcpy_chk" and friends are
+  // glibc's), so a library built against it has none to find.
+  FEATURE_GATE(BinaryLinkFortifiedFfi) {
+    if (not codegen::TargetIsMusl() and not ffi::CheckFortified(out.Root, *libraries)) { return false; }
+  }
+  FEATURE_GATE(BinaryLinkRelroFfi) {
+    if (not ffi::CheckRelro(out.Root, *libraries)) { return false; }
+  }
+  FEATURE_GATE(BinaryLinkSegmentsFfi) {
+    if (not ffi::CheckSegments(out.Root, *libraries)) { return false; }
+  }
+
+  auto command = *linker
+    + " -o " + utils::files::NativeString(exe_file)
+    + " " + utils::files::NativeString(object_file);
   for (auto const &lib : *libraries) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
@@ -532,7 +581,6 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
     command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
     command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
-    command += " -Wl,--error-rwx-segments"; // No segment is ever writable and executable at once.
   }
 
   // "-z nodlopen" is not here on purpose: it sets a flag on a shared
@@ -548,6 +596,24 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   if (const auto status = std::system(command.c_str()); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
     return false;
+  }
+
+  // Checked in the output rather than asked of the linker: binutils
+  // before 2.39 has no "--error-rwx-segments", and before 2.31
+  // ignores "-z separate-code" with a warning.
+  FEATURE_GATE(BinaryLinkHarden) {
+    const auto fault = codegen::UnhardenedSegments(utils::files::NativeString(exe_file).c_str());
+    if (not fault) {
+      std::cerr << "Error: cannot read the linked " << exe_file << ": " << fault.error() << "\n";
+      return false;
+    }
+    if (fault->has_value()) {
+      std::cerr
+        << "Error: " << exe_file << " was linked with " << **fault << ".\n"
+        << "  The linker does not separate code from data: use binutils 2.31 or newer (on RHEL 8, "
+        << "gcc-toolset-12), or set 'harden = false' under [binary.link] in spp.toml.\n";
+      return false;
+    }
   }
   std::cout << "Built executable: " << exe_file << std::endl;
   return true;

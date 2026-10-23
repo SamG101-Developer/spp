@@ -46,6 +46,7 @@ spp::compiler::Compiler::Compiler(
   _BuildType(build_type) {
   _Path = std::filesystem::current_path() / "src";
   _Boot = MakeUnique<CompilerBoot>();
+  _Boot->BuildMode = ModeName(mode);
 }
 
 auto spp::compiler::Compiler::ForCppGoogleTest(
@@ -60,6 +61,7 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   c->_Path = std::filesystem::current_path() / "src";
   c->_Boot = MakeUnique<CompilerBoot>();
   c->_Boot->VerifyOnly = true;
+  c->_Boot->BuildMode = ModeName(mode);
   c->_ForCppGoogleTest = true;
   return c;
 }
