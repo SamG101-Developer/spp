@@ -10,6 +10,7 @@ import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_target;
 import spp.utils.features;
 import spp.utils.types;
 import std;
@@ -234,7 +235,7 @@ auto spp::codegen::EmitNewClosureEnv(
     env = LlvmEntryAlloca(env_ty, Str(name) + ".alloca", ctx);
   }
   else {
-    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto size_ty = TargetSizeType(*ctx->Context);
     const auto malloc_fn = GetEmissionModule(*ctx)->getOrInsertFunction(
       "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {size_ty}, false));
     const auto size = GetEmissionModule(*ctx)->getDataLayout().getTypeAllocSize(env_ty).getFixedValue();

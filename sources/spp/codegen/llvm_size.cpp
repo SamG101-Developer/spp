@@ -122,14 +122,6 @@ namespace spp::codegen {
     if (IsScalar(*S256)) { return ScalarLayout(32); }
     if (IsScalar(*U256)) { return ScalarLayout(32); }
 
-    // Sizes based on pointer size.
-    if (IsScalar(*SSIZE)) {
-      return ScalarLayout(sizeof(std::size_t));
-    }
-    if (IsScalar(*USIZE)) {
-      return ScalarLayout(sizeof(std::size_t));
-    }
-
     // A mock is a function used as a value, so it shares a
     // function value's shape.
     if (IsTypeFunction(ref, scope) or sym.IsMock()) {

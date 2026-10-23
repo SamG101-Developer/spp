@@ -36,6 +36,7 @@ import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_size;
+import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.utils.ice;
@@ -987,7 +988,7 @@ auto fn_impls::SimpleCoroViewIter(
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto size_ty = TargetSizeType(*ctx->Context);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "view.iter.self" + uid);
 
   const auto view_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
@@ -1007,14 +1008,14 @@ auto fn_impls::SimpleCoroViewIter(
     ptr_ty, ctx->Builder.CreateStructGEP(view_llvm_type, self_ptr, data_idx, "view.iter.data_ptr" + uid),
     "view.iter.data" + uid);
   const auto length = ctx->Builder.CreateLoad(
-    i64_ty, ctx->Builder.CreateStructGEP(view_llvm_type, self_ptr, length_idx, "view.iter.length_ptr" + uid),
+    size_ty, ctx->Builder.CreateStructGEP(view_llvm_type, self_ptr, length_idx, "view.iter.length_ptr" + uid),
     "view.iter.length" + uid);
 
   // Counted down from the length when reversed, so that one counter drives both directions and neither can run past
   // the end: forwards yields index "i" while "i < length", backwards yields index "i - 1" while "i > 0".
-  const auto counter = LlvmEntryAlloca(i64_ty, "view.iter.counter" + uid, ctx);
+  const auto counter = LlvmEntryAlloca(size_ty, "view.iter.counter" + uid, ctx);
   ctx->Builder.CreateStore(
-    reverse ? static_cast<llvm::Value*>(length) : llvm::ConstantInt::get(i64_ty, 0), counter);
+    reverse ? static_cast<llvm::Value*>(length) : llvm::ConstantInt::get(size_ty, 0), counter);
 
   const auto fn = ctx->Builder.GetInsertBlock()->getParent();
   const auto cond_bb = llvm::BasicBlock::Create(*ctx->Context, "view.iter.cond" + uid, fn);
@@ -1023,9 +1024,9 @@ auto fn_impls::SimpleCoroViewIter(
 
   ctx->Builder.CreateBr(cond_bb);
   ctx->Builder.SetInsertPoint(cond_bb);
-  const auto counter_val = ctx->Builder.CreateLoad(i64_ty, counter, "view.iter.i" + uid);
+  const auto counter_val = ctx->Builder.CreateLoad(size_ty, counter, "view.iter.i" + uid);
   const auto more = reverse
-    ? ctx->Builder.CreateICmpUGT(counter_val, llvm::ConstantInt::get(i64_ty, 0), "view.iter.more" + uid)
+    ? ctx->Builder.CreateICmpUGT(counter_val, llvm::ConstantInt::get(size_ty, 0), "view.iter.more" + uid)
     : ctx->Builder.CreateICmpULT(counter_val, length, "view.iter.more" + uid);
   ctx->Builder.CreateCondBr(more, body_bb, exit_bb);
 
@@ -1061,8 +1062,8 @@ auto fn_impls::SimpleCoroViewIter(
 
   ctx->Builder.SetInsertPoint(body_bb);
   const auto next = reverse
-    ? ctx->Builder.CreateSub(counter_val, llvm::ConstantInt::get(i64_ty, 1), "view.iter.next" + uid)
-    : ctx->Builder.CreateAdd(counter_val, llvm::ConstantInt::get(i64_ty, 1), "view.iter.next" + uid);
+    ? ctx->Builder.CreateSub(counter_val, llvm::ConstantInt::get(size_ty, 1), "view.iter.next" + uid)
+    : ctx->Builder.CreateAdd(counter_val, llvm::ConstantInt::get(size_ty, 1), "view.iter.next" + uid);
   index = reverse ? next : counter_val;
 
   // Advanced before suspending, so the slot already holds the next step when the caller resumes.
@@ -1165,9 +1166,9 @@ auto fn_impls::SimpleCoroViewSlice(
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta,
       LlvmCtx *ctx) -> llvm::Value* override {
       // Read the bounds out of the parameters' storage.
-      const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
-      const auto from_val = ctx->Builder.CreateLoad(i64_ty, _FromAlloca, "view.slice.from_val" + _Uid);
-      const auto upto_val = ctx->Builder.CreateLoad(i64_ty, _UptoAlloca, "view.slice.upto_val" + _Uid);
+      const auto size_ty = TargetSizeType(*ctx->Context);
+      const auto from_val = ctx->Builder.CreateLoad(size_ty, _FromAlloca, "view.slice.from_val" + _Uid);
+      const auto upto_val = ctx->Builder.CreateLoad(size_ty, _UptoAlloca, "view.slice.upto_val" + _Uid);
 
       // The data the view spans, read out of its first field.
       const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1175,7 +1176,7 @@ auto fn_impls::SimpleCoroViewSlice(
         _ViewTy, _SelfPtr, _DataIdx, "view.slice.self_data_ptr" + _Uid);
       const auto self_data = ctx->Builder.CreateLoad(ptr_ty, self_data_ptr, "view.slice.self_data" + _Uid);
       const auto self_length = ctx->Builder.CreateLoad(
-        i64_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.slice.self_length_ptr" + _Uid),
+        size_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.slice.self_length_ptr" + _Uid),
         "view.slice.self_length" + _Uid);
 
       // Both bounds are checked before either is used: a slice
@@ -1296,7 +1297,7 @@ auto fn_impls::SimpleCoroArrayFwd(
   const auto data = ctx->Builder.CreateConstInBoundsGEP2_64(
     arr_llvm_type, self_ptr, 0, 0, "array.fwd.data" + uid);
   const auto length = llvm::ConstantInt::get(
-    llvm::Type::getInt64Ty(*ctx->Context), arr_llvm_type->getNumElements());
+    TargetSizeType(*ctx->Context), arr_llvm_type->getNumElements());
   SimpleCoroContiguousFwd(sm, proto, meta, ctx, data, length);
 }
 
@@ -1312,7 +1313,7 @@ auto fn_impls::SimpleCoroVectorFwd(
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto size_ty = TargetSizeType(*ctx->Context);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vector.fwd.self" + uid);
 
   const auto vec_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
@@ -1332,7 +1333,7 @@ auto fn_impls::SimpleCoroVectorFwd(
     ptr_ty, ctx->Builder.CreateStructGEP(buffer_llvm_type, buffer, buffer_ptr_idx, "vector.fwd.data_ptr" + uid),
     "vector.fwd.data" + uid);
   const auto length = ctx->Builder.CreateLoad(
-    i64_ty, ctx->Builder.CreateStructGEP(vec_llvm_type, self_ptr, length_idx, "vector.fwd.length_ptr" + uid),
+    size_ty, ctx->Builder.CreateStructGEP(vec_llvm_type, self_ptr, length_idx, "vector.fwd.length_ptr" + uid),
     "vector.fwd.length" + uid);
   SimpleCoroContiguousFwd(sm, proto, meta, ctx, data, length);
 }
@@ -1386,16 +1387,16 @@ auto fn_impls::SimpleCoroViewIndex(
 
     auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta,
       LlvmCtx *ctx) -> llvm::Value* override {
-      const auto i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+      const auto size_ty = TargetSizeType(*ctx->Context);
       const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-      const auto idx_val = ctx->Builder.CreateLoad(i64_ty, _IdxAlloca, "view.index.idx_val" + _Uid);
+      const auto idx_val = ctx->Builder.CreateLoad(size_ty, _IdxAlloca, "view.index.idx_val" + _Uid);
 
       // The data the view spans and how much of it there is, read out of the view's own two fields.
       const auto self_data = ctx->Builder.CreateLoad(
         ptr_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _DataIdx, "view.index.data_ptr" + _Uid),
         "view.index.data" + _Uid);
       const auto self_length = ctx->Builder.CreateLoad(
-        i64_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.index.length_ptr" + _Uid),
+        size_ty, ctx->Builder.CreateStructGEP(_ViewTy, _SelfPtr, _LengthIdx, "view.index.length_ptr" + _Uid),
         "view.index.length" + _Uid);
 
       // Out of bounds aborts rather than returning something: the contract is that an out-of-range index aborts,
