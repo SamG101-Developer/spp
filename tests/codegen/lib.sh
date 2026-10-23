@@ -99,11 +99,17 @@ build_project() {
 }
 
 # Run "exe" with its output in "log" and its exit code in RC. Never through a
-# pipe, which would report the pipe's status and hide a crash.
+# pipe, which would report the pipe's status and hide a crash. A run still
+# going after RUN_TIMEOUT seconds (60) is killed and failed here: no check
+# expects a hang, and one that hangs the same way twice compares equal.
 run_exe() {
-    "$1" > "$2" 2>&1
+    timeout --kill-after=5 "${RUN_TIMEOUT:-60}" "$1" > "$2" 2>&1
     # shellcheck disable=SC2034 # read by the checks
     RC=$?
+    if (( RC == 124 || RC == 137 )); then
+        echo "timed out after ${RUN_TIMEOUT:-60}s" >> "$2"
+        fail "$(basename "$1"): still running after ${RUN_TIMEOUT:-60}s" "$2"
+    fi
 }
 
 ok() {
