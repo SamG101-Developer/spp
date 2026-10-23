@@ -104,9 +104,13 @@ auto TypeIdentifierAst::PosStart() const -> std::size_t {
 }
 
 auto TypeIdentifierAst::PosEnd() const -> std::size_t {
-  // Use the final generic argument or name.
+  // Use the "]" of the generic arguments written after the name,
+  // else the name. Arguments the compiler filled in have no "]"
+  // of their own, or one that is not after this name.
   if (_HasSourceSpan) { return _SpanEnd; }
-  return _Pos + Name.length();
+  const auto name_end = _Pos + Name.length();
+  const auto tok_r = GnArgGroup != nullptr ? GnArgGroup->TokR.get() : nullptr;
+  return tok_r != nullptr and tok_r->PosStart() >= name_end ? tok_r->PosEnd() : name_end;
 }
 
 auto TypeIdentifierAst::Clone() const -> Unique<Ast> {
