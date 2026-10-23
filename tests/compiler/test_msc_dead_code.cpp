@@ -110,3 +110,79 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         loop c { ret 1 }
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDeadCode,
+  test_invalid_statement_after_an_exhaustive_case_whose_branches_all_return,
+  SppUnreachableCodeError, R"(
+    fun f(x: S32 or Bool) -> S32 {
+        case x of {
+            is S32(..) { ret 1 }
+            is Bool(..) { ret 2 }
+        }
+        ret 3
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestDeadCode,
+  test_invalid_statement_after_an_exhaustive_case_whose_branches_all_diverge,
+  SppUnreachableCodeError, R"(
+    fun g() -> ! {
+        loop true { }
+    }
+
+    fun f(x: S32 or Bool) -> S32 {
+        case x of {
+            is S32(..) { g() }
+            is Bool(..) { g() }
+        }
+        ret 3
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDeadCode,
+  test_valid_function_ending_in_an_exhaustive_case_whose_branches_all_diverge, R"(
+    fun g() -> ! {
+        loop true { }
+    }
+
+    fun f(x: S32 or Bool) -> S32 {
+        case x of {
+            is S32(..) { g() }
+            is Bool(..) { g() }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDeadCode,
+  test_valid_function_ending_in_an_exhaustive_case_whose_branches_bind_a_never_value, R"(
+    fun g() -> ! {
+        loop true { }
+    }
+
+    fun f(x: S32 or Bool) -> S32 {
+        case x of {
+            is S32(..) { let a = g() }
+            is Bool(..) { let b = g() }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestDeadCode,
+  test_valid_statement_after_an_exhaustive_case_with_a_branch_that_finishes, R"(
+    fun g() -> ! {
+        loop true { }
+    }
+
+    fun f(x: S32 or Bool) -> S32 {
+        case x of {
+            is S32(..) { g() }
+            is Bool(..) { }
+        }
+        ret 3
+    }
+)");
