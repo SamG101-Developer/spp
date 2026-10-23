@@ -50,6 +50,11 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   };
   take_values(take_values, *sm->CurrentScope);
 
+  // The body is walked as a call enters it, not as Stage 7 left its scope: the bindings written in it are hidden
+  // until each is reached, so a name means what is written before it - the parameter "x", not the "x" an "is" further
+  // down narrows - and the argument goes to the parameter. Revealed again on the way out, as leaving a scope does.
+  sm->CurrentScope->HideLetBindings();
+
   // Inject the argument values. Todo: && & std::move?
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
   for (auto const &[arg_name, arg_comp] : meta->CompTimeArgs) {
@@ -70,6 +75,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
 
   // Hand the scope back to the caller as it was. A semantic error thrown out of the body skips this, which is fine:
   // nothing catches a comp-time error, so the compile is over either way.
+  sm->CurrentScope->RevealLetBindings();
   for (auto &&[sym, value] : caller_values) { sym->CompTimeValue = std::move(value); }
 }
 
