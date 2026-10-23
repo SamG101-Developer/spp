@@ -168,8 +168,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
       "closure-inner", {}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     meta->EnclosingFnFlavour = Tok.get();
-    meta->EnclosingFnRetType = {};
-    meta->EnclosingFnSourceRetType = {};
+    meta->EnclosingFnRetType = nullptr;
+    meta->EnclosingFnSourceRetType = nullptr;
 
     // A declared return type is seeded here, so that a "ret"
     // in the body is checked against it and coerced into it -
@@ -179,8 +179,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
       const auto written_ret = ReturnType;
       ReturnType = type_resolution::AnalyseWrittenType(*ReturnType, *sm, *meta);
 
-      meta->EnclosingFnRetType.emplace_back(ReturnType);
-      meta->EnclosingFnSourceRetType.emplace_back(written_ret);
+      meta->EnclosingFnRetType = ReturnType;
+      meta->EnclosingFnSourceRetType = written_ret;
     }
 
     // A "ret" or "?" in the body leaves the closure rather
@@ -198,8 +198,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
-    _TrueRetType = not meta->EnclosingFnRetType.empty()
-      ? meta->EnclosingFnRetType[0]
+    _TrueRetType = meta->EnclosingFnRetType != nullptr
+      ? meta->EnclosingFnRetType
       : Body->InferType(sm, meta);
     _TrueRetType->Stage7_AnalyseSemantics(sm, meta);
     Source._OriginalRetType = _TrueRetType;
@@ -338,8 +338,8 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   sm->CurrentScope->AstNode = this;
   _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
   meta->EnclosingFnScope = sm->CurrentScope;
-  meta->EnclosingFnRetType = {_TrueRetType};
-  meta->EnclosingFnSourceRetType = {Source._OriginalRetType};
+  meta->EnclosingFnRetType = _TrueRetType;
+  meta->EnclosingFnSourceRetType = Source._OriginalRetType;
   meta->EnclosingFnFlavour = Tok.get();
   ctx->CurrentClosureType = closure_env_ty;
   ctx->CurrentClosureScope = sm->CurrentScope;

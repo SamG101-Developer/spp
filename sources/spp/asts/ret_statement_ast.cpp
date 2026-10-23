@@ -98,9 +98,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
-    meta->AssignmentTargetType = meta->EnclosingFnRetType.empty()
-      ? nullptr
-      : meta->EnclosingFnRetType.back();
+    meta->AssignmentTargetType = meta->EnclosingFnRetType;
     if (meta->AssignmentTargetType != nullptr) {
       meta->AssignmentTargetType = self_type::SubstituteSelf(
         *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
@@ -119,17 +117,15 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
     expr_type = Expr->InferType(sm, meta);
 
     _RetType = meta->AssignmentTargetType;
-    Source._OriginalRetType = meta->EnclosingFnSourceRetType.empty()
-      ? nullptr
-      : meta->EnclosingFnSourceRetType[0];
+    Source._OriginalRetType = meta->EnclosingFnSourceRetType;
   }
 
   // Functions provide the return type, closures require inference; handle the inference.
-  if (meta->EnclosingFnRetType.empty()) {
+  if (meta->EnclosingFnRetType == nullptr) {
     _RetType = expr_type;
     Source._OriginalRetType = _RetType;
-    meta->EnclosingFnRetType.emplace_back(_RetType);
-    meta->EnclosingFnSourceRetType.emplace_back(_RetType);
+    meta->EnclosingFnRetType = _RetType;
+    meta->EnclosingFnSourceRetType = _RetType;
   }
 
   // Type check the expression type against the return type of the enclosing subroutine.
@@ -205,9 +201,7 @@ auto RetStatementAst::EmitReturn(
   const auto uid = "." + Uid();
   const auto ret_type = ret_type_written != nullptr
     ? ret_type_written
-    : meta->EnclosingFnRetType.empty()
-    ? nullptr
-    : meta->EnclosingFnRetType.back();
+    : meta->EnclosingFnRetType;
 
   auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }

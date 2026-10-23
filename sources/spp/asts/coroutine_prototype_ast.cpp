@@ -129,15 +129,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
+    meta->EnclosingFnSourceRetType = ReturnType;
     meta->EnclosingFnScope = sm->CurrentScope;
-    {
-      const auto _is_bindings = IsBindingsScope(meta);
-      Impl->Stage7_AnalyseSemantics(sm, meta);
-    }
-
-    // Check the return type superimposes the generator type.
+    // Check the return type superimposes the generator type, before the body reads its yield type.
     const auto gen = marker_sups::FindGenSup(
       TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
@@ -152,6 +147,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Analyse the semantics of the function body, and move
     // out the scope.
+    {
+      const auto _is_bindings = IsBindingsScope(meta);
+      Impl->Stage7_AnalyseSemantics(sm, meta);
+    }
     sm->MoveOutOfCurrentScope();
   }
   meta->LoopReturnTypes->clear();
@@ -343,15 +342,15 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     "coro.initial.resume" + uid, ctx);
 
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
     meta->LlvmGenerator->CleanupBlock = cleanup_bb;
     meta->LlvmGenerator->SuspendBlock = suspend_bb;
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
+    meta->EnclosingFnSourceRetType = ReturnType;
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code. Generic

@@ -27,8 +27,8 @@ auto CompilerMetaData::ResetContext() -> void {
   InCompTimeValue = false;
   EnclosingFnScope = nullptr;
   EnclosingFnFlavour = nullptr;
-  EnclosingFnRetType = {};
-  EnclosingFnSourceRetType = {};
+  EnclosingFnRetType = nullptr;
+  EnclosingFnSourceRetType = nullptr;
   EnclosingFnCmp = nullptr;
   OverriddenScopeForClosure = nullptr;
   CurrentLambdaOuterScope = nullptr;

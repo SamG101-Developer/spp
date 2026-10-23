@@ -181,12 +181,13 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   TokenAst *EnclosingFnFlavour;
 
   /// The return type of the enclosing function type. Again needed
-  /// for "ret" and "gen" type checking.
-  Vec<Shared<TypeAst>> EnclosingFnRetType;
+  /// for "ret" and "gen" type checking. Null in a closure with no
+  /// written return type, until its first "ret" or "gen" sets it.
+  Shared<TypeAst> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
-  Vec<Shared<TypeAst>> EnclosingFnSourceRetType;
+  Shared<TypeAst> EnclosingFnSourceRetType;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot

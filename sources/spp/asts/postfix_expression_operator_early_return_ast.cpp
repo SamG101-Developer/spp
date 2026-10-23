@@ -199,17 +199,17 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(
-        TypeRef::Of(*meta->EnclosingFnRetType.back(), *meta->EnclosingFnScope),
+        TypeRef::Of(*meta->EnclosingFnRetType, *meta->EnclosingFnScope),
         residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
       ERR_ARGS(
-        *meta->EnclosingFnSourceRetType.back(), *meta->EnclosingFnRetType.back(),
+        *meta->EnclosingFnSourceRetType, *meta->EnclosingFnRetType,
         *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
   }
 
   // Todo: Tidy!
   // Coroutine return type check.
   else {
-    auto const &ret_type = meta->EnclosingFnRetType.back();
+    auto const &ret_type = meta->EnclosingFnRetType;
     const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope, *analysed_lhs,
       [&] { return ret_type; }, "early return"));
@@ -217,8 +217,8 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(yield_ref, residual_ref, *meta->EnclosingFnScope, *sm->CurrentScope),
       ERR_ARGS(
-        *meta->EnclosingFnSourceRetType.back(), ErrTypeAt(
-          yield_ref, *meta->EnclosingFnSourceRetType.back(), *meta->EnclosingFnScope),
+        *meta->EnclosingFnSourceRetType, ErrTypeAt(
+          yield_ref, *meta->EnclosingFnSourceRetType, *meta->EnclosingFnScope),
         *analysed_lhs, ErrTypeAt(residual_ref, *analysed_lhs, *meta->EnclosingFnScope)));
   }
 }

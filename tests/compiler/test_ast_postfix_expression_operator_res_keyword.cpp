@@ -222,7 +222,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_invalid_coroutine_yielding_gen_done,
-    SppYieldTypeContainsGenDoneError, "Gen", R"(
+    SppYieldTypeContainsGenDoneError, "Gen[S32 or std::generator::GenDone]", R"(
     cor g() -> Gen[S32 or std::generator::GenDone] {
         gen 1
     }
