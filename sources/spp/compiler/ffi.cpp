@@ -182,3 +182,21 @@ auto spp::compiler::ffi::CheckRelro(
   }
   return true;
 }
+
+auto spp::compiler::ffi::CheckSegments(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto fault = codegen::UnhardenedSegments(utils::files::NativeString(library).c_str());
+    if (not fault) {
+      std::cerr << "Error: cannot read " << Shown(root, library) << ": " << fault.error() << "\n";
+      return false;
+    }
+    if (not fault->has_value()) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " was linked with " << **fault << ".\n"
+      << "  Relink it with -Wl,-z,separate-code (binutils 2.31 or newer), or set 'segments_ffi = false' under "
+      << "[binary.link] in spp.toml.\n";
+    return false;
+  }
+  return true;
+}

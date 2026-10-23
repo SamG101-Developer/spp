@@ -34,4 +34,10 @@ namespace spp::compiler::ffi {
   /// that was not, with what it lacks and how to fix it, and
   /// answering false.
   SPP_EXP_FUN auto CheckRelro(Path const &root, Vec<Path> const &libraries) -> bool;
+
+  /// Check every library "Libraries" answered keeps code apart
+  /// from data and has no writable-and-executable segment
+  /// ("codegen::UnhardenedSegments"), reporting the first that
+  /// does not, or cannot be read, and answering false.
+  SPP_EXP_FUN auto CheckSegments(Path const &root, Vec<Path> const &libraries) -> bool;
 }
