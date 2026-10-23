@@ -224,4 +224,11 @@ auto LetStatementInitializedAst::Stage11_CodeGen(
   return alloca;
 }
 
+auto LetStatementInitializedAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // The variable is "Void" typed when its value is "!", so the
+  // value is what is asked.
+  return Val->Diverges(sm, meta);
+}
+
 SPP_MOD_END

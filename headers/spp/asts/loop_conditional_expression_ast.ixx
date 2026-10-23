@@ -37,6 +37,4 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
-
 };

@@ -124,7 +124,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
     // reported rather than whatever else is wrong with it.
-    RaiseIf<SppUnreachableCodeError>(expr_utils::Diverges(*x, sm, meta), ERR_ARGS(*x, *Members[i + 1]));
+    RaiseIf<SppUnreachableCodeError>(x->Diverges(sm, meta), ERR_ARGS(*x, *Members[i + 1]));
   }
 
   // Every statement but the last has its value discarded; the last
@@ -190,7 +190,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // because releasing them is what clears the very state the
   // check reads to tell that a symbol holding borrows is not
   // something this scope owes.
-  if (not expr_utils::Diverges(*this, sm, meta)) {
+  if (not Diverges(sm, meta)) {
     linear_utils::CheckDeferredForScope(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm, meta);
@@ -293,11 +293,13 @@ auto InnerScopeExpressionAst::InferTypeRef(
   return TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope);
 }
 
-auto InnerScopeExpressionAst::Terminates() const -> bool {
-  // The inner scope expression only terminates if the
-  // last member terminates.
-  if (this->Members.empty()) { return false; }
-  return this->Members.back()->Terminates();
+auto InnerScopeExpressionAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // Read in the block's own scope. Its type alone misses a
+  // trailing "let" bound to a "!" value, which is typed "Void".
+  if (Members.empty()) { return false; }
+  auto tm = sm->NewManagerAt(GetAstScope());
+  return Members.back()->Diverges(&tm, meta);
 }
 
 auto InnerScopeExpressionAst::FinalMember() const -> Ast* {

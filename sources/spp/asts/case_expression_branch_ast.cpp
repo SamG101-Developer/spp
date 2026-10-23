@@ -263,13 +263,9 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
       llvm_val, target_ref, body_ref, *sm->CurrentScope, "case.branch.variant" + uid, ctx);
   }
 
-  // Add a special case for the "!" type being used as the
-  // returning type of one of the branches.
-  const auto body_is_never = [&] {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->IgnoreMissingElseBranchForInference = true;
-    return Body->InferTypeRef(sm, meta).IsNever;
-  }();
+  // A body that never finishes has no value to hand on, and
+  // no edge back to the "case"'s end.
+  const auto body_is_never = Body->Diverges(sm, meta);
 
   // Add the value generated from the branch's body into the PHI
   // node of the "meta" context. This will then be pulled by the

@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
@@ -253,7 +252,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 
     // A body that falls off its end discharges its parameters there,
     // as a function's does.
-    if (not expr_utils::Diverges(*Body, sm, meta)) {
+    if (not Body->Diverges(sm, meta)) {
       linear_utils::CheckScopeExit(
         *outer_scope, *Body, "Closure end", *sm, meta);
     }

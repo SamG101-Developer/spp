@@ -52,7 +52,7 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
     ExpressionAst *expr, Shared<TypeAst> const &ret_type, Ast const &site, ScopeManager *sm,
     CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value*;
 
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 
 private:
   Shared<TypeAst> _RetType;

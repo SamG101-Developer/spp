@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -105,7 +104,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // A body that never reaches its end ("ret", "abort()", a loop
   // with no way out, a "case" every branch of which does one of
   // those) needs no value there.
-  const auto body_diverges = expr_utils::Diverges(*Impl, sm, meta);
+  const auto body_diverges = Impl->Diverges(sm, meta);
   RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
     not is_void and not annotation_blocks_ret and not body_diverges,
     ERR_ARGS(*final_member, *ReturnType, *ReturnType));

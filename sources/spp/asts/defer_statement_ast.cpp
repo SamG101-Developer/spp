@@ -75,7 +75,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // Leaving the scope is what runs a deferred expression, so
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
-  RaiseIf<SppDeferTerminatesError>(expr_utils::Diverges(*Expr, sm, meta), ERR_ARGS(*TokDefer, *Expr));
+  RaiseIf<SppDeferTerminatesError>(Expr->Diverges(sm, meta), ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value

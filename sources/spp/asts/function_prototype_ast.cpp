@@ -13,7 +13,6 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.memory_state;
@@ -650,7 +649,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
     // overrides it. There is no body that could have consumed the
     // parameters, so there is nothing to hold to the rule.
     if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-      and not expr_utils::Diverges(*Impl, sm, meta)) {
+      and not Impl->Diverges(sm, meta)) {
       linear_utils::CheckScopeExit(
         *sm->CurrentScope, *Impl, "Function end", *sm, meta);
     }
@@ -792,7 +791,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr and not expr_utils::Diverges(*sub.Proto->Impl, &tm, meta)) {
+      and sub.Proto->AbstractAnnotation == nullptr and not sub.Proto->Impl->Diverges(&tm, meta)) {
       linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }

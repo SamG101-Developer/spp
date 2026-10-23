@@ -2,11 +2,22 @@ module;
 #include <spp/macros.hpp>
 
 module spp.asts.expression_ast;
+import spp.analyse.scopes.symbols;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
 SPP_MOD_BEGIN
 ExpressionAst::ExpressionAst() = default;
 ExpressionAst::~ExpressionAst() = default;
+
+auto ExpressionAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // A "case" in a branch is asked for its type as if it were in
+  // expression position, where a missing "else" is an error.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->IgnoreMissingElseBranchForInference = true;
+  return InferTypeRef(sm, meta).IsNever;
+}
 
 auto ExpressionAst::operator<=>(
   const ExpressionAst &rhs_expr) const -> Ordering {

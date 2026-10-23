@@ -286,8 +286,9 @@ auto RetStatementAst::EmitReturn(
   return nullptr;
 }
 
-auto RetStatementAst::Terminates() const -> bool {
-  // This is the only statement that always terminates.
+auto RetStatementAst::Diverges(
+  ScopeManager *, CompilerMetaData *) -> bool {
+  // A "ret" always leaves the function.
   return true;
 }
 

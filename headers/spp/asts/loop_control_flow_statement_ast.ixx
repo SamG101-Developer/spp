@@ -52,7 +52,7 @@ SPP_EXP_CLS struct spp::asts::LoopControlFlowStatementAst final : StatementAst {
   /// behind - values it moved before jumping - is applied to
   /// the code after the "case", which then sees them as moved
   /// on a path that never ran.
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 

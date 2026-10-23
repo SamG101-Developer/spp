@@ -25,8 +25,13 @@ SPP_EXP_CLS struct spp::asts::StatementAst : Ast, mixins::TypeInferrableAst {
   auto InferTypeRef(
     ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  /// Test if the statement always terminates control flow with
-  /// the "ret" instruction. For blocks, the final member is
-  /// always inspected, recursively.
-  SPP_ATTR_NODISCARD virtual auto Terminates() const -> bool;
+  /// Whether control never continues past this statement: it is
+  /// written to leave ("ret", "exit", "skip"), it is a block
+  /// whose last statement diverges, a "case" nothing falls
+  /// through and every reachable branch of which diverges, a
+  /// "let" whose value diverges, or an expression typed "!" (a
+  /// call to "abort", a loop with no way out). The one
+  /// definition: everything asking this reads it. The statement
+  /// must be analysed. Any other statement continues.
+  SPP_ATTR_NODISCARD virtual auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool;
 };

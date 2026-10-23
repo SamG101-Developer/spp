@@ -255,7 +255,8 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto LoopControlFlowStatementAst::Terminates() const -> bool {
+auto LoopControlFlowStatementAst::Diverges(
+  ScopeManager *, CompilerMetaData *) -> bool {
   // An "exit" or a "skip" always jumps, so nothing after it
   // in this scope runs.
   return true;

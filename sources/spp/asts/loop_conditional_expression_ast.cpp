@@ -190,7 +190,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // few times, so the bound is a compiler bug's, not a program's.
   auto back = Opt<HeadStates>();
   auto back_loans = memory_state::LoanSet();
-  const auto body_diverges = expr_utils::Diverges(*Body, sm, meta);
+  const auto body_diverges = Body->Diverges(sm, meta);
   if (not body_diverges or flow.Loops[frame_at].Skips != 0) {
     const auto max_passes = 8 * (outer_syms.size() + 1);
     for (auto pass = 1uz;; ++pass) {
@@ -475,14 +475,6 @@ auto LoopConditionalExpressionAst::InferTypeRef(
     return TypeRef::Of(*NEVER, *sm->CurrentScope);
   }
   return LoopExpressionAst::InferTypeRef(sm, meta);
-}
-
-auto LoopConditionalExpressionAst::Terminates() const -> bool {
-  // A conditional loop never terminates the scope it is
-  // written in: the condition is checked before the first
-  // iteration, so a loop whose body returns can still run
-  // zero times and fall through to whatever follows.
-  return false;
 }
 
 SPP_MOD_END

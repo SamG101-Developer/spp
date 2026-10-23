@@ -309,7 +309,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
       // A reachable branch that keeps the case condition temporary
       // (does not take it) raises a linear error, unless the body
       // of the branch diverges.
-      if (not expr_utils::Diverges(*branch->Body, sm, meta)) {
+      if (not branch->Body->Diverges(sm, meta)) {
         linear_utils::RaiseTemporaryNotConsumed(
           *Cond, *branch, "This branch keeps it, so nothing owns it after the \"case\"", *sm, meta);
       }
@@ -548,14 +548,8 @@ auto CaseExpressionAst::InferType(
 
   // Nothing falls through, and every branch that can match diverges: no path leaves the "case" at all, so it is "!",
   // whatever its "ret" branches' own types. An "else { unreachable() }" used to supply the "!" this needs.
-  if (_Plan != nullptr) {
-    auto diverges = true;
-    for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
-      if (_Plan->Coverage.Reachable[i] and not expr_utils::Diverges(*branch->Body, sm, meta)) {
-        diverges = false;
-      }
-    }
-    if (diverges) { return generate::common_types_precompiled::NeverAt(PosStart()); }
+  if (_Plan != nullptr and Diverges(sm, meta)) {
+    return generate::common_types_precompiled::NeverAt(PosStart());
   }
 
   // Return the branches' return type. If there are any
@@ -572,18 +566,17 @@ auto CaseExpressionAst::InferTypeRef(
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto CaseExpressionAst::Terminates() const -> bool {
-  // Every branch that can match has to terminate, and some branch always has to run. A "case" that can fall through
-  // every branch matches nothing on that path, so "case a { gen 1 ret }" ends the scope only when "a" holds - and the
-  // statement after it is reachable. Before Stage 7 has worked out what it covers, only an "else" says it cannot.
+auto CaseExpressionAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // Before Stage 7 has worked out what it covers, only an
+  // "else" says nothing falls through, and every branch counts.
   if (Branches.empty()) { return false; }
-  if (_Plan == nullptr) {
-    if (not analyse::utils::pattern_solver::IsElseBranch(*Branches.back())) { return false; }
-    return not genex::any_of(Branches, [](auto const &branch) { return not branch->Body->Terminates(); });
-  }
-  if (_Plan->Coverage.FallsThrough) { return false; }
+  const auto falls_through = _Plan != nullptr
+    ? _Plan->Coverage.FallsThrough
+    : not analyse::utils::pattern_solver::IsElseBranch(*Branches.back());
+  if (falls_through) { return false; }
   for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
-    if (_Plan->Coverage.Reachable[i] and not branch->Body->Terminates()) { return false; }
+    if ((_Plan == nullptr or _Plan->Coverage.Reachable[i]) and not branch->Body->Diverges(sm, meta)) { return false; }
   }
   return true;
 }

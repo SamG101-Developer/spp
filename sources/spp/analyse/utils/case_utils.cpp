@@ -9,7 +9,6 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_time_intrinsics;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
 import spp.analyse.utils.regions;
@@ -257,7 +256,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
   // back to the binding, so shouldn't be considered for type
   // checking.
   auto valued_branches_type_info = branches_type_info
-    | genex::views::remove_if([&sm, meta](auto const &x) { return expr_utils::Diverges(*x.first->Body, &sm, meta); })
+    | genex::views::remove_if([&sm, meta](auto const &x) { return x.first->Body->Diverges(&sm, meta); })
     | genex::to<Vec>();
 
   // When every branch diverges, the ones typed "!" stand for the
@@ -412,7 +411,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   // it infers the body's type.
   auto diverging = Set<CaseExpressionBranchAst const*>();
   for (auto branch : branches) {
-    if (expr_utils::Diverges(*branch->Body, sm, meta)) { diverging.insert(branch); }
+    if (branch->Body->Diverges(sm, meta)) { diverging.insert(branch); }
   }
 
   // A branch diverges if it in the set of diverging case

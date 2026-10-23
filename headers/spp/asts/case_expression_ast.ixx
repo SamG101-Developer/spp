@@ -80,16 +80,16 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionAst final : PrimaryExpressionAst {
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  /// A "case" block only terminates if one or more of its
-  /// branches can terminate, as it has to be assumed that the
-  /// terminating branch will execute, to cover all bases.
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
-
   /// What this "case" matches and does with its subject using
   /// the pattern solver. It's worked out when Stage 7 analyses
   /// it, and read by every later stage.
   auto Plan(
     ScopeManager *sm, CompilerMetaData *meta) -> MatchPlan const&;
+
+  /// A "case" diverges when nothing falls through it and every
+  /// branch that can match diverges. Its type alone misses one in
+  /// statement position, which is never typed "!".
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 
 private:
   /// See "Plan". Not carried by "Clone": a copy is analysed afresh.
