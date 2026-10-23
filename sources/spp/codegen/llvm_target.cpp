@@ -9,6 +9,14 @@ import std;
 
 namespace spp::codegen {
   namespace {
+    /// Whether the target has been read, and so fixed: selecting
+    /// another after that would leave everything already built for
+    /// the first.
+    auto TargetFixed() -> bool& {
+      static auto fixed = false;
+      return fixed;
+    }
+
     /// The triple this build emits for, written into by
     /// "SelectTarget". If it is empty, then it's the host, as
     /// "TargetTriple" specifies. Only written once, before
@@ -68,7 +76,7 @@ namespace spp::codegen {
       "riscv64-unknown-linux-gnu",
       "s390x-unknown-linux-gnu",
       "powerpc64le-unknown-linux-gnu",
-      "wasm32-unknown-wasi",
+      "wasm32-unknown-wasip1",
     };
 
     /// Print the suggestions that this build can actually emit
@@ -106,11 +114,27 @@ namespace spp::codegen {
           return nullptr;
         }
 
+        // The baseline the target's distributions build for, where
+        // LLVM's generic CPU is less: on riscv64 Linux that is
+        // rv64gc, with floating-point arguments in float registers
+        // (lp64d), as its libc and every library are built.
+        auto features = Str();
+        auto options = llvm::TargetOptions();
+        if (triple.isRISCV64() and triple.isOSLinux()) {
+          features = "+m,+a,+f,+d,+c";
+          options.MCOptions.ABIName = "lp64d";
+        }
+
+        // LLVM's "generic" CPU is each target's baseline, but on
+        // sparc64 it is the 32-bit V8, which cannot load 64 bits:
+        // there, V9, as LLVM itself picks when given no CPU.
+        const auto cpu = triple.isSPARC64() ? "v9" : "generic";
+
         // "Position independent" because the runtime the program
         // links against is a shared library, and a non-pic object
         // cannot be linked against one on this target.
         return target->createTargetMachine(
-          triple, "generic", "", llvm::TargetOptions(), llvm::Reloc::PIC_);
+          triple, cpu, features, options, llvm::Reloc::PIC_);
       }();
       return machine;
     }
@@ -144,9 +168,10 @@ namespace spp::codegen {
 }
 
 auto spp::codegen::TargetTriple() -> llvm::Triple const& {
-  static const auto triple = SelectedTriple().empty()
-    ? HostTriple()
-    : llvm::Triple(llvm::Triple::normalize(SelectedTriple()));
+  static const auto triple = [] {
+    TargetFixed() = true;
+    return SelectedTriple().empty() ? HostTriple() : llvm::Triple(llvm::Triple::normalize(SelectedTriple()));
+  }();
   return triple;
 }
 
@@ -182,6 +207,11 @@ auto spp::codegen::SelectTarget(
     return false;
   }
 
+  // Read before now (a static initialiser that asks for the
+  // target, say), the host was fixed in its place.
+  if (TargetFixed() and TargetTriple() != llvm::Triple(normalized)) {
+    Ice("the target was read before '" + requested + "' was selected, and fixed to " + TargetTriple().str());
+  }
   SelectedTriple() = normalized;
   return true;
 }
@@ -196,6 +226,98 @@ auto spp::codegen::TargetIsHost() -> bool {
 /// [CHECKED]
 auto spp::codegen::TargetIsLinux() -> bool {
   return TargetTriple().isOSLinux();
+}
+
+auto spp::codegen::TargetIsMusl() -> bool {
+  return TargetTriple().isMusl();
+}
+
+auto spp::codegen::GnuTripleOf(
+  const StrView folder) -> Str {
+  const auto arch_end = folder.find('-');
+  const auto arch = folder.substr(0, arch_end);
+  const auto spelled = arch == "i386" ? StrView("i686") : arch == "sparcv9" ? StrView("sparc64") : arch;
+  return Str(spelled) + Str(arch_end == StrView::npos ? StrView() : folder.substr(arch_end));
+}
+
+auto spp::codegen::HasSafeStack(
+  const StrView triple) -> bool {
+  const auto libcalls = llvm::RTLIB::RuntimeLibcallsInfo(llvm::Triple(llvm::StringRef(triple)));
+  return libcalls.getSupportedLibcallImpl("__safestack_unsafe_stack_ptr") != llvm::RTLIB::Unsupported
+    or libcalls.getSupportedLibcallImpl("__safestack_pointer_address") != llvm::RTLIB::Unsupported;
+}
+
+auto spp::codegen::TargetHasSafeStack() -> bool {
+  return HasSafeStack(TargetTriple().str());
+}
+
+auto spp::codegen::TargetGnuTriple() -> char const* {
+  static const auto gnu = GnuTripleOf(FolderOf(TargetTriple()));
+  return gnu.c_str();
+}
+
+auto spp::codegen::TargetPointerBits() -> std::uint32_t {
+  // From the data layout, not the architecture: x32 and its kind
+  // are 64-bit architectures with 32-bit pointers.
+  static const auto bits = [] {
+    auto const *const machine = SelectedTargetMachine();
+    SPP_ASSERT(machine != nullptr);
+    return machine->createDataLayout().getPointerSizeInBits(0);
+  }();
+  return bits;
+}
+
+auto spp::codegen::TargetSizeType(
+  llvm::LLVMContext &context) -> llvm::IntegerType* {
+  return llvm::Type::getIntNTy(context, TargetPointerBits());
+}
+
+auto spp::codegen::TargetCfgValue(
+  const StrView key) -> Str {
+  auto const &triple = TargetTriple();
+  if (key == "arch") { return llvm::Triple::getArchTypeName(triple.getArch()).str(); }
+  if (key == "os") { return triple.isMacOSX() ? Str("macos") : llvm::Triple::getOSTypeName(triple.getOS()).str(); }
+  if (key == "env") {
+    return triple.getEnvironment() == llvm::Triple::UnknownEnvironment
+      ? Str()
+      : llvm::Triple::getEnvironmentTypeName(triple.getEnvironment()).str();
+  }
+  if (key == "family") { return triple.isOSWindows() ? "windows" : triple.isWasm() ? "wasm" : "unix"; }
+  if (key == "pointer_width") { return std::to_string(TargetPointerBits()); }
+  if (key == "endian") { return triple.isLittleEndian() ? "little" : "big"; }
+  return Str();
+}
+
+auto spp::codegen::IsCfgValueValid(
+  const StrView key, const StrView value) -> bool {
+  // The names LLVM gives the architectures, systems and
+  // environments it knows, as the folder names spell them.
+  if (key == "arch") {
+    for (auto a = 1; a <= llvm::Triple::LastArchType; ++a) {
+      if (llvm::Triple::getArchTypeName(
+        static_cast<llvm::Triple::ArchType>(a)) == llvm::StringRef(value)) { return true; }
+    }
+    return false;
+  }
+  if (key == "os") {
+    if (value == "macos") { return true; }
+    for (auto o = 1; o <= llvm::Triple::LastOSType; ++o) {
+      if (llvm::Triple::getOSTypeName(
+        static_cast<llvm::Triple::OSType>(o)) == llvm::StringRef(value)) { return true; }
+    }
+    return false;
+  }
+  if (key == "env") {
+    for (auto e = 1; e <= llvm::Triple::LastEnvironmentType; ++e) {
+      if (llvm::Triple::getEnvironmentTypeName(
+        static_cast<llvm::Triple::EnvironmentType>(e)) == llvm::StringRef(value)) { return true; }
+    }
+    return false;
+  }
+  if (key == "family") { return value == "unix" or value == "windows" or value == "wasm"; }
+  if (key == "pointer_width") { return value == "16" or value == "32" or value == "64"; }
+  if (key == "endian") { return value == "little" or value == "big"; }
+  return false;
 }
 
 /// [CHECKED]
@@ -314,5 +436,15 @@ auto spp::codegen::EmitObjectFile(
 
   codegen_pm.run(llvm_mod);
   out.flush();
+
+  // LLVM reports what it cannot do (an unsupported feature on the
+  // target, say) as an error diagnostic, printed above, and then
+  // carries on: the object it writes is not to be linked.
+  if (llvm_mod.getContext().getDiagHandlerPtr()->HasErrors) {
+    out.close();
+    std::filesystem::remove(path);
+    llvm::errs() << "LLVM reported errors building " << path << ", so no object was written\n";
+    return false;
+  }
   return true;
 }

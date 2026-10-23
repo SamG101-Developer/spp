@@ -2,7 +2,9 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.codegen.llvm_target;
+import spp.utils.types;
 import llvm;
+import std;
 
 namespace spp::codegen {
   /// The triple every module is built for, normalised once:
@@ -28,14 +30,56 @@ namespace spp::codegen {
   SPP_EXP_FUN auto SelectTarget(char const *triple) -> bool;
 
   /// Whether the selected target is the machine this compiler
-  /// is running on. Only a host build can be linked and run:
-  /// the linker driver invoked below is the host's, and the
-  /// ffi runtimes a project ships are host objects.
+  /// is running on. Only a host build can be run here; another
+  /// Linux target is linked with its cross linker.
   SPP_EXP_FUN auto TargetIsHost() -> bool;
 
   /// Whether the selected target's operating system is Linux,
   /// for the measures only a Linux kernel has.
   SPP_EXP_FUN auto TargetIsLinux() -> bool;
+
+  /// Whether the selected target's C library is musl, whose
+  /// libraries have no fortified (glibc "_chk") calls to check.
+  SPP_EXP_FUN auto TargetIsMusl() -> bool;
+
+  /// A target folder as a GNU toolchain names the target, the
+  /// prefix of its cross tools ("s390x-linux-gnu" for
+  /// "s390x-linux-gnu-gcc"): the folder name, but for the
+  /// architectures GNU spells otherwise (i386 as i686, sparcv9 as
+  /// sparc64).
+  SPP_EXP_FUN auto GnuTripleOf(StrView folder) -> Str;
+
+  /// Whether LLVM has somewhere to keep the unsafe stack pointer
+  /// for a triple, which "[memory.stack] split" (safestack) needs:
+  /// the runtime's thread-local, or a libc's accessor. Without it,
+  /// LLVM reports an error and emits code that writes through an
+  /// arbitrary register.
+  SPP_EXP_FUN auto HasSafeStack(StrView triple) -> bool;
+
+  /// The selected target's "HasSafeStack".
+  SPP_EXP_FUN auto TargetHasSafeStack() -> bool;
+
+  /// The selected target's "GnuTripleOf".
+  SPP_EXP_FUN auto TargetGnuTriple() -> char const*;
+
+  /// The width of a pointer on the selected target, in bits: what
+  /// "USize" is, through "!cfg(pointer_width=...)".
+  SPP_EXP_FUN auto TargetPointerBits() -> std::uint32_t;
+
+  /// The integer type as wide as a pointer on the selected target:
+  /// what a "USize" lowers to, and a "size_t" is.
+  SPP_EXP_FUN auto TargetSizeType(llvm::LLVMContext &context) -> llvm::IntegerType*;
+
+  /// The selected target's value for a "!cfg" key: "os", "arch",
+  /// "env", "family", "pointer_width" or "endian", spelled as its
+  /// folder name spells it ("macos", "sparcv9", "gnueabihf").
+  /// Empty where the target has none, as for an unknown env.
+  SPP_EXP_FUN auto TargetCfgValue(StrView key) -> Str;
+
+  /// Whether "value" is one a "!cfg" key can have on some target,
+  /// so that a condition naming any other is a mistake rather than
+  /// one that never holds.
+  SPP_EXP_FUN auto IsCfgValueValid(StrView key, StrView value) -> bool;
 
   /// The selected target as a folder name: "<arch>-<os>[-<env>]",
   /// such as "x86_64-linux-gnu", "aarch64-macos" or
