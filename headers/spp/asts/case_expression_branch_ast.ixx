@@ -61,15 +61,11 @@ SPP_EXP_CLS struct spp::asts::CaseExpressionBranchAst final : Ast, mixins::TypeI
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  auto MarkForIterLoopYield() -> void;
-
   /// The plan of the "case" this branch is in, and where this branch
   /// is in it: the tests its patterns make are read from there.
   auto UsePlan(MatchPlan const *plan, std::size_t index) -> void;
 
 private:
-  bool _ForIterLoopYield;
-
   /// Save the generated combined pattern expressions for
   /// codegen, without re-walking asts and scopes, which messes
   /// up the scope manager's alignment.

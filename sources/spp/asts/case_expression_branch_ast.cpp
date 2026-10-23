@@ -41,8 +41,7 @@ CaseExpressionBranchAst::CaseExpressionBranchAst(
   Op(std::move(op)),
   Patterns(std::move(patterns)),
   Guard(std::move(guard)),
-  Body(std::move(body)),
-  _ForIterLoopYield(false) {
+  Body(std::move(body)) {
   // Default the body to empty.
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
@@ -67,7 +66,6 @@ auto CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Patterns),
     AstClone(Guard),
     AstClone(Body));
-  cloned->_ForIterLoopYield = _ForIterLoopYield;
   return cloned;
 }
 
@@ -243,15 +241,6 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   }
   ctx->Builder.SetInsertPoint(body_bb);
 
-  // For a desugared iterable loop, reaching this branch means
-  // the generator yielded, so the enclosing loop counts as
-  // having been entered and its "else" block must not run.
-  if (_ForIterLoopYield and not meta->LlvmLoopStack.empty()) {
-    if (const auto entered_flag = meta->LlvmLoopStack.back().EnteredFlag; entered_flag != nullptr) {
-      ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
-    }
-  }
-
   // Generate the body. As this is an expression, an llvm value
   // is returned, which can then be used in the PHI node system.
   auto llvm_val = Body->Stage11_CodeGen(sm, meta, ctx);
@@ -300,12 +289,6 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   ctx->Builder.SetInsertPoint(next_bb);
   sm->MoveOutOfCurrentScope();
   return nullptr;
-}
-
-auto CaseExpressionBranchAst::MarkForIterLoopYield() -> void {
-  // Getter for detecting if this loop came from a loop iteration
-  // lowering,
-  _ForIterLoopYield = true;
 }
 
 auto CaseExpressionBranchAst::UsePlan(
