@@ -67,11 +67,27 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32" }
-          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub" }
-          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub" }
+          - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32", off: "cfi" }
+          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
           - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
+          - { triple: "x86_64-unknown-linux-gnux32", arch: "32-bit LSB.*x86-64", layout: "p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64" }
+          - { triple: "aarch64_be-unknown-linux-gnu", arch: "64-bit MSB.*ARM aarch64", layout: "E-m:e" }
+          - { triple: "armv7-unknown-linux-gnueabihf", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "arm-unknown-linux-gnueabi", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "powerpc64le-unknown-linux-gnu", arch: "64-bit LSB.*PowerPC", layout: "e-m:e-Fn32-i64:64", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "powerpc64-unknown-linux-gnu", arch: "64-bit MSB.*PowerPC", layout: "E-m:e-Fi64", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "mips-unknown-linux-gnu", arch: "32-bit MSB.*MIPS", layout: "E-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "mipsel-unknown-linux-gnu", arch: "32-bit LSB.*MIPS", layout: "e-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "mips64el-unknown-linux-gnuabi64", arch: "64-bit LSB.*MIPS", layout: "e-m:e-i8:8:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "sparc64-unknown-linux-gnu", arch: "64-bit MSB.*SPARC V9", layout: "E-m:e-i64:64", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "loongarch64-unknown-linux-gnu", arch: "64-bit LSB.*LoongArch", layout: "e-m:e-p:64:64", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "m68k-unknown-linux-gnu", arch: "32-bit MSB.*m68k", layout: "i32:16:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "x86_64-pc-windows-gnu", arch: "(x86-64|amd64) COFF", layout: "e-m:w" }
+          - { triple: "wasm32-unknown-wasip1", arch: "WebAssembly", layout: "p:32:32-p10:8:8", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "x86_64-unknown-freebsd", arch: "64-bit LSB.*x86-64.*FreeBSD", layout: "e-m:e" }
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
