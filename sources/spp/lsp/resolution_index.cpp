@@ -59,6 +59,8 @@ namespace spp::lsp::resolution_index {
 
       Vec<CompTimeValue> Values;
       Set<Str> SeenValues;
+
+      Vec<InactiveRegion> Inactive;
     };
 
     /// Singleton instance to the static state for the current
@@ -794,6 +796,14 @@ auto spp::lsp::resolution_index::RecordCompTimeValue(
   });
 }
 
+auto spp::lsp::resolution_index::RecordInactive(
+  ErrorFormatter const &formatter, const std::size_t start, const std::size_t end) -> void {
+  // Only for a file being indexed, and only for source that was
+  // written: a generated member has no position to grey out.
+  if (not IsEnabled() or not Wants(formatter.FilePath()) or start == 0) { return; }
+  Current().Inactive.emplace_back(InactiveRegion{.Where = formatter.SpanAcross(start, end)});
+}
+
 auto spp::lsp::resolution_index::RecordScopeOf(
   Ast const &node, ScopeManager const &sm, const bool whole_file) -> void {
   // If we are not bothered about this scope, then return early;
@@ -867,6 +877,12 @@ auto spp::lsp::resolution_index::GetAllScopes()
   return Current().Scopes;
 }
 
+auto spp::lsp::resolution_index::GetAllInactive()
+  -> Vec<InactiveRegion> const& {
+  // Getter for the inactive regions, for json for the IDEA plugin.
+  return Current().Inactive;
+}
+
 auto spp::lsp::resolution_index::Clear()
   -> void {
   Current().Entries.clear();
@@ -879,4 +895,5 @@ auto spp::lsp::resolution_index::Clear()
   Current().SeenScopes.clear();
   Current().Values.clear();
   Current().SeenValues.clear();
+  Current().Inactive.clear();
 }

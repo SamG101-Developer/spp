@@ -76,6 +76,10 @@ namespace spp::lsp {
   /// of json.
   SPP_EXP_FUN auto ToJson(lsp::resolution_index::CompTimeValue const &value) -> Str;
 
+  /// Render a stretch of source "!cfg" left out of the build as
+  /// one line of json, for an editor to grey out.
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::InactiveRegion const &region) -> Str;
+
   /// Render what one part of a file can name as one line of
   /// json.
   SPP_EXP_FUN auto ToJson(lsp::resolution_index::NamesInScope const &scope) -> Str;

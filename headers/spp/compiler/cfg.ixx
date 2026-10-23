@@ -3,6 +3,7 @@ module;
 
 export module spp.compiler.cfg;
 import spp.utils.types;
+import std;
 
 namespace spp::asts {
   SPP_EXP_CLS struct ModulePrototypeAst;
@@ -21,7 +22,9 @@ namespace spp::compiler::cfg {
 
   /// Drop every member of the module, and of the classes and sup
   /// blocks in it, whose "!cfg" condition the target and build
-  /// mode do not meet. A condition with an unknown key or value
-  /// is an error, raised here.
-  SPP_EXP_FUN auto ApplyCfg(asts::ModulePrototypeAst &mod, StrView mode) -> void;
+  /// mode do not meet, answering where each was written: from
+  /// its first annotation to its end, as source positions, for
+  /// an editor to grey out. A condition with an unknown key or
+  /// value is an error, raised here.
+  SPP_EXP_FUN auto ApplyCfg(asts::ModulePrototypeAst &mod, StrView mode) -> Vec<Pair<std::size_t, std::size_t>>;
 }

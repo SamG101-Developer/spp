@@ -15,6 +15,7 @@ import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
+import spp.asts.function_implementation_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
@@ -105,20 +106,47 @@ namespace {
     return kept;
   }
 
-  /// Drop what is not kept from a body, and filter what is kept
-  /// that has a body of its own.
-  auto Filter(spp::Vec<spp::Unique<spp::asts::Ast>> &members, const spp::StrView mode) -> void {
+  /// Where an item was written, all of it: its annotations, and
+  /// the body or default value its own position stops short of.
+  auto Extent(spp::asts::Ast &item) -> spp::Pair<std::size_t, std::size_t> {
     using namespace spp::asts;
-    std::erase_if(members, [&](spp::Unique<Ast> &member) { return not Kept(*member, mode); });
+    auto start = item.PosStart();
+    auto end = item.PosEnd();
+    if (auto const *const annotations = AnnotationsOf(item); annotations != nullptr and not annotations->empty()) {
+      start = std::min(start, annotations->front()->PosStart());
+    }
+    if (auto const *const f = item.To<FunctionPrototypeAst>(); f != nullptr and f->Impl != nullptr) {
+      end = std::max(end, f->Impl->PosEnd());
+    }
+    else if (auto const *const c = item.To<ClassPrototypeAst>(); c != nullptr and c->Impl != nullptr) {
+      end = std::max(end, c->Impl->PosEnd());
+    }
+    else if (auto const *const a = item.To<ClassAttributeAst>(); a != nullptr and a->DefaultVal != nullptr) {
+      end = std::max(end, a->DefaultVal->PosEnd());
+    }
+    return {start, end};
+  }
+
+  /// Drop what is not kept from a body, recording where it was
+  /// written, and filter what is kept that has a body of its own.
+  auto Filter(
+    spp::Vec<spp::Unique<spp::asts::Ast>> &members, const spp::StrView mode,
+    spp::Vec<spp::Pair<std::size_t, std::size_t>> &dropped) -> void {
+    using namespace spp::asts;
+    std::erase_if(members, [&](spp::Unique<Ast> &member) {
+      if (Kept(*member, mode)) { return false; }
+      dropped.emplace_back(Extent(*member));
+      return true;
+    });
     for (auto const &member : members) {
       if (auto *const c = member->To<ClassPrototypeAst>(); c != nullptr and c->Impl != nullptr) {
-        Filter(c->Impl->Members, mode);
+        Filter(c->Impl->Members, mode, dropped);
       }
       else if (auto *const f = member->To<SupPrototypeFunctionsAst>(); f != nullptr and f->Impl != nullptr) {
-        Filter(f->Impl->Members, mode);
+        Filter(f->Impl->Members, mode, dropped);
       }
       else if (auto *const e = member->To<SupPrototypeExtensionAst>(); e != nullptr and e->Impl != nullptr) {
-        Filter(e->Impl->Members, mode);
+        Filter(e->Impl->Members, mode, dropped);
       }
     }
   }
@@ -145,6 +173,8 @@ auto spp::compiler::cfg::CfgValueMatches(
 }
 
 auto spp::compiler::cfg::ApplyCfg(
-  asts::ModulePrototypeAst &mod, const StrView mode) -> void {
-  if (mod.Impl != nullptr) { Filter(mod.Impl->Members, mode); }
+  asts::ModulePrototypeAst &mod, const StrView mode) -> Vec<Pair<std::size_t, std::size_t>> {
+  auto dropped = Vec<Pair<std::size_t, std::size_t>>();
+  if (mod.Impl != nullptr) { Filter(mod.Impl->Members, mode, dropped); }
+  return dropped;
 }

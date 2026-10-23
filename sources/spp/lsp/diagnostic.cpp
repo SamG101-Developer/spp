@@ -245,6 +245,10 @@ auto spp::lsp::ToJson(lsp::resolution_index::CompTimeValue const &value) -> Str 
   return out + ",\"where\":{" + JsonSpan(value.Where) + "}}";
 }
 
+auto spp::lsp::ToJson(lsp::resolution_index::InactiveRegion const &region) -> Str {
+  return Str("{\"kind\":\"inactive\",\"where\":{") + JsonSpan(region.Where) + "}}";
+}
+
 auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
   // Json catches in every build: a debugger is not what is
   // on the other end of the pipe. Enable the sink so that the
@@ -279,6 +283,7 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
     for (auto const &signature : index::GetAllSignatures()) { std::cout << ToJson(signature) << "\n"; }
     for (auto const &scope : index::GetAllScopes()) { std::cout << ToJson(scope) << "\n"; }
     for (auto const &value : index::GetAllComptimeValues()) { std::cout << ToJson(value) << "\n"; }
+    for (auto const &region : index::GetAllInactive()) { std::cout << ToJson(region) << "\n"; }
 
     const auto recovered = sink::HasErrors();
     sink::Enable(false);

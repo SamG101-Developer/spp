@@ -42,6 +42,7 @@ import spp.compiler.cfg;
 import spp.compiler.ffi;
 import spp.compiler.module_tree;
 import spp.lex.lexer;
+import spp.lsp.resolution_index;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
@@ -114,8 +115,10 @@ auto spp::compiler::CompilerBoot::Parse(
     mod->ModuleAst = parse::ParserSpp(mod->Tokens, mod->Formatter).Parse();
 
     // What "!cfg" leaves out of this build goes before any scope
-    // is made, so it never names anything.
-    cfg::ApplyCfg(*mod->ModuleAst, BuildMode);
+    // is made, so it never names anything; an editor greys it out.
+    for (auto const &[start, end] : cfg::ApplyCfg(*mod->ModuleAst, BuildMode)) {
+      lsp::resolution_index::RecordInactive(*mod->Formatter, start, end);
+    }
     _Modules.emplace_back(mod->ModuleAst.get());
     bar.Next();
   }

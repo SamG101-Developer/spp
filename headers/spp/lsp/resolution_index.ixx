@@ -19,11 +19,13 @@ use(spp::asts, struct ObjectInitializerArgumentKeywordAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::lsp::resolution_index, struct CompTimeValue);
+use(spp::lsp::resolution_index, struct InactiveRegion);
 use(spp::lsp::resolution_index, struct Member);
 use(spp::lsp::resolution_index, struct MemberList);
 use(spp::lsp::resolution_index, struct NamesInScope);
 use(spp::lsp::resolution_index, struct ResolvedName);
 use(spp::lsp::resolution_index, struct Signature);
+use(spp::utils::errors, class ErrorFormatter);
 use(spp::utils::errors, struct SourceSpan);
 
 /// One name in the source and what it turned out to mean:
@@ -99,6 +101,13 @@ SPP_EXP_CLS struct spp::lsp::resolution_index::CompTimeValue {
   SourceSpan Where;
   Str Name;
   Str Value;
+};
+
+/// Source a "!cfg" condition left out of this build: the
+/// member it annotates, annotation included. None of it is
+/// compiled, so an editor greys it out.
+SPP_EXP_CLS struct spp::lsp::resolution_index::InactiveRegion {
+  SourceSpan Where;
 };
 
 /// Where a name's meaning is recorded as analysis works it
@@ -203,6 +212,12 @@ namespace spp::lsp::resolution_index {
   SPP_EXP_FUN auto RecordScopeOf(
     Ast const &node, ScopeManager const &sm, bool whole_file = false) -> void;
 
+  /// Record a member "!cfg" left out, written from @p start to
+  /// @p end in the file @p formatter reports on. Called as it
+  /// is dropped, before any scope exists to ask about the file.
+  SPP_EXP_FUN auto RecordInactive(
+    ErrorFormatter const &formatter, std::size_t start, std::size_t end) -> void;
+
   /// Everything recorded so far.
   SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllEntries() -> Vec<ResolvedName> const&;
 
@@ -223,6 +238,9 @@ namespace spp::lsp::resolution_index {
 
   /// What each part of the indexed files can name.
   SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllScopes() -> Vec<NamesInScope> const&;
+
+  /// What "!cfg" left out of the indexed files.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllInactive() -> Vec<InactiveRegion> const&;
 
   /// Forget everything, for the next compile in this process.
   SPP_EXP_FUN auto Clear() -> void;
