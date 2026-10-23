@@ -56,4 +56,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
 
 private:
   Shared<PostfixExpressionAst> _MappedFn;
+
+  /// The generator the resumed value is or superimposes ("FindGenSup"),
+  /// resolved at stage 7: its "Yield" and "Send" are read off it later.
+  Shared<TypeRef> _GenRef;
 };
