@@ -226,3 +226,66 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret f()
     }
 )");
+
+// A lowered "GenOnce" reads its "gen" as the return, so nothing after one is generated. Only a "ret" straight after it
+// was skipped before: any other statement was emitted past the return (invalid IR), and a "ret" after a "case" whose
+// branches all yield landed in the "case"'s unreachable end and raised E104.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CoroutinePrototypeAst,
+  test_valid_let_after_gen_in_gen_once, R"(
+    cor f() -> GenOnce[S32] {
+        gen 1
+        let x = 2
+    }
+
+    fun g() -> S32 {
+        ret f()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CoroutinePrototypeAst,
+  test_valid_statement_after_a_block_that_gens_in_gen_once, R"(
+    cor f() -> GenOnce[S32] {
+        { gen 1 }
+        let y = 3
+    }
+
+    fun g() -> S32 {
+        ret f()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CoroutinePrototypeAst,
+  test_valid_ret_after_a_case_whose_branches_all_gen_in_gen_once, R"(
+    cor f(c: Bool) -> GenOnce[S32] {
+        case c { gen 1 }
+        else { gen 2 }
+        ret
+    }
+
+    fun g() -> S32 {
+        ret f(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CoroutinePrototypeAst,
+  test_valid_scoped_statements_after_gen_in_gen_once, R"(
+    cor f(c: Bool) -> GenOnce[S32] {
+        { gen 1 }
+        case c { let a = 1 }
+        else { let b = { let q = 2
+        q } }
+        loop c { exit }
+    }
+
+    fun g(c: Bool) -> S32 {
+        let x = case c { let p = 3
+        p } else { 4 }
+        let y = f(c)
+        ret { let r = x
+        r }
+    }
+)");

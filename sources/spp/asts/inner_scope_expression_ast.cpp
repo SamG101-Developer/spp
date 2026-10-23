@@ -254,7 +254,17 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
     meta->LlvmAssignmentTarget = nullptr;
-    ret_val = m->Stage11_CodeGen(sm, meta, ctx);
+    m->Stage11_CodeGen(sm, meta, ctx);
+
+    // Nothing after a member that never finishes is reachable,
+    // so none of it is generated, and the walk steps over the
+    // scopes it holds. Stage 7 rejects such code as written
+    // (E28), so this is only met where codegen reads a member
+    // differently: a "gen" in a lowered "GenOnce" is its return.
+    if (m->Diverges(sm, meta)) {
+      ignore = sm->SkipSubtree(sm->CurrentScope);
+      break;
+    }
   }
 
   // Whatever this scope deferred runs as it is left, after

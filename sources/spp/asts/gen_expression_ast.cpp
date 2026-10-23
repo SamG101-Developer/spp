@@ -234,13 +234,16 @@ auto GenExpressionAst::Stage8_CheckMemory(
   }
 }
 
+auto GenExpressionAst::Diverges(
+  ScopeManager *, CompilerMetaData *meta) -> bool {
+  return meta->EnclosingFnFlavour != nullptr and meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN;
+}
+
 auto GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
-  // Consider if we are in a subroutine by desugar (ie for a
-  // lowered GenOnce check. If this is the case, use the return
-  // instruction instead.
-  if (meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN) {
+  // In a lowered "GenOnce", the "gen" is the return.
+  if (Diverges(sm, meta)) {
     if (Conv != nullptr) {
       ctx->Builder.CreateRet(codegen::LlvmAddrOf(*Expr, sm, meta, ctx));
       return nullptr;

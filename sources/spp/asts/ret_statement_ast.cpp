@@ -200,15 +200,6 @@ auto RetStatementAst::EmitReturn(
   ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
   CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
-  // A "GenOnce" is lowered into an ordinary subroutine, where
-  // a "gen" reads as the return. A "ret" written after one is
-  // therefore unreachable: the block it lands in has already
-  // returned. Todo: This is a bandaid until dead code detection
-  // is fixed.
-  if (const auto block = ctx->Builder.GetInsertBlock(); block != nullptr and block->hasTerminator()) {
-    return nullptr;
-  }
-
   // Inside a coroutine, "ret" ends the generator rather than
   // returning anything (stage 7 rejects one carrying a value),
   // so it leaves the body the same way running off the end
