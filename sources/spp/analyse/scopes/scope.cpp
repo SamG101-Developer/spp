@@ -547,6 +547,21 @@ namespace spp::analyse::scopes {
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
         auto flat = parts.Members.empty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
+
+        // A pack bound to its tuple ("Bool or Rest" with "Rest" bound to "(S32, Str)") is the tuple's elements, as
+        // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str". Only a bare name can be a pack.
+        auto const *const named = member->To<spp::asts::TypeIdentifierAst>();
+        const auto elements = named != nullptr and named->GnArgGroup->Args.empty()
+          ? spp::analyse::utils::packs::BoundTypePackElements(*member, read_in)
+          : spp::Nullopt;
+        if (elements.has_value()) {
+          flat.clear();
+          for (auto const &element : *elements) {
+            auto element_parts = RawTypeKey(element.get(), nullptr, read_in);
+            if (element_parts.Members.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
+            else { for (auto &m : element_parts.Members) { flat.emplace_back(std::move(m)); } }
+          }
+        }
         for (auto &m : flat) {
           if (not genex::contains(out.Members, m)) { out.Members.emplace_back(std::move(m)); }
         }
