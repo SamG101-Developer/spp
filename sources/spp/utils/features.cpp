@@ -20,6 +20,30 @@ namespace {
   }
 
   /**
+   * The values of string and version keys, defaulted then set, as for the flags above.
+   */
+  auto& CurrentTexts() {
+    static auto texts = spp::Map<spp::utils::features::ConfigKey, spp::Str>();
+    return texts;
+  }
+
+  /**
+   * The linkers "[target.linkers]" names, by target folder.
+   */
+  auto& CurrentLinkers() {
+    static auto linkers = spp::Map<spp::Str, spp::Str>();
+    return linkers;
+  }
+
+  /**
+   * Every key the loaded config sets itself, whatever its value.
+   */
+  auto& CurrentSet() {
+    static auto set = spp::Set<spp::utils::features::ConfigKey>();
+    return set;
+  }
+
+  /**
    * Whether the defaults have been put in place yet, so that a query before any load still answers correctly. Once set
    * to true, it will always be true until the program ends.
    */
@@ -33,12 +57,71 @@ namespace {
    */
   auto ApplyDefaults() -> void {
     auto &flags = CurrentFlags();
+    auto &texts = CurrentTexts();
     for (auto const &section : spp::utils::features::Schema()) {
       for (auto const &k : section.Keys) {
         if (k.Kind == spp::utils::features::ValueKind::Bool) { flags[k.Key] = k.Default; }
+        else if (not k.DefaultText.empty()) { texts[k.Key] = spp::Str(k.DefaultText); }
       }
     }
     FlagsReady() = true;
+  }
+
+  /**
+   * The section and spec of a key; every key is in the schema exactly once.
+   */
+  auto FindKey(
+    const spp::utils::features::ConfigKey key)
+    -> spp::Pair<spp::utils::features::SectionSpec const*, spp::utils::features::KeySpec const*> {
+    for (auto const &section : spp::utils::features::Schema()) {
+      for (auto const &k : section.Keys) {
+        if (k.Key == key) { return {&section, &k}; }
+      }
+    }
+    spp::Ice("config key missing from the schema");
+  }
+
+  /**
+   * Whether a string is a dotted version, "major.minor" or longer, every part digits.
+   */
+  auto IsVersion(
+    const spp::StrView text)
+    -> bool {
+    auto parts = 0uz;
+    auto digits = 0uz;
+    for (const auto c : text) {
+      if (c == '.') {
+        if (digits == 0) { return false; }
+        parts += 1;
+        digits = 0;
+      }
+      else if (c >= '0' and c <= '9') { digits += 1; }
+      else { return false; }
+    }
+    return digits > 0 and parts >= 1;
+  }
+
+  /**
+   * Whether version "a" is older than version "b", compared part by part, a missing part being 0.
+   */
+  auto VersionLess(
+    const spp::StrView a,
+    const spp::StrView b)
+    -> bool {
+    const auto parts = [](const spp::StrView v) {
+      auto out = spp::Vec<std::uint64_t>{0};
+      for (const auto c : v) {
+        if (c == '.') { out.emplace_back(0); }
+        else { out.back() = out.back() * 10 + static_cast<std::uint64_t>(c - '0'); }
+      }
+      return out;
+    };
+    auto pa = parts(a);
+    auto pb = parts(b);
+    const auto size = std::max(pa.size(), pb.size());
+    pa.resize(size, 0);
+    pb.resize(size, 0);
+    return pa < pb;
   }
 
   /**
@@ -77,6 +160,7 @@ namespace {
     switch (kind) {
       case spp::utils::features::ValueKind::Bool: return "a boolean";
       case spp::utils::features::ValueKind::String: return "a string";
+      case spp::utils::features::ValueKind::Version: return "a version like '4.18'";
       case spp::utils::features::ValueKind::Table: return "a table";
       default: spp::Ice("unknown config value kind");
     }
@@ -143,6 +227,8 @@ namespace {
             ? inner_node.is_boolean() or inner_node.is_integer()
             : spec->Kind == ValueKind::String
             ? inner_node.is_string()
+            : spec->Kind == ValueKind::Version
+            ? inner_node.is_string() and IsVersion(*inner_node.template value<spp::Str>())
             : inner_node.is_table();
           if (not ok) {
             errors.emplace_back("'" + inner_key + "' in [" + path + "] must be " + spp::Str(KindName(spec->Kind)));
@@ -275,8 +361,9 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Refuse any mapping that is, or later becomes, both writable and executable, for this process "
-          "but not its children. Needs Linux 6.6; on an older kernel the program fails at startup until "
-          "this is turned off."
+          "but not its children. Needs Linux 6.6: left out below '[target.floor] linux', and on any other "
+          "target; turned on here explicitly, that is a build error instead.",
+          .MinLinux = "6.6"
         },
         KeySpec{
           .Key = ConfigKey::MemoryMapSeal,
@@ -285,8 +372,9 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Seal the code, constants and relocated data of everything loaded at startup, so none of it can be "
-          "unmapped, remapped or made writable again. Needs Linux 6.10; on an older kernel the program fails "
-          "at startup until this is turned off."
+          "unmapped, remapped or made writable again. Needs Linux 6.10: left out below '[target.floor] linux', "
+          "and on any other target; turned on here explicitly, that is a build error instead.",
+          .MinLinux = "6.10"
         },
       },
       .FreeForm = false,
@@ -351,8 +439,8 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Make every section that only startup writes read-only once startup is over, leave the stack "
-          "non-executable and the code its own mapping, and fail the link on a text relocation or a "
-          "writable-and-executable segment."
+          "non-executable and the code its own mapping, and fail the link on a text relocation, a "
+          "writable-and-executable segment or code that shares a page with data."
         },
         KeySpec{
           .Key = ConfigKey::BinaryLinkFortifiedFfi,
@@ -375,8 +463,45 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "program's own does not. ELF libraries only. Relink the library with -Wl,-z,relro,-z,now, or turn "
           "this off."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryLinkSegmentsFfi,
+          .Name = "segments_ffi",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Fail the link against an ffi library with a writable-and-executable segment, or code that shares "
+          "a page with data, which mapping the page executable makes executable too. Checked in the library, so "
+          "a linker that ignored the flags is caught. ELF libraries only. Relink the library with "
+          "-Wl,-z,separate-code (binutils 2.31 or newer), or turn this off."
+        },
       },
       .FreeForm = false,
+    },
+    SectionSpec{
+      .Name = "target.floor",
+      .Help = "The oldest system the program must run on. A run-time measure that needs a newer one is left out, "
+      "and the program's hardening record says so.",
+      .Keys = Vec<KeySpec>{
+        KeySpec{
+          .Key = ConfigKey::TargetFloorLinux,
+          .Name = "linux",
+          .Kind = ValueKind::Version,
+          .Required = false,
+          .Default = false,
+          .Help = "The oldest Linux kernel, as 'major.minor'. The default is RHEL 8's, which leaves out deny_wx "
+          "(6.6) and seal (6.10); raise it to get them.",
+          .DefaultText = "4.18"
+        },
+      },
+      .FreeForm = false,
+    },
+    SectionSpec{
+      .Name = "target.linkers",
+      .Help = "The linker for a target, keyed by its folder name (\"s390x-linux-gnu\"): a command, run with the "
+      "link's arguments after it. Unnamed, the host links with 'cc', and a Linux target with its GNU cross "
+      "compiler, \"<arch>-linux-<env>-gcc\" or the newest versioned one, \"...-gcc-N\".",
+      .Keys = Vec<KeySpec>{},
+      .FreeForm = true,
     },
   };
   return schema;
@@ -427,7 +552,7 @@ auto spp::utils::features::Load(
   for (auto const &section : Schema()) {
     // Move through the keys of the section.
     for (auto const &k : section.Keys) {
-      if (k.Kind != ValueKind::Bool) { continue; }
+      if (k.Kind == ValueKind::Table) { continue; }
 
       // The section's name is dotted, so it is walked a
       // step at a time rather than looked up whole.
@@ -458,8 +583,22 @@ auto spp::utils::features::Load(
       // files. Semantically there's no difference of course,
       // just enforced styling.
       auto const *const value = as_table->get(k.Name);
-      if (const auto b = value->value<bool>()) { flags[k.Key] = *b; }
+      CurrentSet().insert(k.Key);
+      if (k.Kind != ValueKind::Bool) { CurrentTexts()[k.Key] = *value->value<Str>(); }
+      else if (const auto b = value->value<bool>()) { flags[k.Key] = *b; }
       else if (const auto i = value->value<std::int64_t>()) { flags[k.Key] = *i != 0; }
+    }
+  }
+
+  // The linkers, each a command for a target folder.
+  if (auto const *const linkers = root["target"]["linkers"].as_table(); linkers != nullptr) {
+    for (auto &&[folder, command] : *linkers) {
+      const auto text = command.value<Str>();
+      if (not text.has_value() or text->empty()) {
+        errors.emplace_back("'" + Str(folder.str()) + "' in [target.linkers] must be a command, as a string");
+        return false;
+      }
+      CurrentLinkers()[Str(folder.str())] = *text;
     }
   }
 
@@ -481,10 +620,64 @@ auto spp::utils::features::Enabled(
   return it->second;
 }
 
+auto spp::utils::features::Text(
+  const ConfigKey key) -> Str {
+  if (not FlagsReady()) { ApplyDefaults(); }
+  const auto it = CurrentTexts().find(key);
+  return it != CurrentTexts().end() ? it->second : Str();
+}
+
+auto spp::utils::features::IsSet(
+  const ConfigKey key) -> bool {
+  return CurrentSet().contains(key);
+}
+
+auto spp::utils::features::LeftOut(
+  const ConfigKey key, const bool target_linux) -> Str {
+  const auto [_, spec] = FindKey(key);
+  if (spec->MinLinux.empty() or not Enabled(key)) { return Str(); }
+  if (not target_linux) { return "Linux only, and the target is not Linux"; }
+  const auto floor = Text(ConfigKey::TargetFloorLinux);
+  if (VersionLess(floor, spec->MinLinux)) {
+    return "needs Linux " + Str(spec->MinLinux) + ", above the floor " + floor;
+  }
+  return Str();
+}
+
+auto spp::utils::features::Applied(
+  const ConfigKey key, const bool target_linux) -> bool {
+  return Enabled(key) and LeftOut(key, target_linux).empty();
+}
+
+auto spp::utils::features::CheckFloor(
+  const bool target_linux, Vec<Str> &errors) -> bool {
+  const auto before = errors.size();
+  for (auto const &section : Schema()) {
+    for (auto const &k : section.Keys) {
+      if (not IsSet(k.Key)) { continue; }
+      const auto why = LeftOut(k.Key, target_linux);
+      if (why.empty()) { continue; }
+      errors.emplace_back(
+        "'" + Str(k.Name) + " = true' in [" + Str(section.Name) + "] cannot be applied: " + why
+        + (target_linux ? "; raise 'linux' in [target.floor], or turn it off" : "; turn it off"));
+    }
+  }
+  return errors.size() == before;
+}
+
 auto spp::utils::features::Reset() -> void {
-  // Clear all the flags' values, and set the default in.
+  // Clear all the values and what was set, and put the defaults in.
   CurrentFlags().clear();
+  CurrentTexts().clear();
+  CurrentSet().clear();
+  CurrentLinkers().clear();
   ApplyDefaults();
+}
+
+auto spp::utils::features::Linker(
+  const StrView target_folder) -> Opt<Str> {
+  const auto it = CurrentLinkers().find(Str(target_folder));
+  return it != CurrentLinkers().end() ? Opt<Str>(it->second) : Nullopt;
 }
 
 auto spp::utils::features::HelpText() -> Str {
@@ -499,6 +692,8 @@ auto spp::utils::features::HelpText() -> Str {
       out += "    - " + Str(k.Name);
       out += k.Kind == ValueKind::Bool
         ? Str(" = ") + (k.Default ? "true" : "false") + "  (default)"
+        : not k.DefaultText.empty()
+        ? Str(" = \"") + Str(k.DefaultText) + "\"  (default)"
         : k.Required
         ? Str("  (required)")
         : Str();
@@ -508,12 +703,17 @@ auto spp::utils::features::HelpText() -> Str {
   return out;
 }
 
-auto spp::utils::features::EffectiveSettings() -> Str {
+auto spp::utils::features::EffectiveSettings(
+  const bool target_linux) -> Str {
   auto out = Str();
   for (auto const &section : Schema()) {
     for (auto const &k : section.Keys) {
-      if (k.Kind != ValueKind::Bool) { continue; }
-      out += Str(section.Name) + "." + Str(k.Name) + " = " + (Enabled(k.Key) ? "true" : "false") + "\n";
+      auto value = Str();
+      if (k.Kind == ValueKind::Version) { value = Text(k.Key); }
+      else if (k.Kind != ValueKind::Bool) { continue; }
+      else if (const auto why = LeftOut(k.Key, target_linux); not why.empty()) { value = "left out (" + why + ")"; }
+      else { value = Enabled(k.Key) ? "true" : "false"; }
+      out += Str(section.Name) + "." + Str(k.Name) + " = " + value + "\n";
     }
   }
   return out;
