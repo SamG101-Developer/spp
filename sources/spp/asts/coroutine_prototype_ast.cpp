@@ -30,6 +30,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
+import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -45,7 +46,7 @@ namespace {
     spp::codegen::LlvmCtx const *ctx)
     -> llvm::Function* {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
     const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
     return llvm::cast<llvm::Function>(
       ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
@@ -246,7 +247,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"
   // instructions for the coroutine.
-  const auto llvm_i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto llvm_size_ty = codegen::TargetSizeType(*ctx->Context);
   const auto llvm_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto llvm_coro_align = codegen::GetLlvmGeneratorFrameAlign(ctx);
 
@@ -290,7 +291,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // which is why it is an intrinsic and not a constant here.
   ctx->Builder.SetInsertPoint(dyn_alloc_bb);
   const auto coro_size = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_size, {llvm_i64_ty}, {}, {}, "coro.size" + uid);
+    llvm::Intrinsic::coro_size, {llvm_size_ty}, {}, {}, "coro.size" + uid);
   const auto coro_alloc_mem = ctx->Builder.CreateCall(
     CoroFrameAllocFn(ctx), {coro_size}, "coro.alloc.mem" + uid);
   ctx->Builder.CreateBr(begin_bb);
