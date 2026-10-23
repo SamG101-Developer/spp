@@ -1433,6 +1433,28 @@ SppLoopMissingElseError::SppLoopMissingElseError(
     INLINE_HELP("exit") + ".");
 }
 
+SppCfgUnknownKeyError::SppCfgUnknownKeyError(
+  Ast const &arg, const StrView key) {
+  AddHeader(118, "Cfg Unknown Key Error");
+  AddErr(&arg, key.empty() ? Str("Condition with no key here") : "Unknown key '" + Str(key) + "' here");
+  AddFooter(
+    "A " + INLINE_NOTE("!cfg") + " condition is a set of " + INLINE_NOTE("key=\"value\"") + " pairs, and an unknown "
+    "key would make one that never holds.",
+    "Use one of " + INLINE_HELP("mode") + ", " + INLINE_HELP("family") + ", " + INLINE_HELP("os") + ", " +
+    INLINE_HELP("arch") + ", " + INLINE_HELP("env") + ", " + INLINE_HELP("pointer_width") + " or " +
+    INLINE_HELP("endian") + ".");
+}
+
+SppCfgInvalidValueError::SppCfgInvalidValueError(
+  Ast const &value, const StrView key, const StrView why) {
+  AddHeader(119, "Cfg Invalid Value Error");
+  AddErr(&value, "Invalid value for '" + Str(key) + "' here");
+  AddFooter(
+    "The value " + Str(why) + ".",
+    "Give a string naming one or more of the key's values, separated by " + INLINE_HELP("|") + ", optionally after a "
+    "leading " + INLINE_HELP("!") + " to match all others, spelled as the target's folder name spells them.");
+}
+
 SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");

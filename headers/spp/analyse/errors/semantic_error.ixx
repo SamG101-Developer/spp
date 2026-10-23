@@ -125,6 +125,8 @@ use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
 use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
 use(spp::analyse::errors, struct SppLoopMissingElseError);
+use(spp::analyse::errors, struct SppCfgUnknownKeyError);
+use(spp::analyse::errors, struct SppCfgInvalidValueError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
 use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
@@ -758,6 +760,14 @@ SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError
 
 SPP_EXP_CLS struct spp::analyse::errors::SppLoopMissingElseError final : SemanticError {
   explicit SppLoopMissingElseError(Ast const &loop, Ast const &exit_value);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCfgUnknownKeyError final : SemanticError {
+  explicit SppCfgUnknownKeyError(Ast const &arg, StrView key);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCfgInvalidValueError final : SemanticError {
+  explicit SppCfgInvalidValueError(Ast const &value, StrView key, StrView why);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {
