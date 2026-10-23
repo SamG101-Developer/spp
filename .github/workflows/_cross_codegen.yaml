@@ -76,9 +76,9 @@ jobs:
           - { triple: "aarch64_be-unknown-linux-gnu", arch: "64-bit MSB.*ARM aarch64", layout: "E-m:e" }
           - { triple: "armv7-unknown-linux-gnueabihf", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "arm-unknown-linux-gnueabi", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds" }
-          - { triple: "powerpc64le-unknown-linux-gnu", arch: "64-bit LSB.*PowerPC", layout: "e-m:e-Fn32-i64:64", off: "sls scrub cfi jump_table_bounds" }
-          - { triple: "powerpc64-unknown-linux-gnu", arch: "64-bit MSB.*PowerPC", layout: "E-m:e-Fi64", off: "sls scrub cfi jump_table_bounds" }
-          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "powerpc64le-unknown-linux-gnu", arch: "64-bit LSB.*PowerPC", layout: "e-m:e-Fn32-i64:64", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
+          - { triple: "powerpc64-unknown-linux-gnu", arch: "64-bit MSB.*PowerPC", layout: "E-m:e-Fi64", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
+          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
           - { triple: "mips-unknown-linux-gnu", arch: "32-bit MSB.*MIPS", layout: "E-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "mipsel-unknown-linux-gnu", arch: "32-bit LSB.*MIPS", layout: "e-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "mips64el-unknown-linux-gnuabi64", arch: "64-bit LSB.*MIPS", layout: "e-m:e-i8:8:32", off: "sls scrub cfi jump_table_bounds" }
@@ -86,7 +86,7 @@ jobs:
           - { triple: "loongarch64-unknown-linux-gnu", arch: "64-bit LSB.*LoongArch", layout: "e-m:e-p:64:64", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "m68k-unknown-linux-gnu", arch: "32-bit MSB.*m68k", layout: "i32:16:32", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "x86_64-pc-windows-gnu", arch: "(x86-64|amd64) COFF", layout: "e-m:w" }
-          - { triple: "wasm32-unknown-wasip1", arch: "WebAssembly", layout: "p:32:32-p10:8:8", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "wasm32-unknown-wasip1", arch: "WebAssembly", layout: "p:32:32-p10:8:8", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
           - { triple: "x86_64-unknown-freebsd", arch: "64-bit LSB.*x86-64.*FreeBSD", layout: "e-m:e" }
     steps:
       - name: Harden Runner
@@ -110,8 +110,9 @@ jobs:
           spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
 
       # Emit the codegen for a cross-compiled target and check it
-      # is for the correct target. "off" lists the [binary.codegen]
-      # keys the target has no backend support for.
+      # is for the correct target. "off" lists the hardening keys
+      # the target has no backend support for: [binary.codegen]'s
+      # bare, another section's dotted.
       - name: Emit and check ${{ matrix.target.triple }}
         id: emit
         run: >-
