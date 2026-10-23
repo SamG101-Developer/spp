@@ -101,15 +101,13 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, std::move(send));
+  field->Source.Lowered = true;
   auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
     AstClone(meta->PostfixExpressionLhs), std::move(field));
   auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     nullptr, std::move(FnArgGroup), nullptr);
   func_call->Source.OriginalExpr = this;
   _MappedFn = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
-
-  const auto _meta_guard = MetaGuard(meta);
-  meta->IgnoreAccessModifierViolations = true; // Because of "Generated" Todo: Too broad?
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 

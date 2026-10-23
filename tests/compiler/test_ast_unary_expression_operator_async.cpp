@@ -748,3 +748,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let y = f2.await
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_direct_await_method_call,
+  SppAccessViolationError, R"(
+    fun f() -> U64 { ret 1_u64 }
+    fun g() -> Void {
+        let future = async f()
+        let x = future.await_()
+    }
+)");

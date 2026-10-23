@@ -264,3 +264,35 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = { a }.res()
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_private_field_in_send_argument,
+    SppAccessViolationError, R"(
+    cls A {
+        !private a: S32
+    }
+
+    cor g() -> Gen[S32, S32] {
+        let s = gen 1
+    }
+
+    fun f(a: A) -> Void {
+        let mut c = g()
+        let x = c.res(a.a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_direct_send_call,
+    SppAccessViolationError, R"(
+    cor g() -> Gen[S32, S32] {
+        let s = gen 1
+    }
+
+    fun f() -> Void {
+        let mut c = g()
+        let x = c.send(1)
+    }
+)");

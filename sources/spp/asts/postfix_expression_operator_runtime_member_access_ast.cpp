@@ -58,6 +58,7 @@ PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntim
   Name(std::move(name)),
   _MappedFwd(nullptr) {
   Source.OriginalExpr = nullptr;
+  Source.Lowered = false;
 
   // A generated access ("tmp.x" from a destructure) has no "."
   // written, so it is placed on the name it accesses.
@@ -87,6 +88,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<As
     AstClone(Name));
   ast->_MappedFwd = _MappedFwd;
   ast->Source.OriginalExpr = Source.OriginalExpr;
+  ast->Source.Lowered = Source.Lowered;
   return ast;
 }
 
@@ -227,7 +229,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
         *Name, *sm, *meta, fn_scopes_and_syms.back().Symbol);
     }
 
-    if (not fn_scopes_and_syms.empty()) {
+    if (not fn_scopes_and_syms.empty() and not Source.Lowered) {
       const auto cls_scope = lhs_type_sym->LinkedScope->NonGnScope;
       const auto any_visible = genex::any_of(fn_scopes_and_syms, [&](auto const &x) {
         return visibility_utils::IsTypeMemberVisible(*x.Symbol, *cls_scope, *sm, *meta);
