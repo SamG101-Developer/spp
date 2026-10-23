@@ -83,6 +83,19 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   }
   meta->CompTimeReturned = caller_returned;
 
+  // Each parameter's final value, for the call to write back
+  // to the place a "&mut" argument came from.
+  for (auto &[arg_name, arg_comp] : meta->CompTimeArgs) {
+    const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
+    const auto value = arg_sym->CompTimeValue != nullptr
+      ? arg_sym->CompTimeValue->To<ExpressionAst>()
+      : nullptr;
+
+    if (value != nullptr) {
+      arg_comp = AstClone(value);
+    }
+  }
+
   // Hand the scope back to the caller as it was. A semantic error thrown out of the body skips this, which is fine:
   // nothing catches a comp-time error, so the compile is over either way.
   sm->CurrentScope->RevealLetBindings();
