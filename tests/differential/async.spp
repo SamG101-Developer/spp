@@ -1,8 +1,9 @@
 # Async: futures awaited in a chain and out of the order they were started in, tasks that spawn and await their own,
 # tasks taking turns by yielding, a "&mut" borrow of the caller's local written from another task, awaits in a loop and
 # in a "case", a deep call stack on a task, a heap result through the result cell, a future dropped without an await,
-# a generator driven on a task, and "await_all". Tasks run from one FIFO run queue, with no i/o or timers, so the order
-# a task prints in is fixed too.
+# a generator driven on a task, and "await_all". Tasks run from one FIFO run queue, with no timers, so the order tasks
+# print in is fixed. Printing can switch tasks, so each line is built whole and printed once. The deep stack stays
+# within a task's stack at "dev", whose frames are larger.
 
 cls Counter {
   !public
@@ -10,10 +11,13 @@ cls Counter {
 }
 
 fun show(what: &StrView, text: Str) -> Void {
-  std::console::print(what)
-  std::console::print(" = ")
-  std::console::println(&text)
+  let mut line = Str::from("")
+  line.append_str(what)
+  line.append_str(" = ")
+  line.append_str(&text)
+  std::console::println(&line)
   std::mem::ops::drop(text)
+  std::mem::ops::drop(line)
 }
 
 fun double(n: U64) -> U64 {
@@ -97,6 +101,7 @@ fun main() -> Void {
   let bumped = async bump(&mut counter, 37_u64)
   bumped.await
   show("mut borrow across tasks", Str::from(counter.n))
+  std::mem::ops::drop(counter)
 
   let mut total = 0_u64
   let mut k = 0_u64
@@ -113,7 +118,7 @@ fun main() -> Void {
   } else { 0_u64 }
   show("await in case", Str::from(picked))
 
-  let deep = async depth(2000_u64)
+  let deep = async depth(500_u64)
   show("deep stack", Str::from(deep.await))
 
   let name = Str::from("world")
