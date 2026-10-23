@@ -61,4 +61,8 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 private:
   Shared<TypeAst> _GenType;
   bool _IsOnce;
+
+  /// The enclosing generator's "Yield", resolved at stage 7: what a
+  /// yielded value is coerced into at codegen.
+  Shared<TypeRef> _YieldRef;
 };

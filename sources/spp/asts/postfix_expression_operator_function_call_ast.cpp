@@ -126,6 +126,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   }
   ast->_OverloadInfo = _OverloadInfo;
   ast->_Indirect = _Indirect;
+  ast->_CoroRetSym = _CoroRetSym;
   ast->_CalleeArgGroup = AstClone(_CalleeArgGroup);
   ast->_IsAsync = _IsAsync;
   ast->_FoldedAsts = AstCloneVec(_FoldedAsts);
@@ -198,7 +199,12 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       return head.KindSymbol() != nullptr and head.IsA(*tmpl, *sm->CurrentScope);
     };
     const auto conv = is_fun(FUN_MUT) ? ConventionTag::MUT : is_fun(FUN_REF) ? ConventionTag::REF : ConventionTag::MOV;
-    _Indirect = _IndirectInfo{.FnType = indirect, .Conv = conv};
+    auto &lhs = *meta->PostfixExpressionLhs;
+    const auto callee = lhs.InferTypeRef(sm, meta);
+    _Indirect = _IndirectInfo{
+      .FnType = indirect, .Conv = conv, .Callee = callee.Symbol,
+      .FnSup = MakeShared<TypeRef>(marker_sups::FindFnSup(
+        *lhs.InferType(sm, meta)->WithConvention(nullptr), *sm->CurrentScope))};
 
     // A "FunMov" (that is not a "FunMut") is called by value, so
     // calling one held through a borrow ("v[i]", a "&FunMov"
@@ -206,9 +212,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     // taking "self" by value has (see "FunctionCallArgumentGroupAst"
     // ::Stage8_CheckMemory). The function type has its borrow
     // stripped, so the expression's own type is read.
-    auto &lhs = *meta->PostfixExpressionLhs;
-    if (const auto callee = lhs.InferTypeRef(sm, meta);
-      conv != ConventionTag::MUT and callee.IsBorrowed() and callee.Symbol != nullptr
+    if (conv != ConventionTag::MUT and callee.IsBorrowed() and callee.Symbol != nullptr
       and not callee.Symbol->IsCopyable()) {
       const auto [lhs_sym, _] = sm->CurrentScope->FindVarSymbolOutermost(lhs);
       auto const &borrowed_at = lhs_sym != nullptr and lhs_sym->MemInfo->AstBorrowed != nullptr
@@ -285,6 +289,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     // This needs to be any type that EXTENDS GenOnce, not
     // just GenOnce itself.
     auto const &proto_ret_type = _OverloadInfo->Proto->ReturnType;
+    _CoroRetSym = _OverloadInfo->OverloadScope->FindTypeSymbol(proto_ret_type.get());
     const auto gen = marker_sups::FindGenSup(
       TypeRef::Of(*proto_ret_type, *sm->CurrentScope), *sm->CurrentScope,
       *meta->PostfixExpressionLhs, [&] { return proto_ret_type; }, "GenOnce collapse");
@@ -510,8 +515,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // own attributes too, and the "spp" layout can reorder any of
     // them - "GetPhysicalFieldIndex" maps back from the fixed
     // declared prefix (0, 1) to wherever they actually ended up.
-    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta)->WithConvention(nullptr);
-    const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_ty.get());
+    const auto lhs_type_sym = _Indirect->Callee;
     const auto fn_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
     const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 1);
 
@@ -550,7 +554,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // "Opt[U]" asked for. So it is read off the value's type here, not the type the call resolved through.
     const auto expected_ret_ref = InferTypeRef(sm, meta);
     auto actual_ret_ref = expected_ret_ref;
-    const auto fn_sup = marker_sups::FindFnSup(*lhs_ty, *sm->CurrentScope);
+    auto const &fn_sup = *_Indirect->FnSup;
     if (fn_sup.Symbol != nullptr) {
       if (const auto out = fn_sup.Symbol->TypeArgRef("Out"); out.Symbol != nullptr) { actual_ret_ref = out; }
     }
@@ -720,10 +724,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (is_coroutine_call and meta->LlvmAssignmentTarget != nullptr) {
     auto llvm_coro_handle = static_cast<llvm::Value*>(llvm_call);
     if (not llvm_call->getType()->isPointerTy()) {
-      const auto coro_ret_type_sym =
-        _OverloadInfo->OverloadScope->FindTypeSymbol(Target()->ReturnType.get());
-      const auto handle_idx = codegen::GetPhysicalFieldIndex(
-        *coro_ret_type_sym->LlvmInfo, 0);
+      const auto handle_idx = codegen::GetPhysicalFieldIndex(*_CoroRetSym->LlvmInfo, 0);
       llvm_coro_handle = ctx->Builder.CreateExtractValue(
         llvm_call, {handle_idx}, "coro.handle" + uid);
     }

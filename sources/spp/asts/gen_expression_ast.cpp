@@ -76,6 +76,7 @@ auto GenExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Expr));
   g->_GenType = AstClone(_GenType);
   g->_IsOnce = _IsOnce;
+  g->_YieldRef = _YieldRef;
   return g;
 }
 
@@ -154,6 +155,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     gen_ref, *sm->CurrentScope, *_GenType, [&] { return _GenType; }, "coroutine");
   const auto gen_sym = gen.Symbol;
   const auto yield_ref = marker_sups::GenYieldOf(gen);
+  _YieldRef = MakeShared<TypeRef>(yield_ref);
 
   // When we are yielding a value that *forwards* to the return
   // type, we need to call the forwarding function and inject
@@ -269,16 +271,11 @@ auto GenExpressionAst::Stage11_CodeGen(
   // "let" coerce theirs: a member into a variant ("gen None()"
   // into an "Opt[S32]"), and a named function into a function
   // type. Otherwise the slot holds the bare member, untagged.
-  if (llvm_yield_val != nullptr and Conv == nullptr and _GenType != nullptr) {
-    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
-      TypeRef::Of(*_GenType, *sm->CurrentScope), *sm->CurrentScope, *_GenType, [&] { return _GenType; },
-      "coroutine", false));
-    if (yield_ref.Symbol != nullptr) {
-      const auto expr_ref = Expr->InferTypeRef(sm, meta);
-      llvm_yield_val = codegen::CoerceToFnValue(llvm_yield_val, yield_ref, expr_ref, *sm, ctx);
-      llvm_yield_val = codegen::CoerceToVariant(
-        llvm_yield_val, yield_ref, expr_ref, *sm->CurrentScope, "gen.yield.coerce", ctx);
-    }
+  if (llvm_yield_val != nullptr and Conv == nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
+    const auto expr_ref = Expr->InferTypeRef(sm, meta);
+    llvm_yield_val = codegen::CoerceToFnValue(llvm_yield_val, *_YieldRef, expr_ref, *sm, ctx);
+    llvm_yield_val = codegen::CoerceToVariant(
+      llvm_yield_val, *_YieldRef, expr_ref, *sm->CurrentScope, "gen.yield.coerce", ctx);
   }
 
   // A bare "gen" yields Void, so there is nothing to store.

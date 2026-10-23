@@ -73,6 +73,7 @@ auto PostfixExpressionOperatorKeywordResAst::Clone() const -> Unique<Ast> {
     AstClone(TokRes),
     AstClone(FnArgGroup));
   ast->_MappedFn = _MappedFn;
+  ast->_GenRef = _GenRef;
   return ast;
 }
 
@@ -96,6 +97,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
   marker_sups::EnforceYieldTypeWithoutGenDone(gen, *sm->CurrentScope, *lhs, "resume expression");
+  _GenRef = MakeShared<TypeRef>(gen);
 
   // Check the argument (send value) is valid, by passing it into the ".send" function call.
   auto send = MakeUnique<IdentifierAst>(PosStart(), "send");
@@ -141,9 +143,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   // loan on the generator until the next resume.
   const auto holder = gen_sym != nullptr ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
   if (holder != nullptr) {
-    const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
-      meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope, *meta->PostfixExpressionLhs,
-      [&] { return meta->PostfixExpressionLhs->InferType(sm, meta); }, "resume expression", false));
+    const auto yield_ref = marker_sups::GenYieldOf(*_GenRef);
     if (yield_ref.Conv == ConventionTag::MUT) {
       loans.emplace_back(memory_state::MakeLoan(
         regions::PlaceAtOf(*meta->PostfixExpressionLhs, *sm->CurrentScope), true, holder, true,
@@ -222,10 +222,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // into the slot. Reading the slot's raw cell type instead would hand back eight bytes whatever the yield type is,
   // and storing those into a narrower binding writes past it.
   const auto uid = Uid();
-  const auto lhs = meta->PostfixExpressionLhs;
-  const auto gen = marker_sups::FindGenSup(
-    lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
-    "resume expression");
+  auto const &gen = *_GenRef;
   const auto yield_ref = marker_sups::GenYieldOf(gen);
   const auto is_once = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
   const auto llvm_yield_ty = codegen::GetLlvmTypeOf(yield_ref, ctx);

@@ -27,6 +27,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 
@@ -117,13 +118,23 @@ private:
   /// A value called through its function type (a closure, a "FunXxx" held in
   /// a variable), resolved once at stage 7: the function type it is
   /// called through, and how the call holds it ("FunRef" borrowed,
-  /// "FunMut" borrowed mutably, "FunMov" taken).
+  /// "FunMut" borrowed mutably, "FunMov" taken). "Callee" is the
+  /// value's own type, without its borrow, which lays out its
+  /// "{ fn_ptr, env_ptr }"; "FnSup" the function type it superimposes,
+  /// whose "Out" is what the value returns.
   struct _IndirectInfo {
     Shared<TypeAst const> FnType;
     ConventionTag Conv;
+    TypeSymbol const *Callee;
+    Shared<TypeRef> FnSup;
   };
 
   Opt<_IndirectInfo> _Indirect;
+
+  /// A coroutine's return type, the generator a call to it builds,
+  /// resolved at stage 7 where the overload is: its handle is
+  /// read out of it at codegen. Null for a subroutine.
+  TypeSymbol const *_CoroRetSym = nullptr;
 
   /// The borrow of the callee a "FunRef" or "FunMut" call makes, as
   /// an argument group of its own, checked against what the body

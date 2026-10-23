@@ -3129,7 +3129,8 @@ auto fn_impls::StdMemOpsSwap(
   // the exchange needs no third value: no default is made to stand in, and nothing is dropped. The type handed in is
   // the return type's, "Void" here, so "T" is read off the parameter.
   const auto params = proto->FnParamGroup->GetAllParams();
-  const auto ty = GetLlvmTypeOf(TypeRef::Of(*params[0]->Type->WithoutConvention(), *sm->CurrentScope), ctx);
+  const auto a_sym = sm->CurrentScope->FindVarSymbol(params[0]->ExtractName().get());
+  const auto ty = GetLlvmTypeOf(a_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention(), ctx);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto ptr_of = [&](auto const &param, const StrView name) {
     const auto sym = sm->CurrentScope->FindVarSymbol(param->ExtractName().get());
@@ -3157,9 +3158,7 @@ auto fn_impls::StdMemOpsDrop(
   }
   const auto val_param = params[0];
   const auto val_sym = sm->CurrentScope->FindVarSymbol(val_param->ExtractName().get());
-
-  const auto t_ast = TypeIdentifierAst::FromString("T");
-  EmitDrop(TypeRef::Of(*t_ast, *sm->CurrentScope), val_sym->LlvmInfo->Alloca, sm, meta, ctx);
+  EmitDrop(val_sym->TypeRefIn(*sm->CurrentScope), val_sym->LlvmInfo->Alloca, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
 
@@ -3175,9 +3174,8 @@ auto fn_impls::StdMemOpsDropInPlace(
   const auto target_ptr = ctx->Builder.CreateLoad(ptr_ty, ptr_sym->LlvmInfo->Alloca, "drop_in_place.ptr");
 
   // The pointee type is the "T" this instantiation was
-  // made for.
-  const auto t_ast = TypeIdentifierAst::FromString("T");
-  EmitDrop(TypeRef::Of(*t_ast, *sm->CurrentScope), target_ptr, sm, meta, ctx);
+  // made for, the parameter's type without its borrow.
+  EmitDrop(ptr_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention(), target_ptr, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
 
