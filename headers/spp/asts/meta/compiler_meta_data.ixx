@@ -74,12 +74,11 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// exiting with a value.
   llvm::PHINode *Phi = nullptr;
 
-  /// The scope that a loop statement is written in; were we
-  /// to break out of this loop, this is the scope we'd end
-  /// up in. All the scopes between the jump, and this one,
-  /// are being left without reaching the end, so their drops
-  /// need to be emitted here instead.
-  Scope const *ScopeContainingLoop = nullptr;
+  /// The loop's own scope, where its condition is evaluated. An
+  /// "exit" or a "skip" leaves every scope inside it without
+  /// reaching their ends, so what they deferred runs at the
+  /// jump ("EmitScopeExit").
+  Scope const *LoopScope = nullptr;
 };
 
 /// The master meta context used for additional information

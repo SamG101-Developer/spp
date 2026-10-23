@@ -11,27 +11,16 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::codegen {
-  /// Generate the deferred expressions belonging to the scope,
-  /// in reverse order; the statements run last-registered-first,
-  /// so a value deferred after another is released before it.
-  /// Only the defer statements that a walk has actually reached
-  /// are emitted.
-  SPP_EXP_FUN auto EmitDeferredScope(
-    Scope const &scope,
-    ScopeManager *sm,
-    CompilerMetaData *meta,
-    LlvmCtx *ctx)
-    -> void;
-
-  /// Similar to above, but generate the deferred expression of
-  /// an innermost scope, moving upwards until the boundary scope
-  /// is reached. This is when we return from a loop early for
-  /// example, or any nested structure. The deferred statements
-  /// run at the jump.
-  SPP_EXP_FUN auto EmitDeferredUnwind(
-    Scope const &innermost,
-    Scope const *boundary,
-    bool boundary_inclusive,
+  /// Leave every scope from the current one out to "into", the
+  /// scope control lands in, running what each deferred: the
+  /// innermost first, and within a scope the last registered
+  /// first, so a value deferred after another is released before
+  /// it. A block's end lands in its parent, a "ret" in its
+  /// function's parent, an "exit" or a "skip" in the loop's own
+  /// scope. Only the "defer"s a walk has reached run, and none
+  /// on a path that has already left.
+  SPP_EXP_FUN auto EmitScopeExit(
+    Scope const *into,
     ScopeManager *sm,
     CompilerMetaData *meta,
     LlvmCtx *ctx)

@@ -269,7 +269,7 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
 
   // Whatever this scope deferred runs as it is left, after
   // the value it hands out has been produced.
-  codegen::EmitDeferredScope(*sm->CurrentScope, sm, meta, ctx);
+  codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
 
   // Exit the scope.
   sm->MoveOutOfCurrentScope();

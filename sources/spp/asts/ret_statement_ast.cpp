@@ -200,39 +200,6 @@ auto RetStatementAst::EmitReturn(
   ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
   CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
-  // Inside a coroutine, "ret" ends the generator rather than
-  // returning anything (stage 7 rejects one carrying a value),
-  // so it leaves the body the same way running off the end
-  // does: every scope between here and the coroutine's own
-  // runs what it deferred, and then control joins the one
-  // final suspend.
-  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->FinalBlock != nullptr) {
-    codegen::EmitDeferredUnwind(
-      *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
-    ctx->Builder.CreateBr(meta->LlvmGenerator->FinalBlock);
-    return nullptr;
-  }
-
-  // Use the return void instruction if there is no return value.
-  if (expr == nullptr) {
-    codegen::EmitDeferredUnwind(
-      *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
-
-    // A bare "ret" reached in a function that owes a value is a
-    // "GenOnce" lowered to a subroutine finishing on a path that
-    // never yielded - an ordinary subroutine could not get here,
-    // because stage 7 rejects a valueless "ret" from one. There
-    // is nothing to return, so the coroutine's own guarantee is
-    // what has been broken.
-    const auto block = ctx->Builder.GetInsertBlock();
-    RaiseIf<SppGenOnceFinishesWithoutYieldingError>(
-      block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
-      ERR_ARGS(site));
-
-    ctx->Builder.CreateRetVoid();
-    return nullptr;
-  }
-
   // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
   // coerced into the return variant before it leaves the function.
   const auto uid = "." + Uid();
@@ -251,21 +218,49 @@ auto RetStatementAst::EmitReturn(
       llvm_ret_val, ret_ref, expr_ref, *sm->CurrentScope, "ret.variant" + uid, ctx);
   };
 
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTargetType = ret_type_written;
-  if (meta->AssignmentTarget == nullptr) {
-    meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
-  }
-
-  // The expression is always code-generated, even when its value
+  // The returned value is produced first, while everything it
+  // reads is still alive. It is always generated, even when it
   // is discarded below, because it may have side effects that
   // have to happen before the function returns.
-  const auto llvm_ret_val = expr->Stage11_CodeGen(sm, meta, ctx);
+  const auto _meta_guard = MetaGuard(meta);
+  auto llvm_ret_val = static_cast<llvm::Value*>(nullptr);
+  if (expr != nullptr) {
+    meta->AssignmentTargetType = ret_type_written;
+    if (meta->AssignmentTarget == nullptr) {
+      meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
+    }
+    llvm_ret_val = expr->Stage11_CodeGen(sm, meta, ctx);
+  }
 
-  // The returned value is produced first, then every scope between here and the function's own runs what it deferred,
-  // then control leaves.
-  codegen::EmitDeferredUnwind(
-    *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
+  // Then every scope between here and the function's own runs
+  // what it deferred, and control leaves.
+  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx);
+
+  // Inside a coroutine, "ret" ends the generator rather than
+  // returning anything (stage 7 rejects one carrying a value),
+  // so it leaves the body the same way running off the end
+  // does: control joins the one final suspend.
+  if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->FinalBlock != nullptr) {
+    ctx->Builder.CreateBr(meta->LlvmGenerator->FinalBlock);
+    return nullptr;
+  }
+
+  // Use the return void instruction if there is no return value.
+  if (expr == nullptr) {
+    // A bare "ret" reached in a function that owes a value is a
+    // "GenOnce" lowered to a subroutine finishing on a path that
+    // never yielded - an ordinary subroutine could not get here,
+    // because stage 7 rejects a valueless "ret" from one. There
+    // is nothing to return, so the coroutine's own guarantee is
+    // what has been broken.
+    const auto block = ctx->Builder.GetInsertBlock();
+    RaiseIf<SppGenOnceFinishesWithoutYieldingError>(
+      block != nullptr and block->getParent() != nullptr and not block->getParent()->getReturnType()->isVoidTy(),
+      ERR_ARGS(site));
+
+    ctx->Builder.CreateRetVoid();
+    return nullptr;
+  }
 
   // A generic function instantiated so that its return type is
   // "Void" lowers to an LLVM function returning void, but its

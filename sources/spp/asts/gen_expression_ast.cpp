@@ -300,7 +300,7 @@ auto GenExpressionAst::Stage11_CodeGen(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());
 
   ctx->Builder.SetInsertPoint(destroy_bb);
-  codegen::EmitDeferredUnwind(*sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
+  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx);
   ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
 
   ctx->Builder.SetInsertPoint(parked_bb);

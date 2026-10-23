@@ -198,3 +198,32 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret x
     }
 )");
+
+// A "skip" or an "exit" runs what the loop body deferred before it jumps. Generating that can generate other code (a
+// std function's body, on demand), which saves and restores the loop stack, so a jump that held its target by
+// reference across it branched through freed memory and crashed the compiler.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LoopControlFlowStatementAst,
+  test_valid_skip_running_a_deferred_call, R"(
+    fun f() -> Void {
+        let mut i = 0_u32
+        loop i < 2_u32 {
+            defer std::console::println("x")
+            i += 1_u32
+            case i == 1_u32 { skip }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LoopControlFlowStatementAst,
+  test_valid_exit_running_a_deferred_call, R"(
+    fun f() -> Void {
+        let mut i = 0_u32
+        loop i < 2_u32 {
+            defer std::console::println("x")
+            i += 1_u32
+            case i == 1_u32 { exit }
+        }
+    }
+)");

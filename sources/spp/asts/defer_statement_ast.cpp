@@ -152,7 +152,7 @@ auto DeferStatementAst::Stage9_CompTimeResolve(
 auto DeferStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
-  // each of the scope's exits, by "EmitDeferredScope". What
+  // each of the scope's exits, by "EmitScopeExit". What
   // reaching this statement does is register it, so that only
   // the exits below it run it - the same thing stage 8 does
   // with "Scope::Deferred". Guarded against repeats because a
