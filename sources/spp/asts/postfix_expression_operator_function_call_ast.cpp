@@ -10,11 +10,13 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
+import spp.analyse.utils.regions;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
@@ -73,6 +75,15 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
+
+namespace {
+  /// The convention a parameter is declared with: a "self"
+  /// parameter keeps it in "Conv", rather than in its type.
+  auto ParamConvention(spp::asts::FunctionParameterAst const &param) -> spp::asts::ConventionAst const* {
+    if (const auto self = param.To<spp::asts::FunctionParameterSelfAst>(); self != nullptr) { return self->Conv.get(); }
+    return param.Type->GetConvention();
+  }
+}
 
 SPP_MOD_BEGIN
 PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
@@ -315,6 +326,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   FnArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
+/// [CLEAN] -> Move param/arg writebacks (&mut) into helper probably
 auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
@@ -335,23 +347,53 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     ERR_ARGS(*Fold));
 
   // Create the argument map for the function to use: stage 7 left one keyword argument per parameter
-  // ("ElaborateCall"), the receiver of a method call included.
+  // ("ElaborateCall"), the receiver of a method call included. An argument given to a "&mut" parameter is a copy of
+  // its value, so the place it came from is kept, to be given the value the callee leaves it with.
   auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
+  auto mut_places = Vec<Pair<Shared<IdentifierAst>, ExpressionAst*>>();
   for (auto *arg : FnArgGroup->GetAllArgs()) {
     auto name = arg->ToUnchecked<FunctionCallArgumentKeywordAst>()->Name;
+    const auto params = fn_proto->FnParamGroup->GetAllParams();
+    const auto param = genex::find_if(params, [&](auto const *p) {
+      const auto param_name = p->ExtractName();
+      return param_name != nullptr and *param_name == *name;
+    });
+    const auto conv = param != params.end() ? ParamConvention(**param) : nullptr;
+    if (conv != nullptr and conv->To<ConventionMutAst>() != nullptr) {
+      mut_places.emplace_back(name, arg->Val.get());
+    }
     arg->Stage9_CompTimeResolve(sm, meta);
     args.emplace_back(std::move(name), std::move(meta->CompTimeResult));
   }
   auto fn_arg_map = decltype(meta->CompTimeArgs)();
   auto gn_arg_type_map = decltype(meta->CompTimeGnTypeArgs)();
   auto gn_arg_comp_map = decltype(meta->CompTimeGnCompArgs)();
+  auto gn_comp_values = decltype(meta->CompTimeGnCompValues)();
   for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
   for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) {
     gn_arg_type_map.emplace_back(MakeShared<TypeRef>(
       TypeRef::Of(*gn_arg->TypeVal, *sm->CurrentScope)));
   }
-  for (auto &&gn_arg : GnArgGroup->GetCompArgs()) {
-    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*gn_arg->CompVal));
+
+  // What "Self" stands for at this call goes after the call's own
+  // type arguments: a builtin with none of its own reads the type
+  // it was called on from it ("S32::zero()" is an "S32").
+  if (_OverloadInfo->SelfId != nullptr) {
+    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(_OverloadInfo->SelfId, *sm->CurrentScope)));
+  }
+
+  // Each comp argument by the parameter it binds: its keyword,
+  // or, given by position, the comp parameter in the same
+  // place (one for one only: a variadic parameter takes several).
+  const auto comp_args = GnArgGroup->GetCompArgs();
+  const auto comp_params = fn_proto->GnParamGroup->GetCompParams();
+  for (auto i = 0uz; i < comp_args.size(); ++i) {
+    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*comp_args[i]->CompVal));
+    auto name = comp_args[i]->CompNameAsId();
+    if (name == nullptr and comp_args.size() == comp_params.size()) {
+      name = IdentifierAst::FromType(*comp_params[i]->Name);
+    }
+    if (name != nullptr) { gn_comp_values.emplace_back(std::move(name), gn_arg_comp_map.back()); }
   }
 
   // Resolve the function with the arguments. The first call to
@@ -379,9 +421,28 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     meta->CompTimeArgs = std::move(fn_arg_map);
     meta->CompTimeGnTypeArgs = std::move(gn_arg_type_map);
     meta->CompTimeGnCompArgs = std::move(gn_arg_comp_map);
+    meta->CompTimeGnCompValues = std::move(gn_comp_values);
     auto *const fn_scope = fn_proto->GetAstScope();
     auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
+
+    // Each "&mut" argument's place takes the value the callee left
+    // its parameter with, as an assignment to it would.
+    for (auto const &[name, place] : mut_places) {
+      auto value = meta->CompTimeArgs.contains(name) ? std::move(meta->CompTimeArgs[name]) : nullptr;
+      if (value == nullptr) { continue; }
+      const auto place_sym = sm->CurrentScope->FindVarSymbolOutermost(*place).first;
+      if (place->To<IdentifierAst>() != nullptr) {
+        place_sym->CompTimeValue = std::move(value);
+      }
+      else if (regions::IsAttr(place, sm)) {
+        comp_time_intrinsics::SetCompTimeAttrValue(
+          place_sym->CompTimeValue->To<ObjectInitializerAst>(), place, std::move(value), sm);
+      }
+      else {
+        Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*place));
+      }
+    }
   }
 
   // Every function reaches comp-time resolution through here,
@@ -591,10 +652,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // Only a by-value parameter is ever widened. A borrowed one
     // receives a pointer to something that is already the variant,
     // so there is nothing to tag and copy.
-    const auto param_is_borrow = p < fn_params.size() and (
-      fn_params[p]->To<FunctionParameterSelfAst>() != nullptr
-      ? fn_params[p]->To<FunctionParameterSelfAst>()->Conv != nullptr
-      : fn_params[p]->Type->GetConvention() != nullptr);
+    const auto param_is_borrow = p < fn_params.size() and ParamConvention(*fn_params[p]) != nullptr;
 
     if (param_ref.Symbol != nullptr and not param_is_borrow) {
       llvm_arg = codegen::CoerceToFnValue(llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm, ctx);
