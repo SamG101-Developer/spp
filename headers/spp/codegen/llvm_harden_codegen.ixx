@@ -67,9 +67,11 @@ namespace spp::codegen {
   /// a C++ frame further out catches would otherwise unwind
   /// through the s++ frames between, running none of their
   /// defers and consuming none of their linear values. Free on
-  /// the path that returns: the edge is unwind-table data.
-  /// Answers how many calls were guarded.
-  SPP_EXP_FUN auto ApplyFfiUnwindGuard(void *llvm_module) -> unsigned long;
+  /// the path that returns: the edge is unwind-table data. On
+  /// m68k, whose unwind tables LLVM cannot write position-
+  /// independently, this reports the key that turns it off and
+  /// answers false, which fails the build.
+  SPP_EXP_FUN auto ApplyFfiUnwindGuard(void *llvm_module) -> bool;
 
   /// Give every function in an "llvm::Module" (passed as an
   /// opaque pointer) asynchronous unwind tables, so a stack can

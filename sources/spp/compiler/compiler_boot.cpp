@@ -507,7 +507,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   FEATURE_GATE(BinaryCodegenJumpTableBounds) {
     if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; }
   }
-  codegen::ApplyFfiUnwindGuard(lto_module.get());
+  FEATURE_GATE(BinaryCodegenFfiUnwindGuard) {
+    if (not codegen::ApplyFfiUnwindGuard(lto_module.get())) { return false; }
+  }
   codegen::ApplyUnwindTables(lto_module.get());
 
   // What the program was built with, for "spp audit" to read

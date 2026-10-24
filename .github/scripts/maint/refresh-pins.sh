@@ -187,6 +187,21 @@ else
   set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
 fi
 
+# QEMU
+echo
+echo "qemu (${MANIFEST})"
+qemu_pool="https://deb.debian.org/debian/pool/main/q/qemu"
+qemu_version="$(fetch "${qemu_pool}/" \
+  | grep -oE 'qemu-user_[0-9][^_"]*_amd64\.deb' | sed -E 's/^qemu-user_|_amd64\.deb$//g' | sort -uV | tail -1)"
+if [ -z "$qemu_version" ]; then
+  echo "::error::could not read the latest qemu-user package"
+  status=1
+else
+  fetch -o "$tmp/qemu-user.deb" "${qemu_pool}/qemu-user_${qemu_version}_amd64.deb"
+  set_pin pin.qemu.version "$qemu_version"
+  set_pin pin.qemu.sha256 "$(sha256sum "$tmp/qemu-user.deb" | cut -d ' ' -f 1)"
+fi
+
 # LLVM (WINDOWS)
 echo
 echo "Windows LLVM (checked, not refreshed)"

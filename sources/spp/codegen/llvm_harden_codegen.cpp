@@ -36,6 +36,14 @@ namespace spp::codegen {
       return TargetTriple().getArch() == llvm::Triple::x86_64 or TargetTriple().isAArch64();
     }
 
+    /// Whether LLVM writes the selected target's personality and
+    /// LSDA pointers PC-relative, as a position-independent
+    /// executable needs: every target but m68k, which it leaves
+    /// absolute (TargetLoweringObjectFileELF has no case for it).
+    auto TargetHasPcRelEhPointers() -> bool {
+      return TargetTriple().getArch() != llvm::Triple::m68k;
+    }
+
     /// The type operand "i" of a control-flow-integrity record
     /// holds.
     auto CfiTypeAt(llvm::MDNode const &md, const unsigned i) -> llvm::ConstantInt* {
@@ -165,9 +173,15 @@ auto spp::codegen::ApplyJumpTableBounds(
 }
 
 auto spp::codegen::ApplyFfiUnwindGuard(
-  void *llvm_module) -> unsigned long {
+  void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
+  if (not TargetHasPcRelEhPointers()) {
+    llvm::errs()
+      << "This target cannot guard foreign calls against unwinding.\n"
+      << "  To build without it, set 'ffi_unwind_guard = false' under [binary.codegen] in spp.toml.\n";
+    return false;
+  }
   const auto i32_ty = llvm::Type::getInt32Ty(ctx);
   const auto i64_ty = llvm::Type::getInt64Ty(ctx);
   const auto ptr_ty = llvm::PointerType::get(ctx, 0);
@@ -183,7 +197,7 @@ auto spp::codegen::ApplyFfiUnwindGuard(
       if (callee != nullptr and callee->hasFnAttribute(kFfiFnAttr)) { calls.emplace_back(call); }
     }
   }
-  if (calls.empty()) { return 0; }
+  if (calls.empty()) { return true; }
 
   // C's personality: it runs cleanups, which is all a guard
   // is, and it is libgcc's, which every program already loads.
@@ -217,7 +231,7 @@ auto spp::codegen::ApplyFfiUnwindGuard(
     builder.CreateUnreachable();
     llvm::changeToInvokeAndSplitBasicBlock(call, pad_bb);
   }
-  return calls.size();
+  return true;
 }
 
 auto spp::codegen::ApplyUnwindTables(

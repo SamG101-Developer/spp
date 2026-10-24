@@ -79,6 +79,10 @@ sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 version = "3.28.0"
 sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
+[pin.qemu]
+version = "11.1.2+ds-3"
+sha256 = "4bacc2bf647f1756c5f08e7f146161d3eeef9d9f53e5d6412d1b3daca0c93655"
+
 # Executed by python3 against the built test binary,
 # so pinned by commit.
 [pin.gtest-parallel]
@@ -134,6 +138,7 @@ macos = "11.0"
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 valgrind = "{home}/.tools/valgrind"
+qemu = "{home}/.tools/qemu"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
 llvm-deps-win = "{home}/llvm-deps"

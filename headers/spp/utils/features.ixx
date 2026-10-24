@@ -21,6 +21,7 @@ namespace spp::utils::features {
     BinaryCodegenScrub,
     BinaryCodegenCfi,
     BinaryCodegenJumpTableBounds,
+    BinaryCodegenFfiUnwindGuard,
     BinaryLinkHarden,
     BinaryLinkFortifiedFfi,
     BinaryLinkRelroFfi,
