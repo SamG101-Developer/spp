@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The cases of check-intrinsics.sh: every numeric std intrinsic, checked at compile time and at run time.
 
-An intrinsic with a compile-time form ("SPP_DEFINE_BUILTIN_FUNC_CMP") is computed three ways: as a "cmp" constant, at
+An intrinsic with a compile-time form (a "Register" row given one) is computed three ways: as a "cmp" constant, at
 run time from values the optimiser cannot see (a volatile load), and here, from the run-time semantics. Each case
 reports which of the three disagree. One with no compile-time form is checked at run time against the value here.
 
@@ -1355,7 +1355,7 @@ def emit(builtins: str, std_src: str, out: str) -> None:
 
     # Every intrinsic in the registry is checked here, or excluded with a reason. One std does not declare cannot be
     # called, so it is noted, and its cases dropped.
-    names = re.findall(r'SPP_DEFINE_BUILTIN_FUNC\w*\(\s*"([^"]+)"', Path(builtins).read_text())
+    names = re.findall(r'Register\(\s*map,\s*"([^"]+)"', Path(builtins).read_text())
     declared = {
         m for f in Path(std_src).rglob("*.spp") for m in re.findall(r'!intrinsic\(name="([^"]+)"', f.read_text())
     }
