@@ -27,8 +27,6 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.object_initializer_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -418,13 +416,6 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   _HasAnalysed = true;
   _Resolved = true;
   _CachedStringification.clear();
-}
-
-auto TypeIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // These are always "zero_type", so return init.
-  const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);
-  return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto TypeIdentifierAst::IsNeverType() const noexcept -> bool {

@@ -21,6 +21,7 @@ import spp.codegen.llvm_type;
 import spp.codegen.llvm_variant;
 import spp.utils.ice;
 import spp.utils.types;
+import genex;
 import llvm;
 import std;
 
@@ -126,6 +127,37 @@ namespace spp::codegen {
       return ctx->Builder.CreateLoad(target_llvm_type, target_slot, name + ".widen");
     }
 
+    /// A constant laid out byte for byte as "type", from constants
+    /// at byte offsets in it: a packed struct of them, with zero
+    /// bytes between and after. A constant aggregate is built so
+    /// when one of its parts is not of its slot's own type: a
+    /// variant's payload holding a member, which LLVM cannot read
+    /// as the payload's integers once the member holds a pointer.
+    auto PackedConstant(
+      llvm::Type *type, Vec<Pair<std::uint64_t, llvm::Constant*>> const &parts, LlvmCtx *ctx) -> llvm::Constant* {
+      auto const &dl = ctx->Module->getDataLayout();
+      auto fields = Vec<llvm::Constant*>();
+      auto at = std::uint64_t{0};
+      const auto pad = [&](const std::uint64_t to) {
+        if (to <= at) { return; }
+        fields.emplace_back(llvm::Constant::getNullValue(llvm::ArrayType::get(ctx->Builder.getInt8Ty(), to - at)));
+      };
+      for (auto const &[offset, part] : parts) {
+        pad(offset);
+        fields.emplace_back(part);
+        at = offset + dl.getTypeAllocSize(part->getType()).getFixedValue();
+      }
+      pad(dl.getTypeAllocSize(type).getFixedValue());
+      return llvm::ConstantStruct::getAnon(*ctx->Context, fields, true);
+    }
+
+    /// The byte offset of field "index" of the struct "type".
+    auto FieldOffset(llvm::Type *type, const unsigned index, LlvmCtx *ctx) -> std::uint64_t {
+      const auto i32 = ctx->Builder.getInt32Ty();
+      llvm::Value *const indices[] = {llvm::ConstantInt::get(i32, 0), llvm::ConstantInt::get(i32, index)};
+      return static_cast<std::uint64_t>(ctx->Module->getDataLayout().getIndexedOffsetInType(type, indices));
+    }
+
     /// A value naming a function that is going into a function
     /// type is replaced by the pair for the overload analysis
     /// chose there.
@@ -178,6 +210,19 @@ namespace spp::codegen {
       if (not IsTypeVariant(source, scope)) {
         const auto tag = GetVariantIndexOfMember(target, source, scope);
         if (not tag.has_value()) { return llvm_val; }
+
+        // A constant ("cmp x: Opt[S32] = Some(val=1)") cannot be
+        // tagged and copied through a stack slot, so it is built in
+        // place: the tag, then the member where the payload starts.
+        if (const auto member_const = llvm::dyn_cast<llvm::Constant>(llvm_val);
+          ctx->InConstantContext and member_const != nullptr) {
+          auto parts = Vec<Pair<std::uint64_t, llvm::Constant*>>{
+            {0, llvm::ConstantInt::get(GetVariantTagType(ctx), *tag)}};
+          if (not IsValuelessType(member_const->getType())) {
+            parts.emplace_back(FieldOffset(target_llvm_type, 1, ctx), member_const);
+          }
+          return PackedConstant(target_llvm_type, parts, ctx);
+        }
 
         // The alternative is matched with the variant rule turned off, but only at the top level - the comparison of
         // the generic arguments below it turns it back on, so a "Pass[Opt[T]]" answers to a "Pass[Some[T]]". That is
@@ -259,6 +304,33 @@ namespace spp::codegen {
   }
 }
 
+auto spp::codegen::BuildAggregate(
+  llvm::Type *type, Vec<Pair<unsigned, llvm::Value*>> const &elems, Str const &name, LlvmCtx *ctx)
+  -> llvm::Value* {
+  const auto slot_type = [type](const unsigned index) {
+    return type->isArrayTy() ? type->getArrayElementType() : type->getStructElementType(index);
+  };
+  const auto reshaped = genex::any_of(
+    elems, [&](auto const &e) { return e.second->getType() != slot_type(e.first); });
+  if (not reshaped) {
+    auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(type));
+    for (auto const &[index, elem] : elems) { out = ctx->Builder.CreateInsertValue(out, elem, {index}, name); }
+    return out;
+  }
+  auto const &dl = ctx->Module->getDataLayout();
+  auto parts = Vec<Pair<std::uint64_t, llvm::Constant*>>();
+  for (auto const &[index, elem] : elems) {
+    const auto elem_const = llvm::dyn_cast<llvm::Constant>(elem);
+    if (elem_const == nullptr) { Ice("an element of another shape than its slot's outside a constant"); }
+    const auto offset = type->isArrayTy()
+      ? index * dl.getTypeAllocSize(type->getArrayElementType()).getFixedValue()
+      : FieldOffset(type, index, ctx);
+    parts.emplace_back(offset, elem_const);
+  }
+  genex::actions::sort(parts, {}, [](auto const &p) { return p.first; });
+  return PackedConstant(type, parts, ctx);
+}
+
 auto spp::codegen::CoerceToSlot(
   llvm::Value *llvm_val,
   analyse::scopes::TypeRef const &target,
@@ -299,16 +371,15 @@ auto spp::codegen::CoerceToSlot(
     const auto target_args = target.Symbol->TypeArgRefs();
     const auto source_args = source.Symbol->TypeArgRefs();
     if (target_args.size() == source_args.size()) {
-      auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
+      auto elems = Vec<Pair<unsigned, llvm::Value*>>();
       for (auto i = 0uz; i < target_args.size(); ++i) {
         const auto elem_name = name + ".tup." + std::to_string(i);
         auto elem = ctx->Builder.CreateExtractValue(
           llvm_val, {GetPhysicalFieldIndex(*source.Symbol->LlvmInfo, i)}, elem_name + ".from");
         elem = CoerceToSlot(elem, target_args[i], source_args[i], sm, elem_name, ctx);
-        out = ctx->Builder.CreateInsertValue(
-          out, elem, {GetPhysicalFieldIndex(*target.Symbol->LlvmInfo, i)}, elem_name + ".to");
+        elems.emplace_back(GetPhysicalFieldIndex(*target.Symbol->LlvmInfo, i), elem);
       }
-      return out;
+      return BuildAggregate(target_llvm_type, elems, name + ".tup", ctx);
     }
   }
 
@@ -320,14 +391,13 @@ auto spp::codegen::CoerceToSlot(
       and target_arr_type->getNumElements() == source_arr_type->getNumElements()) {
       const auto target_elem = target.Symbol->TypeArgRef("T");
       const auto source_elem = source.Symbol->TypeArgRef("T");
-      auto out = static_cast<llvm::Value*>(llvm::PoisonValue::get(target_llvm_type));
+      auto elems = Vec<Pair<unsigned, llvm::Value*>>();
       for (auto i = 0u; i < static_cast<unsigned>(target_arr_type->getNumElements()); ++i) {
         const auto elem_name = name + ".arr." + std::to_string(i);
-        auto elem = ctx->Builder.CreateExtractValue(llvm_val, {i}, elem_name + ".from");
-        elem = CoerceToSlot(elem, target_elem, source_elem, sm, elem_name, ctx);
-        out = ctx->Builder.CreateInsertValue(out, elem, {i}, elem_name + ".to");
+        const auto elem = ctx->Builder.CreateExtractValue(llvm_val, {i}, elem_name + ".from");
+        elems.emplace_back(i, CoerceToSlot(elem, target_elem, source_elem, sm, elem_name, ctx));
       }
-      return out;
+      return BuildAggregate(target_llvm_type, elems, name + ".arr", ctx);
     }
   }
 

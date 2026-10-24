@@ -25,4 +25,12 @@ namespace spp::codegen {
     Str const &name,
     LlvmCtx *ctx)
     -> llvm::Value*;
+
+  /// A tuple or array of "type" holding each element at its
+  /// physical index. A constant element of another shape than its
+  /// slot's (a variant member built as a packed struct) makes the
+  /// whole aggregate one too, laid out as "type".
+  SPP_EXP_FUN auto BuildAggregate(
+    llvm::Type *type, Vec<Pair<unsigned, llvm::Value*>> const &elems, Str const &name, LlvmCtx *ctx)
+    -> llvm::Value*;
 }

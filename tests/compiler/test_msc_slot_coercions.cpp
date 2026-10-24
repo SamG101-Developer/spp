@@ -436,6 +436,53 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// A zero type's one value is a compile-time value, written bare or qualified, alone or inside an array or a tuple.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestSlotCoercions,
+    test_zero_type_member_into_cmp, R"(
+    cmp a: Opt[S32] = None
+    cmp b: Opt[S32] = std::option::None
+    cmp c: std::option::None = None
+
+    fun f() -> Opt[S32] {
+        ret a
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestSlotCoercions,
+    test_zero_type_member_into_cmp_array_and_tuple, R"(
+    cmp a: [Opt[S32]; 2_uz] = [Some(val=1), None]
+    cmp b: (Opt[S32], S32) = (None, 2)
+
+    fun f() -> (Opt[S32], S32) {
+        ret b
+    }
+)");
+
+// A tuple or a repeated array is typed off its own elements, so it is the slot it lands in that converts it, element
+// by element and through any nesting; an explicit array literal converts its own elements.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestSlotCoercions,
+    test_variant_members_nested_in_cmp_tuples_and_arrays, R"(
+    cmp r: [Opt[S32]; 2_uz] = [Some(val=1); 2_uz]
+    cmp t: (Opt[S32], [Opt[S32]; 2_uz]) = (None, [Some(val=2); 2_uz])
+    cmp a: [(Opt[S32], S32); 2_uz] = [(Some(val=3), 4), (None, 5)]
+
+    fun f() -> [(Opt[S32], S32); 2_uz] {
+        ret a
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestSlotCoercions,
+    test_variant_members_nested_in_tuples_and_arrays, R"(
+    fun f(n: Opt[S32]) -> Void {
+        let t: (Opt[S32], [Opt[S32]; 2_uz]) = (Some(val=1), [Some(val=2); 2_uz])
+        let a: [(Opt[S32], S32); 2_uz] = [(Some(val=3), 4), (n, 5)]
+    }
+)");
+
 // A named function's mock stands for that one function and carries nothing at runtime, so another function of the
 // same signature does not fit a variable holding one: calling "x" would still call "g".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

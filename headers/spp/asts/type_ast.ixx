@@ -5,7 +5,9 @@ export module spp.asts.type_ast;
 import spp.analyse.scopes.type_key;
 import spp.asts.primary_expression_ast;
 import spp.asts.mixins.abstract_type_ast;
+import spp.codegen.llvm_ctx;
 import spp.utils.types;
+import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeAst);
@@ -46,7 +48,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   /// A type written inside an expression (the "A" of "A::new()", a call's type arguments) is read by its identity
   /// ("type_resolution::ReadType"), as a declaration's types are, whatever kind of type it is.
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> override;
+    ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
   /// A clone of this type with "arg_group" on its right-most part.
   /// A plain name builds its own ("TypeIdentifierAst").
@@ -71,6 +73,15 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   }
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
+
+  /// A type written as a value is a zero type's one value ("None"),
+  /// so it is resolved and generated as the object initializer of
+  /// itself it stands for.
+  auto Stage9_CompTimeResolve(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /// A copy of this type that reports "written"'s source span as
   /// its own position. For a type rebuilt from its symbol (a
