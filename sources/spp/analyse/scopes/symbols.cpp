@@ -311,6 +311,7 @@ VariableSymbol::VariableSymbol(
   CompTimeValue(AstClone(that.CompTimeValue)),
   BoundCompId(that.BoundCompId) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
+  LlvmInfo->ValueType = that.LlvmInfo->ValueType;
 }
 
 VariableSymbol::~VariableSymbol() = default;

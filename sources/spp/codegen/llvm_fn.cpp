@@ -6,6 +6,7 @@ import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_target;
 import spp.utils.features;
 import spp.utils.types;

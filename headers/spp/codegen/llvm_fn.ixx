@@ -11,6 +11,7 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 use(spp::codegen, struct LlvmFnWrapper);
+use(spp::codegen, struct LlvmVarSymbolInfo);
 
 /// This is used as a shared pointer, wrapping the internal
 /// LLVM function, allowing it to be shared between cloned
