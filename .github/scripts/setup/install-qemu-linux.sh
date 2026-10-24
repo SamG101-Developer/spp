@@ -8,6 +8,7 @@ deb="${RUNNER_TEMP}/qemu-user.deb"
 
 verified_fetch "$url" "$deb" "$QEMU_SHA256"
 rm -rf "$SPP_QEMU_PREFIX"
+mkdir -p "$SPP_QEMU_PREFIX"
 dpkg-deb -x "$deb" "$SPP_QEMU_PREFIX"
 echo "${SPP_QEMU_PREFIX}/usr/bin" >> "$GITHUB_PATH"
 "${SPP_QEMU_PREFIX}/usr/bin/qemu-x86_64" --version | head -1
