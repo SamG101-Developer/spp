@@ -192,9 +192,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: "v[i]" is a "&T" whatever "v" is, but a "&mut" argument is checked against its root symbol ("v", here mutable),
-// so mutating through the index borrow is accepted - by a "&mut self" method or by calling a "FunMut". See
-// docs/next-steps.md N1.11 (the lowering of "v[mut i]" itself reaches a "&mut" argument through "fwd_ref").
+// "v[i]" is a "&T" whatever "v" is, so nothing can be mutated through it - by a "&mut self" method or by calling a
+// "FunMut" - even when "v" itself is mutable. "v[mut i]" is the borrow to mutate through.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromRefBorrowedCtx,
     test_invalid_mut_self_method_called_through_an_index_borrow,
@@ -212,7 +211,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// Red: as above, for a "FunMut" called through "v[i]".
+// As above, for a "FunMut" called through "v[i]".
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestAstMemoryMoveFromRefBorrowedCtx,
     test_invalid_fun_mut_called_through_an_index_borrow,
@@ -220,5 +219,53 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(v: &mut std::vector::Vec[FunMut[(), S32]]) -> S32 {
         let r = (v[0_uz])()
         ret r
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_valid_mut_self_method_called_through_a_mut_index_borrow, R"(
+    cls IdxTok {
+        !public n: S32
+    }
+
+    sup IdxTok {
+        !public fun bump(&mut self) -> Void { self.n = self.n + 1 }
+    }
+
+    fun f(v: &mut std::vector::Vec[IdxTok]) -> Void {
+        v[mut 0_uz].bump()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_valid_fun_mut_called_through_a_mut_index_borrow, R"(
+    fun f(v: &mut std::vector::Vec[FunMut[(), S32]]) -> S32 {
+        let r = (v[mut 0_uz])()
+        ret r
+    }
+)");
+
+// A method reached through a forward ("Vec" to "View") is borrowed as it takes "self": "index_mut" mutably, "len"
+// immutably, so reading through the forward beside another "&" borrow is fine.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_valid_read_through_a_forward_beside_an_immutable_borrow, R"(
+    fun g(v: &std::vector::Vec[S32], n: USize) -> Void { }
+
+    fun f(mut v: std::vector::Vec[S32]) -> Void {
+        g(&v, v.len())
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstMemoryMoveFromRefBorrowedCtx,
+    test_invalid_mut_index_through_an_immutable_binding,
+    SppInvalidMutationError, R"(
+    fun f(v: std::vector::Vec[S32]) -> Void {
+        let x = v[mut 0_uz]
+        std::mem::ops::drop(v)
     }
 )");

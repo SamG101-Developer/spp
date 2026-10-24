@@ -71,16 +71,20 @@ namespace spp::analyse::utils::marker_sups {
   /// Manually build the hidden forwarding call that is
   /// abstracted over for things like member access, assignment,
   /// returning etc. This is needed to the llvm codegen can
-  /// access the forwarded object.
+  /// access the forwarded object. "member" is what is reached
+  /// through it, when it is a member access: a method taking
+  /// "&mut self" is reached through "fwd_mut".
   SPP_EXP_FUN auto BuildFwdCall(
     ExpressionAst const &receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> Unique<PostfixExpressionAst>;
+    ScopeManager *sm, meta::CompilerMetaData *meta,
+    IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// As above, taking the receiver itself rather than a copy, for
   /// an argument whose analysed value becomes the forwarding call's.
   SPP_EXP_FUN auto BuildFwdCall(
     Unique<ExpressionAst> &&receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> Unique<PostfixExpressionAst>;
+    ScopeManager *sm, meta::CompilerMetaData *meta,
+    IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// Whether a value of this type forwards at all ("FwdRef" or
   /// "FwdMut"), which is when "BuildFwdCall" builds a call.

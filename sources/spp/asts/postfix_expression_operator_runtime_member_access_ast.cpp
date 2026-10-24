@@ -188,7 +188,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
       // If we are accessing via forwarding, then build the
       // forward call, and store it for later analysis.
-      auto fwd_call = marker_sups::BuildFwdCall(*meta->PostfixExpressionLhs, lhs_ref, sm, meta);
+      auto fwd_call = marker_sups::BuildFwdCall(*meta->PostfixExpressionLhs, lhs_ref, sm, meta, Name.get());
       if (fwd_call != nullptr) {
         _MappedFwd = MakeShared<PostfixExpressionAst>(
           std::move(fwd_call),
