@@ -148,12 +148,6 @@ namespace spp::analyse::utils::overload_resolution {
       const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->Lhs->To<TypeAst>() : nullptr;
       const auto lhs_as_ident = lhs.To<IdentifierAst>();
 
-      // If the lhs is an identifier, it must be a variable
-      // symbol, not a namespace symbol.
-      if (lhs_as_ident and sm.CurrentScope->FindVarSymbol(lhs_as_ident) == nullptr) {
-        RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {});
-      }
-
       // Variables that will be set in each branch, and
       // returned. These are used to determine what variation
       // of function call is being performed.
@@ -195,16 +189,30 @@ namespace spp::analyse::utils::overload_resolution {
       // Direct access into a non-namespaced function:
       // "function()":
       else if (lhs_as_ident != nullptr) {
-        fn_owner_type = nullptr;
+        // It must be a variable symbol, not a namespace symbol.
+        const auto sym = sm.CurrentScope->FindVarSymbol(lhs_as_ident);
+        if (sym == nullptr) {
+          RaiseMissingIdentifierAndClosestOptions(
+            *lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {});
+        }
         fn_name = AstCloneShared(lhs_as_ident);
 
         // A name declared inside the function (a function-type
         // variable) is a value being called, not a module function
-        // spelled the same.
+        // spelled the same. A function found nearer than the module
+        // (a method of the type being extended, through its "sup"
+        // scope) is not a bare call's target: the module's function
+        // of that name is, if it has one, looked up where it is
+        // declared (through a "use" import, its target's scope).
         const auto mod_scope = sm.CurrentScope->GetParentModule();
-        const auto sym = sm.CurrentScope->FindVarSymbol(lhs_as_ident);
-        const auto is_local = sym != nullptr and sym->ScopeDefinedIn != mod_scope;
-        fn_owner_scope = is_local ? nullptr : mod_scope;
+        auto mod_sym = mod_scope != nullptr ? mod_scope->FindVarSymbol(lhs_as_ident) : nullptr;
+        if (mod_sym != nullptr and mod_sym->IsCompTime() and (sym == mod_sym or sym->Kind == VariableKind::FnMock)) {
+          while (mod_sym->AliasSymbol != nullptr) { mod_sym = mod_sym->AliasSymbol.get(); }
+          fn_owner_scope = mod_sym->ScopeDefinedIn;
+        }
+        else {
+          fn_owner_scope = sym->ScopeDefinedIn == mod_scope ? mod_scope : nullptr;
+        }
       }
 
       // Non-callable AST.
@@ -231,30 +239,6 @@ namespace spp::analyse::utils::overload_resolution {
     }
 
     /// [CHECKED]
-    /// For a function, it may be an alias, imported under a
-    /// "use" statement. Get the fully qualified version if so.
-    /// Todo: This will be removed by N2.10.
-    auto CalleeExpr(
-      ExpressionAst const &lhs, ScopeManager const &sm)
-      -> Pair<ExpressionAst const*, Shared<ExpressionAst>> {
-      if (const auto id = lhs.To<IdentifierAst>()) {
-        // A name declared inside the function (a function-type
-        // variable) is a value being called, not a module function
-        // spelled the same.
-        const auto local = sm.CurrentScope->FindVarSymbol(id);
-        if (local == nullptr or local->IsCompTime()) {
-          const auto mod_scope = sm.CurrentScope->GetParentModule();
-          const auto x = mod_scope != nullptr ? mod_scope->FindVarSymbol(id) : local;
-          if (x and x->IsCompTime()) {
-            auto qualified = x->FqName();
-            return {qualified.get(), std::move(qualified)};
-          }
-        }
-      }
-      return {&lhs, nullptr};
-    }
-
-    /// [CHECKED]
     /// Given a written expression being called, for example
     /// "a.b.c()", the "written" part is "a.b.c". Relevant
     /// information is extracted to form a "call site" object.
@@ -262,16 +246,14 @@ namespace spp::analyse::utils::overload_resolution {
       ExpressionAst &written, ScopeManager &sm,
       meta::CompilerMetaData *meta) -> CallSite {
       // Build an empty call site and attach the written
-      // expression into it. Qualify functions imported from a
-      // "use" statement.
+      // expression into it.
       auto site = CallSite();
       site.Written = &written;
-      tie(site.Callee, site.Qualified) = CalleeExpr(written, sm);
 
       // Get the owning type (nullptr for free functions), the
-      // function scope, and its name, based on the callee
+      // function scope, and its name, based on the written
       // expression.
-      tie(site.OwnerType, site.OwnerScope, site.FnName) = GetFnOwnerTypeAndFnName(*site.Callee, sm, meta);
+      tie(site.OwnerType, site.OwnerScope, site.FnName) = GetFnOwnerTypeAndFnName(written, sm, meta);
 
       // If we are dealing with a "." or "::" in the left-side
       // of the method, set the "IsMethod" flag for ".", and

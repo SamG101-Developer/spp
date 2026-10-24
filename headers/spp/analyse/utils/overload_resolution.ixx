@@ -115,11 +115,6 @@ namespace spp::analyse::utils::overload_resolution {
     /// The left-hand side as written ("f", "x.m", "T::m", "ns::f").
     ExpressionAst *Written = nullptr;
 
-    /// What its overloads are looked up by: "Written", or a module
-    /// constant's qualified name, kept alive by "Qualified".
-    ExpressionAst const *Callee = nullptr;
-    Shared<ExpressionAst> Qualified;
-
     /// The type owning the function ("x"'s type, "T"), the scope
     /// its overloads are found in, and its name.
     Shared<TypeAst> OwnerType;
