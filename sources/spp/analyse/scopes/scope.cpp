@@ -1056,13 +1056,17 @@ auto Scope::HideLetBindings() -> void {
 auto Scope::RevealLetBindings() -> void {
   // Replenish the bindings, from the last binding back, so
   // a name ends up meaning the last binding of it (and only
-  // the last binding is put back, subsequent duplicates are
-  // skipped).
-  // Todo: A name still held by an earlier "let" of this scope (a
-  //  walk that left between two shadows of it) counts as taken,
-  //  so the earlier binding stays. See next-steps N6.15.
+  // the last binding is put back, earlier ones of the same
+  // name are skipped). A name is free when it is empty or held
+  // by one of this scope's own bindings: a walk that left
+  // between two shadows of it filed the earlier one.
+  const auto own = [this](VariableSymbol const *held) {
+    return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
+  };
+  auto placed = Set<spp::utils::InternedId>();
   for (auto const &sym : LetBindings | genex::views::reverse) {
-    if (InternalTable.VarTable.Find(sym->Name.get()) == nullptr) {
+    if (not placed.insert(sym->Name->NameId()).second) { continue; }
+    if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
       InternalTable.VarTable.Add(sym->Name.get(), sym);
     }
   }
