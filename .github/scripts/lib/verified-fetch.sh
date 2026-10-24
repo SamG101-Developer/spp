@@ -4,12 +4,14 @@
 # shellcheck shell=bash
 
 # macOS ships shasum and no sha256sum. Also used on its own, to
-# hand a built binary's digest from one job to the next.
+# hand a built binary's digest from one job to the next. Hashes
+# stdin: a backslash in the path (Windows RUNNER_TEMP) makes
+# sha256sum escape the name and prefix the digest with "\".
 sha256_of() {
   if command -v sha256sum > /dev/null 2>&1; then
-    sha256sum "$1" | cut -d ' ' -f 1
+    sha256sum < "$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 "$1" | cut -d ' ' -f 1
+    shasum -a 256 < "$1" | cut -d ' ' -f 1
   fi
 }
 
