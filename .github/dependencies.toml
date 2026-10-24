@@ -76,8 +76,8 @@ sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 # Built from the release tarball: the runner's apt valgrind trails
 # upstream by years.
 [pin.valgrind]
-version = "3.27.1"
-sha256 = "5d589152eb8071c02feab8ce6ab719e431a1fbc3e2b1700f5432632a8b9264dc"
+version = "3.28.0"
+sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -137,18 +137,18 @@ generation = "v3"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "ddd49116e63be7345b448351cad153653a712fdb"
+commit = "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5"
 
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "31d034d94cdb8e22f7d7ed55967f581a2d6e831d"
+commit = "8b08dbb8f9c8db7f01e9abe5b1a981d985e1fa46"
 cmake-flags = ["-DMI_SECURE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "0e95fe8200adbf0e033d0c0818eea473e1d4d346"
+commit = "9c50bdd140d80744ebfa8dd7e850794f2cce50e3"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -168,7 +168,7 @@ cmake-flags = [
 [[library]]
 name = "stringzilla"
 repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "86d73f1021e6cce022c3cceb1f7837eb50338774"
+commit = "99d950f85b4aca8ac10967d6e32cacc386bf04eb"
 cmake-flags = [
   "-DSTRINGZILLA_INSTALL=ON",
   "-DSTRINGZILLA_BUILD_TEST=OFF",
@@ -190,7 +190,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "fb7eb86af71afde547c13d062e5aebfa27fc45c5"
+commit = "1764a057b760e8873eab03f4635b4aaed5303a04"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]
