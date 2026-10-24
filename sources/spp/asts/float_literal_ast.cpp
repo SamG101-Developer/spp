@@ -92,8 +92,12 @@ auto FloatLiteralAst::ToString() const -> Str {
 auto FloatLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
-  Type = Type.empty() ? "f32" : Type;
+  Type = TypeOrDefault();
   ValidateBounds(*this);
+}
+
+auto FloatLiteralAst::TypeOrDefault() const -> Str {
+  return Type.empty() ? "f32" : Type;
 }
 
 auto FloatLiteralAst::BigVal() const -> numex::BigDec {

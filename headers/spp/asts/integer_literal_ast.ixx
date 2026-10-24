@@ -70,6 +70,10 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   /// that silently wrapped on the way out.
   SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigInt;
 
+  /// The type's suffix, "s32" for one written without: what
+  /// analysis gives it, and what it is keyed by before then.
+  SPP_ATTR_NODISCARD auto TypeOrDefault() const -> Str;
+
   /// Build a literal of the given type carrying an exact
   /// value, with the sign as its own token. The value is not
   /// range checked here - what produced it has no scope to

@@ -619,3 +619,33 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(e)
     }
 )");
+
+// A "cmp" constant as a comp argument is its value, keyed where it is declared, so "A[k]" is "A[5]": named directly,
+// inside a comp expression, and declared from another constant (open bug 46; "check-comp-args.sh" names one through
+// another module's namespace).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_constant_as_a_comp_argument_is_its_value, R"(
+    cmp k: S32 = 5
+    cmp k2: S32 = k * 2
+    cls A[cmp n: S32] { }
+    fun g() -> Void {
+        let a: A[5] = A[k]()
+        let b: A[10] = A[k2]()
+        let c: A[6] = A[k + 1]()
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(b)
+        std::mem::ops::drop(c)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestCompKey,
+    test_invalid_constant_as_a_comp_argument_of_another_value,
+    SppTypeMismatchError, R"(
+    cmp k: S32 = 5
+    cls A[cmp n: S32] { }
+    fun g() -> Void {
+        let a: A[6] = A[k]()
+    }
+)");

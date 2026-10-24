@@ -80,8 +80,12 @@ auto IntegerLiteralAst::ToString() const -> Str {
 auto IntegerLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
-  Type = Type.empty() ? "s32" : Type;
+  Type = TypeOrDefault();
   ValidateBounds(*this);
+}
+
+auto IntegerLiteralAst::TypeOrDefault() const -> Str {
+  return Type.empty() ? "s32" : Type;
 }
 
 auto IntegerLiteralAst::BigVal() const -> numex::BigInt {

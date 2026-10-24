@@ -77,6 +77,10 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
   /// from its text.
   SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigDec;
 
+  /// The type's suffix, "f32" for one written without: what
+  /// analysis gives it, and what it is keyed by before then.
+  SPP_ATTR_NODISCARD auto TypeOrDefault() const -> Str;
+
   /// A literal of "type" from "text" ("[-]digits[.digits]"), with
   /// the sign as its own token, kept on a zero too.
   static auto FromText(

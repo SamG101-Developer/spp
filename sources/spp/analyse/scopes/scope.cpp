@@ -639,6 +639,35 @@ namespace spp::analyse::scopes {
       return *id;
     }
 
+    auto RawCompKey(ExpressionAst const &expr, Scope const &scope) -> CompKey;
+
+    /// The "cmp" constant "expr" names, by name or through its namespace ("k", "ns::k"), followed through a "use" to
+    /// its target; none for anything else.
+    auto ConstantNamedBy(ExpressionAst const &expr, Scope const &scope) -> VariableSymbol const* {
+      const auto is_ns_access = IsStaticMemberAccess(&expr)
+        and expr.ToUnchecked<spp::asts::PostfixExpressionAst>()->Lhs->To<spp::asts::TypeAst>() == nullptr;
+      if (expr.To<spp::asts::IdentifierAst>() == nullptr and not is_ns_access) { return nullptr; }
+      auto const *var = scope.FindVarSymbolOutermost(expr).first;
+      while (var != nullptr and var->AliasSymbol != nullptr) { var = var->AliasSymbol.get(); }
+      return var != nullptr and var->Kind == VariableKind::Constant ? var : nullptr;
+    }
+
+    /// A "cmp" constant named by "expr", keyed as its value where it is declared. One whose value names itself again
+    /// ("cmp a = b", "cmp b = a") is its spelling, left for the constant's own checks to report.
+    auto ConstantCompKey(ExpressionAst const &expr, VariableSymbol const &constant, Scope const &scope) -> CompKey {
+      thread_local auto keying = Set<VariableSymbol const*>();
+      auto const *const value = constant.CompTimeValue != nullptr
+        ? constant.CompTimeValue->To<ExpressionAst>()
+        : nullptr;
+      if (value == nullptr or constant.ScopeDefinedIn == nullptr or keying.contains(&constant)) {
+        return RecordedOpaque(expr, scope);
+      }
+      keying.insert(&constant);
+      auto key = RawCompKey(*value, *constant.ScopeDefinedIn);
+      keying.erase(&constant);
+      return key;
+    }
+
     /// Whether "expr", keyed as "key", is a "Bool": a bool value,
     /// a comparison or "and"/"or" (which always make one), or a
     /// comp parameter declared "Bool".
@@ -670,16 +699,24 @@ namespace spp::analyse::scopes {
       // "0.05_f32 + 0.05_f32" are one value too. One the type
       // cannot hold is kept as written, for E16.
       if (const auto lit = expr.To<FloatLiteralAst>(); lit != nullptr) {
-        const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(lit->BigVal(), lit->Type));
-        return CompKey::OfFloat(text.has_value() ? numex::BigDec(*text) : lit->BigVal(), lit->Type);
+        const auto type = lit->TypeOrDefault();
+        const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(lit->BigVal(), type));
+        return CompKey::OfFloat(text.has_value() ? numex::BigDec(*text) : lit->BigVal(), type);
       }
 
       if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
-        return CompKey::OfInt(lit->BigVal(), lit->Type);
+        return CompKey::OfInt(lit->BigVal(), lit->TypeOrDefault());
       }
 
       if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
         return CompKey::OfBool(lit->CppVal());
+      }
+
+      // A "cmp" constant ("k", "ns::k") is its value, keyed where
+      // it is declared, as a literal is: "f[k]" and "f[5]" with
+      // "cmp k: S32 = 5" are one instantiation.
+      if (auto const *const constant = ConstantNamedBy(expr, scope); constant != nullptr) {
+        return ConstantCompKey(expr, *constant, scope);
       }
 
       // Create a pack from a tuple of elements, recursively
