@@ -86,6 +86,16 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
+[pin.ccache]
+version = "4.14.2"
+sha256-linux-x86-64 = "d540ba01f160addbd3dd5e18eda9bd34005591b095c09ac8ae9d0a1b655e7ef5"
+sha256-linux-aarch64 = "2be524bbccfc7e9ff0085d110da7dc9964de983bd92d29acf3b872e557194945"
+sha256-darwin = "cf240009630b605b775c7c5c7b7105a3b196c79f31af322c1557969aa28003fc"
+
+[pin.sccache]
+version = "0.19.0"
+sha256 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353"
+
 [pin.osv-scanner]
 version = "2.7.0"
 sha256 = "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"

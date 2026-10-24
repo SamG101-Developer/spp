@@ -6,6 +6,15 @@ set -euo pipefail
 
 args=()
 
+# SPP_NO_COMPILER_LAUNCHER is set when the compiler cache is
+# off (CodeQL), which forces the compiler to be invoked
+# directly. Windows gets sccache, which can drive cl and
+# clang-cl; everything else gets ccache.
+if [ -z "${SPP_NO_COMPILER_LAUNCHER:-}" ]; then
+  if [ "$RUNNER_OS" = "Windows" ]; then LAUNCHER=sccache; else LAUNCHER=ccache; fi
+  args+=(-DCMAKE_C_COMPILER_LAUNCHER="$LAUNCHER" -DCMAKE_CXX_COMPILER_LAUNCHER="$LAUNCHER")
+fi
+
 # macOS needs the SDK spelled out to unlock the macros that
 # otherwise block type definitions.
 if [ "$RUNNER_OS" = "macOS" ]; then

@@ -67,6 +67,7 @@ runs:
         runner-image: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
         version: ${{ env.SPP_TOOLCHAIN_VERSION }}
+        cache-key-suffix: ${{ inputs.variant }}
 
     - name: Restore source mtimes
       uses: ./.github/actions/restore-mtimes

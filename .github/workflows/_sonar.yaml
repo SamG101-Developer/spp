@@ -62,6 +62,7 @@ jobs:
           runner-image: ${{ inputs.os }}
           compiler: gcc
           version: ${{ env.GCC_VERSION }}
+          cache-key-suffix: sonar
 
       # The key comes from the same action the compile action
       # writes the tree with, so restoring it needs only the
