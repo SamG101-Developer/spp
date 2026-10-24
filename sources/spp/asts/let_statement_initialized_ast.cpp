@@ -130,6 +130,12 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
     ? MakeShared<TypeRef>(TypeRef::Of(*Type, *sm->CurrentScope))
     : nullptr;
 
+  // The declared type is the value's target, set before the value
+  // is analysed (as "ret" and an assignment set theirs): a "case"
+  // takes its branches' type from it, and an array literal its
+  // element type.
+  meta->AssignmentTargetType = Type;
+
   // Check the value is a valid expression type.
   Val->Stage7_AnalyseSemantics(sm, meta);
   RaiseIf<SppInvalidPrimaryExpressionError>(
@@ -141,7 +147,6 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   // Ensure the value's type matches the type (if given),
   // including variant matching.
   if (Type != nullptr) {
-    meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
     if (not type_compare::Assignable(
       TypeRef::Of(*Type, *sm->CurrentScope),
