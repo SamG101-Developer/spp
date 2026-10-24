@@ -167,7 +167,8 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // target's type asks for.
-    fn_values::InstantiateFnValue(rhs_ref, lhs_ref, sm, meta);
+    fn_values::InstantiateFnValue(
+      rhs_ref, lhs_ref, sm, meta);
   }
 }
 
