@@ -196,3 +196,52 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         c()
     }
 )");
+
+// A closure dropped without being called drops what it captured by value, through the destructor its environment's
+// header points to; "tests/codegen/check-drops.sh" checks that it runs.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_closure_owning_a_droppable_capture_dropped_uncalled, R"(
+    cls Noisy {
+        !public n: S32
+    }
+
+    sup Noisy ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Noisy(..) = self
+        }
+    }
+
+    fun f() -> Void {
+        let a = Noisy(n=1)
+        let b = Noisy(n=2)
+        let c = (y: S32 caps a, b) y
+        std::mem::ops::drop(c)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureCaptures,
+  test_valid_closure_owning_a_droppable_capture_called, R"(
+    cls Noisy {
+        !public n: S32
+    }
+
+    sup Noisy ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Noisy(..) = self
+        }
+    }
+
+    fun take(x: Noisy) -> S32 {
+        let n = x.n
+        std::mem::ops::drop(x)
+        ret n
+    }
+
+    fun f() -> S32 {
+        let a = Noisy(n=1)
+        let c = (caps a) -> S32 { take(a) }
+        ret c()
+    }
+)");

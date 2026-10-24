@@ -69,22 +69,31 @@ namespace spp::codegen {
     llvm::Function const &target, TypeRef const &fn_sup,
     LlvmCtx const *ctx) -> llvm::Constant*;
 
-  /// A closure's environment: a leading "i8" saying whether the
-  /// environment owns its storage (heap, 1) or not (stack, 0),
-  /// then one field per capture. Where it lives is recorded here
-  /// once, when it is made, because nothing later can work it
-  /// out: every closure of one signature shares its type, and a
-  /// "FunRef" passed as a "FunMov" is freed as one.
+  /// A closure's environment: a header of an "i8" saying whether
+  /// the environment owns its storage (heap, 1) or not (stack,
+  /// 0) and a pointer to the function dropping its captures
+  /// ("void(ptr env)", null when none needs dropping), then one
+  /// field per capture. Both are recorded here once, when it is
+  /// made, because nothing later can work them out: every closure
+  /// of one signature shares its type, and a "FunRef" passed as a
+  /// "FunMov" is freed as one. sppc reads the same header
+  /// ("sppc_closure_env", "sppc_closure_discard").
   SPP_EXP_FUN auto ClosureEnvType(
     Vec<llvm::Type*> const &capture_tys, StrView name,
     LlvmCtx const *ctx) -> llvm::StructType*;
 
   /// Make a closure's environment of type "env_ty" - on the heap
   /// when it may outlive the frame making it, else on the stack -
-  /// and record which in its header.
+  /// and record which in its header, with "drop_captures" (null
+  /// when nothing it captures needs dropping).
   SPP_EXP_FUN auto EmitNewClosureEnv(
-    llvm::StructType *env_ty, bool on_heap, StrView name,
+    llvm::StructType *env_ty, bool on_heap, llvm::Function *drop_captures, StrView name,
     LlvmCtx *ctx) -> llvm::Value*;
+
+  /// Mark "fn" as a closure's capture destructor, the type the
+  /// call in "EmitDropClosureEnv" checks it against.
+  SPP_EXP_FUN auto StampCfiClosureEnvDrop(
+    llvm::Function &fn) -> void;
 
   /// Which of a generator's two functions a call through its
   /// frame reaches: the one resuming it, or the one destroying
@@ -124,7 +133,14 @@ namespace spp::codegen {
     std::size_t i) -> unsigned;
 
   /// Free a closure's environment, if it has one and it owns its
-  /// storage: what consuming or dropping a "FunMov" does.
+  /// storage: what consuming a "FunMov" does, as its body has
+  /// consumed the captures.
   SPP_EXP_FUN auto EmitReleaseClosureEnv(
+    llvm::Value *env, LlvmCtx *ctx) -> void;
+
+  /// Drop a closure's captures through its header, then free its
+  /// environment as "EmitReleaseClosureEnv" does: what dropping a
+  /// closure that was never consumed does.
+  SPP_EXP_FUN auto EmitDropClosureEnv(
     llvm::Value *env, LlvmCtx *ctx) -> void;
 }

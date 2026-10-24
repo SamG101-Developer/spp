@@ -1756,14 +1756,11 @@ auto fn_impls::StdCffiCClosureFrom(
 auto fn_impls::StdFunctionFunMovDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // A closure that captures anything it can carry away holds its environment on the heap, because it may outlive the
-  // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it; the
-  // environment's own header says whether there is storage to free ("EmitReleaseClosureEnv"), because a "FunRef"
-  // dropped as a "FunMov" has its environment on a stack. The value is the "{fn, env}" pair, so the environment is
-  // the second field.
-  //
-  // The captures inside it are not destroyed, only the storage holding them. Doing better needs the closure's type to
-  // say what it captured, and it does not: every closure with the same signature has the same type, so there is no
-  // per-closure destructor to reach from here. Todo: give a closure a type of its own, and drop its captures.
+  // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it: the
+  // environment's own header holds what drops the captures it owns, and says whether there is storage to free
+  // ("EmitDropClosureEnv"), because a "FunRef" dropped as a "FunMov" has its environment on a stack. Every closure of
+  // one signature has this type, so the destructor is read from the header, not from the type. The value is the
+  // "{fn, env}" pair, so the environment is the second field.
   using generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
@@ -1772,7 +1769,7 @@ auto fn_impls::StdFunctionFunMovDrop(
 
   const auto pair = ctx->Builder.CreateLoad(pair_ty, self_sym->LlvmInfo->Alloca, "fun_mov.drop.pair" + uid);
   const auto env = ctx->Builder.CreateExtractValue(pair, {1}, "fun_mov.drop.env" + uid);
-  EmitReleaseClosureEnv(env, ctx);
+  EmitDropClosureEnv(env, ctx);
   ctx->Builder.CreateRetVoid();
 }
 

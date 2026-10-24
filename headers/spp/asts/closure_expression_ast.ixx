@@ -100,6 +100,13 @@ private:
   /// for the same reason.
   auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 
+  /// The function dropping what this closure captured by value
+  /// ("void(ptr env)"), which its environment's header points to;
+  /// null when nothing it owns needs dropping.
+  auto _BuildDropCaptures(
+    llvm::Function &closure_fn, llvm::StructType *env_ty, ScopeManager *sm, CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx) -> llvm::Function*;
+
   /// The class prototypes behind the minted closure types, owned
   /// for the length of the compile.
   inline static Vec<Unique<Ast>> _MockAsts = {};

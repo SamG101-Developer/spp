@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
@@ -37,6 +38,7 @@ import spp.asts.utils.visibility;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
@@ -273,6 +275,42 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
   sm->CurrentScope = parent_scope;
 }
 
+auto ClosureExpressionAst::_BuildDropCaptures(
+  llvm::Function &closure_fn, llvm::StructType *env_ty, ScopeManager *sm, CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx) -> llvm::Function* {
+  IMPORT_UTILS;
+  // Only what is captured by value is owned by the environment; a borrow
+  // owns nothing, and a value needing no drop leaves nothing to do. So a
+  // closure with neither has no destructor at all.
+  auto owned = Vec<Pair<unsigned, TypeRef>>();
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+    if (capture->Conv != nullptr) { continue; }
+    const auto cap_ref = TypeRef::Of(*capture->InferType(sm, meta), *sm->CurrentScope);
+    if (drop_utils::NeedsDrop(cap_ref, *sm, meta)) { owned.emplace_back(codegen::ClosureEnvCaptureIndex(i), cap_ref); }
+  }
+  if (owned.empty()) { return nullptr; }
+
+  // "void(ptr env)", beside the closure in its module, dropping the
+  // owned captures in reverse order, as a type drops its fields. A
+  // closure is dropped through its function type, which says nothing
+  // of what it captured, so its environment's header points here.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto drop_fn = llvm::Function::Create(
+    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false), llvm::Function::InternalLinkage,
+    closure_fn.getName() + ".drop_captures", closure_fn.getParent());
+  codegen::StampCfiClosureEnvDrop(*drop_fn);
+
+  const auto saved_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.SetInsertPoint(llvm::BasicBlock::Create(*ctx->Context, "entry", drop_fn));
+  for (auto const &[index, cap_ref] : owned | genex::views::reverse) {
+    const auto field = ctx->Builder.CreateStructGEP(env_ty, drop_fn->getArg(0), index, "closure.drop.capture");
+    codegen::EmitDrop(cap_ref, field, sm, meta, ctx);
+  }
+  ctx->Builder.CreateRetVoid();
+  ctx->Builder.SetInsertPoint(saved_bb);
+  return drop_fn;
+}
+
 auto ClosureExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -407,9 +445,6 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   meta->EnclosingFnFlavour = saved_flavour;
   ctx->CurrentClosureType = saved_current_closure_type;
 
-  // Todo: Manage the moved captures' destruction properly,
-  // currently they all leak. The env pointer is freed, but
-  // not its contents. Check this more carefully.
   // An environment holding a capture by value or by "&mut" may
   // outlive this frame (the closure is moved out of it), so it
   // goes on the heap; one holding only "&" borrows cannot outlive
@@ -418,9 +453,10 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   const auto on_heap = genex::any_of(
     PcGroup->CaptureGroup->Captures,
     [](auto const &c) { return c->Conv == nullptr or *c->Conv == ConventionTag::MUT; });
+  const auto drop_captures = _BuildDropCaptures(*llvm_fn, closure_env_ty, sm, meta, ctx);
   const auto env = PcGroup->CaptureGroup->Captures.empty()
     ? static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0)))
-    : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, "closure.env" + uid, ctx);
+    : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, drop_captures, "closure.env" + uid, ctx);
 
   for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
     const auto field_ptr = ctx->Builder.CreateStructGEP(
