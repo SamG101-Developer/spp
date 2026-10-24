@@ -68,7 +68,7 @@ jobs:
       matrix:
         target:
           - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32", off: "cfi" }
-          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
           - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub cfi jump_table_bounds" }
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
           - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
