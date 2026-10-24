@@ -722,3 +722,68 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let r = f(t(), 0_uz)..
     }
 )");
+
+// A bare call's target (N2.10): a function found nearer than the module (a method of the type being extended) is not
+// it, the module's function of that name is; a value declared nearer is called itself. Each target's result type
+// differs, so the wrong one is a type mismatch.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_bare_call_from_a_same_named_method_calls_the_module_function, R"(
+    fun same(x: S32) -> Bool { ret true }
+
+    cls Thing { }
+
+    sup Thing {
+        fun same(&self) -> S32 {
+            let b: Bool = same(1)
+            ret 2
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_bare_call_of_a_closure_shadowing_a_module_function, R"(
+    fun same(x: S32) -> Bool { ret true }
+
+    fun f() -> Void {
+        let same = (x: S32) -> S32 { ret x }
+        let n: S32 = same(1)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_bare_call_of_an_imported_generic_function, R"(
+    use std::intrinsics::float_sqrt
+
+    fun f() -> Void {
+        let x: F64 = float_sqrt(2.0_f64)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_bare_call_of_same_module_overloads_and_generics, R"(
+    fun over(x: S32) -> S32 { ret x }
+    fun over(x: Bool) -> Bool { ret x }
+    fun same_t[T](x: T) -> T { ret x }
+
+    fun f() -> Void {
+        let a: Bool = over(true)
+        let b: S32 = over(1)
+        let c: Bool = same_t(false)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorFunctionCallAst,
+  test_valid_call_of_a_function_value_and_a_qualified_call, R"(
+    fun plain(x: S32) -> S32 { ret x }
+
+    fun f() -> Void {
+        let fv = plain
+        let a: S32 = fv(1)
+        let b: Bool = std::intrinsics::float_sqrt(2.0_f64) == 1.0_f64
+    }
+)");

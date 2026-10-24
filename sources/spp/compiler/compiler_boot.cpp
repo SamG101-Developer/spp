@@ -158,6 +158,7 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Generate top-level scopes stage.
+  asts::TypeIdentifierAst::ClearPendingVisibility();
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlScopes);
     mod->Stage2_GenTopLvlScopes(sm, &meta);
@@ -247,6 +248,11 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
     mod->Impl->CheckExtensionMembers(sm, &meta);
     sm->RestartWalk();
   }
+
+  // Every class's visibility is on its symbol now, so the
+  // names read before it was (signatures, attributes) are
+  // checked, as the rest are where they are read.
+  asts::TypeIdentifierAst::CheckPendingVisibility(sm);
 
   for (auto const &mod : _Modules) {
     PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
