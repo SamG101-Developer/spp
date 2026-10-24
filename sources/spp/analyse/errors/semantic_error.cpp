@@ -244,6 +244,15 @@ SppTypeMismatchError::SppTypeMismatchError(
   AddHeader(1, "Type Mismatch Error");
   AddCtxForErr(&lhs, "Expected type " + INLINE_INFO(TypeForMessage(lhs_ty)));
   AddErr(&rhs, "Found type " + INLINE_INFO(TypeForMessage(rhs_ty)));
+
+  if (lhs_ty.ToString().starts_with('$') or rhs_ty.ToString().starts_with('$')) {
+    AddFooter(
+      "The two types are not symbolically equal. A function used as a value has a type of its own, which no other\n"
+      "function has.",
+      "Declare the function type the value is used as, for example \"let f: FunRef[(S32,), S32] = ..\", so each\n"
+      "function is converted into it.");
+    return;
+  }
   AddFooter(
     "The two types are not symbolically equal.",
     "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
