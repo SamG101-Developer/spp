@@ -204,7 +204,8 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     // "Gen" returned by an ordinary function has. A class
     // superimposing one carries it in its first field.
     const auto llvm_gen_type = lhs_type_sym->LlvmInfo->LlvmType;
-    const auto llvm_handle_ptr = type_predicates::IsTypeGenerator(lhs_ref, *sm->CurrentScope)
+    const auto llvm_handle_ptr = type_predicates::IsTypeGenerator(
+      lhs_ref.WithoutConvention(), *sm->CurrentScope)
       ? llvm_generator_addr
       : ctx->Builder.CreateStructGEP(
         llvm_gen_type, llvm_generator_addr, codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0),

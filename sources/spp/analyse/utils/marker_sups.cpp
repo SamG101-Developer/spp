@@ -115,9 +115,14 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
     return TypeRef();
   }
 
-  // Search the type itself, then its super classes by symbol, for a direct generator type.
+  // Search the type itself, then its super classes by symbol,
+  // for a direct generator type. A borrow of one is a generator
+  // too ("g.res()" on a "&mut Gen[S32]"): whether it may be
+  // resumed is the "send" call's "&mut self" to check, so the
+  // kind checks, which match no borrow, are given the type itself.
   const auto generator_candidates = FindMarkerSups(
-    ref, scope, [&](TypeRef const &t) { return type_predicates::IsTypeGenerator(t, scope); });
+    ref.WithoutConvention(), scope,
+    [&](TypeRef const &t) { return type_predicates::IsTypeGenerator(t, scope); });
 
   // If there are no Gen or GenOnce super types, then the
   // generator and yield type cannot be obtained, so either

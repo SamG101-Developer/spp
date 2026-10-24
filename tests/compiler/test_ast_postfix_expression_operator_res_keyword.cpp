@@ -296,3 +296,37 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = c.send(1)
     }
 )");
+
+// Resuming needs only a "&mut" of the generator, so a "&mut" borrow of one can be resumed; a "&" borrow cannot.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_res_through_a_mut_borrow, R"(
+    fun f(g: &mut Gen[S32]) -> Void {
+        let x = g.res()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_through_an_immutable_borrow,
+    SppInvalidMutationError, R"(
+    fun f(g: &Gen[S32]) -> Void {
+        let x = g.res()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_res_sending_through_a_mut_borrow, R"(
+    fun f(g: &mut Gen[S32, Bool]) -> Void {
+        let x = g.res(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_loop_over_a_mut_borrowed_generator, R"(
+    fun f(g: &mut Gen[S32]) -> Void {
+        loop x in g { }
+    }
+)");

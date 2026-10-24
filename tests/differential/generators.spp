@@ -1,5 +1,5 @@
-# Generators: values yielded from a loop in a coroutine, a coroutine ended early by "ret", and one driven by hand past
-# its end, where every later resumption answers "GenDone".
+# Generators: values yielded from a loop in a coroutine, a coroutine ended early by "ret", one driven by hand past
+# its end, where every later resumption answers "GenDone", and one resumed and looped over through a "&mut" borrow.
 
 fun show(what: &StrView, text: Str) -> Void {
   std::console::print(what)
@@ -25,6 +25,26 @@ cor stops_early(stop_after: USize) -> std::iterator::Iterator[USize] {
   }
 }
 
+cor counts(from: U32) -> Gen[U32] {
+  gen from
+  gen from + 1_u32
+  gen from + 2_u32
+}
+
+fun step(g: &mut Gen[U32]) -> Void {
+  let r = g.res()
+  case r of {
+    is U32(..) { show("stepped", Str::from(r)) }
+    else { show("stepped", Str::from("done")) }
+  }
+}
+
+fun drain(g: &mut Gen[U32]) -> Void {
+  loop x in g {
+    show("drained", Str::from(x))
+  }
+}
+
 fun main() -> Void {
   loop x in squares(6_u32) {
     show("square", Str::from(x))
@@ -45,4 +65,10 @@ fun main() -> Void {
   std::mem::ops::drop(g)
   show("yielded", Str::from(yielded))
   show("exhausted", Str::from(exhausted))
+
+  let mut c = counts(7_u32)
+  step(&mut c)
+  drain(&mut c)
+  step(&mut c)
+  std::mem::ops::drop(c)
 }
