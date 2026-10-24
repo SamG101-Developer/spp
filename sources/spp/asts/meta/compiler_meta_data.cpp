@@ -29,6 +29,7 @@ auto CompilerMetaData::ResetContext() -> void {
   EnclosingFnFlavour = nullptr;
   EnclosingFnRetType = nullptr;
   EnclosingFnSourceRetType = nullptr;
+  ClosureRetJoin = nullptr;
   EnclosingFnCmp = nullptr;
   OverriddenScopeForClosure = nullptr;
   CurrentLambdaOuterScope = nullptr;
@@ -39,8 +40,7 @@ auto CompilerMetaData::ResetContext() -> void {
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
-  LoopTargetTypes.clear();
+  LoopJoins.clear();
   ObjectInitType = nullptr;
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
@@ -85,6 +85,7 @@ auto CompilerMetaData::Save() -> void {
   s.EnclosingFnFlavour = EnclosingFnFlavour;
   s.EnclosingFnRetType = EnclosingFnRetType;
   s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
+  s.ClosureRetJoin = ClosureRetJoin;
   s.EnclosingFnCmp = EnclosingFnCmp;
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCall = TargetCall;
@@ -94,8 +95,7 @@ auto CompilerMetaData::Save() -> void {
   s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
-  s.LoopReturnTypes = LoopReturnTypes;
-  s.LoopTargetTypes = LoopTargetTypes;
+  s.LoopJoins = LoopJoins;
   s.ObjectInitType = ObjectInitType;
   s.PostfixExpressionLhs = PostfixExpressionLhs;
   s.UnaryExpressionRhs = UnaryExpressionRhs;
@@ -151,6 +151,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
     EnclosingFnFlavour = state.EnclosingFnFlavour;
     EnclosingFnRetType = std::move(state.EnclosingFnRetType);
     EnclosingFnSourceRetType = std::move(state.EnclosingFnSourceRetType);
+    ClosureRetJoin = state.ClosureRetJoin;
     EnclosingFnCmp = state.EnclosingFnCmp;
   }
   OverriddenScopeForClosure = state.OverriddenScopeForClosure;
@@ -162,8 +163,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
-  LoopReturnTypes = std::move(state.LoopReturnTypes);
-  LoopTargetTypes = std::move(state.LoopTargetTypes);
+  LoopJoins = std::move(state.LoopJoins);
   ObjectInitType = std::move(state.ObjectInitType);
   PostfixExpressionLhs = state.PostfixExpressionLhs;
   UnaryExpressionRhs = state.UnaryExpressionRhs;

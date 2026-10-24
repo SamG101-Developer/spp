@@ -85,6 +85,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   meta->EnclosingFnFlavour = this->TokFun.get();
   meta->EnclosingFnRetType = ret_type_sym->FqName();
   meta->EnclosingFnSourceRetType = ReturnType;
+  meta->ClosureRetJoin = nullptr;
   meta->EnclosingFnScope = sm->CurrentScope;
   meta->EnclosingFnCmp = TokCmp.get();
   {
@@ -121,7 +122,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
 
   sm->MoveOutOfCurrentScope();
   meta->Restore(true);
-  meta->LoopReturnTypes->clear();
+  meta->LoopJoins.clear();
 }
 
 auto SubroutinePrototypeAst::Stage11_CodeGen(
@@ -175,6 +176,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnFlavour = TokFun.get();
     meta->EnclosingFnRetType = ret_type_sym->FqName();
     meta->EnclosingFnSourceRetType = ReturnType;
+    meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.

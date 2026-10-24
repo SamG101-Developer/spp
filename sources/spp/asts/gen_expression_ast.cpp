@@ -16,6 +16,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.coroutine_prototype_ast;
@@ -140,17 +141,26 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
   }
 
-  // Functions provide the return type, closures require
-  // inference; handle the inference.
+  // Coroutines provide the generator type. A coroutine closure with
+  // none written has its "gen"s agree on the yield type, as a "case"'s
+  // branches do ("ClosureRetJoin"), and resolves each against the
+  // generator type that gives it ("ResolveYield"). A value that
+  // diverges ("!") is no value.
   if (meta->EnclosingFnRetType == nullptr) {
-    _GenType = GenType(Expr ? Expr->PosStart() : TokGen->PosStart(), expr_type);
-    _GenType->Stage7_AnalyseSemantics(sm, meta);
-    meta->EnclosingFnRetType = _GenType;
-    meta->EnclosingFnSourceRetType = expr_type;
+    if (meta->ClosureRetJoin != nullptr) {
+      const auto diverges = expr_type->IsNeverType();
+      meta->ClosureRetJoin->Give(*this, std::move(expr_type), *sm->CurrentScope, diverges);
+    }
+    return;
   }
-  else {
-    _GenType = meta->EnclosingFnRetType;
-  }
+  ResolveYield(meta->EnclosingFnRetType, std::move(expr_type), sm, meta);
+}
+
+auto GenExpressionAst::ResolveYield(
+  Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
+  -> void {
+  IMPORT_UTILS;
+  _GenType = std::move(gen_type);
 
   // Determine the "Yield" type of the enclosing function
   // (to type check the expression against).
@@ -362,7 +372,9 @@ auto GenExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The generator's "Send" argument, off its identity; "Void" for a "GenOnce", which has none.
   using generate::common_types_precompiled::VOID;
-  return not _IsOnce
+  // Before an inferred coroutine closure resolves it, its generator
+  // takes nothing sent ("Gen[Yield]"), as it will once it does.
+  return not _IsOnce and _GenType != nullptr
     ? TypeRef::Of(*_GenType, *sm->CurrentScope).Symbol->TypeArgRef("Send")
     : TypeRef::Of(*VOID, *sm->CurrentScope);
 }

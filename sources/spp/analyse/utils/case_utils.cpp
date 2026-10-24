@@ -239,122 +239,20 @@ auto spp::analyse::utils::case_utils::ResolvePatternChecks(
   return true;
 }
 
-auto spp::analyse::utils::case_utils::ValidateInconsistentTypes(
+auto spp::analyse::utils::case_utils::JoinBranches(
   Vec<CaseExpressionBranchAst*> const &branches, ScopeManager &sm,
-  CompilerMetaData *meta) -> Tup<Pair<Ast*, Shared<TypeAst>>, Vec<Pair<Ast*, Shared<TypeAst>>>> {
-  //
-  using errors::SppTypeMismatchError;
-
-  // Collect type information for each branch, pairing the
-  // branch with its inferred type.
-  auto branches_type_info = branches
-    | genex::views::transform([&sm, meta](auto *x) { return MakePair(x, x->InferType(&sm, meta)); })
-    | genex::to<Vec>();
-
-  // The valued branches are branches that are non-terminating.
-  // This is because "ret" from a branch doesn't pass a value
-  // back to the binding, so shouldn't be considered for type
-  // checking.
-  auto valued_branches_type_info = branches_type_info
-    | genex::views::remove_if([&sm, meta](auto const &x) { return x.first->Body->Diverges(&sm, meta); })
-    | genex::to<Vec>();
-
-  // When every branch diverges, the ones typed "!" stand for the
-  // case (it fits whatever it is assigned to); a "ret" branch's
-  // own type is "Void", which the case never produces. No value
-  // leaves such a case, so there is nothing for its branches to
-  // agree on with what it is assigned to.
-  const auto every_branch_diverges = valued_branches_type_info.empty();
-  if (valued_branches_type_info.empty()) {
-    valued_branches_type_info = branches_type_info
-      | genex::views::filter([](auto const &x) { return x.second->IsNeverType(); })
-      | genex::to<Vec>();
+  CompilerMetaData *meta) -> type_join::TypeJoin {
+  // A branch that diverges ("ret" from a branch) passes no value
+  // back to the binding, so it is no value for the others to agree
+  // with. An error points at a branch's final member.
+  auto join = type_join::TypeJoin(meta->AssignmentTargetType, sm.CurrentScope, meta->AssignmentTarget.get());
+  for (auto *const branch : branches) {
+    auto const *const final_member = branch->Body->FinalMember();
+    join.Give(
+      final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(branch),
+      branch->InferType(&sm, meta), *sm.CurrentScope, branch->Body->Diverges(&sm, meta));
   }
-  if (valued_branches_type_info.empty()) { valued_branches_type_info = branches_type_info; }
-
-  // Filter the branch types down to variant types for custom
-  // analysis.
-  auto variant_branches_type_info = valued_branches_type_info
-    | genex::views::filter([&sm](auto &&x) {
-      return type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*x.second, *sm.CurrentScope), *sm.CurrentScope);
-    })
-    | genex::to<Vec>();
-
-  // Set the master branch type to the first branch that has a
-  // value: a branch that diverges ("!") has none for the others
-  // to agree with, and only a case whose every branch diverges
-  // is "!" itself. This is the default and may be subsequently
-  // changed. Override it if an assignment type is given.
-  auto master_branch_type_info = MakePair<CaseExpressionBranchAst*, Shared<TypeAst>>(nullptr, nullptr);
-  for (auto const &[branch, type] : valued_branches_type_info) {
-    if (not type->IsNeverType()) {
-      master_branch_type_info = MakePair(branch, type);
-      break;
-    }
-  }
-  if (master_branch_type_info.first == nullptr and not valued_branches_type_info.empty()) {
-    master_branch_type_info = MakePair(valued_branches_type_info[0].first, valued_branches_type_info[0].second);
-  }
-  if (meta->AssignmentTargetType != nullptr) {
-    master_branch_type_info = MakePair(nullptr, meta->AssignmentTargetType);
-  }
-
-  // Otherwise, if there are variant branches, use the most
-  // variant type as the master branch type.
-  else if (not variant_branches_type_info.empty()) {
-    auto most_inner_types = 0uz;
-    for (auto &&[variant_branch, variant_type] : variant_branches_type_info) {
-      const auto variant_size = type_members::VariantMemberRefs(
-        TypeRef::Of(*variant_type, *sm.CurrentScope), *sm.CurrentScope).size();
-      if (variant_size > most_inner_types) {
-        master_branch_type_info = {variant_branch, variant_type};
-        most_inner_types = variant_size;
-      }
-    }
-  }
-
-  // Remove the master branch pointer from the list of remaining
-  // branch types and check all types match. A "!" branch fits
-  // the master type like any value would, so "TypeEq" drops it.
-  auto mismatch_branches_type_info = valued_branches_type_info
-    | genex::views::remove_if([&](auto const &x) {
-      return x.first == master_branch_type_info.first;
-    })
-    | genex::views::remove_if([&](auto const &x) {
-      return type_compare::Assignable(
-        TypeRef::Of(*master_branch_type_info.second, *sm.CurrentScope),
-        TypeRef::Of(*x.second, *sm.CurrentScope),
-        *sm.CurrentScope, *sm.CurrentScope);
-    })
-    | genex::to<Vec>();
-
-  if (not every_branch_diverges and not mismatch_branches_type_info.empty()) {
-    const auto [mismatch_branch, mismatch_branch_type] = std::move(mismatch_branches_type_info[0]);
-    const auto [master_branch, master_branch_type] = master_branch_type_info;
-    const auto final_member = master_branch != nullptr
-      ? master_branch->Body->FinalMember()
-      : meta->AssignmentTarget != nullptr
-      ? static_cast<Ast*>(meta->AssignmentTarget.get())
-      : mismatch_branch->Body->FinalMember();
-    Raise<SppTypeMismatchError>(
-      ERR_ARGS(*final_member, *master_branch_type, *mismatch_branch->Body->FinalMember(), *mismatch_branch_type));
-  }
-
-  // The `master_branch_type_info.first` is deliberately null when an
-  // assignment target type drove the master type (see above); calling
-  // `To<>()` through that null pointer is UB, so guard it and keep
-  // the null.
-  const auto cast_master_branch_type_info = MakePair(
-    master_branch_type_info.first ? master_branch_type_info.first->template ToUnchecked<Ast>() : nullptr,
-    master_branch_type_info.second);
-
-  // Cast to common AST nodes and return with the types.
-  const auto cast_branches_type_info = branches_type_info
-    | genex::views::transform([](auto &&x) {
-      return MakePair(x.first->template ToUnchecked<Ast>(), x.second);
-    })
-    | genex::to<Vec>();
-  return {cast_master_branch_type_info, cast_branches_type_info};
+  return join;
 }
 
 auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(

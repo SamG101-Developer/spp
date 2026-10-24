@@ -13,6 +13,7 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.defer_statement_ast;
@@ -101,17 +102,20 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Cond, *cond_ty, "loop"));
   }
 
+  // The loop's "exit"s, and its "else" once there is one, agree on
+  // one type as a "case"'s branches do: onto what the loop is
+  // assigned to, if anything ("type_join::TypeJoin").
+  auto join = analyse::utils::type_join::TypeJoin(
+    meta->AssignmentTargetType, sm->CurrentScope, meta->AssignmentTarget.get());
+
   // Set the loop level information into the "meta" object.
   {
     const auto _meta_guard = MetaGuard(meta);
     const auto depth = meta->LoopCurrentDepth;
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
-
-    // The type the loop is assigned to, if any, is what each "exit"
-    // goes into, as a "case"'s branches go into theirs.
-    meta->LoopTargetTypes.resize(depth + 1);
-    meta->LoopTargetTypes[depth] = {meta->AssignmentTargetType, sm->CurrentScope};
+    meta->LoopJoins.resize(depth + 1);
+    meta->LoopJoins[depth] = &join;
 
     // The body never yields the loop's value ("exit" does), so
     // it is not what the loop is being assigned to - as its
@@ -119,27 +123,25 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
 
-    // The exit types are kept by depth, so a loop before this one at
-    // the same depth left its own there: this loop starts without.
-    meta->LoopReturnTypes->erase(depth);
     Body->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(depth)) {
-      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[depth];
-
-      // A loop exited with a value is its target's type, when it has
-      // one; one whose every "exit" diverges stays "!".
-      auto const &[target_type, target_scope] = meta->LoopTargetTypes[depth];
-      auto &[exit_expr, exit_type, exit_scope] = *_LoopExitTypeInfo;
-      if (target_type != nullptr and not exit_type->IsNeverType()) {
-        exit_type = target_type;
-        exit_scope = const_cast<Scope*>(target_scope);
-      }
-    }
   }
 
-  // Analyse the else block if it exists.
+  // Analyse the else block if it exists: the loop's value when the
+  // condition ends it, so one more value for a loop with "exit"s.
+  // A loop with none is "Void", which the "else" must be too.
   if (ElseBlock != nullptr) {
     ElseBlock->Stage7_AnalyseSemantics(sm, meta);
+    if (not join.Empty()) {
+      auto const *const final_member = ElseBlock->Body->FinalMember();
+      join.Give(
+        final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(ElseBlock.get()),
+        ElseBlock->InferType(sm, meta), *sm->CurrentScope, ElseBlock->Body->Diverges(sm, meta));
+    }
+  }
+  _LoopExitTypeInfo = Nullopt;
+  if (not join.Empty()) {
+    _LoopExitTypeInfo = join.Solve();
+    join.InstantiateFnValues(*_LoopExitTypeInfo, sm, meta);
   }
 
   // Exit the loop scope.
@@ -501,11 +503,11 @@ auto LoopConditionalExpressionAst::InferType(
   const auto cond_is_true = cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE;
   if (not cond_is_true and ElseBlock == nullptr and _LoopExitTypeInfo.has_value()
     and not meta->IgnoreMissingElseBranchForInference) {
-    auto const &[exit_expr, exit_type, exit_scope] = *_LoopExitTypeInfo;
-    const auto exit_ref = TypeRef::Of(*exit_type, exit_scope != nullptr ? *exit_scope : *sm->CurrentScope);
+    auto const &agreed = *_LoopExitTypeInfo;
+    const auto exit_ref = TypeRef::Of(*agreed.Type, *agreed.TypeScope);
     RaiseIf<SppLoopMissingElseError>(
-      not exit_ref.IsNever and not type_predicates::IsTypeVoid(exit_ref, *sm->CurrentScope),
-      ERR_ARGS(*this, exit_expr != nullptr ? *static_cast<Ast const*>(exit_expr) : *static_cast<Ast const*>(this)));
+      not agreed.Diverges and not exit_ref.IsNever and not type_predicates::IsTypeVoid(exit_ref, *sm->CurrentScope),
+      ERR_ARGS(*this, agreed.Site != nullptr ? *agreed.Site : *static_cast<Ast const*>(this)));
   }
   return type;
 }

@@ -132,6 +132,7 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     meta->EnclosingFnFlavour = TokFun.get();
     meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
     meta->EnclosingFnSourceRetType = ReturnType;
+    meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
     // Check the return type superimposes the generator type, before the body reads its yield type.
     const auto gen = marker_sups::FindGenSup(
@@ -154,7 +155,7 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     }
     sm->MoveOutOfCurrentScope();
   }
-  meta->LoopReturnTypes->clear();
+  meta->LoopJoins.clear();
 }
 
 auto CoroutinePrototypeAst::Stage10_PreCodeGen(
@@ -352,6 +353,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     meta->EnclosingFnFlavour = TokFun.get();
     meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
     meta->EnclosingFnSourceRetType = ReturnType;
+    meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code. Generic

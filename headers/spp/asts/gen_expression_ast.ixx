@@ -53,6 +53,16 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
+  /// The rest of the analysis once the generator type is known: the
+  /// yield type read off it, the value forwarded and checked against
+  /// it. Run straight away, or, in a coroutine closure with no
+  /// written return type, by the closure once its "gen"s have agreed
+  /// on the yield type ("CompilerMetaData::ClosureRetJoin"), with
+  /// "sm" where this is written and the type this "gen" gave.
+  auto ResolveYield(
+    Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
+    -> void;
+
   /// A "gen" diverges where it reads as the return: in a "GenOnce"
   /// lowered to a subroutine ("CoroutinePrototypeAst::_LowerGenOnce"),
   /// which is generated with the enclosing flavour "fun". In a

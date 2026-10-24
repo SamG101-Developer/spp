@@ -13,6 +13,7 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::type_join, class TypeJoin);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
@@ -186,12 +187,19 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
 
   /// The return type of the enclosing function type. Again needed
   /// for "ret" and "gen" type checking. Null in a closure with no
-  /// written return type, until its first "ret" or "gen" sets it.
+  /// written return type: its "ret"s, or a coroutine closure's
+  /// "gen"s, agree on one ("ClosureRetJoin").
   Shared<TypeAst> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
   Shared<TypeAst> EnclosingFnSourceRetType;
+
+  /// In a closure with no written return type, the join its "ret"s
+  /// agree on its return type in, or a coroutine closure's "gen"s
+  /// on its yield type ("type_join::TypeJoin"), as a "case"'s
+  /// branches do; null anywhere else.
+  analyse::utils::type_join::TypeJoin *ClosureRetJoin;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
@@ -235,16 +243,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// reporting with incompatible "exit" levels.
   LoopExpressionAst *LoopCurrentAst;
 
-  /// Loop return type tracking over multiple levels, ensuring
-  /// good type checking against "exit" statements at any
-  /// level, targeting any level.
-  Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>> LoopReturnTypes;
-
-  /// The type each loop is assigned to, by depth, with the scope
-  /// it is read in: a loop being assigned to a declared type
-  /// ("let x: Opt[S32] = loop ..") has every "exit" go into it, as
-  /// a "case" does its branches. Null for a loop with no target.
-  Vec<Pair<Shared<TypeAst>, Scope const*>> LoopTargetTypes;
+  /// The join each loop's "exit"s agree on their type in, by
+  /// depth ("type_join::TypeJoin"): onto what the loop is assigned
+  /// to, if anything, as a "case"'s branches do. An "exit" at any
+  /// level gives its value to the loop it targets; each loop owns
+  /// its own join while its body is analysed.
+  Vec<analyse::utils::type_join::TypeJoin*> LoopJoins;
 
   /// The object initializer type, because the object initializer
   /// group needs it for generic inference.

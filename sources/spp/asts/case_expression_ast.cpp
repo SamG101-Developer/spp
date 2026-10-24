@@ -16,6 +16,7 @@ import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.pattern_solver;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
@@ -214,18 +215,11 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->CaseCondition = Cond.get();
     meta->IgnoreMissingElseBranchForInference = true;
-    const auto [master, branch_types] = case_utils::ValidateInconsistentTypes(
-      Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+    const auto join = case_utils::JoinBranches(Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
 
     // A function named as a branch's value stands for the
     // overload the case's type asks for.
-    if (master.second != nullptr) {
-      const auto master_ref = TypeRef::Of(*master.second, *sm->CurrentScope);
-      for (auto const &branch_type : branch_types) {
-        fn_values::InstantiateFnValue(
-          TypeRef::Of(*branch_type.second, *sm->CurrentScope), master_ref, sm, meta);
-      }
-    }
+    join.InstantiateFnValues(join.Solve(), sm, meta);
   }
 
   // What the branches match, worked out fresh for each analysis.
@@ -533,8 +527,8 @@ auto CaseExpressionAst::InferType(
   //  used as an expression that agreed type should be "Void" - "case x of { == 1 { 1 } else { 2 } }" discards an
   //  "S32" that nothing asked for. A case carries no signal for which of the two positions it is in, which is what
   //  the missing half needs; see the red test in "test_ast_case_expression.cpp".
-  auto [master_branch_type_info, branches_type_info] = case_utils::ValidateInconsistentTypes(
-    Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta);
+  const auto agreed = case_utils::JoinBranches(
+    Branches | genex::views::ptr | genex::to<Vec>(), *sm, meta).Solve();
 
   // A "case" that can fall through every branch has no value on that path, so it needs an "else" to be one: either
   // written, or every value matched by the branches ("pattern_solver::PatternSolver").
@@ -563,16 +557,16 @@ auto CaseExpressionAst::InferType(
     return generate::common_types_precompiled::NeverAt(PosStart());
   }
 
-  // Return the branches' return type. If there are any
+  // Return the branches' agreed type. If there are any
   // branches, otherwise Void.
-  return branches_type_info.empty()
+  return agreed.Type == nullptr
     ? VoidAt(PosStart())
-    : master_branch_type_info.second;
+    : agreed.Type;
 }
 
 auto CaseExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // The branches' agreed type, checked as written ("case_utils::ValidateInconsistentTypes"); resolved where it is read.
+  // The branches' agreed type, checked as written ("case_utils::JoinBranches"); resolved where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }

@@ -15,6 +15,7 @@ import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
@@ -26,12 +27,15 @@ import spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.gen_expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
@@ -181,7 +185,6 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     if (ReturnType != nullptr) {
       const auto written_ret = ReturnType;
       ReturnType = type_resolution::AnalyseWrittenType(*ReturnType, *sm, *meta);
-
       meta->EnclosingFnRetType = ReturnType;
       meta->EnclosingFnSourceRetType = written_ret;
     }
@@ -197,10 +200,47 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // in the loop. Prevent this by clearing loop info.
     meta->LoopCurrentDepth = 0;
     meta->LoopCurrentAst = nullptr;
-    meta->LoopReturnTypes = MakeShared<decltype(meta->LoopReturnTypes)::element_type>();
+    meta->LoopJoins.clear();
+
+    // With no written return type, the "ret"s agree on one, as a
+    // "case"'s branches do ("type_join::TypeJoin"), and so does the
+    // body's own value when it can finish without one. A coroutine
+    // closure's "gen"s agree on its yield type the same way.
+    auto ret_join = analyse::utils::type_join::TypeJoin();
+    const auto infers_ret = ReturnType == nullptr;
+    const auto is_cor = Tok->TokenType == lex::SppTokenType::KW_COR;
+    meta->ClosureRetJoin = infers_ret ? &ret_join : nullptr;
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
+    if (infers_ret and is_cor and not ret_join.Empty()) {
+      // The generator yields the agreed type, and each "gen" is
+      // resolved against it where it is written.
+      const auto agreed = ret_join.Solve();
+      auto gen_type = generate::common_types::GenType(PosStart(), agreed.Type);
+      gen_type->Stage7_AnalyseSemantics(sm, meta);
+      meta->EnclosingFnRetType = gen_type;
+      meta->EnclosingFnSourceRetType = agreed.Type;
+      for (auto const &value : ret_join.Values()) {
+        auto tm = sm->NewManagerAt(const_cast<Scope*>(value.TypeScope));
+        const_cast<GenExpressionAst*>(value.Site->To<GenExpressionAst>())->ResolveYield(
+          gen_type, value.Type, &tm, meta);
+      }
+    }
+    else if (infers_ret and not ret_join.Empty()) {
+      if (not Body->Diverges(sm, meta)) {
+        auto const *const block = Body->To<InnerScopeExpressionAst>();
+        auto const *const final_member = block != nullptr ? block->FinalMember() : nullptr;
+        ret_join.Give(
+          final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(Body.get()),
+          Body->InferType(sm, meta), *sm->CurrentScope, false);
+      }
+      const auto agreed = ret_join.Solve();
+      ret_join.InstantiateFnValues(agreed, sm, meta);
+      meta->EnclosingFnRetType = agreed.Diverges
+        ? generate::common_types_precompiled::NeverAt(PosStart())
+        : agreed.Type;
+    }
     _TrueRetType = meta->EnclosingFnRetType != nullptr
       ? meta->EnclosingFnRetType
       : Body->InferType(sm, meta);
@@ -276,8 +316,9 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 }
 
 auto ClosureExpressionAst::_BuildDropCaptures(
-  llvm::Function &closure_fn, llvm::StructType *env_ty, ScopeManager *sm, CompilerMetaData *meta,
-  codegen::LlvmCtx *ctx) -> llvm::Function* {
+  llvm::Function &closure_fn, llvm::StructType *env_ty,
+  ScopeManager *sm, CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx) const -> llvm::Function* {
   IMPORT_UTILS;
   // Only what is captured by value is owned by the environment; a borrow
   // owns nothing, and a value needing no drop leaves nothing to do. So a

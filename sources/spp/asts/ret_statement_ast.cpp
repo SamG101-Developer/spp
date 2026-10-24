@@ -14,6 +14,7 @@ import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_resolution;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -119,12 +120,16 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
     Source._OriginalRetType = meta->EnclosingFnSourceRetType;
   }
 
-  // Functions provide the return type, closures require inference; handle the inference.
+  // Functions provide the return type; a closure with none written has its "ret"s agree on one ("ClosureRetJoin"),
+  // which each is generated into once the closure knows it (no "_RetType" of its own). A value that diverges ("!")
+  // is no value.
   if (meta->EnclosingFnRetType == nullptr) {
-    _RetType = expr_type;
-    Source._OriginalRetType = _RetType;
-    meta->EnclosingFnRetType = _RetType;
-    meta->EnclosingFnSourceRetType = _RetType;
+    _RetType = nullptr;
+    if (meta->ClosureRetJoin != nullptr and function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
+      Ast const &site = Expr != nullptr ? *Expr->To<Ast>() : *TokRet->To<Ast>();
+      meta->ClosureRetJoin->Give(site, expr_type, *sm->CurrentScope, expr_type->IsNeverType());
+    }
+    return;
   }
 
   // Type check the expression type against the return type of the enclosing subroutine.
@@ -216,7 +221,7 @@ auto RetStatementAst::EmitReturn(
   const auto _meta_guard = MetaGuard(meta);
   auto llvm_ret_val = static_cast<llvm::Value*>(nullptr);
   if (expr != nullptr) {
-    meta->AssignmentTargetType = ret_type_written;
+    meta->AssignmentTargetType = ret_type;
     if (meta->AssignmentTarget == nullptr) {
       meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
     }

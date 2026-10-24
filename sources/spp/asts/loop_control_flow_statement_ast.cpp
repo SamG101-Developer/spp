@@ -13,6 +13,7 @@ import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_join;
 import spp.asts.ast;
 import spp.asts.expression_ast;
 import spp.asts.loop_conditional_expression_ast;
@@ -106,46 +107,14 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       _ExprIsNever = expr_type->IsNeverType();
     }
 
-    // A loop assigned to a type takes each "exit" into it.
+    // The value goes to the loop it exits, whose "exit"s and "else"
+    // agree on the loop's type there ("type_join::TypeJoin"). One
+    // that diverges ("!") is no value. A bare "exit" has no
+    // expression, so the loop control itself is named.
     const auto depth = nested_loop_depth - num_controls;
-    Ast const &found_at = Expr != nullptr ? *Expr->To<Ast>() : *To<Ast>();
-    const auto [target_type, target_scope] = depth < meta->LoopTargetTypes.size()
-      ? meta->LoopTargetTypes[depth]
-      : Pair<Shared<TypeAst>, Scope const*>();
-    if (target_type != nullptr and not expr_type->IsNeverType()) {
-      RaiseIf<SppTypeMismatchError>(
-        not type_compare::Assignable(
-          TypeRef::Of(*target_type, *target_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *target_scope,
-          *sm->CurrentScope),
-        ERR_ARGS(found_at, *target_type, found_at, *expr_type));
-    }
-
-    // Insert or check the depth's corresponding exit type.
-    if (meta->LoopReturnTypes->contains(depth)) {
-      // If the type is already set, check it matches the current
-      // expression's type. An exit that diverges ("!") has no value
-      // to agree with: it neither checks against the loop's type
-      // nor sets it, and a valued exit replaces a stored "!" one.
-      auto [that_expr, that_expr_type, that_scope] = meta->LoopReturnTypes->at(depth);
-      if (that_expr_type->IsNeverType() and not expr_type->IsNeverType()) {
-        (*meta->LoopReturnTypes)[depth] = {Expr ? Expr.get() : nullptr, expr_type, sm->CurrentScope};
-      }
-      // Otherwise this exit's value goes into the loop's type, as
-      // the "else" block's does: "exit n" (an "Opt[S32]") then
-      // "exit Some(..)" is an "Opt[S32]" loop. A bare "exit" has no
-      // expression, so the loop control itself is named.
-      else if (not expr_type->IsNeverType() and target_type == nullptr) {
-        Ast const &expected_at = that_expr != nullptr ? *that_expr->To<Ast>() : found_at;
-        RaiseIf<SppTypeMismatchError>(
-          not type_compare::Assignable(
-            TypeRef::Of(*that_expr_type, *that_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *that_scope,
-            *sm->CurrentScope),
-          ERR_ARGS(expected_at, *that_expr_type, found_at, *expr_type));
-      }
-    }
-    else {
-      auto stored_expr = Expr ? Expr.get() : nullptr;
-      (*meta->LoopReturnTypes)[depth] = {stored_expr, expr_type, sm->CurrentScope};
+    auto const &found_at = Expr != nullptr ? *Expr->To<Ast>() : *To<Ast>();
+    if (depth < meta->LoopJoins.size() and meta->LoopJoins[depth] != nullptr) {
+      meta->LoopJoins[depth]->Give(found_at, expr_type, *sm->CurrentScope, expr_type->IsNeverType());
     }
   }
 }

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.case_utils;
+import spp.analyse.utils.type_join;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import llvm;
@@ -58,13 +59,13 @@ namespace spp::analyse::utils::case_utils {
     MatchPlan const &plan, Vec<PatternCheck> const &checks,
     ScopeManager *sm, CompilerMetaData *meta) -> bool;
 
-  /// Validation logic for ensuring the branches all return the
-  /// same type, making type inference consistent and sound. A
-  /// type-check between the terminating statements is performed.
-  SPP_EXP_FUN auto ValidateInconsistentTypes(
+  /// The branches' values, given to the join their type is agreed
+  /// by ("type_join::TypeJoin"): each branch's final member and
+  /// type, read here, onto what the case is assigned to, if it is.
+  SPP_EXP_FUN auto JoinBranches(
     Vec<CaseExpressionBranchAst*> const &branches,
     ScopeManager &sm, CompilerMetaData *meta)
-    -> Tup<Pair<Ast*, Shared<TypeAst>>, Vec<Pair<Ast*, Shared<TypeAst>>>>;
+    -> type_join::TypeJoin;
 
   /// Similar to the type check validation, but for memory. This
   /// is more complex as we must check every symbol, and reset

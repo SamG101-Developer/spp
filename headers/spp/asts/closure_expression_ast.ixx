@@ -98,14 +98,16 @@ private:
   /// shared "FunMov[Args, Out]" instantiation to record it; a
   /// plain function has had a "$" mock of its own since stage 1
   /// for the same reason.
-  auto _MakeMockType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
+  auto _MakeMockType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;
 
   /// The function dropping what this closure captured by value
   /// ("void(ptr env)"), which its environment's header points to;
   /// null when nothing it owns needs dropping.
   auto _BuildDropCaptures(
-    llvm::Function &closure_fn, llvm::StructType *env_ty, ScopeManager *sm, CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx) -> llvm::Function*;
+    llvm::Function &closure_fn, llvm::StructType *env_ty,
+    ScopeManager *sm, CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx) const -> llvm::Function*;
 
   /// The class prototypes behind the minted closure types, owned
   /// for the length of the compile.

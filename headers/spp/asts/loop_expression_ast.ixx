@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.loop_expression_ast;
+import spp.analyse.utils.type_join;
 import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
@@ -16,7 +17,9 @@ use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
 protected:
-  Opt<Tup<ExpressionAst*, Shared<TypeAst>, Scope*>> _LoopExitTypeInfo;
+  /// The type the loop's "exit"s and its "else" agreed on, at stage 7
+  /// ("type_join::TypeJoin"); none for a loop with no "exit".
+  Opt<analyse::utils::type_join::JoinedValue> _LoopExitTypeInfo;
 
 public:
   /// The "loop" token starting the loop expression.

@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_join;
 import spp.asts.boolean_literal_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.identifier_ast;
@@ -48,40 +49,23 @@ auto LoopExpressionAst::InferType(
   IMPORT_UTILS;
   using generate::common_types_precompiled::VoidAt;
 
-  // Get the loop's exit type (or Void if there are no
-  // exits from inside the loop).
-  auto [exit_expr, loop_type, exit_scope] = _LoopExitTypeInfo.has_value()
-    ? *_LoopExitTypeInfo
-    : Tup(static_cast<ExpressionAst*>(nullptr), VoidAt(PosStart()), static_cast<Scope*>(nullptr));
-  exit_expr = exit_expr ? exit_expr : this;
-
-  // Check the else block's type is the same as the loop exit
-  // type. An exit that diverges ("!") has no value for the else
-  // block to agree with, so the loop takes the else block's type
-  // instead; it is only "!" when that diverges too. The exit type
-  // is read in the scope its "exit" was written in.
+  // The type the loop's "exit"s and "else" agreed on ("TypeJoin", at stage 7): "!" when every one diverges. A loop
+  // with no "exit" is "Void", and its "else" must be too.
+  if (_LoopExitTypeInfo.has_value()) {
+    return _LoopExitTypeInfo->Diverges
+      ? generate::common_types_precompiled::NeverAt(PosStart())
+      : _LoopExitTypeInfo->Type;
+  }
   if (ElseBlock != nullptr and not meta->IgnoreMissingElseBranchForInference) {
+    const auto void_type = VoidAt(PosStart());
     const auto else_type = ElseBlock->InferType(sm, meta);
-    const auto final_member = ElseBlock->Body->FinalMember();
-    if (loop_type->IsNeverType()) {
-      loop_type = else_type;
-      exit_scope = nullptr;
-    }
-
-    const auto loop_scope = exit_scope != nullptr
-      ? *exit_scope
-      : *sm->CurrentScope;
-
     RaiseIf<SppTypeMismatchError>(
       not type_compare::Assignable(
-        TypeRef::Of(*loop_type, loop_scope),
-        TypeRef::Of(*else_type, *sm->CurrentScope),
-        loop_scope, *sm->CurrentScope),
-      ERR_ARGS(*exit_expr, *loop_type, *final_member, *else_type));
+        TypeRef::Of(*void_type, *sm->CurrentScope), TypeRef::Of(*else_type, *sm->CurrentScope),
+        *sm->CurrentScope, *sm->CurrentScope),
+      ERR_ARGS(*this, *void_type, *ElseBlock->Body->FinalMember(), *else_type));
   }
-
-  // Return the loop type.
-  return loop_type;
+  return VoidAt(PosStart());
 }
 
 auto LoopExpressionAst::InferTypeRef(
