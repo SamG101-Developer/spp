@@ -26,6 +26,7 @@ Todo
 [Ii]nlined?
 [Ii]nitialisers?
 [Ii]ntrinsics?
+[Ii]terables?
 [Ii]mmediates?
 [Ll]ockfiles?
 [Ll]ockdown
