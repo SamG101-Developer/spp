@@ -108,3 +108,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+// A "?" returns a bare "Fail[E]" ("Res::op_as_residual"), which only a written return type widens: inferred, it is the
+// closure's type, and the success path's value ("Void" here) does not fit it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_invalid_inferred_early_return_needs_a_declared_type,
+  SppTypeMismatchError, R"(
+    cls E { }
+
+    fun g() -> std::result::Res[Void, E] { ret std::result::Pass[Void]() }
+
+    fun f() -> Void {
+        let c = () g()?
+    }
+)");
