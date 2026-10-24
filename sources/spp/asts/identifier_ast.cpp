@@ -267,10 +267,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // with the normal stack alloca instruction, rather with
   // llvm's "ConstantXXX" method, wrapped into a global.
   if (llvm::isa<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca)) {
-    const auto defined_global = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
-    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-      *defined_global, *codegen::GetEmissionModule(*ctx));
-    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
+    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.global" + uid, ctx);
   }
 
   // Handle any other address the symbol was pointed at, such

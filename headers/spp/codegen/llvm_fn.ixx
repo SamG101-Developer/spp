@@ -39,6 +39,12 @@ namespace spp::codegen {
     llvm::GlobalVariable const &target,
     llvm::Module &current_module) -> llvm::GlobalVariable*;
 
+  /// Read the global constant a "cmp" symbol is held in, from the
+  /// module being emitted into, as the type it is read as.
+  SPP_EXP_FUN auto LoadGlobalConstant(
+    LlvmVarSymbolInfo const &info, Str const &name,
+    LlvmCtx *ctx) -> llvm::Value*;
+
   /// Get the module that code is currently being emitted into.
   /// This is the module owning the function that the builder
   /// is inserting into, which is not always "ctx->Module"; a

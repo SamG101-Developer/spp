@@ -120,6 +120,16 @@ auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   return declaration;
 }
 
+auto spp::codegen::LoadGlobalConstant(
+  LlvmVarSymbolInfo const &info, Str const &name, LlvmCtx *ctx) -> llvm::Value* {
+  // Declared here if it was defined in another module, and read
+  // as its symbol's type when its initializer has another shape.
+  const auto global_var = GetOrAddGlobalIntoCurrentModule(
+    *llvm::cast<llvm::GlobalVariable>(info.Alloca), *GetEmissionModule(*ctx));
+  const auto value_type = info.ValueType != nullptr ? info.ValueType : global_var->getValueType();
+  return ctx->Builder.CreateLoad(value_type, global_var, name);
+}
+
 /// [CHECKED]
 auto spp::codegen::StampCfiFn(
   llvm::Function &fn, TypeRef const &fn_sup) -> void {

@@ -268,10 +268,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
       }
       return folded->Stage11_CodeGen(sm, meta, ctx);
     }
-    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-      *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
-      *codegen::GetEmissionModule(*ctx));
-    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
+    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_type_member" + uid, ctx);
   }
 
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
@@ -279,10 +276,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   const auto var_sym = lhs_ns_scope->FindVarSymbol(Name.get(), true);
   if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-  const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-    *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
-    *codegen::GetEmissionModule(*ctx));
-  return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
+  return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
