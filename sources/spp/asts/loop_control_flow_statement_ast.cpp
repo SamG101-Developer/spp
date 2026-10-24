@@ -106,8 +106,21 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       _ExprIsNever = expr_type->IsNeverType();
     }
 
-    // Insert or check the depth's corresponding exit type.
+    // A loop assigned to a type takes each "exit" into it.
     const auto depth = nested_loop_depth - num_controls;
+    Ast const &found_at = Expr != nullptr ? *Expr->To<Ast>() : *To<Ast>();
+    const auto [target_type, target_scope] = depth < meta->LoopTargetTypes.size()
+      ? meta->LoopTargetTypes[depth]
+      : Pair<Shared<TypeAst>, Scope const*>();
+    if (target_type != nullptr and not expr_type->IsNeverType()) {
+      RaiseIf<SppTypeMismatchError>(
+        not type_compare::Assignable(
+          TypeRef::Of(*target_type, *target_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *target_scope,
+          *sm->CurrentScope),
+        ERR_ARGS(found_at, *target_type, found_at, *expr_type));
+    }
+
+    // Insert or check the depth's corresponding exit type.
     if (meta->LoopReturnTypes->contains(depth)) {
       // If the type is already set, check it matches the current
       // expression's type. An exit that diverges ("!") has no value
@@ -117,12 +130,17 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       if (that_expr_type->IsNeverType() and not expr_type->IsNeverType()) {
         (*meta->LoopReturnTypes)[depth] = {Expr ? Expr.get() : nullptr, expr_type, sm->CurrentScope};
       }
-      else if (not expr_type->IsNeverType()) {
+      // Otherwise this exit's value goes into the loop's type, as
+      // the "else" block's does: "exit n" (an "Opt[S32]") then
+      // "exit Some(..)" is an "Opt[S32]" loop. A bare "exit" has no
+      // expression, so the loop control itself is named.
+      else if (not expr_type->IsNeverType() and target_type == nullptr) {
+        Ast const &expected_at = that_expr != nullptr ? *that_expr->To<Ast>() : found_at;
         RaiseIf<SppTypeMismatchError>(
           not type_compare::Assignable(
-            TypeRef::Of(*expr_type, *sm->CurrentScope), TypeRef::Of(*that_expr_type, *that_scope), *sm->CurrentScope,
-            *that_scope),
-          ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+            TypeRef::Of(*that_expr_type, *that_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *that_scope,
+            *sm->CurrentScope),
+          ERR_ARGS(expected_at, *that_expr_type, found_at, *expr_type));
       }
     }
     else {

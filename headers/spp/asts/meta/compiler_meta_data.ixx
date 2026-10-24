@@ -79,6 +79,10 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// reaching their ends, so what they deferred runs at the
   /// jump ("EmitScopeExit"); an "exit" leaves this one too.
   Scope const *LoopScope = nullptr;
+
+  /// The loop's own type, which each value reaching the phi node
+  /// is coerced into; null when the loop yields no value.
+  Shared<TypeRef> Type = nullptr;
 };
 
 /// The master meta context used for additional information
@@ -235,6 +239,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// good type checking against "exit" statements at any
   /// level, targeting any level.
   Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>> LoopReturnTypes;
+
+  /// The type each loop is assigned to, by depth, with the scope
+  /// it is read in: a loop being assigned to a declared type
+  /// ("let x: Opt[S32] = loop ..") has every "exit" go into it, as
+  /// a "case" does its branches. Null for a loop with no target.
+  Vec<Pair<Shared<TypeAst>, Scope const*>> LoopTargetTypes;
 
   /// The object initializer type, because the object initializer
   /// group needs it for generic inference.

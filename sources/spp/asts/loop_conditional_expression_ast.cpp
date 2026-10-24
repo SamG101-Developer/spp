@@ -104,17 +104,36 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   // Set the loop level information into the "meta" object.
   {
     const auto _meta_guard = MetaGuard(meta);
+    const auto depth = meta->LoopCurrentDepth;
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
+
+    // The type the loop is assigned to, if any, is what each "exit"
+    // goes into, as a "case"'s branches go into theirs.
+    meta->LoopTargetTypes.resize(depth + 1);
+    meta->LoopTargetTypes[depth] = {meta->AssignmentTargetType, sm->CurrentScope};
 
     // The body never yields the loop's value ("exit" does), so
     // it is not what the loop is being assigned to - as its
     // code generation already treats it.
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
+
+    // The exit types are kept by depth, so a loop before this one at
+    // the same depth left its own there: this loop starts without.
+    meta->LoopReturnTypes->erase(depth);
     Body->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+    if (meta->LoopReturnTypes->contains(depth)) {
+      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[depth];
+
+      // A loop exited with a value is its target's type, when it has
+      // one; one whose every "exit" diverges stays "!".
+      auto const &[target_type, target_scope] = meta->LoopTargetTypes[depth];
+      auto &[exit_expr, exit_type, exit_scope] = *_LoopExitTypeInfo;
+      if (target_type != nullptr and not exit_type->IsNeverType()) {
+        exit_type = target_type;
+        exit_scope = const_cast<Scope*>(target_scope);
+      }
     }
   }
 
@@ -401,7 +420,9 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
     const auto _meta_guard = MetaGuard(meta);
     meta->LlvmEndBB = loop_end_bb;
     meta->LlvmPhi = phi;
-    meta->LlvmLoopStack.emplace_back(loop_cond_bb, loop_end_bb, phi, sm->CurrentScope);
+    meta->LlvmLoopStack.emplace_back(
+      loop_cond_bb, loop_end_bb, phi, sm->CurrentScope,
+      phi != nullptr ? MakeShared<TypeRef>(ret_ref) : nullptr);
     meta->AssignmentTargetType = ret_type;
 
     // Generate the condition. This block is branched back to

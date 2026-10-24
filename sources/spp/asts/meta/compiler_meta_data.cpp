@@ -40,6 +40,7 @@ auto CompilerMetaData::ResetContext() -> void {
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
   LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
+  LoopTargetTypes.clear();
   ObjectInitType = nullptr;
   PostfixExpressionLhs = nullptr;
   UnaryExpressionRhs = nullptr;
@@ -94,6 +95,7 @@ auto CompilerMetaData::Save() -> void {
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
   s.LoopReturnTypes = LoopReturnTypes;
+  s.LoopTargetTypes = LoopTargetTypes;
   s.ObjectInitType = ObjectInitType;
   s.PostfixExpressionLhs = PostfixExpressionLhs;
   s.UnaryExpressionRhs = UnaryExpressionRhs;
@@ -161,6 +163,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
   LoopReturnTypes = std::move(state.LoopReturnTypes);
+  LoopTargetTypes = std::move(state.LoopTargetTypes);
   ObjectInitType = std::move(state.ObjectInitType);
   PostfixExpressionLhs = state.PostfixExpressionLhs;
   UnaryExpressionRhs = state.UnaryExpressionRhs;
