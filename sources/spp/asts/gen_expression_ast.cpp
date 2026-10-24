@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -179,8 +180,9 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   if (gen_sym != gen_ref.Symbol) { _GenType = gen_sym->FqName(); }
   _IsOnce = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
 
-  // The yield type is read off the generator's identity, shared by every spelling of it, so the error points at the
-  // return type this coroutine wrote (else at this "gen").
+  // The yield type is read off the generator's identity, shared
+  // by every spelling of it, so the error points at the return
+  // type this coroutine wrote (else at this "gen").
   auto const &yield_at = meta->EnclosingFnSourceRetType != nullptr
     ? *meta->EnclosingFnSourceRetType->To<Ast>()
     : *To<Ast>();
@@ -189,6 +191,13 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     ERR_ARGS(
       ErrTypeAt(yield_ref, yield_at, *sm->CurrentScope), ErrTypeAt(yield_ref, yield_at, *sm->CurrentScope),
       Expr ? *Expr->To<Ast>() : *TokGen->To<Ast>(), *expr_type));
+
+  // A function named as the value stands for the overload the
+  // yield type asks for.
+  if (Expr != nullptr and Conv == nullptr) {
+    fn_values::InstantiateFnValue(
+      TypeRef::Of(*expr_type, *sm->CurrentScope), yield_ref, sm, meta);
+  }
 }
 
 auto GenExpressionAst::Stage8_CheckMemory(
