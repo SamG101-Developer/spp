@@ -285,7 +285,7 @@ namespace spp::analyse::utils::type_compare {
     /// variant's members (positionally, as its "Variants" tuple
     /// lists them, in their canonical order). None for anything
     /// else.
-    auto IdArgs(TypeId id) -> Vec<TypeIdArg> {
+    auto IdArgs(const TypeId id) -> Vec<TypeIdArg> {
       if (id == nullptr) { return {}; }
       auto const &head = scopes::HeadOf(id);
       if (head.Kind == TypeKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }
