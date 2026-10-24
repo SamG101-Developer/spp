@@ -69,6 +69,9 @@ fi
 if [ "$RUNNER_OS" = "macOS" ] && ! "$binary" --gtest_list_tests > /dev/null; then
   echo "::error::$binary crashed while listing its tests"
   otool -L "$binary" || true
+  # Exported libc++ symbols, and which image each binding lands in.
+  nm -m "$binary" | grep -m5 basic_stringstream || true
+  DYLD_PRINT_BINDINGS=1 "$binary" --gtest_list_tests 2>&1 | grep -m20 -E 'locale|stringstream' || true
   xcrun lldb --batch -o run -k bt -k quit -- "$binary" --gtest_list_tests || true
   exit 1
 fi

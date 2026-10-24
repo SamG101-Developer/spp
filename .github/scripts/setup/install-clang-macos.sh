@@ -19,7 +19,9 @@ fi
 # libc++ is linked statically. As a dylib it is resolved at run time,
 # and wherever the rpath misses - every user's machine, for a released
 # binary - dyld silently binds /usr/lib's older libc++ instead, which
-# disagrees with these headers on the layout of std::locale.
+# disagrees with these headers on the layout of std::locale. Loaded
+# hidden: the system libc++ is in every process anyway, and dyld
+# coalesces exported weak symbols with it by name.
 libcxx="$(find "${prefix}/lib" -maxdepth 2 -name libc++.a | head -n 1)"
 libcxxabi="$(find "${prefix}/lib" -maxdepth 2 -name libc++abi.a | head -n 1)"
 if [ -z "$libcxx" ] || [ -z "$libcxxabi" ]; then
@@ -30,7 +32,7 @@ fi
 {
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
-  echo "LDFLAGS=-nostdlib++ ${libcxx} ${libcxxabi}"
+  echo "LDFLAGS=-nostdlib++ -Wl,-load_hidden,${libcxx} -Wl,-load_hidden,${libcxxabi}"
 } >> "$GITHUB_ENV"
 
 # The manifest's paths are relative to its own directory, which sits
