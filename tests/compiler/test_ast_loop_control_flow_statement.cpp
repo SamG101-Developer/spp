@@ -228,11 +228,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A later "exit" goes into the type the first one gave the loop, as an "else" block's value does: a member after its
-// variant fits, a variant after one of its members does not.
-SPP_TEST_SHOULD_FAIL_SEMANTIC(
+// A loop's "exit"s agree on one type as a "case"'s branches do ("type_join::TypeJoin"): the widest variant among them,
+// so a variant after one of its members fits, as a member after its variant does.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
   LoopControlFlowStatementAst,
-  test_invalid_exit_wider_than_the_first_exit, SppTypeMismatchError, R"(
+  test_valid_exit_wider_than_the_first_exit, R"(
     fun f(b: Bool, n: Opt[S32]) -> Void {
         let x = loop true {
             case b of {

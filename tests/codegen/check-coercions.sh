@@ -3,9 +3,10 @@
 # End-to-end check of the coercion into a slot of a declared type ("codegen::CoerceToSlot"). A variant member must
 # read back as the member it was, and a named function must call that function, at every slot a value can land in:
 # "let", "ret", an assignment, an argument, a default argument, an attribute, an attribute assignment, a "gen", a send
-# value, a "case" branch (assigned and as an argument), a closure's body, a loop's "exit" and "else", an array element
-# (written out and repeated), a tuple element, and a "cmp" (a constant). gtest builds and verifies these; only running
-# them shows a value copied into the slot untagged, or a call through a function value that was never built.
+# value, a "case" branch (assigned and as an argument), a closure's body and its "ret"s, a loop's "exit" and "else", an
+# array element (written out and repeated), a tuple element, and a "cmp" (a constant). gtest builds and verifies these;
+# only running them shows a value copied into the slot untagged, or a call through a function value that was never
+# built.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-coercions.sh [path/to/spp]
 
@@ -123,6 +124,16 @@ fun loop_exits(b: Bool, n: Opt[U64]) -> Opt[U64] {
     ret x
 }
 
+fun untyped_member_first_exits(b: Bool, n: Opt[U64]) -> Opt[U64] {
+    let x = loop true {
+        case b of {
+            == true { exit Some(val=35_u64) }
+            else { exit n }
+        }
+    }
+    ret x
+}
+
 fun typed_loop_exits(b: Bool, n: Opt[U64]) -> Opt[U64] {
     let x: Opt[U64] = loop true {
         case b of {
@@ -213,6 +224,18 @@ fun main() -> Void {
     showo(loop_exits(false, n))
     showo(typed_loop_exits(true, n))
     showo(typed_loop_exits(false, n))
+    showo(untyped_member_first_exits(true, n))
+    showo(untyped_member_first_exits(false, n))
+
+    let rj = (b: Bool, m: Opt[U64]) {
+        case b of {
+            == true { ret Some(val=36_u64) }
+            else { ret m }
+        }
+    }
+    showo(rj(true, n))
+    showo(rj(false, n))
+    std::mem::ops::drop(rj)
 
     let arr: [Opt[U64]; 2_uz] = [n, Some(val=14_u64)]
     let [arr0, arr1] = arr
@@ -295,6 +318,10 @@ read -r -d '' SLOTS_WANT <<'EOF'
 none
 17
 18
+none
+35
+none
+36
 none
 none
 14
