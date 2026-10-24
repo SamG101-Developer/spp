@@ -850,12 +850,16 @@ namespace {
 }
 
 auto fn_impls::SimpleBinaryIntrinsicCall(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
+  llvm::Type *rhs_ty) -> void {
+  // The intrinsic is overloaded on each operand type that differs from the result's ("llvm.powi" on "i32" too).
   const auto uid = "." + utils::Uid();
-  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, ty});
+  const auto rhs_type = rhs_ty != nullptr ? rhs_ty : ty;
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, rhs_type});
   const auto lhs = fn->arg_begin();
   const auto rhs = fn->arg_begin() + 1;
-  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
+  const auto overloads = rhs_type != ty ? Vec<llvm::Type*>{ty, rhs_type} : Vec<llvm::Type*>{ty};
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, overloads);
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {lhs, rhs}, "intrinsic.result" + uid);
   ctx->Builder.CreateRet(result);
 }
@@ -2084,20 +2088,10 @@ auto fn_impls::StdIntrinsicsFpowi(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // "float_powi(base: T, exponent: S32)" raises a float to
-  // an *integer* power, so unlike every other binary intrinsic
-  // its two operands are different types - and "llvm.powi"
-  // is overloaded on both of them, not just the float.
-  // Todo: Tidy this up
-  const auto uid = "." + utils::Uid();
-  const auto i32_ty = llvm::cast<llvm::Type>(llvm::Type::getInt32Ty(*ctx->Context));
-
-  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, i32_ty});
-  const auto base = fn->arg_begin();
-  const auto exponent = fn->arg_begin() + 1;
-  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
-    ctx->Module.get(), llvm::Intrinsic::powi, {ty, i32_ty});
-  const auto result = ctx->Builder.CreateCall(intrinsic_fn, {base, exponent}, "intrinsic.result" + uid);
-  ctx->Builder.CreateRet(result);
+  // an *integer* power, so its two operands are different
+  // types, and "llvm.powi" is overloaded on both.
+  SimpleBinaryIntrinsicCall(
+    sm, proto, meta, ctx, ty, llvm::Intrinsic::powi, llvm::Type::getInt32Ty(*ctx->Context));
 }
 
 auto fn_impls::StdIntrinsicsFpowf(

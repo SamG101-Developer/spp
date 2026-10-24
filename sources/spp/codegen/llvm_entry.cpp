@@ -152,7 +152,9 @@ auto spp::codegen::EmitCEntryPoint(
     spp::Ice(Str("the entry point ") + spp_main_name + " takes arguments; it must take none");
   }
 
-  // Todo: This might break performance.
+  // With split stacks, the S++ "main" keeps a frame of its own:
+  // this one runs before the unsafe stack is mapped, so nothing
+  // of the program may be inlined into it. It costs one call.
   if (split_stacks) { spp_main->addFnAttr(llvm::Attribute::NoInline); }
 
   const auto atexit_ty = llvm::FunctionType::get(i32_ty, {ptr_ty}, false);

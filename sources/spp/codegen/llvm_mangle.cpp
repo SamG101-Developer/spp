@@ -257,8 +257,10 @@ auto spp::codegen::mangle::MangleFnName(
   analyse::scopes::Scope const &owner_scope,
   asts::FunctionPrototypeAst const &fun_proto)
   -> Str {
-  // The module/context name that the function belongs to.
-  // Todo: Change to use the llvm type (u32/s32 are same in llvm but different in spp).
+  // The module/context name that the function belongs to. The
+  // signature below is mangled from the S++ types, not the LLVM
+  // ones: "f(x: S32)" and "f(x: U32)" both lower to "i32", and
+  // would collide as one name.
   const auto mod_name = MangleModName(owner_scope);
 
   // Get the return and parameter types of the function.

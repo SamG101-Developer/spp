@@ -91,11 +91,11 @@ auto spp::codegen::EmitDrop(
       // Destroying a value consumes it, so "drop" takes "self"
       // by move, which lowers to the value itself rather than
       // to a pointer to it. The value is loaded out of the
-      // storage this is destroying through. Todo: Bandaid?
-      const auto fn_ty = drop_proto->GetLlvmFn()->Target->getFunctionType();
-      const auto self_ty = fn_ty->getNumParams() > 0
-        ? fn_ty->getParamType(0)
-        : GetLlvmType(type_sym, ctx);
+      // storage this is destroying through, as what "drop"
+      // takes: its own "self" parameter's type, which a "self"
+      // by move always has. "type_sym" may be a bound generic
+      // parameter, which names no layout of its own.
+      const auto self_ty = drop_proto->GetLlvmFn()->Target->getFunctionType()->getParamType(0);
       const auto self_val = ctx->Builder.CreateLoad(self_ty, ptr, "drop.self" + uid);
       ctx->Builder.CreateCall(drop_func, {self_val});
     }

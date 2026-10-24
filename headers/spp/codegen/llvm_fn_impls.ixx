@@ -131,9 +131,12 @@ export namespace spp::codegen::fn_impls {
   /// "(T, T) -> T": call a two-operand LLVM intrinsic directly
   /// (e.g. "llvm.smax") and return its result as-is - for
   /// intrinsics whose result type genuinely is "T" (unlike,
-  /// say, the "with.overflow" family below).
+  /// say, the "with.overflow" family below). "rhs_ty" is the
+  /// second operand's type when it is not "T" ("(T, S32) -> T"
+  /// for "llvm.powi").
   auto SimpleBinaryIntrinsicCall(
-    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Intrinsic::IndependentIntrinsics intrinsic,
+    llvm::Type *rhs_ty = nullptr) -> void;
 
   /// "(T, T) -> (T, Bool)": call a two-operand "with.overflow"-
   /// shaped LLVM intrinsic (e.g. "llvm.sadd.with.overflow"),
