@@ -212,6 +212,10 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
     // Todo: Add this to unit tests.
     meta->ReturnTypeOverloadResolverType = MakeShared<TypeRef>(
       TypeRef::Of(*Type, *sm->CurrentScope));
+
+    // The declared type is the value's target, as a "let"'s is: an
+    // array literal takes its element type from it.
+    meta->AssignmentTargetType = Type;
     Value->Stage7_AnalyseSemantics(sm, meta);
   }
 
