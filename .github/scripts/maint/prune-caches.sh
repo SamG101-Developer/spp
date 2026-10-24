@@ -33,11 +33,10 @@ mapfile -t families < <(python3 .github/scripts/lib/pins.py caches | cut -f3)
 
 # Every cache this repository writes ends in a segment that
 # changes whenever its contents should: a commit sha for the
-# build-trees and a timestamp for the compiler caches (an ISO
-# date, so three segments), both reached through a prefix
-# restore-key that picks the newest match, and a hash of the
-# defining files for the rest.
-for spec in "spp-libs-:1" "ccache-:3" "sccache-:3" "doxygen-:1" "valgrind-:1" "gtest-parallel-:1" "cppcheck-:2" \
+# build-trees, reached through a prefix restore-key that
+# picks the newest match, and a hash of the defining files
+# for the rest.
+for spec in "spp-libs-:1" "doxygen-:1" "valgrind-:1" "gtest-parallel-:1" "cppcheck-:2" \
   "llvm-win-:1" "llvm-deps-win-:1" "llvm-mac-:2" "${families[@]/%/:2}"; do
   prefix="${spec%:*}"
   drop="${spec##*:}"

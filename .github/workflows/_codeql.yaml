@@ -40,16 +40,13 @@ jobs:
         uses: ./.github/actions/setup-python
 
       # Tracks the manifest's GCC rather than naming a compiler
-      # of its own. No compiler cache: a hit skips the real
-      # compiler, and the extractor never sees the translation
-      # unit.
+      # of its own.
       - name: Set up toolchain
         uses: ./.github/actions/setup-toolchain
         with:
           runner-image: ubuntu-24.04
           compiler: gcc
           version: ${{ env.GCC_VERSION }}
-          compiler-cache: "false"
 
       # Get CodeQL ready, from their own action. Specify the C++
       # language, the config file, and queries to run.

@@ -1,8 +1,7 @@
 # Compiler, archiver and linker set-up, applied to every target.
 
-# /Zi routes debug info through one mspdbsrv, which sccache's
-# parallel cl invocations cannot share; /Z7 puts it in the
-# object files instead.
+# /Zi routes debug info through one shared mspdbsrv; /Z7
+# puts it in the object files instead.
 set(
   CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
   "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
