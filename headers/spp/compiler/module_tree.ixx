@@ -60,6 +60,15 @@ SPP_EXP_CLS struct spp::compiler::Module {
    */
   Vec<Str> NsParts;
 
+  /**
+   * Who shipped this module: the "vcs" dependency it was read from, by its folder name, or none for the project's own
+   * (its "src", "tst" and "ffi", and the test harness). An ffi package can only be named by its owner's modules.
+   */
+  Opt<Str> Owner;
+
+  /** Whether this module is a stub of an ffi package, from its owner's "ffi" folder. */
+  bool IsFfi = false;
+
   Module(
     spp::Path path,
     Str code,
@@ -160,4 +169,11 @@ private:
   SPP_ATTR_NODISCARD auto NamespaceOf(
     Path const &module_path) const
     -> Vec<Str>;
+
+  /**
+   * The owner of the module at a path (see @c Module::Owner ): the folder under "vcs" it sits in, if any.
+   */
+  SPP_ATTR_NODISCARD auto OwnerOf(
+    Path const &module_path) const
+    -> Opt<Str>;
 };

@@ -280,6 +280,15 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
   /// symbol will be the "LinkedNamespaceSymbol" on the linked scope.
   Scope *LinkedScope;
 
+  /// For a top-level namespace, who shipped the modules in it:
+  /// the "vcs" dependency, by folder name, or none for the
+  /// project ("Module::Owner").
+  Opt<Str> Owner;
+
+  /// Whether this top-level namespace is an ffi package, which
+  /// only its owner's modules can name what is in.
+  bool IsFfiPackage = false;
+
   NamespaceSymbol(Shared<IdentifierAst> name, Scope *scope);
   NamespaceSymbol(NamespaceSymbol const &that);
   ~NamespaceSymbol() override;

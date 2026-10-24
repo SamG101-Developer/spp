@@ -127,6 +127,7 @@ use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
 use(spp::analyse::errors, struct SppLoopMissingElseError);
 use(spp::analyse::errors, struct SppCfgUnknownKeyError);
 use(spp::analyse::errors, struct SppCfgInvalidValueError);
+use(spp::analyse::errors, struct SppFfiPackageNotOwnedError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
 use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
@@ -772,4 +773,9 @@ SPP_EXP_CLS struct spp::analyse::errors::SppCfgInvalidValueError final : Semanti
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {
   explicit SppGenOnceFinishesWithoutYieldingError(Ast const &ret_stmt);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFfiPackageNotOwnedError final : SemanticError {
+  explicit SppFfiPackageNotOwnedError(Ast const &access_site, StrView package, StrView package_owner,
+    StrView accessing_owner);
 };

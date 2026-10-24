@@ -1540,4 +1540,15 @@ SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
     "Yield a value on this path before returning, or make the coroutine a 'Gen', which may yield nothing.");
 }
 
+SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
+  Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
+  AddHeader(120, "Ffi Package Not Owned Error");
+  AddErr(&access_site, "Use of the ffi package " + INLINE_INFO(package) + " here");
+  AddFooter(
+    "The ffi package '" + INLINE_NOTE(package) + "' is shipped by " + Str(package_owner) + ", not by " +
+    Str(accessing_owner) + ", so only " + Str(package_owner) + " can name it.",
+    "Ship the package in this project's own 'ffi' folder to use it directly, or go through " + Str(package_owner) +
+    "'s own functions.");
+}
+
 SPP_MOD_END

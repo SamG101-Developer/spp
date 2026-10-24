@@ -257,7 +257,9 @@ NamespaceSymbol::NamespaceSymbol(
 NamespaceSymbol::NamespaceSymbol(
   NamespaceSymbol const &that) :
   Name(that.Name),
-  LinkedScope(that.LinkedScope) {
+  LinkedScope(that.LinkedScope),
+  Owner(that.Owner),
+  IsFfiPackage(that.IsFfiPackage) {
 }
 
 NamespaceSymbol::~NamespaceSymbol() = default;

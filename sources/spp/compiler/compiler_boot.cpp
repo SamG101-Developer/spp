@@ -747,6 +747,7 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
 
   // Iterate over the parts of the module namespace.
   for (auto const &part : mod_ns) {
+    const auto is_top_level = sm->CurrentScope->Parent == nullptr;
     // Convert the string part into an IdentifierAst node.
     auto identifier_part = MakeShared<asts::IdentifierAst>(0uz, Str(part));
 
@@ -766,6 +767,13 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
       ns_sym->LinkedScope = ns_scope;
       ns_sym->LinkedScope->LinkedNamespaceSymbol = ns_sym;
       ns_sym->LinkedScope->AstNode = mod.ModuleAst.get();
+      if (is_top_level) { ns_sym->Owner = mod.Owner; }
+    }
+
+    // A package's stubs mark its namespace as theirs, whichever module made it.
+    if (is_top_level and mod.IsFfi) {
+      sm->CurrentScope->LinkedNamespaceSymbol->IsFfiPackage = true;
+      sm->CurrentScope->LinkedNamespaceSymbol->Owner = mod.Owner;
     }
   }
 }
