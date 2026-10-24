@@ -242,3 +242,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
         drop(x)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  DeferStatementAst,
+  test_invalid_defer_in_comptime_function,
+  SppDeferInCompTimeFunctionError, R"(
+    cmp fun noop() -> Void { }
+
+    cmp fun f(n: S32) -> S32 {
+        defer noop()
+        ret n
+    }
+
+    cmp a: S32 = f(1)
+)");

@@ -131,6 +131,34 @@ else
   echo "        CI scan run the same rules"
 fi
 
+# CCACHE
+echo
+echo "ccache (${MANIFEST})"
+ccache_tag="$(latest_tag ccache/ccache)"
+if [ -z "$ccache_tag" ]; then
+  echo "::error::could not read the latest ccache release"
+  status=1
+else
+  set_pin pin.ccache.version "${ccache_tag#v}"
+  for platform in linux-x86_64-musl-static:linux-x86-64 linux-aarch64-musl-static:linux-aarch64 darwin:darwin; do
+    set_pin "pin.ccache.sha256-${platform#*:}" \
+      "$(asset_digest ccache/ccache "$ccache_tag" "ccache-${ccache_tag#v}-${platform%%:*}.tar.gz")"
+  done
+fi
+
+# SCCACHE
+echo
+echo "sccache (${MANIFEST})"
+sccache_tag="$(latest_tag mozilla/sccache)"
+if [ -z "$sccache_tag" ]; then
+  echo "::error::could not read the latest sccache release"
+  status=1
+else
+  set_pin pin.sccache.version "${sccache_tag#v}"
+  set_pin pin.sccache.sha256 \
+    "$(asset_digest mozilla/sccache "$sccache_tag" "sccache-${sccache_tag}-x86_64-pc-windows-msvc.tar.gz")"
+fi
+
 # CPPCHECK
 echo
 echo "cppcheck (${MANIFEST})"

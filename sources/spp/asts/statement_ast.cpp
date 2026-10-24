@@ -19,8 +19,9 @@ auto StatementAst::InferTypeRef(
   return TypeRef::Of(*VOID, *sm->CurrentScope);
 }
 
-auto StatementAst::Terminates() const -> bool {
-  // By default, statements do not terminate control flow.
+auto StatementAst::Diverges(
+  ScopeManager *, CompilerMetaData *) -> bool {
+  // By default, control continues past a statement.
   return false;
 }
 

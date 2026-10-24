@@ -244,6 +244,15 @@ SppTypeMismatchError::SppTypeMismatchError(
   AddHeader(1, "Type Mismatch Error");
   AddCtxForErr(&lhs, "Expected type " + INLINE_INFO(TypeForMessage(lhs_ty)));
   AddErr(&rhs, "Found type " + INLINE_INFO(TypeForMessage(rhs_ty)));
+
+  if (lhs_ty.ToString().starts_with('$') or rhs_ty.ToString().starts_with('$')) {
+    AddFooter(
+      "The two types are not symbolically equal. A function used as a value has a type of its own, which no other\n"
+      "function has.",
+      "Declare the function type the value is used as, for example \"let f: FunRef[(S32,), S32] = ..\", so each\n"
+      "function is converted into it.");
+    return;
+  }
   AddFooter(
     "The two types are not symbolically equal.",
     "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
@@ -1419,6 +1428,40 @@ SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
     "A branch matching only what earlier branches already match (after an " + INLINE_NOTE("else") + ", a pattern "
     "that cannot fail, every member of a variant, or the same pattern again) is never reached.",
     "Remove the branch.");
+}
+
+SppLoopMissingElseError::SppLoopMissingElseError(
+  Ast const &loop, Ast const &exit_value) {
+  AddHeader(117, "Loop Missing Else Error");
+  AddCtxForErr(&exit_value, "Loop value given here");
+  AddErr(&loop, "Loop with no else block introduced here");
+  AddFooter(
+    "A loop whose " + INLINE_NOTE("exit") + " gives a value has none when its condition ends it instead, so it needs "
+    "an " + INLINE_NOTE("else") + " block, which runs then, however many times the loop went round.",
+    "Add an " + INLINE_HELP("else") + " block giving the loop's value when it ends without an " +
+    INLINE_HELP("exit") + ".");
+}
+
+SppCfgUnknownKeyError::SppCfgUnknownKeyError(
+  Ast const &arg, const StrView key) {
+  AddHeader(118, "Cfg Unknown Key Error");
+  AddErr(&arg, key.empty() ? Str("Condition with no key here") : "Unknown key '" + Str(key) + "' here");
+  AddFooter(
+    "A " + INLINE_NOTE("!cfg") + " condition is a set of " + INLINE_NOTE("key=\"value\"") + " pairs, and an unknown "
+    "key would make one that never holds.",
+    "Use one of " + INLINE_HELP("mode") + ", " + INLINE_HELP("family") + ", " + INLINE_HELP("os") + ", " +
+    INLINE_HELP("arch") + ", " + INLINE_HELP("env") + ", " + INLINE_HELP("pointer_width") + " or " +
+    INLINE_HELP("endian") + ".");
+}
+
+SppCfgInvalidValueError::SppCfgInvalidValueError(
+  Ast const &value, const StrView key, const StrView why) {
+  AddHeader(119, "Cfg Invalid Value Error");
+  AddErr(&value, "Invalid value for '" + Str(key) + "' here");
+  AddFooter(
+    "The value " + Str(why) + ".",
+    "Give a string naming one or more of the key's values, separated by " + INLINE_HELP("|") + ", optionally after a "
+    "leading " + INLINE_HELP("!") + " to match all others, spelled as the target's folder name spells them.");
 }
 
 SppDiscardedValueError::SppDiscardedValueError(

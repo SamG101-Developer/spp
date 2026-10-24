@@ -24,9 +24,6 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
-  /// The lowest and highest value of each integer type, by suffix: one table, shared with the folding of comp values
-  /// ("utils::numbers::IntegerBounds").
-  inline static utils::numbers::IntLimitMap const &kBounds = utils::numbers::IntegerBounds();
 
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(IntegerLiteralAst);
@@ -79,12 +76,6 @@ SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
   /// report an error against - so a caller that can compute
   /// an out of range value pairs this with "ValidateBounds".
   static auto FromBigVal(numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
-
-  /// Build a literal the way a bit operation produces one:
-  /// the value is taken within the type's own width and read
-  /// back under the type's signedness, rather than kept at
-  /// whatever width the exact result needed.
-  static auto FromWrappedBigVal(numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst>;
 
   /// Raise if this literal's value is one its type cannot
   /// hold. A written literal is checked when it is analysed;

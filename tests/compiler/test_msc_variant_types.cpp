@@ -322,3 +322,31 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     fun f(x: std::variant::Var[(S32, Bool)]) -> Void { std::mem::ops::drop(x) }
     fun g(y: S32 or Bool) -> Void { f(y) }
 )");
+
+// A pack among a variant pattern's members takes the members the others leave.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantTypes,
+    test_valid_sup_on_a_variant_with_a_pack_member, R"(
+    sup [..Rest] std::variant::Var[Bool, Rest] {
+        !public fun f(&self) -> Void { }
+    }
+    fun g() -> Void {
+        let v: S32 or Bool or Str = 1_s32
+        v.f()
+        std::mem::ops::drop(v)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestVariantTypes,
+    test_invalid_sup_on_a_variant_with_a_pack_member_missing_the_fixed_member,
+    SppIdentifierUnknownError, R"(
+    sup [..Rest] std::variant::Var[Bool, Rest] {
+        !public fun f(&self) -> Void { }
+    }
+    fun g() -> Void {
+        let v: S32 or Str = 1_s32
+        v.f()
+        std::mem::ops::drop(v)
+    }
+)");

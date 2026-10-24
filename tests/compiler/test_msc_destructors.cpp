@@ -441,3 +441,37 @@ SPP_TEST_SHOULD_PASS_SEMANTIC_NO_MAIN(
         drop(i)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstDestructors,
+  test_valid_drop_beside_unrelated_methods_named_drop, R"(
+    cls Handle { !public fd: S32 }
+    sup Handle {
+        !public
+        fun drop(&self, extra: S32) -> S32 { ret extra }
+    }
+    sup Handle ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Handle(fd) = self
+        }
+    }
+    cls Handle2 { !public fd: S32 }
+    sup Handle2 {
+        !public
+        fun drop(self, extra: S32) -> Void {
+            let Handle2(fd) = self
+        }
+    }
+    sup Handle2 ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Handle2(fd) = self
+        }
+    }
+    fun f() -> Void {
+        let h = Handle(fd=1)
+        let n = h.drop(1)
+        h.drop()
+        let h2 = Handle2(fd=1)
+        h2.drop(5)
+    }
+)");

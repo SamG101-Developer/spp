@@ -16,5 +16,10 @@ namespace spp::codegen {
     /// The llvm allocation for the local variable a variable
     /// symbol represents.
     llvm::Value *Alloca = nullptr;
+
+    /// The type a global constant is read as, when its initializer
+    /// is laid out as that type in another shape (a variant member
+    /// built as a packed struct); null to read the global's own.
+    llvm::Type *ValueType = nullptr;
   };
 }

@@ -39,6 +39,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
 
   ~PostfixExpressionOperatorKeywordResAst() override;
 
+  SPP_ATTR_NODISCARD auto WalksOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -48,11 +50,14 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorKeywordResAst final : Pos
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Unique<PostfixExpressionOperatorAst> override;
+    ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
 private:
   Shared<PostfixExpressionAst> _MappedFn;
+
+  /// The generator the resumed value is or superimposes ("FindGenSup"),
+  /// resolved at stage 7: its "Yield" and "Send" are read off it later.
+  Shared<TypeRef> _GenRef;
 };

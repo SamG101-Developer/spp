@@ -141,12 +141,6 @@ auto GenericArgumentGroupAst::operator==(
   return true;
 }
 
-auto GenericArgumentGroupAst::operator+=(
-  const GenericArgumentGroupAst &other) -> GenericArgumentGroupAst& {
-  MergeArgs(AstCloneVec(other.Args));
-  return *this;
-}
-
 auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
@@ -194,22 +188,6 @@ auto GenericArgumentGroupAst::At(
   return nullptr;
 }
 
-auto GenericArgumentGroupAst::MergeArgs(
-  decltype(Args) &&other_args) -> void {
-  IMPORT_UTILS;
-  // Append the other arguments to this argument group, checking
-  // named duplicates.
-  for (auto &&other_arg : std::move(other_args)) {
-    if (other_arg->KeywordName() == nullptr) {
-      const auto err = "generic argument '" + other_arg->ToString() + "' is still positional at a merge";
-      Ice(*other_arg, err);
-    }
-    const auto *name = other_arg->KeywordName()->ToUnchecked<TypeIdentifierAst>()->Name.c_str();
-    if (At(name) != nullptr) { continue; }
-    Args.emplace_back(std::move(other_arg));
-  }
-}
-
 auto GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by the kind of value.
   return Args
@@ -230,14 +208,6 @@ auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*>
   // Filter by whether the argument is named.
   return Args
     | genex::views::filter([](auto const &arg) { return arg->KeywordName() != nullptr; })
-    | genex::views::transform([](auto const &arg) { return arg.get(); })
-    | genex::to<Vec>();
-}
-
-auto GenericArgumentGroupAst::GetPositionalArgs() const -> Vec<GenericArgumentAst*> {
-  // Filter by whether the argument is named.
-  return Args
-    | genex::views::filter([](auto const &arg) { return arg->KeywordName() == nullptr; })
     | genex::views::transform([](auto const &arg) { return arg.get(); })
     | genex::to<Vec>();
 }

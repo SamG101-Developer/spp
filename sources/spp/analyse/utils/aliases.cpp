@@ -24,11 +24,8 @@ import genex;
 import std;
 
 auto spp::analyse::utils::aliases::StatementTarget(
-  TypeStatementAst const &alias_stmt,
-  const bool from_use_stmt,
-  Scope *tracking_scope,
-  ScopeManager *sm,
-  meta::CompilerMetaData *meta)
+  TypeStatementAst const &alias_stmt, const bool from_use_stmt, Scope *tracking_scope,
+  ScopeManager *sm, meta::CompilerMetaData *meta)
   -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*> {
   const auto filter_params = [](GenericParameterGroupAst const &pg, GenericArgumentGroupAst const &ag) {
     auto out = GenericParameterGroupAst::NewEmptyShared();
@@ -62,9 +59,13 @@ auto spp::analyse::utils::aliases::StatementTarget(
     }
   }
 
-  // The immediate target, and its symbol.
+  // The immediate target, and its symbol: read in the statement's
+  // own scope, where its parameters are declared, so a target that
+  // is one of them ("type Id[T] = T") is found as it is in any
+  // other position.
   auto old_type = alias_stmt.OldType;
-  auto old_sym = lookup(*old_type);
+  auto old_sym = member_lookup::FindTypeSymbolOrError(
+    *sm->CurrentScope, *old_type->WithoutGns());
 
   // If this is a use statement to a class, then grab its
   // generics and return immediately. For example, use

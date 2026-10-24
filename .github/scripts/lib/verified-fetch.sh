@@ -55,5 +55,6 @@ verified_install_bin() {
     mv "$download" "${bin}/${name}"
   fi
   chmod +x "${bin}/${name}"
-  echo "$bin" >> "$GITHUB_PATH"
+  # GITHUB_PATH is read by every shell, so Windows wants C:\... rather than Git Bash's /c/....
+  if [ "${RUNNER_OS:-}" = "Windows" ]; then cygpath -w "$bin"; else echo "$bin"; fi >> "$GITHUB_PATH"
 }

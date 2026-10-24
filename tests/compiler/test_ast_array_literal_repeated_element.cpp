@@ -224,3 +224,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f[4_uz]()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_repeated_element_as_a_receiver, R"(
+    fun f() -> USize {
+        ret [1_u64; 1_uz + 1_uz].len()
+    }
+)");

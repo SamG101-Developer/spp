@@ -100,10 +100,6 @@ auto GenericParameterAst::IsOptional() const -> bool {
   return TypeDefault != nullptr or CompDefault != nullptr;
 }
 
-auto GenericParameterAst::IsRequired() const -> bool {
-  return not IsVariadic() and not IsOptional();
-}
-
 auto GenericParameterAst::PosStart() const -> std::size_t {
   // Use the first token: "cmp", "..", or the name.
   if (TokCmp != nullptr) { return TokCmp->PosStart(); }
@@ -311,30 +307,6 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
     const auto default_type = CompDefault->InferType(sm, meta);
     Raise<SppTypeMismatchError>(ERR_ARGS(*CompType, *CompType, *CompDefault, *default_type));
   }
-}
-
-auto GenericParameterAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Only an optional comp parameter's default holds memory to
-  // check.
-  if (not IsCompParam() or not IsOptional()) {
-    Ast::Stage8_CheckMemory(sm, meta);
-    return;
-  }
-  CompDefault->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, meta);
-}
-
-auto GenericParameterAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // A comp parameter resolves to its own name.
-  if (IsTypeParam()) {
-    Ast::Stage9_CompTimeResolve(sm, meta);
-    return;
-  }
-  meta->CompTimeResult = IdentifierAst::FromType(*Name);
 }
 
 auto GenericParameterAst::Stage11_CodeGen(

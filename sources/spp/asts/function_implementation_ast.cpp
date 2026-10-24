@@ -50,12 +50,27 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   };
   take_values(take_values, *sm->CurrentScope);
 
+  // The body is walked as a call enters it, not as Stage 7 left its scope: the bindings written in it are hidden
+  // until each is reached, so a name means what is written before it - the parameter "x", not the "x" an "is" further
+  // down narrows - and the argument goes to the parameter. Revealed again on the way out, as leaving a scope does.
+  sm->CurrentScope->HideLetBindings();
+
   // Inject the argument values. Todo: && & std::move?
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
   for (auto const &[arg_name, arg_comp] : meta->CompTimeArgs) {
     const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
     caller_values.emplace_back(arg_sym, std::move(arg_sym->CompTimeValue));
     arg_sym->CompTimeValue = AstClone(arg_comp);
+  }
+
+  // And the comp generics the call bound ("n" for "get[5]()"):
+  // the template's body is what runs, so its comp parameters
+  // are given their values for the call, as its parameters are.
+  for (auto const &[gn_name, gn_value] : meta->CompTimeGnCompValues) {
+    const auto gn_sym = sm->CurrentScope->FindVarSymbol(gn_name.get());
+    if (gn_sym == nullptr or gn_sym->Kind != VariableKind::GnCompParam) { continue; }
+    caller_values.emplace_back(gn_sym, std::move(gn_sym->CompTimeValue));
+    gn_sym->CompTimeValue = sm->CurrentScope->CompAstOf(gn_value);
   }
 
   // Comptime resolve each member of the inner scope. The call is its own frame: the caller is mid-statement, so its
@@ -68,8 +83,22 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   }
   meta->CompTimeReturned = caller_returned;
 
+  // Each parameter's final value, for the call to write back
+  // to the place a "&mut" argument came from.
+  for (auto &[arg_name, arg_comp] : meta->CompTimeArgs) {
+    const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
+    const auto value = arg_sym->CompTimeValue != nullptr
+      ? arg_sym->CompTimeValue->To<ExpressionAst>()
+      : nullptr;
+
+    if (value != nullptr) {
+      arg_comp = AstClone(value);
+    }
+  }
+
   // Hand the scope back to the caller as it was. A semantic error thrown out of the body skips this, which is fine:
   // nothing catches a comp-time error, so the compile is over either way.
+  sm->CurrentScope->RevealLetBindings();
   for (auto &&[sym, value] : caller_values) { sym->CompTimeValue = std::move(value); }
 }
 

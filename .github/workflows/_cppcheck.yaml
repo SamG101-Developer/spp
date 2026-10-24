@@ -21,12 +21,12 @@ jobs:
       # Audit, not block: this job gates the builds, so an
       # endpoint missing from the list would stop every merge.
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -38,7 +38,7 @@ jobs:
       # it, so a change to either rebuilds.
       - name: Cache cppcheck
         id: cppcheck-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.tools/cppcheck
           key: cppcheck-${{ runner.os }}-${{ env.CPPCHECK_COMMIT }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-cppcheck.sh') }}
@@ -47,7 +47,7 @@ jobs:
       # GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9
+        uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9 # v4.4.4
         with:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}
@@ -71,7 +71,7 @@ jobs:
       - name: Upload cppcheck results
         if: always() && hashFiles('cppcheck.sarif') != ''
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: cppcheck.sarif
           category: cppcheck

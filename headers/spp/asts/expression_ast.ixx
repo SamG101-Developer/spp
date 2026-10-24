@@ -63,6 +63,10 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
 
   SPP_ATTR_NODISCARD virtual auto ExprParts() const -> Vec<IdentifierAst*>;
 
+  /// An expression diverges when its type is "!": only what never
+  /// produces a value meets it.
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+
   /// Look through expression asts for types in the asts, such
   /// as the object initializer ast containing a type. Lots of
   /// asts override this to look into its members.

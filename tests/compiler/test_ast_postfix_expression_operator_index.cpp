@@ -175,3 +175,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Holder[S32]::pick[0_uz]
     }
 )");
+
+// The indexed operand is analysed once: indexing calls "index_ref" over a clone of the analysed operand, and
+// analysing that clone again opened the "?"'s scopes twice (an internal compiler error). The temporary vector it
+// indexes is never consumed, as with "g()[0_uz]".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorIndexAst,
+  test_invalid_indexing_an_early_return,
+  SppLinearValueNotConsumedError, R"(
+    fun g() -> Opt[std::vector::Vec[U64]] { ret None }
+    fun f() -> Opt[U64] {
+        let x = g()?[0_uz]@
+        ret Some(val=x)
+    }
+)");

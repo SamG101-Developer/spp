@@ -252,6 +252,16 @@ namespace spp::analyse::utils::type_compare {
       // check, the conventions having been compared above.
       if (t.Id != nullptr and t.Id == v.Id) { return true; }
 
+      // A named function's mock stands for that one function: it
+      // carries nothing at runtime, so whatever reads a value of
+      // that type calls that function. Nothing else fits one, not
+      // even another function of the same signature. (But can be
+      // coerced into its "FunRef[...]" etc).
+      if (t.Symbol->IsMock()
+        and (t.Symbol->Kind != scopes::TypeKind::ClosureMock or v.Symbol->Kind != scopes::TypeKind::ClosureMock)) {
+        return false;
+      }
+
       // Different templates: a function mock against a function
       // type, or a forwarding type against its target.
       if (t.Symbol->Type != v.Symbol->Type) {
@@ -275,7 +285,7 @@ namespace spp::analyse::utils::type_compare {
     /// variant's members (positionally, as its "Variants" tuple
     /// lists them, in their canonical order). None for anything
     /// else.
-    auto IdArgs(TypeId id) -> Vec<TypeIdArg> {
+    auto IdArgs(const TypeId id) -> Vec<TypeIdArg> {
       if (id == nullptr) { return {}; }
       auto const &head = scopes::HeadOf(id);
       if (head.Kind == TypeKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }

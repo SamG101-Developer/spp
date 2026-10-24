@@ -31,30 +31,6 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
-namespace {
-  /// List of the symbols those comp-time values are in the
-  /// process of being resolved. A "cmp" constant is resolved by
-  /// walking the identifiers its value names, so a constant
-  /// that reaches itself is a cycle => error.
-  thread_local spp::Vec<VariableSymbol const*> _ResolvingCompTimeSymbols;
-
-  /// Push a symbol onto the resolution stack for as long as
-  /// the enclosing block runs, including when it is left by a
-  /// thrown semantic error. A caught error must not leave the
-  /// stack claiming a resolution is still in progress.
-  struct ResolvingCompTimeSymbolGuard {
-    explicit ResolvingCompTimeSymbolGuard(
-      VariableSymbol const *const sym) { _ResolvingCompTimeSymbols.emplace_back(sym); }
-
-    ~ResolvingCompTimeSymbolGuard() { _ResolvingCompTimeSymbols.pop_back(); }
-
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard const &) = delete;
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard &&) = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard const &) -> ResolvingCompTimeSymbolGuard& = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard &&) -> ResolvingCompTimeSymbolGuard& = delete;
-  };
-}
-
 SPP_MOD_BEGIN
 auto IdentifierAst::FromType(
   TypeAst const &val) -> Unique<IdentifierAst> {
@@ -221,7 +197,9 @@ auto IdentifierAst::Stage9_CompTimeResolve(
 
   // An unbound comp generic has no value yet, and stands for
   // itself - as it does in a template's signature.
-  if (var_sym != nullptr and var_sym->Kind == VariableKind::GnCompParam) {
+  if (var_sym != nullptr
+    and var_sym->Kind == VariableKind::GnCompParam
+    and var_sym->CompTimeValue == nullptr) {
     meta->CompTimeResult = AstClone(this);
     return;
   }
@@ -237,12 +215,12 @@ auto IdentifierAst::Stage9_CompTimeResolve(
   // no value to resolve to: the walk below would re-enter
   // here for the same symbol and never terminate.
   RaiseIf<SppCompTimeConstantError>(
-    genex::contains(_ResolvingCompTimeSymbols, var_sym),
+    comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
     ERR_ARGS(*this));
 
   // Call the inner resolution on the provided value for
   // "walking" the comptime resolution.
-  const auto guard = ResolvingCompTimeSymbolGuard(var_sym);
+  const auto guard = comp_generics::CompTimeResolutionGuard(var_sym);
   value->Stage9_CompTimeResolve(&tm, meta);
 }
 
@@ -289,10 +267,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // with the normal stack alloca instruction, rather with
   // llvm's "ConstantXXX" method, wrapped into a global.
   if (llvm::isa<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca)) {
-    const auto defined_global = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
-    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-      *defined_global, *codegen::GetEmissionModule(*ctx));
-    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
+    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.global" + uid, ctx);
   }
 
   // Handle any other address the symbol was pointed at, such
@@ -301,15 +276,9 @@ auto IdentifierAst::Stage11_CodeGen(
   // own under opaque pointers, so the load goes through the
   // symbol's own type instead of through the instruction that
   // produced the address.
-  if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
-    const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
-    SPP_ASSERT(llvm_type != nullptr);
-    return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
-  }
-
-  // If the variable is neither local nor global, this is an
-  // internal compiler error.
-  Ice(*this, *sm->CurrentScope, "Target identifier ie neither local nor global");
+  const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
+  SPP_ASSERT(llvm_type != nullptr);
+  return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
 }
 
 auto IdentifierAst::InferType(

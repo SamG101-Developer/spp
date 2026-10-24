@@ -44,10 +44,6 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
 
   auto operator==(GenericArgumentGroupAst const &other) const -> bool;
 
-  auto operator+=(const GenericArgumentGroupAst &other) -> GenericArgumentGroupAst&;
-
-
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -55,15 +51,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentGroupAst final : Ast {
   /// The keyword argument named "key", of either kind.
   auto At(const char *key) const -> GenericArgumentAst const*;
 
-  auto MergeArgs(decltype(Args) &&other_args) -> void;
-
   SPP_ATTR_NODISCARD auto GetTypeArgs() const -> Vec<GenericArgumentAst*>;
 
   SPP_ATTR_NODISCARD auto GetCompArgs() const -> Vec<GenericArgumentAst*>;
 
   SPP_ATTR_NODISCARD auto GetKeywordArgs() const -> Vec<GenericArgumentAst*>;
-
-  SPP_ATTR_NODISCARD auto GetPositionalArgs() const -> Vec<GenericArgumentAst*>;
 
   SPP_ATTR_NODISCARD auto GetAllArgs() const -> Vec<GenericArgumentAst*>;
 };

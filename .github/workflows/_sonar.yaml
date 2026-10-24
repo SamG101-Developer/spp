@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: "release"
+      coverage-artifact:
+        description: "A coverage lane's report artifact from this run, for the scan to read; none when empty."
+        required: false
+        type: string
+        default: ""
     secrets:
       SONAR_TOKEN:
         required: true
@@ -35,12 +40,12 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -72,7 +77,7 @@ jobs:
           variant: ${{ inputs.variant }}
 
       - name: Restore build tree
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build
           key: ${{ steps.cache-key.outputs.key }}
@@ -90,9 +95,18 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Download coverage report
+        if: inputs.coverage-artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: ${{ inputs.coverage-artifact }}
+          path: coverage
+
       # Run the sonar scanner action on the build tree.
       - name: SonarQube scan
-        uses: sonarsource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
+        uses: sonarsource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: ${{ inputs.coverage-artifact != '' && '-Dsonar.cfamily.llvm-cov.reportPath=coverage/coverage.txt' || '' }}

@@ -1,0 +1,73 @@
+# Integer arithmetic through std's methods, at the edges of each width: wrapping, saturating and checked arithmetic,
+# bit operations and shifts. Each helper is a call at dev and folded at rel.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun some_s8(x: Opt[S8]) -> Str {
+  ret case x of {
+    is Some[S8](val) { Str::from(val) }
+    else { Str::from("none") }
+  }
+}
+
+fun some_u64(x: Opt[U64]) -> Str {
+  ret case x of {
+    is Some[U64](val) { Str::from(val) }
+    else { Str::from("none") }
+  }
+}
+
+fun ops_s8(a: S8, b: S8) -> Void {
+  show("s8 add_wrapping", Str::from(a.add_wrapping(b)))
+  show("s8 sub_wrapping", Str::from(a.sub_wrapping(b)))
+  show("s8 mul_wrapping", Str::from(a.mul_wrapping(b)))
+  show("s8 add_saturating", Str::from(a.add_saturating(b)))
+  show("s8 sub_saturating", Str::from(a.sub_saturating(b)))
+  show("s8 mul_saturating", Str::from(a.mul_saturating(b)))
+  show("s8 add_checked", some_s8(a.add_checked(b)))
+  show("s8 mul_checked", some_s8(a.mul_checked(b)))
+  show("s8 bit_and", Str::from(a.bit_and(b)))
+  show("s8 bit_ior", Str::from(a.bit_ior(b)))
+  show("s8 bit_xor", Str::from(a.bit_xor(b)))
+  show("s8 bit_not", Str::from(a.bit_not()))
+  show("s8 max", Str::from(a.max(b)))
+  show("s8 min", Str::from(a.min(b)))
+  show("s8 abs_wrapping", Str::from(a.abs_wrapping()))
+  show("s8 neg_wrapping", Str::from(a.neg_wrapping()))
+}
+
+fun ops_u64(a: U64, b: U64) -> Void {
+  show("u64 add_wrapping", Str::from(a.add_wrapping(b)))
+  show("u64 sub_wrapping", Str::from(a.sub_wrapping(b)))
+  show("u64 mul_wrapping", Str::from(a.mul_wrapping(b)))
+  show("u64 add_saturating", Str::from(a.add_saturating(b)))
+  show("u64 sub_saturating", Str::from(a.sub_saturating(b)))
+  show("u64 mul_saturating", Str::from(a.mul_saturating(b)))
+  show("u64 add_checked", some_u64(a.add_checked(b)))
+  show("u64 sub_checked", some_u64(a.sub_checked(b)))
+  show("u64 div_checked", some_u64(a.div_checked(b)))
+  show("u64 rem_checked", some_u64(a.rem_checked(b)))
+  show("u64 bit_xor", Str::from(a.bit_xor(b)))
+  show("u64 bit_not", Str::from(a.bit_not()))
+  show("u64 leading_zeros", Str::from(a.leading_zeros()))
+  show("u64 max", Str::from(a.max(b)))
+  show("u64 min", Str::from(a.min(b)))
+}
+
+fun main() -> Void {
+  ops_s8(-128_s8, -1_s8)
+  ops_s8(127_s8, 1_s8)
+  ops_s8(-128_s8, 127_s8)
+  ops_s8(0_s8, -128_s8)
+  ops_s8(100_s8, 3_s8)
+  ops_u64(18446744073709551615_u64, 1_u64)
+  ops_u64(0_u64, 18446744073709551615_u64)
+  ops_u64(4294967296_u64, 4294967296_u64)
+  ops_u64(12345678901234567_u64, 0_u64)
+  ops_u64(1_u64, 7_u64)
+}

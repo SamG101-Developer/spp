@@ -45,8 +45,6 @@ public:
   using difference_type = std::ptrdiff_t;
   using pointer = Scope**;
   using reference = Scope*&;
-  using const_pointer = Scope* const*;
-  using const_reference = Scope* const&;
 
   explicit ScopeIterator(Scope *root = nullptr);
 
@@ -56,11 +54,7 @@ public:
   auto operator=(ScopeIterator &&other) noexcept -> ScopeIterator&;
   ~ScopeIterator();
   auto operator*() -> reference;
-  auto operator*() const -> const_reference;
-  auto operator->() -> pointer;
-  auto operator->() const -> const_pointer;
   auto operator++() -> ScopeIterator&;
-  auto operator++(int) -> ScopeIterator;
   auto operator==(ScopeIterator const &other) const -> bool;
   auto operator!=(ScopeIterator const &other) const -> bool;
 };

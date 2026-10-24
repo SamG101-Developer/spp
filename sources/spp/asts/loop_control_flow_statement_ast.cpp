@@ -22,6 +22,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import genex;
@@ -105,8 +106,21 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       _ExprIsNever = expr_type->IsNeverType();
     }
 
-    // Insert or check the depth's corresponding exit type.
+    // A loop assigned to a type takes each "exit" into it.
     const auto depth = nested_loop_depth - num_controls;
+    Ast const &found_at = Expr != nullptr ? *Expr->To<Ast>() : *To<Ast>();
+    const auto [target_type, target_scope] = depth < meta->LoopTargetTypes.size()
+      ? meta->LoopTargetTypes[depth]
+      : Pair<Shared<TypeAst>, Scope const*>();
+    if (target_type != nullptr and not expr_type->IsNeverType()) {
+      RaiseIf<SppTypeMismatchError>(
+        not type_compare::Assignable(
+          TypeRef::Of(*target_type, *target_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *target_scope,
+          *sm->CurrentScope),
+        ERR_ARGS(found_at, *target_type, found_at, *expr_type));
+    }
+
+    // Insert or check the depth's corresponding exit type.
     if (meta->LoopReturnTypes->contains(depth)) {
       // If the type is already set, check it matches the current
       // expression's type. An exit that diverges ("!") has no value
@@ -116,12 +130,17 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
       if (that_expr_type->IsNeverType() and not expr_type->IsNeverType()) {
         (*meta->LoopReturnTypes)[depth] = {Expr ? Expr.get() : nullptr, expr_type, sm->CurrentScope};
       }
-      else if (not expr_type->IsNeverType()) {
+      // Otherwise this exit's value goes into the loop's type, as
+      // the "else" block's does: "exit n" (an "Opt[S32]") then
+      // "exit Some(..)" is an "Opt[S32]" loop. A bare "exit" has no
+      // expression, so the loop control itself is named.
+      else if (not expr_type->IsNeverType() and target_type == nullptr) {
+        Ast const &expected_at = that_expr != nullptr ? *that_expr->To<Ast>() : found_at;
         RaiseIf<SppTypeMismatchError>(
           not type_compare::Assignable(
-            TypeRef::Of(*expr_type, *sm->CurrentScope), TypeRef::Of(*that_expr_type, *that_scope), *sm->CurrentScope,
-            *that_scope),
-          ERR_ARGS(*Expr, *expr_type, *that_expr, *that_expr_type));
+            TypeRef::Of(*that_expr_type, *that_scope), TypeRef::Of(*expr_type, *sm->CurrentScope), *that_scope,
+            *sm->CurrentScope),
+          ERR_ARGS(expected_at, *that_expr_type, found_at, *expr_type));
       }
     }
     else {
@@ -211,51 +230,54 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
     ? Expr->Stage11_CodeGen(sm, meta, ctx)
     : nullptr;
 
-  // For "skip" statements, branch to the condition check of the
-  // target loop, starting the next iteration. Any preceding "exit"
-  // tokens select an outer loop. A "skip" never has a value, so
-  // no phi node is involved.
+  // The target is the Nth innermost loop, N being the number of
+  // "exit" tokens; a "skip" after them restarts the loop they
+  // select, and a bare "skip" the innermost one. Copied, not
+  // referenced: generating what the scopes deferred can generate
+  // other code, whose loops grow (and move) the stack.
+  const auto target = meta->LlvmLoopStack[num_loops - num_exits - (has_skip ? 1 : 0)];
+
+  // The value goes into the loop's phi, so it is coerced into the
+  // loop's type as any slot is ("exit Some(val=1)" into an
+  // "Opt[S32]" loop).
+  const auto coerced_val = Expr != nullptr and target.Type != nullptr and not has_skip
+    ? codegen::CoerceToSlot(llvm_val, *target.Type, Expr->InferTypeRef(sm, meta), *sm, "loop.exit.coerce", ctx)
+    : llvm_val;
+
+  // The jump skips every scope end inside the loop, so what
+  // those scopes deferred runs at the jump: a "skip" stays in the
+  // loop's own scope, and an "exit" leaves it too. This happens
+  // before the phi edge is recorded, so the incoming block is
+  // whatever it left the builder inserting into.
+  codegen::EmitScopeExit(
+      has_skip ? target.LoopScope : target.LoopScope->Parent, sm, meta, ctx);
+
+  // A "skip" starts the next iteration at the condition check.
+  // It never has a value, so no phi node is involved.
   if (has_skip) {
-    const auto &target = meta->LlvmLoopStack[num_loops - num_exits - 1];
-    codegen::EmitDeferredUnwind(
-      *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
     ctx->Builder.CreateBr(target.CondBB);
     return nullptr;
   }
 
-  // For "exit" statements, branch to the end block of the Nth
-  // innermost loop, N being the number of exit tokens. The exited
-  // loop's phi node collects the yielded value from this edge.
-  const auto &target = meta->LlvmLoopStack[num_loops - num_exits];
-
-  // The jump skips every scope end between here and the loop,
-  // so what those scopes deferred runs at the jump. This
-  // happens before the phi edge is recorded, so the incoming
-  // block is whatever it left the builder inserting into.
-  codegen::EmitDeferredUnwind(
-    *sm->CurrentScope, target.ScopeContainingLoop, false, sm, meta, ctx);
-
+  // An "exit" leaves the loop: its phi node collects the value
+  // from this edge, and the "loop" hands it on from there.
   if (target.Phi != nullptr) {
     // A "!" value never reaches the phi, but the edge still needs
     // an operand of the phi's type.
-    const auto incoming_val = llvm_val != nullptr and _ExprIsNever
+    const auto incoming_val = coerced_val != nullptr and _ExprIsNever
       ? llvm::PoisonValue::get(target.Phi->getType())
-      : llvm_val;
+      : coerced_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
     target.Phi->addIncoming(
       incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()),
       incoming_bb);
   }
-
-  // Finally, branch to the end of the loop as a fallback. Todo:
-  //  not sure if this is needed? Can llvm can confirm termination?
-  //  The value isn't returned here because it goes through the PHI
-  //  and the "loop" ast handles the value return to the target.
   ctx->Builder.CreateBr(target.EndBB);
   return nullptr;
 }
 
-auto LoopControlFlowStatementAst::Terminates() const -> bool {
+auto LoopControlFlowStatementAst::Diverges(
+  ScopeManager *, CompilerMetaData *) -> bool {
   // An "exit" or a "skip" always jumps, so nothing after it
   // in this scope runs.
   return true;

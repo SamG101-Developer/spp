@@ -97,7 +97,8 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   auto name = MakeUnique<IdentifierAst>(PosStart(), "await_");
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, std::move(name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(
+  field->Source.Lowered = true;
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
     AstClone(meta->PostfixExpressionLhs), std::move(field));
 
   // Convert the "await_" field into a function call by
@@ -109,11 +110,8 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
     nullptr, std::move(arg_group), nullptr);
   func_call->Source.OriginalExpr = this;
 
-  // Analyse the function call to the "await_" method,
-  // temporarily ignoring access modifiers because that
-  // method is private.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->IgnoreAccessModifierViolations = true;
+  // Analyse the function call to the private "await_"
+  // method, which the lowered access may call.
   _MappedFn = MakeUnique<PostfixExpressionAst>(
     std::move(member_access), std::move(func_call));
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
@@ -142,9 +140,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
 
   // Call the memory check on the mapped function. The borrows
   // are managed beforehand to stay uniform with standard mem
-  // analysis rules, where async needs a bypass (sneaky hack).
-  const auto _meta_guard = MetaGuard(meta);
-  meta->IgnoreAccessModifierViolations = true;
+  // analysis rules.
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
@@ -168,7 +164,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
-  analyse::scopes::ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Nothing inside the operator is an expression, so there is
   // nothing to substitute into.
   return MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(
@@ -178,6 +174,11 @@ auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
 auto PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const -> bool {
   // Waits on a future the way a call waits on its callee,
   // so nothing leaves the code it is in.
+  return true;
+}
+
+auto PostfixExpressionOperatorKeywordAwaitAst::WalksOperand() const -> bool {
+  // Checked through "await_", over the operand.
   return true;
 }
 

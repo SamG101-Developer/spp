@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.analyse.utils.marker_sups;
+import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -30,6 +31,7 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
+import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
@@ -45,7 +47,7 @@ namespace {
     spp::codegen::LlvmCtx const *ctx)
     -> llvm::Function* {
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto size_ty = spp::codegen::TargetSizeType(*ctx->Context);
     const auto fn_ty = llvm::FunctionType::get(ptr_ty, {size_ty}, false);
     return llvm::cast<llvm::Function>(
       ctx->Module->getOrInsertFunction("sppc_malloc", fn_ty).getCallee());
@@ -128,15 +130,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
+    meta->EnclosingFnSourceRetType = ReturnType;
     meta->EnclosingFnScope = sm->CurrentScope;
-    {
-      const auto _is_bindings = IsBindingsScope(meta);
-      Impl->Stage7_AnalyseSemantics(sm, meta);
-    }
-
-    // Check the return type superimposes the generator type.
+    // Check the return type superimposes the generator type, before the body reads its yield type.
     const auto gen = marker_sups::FindGenSup(
       TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope,
       *ReturnType, [&] { return ret_type_sym->FqName(); }, "coroutine return type");
@@ -151,6 +148,10 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
 
     // Analyse the semantics of the function body, and move
     // out the scope.
+    {
+      const auto _is_bindings = IsBindingsScope(meta);
+      Impl->Stage7_AnalyseSemantics(sm, meta);
+    }
     sm->MoveOutOfCurrentScope();
   }
   meta->LoopReturnTypes->clear();
@@ -246,7 +247,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // Firstly, emit the llvm coroutine intrinsics for the
   // coroutine id, size and begin. These form the "boot"
   // instructions for the coroutine.
-  const auto llvm_i64_ty = llvm::Type::getInt64Ty(*ctx->Context);
+  const auto llvm_size_ty = codegen::TargetSizeType(*ctx->Context);
   const auto llvm_ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto llvm_coro_align = codegen::GetLlvmGeneratorFrameAlign(ctx);
 
@@ -290,7 +291,7 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   // which is why it is an intrinsic and not a constant here.
   ctx->Builder.SetInsertPoint(dyn_alloc_bb);
   const auto coro_size = ctx->Builder.CreateIntrinsic(
-    llvm::Intrinsic::coro_size, {llvm_i64_ty}, {}, {}, "coro.size" + uid);
+    llvm::Intrinsic::coro_size, {llvm_size_ty}, {}, {}, "coro.size" + uid);
   const auto coro_alloc_mem = ctx->Builder.CreateCall(
     CoroFrameAllocFn(ctx), {coro_size}, "coro.alloc.mem" + uid);
   ctx->Builder.CreateBr(begin_bb);
@@ -342,15 +343,15 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     "coro.initial.resume" + uid, ctx);
 
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->LlvmGenerator = MakeShared<codegen::LlvmGenerator>(coro_handle);
     meta->LlvmGenerator->CleanupBlock = cleanup_bb;
     meta->LlvmGenerator->SuspendBlock = suspend_bb;
     meta->LlvmGenerator->FinalBlock = final_bb;
     meta->LlvmGeneratorState = llvm_gen_state;
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType));
-    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithSourceSpanOf(*ReturnType);
+    meta->EnclosingFnSourceRetType = ReturnType;
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code. Generic
@@ -436,11 +437,12 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     // declares of its own, so the handle is packed into that shape before it leaves the function - the caller unwraps
     // it again to drive the coroutine intrinsics.
     const auto llvm_ret_type = llvm_func_target->getReturnType();
-    if (llvm_ret_type->isPointerTy()) {
+    const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
+    if (type_predicates::IsTypeGenerator(
+      TypeRef::ForKindCheck(*ret_type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
       ctx->Builder.CreateRet(coro_handle);
     }
     else {
-      const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
       const auto handle_idx = codegen::GetPhysicalFieldIndex(*ret_type_sym->LlvmInfo, 0);
       const auto empty_ret_val = llvm::Constant::getNullValue(llvm_ret_type);
       ctx->Builder.CreateRet(

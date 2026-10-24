@@ -294,3 +294,55 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(v)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_valid_generic_function_defaults_with_postfix_operators, R"(
+    cmp arr: Arr[S32, 2_uz] = [1_s32, 2_s32]
+    fun get[cmp n: S32]() -> S32 { ret n }
+    fun one() -> S32 { ret 1_s32 }
+    fun make() -> Fut[S32] { ret async one() }
+    fun f[T](
+        x: T,
+        a: S32 = get[3_s32](),
+        b: S32 = make().await,
+        c: S32 = arr[0_uz]@,
+        d: USize = arr[0_uz to 1_uz].len(),
+        e: Bool = true.not,
+        t: S32 = (1_s32, 2_s32).1) -> T {
+        ret x
+    }
+    fun g() -> Void {
+        let y = f(true)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_invalid_function_parameter_optional_array_holding_a_case_default,
+  SppInvalidDefaultValueError, R"(
+    fun f(a: Arr[S32, 2_uz] = [1_s32, case true { 1_s32 } else { 2_s32 }]) -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_invalid_function_parameter_optional_tuple_holding_a_case_default,
+  SppInvalidDefaultValueError, R"(
+    fun f(a: (S32, S32) = (1_s32, case true { 1_s32 } else { 2_s32 })) -> Void { }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  FunctionParameterOptionalAst,
+  test_invalid_generic_function_default_resuming_a_temporary_generator,
+  SppLinearValueNotConsumedError, R"(
+    cor nums() -> Gen[Yield=S32, Send=Bool] {
+        let sent = gen 1_s32
+    }
+    fun f[T](x: T, a: S32 or std::generator::GenDone = nums().res(true)) -> T {
+        std::mem::ops::drop(a)
+        ret x
+    }
+    fun g() -> Void {
+        let b = f(true)
+    }
+)");

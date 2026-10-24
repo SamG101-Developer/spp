@@ -551,3 +551,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret h.f(1_s32)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionAst,
+  test_valid_closure_reads_an_enclosing_comp_generic, R"(
+    fun f[cmp n: S32]() -> S32 {
+        let x = () -> S32 { ret n }
+        ret x()
+    }
+
+    fun g() -> S32 {
+        ret f[5]()
+    }
+)");

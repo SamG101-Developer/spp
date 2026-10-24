@@ -30,7 +30,10 @@ import spp.lex.lexer;
 import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
+import spp.utils.numbers;
+import spp.utils.strings;
 import genex;
+import llvm;
 import numex.big_dec;
 import numex.big_int;
 
@@ -59,17 +62,42 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       SPP_ASSERT(not types.empty());
       const auto name = SizedNumericLiteralTypeName(types[0]->Symbol);
       const auto known = is_float
-        ? FloatLiteralAst::kBounds.contains(name)
-        : IntegerLiteralAst::kBounds.contains(name);
+        ? spp::utils::numbers::FloatBounds().contains(name)
+        : spp::utils::numbers::IntegerBounds().contains(name);
 
       // Every width the language has a sized number type for has
-      // bounds ("kBounds"); one without is a compiler bug.
+      // bounds ("utils::numbers"); one without is a compiler bug.
       if (not known) {
         SPP_ASSERT(types[0]->Symbol != nullptr);
         const auto type = types[0]->Symbol->FqName();
         Ice(*type, *sm.CurrentScope, "no numeric bounds for this type");
       }
       return name;
+    }
+
+    /// Comp-time float arithmetic rounds as run-time arithmetic
+    /// does: to nearest, ties to even.
+    constexpr auto kNearest = llvm::APFloat::rmNearestTiesToEven;
+
+    /// A float literal's value in its type's format: what its text
+    /// rounds to at run time ("utils::numbers"). Read from the text
+    /// rather than "BigVal", which loses the sign of a zero.
+    auto ValueOf(FloatLiteralAst const &lit) -> llvm::APFloat {
+      const auto is_negative = lit.TokSign != nullptr and lit.TokSign->TokenType == lex::SppTokenType::TK_SUB;
+      const auto digits = spp::utils::strings::NormalizeFloatString(lit.IntVal->TokenData, lit.FracVal->TokenData);
+      return spp::utils::numbers::ReadFloat((is_negative ? "-" : "") + digits, lit.Type);
+    }
+
+    /// A value in the format of "type" as a literal, its sign of
+    /// zero kept. One no constant of the type can hold (an infinity
+    /// or a NaN) is kept out of range, for the caller to reject
+    /// (E16).
+    auto FromValue(llvm::APFloat const &value, Str const &type) -> Unique<FloatLiteralAst> {
+      if (const auto text = spp::utils::numbers::WriteFloat(value); text.has_value()) {
+        return FloatLiteralAst::FromText(*text, type);
+      }
+      auto const &[lower, upper] = spp::utils::numbers::FloatBounds().at(type);
+      return FloatLiteralAst::FromBigVal(value.isNegative() ? lower + lower : upper + upper, type);
     }
 
     auto AssignInPlace(
@@ -239,17 +267,22 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShl(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
-  // Perform bitwise left shift on two integer literals. S++ forces U32 too (safe).
-  return IntegerLiteralAst::FromWrappedBigVal(
-    lhs.BigVal() << rhs.CppVal<std::uint32_t>(), lhs.Type);
+  // Perform bitwise left shift on two integer literals. S++ forces U32 too (safe). In the type's width, as the
+  // run-time "shl" is: the bits shifted past the top are lost.
+  const auto count = rhs.CppVal<std::uint32_t>();
+  const auto shifted = spp::utils::numbers::ShiftLeftLogical(lhs.BigVal(), count, lhs.Type);
+  return IntegerLiteralAst::FromBigVal(shifted.value_or(lhs.BigVal() << count), lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShr(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
-  // Perform bitwise right shift on two integer literals. S++ forces U32 too (safe).
-  return IntegerLiteralAst::FromBigVal(lhs.BigVal() >> rhs.CppVal<std::uint32_t>(), lhs.Type);
+  // Perform bitwise right shift on two integer literals. S++ forces U32 too (safe). Logical, in the type's width, as
+  // the run-time "lshr" is: a negative value's sign bit moves down too.
+  const auto count = rhs.CppVal<std::uint32_t>();
+  const auto shifted = spp::utils::numbers::ShiftRightLogical(lhs.BigVal(), count, lhs.Type);
+  return IntegerLiteralAst::FromBigVal(shifted.value_or(lhs.BigVal() >> count), lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitIor(
@@ -279,8 +312,12 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitXor(
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNot(
   IntegerLiteralAst const &val)
   -> Unique<IntegerLiteralAst> {
-  // Perform bitwise NOT on an integer literal.
-  return IntegerLiteralAst::FromBigVal(~val.BigVal(), val.Type);
+  // Perform bitwise NOT on an integer literal, in its type's
+  // width: "~" alone is unbounded, which only a signed type
+  // agrees with ("~15_u32" is 2^32 - 16, not -16).
+  const auto inverted = ~val.BigVal();
+  const auto wrapped = spp::utils::numbers::WrapToInteger(inverted, val.Type);
+  return IntegerLiteralAst::FromBigVal(wrapped.value_or(inverted), val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNotAssign(
@@ -289,13 +326,6 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNotAssign(
   // Perform bitwise NOT assignment on an integer literal. Written out rather than generated below because it is the
   // one unary assignment; it used to hand-roll the field copy that "AssignInPlace" does, and had drifted from it.
   AssignInPlace(lhs, StdIntrinsicsBitNot(lhs));
-}
-
-auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsAbs(
-  IntegerLiteralAst const &val)
-  -> Unique<IntegerLiteralAst> {
-  // Perform absolute value on an integer literal.
-  return IntegerLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsEq(
@@ -310,8 +340,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOeq(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered equality comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
+  // Perform ordered equality comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpEqual);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsNe(
@@ -326,8 +358,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOne(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered inequality comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
+  // Perform ordered inequality comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpLessThan or c == llvm::APFloat::cmpGreaterThan);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsLt(
@@ -342,8 +376,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOlt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered less-than comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() < rhs.BigVal());
+  // Perform ordered less than comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpLessThan);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsLe(
@@ -358,8 +394,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOle(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered less-than-or-equal comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() <= rhs.BigVal());
+  // Perform ordered less than or equal comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpLessThan or c == llvm::APFloat::cmpEqual);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsGt(
@@ -374,8 +412,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOgt(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered greater-than comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() > rhs.BigVal());
+  // Perform ordered greater than comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpGreaterThan);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsGe(
@@ -390,8 +430,10 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOge(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform ordered greater-than-or-equal comparison on two float literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() >= rhs.BigVal());
+  // Perform ordered greater than or equal comparison on two float literals, on their values in
+  // their type's format, as at run time: two texts that round to one value are equal.
+  const auto c = ValueOf(lhs).compare(ValueOf(rhs));
+  return BooleanLiteralAst::FromCppVal(c == llvm::APFloat::cmpGreaterThan or c == llvm::APFloat::cmpEqual);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMaxVal(
@@ -401,7 +443,7 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMaxVal(
   // The highest value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
   return IntegerLiteralAst::FromBigVal(
-    IntegerLiteralAst::kBounds.at(name).second, name);
+    spp::utils::numbers::IntegerBounds().at(name).second, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMinVal(
@@ -411,7 +453,7 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMinVal(
   // The lowest value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, false);
   return IntegerLiteralAst::FromBigVal(
-    IntegerLiteralAst::kBounds.at(name).first, name);
+    spp::utils::numbers::IntegerBounds().at(name).first, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsMax(
@@ -434,67 +476,80 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsCmp(
   IntegerLiteralAst const &lhs,
   IntegerLiteralAst const &rhs)
   -> Unique<IntegerLiteralAst> {
-  // Perform three-way comparison on two integer literals.
+  // Perform three-way comparison on two integer literals. The
+  // result is an "S32" whatever the operands are ("-1" for an
+  // unsigned one has no other type to be).
   const auto cmp = lhs.BigVal() <=> rhs.BigVal();
   const auto res = std::is_gt(cmp) - std::is_lt(cmp);
-  return IntegerLiteralAst::FromBigVal(numex::BigInt(res), lhs.Type);
+  return IntegerLiteralAst::FromBigVal(numex::BigInt(res), Str("s32"));
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFadd(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform addition on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
-  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal() + rhs.BigVal(), lhs.Type);
+  // To add two float literals: in their type's format, rounded as at run time.
+  auto value = ValueOf(lhs);
+  value.add(ValueOf(rhs), kNearest);
+  return FromValue(value, lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFsub(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform subtraction on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
-  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal() - rhs.BigVal(), lhs.Type);
+  // To subtract two float literals: in their type's format, rounded as at run time.
+  auto value = ValueOf(lhs);
+  value.subtract(ValueOf(rhs), kNearest);
+  return FromValue(value, lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmul(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform multiplication on two float literals. The arithmetic is exact rather than done in a fixed-width C++ float: a
-  // result the type cannot hold has to stay a value the caller can reject, not become an infinity.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal() * rhs.BigVal(), lhs.Type);
+  // To multiply two float literals: in their type's format, rounded as at run time.
+  auto value = ValueOf(lhs);
+  value.multiply(ValueOf(rhs), kNearest);
+  return FromValue(value, lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFdiv(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform division on two float literals.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal() / rhs.BigVal(), lhs.Type);
+  // To divide two float literals: in their type's format, rounded as at run time.
+  auto value = ValueOf(lhs);
+  value.divide(ValueOf(rhs), kNearest);
+  return FromValue(value, lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFrem(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform remainder on two float literals.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal().Fmod(rhs.BigVal()), lhs.Type);
+  // To take the remainder of two float literals ("fmod"): in their type's format, rounded as at run time.
+  auto value = ValueOf(lhs);
+  value.mod(ValueOf(rhs));
+  return FromValue(value, lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFneg(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform negation on a float literal, exactly.
-  return FloatLiteralAst::FromBigVal(-val.BigVal(), val.Type);
+  // To negate a float literal (keeping the sign of a zero): in its type's format, keeping the sign of a zero.
+  auto value = ValueOf(val);
+  value.changeSign();
+  return FromValue(value, val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFabs(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform absolute value on a float literal, exactly.
-  return FloatLiteralAst::FromBigVal(val.BigVal().Abs(), val.Type);
+  // To take the absolute value of a float literal: in its type's format, keeping the sign of a zero.
+  auto value = ValueOf(val);
+  value.clearSign();
+  return FromValue(value, val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmaxVal(
@@ -503,7 +558,8 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmaxVal(
   -> Unique<FloatLiteralAst> {
   // The largest finite value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
-  return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).second, name);
+  return FloatLiteralAst::FromBigVal(
+    spp::utils::numbers::FloatBounds().at(name).second, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFminVal(
@@ -512,107 +568,125 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFminVal(
   -> Unique<FloatLiteralAst> {
   // The most negative finite value the type argument can represent.
   const auto name = SizedNumericLiteralTypeNameOrError(sm, types, true);
-  return FloatLiteralAst::FromBigVal(FloatLiteralAst::kBounds.at(name).first, name);
+  return FloatLiteralAst::FromBigVal(
+    spp::utils::numbers::FloatBounds().at(name).first, name);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmax(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform maximum on two float literals.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal().Max(rhs.BigVal()), lhs.Type);
+  // To take the maximum of two float literals ("maxnum"): in their type's format.
+  return FromValue(llvm::maxnum(ValueOf(lhs), ValueOf(rhs)), lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFmin(
   FloatLiteralAst const &lhs,
   FloatLiteralAst const &rhs)
   -> Unique<FloatLiteralAst> {
-  // Perform minimum on two float literals.
-  return FloatLiteralAst::FromBigVal(lhs.BigVal().Min(rhs.BigVal()), lhs.Type);
+  // To take the minimum of two float literals ("minnum"): in their type's format.
+  return FromValue(llvm::minnum(ValueOf(lhs), ValueOf(rhs)), lhs.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFfloor(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform floor operation on a float literal.
-  return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Floor(), numex::BigInt(1)), val.Type);
+  // To round a float literal down: in its type's format, keeping the sign of a zero.
+  auto value = ValueOf(val);
+  value.roundToIntegral(llvm::APFloat::rmTowardNegative);
+  return FromValue(value, val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFceil(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform ceiling operation on a float literal.
-  return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Ceil(), numex::BigInt(1)), val.Type);
+  // To round a float literal up: in its type's format, keeping the sign of a zero.
+  auto value = ValueOf(val);
+  value.roundToIntegral(llvm::APFloat::rmTowardPositive);
+  return FromValue(value, val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFtrunc(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform truncation operation on a float literal.
-  return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Trunc(), numex::BigInt(1)), val.Type);
+  // To round a float literal toward zero: in its type's format, keeping the sign of a zero.
+  auto value = ValueOf(val);
+  value.roundToIntegral(llvm::APFloat::rmTowardZero);
+  return FromValue(value, val.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsFround(
   FloatLiteralAst const &val)
   -> Unique<FloatLiteralAst> {
-  // Perform round operation on a float literal: half away from zero, as "llvm.round" does at runtime.
-  return FloatLiteralAst::FromBigVal(numex::BigDec(val.BigVal().Round(), numex::BigInt(1)), val.Type);
+  // To round a float literal, half away from zero as "llvm.round" does: in its type's format, keeping
+  // the sign of a zero.
+  auto value = ValueOf(val);
+  value.roundToIntegral(llvm::APFloat::rmNearestTiesToAway);
+  return FromValue(value, val.Type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatNegOne()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatNegOne(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
-  // Get "-1.0" as a constant.
-  constexpr auto value = "-1.0";
-  auto flt = INJECT_CODE(value, ParseLiteralFloat);
-  return flt;
+  // "-1.0" as a "Self": the type the method was called on, its
+  // only type argument.
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, true);
+  return FloatLiteralAst::FromBigVal(numex::BigDec(numex::BigInt(-1), numex::BigInt(1)), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatZero()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatZero(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
-  // Get "0.0" as a constant.
-  constexpr auto value = "0.0";
-  auto num = INJECT_CODE(value, ParseLiteralFloat);
-  return num;
+  // "0.0" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, true);
+  return FloatLiteralAst::FromBigVal(numex::BigDec(numex::BigInt(0), numex::BigInt(1)), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatOne()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumFloatOne(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<FloatLiteralAst> {
-  // Get "1.0" as a constant.
-  constexpr auto value = "1.0";
-  auto num = INJECT_CODE(value, ParseLiteralFloat);
-  return num;
+  // "1.0" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, true);
+  return FloatLiteralAst::FromBigVal(numex::BigDec(numex::BigInt(1), numex::BigInt(1)), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumIntNegOne()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntNegOne(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
-  // Get "-1" as a constant.
-  constexpr auto value = "-1";
-  auto num = INJECT_CODE(value, ParseLiteralInteger);
-  return num;
+  // "-1" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return IntegerLiteralAst::FromBigVal(numex::BigInt(-1), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumIntZero()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntZero(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
-  // Get "0" as a constant.
-  constexpr auto value = "0";
-  auto num = INJECT_CODE(value, ParseLiteralInteger);
-  return num;
+  // "0" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return IntegerLiteralAst::FromBigVal(numex::BigInt(0), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumIntOne()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntOne(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
-  // Get "1" as a constant.
-  constexpr auto value = "1";
-  auto num = INJECT_CODE(value, ParseLiteralInteger);
-  return num;
+  // "1" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return IntegerLiteralAst::FromBigVal(numex::BigInt(1), type);
 }
 
-auto spp::analyse::utils::comp_time_intrinsics::StdNumIntTwo()
+auto spp::analyse::utils::comp_time_intrinsics::StdNumIntTwo(
+  ScopeManager const &sm,
+  Vec<Shared<TypeRef>> const &types)
   -> Unique<IntegerLiteralAst> {
-  // Get "2" as a constant.
-  constexpr auto value = "2";
-  auto num = INJECT_CODE(value, ParseLiteralInteger);
-  return num;
+  // "2" as a "Self".
+  const auto type = SizedNumericLiteralTypeNameOrError(sm, types, false);
+  return IntegerLiteralAst::FromBigVal(numex::BigInt(2), type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsSizeOf(

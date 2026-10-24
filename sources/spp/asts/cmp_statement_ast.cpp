@@ -26,6 +26,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -212,6 +213,10 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
     // Todo: Add this to unit tests.
     meta->ReturnTypeOverloadResolverType = MakeShared<TypeRef>(
       TypeRef::Of(*Type, *sm->CurrentScope));
+
+    // The declared type is the value's target, as a "let"'s is: an
+    // array literal takes its element type from it.
+    meta->AssignmentTargetType = Type;
     Value->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -362,13 +367,31 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     }
     return bound_val->Stage11_CodeGen(sm, meta, ctx);
   }();
+
+  // The value goes into the declared type as any slot's does
+  // ("cmp x: Opt[S32] = Some(val=1)"). A constant variant comes
+  // back laid out as the variant in another shape, so the global
+  // takes that shape, and is read as the declared type.
+  // The source is what was generated, the comp-time value, whose
+  // type is settled; the value as written may not have been given
+  // its target when it was first analysed.
+  const auto generated = Value != nullptr and bound_val != nullptr ? bound_val->To<ExpressionAst>() : nullptr;
+  const auto coerced_val = generated != nullptr
+    ? codegen::CoerceToSlot(
+      val, TypeRef::Of(*Type, *sm->CurrentScope), generated->InferTypeRef(sm, meta), *sm, "cmp.coerce", ctx)
+    : val;
   ctx->InConstantContext = false;
 
   // Create the global variable for the constant.
   const auto llvm_global_var = new llvm::GlobalVariable(
-    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
-    llvm::cast<llvm::Constant>(val),
+    *ctx->Module, coerced_val->getType(), true, llvm::GlobalValue::ExternalLinkage,
+    llvm::cast<llvm::Constant>(coerced_val),
     codegen::mangle::MangleCmpName(*sm->CurrentScope, *this));
+
+  if (coerced_val->getType() != llvm_type) {
+    llvm_global_var->setAlignment(ctx->Module->getDataLayout().getABITypeAlign(llvm_type));
+    var_sym->LlvmInfo->ValueType = llvm_type;
+  }
 
   // Register in the llvm info. Nothing here descends into
   // the value - the constant is emitted from what comp-time

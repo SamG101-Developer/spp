@@ -21,6 +21,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 try:
     import tomllib
@@ -40,7 +41,7 @@ VALUE = re.compile(r"^[A-Za-z0-9._:/+-]+$")
 NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-TABLES = {"pin", "prefix", "library", "runner", "cache"}
+TABLES = {"pin", "prefix", "library", "runner", "cache", "floor"}
 
 # A cache family names the first segment of a key and a generation the second, so neither may contain the "-" that
 # separates the segments: prune-caches.sh splits on it to tell a family apart from the rest of the key.
@@ -51,8 +52,12 @@ GENERATION = re.compile(r"^v[1-9][0-9]*$")
 # manifest is the canonical list; .github/scripts/ci/check-workflows.py holds the YAML to it.
 IMAGE = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.-]+$")
 
+# The oldest system a release must run on. Exported as SPP_FLOOR_<KEY> and read by check-floor.sh.
+FLOOR_KEYS = {"glibc", "linux", "binutils", "macos"}
+FLOOR_VERSION = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
-def fail(message: str) -> None:
+
+def fail(message: str) -> NoReturn:
     print(f"::error::{message}", file=sys.stderr)
     sys.exit(1)
 
@@ -104,6 +109,9 @@ def exports(data: dict) -> dict[str, str]:
             fail(f"prefix.{key} contains a newline")
         out[f"SPP_{key}_PREFIX".upper().replace("-", "_")] = path
 
+    for key, value in floor(data).items():
+        out[f"SPP_FLOOR_{key}".upper()] = value
+
     for name in out:
         if not NAME.match(name):
             fail(f"{name} is not a usable environment variable name")
@@ -141,6 +149,17 @@ def runners(data: dict) -> dict[str, str]:
             fail(f"runner.{key} is a floating image: {value!r}; name the version")
         out[key] = value
     return out
+
+
+def floor(data: dict) -> dict[str, str]:
+    table = data.get("floor", {})
+    unknown = set(table) - FLOOR_KEYS
+    if unknown:
+        fail(f"[floor] has unexpected key(s): {', '.join(sorted(unknown))}")
+    for key, value in table.items():
+        if not isinstance(value, str) or not FLOOR_VERSION.match(value):
+            fail(f"floor.{key} is not a dotted version like '2.28': {value!r}")
+    return dict(table)
 
 
 def caches(data: dict) -> dict[str, str]:

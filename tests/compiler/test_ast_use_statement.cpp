@@ -54,3 +54,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     use std::bignum::bigint::BigInt
     use std::bignum::bigint::BigInt
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestUseStatementAst,
+    test_valid_annotated_use_statements, R"(
+    !public
+    use std::bignum::bigint::BigInt
+
+    !public
+    use std::abort::abort
+
+    fun f(a: BigInt) -> ! {
+        std::mem::ops::drop(a)
+        abort()
+    }
+)");

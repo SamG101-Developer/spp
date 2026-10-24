@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.utils.comp_generics;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
@@ -115,3 +118,25 @@ auto spp::analyse::utils::comp_generics::IsCompOperator(
     return part.To<BinaryExpressionAst>() != nullptr or part.To<ParenthesisedExpressionAst>() != nullptr;
   });
 }
+
+namespace {
+  /// The constants "CompTimeResolutionGuard" holds, innermost last.
+  thread_local spp::Vec<VariableSymbol const*> resolving_constants;
+}
+
+SPP_MOD_BEGIN
+CompTimeResolutionGuard::CompTimeResolutionGuard(
+  VariableSymbol const *const sym) {
+  resolving_constants.emplace_back(sym);
+}
+
+CompTimeResolutionGuard::~CompTimeResolutionGuard() {
+  resolving_constants.pop_back();
+}
+
+auto CompTimeResolutionGuard::IsResolving(
+  VariableSymbol const *const sym) -> bool {
+  return genex::contains(resolving_constants, sym);
+}
+
+SPP_MOD_END

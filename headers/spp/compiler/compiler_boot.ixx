@@ -45,6 +45,10 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
    */
   bool VerifyOnly = false;
 
+  /// The build mode, "dev" or "rel", that a "!cfg(mode=...)"
+  /// condition is checked against.
+  Str BuildMode = "dev";
+
   auto Lex(
     utils::ProgressBar &bar, ModuleTree &tree) -> void;
 

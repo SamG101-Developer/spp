@@ -248,7 +248,8 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // attribute's type asks for.
-    fn_values::InstantiateFnValue(arg_ref, attr_ref, sm, meta);
+    fn_values::InstantiateFnValue(
+      arg_ref, attr_ref, sm, meta);
   }
 
   // Type check the default argument (if it exists).

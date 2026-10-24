@@ -54,6 +54,8 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorSliceAst final : PostfixE
   /// "iterable". Either "SliceRef" or "SliceMut" must be
   /// superimposed over the left-hand-side, depending on the
   /// presence of the "mut" keyword.
+  SPP_ATTR_NODISCARD auto WalksOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;

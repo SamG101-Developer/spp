@@ -74,17 +74,15 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// exiting with a value.
   llvm::PHINode *Phi = nullptr;
 
-  /// Whether the loop has run its body at least once or not,
-  /// so we know whether to take the "else" block under the
-  /// loop or not.
-  llvm::Value *EnteredFlag = nullptr;
+  /// The loop's own scope, where its condition is evaluated. An
+  /// "exit" or a "skip" leaves every scope inside it without
+  /// reaching their ends, so what they deferred runs at the
+  /// jump ("EmitScopeExit"); an "exit" leaves this one too.
+  Scope const *LoopScope = nullptr;
 
-  /// The scope that a loop statement is written in; were we
-  /// to break out of this loop, this is the scope we'd end
-  /// up in. All the scopes between the jump, and this one,
-  /// are being left without reaching the end, so their drops
-  /// need to be emitted here instead.
-  Scope const *ScopeContainingLoop = nullptr;
+  /// The loop's own type, which each value reaching the phi node
+  /// is coerced into; null when the loop yields no value.
+  Shared<TypeRef> Type = nullptr;
 };
 
 /// The master meta context used for additional information
@@ -187,12 +185,13 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   TokenAst *EnclosingFnFlavour;
 
   /// The return type of the enclosing function type. Again needed
-  /// for "ret" and "gen" type checking.
-  Vec<Shared<TypeAst>> EnclosingFnRetType;
+  /// for "ret" and "gen" type checking. Null in a closure with no
+  /// written return type, until its first "ret" or "gen" sets it.
+  Shared<TypeAst> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
-  Vec<Shared<TypeAst>> EnclosingFnSourceRetType;
+  Shared<TypeAst> EnclosingFnSourceRetType;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
@@ -240,6 +239,12 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// good type checking against "exit" statements at any
   /// level, targeting any level.
   Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>> LoopReturnTypes;
+
+  /// The type each loop is assigned to, by depth, with the scope
+  /// it is read in: a loop being assigned to a declared type
+  /// ("let x: Opt[S32] = loop ..") has every "exit" go into it, as
+  /// a "case" does its branches. Null for a loop with no target.
+  Vec<Pair<Shared<TypeAst>, Scope const*>> LoopTargetTypes;
 
   /// The object initializer type, because the object initializer
   /// group needs it for generic inference.
@@ -305,9 +310,18 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
     Shared<IdentifierAst>, Unique<ExpressionAst>,
     utils::ptr::ptr_hash<Shared<IdentifierAst>>,
     utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
-  /// The call's generic arguments, each as it resolves at the call site: a type's "TypeRef", a comp value's identity.
+
+  /// The call's generic arguments, each as it resolves at the
+  /// call site: a type's "TypeRef", a comp value's identity.
+  /// What "Self" stands for at the call, if anything, follows
+  /// the type arguments.
   Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
   Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
+
+  /// The call's comp generic arguments by the parameter each
+  /// binds ("n" for "get[5]()"), which the body of a "cmp fun"
+  /// reads its comp parameters as.
+  Vec<Pair<Shared<IdentifierAst>, analyse::scopes::CompId>> CompTimeGnCompValues;
   Unique<ExpressionAst> CompTimeResult;
 
   /// Whether a comp-time "ret" has run, so the blocks and loops

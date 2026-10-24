@@ -1,0 +1,24 @@
+# A program that traps: values computed at run time are printed, then an addition overflows. Both modes must print the
+# same lines before the trap, report the same check, and exit through the one abort path.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun add(a: S32, b: S32) -> S32 {
+  ret a + b
+}
+
+fun main() -> Void {
+  let mut x = 2147483640
+  let mut i = 0
+  loop i < 10 {
+    x = add(x, 1)
+    show("x", Str::from(x))
+    i += 1
+  }
+  show("unreachable", Str::from(x))
+}

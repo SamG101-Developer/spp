@@ -31,6 +31,10 @@ inputs:
       artifact's name become outputs.
     required: false
     default: "false"
+  check-floor:
+    description: "Fail when the binaries need a newer glibc, kernel or macOS than [floor] in .github/dependencies.toml."
+    required: false
+    default: "false"
 
 outputs:
   artifact:
@@ -81,7 +85,7 @@ runs:
 
     # Falls back to the newest tree for this variant on this branch, then on the base branch.
     - name: Restore build tree
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
@@ -103,9 +107,16 @@ runs:
       shell: bash
       run: bash .github/scripts/build/check-self-contained.sh
 
+    - name: Check binaries run on the platform floor
+      if: inputs.check-floor == 'true'
+      shell: bash
+      env:
+        FLOOR_ADVISORY: "true"
+      run: bash .github/scripts/build/check-floor.sh
+
     - name: Upload build logs on failure
       if: failure()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: buildlog-${{ inputs.os }}-${{ inputs.compiler }}-${{ inputs.variant }}
         path: build-logs
@@ -116,7 +127,7 @@ runs:
     - name: Save build tree
       if: ${{ always() && steps.configure.outcome == 'success' }}
       continue-on-error: true
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build
         key: ${{ steps.cache-key.outputs.key }}
@@ -134,7 +145,7 @@ runs:
     # One day: this run's test jobs, and on a release its collect job, are the only readers.
     - name: Upload binaries for the test jobs
       if: inputs.stage == 'true'
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ steps.stage.outputs.artifact }}
         path: staged-bin

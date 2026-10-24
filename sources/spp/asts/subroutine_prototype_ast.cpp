@@ -10,7 +10,6 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_predicates;
 import spp.asts.annotation_ast;
 import spp.asts.function_implementation_ast;
@@ -84,8 +83,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // Update the meta information for enclosing function information.
   meta->Save();
   meta->EnclosingFnFlavour = this->TokFun.get();
-  meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName());
-  meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+  meta->EnclosingFnRetType = ret_type_sym->FqName();
+  meta->EnclosingFnSourceRetType = ReturnType;
   meta->EnclosingFnScope = sm->CurrentScope;
   meta->EnclosingFnCmp = TokCmp.get();
   {
@@ -105,7 +104,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // A body that never reaches its end ("ret", "abort()", a loop
   // with no way out, a "case" every branch of which does one of
   // those) needs no value there.
-  const auto body_diverges = expr_utils::Diverges(*Impl, sm, meta);
+  const auto body_diverges = Impl->Diverges(sm, meta);
   RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
     not is_void and not annotation_blocks_ret and not body_diverges,
     ERR_ARGS(*final_member, *ReturnType, *ReturnType));
@@ -114,7 +113,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   // multiple prototypes for the singular C function,
   // breaking C ABI compatibility.
   if (FfiAnnotation != nullptr) {
-    const auto ffi_symbol = GetFfiSymbolName();
+    const auto ffi_symbol = GetFfiSymbolName().value_or(Str());
     for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
       Raise<SppFfiGenericParameterError>(ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
     }
@@ -172,10 +171,10 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(
     ReturnType.get());
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType.emplace_back(ret_type_sym->FqName());
-    meta->EnclosingFnSourceRetType.emplace_back(ReturnType);
+    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    meta->EnclosingFnSourceRetType = ReturnType;
     meta->EnclosingFnScope = sm->CurrentScope;
 
     // If there is an implementation, generate its code.

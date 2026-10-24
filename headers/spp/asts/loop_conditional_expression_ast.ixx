@@ -11,6 +11,7 @@ import std;
 
 SPP_AST_COMMON_FWD_DECL(LoopConditionalExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressionAst {
@@ -18,6 +19,13 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   /// The loop condition, an expression evaluating to a boolean.
   Unique<ExpressionAst> Cond;
+
+  /// A "defer" in the loop's own scope: it runs as the loop is
+  /// left - by an "exit", by the condition ending it (after the
+  /// "else"), or by a "ret" from inside it - but not between
+  /// iterations. Never written: an iterable loop's desugaring
+  /// gives one, to drop its iterator.
+  Unique<DeferStatementAst> LoopDefer;
 
   LoopConditionalExpressionAst(
     decltype(TokLoop) &&tok_loop,
@@ -37,20 +45,4 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
-
-  /// Mark this loop as the product of desugaring an iterable
-  /// loop. Such a loop runs its body once more than it yields
-  /// values (the final iteration discovers the generator is
-  /// exhausted), so it must not record itself as "entered" at
-  /// the top of its body; the yield branch of its "case" block
-  /// does that instead. Without this, the "else" block would
-  /// never run, because an empty generator still enters the
-  /// body once.
-  auto MarkAsIterDesugar() -> void;
-
-private:
-  /// Whether this loop was desugared from an iterable loop.
-  /// See "MarkAsIterDesugar".
-  bool _IterDesugar;
 };

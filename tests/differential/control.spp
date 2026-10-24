@@ -1,0 +1,58 @@
+# Control flow: "defer" run on an early and a normal return, loops giving a value by "exit" or by their "else", "skip",
+# an "exit exit" out of two loops, and loops over ranges.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun with_defer(early: Bool) -> U32 {
+  defer std::console::println("deferred")
+  case early { ret 1_u32 }
+  std::console::println("body end")
+  ret 2_u32
+}
+
+fun first_over(limit: U32) -> U32 {
+  let mut i = 0_u32
+  ret loop i < 100_u32 {
+    case i * i > limit { exit i }
+    i += 1_u32
+  } else { 999_u32 }
+}
+
+fun odd_sum(n: USize) -> USize {
+  let mut sum = 0_uz
+  loop k in std::range::Range[USize]::between(0_uz, n) {
+    case k % 2_uz == 0_uz { skip }
+    sum += k
+  }
+  ret sum
+}
+
+fun nested_exit() -> U32 {
+  let mut steps = 0_u32
+  let mut i = 0_u32
+  loop i < 10_u32 {
+    let mut j = 0_u32
+    loop j < 10_u32 {
+      steps += 1_u32
+      case i * 10_u32 + j == 23_u32 { exit exit }
+      j += 1_u32
+    }
+    i += 1_u32
+  }
+  ret steps
+}
+
+fun main() -> Void {
+  show("defer early", Str::from(with_defer(true)))
+  show("defer normal", Str::from(with_defer(false)))
+  show("first over 50", Str::from(first_over(50_u32)))
+  show("first over 99999", Str::from(first_over(99999_u32)))
+  show("odd sum 10", Str::from(odd_sum(10_uz)))
+  show("odd sum 0", Str::from(odd_sum(0_uz)))
+  show("nested exit steps", Str::from(nested_exit()))
+}

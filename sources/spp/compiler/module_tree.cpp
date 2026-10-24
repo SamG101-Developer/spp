@@ -1,9 +1,9 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
+import spp.codegen.llvm_target;
 import spp.compiler.ffi;
 import spp.utils.files;
 import genex;

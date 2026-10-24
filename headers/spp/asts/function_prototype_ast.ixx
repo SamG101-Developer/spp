@@ -163,9 +163,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// name the shared library actually exports. An ffi function
   /// is never mangled the S++ way, because the definition it
   /// binds to was compiled by something else entirely
-  /// (effectively: extern "C"). Empty if this is not an ffi
-  /// function.
-  SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Str;
+  /// (effectively: extern "C"). None if this is not an ffi
+  /// function, or its annotation names no symbol.
+  SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Opt<Str>;
 
   SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
 

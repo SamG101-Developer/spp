@@ -39,6 +39,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -59,8 +60,10 @@ import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.ice;
 import spp.utils.interner;
+import spp.utils.numbers;
 import spp.utils.ptr;
 import genex;
+import llvm;
 import numex.big_dec;
 import numex.big_int;
 
@@ -118,23 +121,6 @@ namespace spp::analyse::scopes {
     /// nothing unresolved. Parameters are allowed: a stamp is read through the bindings where it is read.
     auto IsStampableTypeId(const TypeId id) -> bool {
       return id != nullptr and not id->HasSelf and not id->HasUnresolved;
-    }
-
-    /// The decimal places "value" needs to print exactly, or none when its decimal does not terminate: its denominator
-    /// (in lowest terms) has a prime factor other than 2 and 5.
-    auto ExactDecimalPlaces(numex::BigDec const &value) -> Opt<std::uint64_t> {
-      auto den = value.GetDenominator();
-      auto twos = static_cast<std::uint64_t>(0);
-      auto fives = static_cast<std::uint64_t>(0);
-      while (den % numex::BigInt(2) == numex::BigInt(0)) {
-        den /= numex::BigInt(2);
-        ++twos;
-      }
-      while (den % numex::BigInt(5) == numex::BigInt(0)) {
-        den /= numex::BigInt(5);
-        ++fives;
-      }
-      return den == numex::BigInt(1) ? Opt(std::max(twos, fives)) : Nullopt;
     }
 
     /// The binding a scope gives a generic parameter, by the parameter's identity
@@ -272,7 +258,7 @@ namespace {
            SppTokenType::TK_ADD, SppTokenType::TK_SUB, SppTokenType::TK_MUL, SppTokenType::TK_DIV, SppTokenType::TK_REM,
            SppTokenType::TK_BIT_IOR, SppTokenType::TK_BIT_AND, SppTokenType::TK_BIT_XOR, SppTokenType::TK_BIT_SHL,
            SppTokenType::TK_BIT_SHR, SppTokenType::TK_EQ, SppTokenType::TK_NE, SppTokenType::TK_LT, SppTokenType::TK_LE,
-           SppTokenType::TK_GT, SppTokenType::TK_GE
+           SppTokenType::TK_GT, SppTokenType::TK_GE, SppTokenType::KW_AND, SppTokenType::KW_OR
          }) {
       if (spp::lex::TokToString(tok) == op) { return tok; }
     }
@@ -561,6 +547,21 @@ namespace spp::analyse::scopes {
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
         auto flat = parts.Members.empty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
+
+        // A pack bound to its tuple ("Bool or Rest" with "Rest" bound to "(S32, Str)") is the tuple's elements, as
+        // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str". Only a bare name can be a pack.
+        auto const *const named = member->To<spp::asts::TypeIdentifierAst>();
+        const auto elements = named != nullptr and named->GnArgGroup->Args.empty()
+          ? spp::analyse::utils::packs::BoundTypePackElements(*member, read_in)
+          : spp::Nullopt;
+        if (elements.has_value()) {
+          flat.clear();
+          for (auto const &element : *elements) {
+            auto element_parts = RawTypeKey(element.get(), nullptr, read_in);
+            if (element_parts.Members.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
+            else { for (auto &m : element_parts.Members) { flat.emplace_back(std::move(m)); } }
+          }
+        }
         for (auto &m : flat) {
           if (not genex::contains(out.Members, m)) { out.Members.emplace_back(std::move(m)); }
         }
@@ -638,6 +639,22 @@ namespace spp::analyse::scopes {
       return *id;
     }
 
+    /// Whether "expr", keyed as "key", is a "Bool": a bool value,
+    /// a comparison or "and"/"or" (which always make one), or a
+    /// comp parameter declared "Bool".
+    auto IsBoolOperand(ExpressionAst const &expr, CompKey const &key, Scope const &scope) -> bool {
+      using Part = CompKey::Part;
+      if (key.AsBool() != nullptr) { return true; }
+      if (key.Kind == Part::Op) {
+        return genex::contains(Vec<StrView>{"==", "!=", "<", "<=", ">", ">=", "and", "or"}, StrView(key.Text));
+      }
+      if (key.Kind != Part::Param) { return false; }
+      const auto id = expr.To<spp::asts::IdentifierAst>();
+      auto const *const var = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
+      return var != nullptr and var->Type != nullptr
+        and spp::analyse::utils::type_predicates::IsTypeBool(TypeRef::Of(*var->Type, scope), scope);
+    }
+
     /// [CHECKED]
     /// An expression's identity, as a comp key: folded as it is
     /// built, as a type's key is normalised as it is built
@@ -648,9 +665,13 @@ namespace spp::analyse::scopes {
 
       // A literal is its own value, however it is spelled:
       // "0x10_uz" and "16_uz" are one value, as are "1.5_f64"
-      // and "1.50_f64" (a float as its exact rational).
+      // and "1.50_f64". A float is its value in its type's format,
+      // as a folded one is ("FoldCompValues"), so "0.1_f32" and
+      // "0.05_f32 + 0.05_f32" are one value too. One the type
+      // cannot hold is kept as written, for E16.
       if (const auto lit = expr.To<FloatLiteralAst>(); lit != nullptr) {
-        return CompKey::OfFloat(lit->BigVal(), lit->Type);
+        const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(lit->BigVal(), lit->Type));
+        return CompKey::OfFloat(text.has_value() ? numex::BigDec(*text) : lit->BigVal(), lit->Type);
       }
 
       if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
@@ -703,6 +724,20 @@ namespace spp::analyse::scopes {
           }
           return CompKey::OfOp(op, InternCompKey(std::move(lhs_key)), InternCompKey(std::move(rhs_key)));
         }
+      }
+
+      // "b.not" on a "Bool" is "b == false": the same value, keyed as
+      // an operation comp keys already fold, rewrite and spell back.
+      // A "not" of anything else is its spelling, as a call is.
+      if (const auto pf = expr.To<PostfixExpressionAst>();
+        pf != nullptr and pf->Op->To<PostfixExpressionOperatorKeywordNotAst>() != nullptr) {
+        auto operand = RawCompKey(*pf->Lhs, scope);
+        if (not IsBoolOperand(*pf->Lhs, operand, scope)) { return RecordedOpaque(expr, scope); }
+        auto false_key = CompKey::OfBool(false);
+        if (operand.Kind == CompKey::Part::Value) {
+          if (auto folded = FoldCompValues("==", operand, false_key); folded.has_value()) { return std::move(*folded); }
+        }
+        return CompKey::OfOp("==", InternCompKey(std::move(operand)), InternCompKey(std::move(false_key)));
       }
 
       // A constant named through a type ("Self::mo_seq_cst",
@@ -1021,13 +1056,17 @@ auto Scope::HideLetBindings() -> void {
 auto Scope::RevealLetBindings() -> void {
   // Replenish the bindings, from the last binding back, so
   // a name ends up meaning the last binding of it (and only
-  // the last binding is put back, subsequent duplicates are
-  // skipped).
-  // Todo: A name still held by an earlier "let" of this scope (a
-  //  walk that left between two shadows of it) counts as taken,
-  //  so the earlier binding stays. See next-steps N6.15.
+  // the last binding is put back, earlier ones of the same
+  // name are skipped). A name is free when it is empty or held
+  // by one of this scope's own bindings: a walk that left
+  // between two shadows of it filed the earlier one.
+  const auto own = [this](VariableSymbol const *held) {
+    return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
+  };
+  auto placed = Set<spp::utils::InternedId>();
   for (auto const &sym : LetBindings | genex::views::reverse) {
-    if (InternalTable.VarTable.Find(sym->Name.get()) == nullptr) {
+    if (not placed.insert(sym->Name->NameId()).second) { continue; }
+    if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
       InternalTable.VarTable.Add(sym->Name.get(), sym);
     }
   }
@@ -1690,11 +1729,8 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
   auto const &node = *id;
   switch (node.Kind) {
     // A value is its literal ("2_uz", "-3_s32", "true"). A float
-    // whose decimal terminates is its literal, exactly; one that
-    // does not ("1.0 / 3.0") has no literal, so it is its numerator
-    // over its denominator, which folds back to the same value
-    // ("FoldCompValues"): a literal cut short would be another
-    // value, so another type.
+    // is a value of its type's format, whose decimal terminates,
+    // so its literal is exact.
     case CompKey::Part::Value: {
       if (auto const *const val = node.AsBool(); val != nullptr) {
         return BooleanLiteralAst::FromCppVal(*val);
@@ -1705,15 +1741,7 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
       }
 
       if (auto const *const val = node.AsFloat(); val != nullptr) {
-        if (const auto places = ExactDecimalPlaces(*val); places.has_value()) {
-          return FloatLiteralAst::FromBigVal(*val, node.Text, *places);
-        }
-        auto num = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetNumerator(), numex::BigInt(1)), node.Text, 0uz);
-        auto den = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetDenominator(), numex::BigInt(1)), node.Text, 0uz);
-        return MakeUnique<BinaryExpressionAst>(
-          std::move(num),
-          MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DIV, lex::TokToString(lex::SppTokenType::TK_DIV)),
-          std::move(den));
+        return FloatLiteralAst::FromBigVal(*val, node.Text);
       }
       return nullptr;
     }

@@ -2,7 +2,6 @@ module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
   if (not HandleValidate(is_exe)) { std::exit(1); }
@@ -18,6 +17,8 @@ import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
+import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_target;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
 import spp.compiler.ffi;
@@ -105,13 +106,27 @@ namespace spp::cli {
 #endif
     }
 
+    /// Refuse a measure the target cannot have, on by default or
+    /// not: building without it would quietly harden less.
+    auto CheckTargetSupport(Vec<Str> &errors) -> bool {
+      if (utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit) and not codegen::TargetHasSafeStack()) {
+        errors.emplace_back(
+          Str("'split' in [memory.stack] cannot be applied: LLVM has no unsafe stack pointer for ")
+          + codegen::TargetFolderName() + "; set 'split = false'");
+        return false;
+      }
+      return true;
+    }
+
     /// Adopt this project's feature settings. Only this one: how
     /// a dependency configured itself is a property of that
     /// dependency's own build, and what comes out of here is
     /// one program, generated once.
     auto LoadProjectFeatures() -> bool {
       auto config_errors = Vec<Str>();
-      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) { return true; }
+      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)
+        and utils::features::CheckFloor(codegen::TargetIsLinux(), config_errors)
+        and CheckTargetSupport(config_errors)) { return true; }
       for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
       return false;
     }
@@ -787,19 +802,18 @@ auto spp::cli::HandleAudit(
   Str const &path) -> bool {
   // The record is written by every build ("EmitHardeningRecord");
   // a program without one predates it or was not built by spp.
-  auto error = static_cast<char const*>(nullptr);
-  const auto record = codegen::ReadHardeningRecord(path.c_str(), &error);
-  if (record == nullptr) {
-    std::cerr << "Error: '" << path << "' cannot be read as a program: " << error << "\n";
+  const auto record = codegen::ReadHardeningRecord(path.c_str());
+  if (not record.has_value()) {
+    std::cerr << "Error: '" << path << "' cannot be read as a program: " << record.error() << "\n";
     return false;
   }
-  if (*record == '\0') {
+  if (not record->has_value()) {
     std::cerr
       << "Error: '" << path << "' has no hardening record.\n"
       << "  It was not built by spp, or by an spp from before records were written.\n";
     return false;
   }
-  std::cout << record;
+  std::cout << **record;
   return true;
 }
 

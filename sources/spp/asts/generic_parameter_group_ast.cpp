@@ -224,12 +224,6 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto GenericParameterGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Run the memory checks on each parameter in the group.
-  for (auto const &p : Params) { p->Stage8_CheckMemory(sm, meta); }
-}
-
 auto GenericParameterGroupAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Fold each comp default, to prove it is a constant even if

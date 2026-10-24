@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Hold every workflow and composite action to the pipeline's security rules (docs/ci-pipeline-refactor.md).
 
+Only the rules zizmor has no audit for: it already fails unpinned `uses:` (unpinned-uses) and checkouts that keep
+the token (artipacked), and pinact holds the version comments.
+
 Run from the repository root; prints one ::error per finding and exits non-zero if there are any.
 """
 
@@ -11,16 +14,15 @@ import sys
 from pathlib import Path
 
 import yaml
+from yaml.resolver import BaseResolver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-import pins  # noqa: E402
+import pins
 
 WORKFLOWS = Path(".github/workflows")
 ACTIONS = Path(".github/actions")
 
-PINNED = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$")
 HARDEN = "step-security/harden-runner@"
-CHECKOUT = "actions/checkout@"
 DOWNLOAD = "actions/download-artifact@"
 IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?)?\b")
 LINE = "__line__"
@@ -34,11 +36,11 @@ class LineLoader(yaml.SafeLoader):
 
 def _construct_mapping(loader: LineLoader, node: yaml.MappingNode) -> dict:
     mapping = loader.construct_mapping(node, deep=True)
-    mapping[LINE] = node.start_mark.line + 1
+    mapping[LINE] = node.start_mark.line + 1 if node.start_mark is not None else 1
     return mapping
 
 
-LineLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping)
+LineLoader.add_constructor(BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping)
 
 
 def error(path: Path, node: dict | None, message: str) -> None:
@@ -48,7 +50,7 @@ def error(path: Path, node: dict | None, message: str) -> None:
     print(f"::error file={path},line={line}::{message}")
 
 
-def flat_steps(steps: list) -> list[dict]:
+def flat_steps(steps: list | None) -> list[dict]:
     """Steps in order, with the members of a `parallel:` group in place of the group."""
     out: list[dict] = []
     for step in steps or []:
@@ -65,10 +67,6 @@ def check_step(path: Path, where: str, step: dict) -> None:
         return
     with_ = step.get("with") or {}
 
-    if not PINNED.match(uses):
-        error(path, step, f"{where}: `{uses}` is not pinned to a full commit")
-    if uses.startswith(CHECKOUT) and with_.get("persist-credentials") is not False:
-        error(path, step, f"{where}: checkout without `persist-credentials: false` leaves the token in .git/config")
     if uses.startswith(DOWNLOAD):
         for key in ("run-id", "github-token"):
             if key in with_:
@@ -76,7 +74,7 @@ def check_step(path: Path, where: str, step: dict) -> None:
 
 
 def check_workflow(path: Path) -> None:
-    data = yaml.load(path.read_text(), Loader=LineLoader)  # noqa: S506 - LineLoader is a SafeLoader
+    data = yaml.load(path.read_text(), Loader=LineLoader)  # LineLoader is a SafeLoader
     # The loader adds the line marker to every mapping, `{}` included.
     permissions = data.get("permissions")
     if not isinstance(permissions, dict) or set(permissions) - {LINE}:
@@ -102,7 +100,7 @@ def check_workflow(path: Path) -> None:
 
 
 def check_action(path: Path) -> None:
-    data = yaml.load(path.read_text(), Loader=LineLoader)  # noqa: S506 - LineLoader is a SafeLoader
+    data = yaml.load(path.read_text(), Loader=LineLoader)  # LineLoader is a SafeLoader
     for step in flat_steps((data.get("runs") or {}).get("steps")):
         check_step(path, f"action `{path.parent.name}`", step)
 

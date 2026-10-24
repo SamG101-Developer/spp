@@ -16,6 +16,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
@@ -75,7 +76,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // Leaving the scope is what runs a deferred expression, so
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
-  RaiseIf<SppDeferTerminatesError>(expr_utils::Diverges(*Expr, sm, meta), ERR_ARGS(*TokDefer, *Expr));
+  RaiseIf<SppDeferTerminatesError>(Expr->Diverges(sm, meta), ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value
@@ -150,16 +151,14 @@ auto DeferStatementAst::Stage9_CompTimeResolve(
 }
 
 auto DeferStatementAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
-  // each of the scope's exits, by "EmitDeferredScope". What
+  // each of the scope's exits, by "EmitScopeExit". What
   // reaching this statement does is register it, so that only
   // the exits below it run it - the same thing stage 8 does
   // with "Scope::Deferred". Guarded against repeats because a
   // loop body is walked twice against the same scope.
-  if (not genex::contains(sm->CurrentScope->DeferredReached, this)) {
-    sm->CurrentScope->DeferredReached.emplace_back(this);
-  }
+  codegen::ReachDefer(*sm->CurrentScope, *this, ctx);
   return nullptr;
 }
 

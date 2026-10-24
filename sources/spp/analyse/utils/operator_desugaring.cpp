@@ -213,10 +213,15 @@ auto spp::analyse::utils::operator_desugaring::MapToMethodCall(
   for (auto &&arg : args) {
     arg_group->Args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(arg)));
   }
-  auto field_name = MakeUnique<IdentifierAst>(pos, Str(method));
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-  auto fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
+
+  auto field_name = MakeUnique<IdentifierAst>(
+    pos, Str(method));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+    nullptr, std::move(field_name));
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    AstClone(meta->PostfixExpressionLhs), std::move(field));
+  auto fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, std::move(arg_group), nullptr);
   fn_call->Source.OriginalExpr = &op;
   auto mapped = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(fn_call));
   mapped->Stage7_AnalyseSemantics(sm, meta);

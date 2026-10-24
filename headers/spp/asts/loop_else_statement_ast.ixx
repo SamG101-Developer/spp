@@ -23,9 +23,10 @@ SPP_EXP_CLS struct spp::asts::LoopElseStatementAst final : Ast, mixins::TypeInfe
   /// The "else" keyword starting the loop's else statement.
   Unique<TokenAst> TokElse;
 
-  /// The body of the else statement, executed if the loop
-  /// condition is immediately false, or the iterable is
-  /// already exhausted (no loops take place).
+  /// The body of the else statement, executed when the loop
+  /// ends without an "exit": its condition is false, or its
+  /// iterable is exhausted, however many iterations it took
+  /// first. It is the loop's value then.
   Unique<InnerScopeExpressionAst> Body;
 
   LoopElseStatementAst(

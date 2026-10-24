@@ -115,3 +115,24 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  LoopConditionIterableAst,
+  test_invalid_loop_condition_iterable_value_missing_else,
+  SppLoopMissingElseError, R"(
+    fun f() -> USize {
+        ret loop x in std::range::Range[USize]::between(0_uz, 10_uz) {
+            case x == 5_uz { exit x }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  LoopConditionIterableAst,
+  test_valid_loop_condition_iterable_value_with_else, R"(
+    fun f() -> USize {
+        ret loop x in std::range::Range[USize]::between(0_uz, 10_uz) {
+            case x == 50_uz { exit x }
+        } else { 999_uz }
+    }
+)");

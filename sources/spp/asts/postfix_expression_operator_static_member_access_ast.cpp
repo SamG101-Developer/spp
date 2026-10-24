@@ -185,6 +185,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Handle accessing a symbol on a type.
   if (_LhsTypeSymbol != nullptr) {
     if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
@@ -198,6 +199,14 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
     }
     const auto sym = analyse::utils::member_lookup::MemberOf(
       *_LhsTypeSymbol->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
+
+    // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
+    // as this is impossiblt to provide a value.
+    using comp_generics::CompTimeResolutionGuard;
+    RaiseIf<SppCompTimeConstantError>(
+      CompTimeResolutionGuard::IsResolving(sym),
+      ERR_ARGS(*this));
+    const auto _guard = CompTimeResolutionGuard(sym);
     auto tm = sm->NewManagerAt(_LhsTypeSymbol->LinkedScope);
     sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
     meta->CompTimeResult = AstClone(meta->CompTimeResult);
@@ -259,10 +268,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
       }
       return folded->Stage11_CodeGen(sm, meta, ctx);
     }
-    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-      *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
-      *codegen::GetEmissionModule(*ctx));
-    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_type_member" + uid);
+    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_type_member" + uid, ctx);
   }
 
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
@@ -270,10 +276,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   const auto var_sym = lhs_ns_scope->FindVarSymbol(Name.get(), true);
   if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
-  const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-    *llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca),
-    *codegen::GetEmissionModule(*ctx));
-  return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.static_ns_member" + uid);
+  return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(

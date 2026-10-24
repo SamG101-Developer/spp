@@ -76,3 +76,33 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = Holder[S32]::pick[0_uz to 1_uz]
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  AstPostfixExpressionOperatorSliceAst,
+  test_invalid_slicing_an_early_return,
+  SppLinearValueNotConsumedError, R"(
+    fun g() -> Opt[Vec[U64]] { ret None }
+    fun f() -> Opt[U64] {
+        {
+            let s = g()?[0_uz to 1_uz]
+        }
+        ret None
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_slicing_open_ended_bounds, R"(
+    fun f(a: Vec[S32]) -> Void {
+        {
+            let x = a[to 2_uz]
+        }
+        {
+            let y = a[1_uz to]
+        }
+        {
+            let z = a[to]
+        }
+        std::mem::ops::drop(a)
+    }
+)");

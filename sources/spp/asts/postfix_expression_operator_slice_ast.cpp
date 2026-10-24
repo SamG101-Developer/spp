@@ -163,4 +163,9 @@ auto PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
     (ExprRBound == nullptr or ExprRBound->IsAllowedInDefault());
 }
 
+auto PostfixExpressionOperatorSliceAst::WalksOperand() const -> bool {
+  // Checked through "slice_ref"/"slice_mut", over the operand.
+  return true;
+}
+
 SPP_MOD_END

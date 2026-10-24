@@ -112,7 +112,22 @@ namespace {
     auto const *const last = type.LastTypePart();
     auto open = scope.FindTypeSymbolById(type.StampedTypeId());
     if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
-    return open != nullptr ? MakeOnRead(scope, *open, scope.ReadIn(open->Id)) : nullptr;
+    if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
+
+    // Stamped before a part of it could be read ("A[Self::n]"
+    // stamped while "Self::n" was still the member, keyed now
+    // as "A[4_uz]"), the stamp names nothing, and not what the
+    // type keys to now: that instantiation is made, from its
+    // template. A stamp that reads as the same identity is an
+    // instantiation not made yet, left to whoever makes it.
+    using namespace spp::analyse::scopes;
+    const auto id = scope.TypeIdOf(type);
+    if (not IsClosedTypeId(id) or HeadOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
+    const auto stamp = last->StampedTypeId();
+    if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
+    auto const *const tmpl = HeadOf(id).Symbol();
+    if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
+    return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
   }
 
   /// Whether a marker annotation was written on this type, or
@@ -296,6 +311,7 @@ VariableSymbol::VariableSymbol(
   CompTimeValue(AstClone(that.CompTimeValue)),
   BoundCompId(that.BoundCompId) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
+  LlvmInfo->ValueType = that.LlvmInfo->ValueType;
 }
 
 VariableSymbol::~VariableSymbol() = default;
@@ -365,7 +381,7 @@ auto spp::analyse::scopes::GnPackParamId(
 
 auto spp::analyse::scopes::ArgNameOf(
   TypeIdArg const &arg) -> Str {
-  if (not arg.Named) { return Str(); }
+  SPP_ASSERT(arg.Named);
   return ParamNameOf(arg.Slot);
 }
 
@@ -389,7 +405,6 @@ auto spp::analyse::scopes::NameTypeIdOf(
   key.PushSymbol(&sym);
   return InternTypeKey(std::move(key));
 }
-
 
 auto spp::analyse::scopes::NextGnParamId() -> std::uint64_t {
   // Never zero, which is what a symbol that is not a parameter
@@ -665,22 +680,39 @@ auto AliasInfo::DeclaredIn() const -> Scope* {
   return WrittenIn->AstNode != nullptr and WrittenIn->AstNode == Stmt ? WrittenIn->Parent : WrittenIn;
 }
 
+namespace {
+  /// The aliases a chain of them has passed through, to stop on
+  /// one it comes back to. Inline: a chain is short.
+  using PassedAliases = spp::SmallVec<TypeSymbol const*, 4>;
+
+  auto WasPassed(PassedAliases const &passed, TypeSymbol const *const sym) -> bool {
+    for (auto i = 0uz; i < passed.size(); ++i) {
+      if (passed[i] == sym) { return true; }
+    }
+    return false;
+  }
+}
+
 auto TypeSymbol::AliasTarget(
   Scope const &scope, const bool make) const -> TypeSymbol* {
-  // Followed until nothing changes: a cycle ("type A = A") is rejected where it is declared. Read where
-  // it was written first: its linked scope is the target class's own, where the target's spelling can name that
-  // class's parameters instead ("type Mine = Vec[A]" in "sup A", read in "Vec", is "Vec[A=A]").
+  // Followed until nothing changes, or until it comes back to an alias it has passed: a cycle ("type A = B",
+  // "type B = A") is rejected where it is declared ("aliases::StatementTarget"), but can be followed before then (the
+  // borrow check of a target, earlier in the same stage). Read where it was written first: its linked scope is the
+  // target class's own, where the target's spelling can name that class's parameters instead ("type Mine = Vec[A]" in
+  // "sup A", read in "Vec", is "Vec[A=A]").
   const auto read = [make](Scope const *where, TypeAst const &resolved) -> TypeSymbol* {
     if (where == nullptr) { return nullptr; }
     return make ? FindOrMakeTypeSymbol(*where, resolved) : where->FindTypeSymbol(&resolved);
   };
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases{s};
   while (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
     auto const &resolved = *s->Alias->Resolved;
     auto *next = read(s->Alias->WrittenIn, resolved);
     if (next == nullptr) { next = read(s->LinkedScope, resolved); }
     if (next == nullptr) { next = read(&scope, resolved); }
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
@@ -703,12 +735,15 @@ auto TypeSymbol::AliasTargetId(
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {
-  // Followed until nothing changes, as "AliasTarget" is: a cycle of "use"s is rejected where one is declared.
+  // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle of "use"s is rejected where one is
+  // declared, but can be followed before then.
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases{s};
   while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
     and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
@@ -748,7 +783,9 @@ auto TypeSymbol::FqName(
   // argument it was given instead.
   if (Kind == TypeKind::GnTypeArg and LinkedSymbol() != this) {
     auto bound = LinkedSymbol()->FqName();
-    return Convention != ConventionTag::MOV ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention)) : bound;
+    return Convention != ConventionTag::MOV
+      ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention))
+      : bound;
   }
   if (Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr) {
     return BoundTypeVal;
@@ -1135,7 +1172,9 @@ auto TypeRef::AstIn(
   // the symbol exist), and otherwise the scope's "type ast of"
   // for the id.
   if (Id == nullptr) { return nullptr; }
-  auto type = Symbol != nullptr ? AstCloneShared(Symbol->FqName()) : scope.TypeAstOf(Id);
+  auto type = Symbol != nullptr
+    ? AstCloneShared(Symbol->FqName())
+    : scope.TypeAstOf(Id);
   if (type == nullptr or Conv == ConventionTag::MOV) { return type; }
 
   // Given a convention is now guaranteed, build the convention

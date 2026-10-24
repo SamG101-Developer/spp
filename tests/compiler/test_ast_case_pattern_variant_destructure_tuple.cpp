@@ -120,3 +120,14 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         case p is (Point(x as a, y as b), Point(x as c, y as d)) { }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CasePatternVariantDestructureTupleAst,
+  test_valid_float_literal_in_tuple_pattern, R"(
+    fun f(t: (F64, S32)) -> S32 {
+        case t of {
+            is (1.5_f64, n) { ret n }
+            else { ret 0 }
+        }
+    }
+)");

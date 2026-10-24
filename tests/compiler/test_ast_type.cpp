@@ -281,3 +281,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x: C::X
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestTypeAst,
+    test_valid_namespaced_zero_type_as_a_value, R"(
+    fun f() -> Opt[S32] {
+        ret std::option::None
+    }
+)");

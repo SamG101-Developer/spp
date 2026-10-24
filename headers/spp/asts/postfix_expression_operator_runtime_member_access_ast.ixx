@@ -28,6 +28,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
 
   struct {
     Ast *OriginalExpr; // Original asts mapped into member accesses - (try? op for example)
+    bool Lowered; // Built by a lowering (".res()", ".await") to call a method the user cannot: no visibility check
   } Source;
 
   explicit PostfixExpressionOperatorRuntimeMemberAccessAst(

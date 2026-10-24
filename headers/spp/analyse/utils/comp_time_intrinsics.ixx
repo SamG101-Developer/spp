@@ -285,10 +285,6 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     IntegerLiteralAst &lhs)
     -> void;
 
-  SPP_EXP_FUN auto StdIntrinsicsAbs(
-    IntegerLiteralAst const &val)
-    -> Unique<IntegerLiteralAst>;
-
   SPP_EXP_FUN auto StdIntrinsicsEq(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)
@@ -468,25 +464,39 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatNegOne()
+  SPP_EXP_FUN auto StdNumFloatNegOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatZero()
+  SPP_EXP_FUN auto StdNumFloatZero(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatOne()
+  SPP_EXP_FUN auto StdNumFloatOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntNegOne()
+  SPP_EXP_FUN auto StdNumIntNegOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntZero()
+  SPP_EXP_FUN auto StdNumIntZero(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntOne()
+  SPP_EXP_FUN auto StdNumIntOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntTwo()
+  SPP_EXP_FUN auto StdNumIntTwo(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
   SPP_EXP_FUN auto StdMemOpsSizeOf(

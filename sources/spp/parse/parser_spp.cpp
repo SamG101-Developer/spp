@@ -1098,14 +1098,6 @@ auto spp::parse::ParserSpp::ParseGenUnrollExpression()
   return _CreateAst<asts::GenWithExpressionAst>(p1, p2, p3);
 }
 
-auto spp::parse::ParserSpp::ParseInnerScope(auto &&parser)
-  -> Unique<asts::InnerScopeAst<decltype(parser())>> {
-  PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);
-  PARSE_ZERO_OR_MORE(p2, parser, ParseNewline);
-  PARSE_ONCE(p3, ParseTokenRightCurlyBrace);
-  return _CreateAst<asts::InnerScopeAst<decltype(parser())>>(p1, p2, p3);
-}
-
 auto spp::parse::ParserSpp::ParseInnerScopeExpression(auto &&parser)
   -> Unique<asts::InnerScopeExpressionAst> {
   PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);

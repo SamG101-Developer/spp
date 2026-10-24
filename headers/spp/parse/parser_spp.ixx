@@ -295,7 +295,6 @@ public:
   auto ParseGenUnrollExpression() -> Unique<GenWithExpressionAst>;
 
   auto ParseInnerScopeExpression(auto &&parser) -> Unique<InnerScopeExpressionAst>;
-  auto ParseInnerScope(auto &&parser) -> Unique<InnerScopeAst<decltype(parser())>>;
 
   auto ParseStatement() -> Unique<StatementAst>;
   auto ParseAssignmentStatement() -> Unique<AssignmentStatementAst>;

@@ -52,7 +52,17 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
+  /// A "gen" diverges where it reads as the return: in a "GenOnce"
+  /// lowered to a subroutine ("CoroutinePrototypeAst::_LowerGenOnce"),
+  /// which is generated with the enclosing flavour "fun". In a
+  /// coroutine it suspends, and control comes back to it.
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+
 private:
   Shared<TypeAst> _GenType;
   bool _IsOnce;
+
+  /// The enclosing generator's "Yield", resolved at stage 7: what a
+  /// yielded value is coerced into at codegen.
+  Shared<TypeRef> _YieldRef;
 };

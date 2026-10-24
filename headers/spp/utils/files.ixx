@@ -45,6 +45,15 @@ namespace spp::utils::files {
   /// name, and "extension" is the target's, without the dot.
   SPP_EXP_FUN auto SharedLibraryName(StrView package, StrView extension) -> Str;
 
+  /// Find a program as a shell would: "name" in each directory on
+  /// PATH in turn, the first that is an executable file.
+  SPP_EXP_FUN auto FindProgram(StrView name) -> Opt<Path>;
+
+  /// The newest "name-N" on PATH, as gcc names a versioned driver
+  /// ("loongarch64-linux-gnu-gcc-14"): the highest N found, and the
+  /// first on PATH of two with the same N.
+  SPP_EXP_FUN auto FindNewestVersion(StrView name) -> Opt<Path>;
+
   /// An advisory lock over a whole file: "flock(2)" on POSIX,
   /// and the equivalent whole-range "LockFileEx" on Windows.
   /// Both platforms hold the lock on the open file rather than

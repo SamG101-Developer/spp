@@ -15,6 +15,7 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
@@ -119,6 +120,9 @@ auto spp::analyse::utils::regions::PlaceOf(
       }
       cur = receiver;
     }
+
+    // A "?" moves the value out of its operand, into a temporary.
+    else if (postfix->Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) { return Nullopt; }
     else { cur = postfix->Lhs.get(); }
   }
 

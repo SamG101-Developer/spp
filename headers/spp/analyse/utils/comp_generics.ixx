@@ -7,6 +7,7 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::utils::comp_generics, struct CompTimeResolutionGuard);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct ExpressionAst);
@@ -41,3 +42,21 @@ namespace spp::analyse::utils::comp_generics {
   SPP_EXP_FUN auto IsCompOperator(
     ExpressionAst const &value) -> bool;
 }
+
+/// A "cmp" constant being resolved at compile time, for as long
+/// as the guard lives, including when it is left by a thrown
+/// error. A constant whose value reaches itself again - through a
+/// name ("a") or through a type ("Self::a"), on one stack - is a
+/// cycle with no value: "IsResolving" tells the reference that
+/// would enter it again, which raises rather than recursing.
+SPP_EXP_CLS struct spp::analyse::utils::comp_generics::CompTimeResolutionGuard {
+  explicit CompTimeResolutionGuard(VariableSymbol const *sym);
+  CompTimeResolutionGuard(CompTimeResolutionGuard const &) = delete;
+  CompTimeResolutionGuard(CompTimeResolutionGuard &&) = delete;
+  auto operator=(CompTimeResolutionGuard const &) -> CompTimeResolutionGuard& = delete;
+  auto operator=(CompTimeResolutionGuard &&) -> CompTimeResolutionGuard& = delete;
+  ~CompTimeResolutionGuard();
+
+  /// Whether "sym" is being resolved, further up the stack.
+  SPP_ATTR_NODISCARD static auto IsResolving(VariableSymbol const *sym) -> bool;
+};

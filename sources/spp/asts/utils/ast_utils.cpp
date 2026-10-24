@@ -50,6 +50,10 @@ auto spp::asts::AstName(Ast *ast) -> Shared<TypeAst> {
 auto spp::asts::AstBody(
   Ast *ast)
   -> Vec<Ast*> {
+  // Special case for the top level scope for generic types
+  // (sup scopes are constraints).
+  if (ast == nullptr) { return {}; }
+
   if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
     return cls->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
   }
@@ -65,10 +69,6 @@ auto spp::asts::AstBody(
   if (const auto mod = ast->To<ModulePrototypeAst>(); mod != nullptr) {
     return mod->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
   }
-
-  // Special case for the top level scope for generic types
-  // (sup scopes are constraints).
-  if (ast == nullptr) { return {}; }
 
   Ice(*ast, "AstBody: this kind of ast has no body");
 }

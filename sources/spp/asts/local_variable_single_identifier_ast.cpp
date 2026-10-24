@@ -21,9 +21,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.utils.ice;
 import spp.utils.uid;
 
@@ -249,11 +248,9 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // there is nothing to coerce or store.
     const auto diverged = llvm_val == nullptr;
     if (not is_void and not borrows and not diverged and meta->LetStatementExplicitType != nullptr) {
-      llvm_val = codegen::CoerceToFnValue(
-        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm, ctx);
-      llvm_val = codegen::CoerceToVariant(
-        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
-        value_ref, *sm->CurrentScope, "local.variant" + uid, ctx);
+      llvm_val = codegen::CoerceToSlot(
+        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm,
+        "local.variant" + uid, ctx);
     }
 
     // Skip storing Void (created via generic implementation

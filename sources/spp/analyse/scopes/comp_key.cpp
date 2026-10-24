@@ -5,6 +5,7 @@ import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.types;
 import genex;
+import llvm;
 import std;
 import numex.big_dec;
 import numex.big_int;
@@ -39,37 +40,48 @@ auto spp::analyse::scopes::FoldCompValues(
   CompKey const &lhs,
   CompKey const &rhs)
   -> Opt<CompKey> {
-  // Two bools compare for equality, and nothing else.
-  // Todo: "and" & "or" for bools?
+  // Two bools compare for equality, and combine by "and" and
+  // "or".
   const auto lhs_bool = lhs.AsBool();
   const auto rhs_bool = rhs.AsBool();
   if (lhs_bool != nullptr or rhs_bool != nullptr) {
     if (lhs_bool == nullptr or rhs_bool == nullptr) { return Nullopt; }
     if (op == "==") { return CompKey::OfBool(*lhs_bool == *rhs_bool); }
     if (op == "!=") { return CompKey::OfBool(*lhs_bool != *rhs_bool); }
+    if (op == "and") { return CompKey::OfBool(*lhs_bool and *rhs_bool); }
+    if (op == "or") { return CompKey::OfBool(*lhs_bool or *rhs_bool); }
     return Nullopt;
   }
 
-  // Two floats fold exactly, by the four operations and the
-  // comparisons; a float never mixes with an integer. The
-  // suffixes combine as an integer's do (below).
+  // Two floats fold by the four operations and the comparisons;
+  // a float never mixes with an integer. The suffixes combine as
+  // an integer's do (below). They fold in their type's format,
+  // rounded as at run time; a result no constant can hold (an
+  // infinity, or a NaN from "0.0 / 0.0") does not fold.
   const auto lf = lhs.AsFloat();
   const auto rf = rhs.AsFloat();
   if (lf != nullptr or rf != nullptr) {
     if (lf == nullptr or rf == nullptr) { return Nullopt; }
     if (not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return Nullopt; }
     auto const &type = not lhs.Text.empty() ? lhs.Text : rhs.Text;
-    const auto of = [&type](numex::BigDec value) { return Opt(CompKey::OfFloat(std::move(value), type)); };
-    if (op == "+") { return of(*lf + *rf); }
-    if (op == "-") { return of(*lf - *rf); }
-    if (op == "*") { return of(*lf * *rf); }
-    if (op == "/") { return *rf == numex::BigDec(0) ? Nullopt : of(*lf / *rf); }
-    if (op == "==") { return CompKey::OfBool(*lf == *rf); }
-    if (op == "!=") { return CompKey::OfBool(*lf != *rf); }
-    if (op == "<") { return CompKey::OfBool(*lf < *rf); }
-    if (op == "<=") { return CompKey::OfBool(*lf <= *rf); }
-    if (op == ">") { return CompKey::OfBool(*lf > *rf); }
-    if (op == ">=") { return CompKey::OfBool(*lf >= *rf); }
+    auto a = spp::utils::numbers::ReadFloat(*lf, type);
+    const auto b = spp::utils::numbers::ReadFloat(*rf, type);
+    const auto of = [&type](llvm::APFloat const &value) -> Opt<CompKey> {
+      const auto text = spp::utils::numbers::WriteFloat(value);
+      return text.has_value() ? Opt(CompKey::OfFloat(numex::BigDec(*text), type)) : Nullopt;
+    };
+    constexpr auto nearest = llvm::APFloat::rmNearestTiesToEven;
+    if (op == "+") { a.add(b, nearest); return of(a); }
+    if (op == "-") { a.subtract(b, nearest); return of(a); }
+    if (op == "*") { a.multiply(b, nearest); return of(a); }
+    if (op == "/") { a.divide(b, nearest); return of(a); }
+    const auto c = a.compare(b);
+    if (op == "==") { return CompKey::OfBool(c == llvm::APFloat::cmpEqual); }
+    if (op == "!=") { return CompKey::OfBool(c != llvm::APFloat::cmpEqual); }
+    if (op == "<") { return CompKey::OfBool(c == llvm::APFloat::cmpLessThan); }
+    if (op == "<=") { return CompKey::OfBool(c == llvm::APFloat::cmpLessThan or c == llvm::APFloat::cmpEqual); }
+    if (op == ">") { return CompKey::OfBool(c == llvm::APFloat::cmpGreaterThan); }
+    if (op == ">=") { return CompKey::OfBool(c == llvm::APFloat::cmpGreaterThan or c == llvm::APFloat::cmpEqual); }
     return Nullopt;
   }
 
@@ -100,12 +112,13 @@ auto spp::analyse::scopes::FoldCompValues(
   if (op == "^") { return of(a ^ b); }
   if (op == "<<") {
     const auto count = ShiftCount(b);
-    auto wrapped = count.has_value() ? spp::utils::numbers::WrapToInteger(a << *count, type) : Nullopt;
-    return wrapped.has_value() ? of(std::move(*wrapped)) : Nullopt;
+    auto shifted = count.has_value() ? spp::utils::numbers::ShiftLeftLogical(a, *count, type) : Nullopt;
+    return shifted.has_value() ? of(std::move(*shifted)) : Nullopt;
   }
   if (op == ">>") {
     const auto count = ShiftCount(b);
-    return count.has_value() ? of(a >> *count) : Nullopt;
+    auto shifted = count.has_value() ? spp::utils::numbers::ShiftRightLogical(a, *count, type) : Nullopt;
+    return shifted.has_value() ? of(std::move(*shifted)) : Nullopt;
   }
   if (op == "==") { return CompKey::OfBool(a == b); }
   if (op == "!=") { return CompKey::OfBool(a != b); }

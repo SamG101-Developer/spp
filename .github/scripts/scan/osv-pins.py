@@ -19,6 +19,7 @@ import sys
 import tomllib
 import urllib.request
 from pathlib import Path
+from types import ModuleType
 
 OSV_BATCH = "https://api.osv.dev/v1/querybatch"
 OSV_VULN = "https://api.osv.dev/v1/vulns/"
@@ -28,9 +29,11 @@ PINS = Path(".github/scripts/lib/pins.py")
 TIMEOUT = 30
 
 
-def load_pins_module():
+def load_pins_module() -> ModuleType:
     """Reuse pins.py so the manifest has exactly one reader."""
     spec = importlib.util.spec_from_file_location("pins", PINS)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {PINS}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -39,13 +42,13 @@ def load_pins_module():
 def post(url: str, payload: dict) -> dict:
     body = json.dumps(payload).encode()
     request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310 - fixed https URL
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # A fixed https URL
         return json.load(response)
     return None
 
 
 def get(url: str) -> dict:
-    with urllib.request.urlopen(url, timeout=TIMEOUT) as response:  # noqa: S310 - fixed https URL
+    with urllib.request.urlopen(url, timeout=TIMEOUT) as response:  # A fixed https URL
         return json.load(response)
     return None
 
@@ -69,17 +72,16 @@ def ignored() -> dict[str, str]:
     return out
 
 
-def targets(data: dict, pins) -> list[dict]:
+def targets(data: dict, pins: ModuleType) -> list[dict]:
     """One OSV query per pinned thing, each tagged with where it came from."""
-    out = []
-    for entry in pins.libraries(data):
-        out.append(
-            {
-                "label": f"{entry['name']} @ {entry['commit'][:12]}",
-                "anchor": f'name = "{entry["name"]}"',
-                "query": {"commit": entry["commit"]},
-            }
-        )
+    out = [
+        {
+            "label": f"{entry['name']} @ {entry['commit'][:12]}",
+            "anchor": f'name = "{entry["name"]}"',
+            "query": {"commit": entry["commit"]},
+        }
+        for entry in pins.libraries(data)
+    ]
     for name, table in data.get("pin", {}).items():
         ecosystem, package = table.get("osv-ecosystem"), table.get("osv-name")
         if not ecosystem or not package:

@@ -17,11 +17,8 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
-import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -41,6 +38,15 @@ PostfixExpressionAst::PostfixExpressionAst(
 
 PostfixExpressionAst::~PostfixExpressionAst() = default;
 
+auto PostfixExpressionAst::NewOverAnalysedLhs(
+  decltype(Lhs) &&lhs, decltype(Op) &&op) -> Unique<PostfixExpressionAst> {
+  // The lhs is a clone of an analysed operand, so it carries its
+  // analysis; analysing it again would open its scopes twice.
+  auto out = MakeUnique<PostfixExpressionAst>(std::move(lhs), std::move(op));
+  out->_LhsAnalysed = true;
+  return out;
+}
+
 auto PostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
   return Lhs->PosStart();
@@ -53,9 +59,11 @@ auto PostfixExpressionAst::PosEnd() const -> std::size_t {
 
 auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionAst>(
+  auto ast = MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(Op));
+  ast->_LhsAnalysed = _LhsAnalysed;
+  return ast;
 }
 
 auto PostfixExpressionAst::ToString() const -> Str {
@@ -70,12 +78,14 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   //
   IMPORT_UTILS;
 
-  if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->PostfixExpressionLhs = Lhs.get();
-      Op->Stage7_AnalyseSemantics(sm, meta);
-    }
+  // An operator that rebuilds its operand ("?" into a "case")
+  // get a copy of it as written, and owns every analysis of
+  // it.
+  if (Op->RebuildsOperand()) {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->PostfixExpressionLhs = Lhs.get();
+    Op->WrittenOperand = AstClone(Lhs);
+    Op->Stage7_AnalyseSemantics(sm, meta);
     return;
   }
 
@@ -98,10 +108,12 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
       // Standard analysis of the lhs (which is not a type), and
       // checking that the lhs is a valid form of primary expression.
-      Lhs->Stage7_AnalyseSemantics(sm, meta);
-      RaiseIf<SppInvalidPrimaryExpressionError>(
-        not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-        ERR_ARGS(*Lhs.get()));
+      if (not _LhsAnalysed) {
+        Lhs->Stage7_AnalyseSemantics(sm, meta);
+        RaiseIf<SppInvalidPrimaryExpressionError>(
+          not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
+          ERR_ARGS(*Lhs.get()));
+      }
     }
   }
 
@@ -129,33 +141,13 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   //
   IMPORT_UTILS;
 
-  // A method call's receiver is checked as its "self" argument,
-  // so the lhs ("obj.m") is not also checked as a use of its
-  // own.
-  if (const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-    func != nullptr and func->HasReceiver()) {
+  // An operator that walks its operand itself checks it there: a
+  // method call (or "x[i]", "x.await", "x.res()", which map to
+  // one) as its "self" argument, rather than as a use of its own
+  // here, and a "?" through the "case" it was rebuilt into.
+  if (Op->WalksOperand()) {
     const auto _meta_guard = MetaGuard(meta);
     meta->PostfixExpressionLhs = Lhs.get();
-    Op->Stage8_CheckMemory(sm, meta);
-    return;
-  }
-
-  if (const auto early_ret = Op->To<PostfixExpressionOperatorEarlyReturnAst>();
-    early_ret != nullptr) {
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->PostfixExpressionLhs = Lhs.get();
-      Op->Stage8_CheckMemory(sm, meta);
-    }
-    return;
-  }
-
-  // Index and slice operators desugar to borrow-based method calls (index_ref/mut, slice_ref/mut). Route memory
-  // checking through their mapped function like a normal method call, rather than treating the identifier lhs as a
-  // moved value here (which the desugared "&self"/"&mut self" call handles correctly).
-  if (
-    Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or
-    Op->To<PostfixExpressionOperatorSliceAst>() != nullptr) {
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
@@ -252,7 +244,7 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
 }
 
 auto PostfixExpressionAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or

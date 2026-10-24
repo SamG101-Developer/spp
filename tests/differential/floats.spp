@@ -1,0 +1,61 @@
+# Float arithmetic through std, printed as bits so that a last-place difference, or the sign of a zero, shows: each
+# operation rounds once, and folding at rel must round as running at dev does. An "F8" round trip saturates.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun bits64(x: F64) -> Str {
+  ret Str::from(std::intrinsics::bit_cast[U64](x))
+}
+
+fun bits32(x: F32) -> Str {
+  ret Str::from(std::intrinsics::bit_cast[U32](x))
+}
+
+fun ops_f64(a: F64, b: F64) -> Void {
+  show("f64 add", bits64(a + b))
+  show("f64 sub", bits64(a - b))
+  show("f64 mul", bits64(a * b))
+  show("f64 div", bits64(a / b))
+  show("f64 rem", bits64(a % b))
+  show("f64 neg", bits64(std::intrinsics::float_neg(a)))
+  show("f64 floor", bits64(std::intrinsics::float_floor(a)))
+  show("f64 ceil", bits64(std::intrinsics::float_ceil(a)))
+  show("f64 trunc", bits64(std::intrinsics::float_trunc(a)))
+  show("f64 round", bits64(std::intrinsics::float_round(a)))
+  show("f64 sqrt", bits64(std::intrinsics::float_sqrt(std::intrinsics::float_abs(a))))
+  show("f64 lt", Str::from(case a < b { 1_u8 } else { 0_u8 }))
+}
+
+fun ops_f32(a: F32, b: F32) -> Void {
+  show("f32 add", bits32(a + b))
+  show("f32 mul", bits32(a * b))
+  show("f32 div", bits32(a / b))
+  show("f32 widened", bits64(std::intrinsics::fpext[64_u32](a)))
+  show("f32 narrowed", bits32(std::intrinsics::fptrunc[32_u32](std::intrinsics::fpext[64_u32](a) * 3.0_f64)))
+}
+
+fun f8_round_trip(x: F64) -> Void {
+  let stored = std::intrinsics::fptrunc_f8(x)
+  show("f8 bits", Str::from(std::intrinsics::bit_cast[U8](stored)))
+  show("f8 back", bits64(std::intrinsics::fpext_f8[64_u32](stored)))
+}
+
+fun main() -> Void {
+  ops_f64(0.1_f64, 0.2_f64)
+  ops_f64(-0.0_f64, 1.0_f64)
+  ops_f64(-2.5_f64, 0.5_f64)
+  ops_f64(1.0_f64, 3.0_f64)
+  ops_f64(179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0_f64, 2.0_f64)
+  ops_f32(0.1_f32, 3.0_f32)
+  ops_f32(16777216.0_f32, 1.0_f32)
+  ops_f32(-0.0_f32, -1.0_f32)
+  f8_round_trip(1.0625_f64)
+  f8_round_trip(0.0029296874999999996_f64)
+  f8_round_trip(1000.0_f64)
+  f8_round_trip(-0.0_f64)
+}

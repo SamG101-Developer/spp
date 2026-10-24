@@ -104,7 +104,9 @@ auto IntegerLiteralAst::ValidateBounds(
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time maths.
-  auto const &[lower, upper] = kBounds.at(Type);
+  // Read when used, not kept from start-up: "uz" and "sz" are a
+  // pointer wide on the target, which is chosen after that.
+  auto const &[lower, upper] = utils::numbers::IntegerBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value < lower or value > upper,
@@ -124,12 +126,6 @@ auto IntegerLiteralAst::FromBigVal(
     : nullptr;
   auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.ToString());
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
-}
-
-auto IntegerLiteralAst::FromWrappedBigVal(
-  numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
-  // An unknown type throws, as reading its bounds does.
-  return FromBigVal(utils::numbers::WrapToInteger(value, type).value(), type);
 }
 
 auto IntegerLiteralAst::Stage9_CompTimeResolve(

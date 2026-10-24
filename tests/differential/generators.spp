@@ -1,0 +1,74 @@
+# Generators: values yielded from a loop in a coroutine, a coroutine ended early by "ret", one driven by hand past
+# its end, where every later resumption answers "GenDone", and one resumed and looped over through a "&mut" borrow.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+cor squares(n: U32) -> std::iterator::Iterator[U32] {
+  let mut i = 0_u32
+  loop i < n {
+    gen i * i
+    i += 1_u32
+  }
+}
+
+cor stops_early(stop_after: USize) -> std::iterator::Iterator[USize] {
+  let mut i = 0_uz
+  loop true {
+    case i == stop_after { ret }
+    i += 1_uz
+    gen i * 100_uz
+  }
+}
+
+cor counts(from: U32) -> Gen[U32] {
+  gen from
+  gen from + 1_u32
+  gen from + 2_u32
+}
+
+fun step(g: &mut Gen[U32]) -> Void {
+  let r = g.res()
+  case r of {
+    is U32(..) { show("stepped", Str::from(r)) }
+    else { show("stepped", Str::from("done")) }
+  }
+}
+
+fun drain(g: &mut Gen[U32]) -> Void {
+  loop x in g {
+    show("drained", Str::from(x))
+  }
+}
+
+fun main() -> Void {
+  loop x in squares(6_u32) {
+    show("square", Str::from(x))
+  }
+  loop y in stops_early(3_uz) {
+    show("early", Str::from(y))
+  }
+
+  let mut g = std::range::Range[S32]::between(0, 2)
+  let mut yielded = 0_uz
+  let mut exhausted = 0_uz
+  loop n in std::range::Range[USize]::between(0_uz, 6_uz) {
+    case g.res() of {
+      is std::generator::GenDone() { exhausted += 1_uz }
+      else { yielded += 1_uz }
+    }
+  }
+  std::mem::ops::drop(g)
+  show("yielded", Str::from(yielded))
+  show("exhausted", Str::from(exhausted))
+
+  let mut c = counts(7_u32)
+  step(&mut c)
+  drain(&mut c)
+  step(&mut c)
+  std::mem::ops::drop(c)
+}

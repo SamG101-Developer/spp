@@ -17,6 +17,7 @@ Todo: In the future, the codebase docs will be fixed so this isn't needed.
 
 import re
 import sys
+from pathlib import Path
 
 # An "@code"/"\code" whose "@endcode" is glued to the preceding token.
 INLINE_CODE = re.compile(
@@ -60,8 +61,7 @@ def main() -> int:
 
     # Doxygen only consumes stdout. Encoding errors are replaced rather than fatal: a filter that dies takes the whole
     # Doxygen run down with it.
-    with open(sys.argv[1], encoding="utf-8", errors="replace") as f:
-        sys.stdout.write(_rewrite(f.read()))
+    sys.stdout.write(_rewrite(Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")))
     return 0
 
 

@@ -10,10 +10,12 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
+import spp.asts.defer_statement_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.loop_else_statement_ast;
@@ -23,6 +25,8 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_defer;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
@@ -36,8 +40,7 @@ LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   decltype(Body) &&body,
   decltype(ElseBlock) &&else_block) :
   LoopExpressionAst(std::move(tok_loop), std::move(body), std::move(else_block)),
-  Cond(std::move(cond)),
-  _IterDesugar(false) {
+  Cond(std::move(cond)) {
 }
 
 LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;
@@ -59,7 +62,7 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Cond),
     AstClone(Body),
     AstClone(ElseBlock));
-  if (_IterDesugar) { cloned->MarkAsIterDesugar(); }
+  cloned->LoopDefer = AstClone(LoopDefer);
   cloned->_LoopExitTypeInfo = _LoopExitTypeInfo;
   cloned->_Scope = _Scope;
   return cloned;
@@ -84,6 +87,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     "loop-cond-expr", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   Ast::Stage2_GenTopLvlScopes(sm, meta);
+  if (LoopDefer != nullptr) { LoopDefer->Stage7_AnalyseSemantics(sm, meta); }
 
   // Analyse the condition expression.
   Cond->Stage7_AnalyseSemantics(sm, meta);
@@ -100,17 +104,36 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   // Set the loop level information into the "meta" object.
   {
     const auto _meta_guard = MetaGuard(meta);
+    const auto depth = meta->LoopCurrentDepth;
     meta->LoopCurrentDepth += 1;
     meta->LoopCurrentAst = this;
+
+    // The type the loop is assigned to, if any, is what each "exit"
+    // goes into, as a "case"'s branches go into theirs.
+    meta->LoopTargetTypes.resize(depth + 1);
+    meta->LoopTargetTypes[depth] = {meta->AssignmentTargetType, sm->CurrentScope};
 
     // The body never yields the loop's value ("exit" does), so
     // it is not what the loop is being assigned to - as its
     // code generation already treats it.
     meta->AssignmentTarget = nullptr;
     meta->AssignmentTargetType = nullptr;
+
+    // The exit types are kept by depth, so a loop before this one at
+    // the same depth left its own there: this loop starts without.
+    meta->LoopReturnTypes->erase(depth);
     Body->Stage7_AnalyseSemantics(sm, meta);
-    if (meta->LoopReturnTypes->contains(meta->LoopCurrentDepth - 1)) {
-      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[meta->LoopCurrentDepth - 1];
+    if (meta->LoopReturnTypes->contains(depth)) {
+      _LoopExitTypeInfo = (*meta->LoopReturnTypes)[depth];
+
+      // A loop exited with a value is its target's type, when it has
+      // one; one whose every "exit" diverges stays "!".
+      auto const &[target_type, target_scope] = meta->LoopTargetTypes[depth];
+      auto &[exit_expr, exit_type, exit_scope] = *_LoopExitTypeInfo;
+      if (target_type != nullptr and not exit_type->IsNeverType()) {
+        exit_type = target_type;
+        exit_scope = const_cast<Scope*>(target_scope);
+      }
     }
   }
 
@@ -132,6 +155,8 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // Move into the loop scope.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->CurrentScope->Deferred.clear();
+  if (LoopDefer != nullptr) { LoopDefer->Stage8_CheckMemory(sm, meta); }
 
   // Where the body's walk starts, for each pass after the first.
   const auto body_start = sm->Position();
@@ -192,7 +217,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   // few times, so the bound is a compiler bug's, not a program's.
   auto back = Opt<HeadStates>();
   auto back_loans = memory_state::LoanSet();
-  const auto body_diverges = expr_utils::Diverges(*Body, sm, meta);
+  const auto body_diverges = Body->Diverges(sm, meta);
   if (not body_diverges or flow.Loops[frame_at].Skips != 0) {
     const auto max_passes = 8 * (outer_syms.size() + 1);
     for (auto pass = 1uz;; ++pass) {
@@ -326,6 +351,11 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   }
   loans = std::move(joined_loans);
 
+  // What the loop scope deferred runs on every way out of it, so
+  // it is checked once, against them all joined. A "ret" checks
+  // it where it leaves.
+  linear_utils::CheckDeferredForScope(*sm->CurrentScope, *TokLoop, "Loop end", *sm, meta);
+
   // Exit the loop scope.
   sm->MoveOutOfCurrentScope();
 }
@@ -334,8 +364,10 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
-  // Move into the loop scope.
+  // Move into the loop scope. Nothing it defers is reached yet.
   sm->MoveToNextScope();
+  codegen::EnterDeferScope(*sm->CurrentScope, ctx);
+  if (LoopDefer != nullptr) { LoopDefer->Stage11_CodeGen(sm, meta, ctx); }
 
   // Determine if this loop will be yielding an expression.
   // A "Void" loop (used as a statement) and a "Never" loop
@@ -359,25 +391,14 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   const auto loop_body_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.body" + uid, func);
   const auto loop_end_bb = llvm::BasicBlock::Create(*ctx->Context, "loop.end" + uid, func);
 
-  // As the "else" block is optional, the "not taken" branch
-  // either points to the "else" block, or otherwise the end
+  // The "else" block runs whenever the condition ends the loop,
+  // however many iterations it took first: it is the loop's value
+  // when no "exit" gives one. Without one (or a "defer" of the
+  // loop's to run first), the condition ends the loop at its end
   // block.
-  const auto loop_else_bb = ElseBlock != nullptr
+  const auto loop_else_bb = ElseBlock != nullptr or LoopDefer != nullptr
     ? llvm::BasicBlock::Create(*ctx->Context, "loop.else" + uid, func)
-    : nullptr;
-
-  const auto loop_not_taken_bb = ElseBlock != nullptr
-    ? llvm::BasicBlock::Create(*ctx->Context, "loop.not_taken" + uid, func)
     : loop_end_bb;
-
-  // The "else" block runs only when the loop never took an
-  // iteration, so track whether the body has been entered.
-  auto entered_flag = static_cast<llvm::Value*>(nullptr);
-  if (ElseBlock != nullptr) {
-    const auto i1_type = llvm::Type::getInt1Ty(*ctx->Context);
-    entered_flag = codegen::LlvmEntryAlloca(i1_type, "loop.entered" + uid, ctx);
-    ctx->Builder.CreateStore(llvm::ConstantInt::getFalse(i1_type), entered_flag);
-  }
   ctx->Builder.CreateBr(loop_cond_bb);
 
   // The phi merges the value yielded by the "else" block
@@ -399,7 +420,9 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
     const auto _meta_guard = MetaGuard(meta);
     meta->LlvmEndBB = loop_end_bb;
     meta->LlvmPhi = phi;
-    meta->LlvmLoopStack.emplace_back(loop_cond_bb, loop_end_bb, phi, entered_flag, sm->CurrentScope);
+    meta->LlvmLoopStack.emplace_back(
+      loop_cond_bb, loop_end_bb, phi, sm->CurrentScope,
+      phi != nullptr ? MakeShared<TypeRef>(ret_ref) : nullptr);
     meta->AssignmentTargetType = ret_type;
 
     // Generate the condition. This block is branched back to
@@ -408,16 +431,13 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
     ctx->Builder.SetInsertPoint(loop_cond_bb);
     const auto llvm_cond = Cond->Stage11_CodeGen(sm, meta, ctx);
     const auto cond_end_bb = ctx->Builder.GetInsertBlock();
-    ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_not_taken_bb);
+    ctx->Builder.CreateCondBr(llvm_cond, loop_body_bb, loop_else_bb);
 
     // Generate the loop body block. The body itself never yields
     // the loop's value (only "exit" does), so the assignment
     // target is cleared to stop the final body statement being
     // treated as a yielded value.
     ctx->Builder.SetInsertPoint(loop_body_bb);
-    if (entered_flag != nullptr and not _IterDesugar) {
-      ctx->Builder.CreateStore(llvm::ConstantInt::getTrue(*ctx->Context), entered_flag);
-    }
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->AssignmentTarget = nullptr;
@@ -428,26 +448,28 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
       ctx->Builder.CreateBr(loop_cond_bb);
     }
 
-    if (ElseBlock != nullptr) {
-      // The condition failed: run the else block only if no
-      // iteration was ever taken, otherwise leave the loop.
-      ctx->Builder.SetInsertPoint(loop_not_taken_bb);
-      const auto was_entered = ctx->Builder.CreateLoad(
-        llvm::Type::getInt1Ty(*ctx->Context), entered_flag, "loop.was_entered" + uid);
-      ctx->Builder.CreateCondBr(was_entered, loop_end_bb, loop_else_bb);
-      if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), loop_not_taken_bb); }
-
-      // Generate the else block itself.
+    if (loop_else_bb != loop_end_bb) {
+      // The condition ended the loop: the else block gives its
+      // value, and the loop is left, so what its own scope
+      // deferred runs.
       ctx->Builder.SetInsertPoint(loop_else_bb);
-      const auto else_val = ElseBlock->Stage11_CodeGen(sm, meta, ctx);
+      auto else_val = ElseBlock != nullptr ? ElseBlock->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+      if (phi != nullptr and ElseBlock != nullptr) {
+        else_val = codegen::CoerceToSlot(
+          else_val, ret_ref, ElseBlock->InferTypeRef(sm, meta), *sm, "loop.else.coerce" + uid, ctx);
+      }
+      codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
       const auto else_end_bb = ctx->Builder.GetInsertBlock();
       if (not else_end_bb->hasTerminator()) {
-        if (phi != nullptr) { phi->addIncoming(else_val, else_end_bb); }
+        if (phi != nullptr) {
+          phi->addIncoming(else_val != nullptr ? else_val : llvm::UndefValue::get(phi->getType()), else_end_bb);
+        }
         ctx->Builder.CreateBr(loop_end_bb);
       }
     }
     else {
-      // The failing condition targets the end block directly, but the phi still needs a value for it.
+      // The failing condition targets the end block directly. A loop with a value and no "else" is E117 unless its
+      // condition is "true", so the edge is never taken; the phi still needs a value for it.
       if (phi != nullptr) { phi->addIncoming(llvm::UndefValue::get(phi->getType()), cond_end_bb); }
     }
 
@@ -460,8 +482,8 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
 
 auto LoopConditionalExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  IMPORT_UTILS;
   using generate::common_types_precompiled::NeverAt;
-
 
   // A "loop true" with no exit statements returns "Never".
   const auto cond_lit = Cond->To<BooleanLiteralAst>();
@@ -472,7 +494,20 @@ auto LoopConditionalExpressionAst::InferType(
     }
   }
 
-  return LoopExpressionAst::InferType(sm, meta);
+  // A condition other than "true" can end the loop without an
+  // "exit", and then the "else" block is its value: one with a
+  // value from its "exit"s needs one (as a "case" does).
+  auto type = LoopExpressionAst::InferType(sm, meta);
+  const auto cond_is_true = cond_lit != nullptr and cond_lit->TokBool->TokenType == lex::SppTokenType::KW_TRUE;
+  if (not cond_is_true and ElseBlock == nullptr and _LoopExitTypeInfo.has_value()
+    and not meta->IgnoreMissingElseBranchForInference) {
+    auto const &[exit_expr, exit_type, exit_scope] = *_LoopExitTypeInfo;
+    const auto exit_ref = TypeRef::Of(*exit_type, exit_scope != nullptr ? *exit_scope : *sm->CurrentScope);
+    RaiseIf<SppLoopMissingElseError>(
+      not exit_ref.IsNever and not type_predicates::IsTypeVoid(exit_ref, *sm->CurrentScope),
+      ERR_ARGS(*this, exit_expr != nullptr ? *static_cast<Ast const*>(exit_expr) : *static_cast<Ast const*>(this)));
+  }
+  return type;
 }
 
 auto LoopConditionalExpressionAst::InferTypeRef(
@@ -485,20 +520,6 @@ auto LoopConditionalExpressionAst::InferTypeRef(
     return TypeRef::Of(*NEVER, *sm->CurrentScope);
   }
   return LoopExpressionAst::InferTypeRef(sm, meta);
-}
-
-auto LoopConditionalExpressionAst::MarkAsIterDesugar() -> void {
-  // Simple getter for the flag reporting this ast is a
-  // transformation from the loop-iter block.
-  _IterDesugar = true;
-}
-
-auto LoopConditionalExpressionAst::Terminates() const -> bool {
-  // A conditional loop never terminates the scope it is
-  // written in: the condition is checked before the first
-  // iteration, so a loop whose body returns can still run
-  // zero times and fall through to whatever follows.
-  return false;
 }
 
 SPP_MOD_END

@@ -334,3 +334,14 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g(1, NotCopy())
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestAstGenericConstraints,
+    test_invalid_constraint_naming_another_generic_mismatch,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls Wrap[T] { }
+    fun g[U, P: Wrap[U]](p: P) -> Void { }
+    fun f() -> Void {
+        g(5_s32)
+    }
+)");

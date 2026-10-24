@@ -59,7 +59,8 @@ SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   /// like any other.
   SPP_ATTR_NODISCARD virtual auto DiscardsFinalMember() const -> bool;
 
-  SPP_ATTR_NODISCARD auto Terminates() const -> bool override;
+  /// A block diverges when its last statement does.
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 
