@@ -3,6 +3,7 @@ module;
 
 export module spp.codegen.llvm_drop;
 import spp.codegen.llvm_ctx;
+import spp.utils.interner;
 import spp.utils.types;
 import llvm;
 import std;
@@ -23,6 +24,19 @@ namespace spp::codegen {
   SPP_EXP_FUN auto EmitDrop(
     TypeRef const &type,
     llvm::Value *ptr,
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    LlvmCtx *ctx)
+    -> void;
+
+  /// "EmitDrop", for a value some of whose parts were moved out:
+  /// "moved" holds their paths, field names outermost first, and
+  /// only what is left is destroyed (its parts, as its own "drop"
+  /// needs the whole value).
+  SPP_EXP_FUN auto EmitDropRemaining(
+    TypeRef const &type,
+    llvm::Value *ptr,
+    Vec<Vec<utils::InternedId>> const &moved,
     ScopeManager *sm,
     CompilerMetaData *meta,
     LlvmCtx *ctx)

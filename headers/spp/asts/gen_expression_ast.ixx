@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.gen_expression_ast;
+import spp.analyse.utils.linear_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -65,4 +66,10 @@ private:
   /// The enclosing generator's "Yield", resolved at stage 7: what a
   /// yielded value is coerced into at codegen.
   Shared<TypeRef> _YieldRef;
+
+  /// What the coroutine still owns here, for destroying its frame
+  /// at this suspension to drop: per scope, from this one out to
+  /// the coroutine's own, newest first ("OwnedAtSuspend"). Names,
+  /// read where this is generated, so an instance finds its own.
+  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> _OwnedAtSuspend;
 };

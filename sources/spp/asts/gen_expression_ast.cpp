@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
+import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -37,7 +38,9 @@ import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_defer;
+import spp.codegen.llvm_drop;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.ptr;
 import spp.utils.uid;
 import llvm;
@@ -77,6 +80,7 @@ auto GenExpressionAst::Clone() const -> Unique<Ast> {
   g->_GenType = AstClone(_GenType);
   g->_IsOnce = _IsOnce;
   g->_YieldRef = _YieldRef;
+  g->_OwnedAtSuspend = _OwnedAtSuspend;
   return g;
 }
 
@@ -204,9 +208,16 @@ auto GenExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
+  // Once the yielded value has gone, what is still owned is the
+  // frame's to drop should the coroutine be destroyed here.
+  const auto record_owned = [&] { _OwnedAtSuspend = linear_utils::OwnedAtSuspend(*this, *sm, meta); };
+
   // If there is no expression, then now ork needs to be
   // done.
-  if (Expr == nullptr) return;
+  if (Expr == nullptr) {
+    record_owned();
+    return;
+  }
 
   // Ensure the argument isn't moved or partially moved
   // (for all conventions)
@@ -217,7 +228,10 @@ auto GenExpressionAst::Stage8_CheckMemory(
   // If the value is non-symbolic, then there is no borrow
   // logic to implement, so return.
   auto [sym, _] = sm->CurrentScope->FindVarSymbolOutermost(*Expr);
-  if (sym == nullptr) { return; }
+  if (sym == nullptr) {
+    record_owned();
+    return;
+  }
 
   if (Conv == nullptr) {
     // Ensure that attributes aren't being moved off of a
@@ -241,6 +255,8 @@ auto GenExpressionAst::Stage8_CheckMemory(
       sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
       ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
   }
+
+  record_owned();
 }
 
 auto GenExpressionAst::Diverges(
@@ -301,8 +317,24 @@ auto GenExpressionAst::Stage11_CodeGen(
   const auto destroy_bb = llvm::BasicBlock::Create(
     *ctx->Context, "gen.coro.destroy" + uid, parked_bb->getParent());
 
+  // Destroying the frame here leaves every scope out to the
+  // coroutine's: each runs what it deferred, then drops what it
+  // still owns, newest first, before the next one out is left. A
+  // value partly moved out loses only what is left of it.
   ctx->Builder.SetInsertPoint(destroy_bb);
-  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx);
+  auto const *scope = sm->CurrentScope;
+  for (auto const &owned : _OwnedAtSuspend) {
+    if (scope == nullptr) { break; }
+    codegen::EmitDeferredScope(*scope, sm, meta, ctx);
+    for (auto const &[name, moved] : owned) {
+      const auto sym = scope->FindVarSymbol(name.get(), true);
+      if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
+        Ice(*this, *sm->CurrentScope, "a value owned at a suspension has no storage to drop");
+      }
+      codegen::EmitDropRemaining(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, moved, sm, meta, ctx);
+    }
+    scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
+  }
   ctx->Builder.CreateBr(meta->LlvmGenerator->CleanupBlock);
 
   ctx->Builder.SetInsertPoint(parked_bb);

@@ -37,6 +37,15 @@ namespace spp::codegen {
     LlvmCtx *ctx)
     -> void;
 
+  /// What "scope" deferred, run as control leaves it: the last
+  /// registered first, and only what a walk has reached.
+  SPP_EXP_FUN auto EmitDeferredScope(
+    Scope const &scope,
+    ScopeManager *sm,
+    CompilerMetaData *meta,
+    LlvmCtx *ctx)
+    -> void;
+
   /// Leave every scope from the current one out to "into", the
   /// scope control lands in, running what each deferred: the
   /// innermost first, and within a scope the last registered
