@@ -51,7 +51,8 @@ verified_install_bin() {
   mkdir -p "$bin"
   verified_fetch "$url" "$download" "$want"
   if [ -n "$member" ]; then
-    tar -xzf "$download" -C "$bin" "$member"
+    # On stdin: GNU tar reads Windows' "D:\..." as a remote "host:path".
+    tar -xzf - -C "$bin" "$member" < "$download"
     [ "$member" = "$name" ] || mv "${bin}/${member}" "${bin}/${name}"
   else
     mv "$download" "${bin}/${name}"
