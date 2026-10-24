@@ -84,6 +84,7 @@ namespace spp::analyse::utils::visibility_utils {
       // visibility.
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
+      if (ForeignFfiPackage(sym, definition_scope, sm) != nullptr) { return false; }
       if (sym.Visibility == V::kPublic) { return true; }
 
       // Get the module owning the access, and the module owning
