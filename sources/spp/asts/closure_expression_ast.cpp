@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
@@ -35,10 +36,10 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -203,6 +204,13 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
       : Body->InferType(sm, meta);
     _TrueRetType->Stage7_AnalyseSemantics(sm, meta);
     Source._OriginalRetType = _TrueRetType;
+
+    // A function named as the body's value stands for the
+    // overload the declared return type asks for.
+    if (ReturnType != nullptr) {
+      fn_values::InstantiateFnValue(
+        Body->InferTypeRef(sm, meta), TypeRef::Of(*ReturnType, *sm->CurrentScope), sm, meta);
+    }
 
     // The return type is inferred rather than declared, so it
     // never passes through the function prototype's return type
@@ -378,9 +386,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
       // return type, and a named function into a function type.
       if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
         const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
-        body_val = codegen::CoerceToFnValue(body_val, ret_ref, body_ref, *sm, ctx);
-        body_val = codegen::CoerceToVariant(
-          body_val, ret_ref, body_ref, *sm->CurrentScope, "closure.ret.variant" + uid, ctx);
+        body_val = codegen::CoerceToSlot(body_val, ret_ref, body_ref, *sm, "closure.ret.variant" + uid, ctx);
       }
       if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
       else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }

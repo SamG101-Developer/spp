@@ -29,10 +29,9 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_defer;
-import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 
@@ -207,9 +206,7 @@ auto RetStatementAst::EmitReturn(
     if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
     const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
     const auto expr_ref = expr->InferTypeRef(sm, meta);
-    llvm_ret_val = codegen::CoerceToFnValue(llvm_ret_val, ret_ref, expr_ref, *sm, ctx);
-    return codegen::CoerceToVariant(
-      llvm_ret_val, ret_ref, expr_ref, *sm->CurrentScope, "ret.variant" + uid, ctx);
+    return codegen::CoerceToSlot(llvm_ret_val, ret_ref, expr_ref, *sm, "ret.variant" + uid, ctx);
   };
 
   // The returned value is produced first, while everything it

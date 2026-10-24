@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
@@ -22,6 +23,8 @@ import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -136,6 +139,11 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
         TypeRef::Of(*z_type, *sm->CurrentScope), TypeRef::Of(*c_type, *sm->CurrentScope), *sm->CurrentScope,
         *sm->CurrentScope),
       ERR_ARGS(*z_elem, *z_type, *c_elem, *c_type));
+
+    // A function named as an element stands for the overload the
+    // element type asks for.
+    fn_values::InstantiateFnValue(
+      TypeRef::Of(*c_type, *sm->CurrentScope), TypeRef::Of(*z_type, *sm->CurrentScope), sm, meta);
   }
 
   // Analyse the inferred array type to generate the generic
@@ -185,20 +193,26 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   // it can use constant array to optimize away the GEPs.
   if (not ctx->InConstantContext) {
     // Collect the llvm generated versions of the elements,
-    // ensuring the validity of each element (debug only).
+    // ensuring the validity of each element (debug only). Each
+    // is coerced into the array's element type, as any slot is:
+    // "[n, Some(val=1)]" into "[Opt[S32]; 2]" holds two variants,
+    // and "[f, g]" into "[FunRef[..]; 2]" two function values.
+    const auto uid = "." + Uid();
+    const auto elem_ref = InferTypeRef(sm, meta).Symbol->TypeArgRef("T");
     auto llvm_rt_elems = Vec<llvm::Value*>{};
     llvm_rt_elems.reserve(Elems.size());
     for (auto const &spp_elem : Elems) {
-      const auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
+      auto llvm_rt_elem = spp_elem->Stage11_CodeGen(sm, meta, ctx);
+      llvm_rt_elem = codegen::CoerceToSlot(
+        llvm_rt_elem, elem_ref, spp_elem->InferTypeRef(sm, meta), *sm, "array.explicit.elem" + uid, ctx);
       SPP_ASSERT(llvm_rt_elem != nullptr);
       llvm_rt_elems.emplace_back(llvm_rt_elem);
     }
 
     // Create the array type. The array type wraps the llvm
-    // determined element type, and the length is also
-    // provided. This lowers to the llvm special array [T * n]
-    // type.
-    const auto llvm_rt_elem_ty = llvm_rt_elems[0]->getType();
+    // element type, and the length is also provided. This
+    // lowers to the llvm special array [T * n] type.
+    const auto llvm_rt_elem_ty = codegen::GetLlvmTypeOf(elem_ref, ctx);
     const auto llvm_rt_arr_ty = llvm::ArrayType::get(
       llvm_rt_elem_ty, llvm_rt_elems.size());
     SPP_ASSERT(llvm_rt_arr_ty != nullptr);
@@ -225,7 +239,6 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
 
     // Allocate the array into the enclosing function using
     // the uniform entry alloca function.
-    const auto uid = "." + Uid();
     const auto llvm_rt_arr_alloc = codegen::LlvmEntryAlloca(
       llvm_rt_arr_ty, "array.explicit.alloca" + uid, ctx);
 

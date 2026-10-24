@@ -62,13 +62,6 @@ namespace spp::codegen {
     llvm::Function const &target, TypeRef const &fn_sup,
     LlvmCtx const *ctx) -> llvm::Constant*;
 
-  /// Like the variant coercion function, a value naming a
-  /// function that going into a function type, is replaced by
-  /// the pair for the overload, that analysis chose there.
-  SPP_EXP_FUN auto CoerceToFnValue(
-    llvm::Value *llvm_val, TypeRef const &target, TypeRef const &source,
-    ScopeManager const &sm, LlvmCtx const *ctx) -> llvm::Value*;
-
   /// A closure's environment: a leading "i8" saying whether the
   /// environment owns its storage (heap, 1) or not (stack, 0),
   /// then one field per capture. Where it lives is recorded here

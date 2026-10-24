@@ -24,9 +24,8 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -253,14 +252,12 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   // the variant's payload (a bit-cast cannot express that).
   // A named function is likewise built into the function value
   // the target's type asks for, one branch at a time, as each
-  // branch may name a different one.
-  if (meta->AssignmentTarget != nullptr and meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
+  // branch may name a different one. The "case" sets the type
+  // only when it yields a value, assigned or not ("f(case ..)").
+  if (meta->AssignmentTargetType != nullptr and llvm_val != nullptr) {
     const auto target_ref = TypeRef::Of(*meta->AssignmentTargetType, *sm->CurrentScope);
     const auto body_ref = Body->InferTypeRef(sm, meta);
-    llvm_val = codegen::CoerceToFnValue(
-      llvm_val, target_ref, body_ref, *sm, ctx);
-    llvm_val = codegen::CoerceToVariant(
-      llvm_val, target_ref, body_ref, *sm->CurrentScope, "case.branch.variant" + uid, ctx);
+    llvm_val = codegen::CoerceToSlot(llvm_val, target_ref, body_ref, *sm, "case.branch.variant" + uid, ctx);
   }
 
   // A body that never finishes has no value to hand on, and

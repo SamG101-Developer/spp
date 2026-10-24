@@ -33,10 +33,9 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_defer;
-import spp.codegen.llvm_fn;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ptr;
 import spp.utils.uid;
@@ -273,9 +272,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   // type. Otherwise the slot holds the bare member, untagged.
   if (llvm_yield_val != nullptr and Conv == nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
     const auto expr_ref = Expr->InferTypeRef(sm, meta);
-    llvm_yield_val = codegen::CoerceToFnValue(llvm_yield_val, *_YieldRef, expr_ref, *sm, ctx);
-    llvm_yield_val = codegen::CoerceToVariant(
-      llvm_yield_val, *_YieldRef, expr_ref, *sm->CurrentScope, "gen.yield.coerce", ctx);
+    llvm_yield_val = codegen::CoerceToSlot(llvm_yield_val, *_YieldRef, expr_ref, *sm, "gen.yield.coerce", ctx);
   }
 
   // A bare "gen" yields Void, so there is nothing to store.

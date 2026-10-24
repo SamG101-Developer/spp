@@ -25,6 +25,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_defer;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -431,7 +432,11 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
       // value, and the loop is left, so what its own scope
       // deferred runs.
       ctx->Builder.SetInsertPoint(loop_else_bb);
-      const auto else_val = ElseBlock != nullptr ? ElseBlock->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+      auto else_val = ElseBlock != nullptr ? ElseBlock->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+      if (phi != nullptr and ElseBlock != nullptr) {
+        else_val = codegen::CoerceToSlot(
+          else_val, ret_ref, ElseBlock->InferTypeRef(sm, meta), *sm, "loop.else.coerce" + uid, ctx);
+      }
       codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
       const auto else_end_bb = ctx->Builder.GetInsertBlock();
       if (not else_end_bb->hasTerminator()) {

@@ -64,11 +64,11 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
@@ -592,9 +592,8 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
       codegen::CfiFnCallBundles(fn_sup, ctx),
       "closure.call" + closure_uid);
     release_env();
-    return codegen::CoerceToVariant(
-      closure_call, expected_ret_ref, actual_ret_ref, *sm->CurrentScope,
-      "closure.ret" + closure_uid, ctx);
+    return codegen::CoerceToSlot(
+      closure_call, expected_ret_ref, actual_ret_ref, *sm, "closure.ret" + closure_uid, ctx);
   }
 
   // Coroutine calls: calling a coroutine does not run its body,
@@ -660,9 +659,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     const auto param_is_borrow = p < fn_params.size() and ParamConvention(*fn_params[p]) != nullptr;
 
     if (param_ref.Symbol != nullptr and not param_is_borrow) {
-      llvm_arg = codegen::CoerceToFnValue(llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm, ctx);
-      llvm_arg = codegen::CoerceToVariant(
-        llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm->CurrentScope, "arg.variant" + uid, ctx);
+      llvm_arg = codegen::CoerceToSlot(llvm_arg, param_ref, arg->InferTypeRef(sm, meta), *sm, "arg.variant" + uid, ctx);
       SPP_ASSERT(llvm_arg != nullptr);
     }
 

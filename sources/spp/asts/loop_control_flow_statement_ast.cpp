@@ -22,6 +22,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import genex;
@@ -218,6 +219,13 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   // other code, whose loops grow (and move) the stack.
   const auto target = meta->LlvmLoopStack[num_loops - num_exits - (has_skip ? 1 : 0)];
 
+  // The value goes into the loop's phi, so it is coerced into the
+  // loop's type as any slot is ("exit Some(val=1)" into an
+  // "Opt[S32]" loop).
+  const auto coerced_val = Expr != nullptr and target.Type != nullptr and not has_skip
+    ? codegen::CoerceToSlot(llvm_val, *target.Type, Expr->InferTypeRef(sm, meta), *sm, "loop.exit.coerce", ctx)
+    : llvm_val;
+
   // The jump skips every scope end inside the loop, so what
   // those scopes deferred runs at the jump: a "skip" stays in the
   // loop's own scope, and an "exit" leaves it too. This happens
@@ -238,9 +246,9 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   if (target.Phi != nullptr) {
     // A "!" value never reaches the phi, but the edge still needs
     // an operand of the phi's type.
-    const auto incoming_val = llvm_val != nullptr and _ExprIsNever
+    const auto incoming_val = coerced_val != nullptr and _ExprIsNever
       ? llvm::PoisonValue::get(target.Phi->getType())
-      : llvm_val;
+      : coerced_val;
     const auto incoming_bb = ctx->Builder.GetInsertBlock();
     target.Phi->addIncoming(
       incoming_val != nullptr ? incoming_val : llvm::UndefValue::get(target.Phi->getType()),

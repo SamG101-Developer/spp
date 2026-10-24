@@ -32,6 +32,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
@@ -251,7 +252,9 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     const auto llvm_send_slot = codegen::GetLlvmGeneratorSlotPtr(
       llvm_generator_env->State, llvm_gen_state_ty, codegen::LlvmGeneratorStateStructFields::SEND_SLOT,
       "gen.send.slot", ctx);
-    const auto llvm_send_value = (*send_arg)->Stage11_CodeGen(sm, meta, ctx);
+    const auto llvm_send_value = codegen::CoerceToSlot(
+      (*send_arg)->Stage11_CodeGen(sm, meta, ctx), send_ref, (*send_arg)->InferTypeRef(sm, meta), *sm,
+      "gen.send.coerce" + uid, ctx);
     ctx->Builder.CreateStore(llvm_send_value, llvm_send_slot);
   }
 
@@ -320,7 +323,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   const auto llvm_yielded_val = read_yielded_val();
   const auto llvm_some = yield_tag.has_value()
     ? codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx)
-    : codegen::CoerceToVariant(llvm_yielded_val, res_ref, yield_ref, *sm->CurrentScope, "gen.some" + uid, ctx);
+    : codegen::CoerceToSlot(llvm_yielded_val, res_ref, yield_ref, *sm, "gen.some" + uid, ctx);
   const auto some_from_bb = ctx->Builder.GetInsertBlock();
   ctx->Builder.CreateBr(joined_bb);
 

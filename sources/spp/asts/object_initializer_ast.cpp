@@ -27,11 +27,10 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -283,12 +282,8 @@ auto ObjectInitializerAst::Stage11_CodeGen(
       // widened on the way in - the same coercion a by-value
       // argument gets at a function call.
       if (auto const &attr_ref = spp::get<1>(attrs[attr_index]); attr_ref.Symbol != nullptr) {
-        val = codegen::CoerceToFnValue(
-          val, attr_ref,
-          arg->Val->InferTypeRef(sm, meta), *sm, ctx);
-        val = codegen::CoerceToVariant(
-          val, attr_ref,
-          arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
+        val = codegen::CoerceToSlot(
+          val, attr_ref, arg->Val->InferTypeRef(sm, meta), *sm, "obj_init.variant" + uid, ctx);
       }
 
       arg_values.emplace_back(MakePair(llvm_attr_index(attr_index), val));
