@@ -1,6 +1,3 @@
-module;
-#include <spp/analyse/macros.hpp>
-
 module spp.analyse.utils.fn_signatures;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -12,6 +9,7 @@ import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_self_ast;
