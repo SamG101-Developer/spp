@@ -52,6 +52,9 @@ TEST(TestCrossLink, test_gnu_triple_is_the_folder_but_for_gnus_own_spellings) {
 }
 
 TEST(TestCrossLink, test_the_newest_versioned_program_is_found) {
+#if SPP_PLATFORM_WINDOWS
+  GTEST_SKIP() << "Windows has no executable bit: every regular file counts as runnable";
+#endif
   const auto first = ScratchDir();
   const auto second = ScratchDir();
   Touch(first.Root / "cross-gcc-12", true);
@@ -69,6 +72,9 @@ TEST(TestCrossLink, test_the_newest_versioned_program_is_found) {
 }
 
 TEST(TestCrossLink, test_a_program_is_found_on_path_in_order) {
+#if SPP_PLATFORM_WINDOWS
+  GTEST_SKIP() << "Windows has no executable bit: every regular file counts as runnable";
+#endif
   const auto first = ScratchDir();
   const auto second = ScratchDir();
   Touch(first.Root / "cross-gcc", false);
