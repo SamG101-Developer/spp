@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.regions;
 import spp.analyse.scopes.scope;
@@ -15,6 +14,7 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
