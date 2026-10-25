@@ -251,6 +251,16 @@ auto spp::codegen::TargetHasSafeStack() -> bool {
   return HasSafeStack(TargetTriple().str());
 }
 
+auto spp::codegen::HasSafeStackCanary(
+  const StrView triple) -> bool {
+  const auto libcalls = llvm::RTLIB::RuntimeLibcallsInfo(llvm::Triple(llvm::StringRef(triple)));
+  return libcalls.getSupportedLibcallImpl("__stack_chk_fail") != llvm::RTLIB::Unsupported;
+}
+
+auto spp::codegen::TargetHasSafeStackCanary() -> bool {
+  return HasSafeStackCanary(TargetTriple().str());
+}
+
 auto spp::codegen::TargetGnuTriple() -> char const* {
   static const auto gnu = GnuTripleOf(FolderOf(TargetTriple()));
   return gnu.c_str();

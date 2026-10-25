@@ -59,6 +59,17 @@ namespace spp::codegen {
   /// The selected target's "HasSafeStack".
   SPP_EXP_FUN auto TargetHasSafeStack() -> bool;
 
+  /// Whether LLVM's safestack pass can check a canary for a
+  /// triple, which "[memory.stack] protect" and "split" together
+  /// need: the pass checks it itself, always through
+  /// "__stack_chk_fail", never a target's own route (MSVC's
+  /// "__security_check_cookie"). Without it, LLVM reports an error
+  /// for every protected function.
+  SPP_EXP_FUN auto HasSafeStackCanary(StrView triple) -> bool;
+
+  /// The selected target's "HasSafeStackCanary".
+  SPP_EXP_FUN auto TargetHasSafeStackCanary() -> bool;
+
   /// The selected target's "GnuTripleOf".
   SPP_EXP_FUN auto TargetGnuTriple() -> char const*;
 

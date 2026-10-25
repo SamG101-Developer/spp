@@ -583,17 +583,31 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     command += " " + utils::files::NativeString(staged);
   }
 
-  command += " -lm";
-  command += " -Wl,-rpath,'$ORIGIN/lib'";
+  // The flags below are per object format, keyed on the target
+  // rather than the host so a cross link gets the target's. PE has
+  // no rpath and the CRT carries the maths functions, so COFF gets
+  // neither. Todo: a COFF link also needs a linker other than "cc",
+  // an ".exe" name, and the staged DLLs beside the executable.
+  const auto &triple = codegen::TargetTriple();
+  if (not triple.isOSBinFormatCOFF()) { command += " -lm"; }
+  if (triple.isOSBinFormatELF()) { command += " -Wl,-rpath,'$ORIGIN/lib'"; }
+  if (triple.isOSBinFormatMachO()) { command += " -Wl,-rpath,@loader_path/lib"; }
 
-  // Binary hardening, done by attaching flags to the linker.
-  FEATURE_GATE(BinaryLinkHarden) {
-    command += " -pie"; // No fixed load address to write an exploit against.
-    command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
-    command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
-    command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
-    command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
-    command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
+  // Binary hardening, done by attaching flags to the linker. ELF
+  // only: ld64 already does each by default (PIE, an NX stack,
+  // undefined symbols as errors, no text relocations on arm64,
+  // and chained fixups into __DATA_CONST in place of RELRO), and
+  // rejects "-z" outright. Its "-bind_at_load" is the nearest to
+  // "-z now", but is ignored with a warning under chained fixups.
+  if (triple.isOSBinFormatELF()) {
+    FEATURE_GATE(BinaryLinkHarden) {
+      command += " -pie"; // No fixed load address to write an exploit against.
+      command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
+      command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
+      command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
+      command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
+      command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
+    }
   }
 
   // "-z nodlopen" is not here on purpose: it sets a flag on a shared
