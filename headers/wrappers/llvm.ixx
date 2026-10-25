@@ -152,6 +152,7 @@ export namespace llvm {
     using ::llvm::object::ELFObjectFileBase;
     using ::llvm::object::ObjectFile;
     using ::llvm::object::SymbolRef;
+    using ::llvm::object::make_error_code;
   }
 
   namespace ELF {
