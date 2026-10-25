@@ -115,6 +115,15 @@ namespace spp::cli {
           + codegen::TargetFolderName() + "; set 'split = false'");
         return false;
       }
+      // Todo: drop once LLVM's safestack checks a canary the target's own way; .triages/upstream-watch.md U15.
+      if (utils::features::Enabled(utils::features::ConfigKey::MemoryStackProtect)
+        and utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit)
+        and not codegen::TargetHasSafeStackCanary()) {
+        errors.emplace_back(
+          Str("'protect' and 'split' in [memory.stack] cannot both be applied: LLVM's split stack checks its canary ")
+          + "with __stack_chk_fail, which " + codegen::TargetFolderName() + " does not have; set one to false");
+        return false;
+      }
       return true;
     }
 
