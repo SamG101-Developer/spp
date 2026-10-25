@@ -298,8 +298,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 /// annotation. Taken from the compiler's table rather than
 /// spelled again here, so a drift between the two is caught.
 TEST(AnnotationAst_BuiltinLlvm, test_compiler_names_resolve_in_std) {
-  using A = spp::analyse::utils::annotation_utils::BuiltinAnnotations;
-  for (const auto fq_name : {A::kLlvmInline, A::kLlvmAlwaysInline, A::kLlvmNoInline, A::kLlvmHot, A::kLlvmCold}) {
+  for (auto const &[fq_name, _] : spp::analyse::utils::annotation_utils::kBuiltinAnnotationNames) {
+    if (not fq_name.starts_with("std::llvm::")) { continue; }
     const auto fq = spp::Str(fq_name);
     const auto name = fq.substr(fq.rfind("::") + 2);
     EXPECT_NO_THROW(build_temp_project("use " + fq + "\n!" + name + "\nfun f() -> Void { }\n")) << fq;

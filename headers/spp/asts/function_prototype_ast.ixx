@@ -67,8 +67,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   AnnotationAst *TestAnnotation;
 
   /// Optional "!always_inline", "!inline" or "!noinline"
-  /// annotation, controlling whether the function is inlined.
-  Pair<AnnotationAst*, Str> InlineAnnotation;
+  /// annotation, controlling whether the function is inlined
+  /// (which, its "Builtin").
+  AnnotationAst *InlineAnnotation;
 
   /// All annotations applied to this prototype, including the
   /// access modifiers, "!virtual_method", "!abstract_method"

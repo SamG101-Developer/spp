@@ -113,7 +113,7 @@ FunctionPrototypeAst::FunctionPrototypeAst(
   FfiAnnotation(nullptr),
   BuiltinAnnotation(nullptr),
   TestAnnotation(nullptr),
-  InlineAnnotation({nullptr, ""}),
+  InlineAnnotation(nullptr),
   Annotations(std::move(annotations)),
   TokCmp(std::move(tok_cmp)),
   TokFun(std::move(tok_fun)),
@@ -170,7 +170,6 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> Shared<codegen::LlvmFnWrapper> {
   IMPORT_UTILS;
   // Generate the return and parameter types.
-  using A = annotation_utils::BuiltinAnnotations;
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGn(
     sm, meta, ctx);
 
@@ -214,15 +213,13 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // to guard its calls rather than claimed not to.
     if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
     else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
-    if (InlineAnnotation.first != nullptr) {
-      if (InlineAnnotation.second == A::kLlvmInline) {
-        func->Target->addFnAttr(llvm::Attribute::InlineHint);
-      }
-      else if (InlineAnnotation.second == A::kLlvmAlwaysInline) {
-        func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
-      }
-      else if (InlineAnnotation.second == A::kLlvmNoInline) {
-        func->Target->addFnAttr(llvm::Attribute::NoInline);
+    if (InlineAnnotation != nullptr) {
+      using A = annotation_utils::BuiltinAnnotation;
+      switch (InlineAnnotation->Builtin) {
+        case A::kLlvmInline: func->Target->addFnAttr(llvm::Attribute::InlineHint); break;
+        case A::kLlvmAlwaysInline: func->Target->addFnAttr(llvm::Attribute::AlwaysInline); break;
+        case A::kLlvmNoInline: func->Target->addFnAttr(llvm::Attribute::NoInline); break;
+        default: break;
       }
     }
 

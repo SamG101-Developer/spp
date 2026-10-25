@@ -8,6 +8,7 @@ import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(AnnotationAst);
+use(spp::analyse::utils::annotation_utils, enum class BuiltinAnnotation : std::uint8_t);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct FunctionCallArgumentGroupAst);
@@ -32,6 +33,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
 
   /// The function arguments into annotation: !ffi(symbol="...")
   Unique<FunctionCallArgumentGroupAst> FnArgGroup;
+
+  /// Which builtin annotation this is ("kNone" for a custom one),
+  /// resolved from the function it names, once ("_ResolveBuiltin").
+  analyse::utils::annotation_utils::BuiltinAnnotation Builtin{};
 
   AnnotationAst(
     decltype(TokExclamationMark) &&tok_exclamation_mark,
@@ -82,6 +87,15 @@ private:
   /// The target that this annotation "is" ie the function
   /// prototype defining it.
   FunctionPrototypeAst *_Target;
+
+  /// Whether "Builtin" has been resolved: stage 4 does, once the
+  /// annotation's function is found; stage 5 tries again if not.
+  bool _BuiltinResolved = false;
+
+  /// Resolve "Builtin" from the annotation function's fully
+  /// qualified name, which bypasses a "use" import of it. False if
+  /// the function is not found yet.
+  auto _ResolveBuiltin(ScopeManager *sm) -> bool;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::AnnotationAst)
