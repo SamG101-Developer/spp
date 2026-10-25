@@ -30,11 +30,12 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
 
   bool IsCompilerGenerated = false;
 
-  /// Which attribute a generated argument fills, as its position
-  /// in "type_members::GetAllAttrs": its name may be shared, by
-  /// attributes two base classes each declare ("B.a", "C.a"), and
-  /// each base's is filled. A written argument's name is unique
-  /// (a shared one is ambiguous), so it has none.
+  /// Which attribute the argument fills, as its position in
+  /// "type_members::GetAllAttrs", set in stage 7 (a written one by
+  /// its name, a generated one as it is made) and what codegen
+  /// places it by. A name may be shared, by attributes two base
+  /// classes each declare ("B.a", "C.a"): each base's is filled,
+  /// and only writing that name is ambiguous.
   Opt<std::size_t> AttrIndex;
 
   explicit ObjectInitializerArgumentAst(

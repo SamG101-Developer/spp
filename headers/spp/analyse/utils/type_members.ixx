@@ -57,17 +57,18 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto GetAllAttrs(
     TypeSymbol const &cls_sym) -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>;
 
-  /// Similar to the "GetAllAttrs", but in ast form, so that
-  /// the default values can be extracted for object initializers,
-  /// if required.
-  SPP_EXP_FUN auto GetAllAttrAsts(
-    TypeSymbol const &cls_sym) -> Vec<ClassAttributeAst*>;
-
   /// The attribute "name" as written in the class "attr_scope"
   /// is ("GetAllAttrs" gives each attribute's), or nullptr for a
   /// symbol with no written attribute (a generic's).
   SPP_EXP_FUN auto AttrAstOf(
     Scope const &attr_scope, IdentifierAst const &name) -> ClassAttributeAst*;
+
+  /// The positions in "attrs" ("GetAllAttrs") of every attribute
+  /// named "name", in order: more than one where two base classes
+  /// each declare it, which naming it makes ambiguous.
+  SPP_EXP_FUN auto AttrIndicesOf(
+    Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> const &attrs, IdentifierAst const &name)
+    -> Vec<std::size_t>;
 
   /// Check that all the instances of a "cmp" constant, in a
   /// type and its super types it is extending, have a consistent

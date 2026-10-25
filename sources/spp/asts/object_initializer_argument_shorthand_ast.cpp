@@ -44,9 +44,12 @@ auto ObjectInitializerArgumentShorthandAst::PosEnd() const -> std::size_t {
 
 auto ObjectInitializerArgumentShorthandAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<ObjectInitializerArgumentShorthandAst>(
+  auto ast = MakeUnique<ObjectInitializerArgumentShorthandAst>(
     AstClone(TokEllipsis),
     AstClone(Val));
+  ast->IsCompilerGenerated = IsCompilerGenerated;
+  ast->AttrIndex = AttrIndex;
+  return ast;
 }
 
 auto ObjectInitializerArgumentShorthandAst::ToString() const -> Str {

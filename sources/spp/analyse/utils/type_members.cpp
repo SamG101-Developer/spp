@@ -357,15 +357,14 @@ auto spp::analyse::utils::type_members::IsLeftUnimplementedByAnError(
   return false;
 }
 
-auto spp::analyse::utils::type_members::GetAllAttrAsts(
-  TypeSymbol const &cls_sym)
-  -> Vec<ClassAttributeAst*> {
-  // Driven off the same walk as "GetAllAttrs", one entry per symbol (nullptr where none is written).
-  auto attr_asts = Vec<ClassAttributeAst*>{};
-  for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
-    attr_asts.emplace_back(AttrAstOf(*sup_scope, *sym->Name));
+auto spp::analyse::utils::type_members::AttrIndicesOf(
+  Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> const &attrs, IdentifierAst const &name)
+  -> Vec<std::size_t> {
+  auto out = Vec<std::size_t>();
+  for (auto i = 0uz; i < attrs.size(); ++i) {
+    if (*spp::get<0>(attrs[i]) == name) { out.emplace_back(i); }
   }
-  return attr_asts;
+  return out;
 }
 
 auto spp::analyse::utils::type_members::AttrAstOf(
@@ -388,17 +387,11 @@ auto spp::analyse::utils::type_members::GetFieldIndexInType(
   // index has to be shifted past them.
   const auto base = GetSuperimposedFatPointerFieldCount(type_sym);
 
-  // Get all the attributes on the type.
+  // The first attribute so named; past the last when none is (a name access to a shared one is ambiguous, so
+  // the first is the one).
   const auto all_attrs = GetAllAttrs(type_sym);
-
-  // Find the field index.
-  for (auto index = 0uz; index < all_attrs.size(); ++index) {
-    if (*spp::get<0>(all_attrs[index]) == field_name) {
-      return base + index;
-    }
-  }
-
-  return base + all_attrs.size();
+  const auto indices = AttrIndicesOf(all_attrs, field_name);
+  return base + (indices.empty() ? all_attrs.size() : indices.front());
 }
 
 auto spp::analyse::utils::type_members::SuperClsRefs(

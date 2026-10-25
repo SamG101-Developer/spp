@@ -188,6 +188,7 @@ auto ObjectInitializerAst::Stage9_CompTimeResolve(
     elem->Stage9_CompTimeResolve(sm, meta);
     auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
       elem->Name, nullptr, std::move(meta->CompTimeResult));
+    cmp_arg->AttrIndex = elem->AttrIndex;
     cmp_elems->Args.emplace_back(std::move(cmp_arg));
   }
 
@@ -210,9 +211,6 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto attrs = type_members::GetAllAttrs(*type_sym);
-  const auto attr_names = attrs
-    | spp::views::tuple_nth<0>
-    | genex::to<Vec>();
 
   // A type carrying no value has no value to build, so
   // prevent any code generation (or further GEPs into it).
@@ -223,7 +221,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // compiler-known primitives (which don't even lower to
   // structs) and the fat pointer types. Also the base
   // cases for the recursive default initialization.
-  if (attr_names.empty()) { return llvm::Constant::getNullValue(llvm_type); }
+  if (attrs.empty()) { return llvm::Constant::getNullValue(llvm_type); }
 
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
   // that interface's fat-pointer fields prepended ahead of
@@ -235,18 +233,12 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     *type_sym);
 
   // Where an argument's attribute sits in the type's own
-  // declaration order. Every argument names an attribute -
-  // analysis rejects a name that is not one - so the search
-  // always finds it.
-  const auto spp_attr_index_of = [&](ObjectInitializerArgumentAst const &arg) {
-    // A generated argument knows its attribute: two base classes
-    // may share its name ("ObjectInitializerArgumentAst::AttrIndex").
-    if (arg.AttrIndex.has_value()) { return *arg.AttrIndex; }
-    const auto index = genex::position(attr_names, [&arg](auto const &attr_name) {
-      return *attr_name == *arg.Name;
-    });
-    SPP_ASSERT(index.has_value());
-    return *index;
+  // declaration order: stage 7 records it on every argument
+  // ("ObjectInitializerArgumentAst::AttrIndex"), as two base
+  // classes may share a name.
+  const auto spp_attr_index_of = [](ObjectInitializerArgumentAst const &arg) {
+    SPP_ASSERT(arg.AttrIndex.has_value());
+    return *arg.AttrIndex;
   };
 
   // An attribute whose type carries no value ("v: T" at

@@ -355,11 +355,14 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       // a generic parameter's type is left to the instantiation.
       if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope), *sm->CurrentScope)
         and cls_sym->LinkedScope != nullptr) {
-        for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
-          const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
-          RaiseIf<SppGenericConstraintError>(
-            attr_sym != nullptr and not attr_sym->IsGn() and not attr_sym->IsCopyable(),
-            ERR_ARGS(*SuperCls, *attr->Type));
+        // Each attribute's type as its declaring class reads it (an inherited one is the base's); the declaration
+        // is only looked up to point the error at.
+        for (auto const &[attr_name, attr_ref, attr_scope] : type_members::GetAllAttrs(*cls_sym)) {
+          auto const *const attr_sym = attr_ref.Symbol;
+          if (attr_sym == nullptr or attr_sym->IsGn() or attr_sym->IsCopyable()) { continue; }
+          auto const *const attr_ast = type_members::AttrAstOf(*attr_scope, *attr_name);
+          Raise<SppGenericConstraintError>(
+            ERR_ARGS(*SuperCls, attr_ast != nullptr ? static_cast<Ast const&>(*attr_ast->Type) : *SuperCls));
         }
       }
     }

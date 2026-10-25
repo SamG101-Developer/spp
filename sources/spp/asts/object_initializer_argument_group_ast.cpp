@@ -215,17 +215,15 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
   // Type check the non-autofill arguments against the class attributes.
   for (auto const &arg : GetNonAutoFillArgs()) {
-    auto matching_attrs = all_attrs
-      | genex::views::filter([&arg](auto const &x) { return *spp::get<0>(x) == *arg->Name; })
-      | genex::to<Vec>();
-
-    // Each attribute is shown from the class that declares it, which
-    // can be in another file than the initializer.
+    // The attribute the argument names, by its position in "all_attrs", which codegen places it by ("AttrIndex"); stage
+    // 6 has rejected a name that is no attribute. Each attribute is shown from the class that declares it, which can
+    // be in another file than the initializer.
+    const auto matching = type_members::AttrIndicesOf(all_attrs, *arg->Name);
     RaiseIf<SppAmbiguousMemberAccessError>(
-      matching_attrs.size() > 1,
-      ERR_ARGS(*spp::get<0>(matching_attrs[0]), *spp::get<0>(matching_attrs[1]), *this));
-
-    auto [attr, attr_ref, attr_scope] = matching_attrs[0];
+      matching.size() > 1,
+      ERR_ARGS(*spp::get<0>(all_attrs[matching[0]]), *spp::get<0>(all_attrs[matching[1]]), *this));
+    arg->AttrIndex = matching[0];
+    auto const &[attr, attr_ref, attr_scope] = all_attrs[matching[0]];
 
     // Enforce visibility on the field being initialized.
     {

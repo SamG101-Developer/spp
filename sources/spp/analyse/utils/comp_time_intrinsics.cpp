@@ -8,6 +8,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_members;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.expression_ast;
@@ -165,18 +166,28 @@ auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
   // value is replaced, or added if it is missing.
   auto const *current = object;
   auto current_sym = sm->CurrentScope->FindTypeSymbol(object->Type.get());
+
+  // An argument added for "name" of "current_sym" fills that attribute ("AttrIndex"): a path names a field, so the name
+  // is unique.
+  const auto named_arg = [](TypeSymbol const &owner, Shared<IdentifierAst> const &name, Unique<ExpressionAst> &&val) {
+    auto arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(AstCloneShared(name), nullptr, std::move(val));
+    const auto indices = type_members::AttrIndicesOf(type_members::GetAllAttrs(owner), *name);
+    if (not indices.empty()) { arg->AttrIndex = indices.front(); }
+    return arg;
+  };
+
   for (auto i = 0uz; i < attr_path.size(); ++i) {
     auto const &attr_name = attr_path[i];
     auto *const arg = FindNamedArg(*current, *attr_name);
     if (i + 1 == attr_path.size()) {
       if (arg != nullptr) { arg->Val = std::move(value); }
       else {
-        current->ArgGroup->Args.emplace_back(MakeUnique<ObjectInitializerArgumentKeywordAst>(
-          AstCloneShared(attr_name), nullptr, std::move(value)));
+        current->ArgGroup->Args.emplace_back(named_arg(*current_sym, attr_name, std::move(value)));
       }
       return;
     }
 
+    auto const *const owner_sym = current_sym;
     const auto attr_type = current_sym->LinkedScope->FindVarSymbol(attr_name.get())->Type;
     current_sym = current_sym->LinkedScope->FindTypeSymbol(attr_type.get());
     if (const auto inner = arg != nullptr ? arg->Val->To<ObjectInitializerAst>() : nullptr; inner != nullptr) {
@@ -192,8 +203,7 @@ auto spp::analyse::utils::comp_time_intrinsics::SetCompTimeAttrValue(
       arg->Val = std::move(new_init);
     }
     else {
-      current->ArgGroup->Args.emplace_back(MakeUnique<ObjectInitializerArgumentKeywordAst>(
-        AstCloneShared(attr_name), nullptr, std::move(new_init)));
+      current->ArgGroup->Args.emplace_back(named_arg(*owner_sym, attr_name, std::move(new_init)));
     }
     current = new_init_ptr;
   }
