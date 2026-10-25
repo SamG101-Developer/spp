@@ -68,10 +68,11 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // - reports against this "defer" rather than expanding into
   // a "ret" that codegen then has to emit at every exit the
   // deferred expression is replayed at.
-  const auto saved_defer_tok = meta->WithinDeferTok;
-  meta->WithinDeferTok = TokDefer.get();
-  Expr->Stage7_AnalyseSemantics(sm, meta);
-  meta->WithinDeferTok = saved_defer_tok;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->WithinDeferTok = TokDefer.get();
+    Expr->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Leaving the scope is what runs a deferred expression, so
   // an expression that itself leaves has nowhere sensible to

@@ -224,12 +224,13 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       : nullptr;
     const auto arg_carries_borrows = closure_arg != nullptr and closure_arg->HasBorrowedCaptures();
 
-    const auto saved_assignment_target = meta->AssignmentTarget;
-    if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
-      meta->AssignmentTarget = nullptr;
+    {
+      const auto _meta_guard = MetaGuard(meta);
+      if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
+        meta->AssignmentTarget = nullptr;
+      }
+      arg->Stage8_CheckMemory(sm, meta);
     }
-    arg->Stage8_CheckMemory(sm, meta);
-    meta->AssignmentTarget = saved_assignment_target;
 
     // A closure written as an argument holds its borrowed captures while the call runs, as the call holds its other
     // arguments' borrows: a captured "&mut x" beside an argument "&mut x" is two ways to one place. Checked against

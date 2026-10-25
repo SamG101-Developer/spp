@@ -239,8 +239,7 @@ auto GenericArgumentAst::AnalyseCompVal(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     target.Stage7_AnalyseSemantics(sm, meta);
   }
   RaiseIf<SppInvalidPrimaryExpressionError>(

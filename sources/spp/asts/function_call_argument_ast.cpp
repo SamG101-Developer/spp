@@ -34,8 +34,7 @@ namespace {
         and meta->AssignmentTargetType == nullptr
         and meta->LlvmAssignmentTarget == nullptr)) { return; }
       _Guard.emplace(meta);
-      meta->AssignmentTarget = nullptr;
-      meta->AssignmentTargetType = nullptr;
+      meta->ClearAssignmentTarget();
       meta->LlvmAssignmentTarget = nullptr;
     }
 

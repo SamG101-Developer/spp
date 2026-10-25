@@ -1427,14 +1427,12 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
 auto OverloadSolver::_Check(
   FnOverload &candidate)
   -> Expected<PassedOverload, FailedOverload> {
-  // A check that raises part way leaves what it saved on
-  // "meta" unrestored, so that is unwound here.
-  const auto depth = _Meta->Depth();
+  // A check that raises part way has its "meta" changes put back
+  // by the guards it unwinds through.
   try {
     return CheckCandidate(_Call, candidate, _Site, _Candidates.IndirectFnType != nullptr, _Sm, _Meta);
   }
   catch (errors::SemanticError const &e) {
-    while (_Meta->Depth() > depth) { _Meta->Restore(); }
     const auto reason = RejectionReasonOf(e);
     if (not reason.has_value()) { throw; }
     return Unexpected(FailedOverload{candidate.Proto, e.what(), Str(*reason)});

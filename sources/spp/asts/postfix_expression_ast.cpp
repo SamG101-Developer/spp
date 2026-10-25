@@ -158,10 +158,11 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   // "index_ref" coroutine) belongs to that temporary, not to the assignment target, so clear the target while the lhs
   // is checked - otherwise the target is recorded as containing a borrow it never receives, and nothing ever releases
   // it.
-  const auto saved_assignment_target = meta->AssignmentTarget;
-  if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
-  if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
-  meta->AssignmentTarget = saved_assignment_target;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
+    if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
+  }
 
   // An attribute read off a linear temporary takes that attribute and leaves the rest with no owner, unless the
   // attribute is the one owned part there is ("mk().a" on a value whose other parts are all "Copy").

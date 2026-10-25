@@ -57,6 +57,11 @@ auto CompilerMetaData::ResetContext() -> void {
   ParameterDefaultScope = nullptr;
 }
 
+auto CompilerMetaData::ClearAssignmentTarget() -> void {
+  AssignmentTarget = nullptr;
+  AssignmentTargetType = nullptr;
+}
+
 auto CompilerMetaData::Save() -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
@@ -183,12 +188,6 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
-}
-
-auto CompilerMetaData::Depth() const
-  -> std::size_t {
-  // Get the number of live history items.
-  return _Depth;
 }
 
 MetaGuard::MetaGuard(

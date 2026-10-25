@@ -637,7 +637,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   // 7, because the early-exit linearity check needs to know
   // where to stop walking outwards.
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnScope = sm->CurrentScope;
     const auto _flow = memory_state::BodyFlow(*sm->CurrentScope);
     FnParamGroup->Stage8_CheckMemory(sm, meta);
@@ -756,10 +756,9 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
     sub.Proto->_InstallLoweredImpl(&tm);
 
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     const auto _analysing = AnalysingGnSubstitutionGuard(sub);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
 
     // Same relaxation, and for the same reason, as the one
     // "AnalyseSubstitutedType" applies to the types a substitution

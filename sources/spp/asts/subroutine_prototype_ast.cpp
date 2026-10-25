@@ -80,48 +80,50 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
   const auto ret_type_sym = sm->CurrentScope->FindTypeSymbol(ReturnType.get());
 
-  // Update the meta information for enclosing function information.
-  meta->Save();
-  meta->EnclosingFnFlavour = this->TokFun.get();
-  meta->EnclosingFnRetType = ret_type_sym->FqName();
-  meta->EnclosingFnSourceRetType = ReturnType;
-  meta->ClosureRetJoin = nullptr;
-  meta->EnclosingFnScope = sm->CurrentScope;
-  meta->EnclosingFnCmp = TokCmp.get();
+  // Update the meta information for enclosing function information,
+  // put back (the heavy fields too) when the body is done.
   {
-    const auto _is_bindings = IsBindingsScope(meta);
-    Impl->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // Check for a void return type.
-  const auto is_void = type_predicates::IsTypeVoid(
-    TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope);
-
-  // Check there is a return statement at the end (for non-void
-  // functions).
-  const auto final_member = Impl->FinalMember();
-  const auto annotation_blocks_ret = FfiAnnotation or BuiltinAnnotation or AbstractAnnotation;
-
-  // A body that never reaches its end ("ret", "abort()", a loop
-  // with no way out, a "case" every branch of which does one of
-  // those) needs no value there.
-  const auto body_diverges = Impl->Diverges(sm, meta);
-  RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
-    not is_void and not annotation_blocks_ret and not body_diverges,
-    ERR_ARGS(*final_member, *ReturnType, *ReturnType));
-
-  // Ffi functions cannot be generic, otherwise we get
-  // multiple prototypes for the singular C function,
-  // breaking C ABI compatibility.
-  if (FfiAnnotation != nullptr) {
-    const auto ffi_symbol = GetFfiSymbolName().value_or(Str());
-    for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
-      Raise<SppFfiGenericParameterError>(ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
+    const auto _fn_guard = MetaGuard(meta, true);
+    meta->EnclosingFnFlavour = this->TokFun.get();
+    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    meta->EnclosingFnSourceRetType = ReturnType;
+    meta->ClosureRetJoin = nullptr;
+    meta->EnclosingFnScope = sm->CurrentScope;
+    meta->EnclosingFnCmp = TokCmp.get();
+    {
+      const auto _is_bindings = IsBindingsScope(meta);
+      Impl->Stage7_AnalyseSemantics(sm, meta);
     }
-  }
 
-  sm->MoveOutOfCurrentScope();
-  meta->Restore(true);
+    // Check for a void return type.
+    const auto is_void = type_predicates::IsTypeVoid(
+      TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope);
+
+    // Check there is a return statement at the end (for non-void
+    // functions).
+    const auto final_member = Impl->FinalMember();
+    const auto annotation_blocks_ret = FfiAnnotation or BuiltinAnnotation or AbstractAnnotation;
+
+    // A body that never reaches its end ("ret", "abort()", a loop
+    // with no way out, a "case" every branch of which does one of
+    // those) needs no value there.
+    const auto body_diverges = Impl->Diverges(sm, meta);
+    RaiseIf<SppFunctionSubroutineMissingReturnStatementError>(
+      not is_void and not annotation_blocks_ret and not body_diverges,
+      ERR_ARGS(*final_member, *ReturnType, *ReturnType));
+
+    // Ffi functions cannot be generic, otherwise we get
+    // multiple prototypes for the singular C function,
+    // breaking C ABI compatibility.
+    if (FfiAnnotation != nullptr) {
+      const auto ffi_symbol = GetFfiSymbolName().value_or(Str());
+      for (auto const *gn_param : GnParamGroup->Params | genex::views::ptr) {
+        Raise<SppFfiGenericParameterError>(ERR_ARGS(*FfiAnnotation, *gn_param, StrView(ffi_symbol)));
+      }
+    }
+
+    sm->MoveOutOfCurrentScope();
+  }
   meta->LoopJoins.clear();
 }
 

@@ -341,58 +341,59 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_type != nullptr);
   const auto lhs_is_member_access = IsRuntimeMemberAccess(Lhs);
 
-  meta->Save();
-  meta->LlvmWantAddress = lhs_is_member_access;
-
   // For attribute access on an object, the base pointer will
   // be the field immediately left of this specific access
   // operator. For "a.b.c", it is "a.b" etc.
   auto base_ptr = static_cast<llvm::Value*>(nullptr);
-  if (lhs_is_member_access) {
-    base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
-    if (is_borrow) {
-      base_ptr = ctx->Builder.CreateLoad(
-        llvm::PointerType::get(*ctx->Context, 0), base_ptr, "load.member_access.base_ptr" + uid);
-    }
-  }
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->LlvmWantAddress = lhs_is_member_access;
 
-  // If the lhs is symbolic, get the address of the outermost
-  // part. The symbol's alloca is already the address of the
-  // object (the base pointer). Load borrows to get value.
-  else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
-    sym != nullptr) {
-    SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
-
-    // A "cmp" constant is a global, and a global belongs to
-    // the one module that defines it, so indexing into one
-    // from another module goes through that module's own
-    // declaration of the symbol.
-    auto object_ptr = sym->LlvmInfo->Alloca;
-    if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
-      object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *codegen::GetEmissionModule(*ctx));
+    if (lhs_is_member_access) {
+      base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
+      if (is_borrow) {
+        base_ptr = ctx->Builder.CreateLoad(
+          llvm::PointerType::get(*ctx->Context, 0), base_ptr, "load.member_access.base_ptr" + uid);
+      }
     }
 
-    base_ptr = is_borrow
-      ? ctx->Builder.CreateLoad(
-        llvm::PointerType::get(*ctx->Context, 0), object_ptr, "load.member_access.base_ptr" + uid)
-      : object_ptr;
-  }
+    // If the lhs is symbolic, get the address of the outermost
+    // part. The symbol's alloca is already the address of the
+    // object (the base pointer). Load borrows to get value.
+    else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
+      sym != nullptr) {
+      SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
 
-  // A borrowed expression already evaluates to the address
-  // of the object.
-  else if (is_borrow) {
-    base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
-  }
+      // A "cmp" constant is a global, and a global belongs to
+      // the one module that defines it, so indexing into one
+      // from another module goes through that module's own
+      // declaration of the symbol.
+      auto object_ptr = sym->LlvmInfo->Alloca;
+      if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
+        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *codegen::GetEmissionModule(*ctx));
+      }
 
-  // Materialize the lhs expression into a temporary, to have
-  // an address to index through.
-  else {
-    const auto lhs_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
-    const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
-    ctx->Builder.CreateStore(lhs_val, temp);
-    base_ptr = temp;
+      base_ptr = is_borrow
+        ? ctx->Builder.CreateLoad(
+          llvm::PointerType::get(*ctx->Context, 0), object_ptr, "load.member_access.base_ptr" + uid)
+        : object_ptr;
+    }
+
+    // A borrowed expression already evaluates to the address
+    // of the object.
+    else if (is_borrow) {
+      base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
+    }
+
+    // Materialize the lhs expression into a temporary, to have
+    // an address to index through.
+    else {
+      const auto lhs_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
+      const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
+      ctx->Builder.CreateStore(lhs_val, temp);
+      base_ptr = temp;
+    }
   }
-  meta->Restore();
 
   // A field carrying no value is not laid out, so there is
   // nothing to index to and nothing to read: llvm has no value

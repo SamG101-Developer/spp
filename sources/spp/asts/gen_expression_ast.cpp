@@ -128,8 +128,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
       }
     }
     else {
-      meta->AssignmentTargetType = nullptr;
-      meta->AssignmentTarget = nullptr;
+      meta->ClearAssignmentTarget();
     }
     Expr->Stage7_AnalyseSemantics(sm, meta);
 

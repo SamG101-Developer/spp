@@ -120,8 +120,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     // The body never yields the loop's value ("exit" does), so
     // it is not what the loop is being assigned to - as its
     // code generation already treats it.
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
 
     Body->Stage7_AnalyseSemantics(sm, meta);
   }

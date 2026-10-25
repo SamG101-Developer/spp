@@ -116,8 +116,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     x->Stage7_AnalyseSemantics(sm, meta);
     expire_is_bindings();
 
@@ -252,8 +251,7 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     meta->LlvmAssignmentTarget = nullptr;
     m->Stage11_CodeGen(sm, meta, ctx);
 

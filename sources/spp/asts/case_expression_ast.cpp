@@ -143,14 +143,12 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   SPP_DEREF_ALLOW_MOVE_HELPER(Cond) {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowMoveDeref = true;
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     Cond->Stage7_AnalyseSemantics(sm, meta);
   }
   else {
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     Cond->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -397,8 +395,7 @@ auto CaseExpressionAst::Stage11_CodeGen(
   // read, and so does inferring what this "case" yields.
   const auto llvm_cond = [&] {
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     meta->LlvmAssignmentTarget = nullptr;
     return Cond->Stage11_CodeGen(sm, meta, ctx);
   }();

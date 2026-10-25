@@ -136,10 +136,11 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // anything. What the value hands a borrow to (a coroutine handle, a closure) finds this binding through
   // "AssignmentTargetSymbol". A binding written with a borrow convention borrows its value rather than taking it:
   // "is Some[T](&val)" looks at the payload, it does not move it off the subject.
-  const auto saved_target = meta->AssignmentTargetSymbol;
-  meta->AssignmentTargetSymbol = _Symbol.get();
-  meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
-  meta->AssignmentTargetSymbol = saved_target;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AssignmentTargetSymbol = _Symbol.get();
+    meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
+  }
 
   const auto borrows = Conv != nullptr;
   mem_utils::ValidateSymbolMemory(

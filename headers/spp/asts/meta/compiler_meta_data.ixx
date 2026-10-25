@@ -251,8 +251,11 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   Vec<analyse::utils::type_join::TypeJoin*> LoopJoins;
 
   /// There are some instances where we want to analyse a type
-  /// but not the generics attached to it, so allow that.
-  /// Todo: Remove and use ->WithoutGns()->Stage7...()?
+  /// but not the generics attached to it, so allow that. Both
+  /// callers analyse "WithoutGns()" already; this also stops the
+  /// type solving the arguments not written, which an object
+  /// initializer infers later from its attributes, at any depth
+  /// of a namespaced type ("ns::Vec").
   bool SkipTypeAnalysisGnChecks;
 
   /// The overriding type scope to analyse a type in. This is
@@ -385,20 +388,23 @@ public:
   /// kept. Pair it with a heavy "MetaGuard".
   auto ResetContext() -> void;
 
+  /// Clear the assignment target and its type: what is analysed
+  /// next is not what the enclosing expression is assigned to.
+  /// Pair it with a "MetaGuard", which puts them back.
+  auto ClearAssignmentTarget() -> void;
+
+private:
+  friend struct MetaGuard;
+
   /// Snapshot all the current values into the history, making
-  /// them "restorable".
+  /// them "restorable". Only through a "MetaGuard", so a raised
+  /// error unwinds it.
   SPP_ATTR_HOT auto Save() -> void;
 
   /// Restore all the light values (everything except function
   /// context, which we want to persist upwards). Set "heavy"
   /// to true to clear those too.
   SPP_ATTR_HOT auto Restore(bool heavy = false) -> void;
-
-  /// Getter for the internal depth. This is used when an catchable
-  /// error might have raised in between a "Save" and "Restore",
-  /// and we want to manually sync the meta context depth (unlikely
-  /// with the new guard though).
-  SPP_ATTR_NODISCARD auto Depth() const -> std::size_t;
 };
 
 /// A scoped guard to prevent the desync of "Save"/"Restore"

@@ -177,8 +177,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     nullptr, std::move(members), nullptr);
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     meta->ReturnTypeOverloadResolverType = nullptr;
     _TransformedExpr->Stage7_AnalyseSemantics(sm, meta);
   }
@@ -211,8 +210,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferType(
   if (_TransformedExpr != nullptr) {
     // Infer from the transformed ast.
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     auto transformed_type = _TransformedExpr->InferType(sm, meta);
     return transformed_type;
   }
@@ -230,8 +228,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
   IMPORT_UTILS;
   if (_TransformedExpr != nullptr) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     return _TransformedExpr->InferTypeRef(sm, meta);
   }
 
