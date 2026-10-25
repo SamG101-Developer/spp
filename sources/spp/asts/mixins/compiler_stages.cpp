@@ -78,7 +78,7 @@ auto CompilerStages::Stage9_CompTimeResolve(
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.
   using namespace spp::analyse::errors;
-  Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(dynamic_cast<Ast&>(*this)));
+  Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(static_cast<Ast&>(*this)));
 }
 
 auto CompilerStages::Stage10_PreCodeGen(

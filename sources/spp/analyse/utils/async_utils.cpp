@@ -31,7 +31,7 @@ auto spp::analyse::utils::async_utils::CaptureOnce(
   // than capturing it twice. Returns once found, as this is a
   // single name check.
   for (auto const &cap : captures) {
-    if (cap->Val->ToUnchecked<IdentifierAst>()->Val != name->Val) { continue; }
+    if (cap->Val->As<IdentifierAst>()->Val != name->Val) { continue; }
     if (ConvRank(conv.get()) > ConvRank(cap->Conv.get())) { cap->Conv = std::move(conv); }
     return;
   }

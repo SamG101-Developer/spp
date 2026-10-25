@@ -811,11 +811,11 @@ auto spp::parse::ParserSpp::ParseCaseExpressionBranchElseCase()
   -> Unique<asts::CaseExpressionBranchAst> {
   PARSE_ONCE(p1, ParseCaseExpressionPatternVariantElseCase);
 
-  auto else_pattern = dynamic_unique_cast<asts::CasePatternVariantAst>(
+  auto else_pattern = unique_cast<asts::CasePatternVariantAst>(
     _CreateAst<asts::CasePatternVariantElseAst>(nullptr));
   auto temp_1 = Vec<Unique<asts::StatementAst>>();
-  auto ptr = dynamic_unique_cast<asts::StatementAst>(
-    std::move(dynamic_unique_cast<asts::CasePatternVariantElseCaseAst>(std::move(p1))->CaseExpr));
+  auto ptr = unique_cast<asts::StatementAst>(
+    std::move(unique_cast<asts::CasePatternVariantElseCaseAst>(std::move(p1))->CaseExpr));
   temp_1.emplace_back(std::move(ptr));
 
   auto else_case_body = _CreateAst<asts::InnerScopeExpressionAst>(nullptr, std::move(temp_1), nullptr);
@@ -1599,9 +1599,9 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpression()
   -> Unique<asts::TypeAst> {
   PARSE_OPTIONAL(p1, ParseUnaryTypeExpressionOpBorrow)
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
-  PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
+  PARSE_ONCE(p3, [this] { return unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
   if (p1 != nullptr) {
-    p2.insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+    p2.insert(p2.begin(), unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
   return utils::algorithms::move_accumulate(
     p2.rbegin(), p2.rend(), std::move(p3),
@@ -1692,9 +1692,9 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpressionSimple()
   -> Unique<asts::TypeAst> {
   PARSE_OPTIONAL(p1, ParseUnaryTypeExpressionOpBorrow)
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
-  PARSE_ONCE(p3, [this] { return dynamic_unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
+  PARSE_ONCE(p3, [this] { return unique_cast<asts::TypeAst>(ParseTypeIdentifier()); });
   if (p1 != nullptr) {
-    p2.insert(p2.begin(), dynamic_unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
+    p2.insert(p2.begin(), unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
   return utils::algorithms::move_accumulate(
     p2.rbegin(), p2.rend(), std::move(p3),
@@ -1745,7 +1745,7 @@ auto spp::parse::ParserSpp::ParseTypeTuple1Types()
   PARSE_ONCE(p4, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<asts::TypeAst>>();
-  temp.emplace_back(dynamic_shared_cast<asts::TypeAst>(std::move(p2)));
+  temp.emplace_back(shared_cast<asts::TypeAst>(std::move(p2)));
   return _CreateAst<asts::TypeTupleShorthandAst>(p1, temp, p4)->Convert();
 }
 
@@ -1756,7 +1756,7 @@ auto spp::parse::ParserSpp::ParseTypeTupleNTypes()
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<asts::TypeAst>>();
-  for (auto &&x : p2) { temp.emplace_back(dynamic_shared_cast<asts::TypeAst>(std::move(x))); }
+  for (auto &&x : p2) { temp.emplace_back(shared_cast<asts::TypeAst>(std::move(x))); }
   return _CreateAst<asts::TypeTupleShorthandAst>(p1, temp, p3)->Convert();
 }
 
@@ -1788,7 +1788,7 @@ auto spp::parse::ParserSpp::ParseUpperIdentifier()
 auto spp::parse::ParserSpp::ParseIdentifierAsExpression()
   -> Unique<asts::ExpressionAst> {
   PARSE_ALTERNATE(p1, asts::IdentifierAst, ParseIdentifier, ParseSelfIdentifier);
-  return dynamic_unique_cast<asts::ExpressionAst>(std::move(p1));
+  return unique_cast<asts::ExpressionAst>(std::move(p1));
 }
 
 auto spp::parse::ParserSpp::ParseLiteral()

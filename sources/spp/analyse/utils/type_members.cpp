@@ -368,7 +368,7 @@ auto spp::analyse::utils::type_members::GetAllAttrAsts(
   // other walk skips.
   auto attr_asts = Vec<ClassAttributeAst*>{};
   for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
-    const auto cls_proto = sup_scope->AstNode->ToUnchecked<ClassPrototypeAst>();
+    const auto cls_proto = sup_scope->AstNode->As<ClassPrototypeAst>();
     auto *found = static_cast<ClassAttributeAst*>(nullptr);
     for (auto const &member : cls_proto->Impl->Members) {
       const auto attr = member->To<ClassAttributeAst>();

@@ -298,7 +298,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
     if (sym != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
       return MakeShared<TypePostfixExpressionAst>(
         AstCloneShared(lhs_type_sym->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
-          nullptr, dynamic_shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
+          nullptr, shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
     }
     if (sym != nullptr) { return sym->Type; }
 

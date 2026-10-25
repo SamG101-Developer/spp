@@ -322,7 +322,7 @@ GenericSolver::GenericSolver(
     auto entry = MakeUnique<_Entry>();
     entry->Param = param;
     entry->Id = param->ParamId();
-    entry->Name = dynamic_shared_cast<TypeIdentifierAst>(param->Name);
+    entry->Name = shared_cast<TypeIdentifierAst>(param->Name);
     _Entries.emplace_back(std::move(entry));
   }
 }
@@ -400,7 +400,7 @@ auto GenericSolver::Give(
     // A layer given earlier outranks this one: the first binding
     // offered for a name is the one it keeps. "Self" is the
     // pinned "Self", only seen by the inference.
-    const auto name = dynamic_shared_cast<TypeIdentifierAst>(arg->KeywordName());
+    const auto name = shared_cast<TypeIdentifierAst>(arg->KeywordName());
     if (not name->IsSelfType() and name->StampedTypeId() == nullptr) {
       const auto err = "generic argument '" + arg->ToString() + "' is not named by its parameter's identity";
       Ice(*arg, *_Sm->CurrentScope, err);

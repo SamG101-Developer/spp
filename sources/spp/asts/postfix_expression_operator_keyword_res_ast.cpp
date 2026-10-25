@@ -244,7 +244,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // slot, and asking for one ("getNullValue" of a void type)
   // is itself invalid. The receiver is an argument of the
   // mapped ".send()" call too, and is not one of these.
-  const auto mapped_call = _MappedFn->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>();
+  const auto mapped_call = _MappedFn->Op->As<PostfixExpressionOperatorFunctionCallAst>();
   const auto &args_group = mapped_call->FnArgGroup;
   const auto send_arg = genex::find_if(
     args_group->Args, [mapped_call](auto const &x) { return not mapped_call->IsReceiverArg(*x); });

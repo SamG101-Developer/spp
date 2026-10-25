@@ -143,8 +143,8 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // the closure transformation procedure.
   SPP_ASSERT(WrittenOperand != nullptr);
   auto inner_call = std::move(WrittenOperand);
-  const auto pristine = inner_call->ToUnchecked<PostfixExpressionAst>();
-  const auto pristine_call = pristine->Op->ToUnchecked<PostfixExpressionOperatorFunctionCallAst>();
+  const auto pristine = inner_call->As<PostfixExpressionAst>();
+  const auto pristine_call = pristine->Op->As<PostfixExpressionOperatorFunctionCallAst>();
 
   // Temp helper methods until TokenAst is properly refactored
   // to handle stringification properly.
@@ -180,7 +180,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   // says - see "CaptureReceiver".
   else if (IsRuntimeMemberAccess(pristine->Lhs.get())) {
     async_utils::CaptureReceiver(
-      *pristine->Lhs->ToUnchecked<PostfixExpressionAst>(),
+      *pristine->Lhs->As<PostfixExpressionAst>(),
       rhs_fn_call->Target(), scope, prelude, captures, pos);
   }
 

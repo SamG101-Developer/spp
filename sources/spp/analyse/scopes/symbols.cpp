@@ -842,7 +842,7 @@ auto TypeSymbol::FqName(
   // built from a copy: "Name" is shared with the declaration.
   const auto records_id = Kind == TypeKind::Cls and Alias == nullptr;
   auto qualifier_scope = LinkedScope->Parent;
-  auto qualified_name = records_id ? AstCloneShared(Name) : dynamic_shared_cast<TypeAst>(Name);
+  auto qualified_name = records_id ? AstCloneShared(Name) : shared_cast<TypeAst>(Name);
   while (qualifier_scope->Parent != nullptr) {
     while (holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;

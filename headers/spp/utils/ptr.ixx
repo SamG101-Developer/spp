@@ -6,18 +6,35 @@ import spp.utils.types;
 import std;
 
 namespace spp {
+  /// "ptr" as an "Out", or nullptr when it is not one: a plain
+  /// conversion for an upcast, the "To" cast for an ast (by its
+  /// kind, without RTTI), and a "dynamic_cast" otherwise.
+  SPP_EXP_FUN template <typename Out, typename In>
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto checked_ptr_cast(
+    In *ptr)
+    -> Out* {
+    //
+    if constexpr (std::derived_from<In, Out>) { return ptr; }
+    else if constexpr (requires { ptr->template To<Out>(); }) { return ptr->template To<Out>(); }
+    else { return dynamic_cast<Out*>(ptr); }
+  }
+
+  /// "ptr" as a unique "Out", or nullptr when it is not one; a
+  /// node that is not an "Out" stays owned by "ptr".
   SPP_EXP_FUN
   template <typename Out, typename In> requires (std::derived_from<Out, In> or std::derived_from<In, Out>)
-  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto dynamic_unique_cast(
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto unique_cast(
     Unique<In> &&ptr)
     -> Unique<Out> {
     //
-    if (ptr == nullptr) { return nullptr; }
-    return Unique<Out>(dynamic_cast<Out*>(ptr.release()));
+    const auto out = checked_ptr_cast<Out>(ptr.get());
+    if (out == nullptr) { return nullptr; }
+    ignore = ptr.release();
+    return Unique<Out>(out);
   }
 
   SPP_EXP_FUN template <typename Out, typename In> requires (std::derived_from<Out, In>)
-  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto dynamic_shared_cast(
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto shared_cast(
     Unique<In> &&ptr)
     -> Shared<Out> {
     //
@@ -25,13 +42,16 @@ namespace spp {
     return Shared<Out>(std::move(ptr));
   }
 
+  /// "ptr" as a shared "Out" sharing its ownership, or nullptr
+  /// when it is not one.
   SPP_EXP_FUN template <typename Out, typename In> requires (std::derived_from<In, Out> or std::derived_from<Out, In>)
-  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto dynamic_shared_cast(
+  SPP_ATTR_NODISCARD SPP_ATTR_ALWAYS_INLINE inline auto shared_cast(
     Shared<In> const &ptr)
     -> Shared<Out> {
     //
-    if (ptr == nullptr) { return nullptr; }
-    return std::dynamic_pointer_cast<Out>(ptr);
+    const auto out = checked_ptr_cast<Out>(ptr.get());
+    if (out == nullptr) { return nullptr; }
+    return Shared<Out>(ptr, out);
   }
 
   SPP_EXP_FUN template <typename Out, typename In> requires (std::derived_from<In, Out> or std::derived_from<Out, In>)

@@ -52,9 +52,9 @@ SPP_EXP_CLS template <typename To>
 struct spp::views::cast_unique_fn {
   template <typename I, typename S> requires std::input_iterator<I> and std::sentinel_for<S, I>
   GENEX_INLINE auto operator()(I first, S last) const -> Vec<Unique<To>> {
-    auto out = Vec<Unique<To>>(last);
+    auto out = Vec<Unique<To>>();
     for (; first != last; ++first) {
-      if (auto *p = dynamic_cast<To*>(first->get()); p != nullptr) {
+      if (auto *p = checked_ptr_cast<To>(first->get()); p != nullptr) {
         ignore = first->release();
         out.emplace_back(Unique<To>(p));
       }
@@ -66,7 +66,7 @@ struct spp::views::cast_unique_fn {
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const {
     auto out = Vec<Unique<To>>();
     for (auto &&v : rng) {
-      if (auto *p = dynamic_cast<To*>(v.get()); p != nullptr) {
+      if (auto *p = checked_ptr_cast<To>(v.get()); p != nullptr) {
         ignore = v.release();
         out.emplace_back(Unique<To>(p));
       }
@@ -89,7 +89,7 @@ struct spp::views::cast_shared_fn {
   GENEX_INLINE constexpr auto operator()(I first, S last) const {
     return genex::views::filter(
       genex::views::transform(std::move(first), std::move(last), [](auto &&v) -> Shared<To> {
-        return spp::dynamic_shared_cast<To>(v);
+        return spp::shared_cast<To>(v);
       }), [](Shared<To> const &v) { return v != nullptr; });
   }
 
@@ -97,7 +97,7 @@ struct spp::views::cast_shared_fn {
   GENEX_INLINE constexpr auto operator()(Rng &&rng) const {
     return genex::views::filter(
       genex::views::transform(std::forward<Rng>(rng), [](auto &&v) -> Shared<To> {
-        return spp::dynamic_shared_cast<To>(v);
+        return spp::shared_cast<To>(v);
       }), [](Shared<To> const &v) { return v != nullptr; });
   }
 

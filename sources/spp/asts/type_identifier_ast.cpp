@@ -231,7 +231,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     ERR_ARGS(NotYetSupportedFeature::NestedTypeBeforeSupScopes, *scope->LinkedTypeSymbol->Name, *this));
 
   const auto type_sym = member_lookup::FindTypeSymbolOrError(
-    *scope, *WithoutGns()->ToUnchecked<TypeIdentifierAst>());
+    *scope, *WithoutGns()->As<TypeIdentifierAst>());
 
   // Use the hook to record information for the resolution and
   // completion plugin.

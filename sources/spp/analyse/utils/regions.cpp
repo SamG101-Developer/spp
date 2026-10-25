@@ -103,19 +103,19 @@ auto spp::analyse::utils::regions::PlaceOf(
         if (arg->Name->Val == "self") { receiver = arg->Val.get(); }
       }
       if (receiver == nullptr and IsRuntimeMemberAccess(callee)) {
-        receiver = callee->ToUnchecked<PostfixExpressionAst>()->Lhs.get();
+        receiver = callee->As<PostfixExpressionAst>()->Lhs.get();
       }
       if (receiver == nullptr) { return Nullopt; }
 
       // Get the operator from the postfix left-hand-side
       // of the function call operation. Add the part into
       // the steps for the memory location.
-      const auto form_op = callee->ToUnchecked<PostfixExpressionAst>()->Op.get();
+      const auto form_op = callee->As<PostfixExpressionAst>()->Op.get();
       if (const auto static_ = form_op->To<PostfixExpressionOperatorStaticMemberAccessAst>(); static_ != nullptr) {
         steps.push_back({.Name = static_->Name->NameId(), .Opaque = true});
       }
       else {
-        const auto runtime = form_op->ToUnchecked<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+        const auto runtime = form_op->As<PostfixExpressionOperatorRuntimeMemberAccessAst>();
         steps.push_back({.Name = runtime->Name->NameId(), .Opaque = true});
       }
       cur = receiver;

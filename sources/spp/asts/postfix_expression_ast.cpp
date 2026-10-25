@@ -94,7 +94,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
-      auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
+      auto temp_lhs = Shared<TypeAst>(Lhs.release()->As<TypeAst>());
       temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }

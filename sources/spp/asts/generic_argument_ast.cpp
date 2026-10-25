@@ -150,7 +150,7 @@ auto GenericArgumentAst::Value() const -> ExpressionAst* {
 auto GenericArgumentAst::ViewName() const -> StrView {
   // Get the name from the keyword part.
   if (_KeywordName == nullptr) { return ""; }
-  return _KeywordName->ToUnchecked<TypeIdentifierAst>()->Name;
+  return _KeywordName->As<TypeIdentifierAst>()->Name;
 }
 
 auto GenericArgumentAst::Stage7_AnalyseSemantics(

@@ -148,7 +148,7 @@ namespace spp::analyse::scopes {
 
         // Do a search in the class of the "Self" scope.
         if (const auto self_sym = scope->InternalTable.TypeTable.Find(
-            SELF_TYPE->ToUnchecked<TypeIdentifierAst>());
+            SELF_TYPE->As<TypeIdentifierAst>());
           self_sym != nullptr
           and self_sym->IsSelf()
           and self_sym->LinkedScope != nullptr
@@ -647,7 +647,7 @@ namespace spp::analyse::scopes {
     /// its target; none for anything else.
     auto ConstantNamedBy(ExpressionAst const &expr, Scope const &scope) -> VariableSymbol const* {
       const auto is_ns_access = IsStaticMemberAccess(&expr)
-        and expr.ToUnchecked<spp::asts::PostfixExpressionAst>()->Lhs->To<spp::asts::TypeAst>() == nullptr;
+        and expr.As<spp::asts::PostfixExpressionAst>()->Lhs->To<spp::asts::TypeAst>() == nullptr;
       if (expr.To<spp::asts::IdentifierAst>() == nullptr and not is_ns_access) { return nullptr; }
       auto const *var = scope.FindVarSymbolOutermost(expr).first;
       while (var != nullptr and var->AliasSymbol != nullptr) { var = var->AliasSymbol.get(); }
@@ -1287,8 +1287,8 @@ auto Scope::FindVarSymbolOutermost(
   if (IsStaticMemberAccess(&expr)) {
     // This is possible with a left-hand-side type or
     // namespace.
-    const auto postfix_expr = expr.ToUnchecked<PostfixExpressionAst>();
-    const auto postfix_op = postfix_expr->Op->ToUnchecked<PostfixExpressionOperatorStaticMemberAccessAst>();
+    const auto postfix_expr = expr.As<PostfixExpressionAst>();
+    const auto postfix_op = postfix_expr->Op->As<PostfixExpressionOperatorStaticMemberAccessAst>();
 
     // Type based left-hand-side, such as
     // "some_namespace::Type::static_member()"
@@ -1333,7 +1333,7 @@ auto Scope::FindTypeSymbol(
   auto scope = this;
   auto sym_name_extracted = static_cast<TypeIdentifierAst const*>(nullptr);
   if (sym_name->IsTypeIdentifier()) {
-    sym_name_extracted = sym_name->ToUnchecked<TypeIdentifierAst>();
+    sym_name_extracted = sym_name->As<TypeIdentifierAst>();
   }
   else {
     auto [scope_, sym_name_extracted_] = ShiftForNamespacedType(*this, *sym_name);
@@ -1519,7 +1519,7 @@ auto Scope::ArgsIdOf(
     }
     if (params == nullptr) { return Nullopt; }
     for (auto const *param : params->GetAllParams()) {
-      if (param->ParamId() != 0 and param->Name->ToUnchecked<TypeIdentifierAst>()->ToView() == name.ToView()) {
+      if (param->ParamId() != 0 and param->Name->As<TypeIdentifierAst>()->ToView() == name.ToView()) {
         return param->ParamId();
       }
     }
@@ -1532,7 +1532,7 @@ auto Scope::ArgsIdOf(
 
     // A keyword: the parameter it names, "Self" as 0.
     if (arg->KeywordName() != nullptr) {
-      auto const &name = *arg->KeywordName()->ToUnchecked<TypeIdentifierAst>();
+      auto const &name = *arg->KeywordName()->As<TypeIdentifierAst>();
       if (const auto id = param_named(name); id.has_value()) { key.Push(TypeKey::Tag::Arg, *id); }
       else { Ice(name, *this, "generic argument names no parameter"); }
     }

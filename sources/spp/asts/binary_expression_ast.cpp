@@ -323,7 +323,7 @@ auto BinaryExpressionAst::Stage9_CompTimeResolve(
   // doing an "and", then we can return true already.
   if (IsLogicalOperator()) {
     Lhs->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_is_true = meta->CompTimeResult->ToUnchecked<BooleanLiteralAst>()->IsTrue();
+    const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
     if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
     Rhs->Stage9_CompTimeResolve(sm, meta);
     return;

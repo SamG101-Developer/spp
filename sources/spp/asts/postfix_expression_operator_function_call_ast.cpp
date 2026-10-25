@@ -359,7 +359,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
   auto mut_places = Vec<Pair<Shared<IdentifierAst>, ExpressionAst*>>();
   for (auto *arg : FnArgGroup->GetAllArgs()) {
-    auto name = arg->ToUnchecked<FunctionCallArgumentKeywordAst>()->Name;
+    auto name = arg->As<FunctionCallArgumentKeywordAst>()->Name;
     const auto params = fn_proto->FnParamGroup->GetAllParams();
     const auto param = genex::find_if(params, [&](auto const *p) {
       const auto param_name = p->ExtractName();

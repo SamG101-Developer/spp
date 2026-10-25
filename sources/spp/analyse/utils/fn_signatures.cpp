@@ -122,7 +122,7 @@ namespace spp::analyse::utils::fn_signatures {
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
           if (a_param == nullptr) { continue; }
-          bind_b(b_param(*own_b[i]->Name->ToUnchecked<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param));
+          bind_b(b_param(*own_b[i]->Name->As<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param));
           continue;
         }
         auto const *const b_var = scope_b.FindVarSymbol(IdentifierAst::FromType(*own_b[i]->Name).get());

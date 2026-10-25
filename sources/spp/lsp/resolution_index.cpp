@@ -628,7 +628,7 @@ auto spp::lsp::resolution_index::RecordIdentifier(
   // of a path - the "std" of "std::mem::ops::mem_cmp".
   if (sym != nullptr) { return RecordVariable(use, sm, meta, sym); }
   RecordNamespace(
-    use, sm, meta, sm.CurrentScope->FindNsSymbol(use.ToUnchecked<IdentifierAst>()));
+    use, sm, meta, sm.CurrentScope->FindNsSymbol(use.As<IdentifierAst>()));
 }
 
 auto spp::lsp::resolution_index::RecordExpression(

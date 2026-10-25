@@ -203,7 +203,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol->Type = Type;
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
-    _CondLet->Var->ToUnchecked<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
+    _CondLet->Var->As<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
     effective_val = uid_name.get();
   }
 

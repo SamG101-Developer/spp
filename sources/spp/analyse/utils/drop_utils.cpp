@@ -151,7 +151,7 @@ auto spp::analyse::utils::drop_utils::EndsArgument(
   // Only a value given as it is can be ended, not a borrow of one.
   if (arg.Conv != nullptr) { return false; }
   if (auto const *const builtin = proto.BuiltinAnnotation; builtin != nullptr) {
-    const auto name = builtin->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    const auto name = builtin->FnArgGroup->At("name")->Val->As<StringLiteralAst>()->CppVal();
     if (name == "std.mem.ops.drop") { return true; }
   }
   if (not is_receiver) { return false; }

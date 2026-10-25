@@ -1,14 +1,14 @@
 module;
 #include <spp/macros.hpp>
 
-#define INVOKE_PATTERN(...)                                                                           \
-  if constexpr (std::is_same_v<Ret, void>) {                                                          \
-    fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);          \
-    return nullptr;                                                                                   \
-  }                                                                                                   \
-  else {                                                                                              \
-    auto v = fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...); \
-    return v;                                                                                         \
+#define INVOKE_PATTERN(...)                                          \
+  if constexpr (std::is_same_v<Ret, void>) {                         \
+    fn(__VA_OPT__(__VA_ARGS__, ) ArgAs<Args>(*args[I])...);          \
+    return nullptr;                                                  \
+  }                                                                  \
+  else {                                                             \
+    auto v = fn(__VA_OPT__(__VA_ARGS__, ) ArgAs<Args>(*args[I])...); \
+    return v;                                                        \
   }
 
 export module spp.analyse.utils.comp_time_intrinsics;
@@ -27,6 +27,14 @@ use(spp::asts, struct IntegerLiteralAst);
 use(spp::asts, struct ObjectInitializerAst);
 
 namespace spp {
+  /// An argument as the intrinsic's parameter type. Analysis
+  /// has checked the call, so any other kind is an internal
+  /// compiler error ("As").
+  template <typename Param, typename Arg>
+  auto ArgAs(Arg &arg) -> std::remove_reference_t<Param>& {
+    return *arg.template As<std::remove_cvref_t<Param>>();
+  }
+
   template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_ {
     using Type = void;

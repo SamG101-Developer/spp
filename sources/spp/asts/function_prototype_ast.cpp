@@ -541,7 +541,7 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
   if (BuiltinAnnotation) {
     // The builtin is resolved once, here, and kept on the lowered
     // implementation; every later stage reads it from there.
-    const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->As<StringLiteralAst>()->CppVal();
     const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
     const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
     if (builtin == codegen::builtins::kBuiltinFuncs.end()) { Ice(*Name, *sm->CurrentScope, err1); }

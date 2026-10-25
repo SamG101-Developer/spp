@@ -6,6 +6,7 @@ import spp.analyse.scopes.scope;
 import spp.asts.ast;
 import spp.utils.error_formatter;
 import colex;
+import genex;
 import std;
 
 namespace spp {

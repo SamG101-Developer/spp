@@ -102,7 +102,7 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   // highest level. A method's "$" mock is declared once
   // per "sup" block its overloads are written in, and each
   // is given all the overloads, so any one of them will do.
-  const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
+  const auto op_nested = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
   if (not op_nested->Name->IsCompilerGeneratedType()) {
     member_lookup::RaiseIfAmbiguous(
       member_lookup::ClosestScopes(member_lookup::ScopesDeclaringType(*lhs_type_sym->LinkedScope, *op_nested->Name)),
@@ -124,7 +124,7 @@ auto TypePostfixExpressionAst::InferType(
   const auto lhs_type_scope = lhs_type_sym->LinkedScope;
 
   // Infer the type of the postfix operation.
-  const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
+  const auto op_nested = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
   return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name)->FqName();
 }
 
@@ -134,7 +134,7 @@ auto TypePostfixExpressionAst::InferTypeRef(
   IMPORT_UTILS;
   Lhs->Stage7_AnalyseSemantics(sm, meta);
   const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
-  const auto op_nested = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
+  const auto op_nested = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
   const auto sym = member_lookup::FindTypeSymbolOrError(*lhs_type_sym->LinkedScope, *op_nested->Name);
   return TypeRef::Of(*sym, *sm->CurrentScope);
 }
@@ -207,9 +207,9 @@ auto TypePostfixExpressionAst::WithConvention(
 auto TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   // Use cache if available.
   if (not _CachedWithoutGns) {
-    const auto rhs = TokOp->ToUnchecked<TypePostfixExpressionOperatorNestedTypeAst>();
+    const auto rhs = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
     auto new_rhs = MakeUnique<TypePostfixExpressionOperatorNestedTypeAst>(
-      nullptr, dynamic_shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGns()));
+      nullptr, shared_cast<TypeIdentifierAst>(rhs->Name->WithoutGns()));
     _CachedWithoutGns = MakeShared<TypePostfixExpressionAst>(AstClone(Lhs), std::move(new_rhs));
   }
   return _CachedWithoutGns;

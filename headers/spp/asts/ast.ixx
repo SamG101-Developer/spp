@@ -64,7 +64,7 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   SPP_ATTR_NODISCARD virtual auto IsAllowedInDefault() const -> bool;
 
   /// Which concrete ast class this node is. This is used to
-  /// bypass RTTI dynamic casting checks; see "To", and "AstAs".
+  /// bypass RTTI dynamic casting checks; see "To", "As" and "AstAs".
   SPP_ATTR_NODISCARD virtual auto Kind() const noexcept -> AstKind = 0;
 
   /// The RTTI-bypassed casting check, to convert a node into
@@ -108,19 +108,26 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
     }
   }
 
-  /// The unchecked cast when we know 100% that a cast will be
-  /// valid, bypassing the "Kind" and RTTI casting. Barely
-  /// cheaper than the "Kind" cast but still more optimal.
+  /// The cast for a node that must be a "T": "To", and an
+  /// internal compiler error at the calling site when it is
+  /// not. "To" is for a node that may be a "T".
   template <typename T>
-  auto ToUnchecked() -> T* {
-    return static_cast<T*>(this);
+  auto As(std::source_location raised_at = std::source_location::current()) -> T* {
+    auto *self = this;
+    SPP_OPAQUE_PTR(self);
+    const auto out = self->template To<T>();
+    if (out == nullptr) { _AsFailed(self, raised_at); }
+    return out;
   }
 
-  /// The const version of the unchecked cast, just adding the
-  /// "const" tag to the pointers.
+  /// A const pointer version of the "As" cast.
   template <typename T>
-  auto ToUnchecked() const -> T const* {
-    return static_cast<T const*>(this);
+  auto As(std::source_location raised_at = std::source_location::current()) const -> T const* {
+    auto *self = this;
+    SPP_OPAQUE_PTR(self);
+    const auto out = self->template To<T>();
+    if (out == nullptr) { _AsFailed(self, raised_at); }
+    return out;
   }
 
   /// The default behaviour is to bind the context into this
@@ -155,6 +162,12 @@ protected:
   /// Creating a raw Ast isn't allowed, but to be created from
   /// its base classes, the constructor is marked as "protected".
   explicit Ast();
+
+private:
+  /// The internal compiler error for an "As" cast that failed:
+  /// "self" is not the kind its site assumed, or is nullptr.
+  SPP_ATTR_COLD SPP_ATTR_NORETURN static auto _AsFailed(
+    Ast const *self, std::source_location raised_at) -> void;
 };
 
 namespace spp::asts {
