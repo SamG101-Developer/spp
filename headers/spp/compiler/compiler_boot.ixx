@@ -13,6 +13,11 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS class ScopeManager;
 }
 
+namespace spp::asts::meta {
+  SPP_EXP_CLS struct CompilerMetaData;
+  SPP_EXP_CLS enum class CompilerStage : std::uint8_t;
+}
+
 namespace spp::asts {
   SPP_EXP_CLS struct Ast;
   SPP_EXP_CLS struct FunctionPrototypeAst;
@@ -173,4 +178,14 @@ private:
 
   static auto _MoveScopeManagerToNs(
     analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
+
+  /**
+   * Run one stage over every module, in order: each with the scope manager moved into its namespace and a fresh
+   * "meta" for the stage, its walk restarted after, and "bar" advanced (when given; the caller finishes it). An
+   * analysis stage (6-9) also makes the instantiations lookups read as they need them, for itself.
+   * @param[in] body What the stage does with the module at an index ("_Modules", and "_LlvmCtxs" from stage 10).
+   */
+  auto _EachModule(
+    ModuleTree &tree, analyse::scopes::ScopeManager *sm, asts::meta::CompilerStage stage, utils::ProgressBar *bar,
+    FuncRef<void(std::size_t, asts::meta::CompilerMetaData &)> body) -> void;
 };

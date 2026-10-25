@@ -54,16 +54,6 @@ import spp.utils.ice;
 import genex;
 import llvm;
 
-#define PREP_SCOPE_MANAGER \
-  auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->ModuleAst.get() == mod; })
-
-#define PREP_SCOPE_MANAGER_AND_META(s)                                  \
-  PREP_SCOPE_MANAGER;                                                   \
-  spp::compiler::CompilerBoot::_MoveScopeManagerToNs(sm, *mod_in_tree); \
-  auto meta = spp::asts::meta::CompilerMetaData();                      \
-  meta.IsTestHarness = mod_in_tree->IsTestHarness;                    \
-  meta.CurrentStage = (s)
-
 namespace {
   /// The command the link runs, the arguments after it: the one
   /// "[target.linkers]" names for the target; else "cc" for the
@@ -145,7 +135,7 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
   -> void {
   // Pre-processing stage.
   for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER;
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->ModuleAst.get() == mod; });
     mod->FilePath = mod_in_tree->Path;
     mod->Stage1_PreProcess(ctx);
     bar.Next();
@@ -160,12 +150,9 @@ auto spp::compiler::CompilerBoot::Stage2_GenTopLvlScopes(
   -> void {
   // Generate top-level scopes stage.
   asts::TypeIdentifierAst::ClearPendingVisibility();
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlScopes);
-    mod->Stage2_GenTopLvlScopes(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kGenTopLvlScopes, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage2_GenTopLvlScopes(sm, &meta);
+  });
   bar.Finish();
 }
 
@@ -175,12 +162,9 @@ auto spp::compiler::CompilerBoot::Stage3_GenTopLvlAliases(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Generate top-level aliases stage.
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kGenTopLvlAliases);
-    mod->Stage3_GenTopLvlAliases(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kGenTopLvlAliases, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage3_GenTopLvlAliases(sm, &meta);
+  });
   bar.Finish();
 }
 
@@ -190,12 +174,9 @@ auto spp::compiler::CompilerBoot::Stage4_ResolveDeclarations(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Qualify types stage.
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kResolveDeclarations);
-    mod->Stage4_ResolveDeclarations(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kResolveDeclarations, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage4_ResolveDeclarations(sm, &meta);
+  });
   bar.Finish();
 }
 
@@ -205,12 +186,9 @@ auto spp::compiler::CompilerBoot::Stage5_LoadSupScopes(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Load super scopes stage.
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kLoadSupScopes);
-    mod->Stage5_LoadSupScopes(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kLoadSupScopes, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage5_LoadSupScopes(sm, &meta);
+  });
   bar.Finish();
 }
 
@@ -236,31 +214,24 @@ auto spp::compiler::CompilerBoot::Stage6_PreAnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Pre-analyse semantics stage.
-  analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->Tree(), asts::meta::CompilerStage::kPreAnalyseSemantics);
   asts::FunctionPrototypeAst::ClearPendingDefaults();
 
   // Every extension block's members are checked against its
   // super class before anything is pre-analysed, so a bad
   // override is reported where it is written, rather than
   // as an abstract type use wherever the type is first named.
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
-    mod->Impl->CheckExtensionMembers(sm, &meta);
-    sm->RestartWalk();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kPreAnalyseSemantics, nullptr, [&](const auto i, auto &meta) {
+    _Modules[i]->Impl->CheckExtensionMembers(sm, &meta);
+  });
 
   // Every class's visibility is on its symbol now, so the
   // names read before it was (signatures, attributes) are
   // checked, as the rest are where they are read.
   asts::TypeIdentifierAst::CheckPendingVisibility(sm);
 
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreAnalyseSemantics);
-    mod->Stage6_PreAnalyseSemantics(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kPreAnalyseSemantics, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage6_PreAnalyseSemantics(sm, &meta);
+  });
   asts::FunctionPrototypeAst::AnalysePendingDefaults(sm);
   bar.Finish();
 }
@@ -272,14 +243,9 @@ auto spp::compiler::CompilerBoot::Stage7_AnalyseSemantics(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Analyse semantics stage.
-  analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->Tree(), asts::meta::CompilerStage::kAnalyseSemantics);
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kAnalyseSemantics);
-    mod->Stage7_AnalyseSemantics(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kAnalyseSemantics, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage7_AnalyseSemantics(sm, &meta);
+  });
   bar.Finish();
 
   // Validate entry point now.
@@ -292,14 +258,9 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Check memory stage.
-  analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->Tree(), asts::meta::CompilerStage::kCheckMemory);
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCheckMemory);
-    mod->Stage8_CheckMemory(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kCheckMemory, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage8_CheckMemory(sm, &meta);
+  });
   bar.Finish();
 
   // Give every module a context to build into, all in this
@@ -319,14 +280,9 @@ auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
   analyse::scopes::ScopeManager *sm)
   -> void {
   // Comptime resolution stage.
-  analyse::utils::monomorphization::StartInstantiatingOnRead(
-    sm->Tree(), asts::meta::CompilerStage::kCompTimeResolve);
-  for (auto const &mod : _Modules) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCompTimeResolve);
-    mod->Stage9_CompTimeResolve(sm, &meta);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kCompTimeResolve, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage9_CompTimeResolve(sm, &meta);
+  });
   bar.Finish();
 }
 
@@ -358,12 +314,9 @@ auto spp::compiler::CompilerBoot::Stage10_PreCodeGen(
   analyse::utils::monomorphization::StopInstantiatingOnRead();
 
   // Code generation stage.
-  for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kPreCodeGen);
-    mod->Stage10_PreCodeGen(sm, &meta, ctx);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kPreCodeGen, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage10_PreCodeGen(sm, &meta, _LlvmCtxs[i].get());
+  });
   bar.Finish();
 }
 
@@ -374,12 +327,9 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   const unsigned opt_level)
   -> bool {
   // Code generation stage.
-  for (auto const &[mod, ctx] : genex::views::zip(_Modules, _LlvmCtxs | genex::views::ptr)) {
-    PREP_SCOPE_MANAGER_AND_META(asts::meta::CompilerStage::kCodeGen);
-    mod->Stage11_CodeGen(sm, &meta, ctx);
-    sm->RestartWalk();
-    bar.Next();
-  }
+  _EachModule(tree, sm, asts::meta::CompilerStage::kCodeGen, &bar, [&](const auto i, auto &meta) {
+    _Modules[i]->Stage11_CodeGen(sm, &meta, _LlvmCtxs[i].get());
+  });
   bar.Finish();
 
   // Write the llvm modules to file. The unit tests only verify:
@@ -698,7 +648,9 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
   // The annotation is matched on its written name rather than
   // on a resolved symbol, because this runs before anything
   // is analysed - the tests have to be known in order to write
-  // the entry point that reaches them. Todo: Make this better.
+  // the entry point that reaches them. The entry point is
+  // written as source and parsed like any module: less than
+  // building its ast by hand, and positioned as source is.
   const auto test_annotation_of = [](asts::FunctionPrototypeAst const *fun) -> asts::AnnotationAst const* {
     for (auto const &a : fun->Annotations) {
       const auto written = a->Name->ToString();
@@ -799,6 +751,27 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
       sm->CurrentScope->LinkedNamespaceSymbol->IsFfiPackage = true;
       sm->CurrentScope->LinkedNamespaceSymbol->Owner = mod.Owner;
     }
+  }
+}
+
+auto spp::compiler::CompilerBoot::_EachModule(
+  ModuleTree &tree, analyse::scopes::ScopeManager *sm, const asts::meta::CompilerStage stage,
+  utils::ProgressBar *bar, const FuncRef<void(std::size_t, asts::meta::CompilerMetaData &)> body)
+  -> void {
+  // An analysis stage reads an instantiation as a lookup needs one ("InstantiateForScope"), made for that stage.
+  using asts::meta::CompilerStage;
+  if (stage >= CompilerStage::kPreAnalyseSemantics and stage <= CompilerStage::kCompTimeResolve) {
+    analyse::utils::monomorphization::StartInstantiatingOnRead(sm->Tree(), stage);
+  }
+  for (auto i = 0uz; i < _Modules.size(); ++i) {
+    auto const &mod_in_tree = *genex::find_if(tree, [&](auto &m) { return m->ModuleAst.get() == _Modules[i]; });
+    _MoveScopeManagerToNs(sm, *mod_in_tree);
+    auto meta = asts::meta::CompilerMetaData();
+    meta.IsTestHarness = mod_in_tree->IsTestHarness;
+    meta.CurrentStage = stage;
+    body(i, meta);
+    sm->RestartWalk();
+    if (bar != nullptr) { bar->Next(); }
   }
 }
 
