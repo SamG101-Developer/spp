@@ -482,8 +482,8 @@ namespace spp::analyse::utils::overload_resolution {
       if (matches(sm.CurrentScope->TypeIdOf(*receiver_type), *sm.CurrentScope)) { return bound; }
       if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
         receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
-        for (auto const *const cls_scope : type_members::SuperClsScopes(receiver_sym->LinkedScope->GetSupScopes())) {
-          if (matches(cls_scope->TypeIdOfSymbol(*cls_scope->LinkedTypeSymbol), *cls_scope)) { break; }
+        for (auto const &[cls, cls_scope] : type_members::SuperClsReads(receiver_sym->LinkedScope->GetSupScopes())) {
+          if (matches(cls.Id, *cls_scope)) { break; }
         }
       }
       return bound;

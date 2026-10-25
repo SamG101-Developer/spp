@@ -408,27 +408,24 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   // class it is superimposed as: its sup scopes, or for a generic
   // type symbol the classes its own constraints name.
   sup_info.emplace_back(concrete.WithoutConvention(), &concrete_scope);
-  const auto add_sup = [&](Scope const *sup_scope) {
-    if (sup_scope == nullptr or sup_scope->LinkedTypeSymbol == nullptr) { return; }
-    if (AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { return; }
-    sup_info.emplace_back(TypeRef::Of(*sup_scope->LinkedTypeSymbol, *sup_scope), sup_scope);
-  };
 
   // For a Non-generic type, read the constraints as the sup
   // scopes of the scope representing the type.
   if (type_sym->LinkedScope != nullptr) {
-    for (const auto sup_scope : type_sym->LinkedScope->GetSupScopes()) {
-      add_sup(sup_scope);
-    }
+    sup_info.append_range(type_members::SuperClsReads(type_sym->LinkedScope->GetSupScopes()));
   }
 
   // Otherwise, pull the constraints off of the type symbol's
-  // generic constraints vector.
+  // generic constraints vector: the classes they name.
   else {
+    auto constraint_scopes = Vec<Scope*>();
     for (auto const &constraint : type_sym->TypeConstraints) {
       const auto constraint_sym = constraints_owner_scope.FindTypeSymbol(constraint.get());
-      add_sup(constraint_sym != nullptr ? constraint_sym->LinkedScope : nullptr);
+      if (constraint_sym != nullptr and constraint_sym->LinkedScope != nullptr) {
+        constraint_scopes.emplace_back(constraint_sym->LinkedScope);
+      }
     }
+    sup_info.append_range(type_members::SuperClsReads(constraint_scopes));
   }
 
   // Compare each constraint against the concrete type and its

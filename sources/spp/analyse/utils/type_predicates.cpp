@@ -117,9 +117,9 @@ auto spp::analyse::utils::type_predicates::IsOrExtendsTemplate(
   // Check for a template match; is the template of symbol
   // equal to "tmpl"?
   if (TypeRef::ForKindCheck(sym, scope).Template() == tmpl) { return true; }
-  return sym.LinkedScope != nullptr and genex::any_of(sym.LinkedScope->GetSupScopes(), [tmpl](auto const *sup_scope) {
-    return sup_scope->LinkedTypeSymbol != nullptr and TypeRef::ForKindCheck(*sup_scope).Template() == tmpl;
-  });
+  return sym.LinkedScope != nullptr and genex::any_of(
+    type_members::SuperClsScopes(sym.LinkedScope->GetSupScopes()),
+    [tmpl](auto const *cls_scope) { return TypeRef::ForKindCheck(*cls_scope).Template() == tmpl; });
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeGenerator(

@@ -434,6 +434,16 @@ auto spp::analyse::utils::type_members::SuperClsScopes(
   return out;
 }
 
+auto spp::analyse::utils::type_members::SuperClsReads(
+  Vec<Scope*> const &sup_scopes)
+  -> Vec<Pair<TypeRef, Scope const*>> {
+  auto out = Vec<Pair<TypeRef, Scope const*>>();
+  for (auto const *cls_scope : SuperClsScopes(sup_scopes)) {
+    out.emplace_back(TypeRef::Of(*cls_scope->LinkedTypeSymbol, *cls_scope), cls_scope);
+  }
+  return out;
+}
+
 auto spp::analyse::utils::type_members::GetSuperimposedFatPointerFieldCount(
   TypeSymbol const &type_sym)
   -> std::size_t {

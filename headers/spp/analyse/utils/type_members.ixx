@@ -115,6 +115,14 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto SuperClsScopes(
     Vec<Scope*> const &sup_scopes) -> Vec<Scope const*>;
 
+  /// The classes among "sup_scopes" ("SuperClsScopes"), each read
+  /// where its own sup scope reads it, with that scope: what a type
+  /// is matched as beside itself (a constraint, a call's receiver,
+  /// a generic argument's shape). Read anywhere else, a "Self" in
+  /// a sup type's name ("S32 ext Ord[Rhs=Self]") has no symbol.
+  SPP_EXP_FUN auto SuperClsReads(
+    Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
+
   /// Get the number of synthetic fat-pointer fields on this
   /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
   /// fields prepended ahead of a type's own declared fields.

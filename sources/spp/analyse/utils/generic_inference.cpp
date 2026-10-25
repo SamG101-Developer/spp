@@ -627,12 +627,10 @@ auto GenericSolver::_Match(
   if (matched or is_bare_param or not scopes::DoesTypeIdNameAnyGnParams(declared)) { return inferred; }
   auto const *const given_sym = TypeRef::Of(given_id, scope).Symbol;
   if (given_sym == nullptr or given_sym->LinkedScope == nullptr) { return inferred; }
-  for (auto const *sup_scope : given_sym->LinkedScope->GetSupScopes()) {
-    if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
-    const auto sup_id = scope.TypeIdOfSymbol(*sup_scope->LinkedTypeSymbol);
-    if (sup_id == nullptr) { continue; }
+  for (auto const &[cls, cls_scope] : type_members::SuperClsReads(given_sym->LinkedScope->GetSupScopes())) {
+    if (cls.Id == nullptr) { continue; }
     auto sup_inferred = scopes::GenericSubst();
-    if (scopes::UnifyTypeIds(sup_id, declared, scope, *_OwnerScope, sup_inferred, true, true)) {
+    if (scopes::UnifyTypeIds(scopes::BareOf(cls.Id), declared, *cls_scope, *_OwnerScope, sup_inferred, true, true)) {
       return sup_inferred;
     }
   }
@@ -743,8 +741,8 @@ auto GenericSolver::_ReadConstraints() -> bool {
     if (concrete_sym != nullptr and not concrete_sym->IsGn()) {
       candidates.emplace_back(scope.TypeIdOfSymbol(*concrete_sym), &scope);
       if (concrete_sym->LinkedScope != nullptr) {
-        for (auto const *const cls_scope : type_members::SuperClsScopes(concrete_sym->LinkedScope->GetSupScopes())) {
-          candidates.emplace_back(cls_scope->TypeIdOfSymbol(*cls_scope->LinkedTypeSymbol), cls_scope);
+        for (auto const &[cls, cls_scope] : type_members::SuperClsReads(concrete_sym->LinkedScope->GetSupScopes())) {
+          candidates.emplace_back(cls.Id, cls_scope);
         }
       }
     }
