@@ -5,7 +5,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 ## Conventions
 - [Prefer proper fixes](conventions/prefer-proper-fixes.md) — root-cause fixes, not shape-specific band-aids
 - [Add tests even if failing](conventions/add-tests-even-if-failing.md) — red tests for known bugs wanted, plus a Todo at the site
-- [Code reduction means functions](conventions/code-reduction-means-functions.md) — remove dead/duplicate/single-use fns; not macros
+- [Code reduction means functions](conventions/code-reduction-means-functions.md) — remove dead/duplicate fns; not macros; single-use utils stay (de-bloat ASTs)
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK

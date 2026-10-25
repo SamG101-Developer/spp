@@ -1,7 +1,7 @@
 ---
 name: scope-symbol-family-duplication
-description: "Scope's symbol API is six families triplicated per symbol kind; consolidating it is deferred future work"
-updated: 2026-08-28
+description: "Scope's symbol API keeps one member per kind per family (symmetric); bodies are shared where they were copies; FindTypeSymbol stays its own"
+updated: 2026-10-25
 ---
 
 `Scope` (`sources/spp/analyse/scopes/scope.cpp`) declares six near-identical families, one member per symbol kind
@@ -16,6 +16,12 @@ is not actually parallel to its siblings: it alone carries the `TryCachedLookup`
 **How to apply:** revisit only with a profile in hand, and keep `Get*`/`All*` out of any first pass. The trivially
 identical ones (`Rem*`, `Has*`, `FindInSupScopesByName*`) can be consolidated safely and independently. See
 [[generic-leak-shared-instantiations]] for how tangled this area is in practice.
+
+**Consolidated where it was copying (2026-10-25, N6.8):** the members stay, one per kind, but no longer repeat each
+other's bodies: `Has*` are `Find* != nullptr`, `GetAll*Symbols` call one file-local `AllSymbols` (a table member
+pointer), the var and type `Add*CheckConflict` share `RaiseIfDuplicate`, and the sup search is the
+`FindInSupScopesByName` template. Still separate on purpose: `FindTypeSymbol` (cache, namespace shift),
+`FindVarSymbol` (alias, stamped identity), `AddNsSymbolCheckConflict` (exclusive, no prelude rule).
 
 **Unused members stay (maintainer, 2026-10-16):** `AddNsSymbolCheckConflict`, `RemNsSymbol` and `HasTypeSymbol` have no
 callers, but are kept so each family has one member per kind ("leave them (api symmetric)"). Don't propose removing a

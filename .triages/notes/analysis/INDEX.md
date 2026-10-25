@@ -1,6 +1,6 @@
 - [analyse::utils module map](analyse-utils-module-map.md) — 2026-09-28 reorg + 2026-10-16 regrouping old→new homes
 - [IMPORT_UTILS convention](import-utils-macro-convention.md) — utils as module::F, errors unqualified
-- [Scope symbol family duplication](scope-symbol-family-duplication.md) — 6 families per kind; why deferred; unused members kept for symmetry
+- [Scope symbol family duplication](scope-symbol-family-duplication.md) — one member per kind (symmetric), shared bodies; FindTypeSymbol kept apart
 - [ScopeDefinedIn can dangle](scope-defined-in-can-dangle.md) — resolve through LinkedScope
 - [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit
 - [Visibility stage ordering](spp-visibility-stage-ordering.md) — attribute visibility syncs in Stage4; pre-stage-6 type names deferred (bug 45)
