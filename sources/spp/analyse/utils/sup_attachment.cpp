@@ -18,6 +18,7 @@ import spp.asts.cmp_statement_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_constraints_ast;
+import spp.asts.identifier_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.type_ast;
