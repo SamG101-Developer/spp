@@ -179,10 +179,12 @@ namespace spp::analyse::utils::overload_resolution {
         fn_name = static_field->Name;
 
         // Add a name check here because we need to get
-        // the type off of it before it is even analysed.
-        const auto fn_owner_sym = fn_owner_scope->FindVarSymbol(fn_name.get());
+        // the type off of it before it is even analysed. The
+        // namespace's own: "ns::f" reaches nothing its parents
+        // declare, so neither does a suggestion.
+        const auto fn_owner_sym = fn_owner_scope->FindVarSymbol(fn_name.get(), true);
         if (fn_owner_sym == nullptr) {
-          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(), {});
+          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(true), {});
         }
         fn_owner_type = fn_owner_sym->Type;
       }
