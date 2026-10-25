@@ -102,12 +102,8 @@ auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
     // this stage has not found yet: then what it is is taken in
     // stage 4, once every module has found its own.
     _Conversion->_AliasSymbol->AliasSymbol = old_var_sym->SharedFromThis<VariableSymbol>();
-    auto *target = old_var_sym;
-    auto const *target_scope = scope;
-    while (target->AliasSymbol != nullptr) {
-      target = target->AliasSymbol.get();
-      target_scope = target->ScopeDefinedIn;
-    }
+    auto *const target = old_var_sym->UseTarget();
+    auto const *const target_scope = target != old_var_sym ? target->ScopeDefinedIn : scope;
     if (target->Kind != VariableKind::Import) { _TakeTarget(*target, *target_scope); }
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;
@@ -143,8 +139,8 @@ auto UseStatementVariableAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // The end of a chain of imports that was not found in stage 3 (one still an import imports itself, round a cycle).
-  auto *target = _Conversion->_AliasSymbol->AliasSymbol.get();
-  while (target != nullptr and target->AliasSymbol != nullptr) { target = target->AliasSymbol.get(); }
+  auto *const named = _Conversion->_AliasSymbol->AliasSymbol.get();
+  auto *const target = named != nullptr ? named->UseTarget() : nullptr;
   if (target != nullptr and _Conversion->_AliasSymbol->Kind == VariableKind::Import
     and target->Kind != VariableKind::Import) {
     _TakeTarget(*target, *target->ScopeDefinedIn);

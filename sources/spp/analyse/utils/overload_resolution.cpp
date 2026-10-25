@@ -210,8 +210,7 @@ namespace spp::analyse::utils::overload_resolution {
         const auto mod_scope = sm.CurrentScope->GetParentModule();
         auto mod_sym = mod_scope != nullptr ? mod_scope->FindVarSymbol(lhs_as_ident) : nullptr;
         if (mod_sym != nullptr and mod_sym->IsCompTime() and (sym == mod_sym or sym->Kind == VariableKind::FnMock)) {
-          while (mod_sym->AliasSymbol != nullptr) { mod_sym = mod_sym->AliasSymbol.get(); }
-          fn_owner_scope = mod_sym->ScopeDefinedIn;
+          fn_owner_scope = mod_sym->UseTarget()->ScopeDefinedIn;
         }
         else {
           fn_owner_scope = sym->ScopeDefinedIn == mod_scope ? mod_scope : nullptr;

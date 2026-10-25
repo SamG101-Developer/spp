@@ -685,14 +685,28 @@ auto AliasInfo::DeclaredIn() const -> Scope* {
 namespace {
   /// The aliases a chain of them has passed through, to stop on
   /// one it comes back to. Inline: a chain is short.
-  using PassedAliases = spp::SmallVec<TypeSymbol const*, 4>;
+  template <typename S = TypeSymbol>
+  using PassedAliases = spp::SmallVec<S const*, 4>;
 
-  auto WasPassed(PassedAliases const &passed, TypeSymbol const *const sym) -> bool {
+  template <typename S>
+  auto WasPassed(PassedAliases<S> const &passed, S const *const sym) -> bool {
     for (auto i = 0uz; i < passed.size(); ++i) {
       if (passed[i] == sym) { return true; }
     }
     return false;
   }
+}
+
+auto VariableSymbol::UseTarget() const -> VariableSymbol* {
+  // A cycle of "use"s is rejected where one is declared, but can be followed before then.
+  auto *s = const_cast<VariableSymbol*>(this);
+  auto passed = PassedAliases<VariableSymbol>{s};
+  while (s->AliasSymbol != nullptr
+    and not WasPassed(passed, static_cast<VariableSymbol const*>(s->AliasSymbol.get()))) {
+    s = s->AliasSymbol.get();
+    passed.emplace_back(s);
+  }
+  return s;
 }
 
 auto TypeSymbol::AliasTarget(
@@ -707,7 +721,7 @@ auto TypeSymbol::AliasTarget(
     return make ? FindOrMakeTypeSymbol(*where, resolved) : where->FindTypeSymbol(&resolved);
   };
   auto *s = const_cast<TypeSymbol*>(this);
-  auto passed = PassedAliases{s};
+  auto passed = PassedAliases<>{s};
   while (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
     auto const &resolved = *s->Alias->Resolved;
     auto *next = read(s->Alias->WrittenIn, resolved);
@@ -740,7 +754,7 @@ auto TypeSymbol::UseTarget() const -> TypeSymbol* {
   // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle of "use"s is rejected where one is
   // declared, but can be followed before then.
   auto *s = const_cast<TypeSymbol*>(this);
-  auto passed = PassedAliases{s};
+  auto passed = PassedAliases<>{s};
   while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
     and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);

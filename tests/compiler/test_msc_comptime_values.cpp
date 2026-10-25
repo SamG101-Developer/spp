@@ -54,7 +54,7 @@ SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_array_literal, R"(
   cmp a: Arr[S32, 3_uz] = [1, 2, 3]
-)", {"a", "[1_s32, 2_s32, 3_s32, ]"});
+)", {"a", "[1_s32, 2_s32, 3_s32]"});
 
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
@@ -62,7 +62,7 @@ SPP_TEST_CMP_VALUES(
   cmp a: (S32, Bool) = (7, true)
   cmp b: S32 = a.0
   cmp c: Bool = a.1
-)", {"a", "(7_s32, true, )"}, {"b", "7_s32"}, {"c", "true"});
+)", {"a", "(7_s32, true)"}, {"b", "7_s32"}, {"c", "true"});
 
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
@@ -93,7 +93,7 @@ SPP_TEST_CMP_VALUES(
   cmp a: S32 = 7
   cmp arr: Arr[S32, 2_uz] = [a, a]
   cmp tup: (S32, S32) = (a, 2)
-)", {"arr", "[7_s32, 7_s32, ]"}, {"tup", "(7_s32, 2_s32, )"});
+)", {"arr", "[7_s32, 7_s32]"}, {"tup", "(7_s32, 2_s32)"});
 
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,

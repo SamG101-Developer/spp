@@ -684,7 +684,7 @@ namespace spp::analyse::scopes {
         and expr.As<spp::asts::PostfixExpressionAst>()->Lhs->To<spp::asts::TypeAst>() == nullptr;
       if (expr.To<spp::asts::IdentifierAst>() == nullptr and not is_ns_access) { return nullptr; }
       auto const *var = scope.FindVarSymbolOutermost(expr).first;
-      while (var != nullptr and var->AliasSymbol != nullptr) { var = var->AliasSymbol.get(); }
+      if (var != nullptr) { var = var->UseTarget(); }
       return var != nullptr and var->Kind == VariableKind::Constant ? var : nullptr;
     }
 

@@ -95,14 +95,7 @@ namespace spp::lsp::resolution_index {
         const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
         if (proto == nullptr or proto->FnParamGroup == nullptr or proto->ReturnType == nullptr) { continue; }
 
-        // Manual stringification because ToString() leaves in the
-        // trailing "," on parameters. Todo: Use .ToString() once
-        // that bug is fixed.
-        auto params = Str("(");
-        for (auto const &param : proto->FnParamGroup->Params) {
-          params += (params.length() > 1 ? ", " : "") + param->ToString();
-        }
-        signatures.emplace_back(params + ") -> " + proto->ReturnType->ToString());
+        signatures.emplace_back(proto->FnParamGroup->ToString() + " -> " + proto->ReturnType->ToString());
       }
       return signatures;
     }
@@ -137,17 +130,18 @@ namespace spp::lsp::resolution_index {
     auto NamespacePathOf(
       NamespaceSymbol const &sym)
       -> Str {
-      // The current namespace part and all parent scopes up to the root.
+      // The current namespace part and all parent scopes up to the
+      // root, but the global scope (the one with no parent), whose
+      // namespace is no part of a path.
       auto parts = Vec<Str>();
       for (auto const *scope : sym.LinkedScope->GetAncestors()) {
+        if (scope->Parent == nullptr) { continue; }
         parts.emplace_back(scope->LinkedNamespaceSymbol->Name->ToString());
       }
 
-      // Join all the parts into a "::"-joined string, leaving
-      // the "_global" root part. Todo: Move to a constant.
+      // Join all the parts into a "::"-joined string, outermost first.
       auto path = Str();
       for (auto i = parts.size(); i > 0; --i) {
-        if (parts[i - 1] == "_global") { continue; }
         path += (path.empty() ? "" : "::") + parts[i - 1];
       }
       return path;
@@ -551,10 +545,7 @@ auto spp::lsp::resolution_index::RecordVariable(
   // For symbols introduced via a "use" statement, we want to
   // get back to the actual cmp/fun definition in a different
   // module, through each "use" in turn.
-  auto target = &sym;
-  while (target->AliasSymbol != nullptr and target->AliasSymbol.get() != target) {
-    target = target->AliasSymbol.get();
-  }
+  auto const *const target = sym.UseTarget();
 
   // The definition is the span of the name within the scope
   // that the symbol was defined in.

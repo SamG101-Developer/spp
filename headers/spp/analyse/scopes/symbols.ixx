@@ -522,6 +522,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// constant, a function's mock constant, or a comp generic.
   SPP_ATTR_NODISCARD auto IsCompTime() const -> bool;
 
+  /// What a "use" names, followed through each "use" in turn
+  /// ("AliasSymbol"), stopping on one it comes back to: the
+  /// constant or function at the end, or an import still waiting
+  /// for its target. Anything not imported is itself. The twin of
+  /// "TypeSymbol::UseTarget".
+  SPP_ATTR_NODISCARD auto UseTarget() const -> VariableSymbol*;
+
   /// Whether this names something brought in by a "use" rather
   /// than declared here: an import still waiting for its target,
   /// or one that has found it. A declaration may shadow an import,
