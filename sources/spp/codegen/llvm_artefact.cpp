@@ -75,10 +75,8 @@ namespace spp::codegen {
     /// any of the three places a linker may say so). Empty when it
     /// has both, or its headers cannot be read.
     template <class ELFT>
-    auto RelroGaps(llvm::object::ELFObjectFile<ELFT> const &file) -> Str {
-      // Get the ELF file from the object file, and assume RELRO to
-      // be false.
-      auto const &elf = file.getELFFile();
+    auto RelroGaps(llvm::object::ELFFile<ELFT> const &elf) -> Str {
+      // Assume RELRO to be false.
       auto relro = false;
 
       // If any header in the ELF file is RELRO, then update the flag
@@ -129,8 +127,8 @@ namespace spp::codegen {
     /// The first fault in an ELF file's loadable segments, as
     /// "UnhardenedSegments" describes; empty when there is none.
     template <class ELFT>
-    auto SegmentFaults(llvm::object::ELFObjectFile<ELFT> const &file) -> Expected<Str, Str> {
-      auto headers = file.getELFFile().program_headers();
+    auto SegmentFaults(llvm::object::ELFFile<ELFT> const &elf) -> Expected<Str, Str> {
+      auto headers = elf.program_headers();
       if (not headers) { return Unexpected(llvm::toString(headers.takeError())); }
 
       auto loads = Vec<typename ELFT::Phdr>();
@@ -162,16 +160,35 @@ namespace spp::codegen {
       return Str();
     }
 
-    /// "f" applied to "binary" as whichever of the four ELF
+    /// "f" applied to "data" read as an ELF file of class "ELFT";
+    /// none when it cannot be read as one.
+    template <class ELFT, class F>
+    auto VisitElfAs(const llvm::StringRef data, F &&f)
+      -> Opt<std::invoke_result_t<F, llvm::object::ELFFile<ELFT> const&>> {
+      auto elf = llvm::object::ELFFile<ELFT>::create(data);
+      if (not elf) {
+        llvm::consumeError(elf.takeError());
+        return Nullopt;
+      }
+      return f(*elf);
+    }
+
+    /// "f" applied to "object" as whichever of the four ELF
     /// classes and byte orders it is; none when it is not ELF.
+    /// Read through ELFFile, not ELFObjectFile: ELFFile is compiled
+    /// into LLVM's libraries, while instantiating ELFObjectFile here
+    /// names ELF.h's TU-local defaultWarningHandler, which MSVC
+    /// rejects across the llvm module (C2065).
     template <class F>
-    auto VisitElf(llvm::object::Binary const *binary, F &&f)
-      -> Opt<std::invoke_result_t<F, llvm::object::ELFObjectFile<llvm::object::ELF64LE> const&>> {
-      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64LE>>(binary)) { return f(*e); }
-      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF64BE>>(binary)) { return f(*e); }
-      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32LE>>(binary)) { return f(*e); }
-      if (const auto e = llvm::dyn_cast<llvm::object::ELFObjectFile<llvm::object::ELF32BE>>(binary)) { return f(*e); }
-      return Nullopt;
+    auto VisitElf(llvm::object::ObjectFile const *object, F &&f)
+      -> Opt<std::invoke_result_t<F, llvm::object::ELFFile<llvm::object::ELF64LE> const&>> {
+      if (not object->isELF()) { return Nullopt; }
+      const auto data = object->getData();
+      const auto wide = object->getBytesInAddress() == 8;
+      if (object->isLittleEndian()) {
+        return wide ? VisitElfAs<llvm::object::ELF64LE>(data, f) : VisitElfAs<llvm::object::ELF32LE>(data, f);
+      }
+      return wide ? VisitElfAs<llvm::object::ELF64BE>(data, f) : VisitElfAs<llvm::object::ELF32BE>(data, f);
     }
 
     /// "n" rounded up to the four bytes every part of an ELF

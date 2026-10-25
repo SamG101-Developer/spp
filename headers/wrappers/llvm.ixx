@@ -144,12 +144,11 @@ export namespace llvm {
   }
 
   namespace object {
-    using ::llvm::object::Binary;
     using ::llvm::object::ELF32BE;
     using ::llvm::object::ELF32LE;
     using ::llvm::object::ELF64BE;
     using ::llvm::object::ELF64LE;
-    using ::llvm::object::ELFObjectFile;
+    using ::llvm::object::ELFFile;
     using ::llvm::object::ELFObjectFileBase;
     using ::llvm::object::ObjectFile;
     using ::llvm::object::SymbolRef;
