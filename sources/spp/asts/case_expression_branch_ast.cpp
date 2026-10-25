@@ -80,6 +80,7 @@ auto CaseExpressionBranchAst::ToString() const -> Str {
 
 auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Create a scope for the branch - this is where
   // destructures of patterns will reside.
   auto scope_name = ScopeBlockName::FromParts(
@@ -104,7 +105,7 @@ auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
       if (pe == nullptr) { continue; }
 
       auto subject = MakeUnique<IdentifierAst>(
-        meta->CaseCondition->PosStart(), analyse::utils::pattern_solver::SubjectValueName());
+        meta->CaseCondition->PosStart(), pattern_solver::SubjectValueName());
       _MappedPatFns[i] = MakeUnique<BinaryExpressionAst>(std::move(subject), AstClone(Op), AstClone(pe->Expr));
       _MappedPatFns[i]->Stage7_AnalyseSemantics(sm, meta);
     }
@@ -145,6 +146,7 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
 
 auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Combine the case expression with the pattern to determine
   // if this branch should be taken, at compile-time.
   sm->MoveToNextScope();
@@ -166,7 +168,7 @@ auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
     // anything (a binding reads a payload only its tag says is
     // there), and then the pattern itself.
     const auto checks_hold = tested != pattern
-      or analyse::utils::case_utils::ResolvePatternChecks(
+      or case_utils::ResolvePatternChecks(
         *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
     if (checks_hold) { tested->Stage9_CompTimeResolve(sm, meta); }
     const auto cmp_pat_bool = checks_hold and meta->CompTimeResult != nullptr

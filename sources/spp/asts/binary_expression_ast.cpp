@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.operator_desugaring;
@@ -140,9 +141,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   // Handle lhs-folding.
   if (Lhs->To<FoldExpressionAst>()) {
     _BindFoldOperand(Rhs, sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      ERR_ARGS(*Rhs));
+    common_errors::RequirePrimary(*Rhs, *sm);
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
@@ -187,9 +186,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   // Handle rhs-folding.
   else if (Rhs->To<FoldExpressionAst>()) {
     _BindFoldOperand(Lhs, sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      ERR_ARGS(*Lhs));
+    common_errors::RequirePrimary(*Lhs, *sm);
 
     // Check the rhs is a tuple, and error otherwise. Todo:
     // Maybe allow arrays too?
@@ -242,13 +239,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     Rhs = std::move(combined->Rhs);
     _IsLogical = IsLogicalToken(TokOp.get());
 
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      ERR_ARGS(*Lhs));
-
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      ERR_ARGS(*Rhs));
+    common_errors::RequirePrimary(*Lhs, *sm);
+    common_errors::RequirePrimary(*Rhs, *sm);
 
     // "and" and "or" are not mapped to a method; they are built
     // in, like "not", for short-circuiting. Both operands must

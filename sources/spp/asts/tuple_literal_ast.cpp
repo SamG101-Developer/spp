@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
@@ -91,17 +92,13 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
-      ERR_ARGS(*elem));
+    common_errors::RequirePrimary(*elem, *sm);
   }
 
   // Check all the elements are owned by the tuple, not borrowed.
   for (auto const &elem : Elems | genex::views::ptr) {
     auto elem_type = elem->InferType(sm, meta);
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      type_predicates::IsTypeBorrowed(*elem_type, *sm),
-      ERR_ARGS(*elem, *elem_type, "tuple element type"));
+    common_errors::RequireNotBorrowed(*elem_type, *elem, "tuple element type", *sm);
   }
 
   // Analyse the inferred tuple type to generate the generic implementation.
@@ -254,7 +251,8 @@ auto TupleLiteralAst::TypeOfElements(
 }
 
 auto TupleLiteralAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // Each element is an expression so substitute them
   // all too.
   // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
@@ -266,7 +264,9 @@ auto TupleLiteralAst::ReadExpr(
     auto const *const id = elem->To<IdentifierAst>();
     auto const *const pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
     if (pack != nullptr and pack->IsVariadic and sub_elem->To<TupleLiteralAst>() != nullptr) {
-      for (auto const *inner : analyse::utils::packs::CompPackElements(*sub_elem)) { elems.emplace_back(AstClone(inner)); }
+      for (auto const *inner : packs::CompPackElements(*sub_elem)) {
+        elems.emplace_back(AstClone(inner));
+      }
       continue;
     }
     elems.emplace_back(AstClone(sub_elem));

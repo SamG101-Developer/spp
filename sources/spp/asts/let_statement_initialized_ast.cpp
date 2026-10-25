@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.type_compare;
@@ -139,9 +140,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
 
   // Check the value is a valid expression type.
   Val->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    ERR_ARGS(*Val.get()));
+  common_errors::RequirePrimary(*Val, *sm);
 
   meta->AssignmentTarget = Var->ExtractName();
 

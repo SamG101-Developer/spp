@@ -89,6 +89,16 @@ namespace spp::analyse::utils::marker_sups {
   }
 }
 
+auto spp::analyse::utils::marker_sups::IsCopyMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  return kind.IsA(*asts::generate::common_types_precompiled::COPY, scope);
+}
+
+auto spp::analyse::utils::marker_sups::IsDropMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  return kind.IsA(*asts::generate::common_types_precompiled::DROP, scope);
+}
+
 auto spp::analyse::utils::marker_sups::FindFnSup(
   TypeAst const &type, Scope const &scope) -> TypeRef {
   //

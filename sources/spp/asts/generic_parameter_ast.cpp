@@ -11,6 +11,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -168,6 +169,7 @@ auto GenericParameterAst::ToString() const -> Str {
 
 auto GenericParameterAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   using utils::Visibility;
 
   // An inherited parameter names its "sup" block's symbol; a
@@ -181,7 +183,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
       IdentifierAst::FromType(*Name), CompType, sm->CurrentScope,
       VariableKind::GnCompParam, false, Visibility::kPublic);
 
-    analyse::utils::memory_state::StateOf(
+    memory_state::StateOf(
       *sm->CurrentScope, *sym).InitializedBy(*this);
     if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
     sym->OwnParamId = *_ParamId;
@@ -269,9 +271,7 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // Ensure that the convention type doesn't have a
   // convention, as this violates second class borrow
   // rules.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*CompType, *sm),
-    ERR_ARGS(*CompType, *CompType, "generic comp argument"));
+  common_errors::RequireNotBorrowed(*CompType, *CompType, "generic comp argument", *sm);
 }
 
 auto GenericParameterAst::Stage7_AnalyseSemantics(

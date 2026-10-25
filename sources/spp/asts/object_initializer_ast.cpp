@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_members;
@@ -89,9 +90,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   }
 
   // Check this type isn't a borrow violation.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*Type, *sm),
-    ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
+  common_errors::RequireNotBorrowed(*Type, *this, *Source.OriginalType, "object initializer", *sm);
   const auto named_cls_sym = sm->CurrentScope->FindHeadSymbol(*Type);
 
   // "Self(...)" names the class it stands for, and the
@@ -361,12 +360,13 @@ auto ObjectInitializerAst::InferTypeRef(
 
 auto ObjectInitializerAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // The initialiser names its type outright, and each
   // of its arguments is an expression in its own right.
   auto arg_group = AstClone(ArgGroup);
   for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->ReadExpr(sub)); }
   return MakeShared<ObjectInitializerAst>(
-    analyse::utils::type_resolution::ReadType(*Type, sub), std::move(arg_group));
+    type_resolution::ReadType(*Type, sub), std::move(arg_group));
 }
 
 auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {

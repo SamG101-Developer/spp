@@ -17,6 +17,15 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::marker_sups {
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Copy" marker, which makes a type's values
+  /// copied rather than moved.
+  SPP_EXP_FUN auto IsCopyMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Drop" marker, which gives a type a destructor.
+  SPP_EXP_FUN auto IsDropMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
   /// The function type ("FunRef" / "FunMut" / "FunMov") the type is or superimposes, looked at through an alias;
   /// none for a type that is not callable. A generic's constraint is considered first: a "FunRef" constrained to be a
   /// "FunMov" is treated as the "FunMov" would be, for consistent behaviour.

@@ -74,6 +74,7 @@ auto LocalVariableSingleIdentifierAst::BindsByMove() const -> bool {
 
 auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Get the value and its type from the "meta" information.
   const auto val = meta->LetStatementFromUninitialized
     ? nullptr
@@ -98,8 +99,8 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   }
 
   // Set the initialization AST (for errors).
-  analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization = Name.get();
-  analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitializationOrigin = Name.get();
+  memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization = Name.get();
+  memory_state::StateOf(*sm->CurrentScope, *sym).AstInitializationOrigin = Name.get();
 
   if (val != nullptr) {
     // Set borrow asts based on the value's type's convention.
@@ -110,7 +111,7 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
 
   else {
     // Mark an uninitialized variable as "moved"
-    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved = this;
+    memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved = this;
   }
 
   // Add the symbol to the current scope, and record it as

@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
@@ -42,7 +43,6 @@ namespace spp::analyse::utils::drop_utils {
     auto FindDropOverloadInfo(
       TypeSymbol const &type_sym, ScopeManager &sm,
       CompilerMetaData *meta) -> FnOverload {
-      using generate::common_types_precompiled::DROP;
 
       // The "none" mini-constructor for the function overload
       // type, setting every field to nullptr.
@@ -73,7 +73,7 @@ namespace spp::analyse::utils::drop_utils {
       const auto superimposes_drop = genex::any_of(
         type_sym.LinkedScope->GetSupScopes(), [&](auto const *sup_scope) {
           if (sup_scope->LinkedTypeSymbol == nullptr) { return false; }
-          return TypeRef::ForKindCheck(*sup_scope).IsA(*DROP, *sup_scope);
+          return marker_sups::IsDropMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope);
         });
       if (not superimposes_drop) { return none(); }
 

@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -120,9 +121,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
   // Analyse the repeated element.
   Elem->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
-    ERR_ARGS(*Elem));
+  common_errors::RequirePrimary(*Elem, *sm);
   const auto elem_type = Elem->InferType(sm, meta);
   const auto elem_type_sym = Elem->InferTypeRef(sm, meta).Symbol;
 
@@ -134,9 +133,8 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
   // Ensure the element's type is not a borrow type, as array
   // elements cannot be borrows.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*elem_type, *sm),
-    ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
+  common_errors::RequireNotBorrowed(
+    *elem_type, *Elem, "repeated array element type", *sm);
 
   // A literal size is the array's size as it is.
   if (Size->To<LiteralAst>() != nullptr) {
@@ -153,9 +151,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   _SizeScope = sm->CurrentScope;
   _AnalysedSize = AstClone(Size);
   _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*_AnalysedSize, *sm),
-    ERR_ARGS(*_AnalysedSize));
+  common_errors::RequirePrimary(*_AnalysedSize, *sm);
 
   // In a template, the size may depend on a generic that has no
   // value yet ("n + 1_uz", or a "case" reading "n"), so it is not

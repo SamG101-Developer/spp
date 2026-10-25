@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -64,9 +65,7 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
 
   // Analyse the operator and right-hand-side expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr));
+  common_errors::RequirePrimary(*Expr, *sm);
 
   const auto _meta_guard = MetaGuard(meta);
   Op->Stage7_AnalyseSemantics(sm, meta);

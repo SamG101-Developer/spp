@@ -6,6 +6,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.substitution;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
@@ -426,7 +427,6 @@ auto VariableSymbol::operator==(
 }
 
 auto TypeSymbol::IsCopyable() const -> bool {
-  using generate::common_types_precompiled::COPY;
 
   // If this is a generic type, then check the copyable
   // flag on this type, and the bound type.
@@ -441,7 +441,7 @@ auto TypeSymbol::IsCopyable() const -> bool {
   if (InstanceOf != nullptr and LinkedScope != nullptr) {
     for (auto const *sup_scope : LinkedScope->GetSupScopes()) {
       if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
-      if (not TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) { continue; }
+      if (not utils::marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope)) { continue; }
 
       // "Copy" superimposed over a generic class ("sup [T] P[T]
       // ext Copy") only holds for an instance whose attributes

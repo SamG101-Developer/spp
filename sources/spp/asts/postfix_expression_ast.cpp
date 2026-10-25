@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -111,9 +112,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
       // checking that the lhs is a valid form of primary expression.
       if (not _LhsAnalysed) {
         Lhs->Stage7_AnalyseSemantics(sm, meta);
-        RaiseIf<SppInvalidPrimaryExpressionError>(
-          not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-          ERR_ARGS(*Lhs.get()));
+        common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }
     }
   }

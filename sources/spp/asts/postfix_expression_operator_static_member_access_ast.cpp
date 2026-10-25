@@ -189,7 +189,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
   // Handle accessing a symbol on a type.
   if (_LhsTypeSymbol != nullptr) {
     if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
-      if (const auto read = analyse::utils::comp_generics::FindCompMemberId(owner, Name->ToView()); read != nullptr) {
+      if (const auto read = comp_generics::FindCompMemberId(owner, Name->ToView()); read != nullptr) {
         if (const auto value = sm->CurrentScope->CompAstOf(read);
           value != nullptr and value->To<LiteralAst>() != nullptr) {
           meta->CompTimeResult = AstClone(value.get());
@@ -197,8 +197,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
         }
       }
     }
-    const auto sym = analyse::utils::member_lookup::MemberOf(
-      *_LhsTypeSymbol->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
+    const auto sym = member_lookup::MemberOf(
+      *_LhsTypeSymbol->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
 
     // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
     // as this is impossiblt to provide a value.
@@ -237,8 +237,8 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSymbol != nullptr) {
-    const auto var_sym = analyse::utils::member_lookup::MemberOf(
-      *_LhsTypeSymbol->LinkedScope, *Name, analyse::utils::member_lookup::MemberAccessForm::Static);
+    const auto var_sym = member_lookup::MemberOf(
+      *_LhsTypeSymbol->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
 
     // A method named as a value is its "$" mock's constant, the
     // "{fn, env}" pair; without one there is nothing to load.
@@ -323,7 +323,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
   IMPORT_UTILS;
   if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
-    const auto sym = analyse::utils::member_lookup::MemberOf(
+    const auto sym = member_lookup::MemberOf(
       *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
     if (sym != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
       return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);

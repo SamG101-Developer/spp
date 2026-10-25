@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.mem_utils;
@@ -105,9 +106,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   // a non-zero-TypeAst, or a TokenAst.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
-      ERR_ARGS(*elem));
+    common_errors::RequirePrimary(*elem, *sm);
   }
 
   // Determine the "correct type" that all elements will be
@@ -122,9 +121,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
     ? meta->AssignmentTargetType->LastTypePart()->GnArgGroup->At("T")->TypeVal
     : z_elem->InferType(sm, meta);
 
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*z_type, *sm),
-    ERR_ARGS(*z_elem, *z_type, "array element type"));
+  common_errors::RequireNotBorrowed(*z_type, *z_elem, "array element type", *sm);
 
   // Check all elements have the same type as the "correct
   // type". When the type came from the 0th element, that

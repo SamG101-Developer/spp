@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.async_utils;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
@@ -112,9 +113,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   _OperandScope = sm->CurrentScope;
   _TypedOperand = AstClone(WrittenOperand);
   _TypedOperand->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*_TypedOperand, *sm),
-    ERR_ARGS(*_TypedOperand));
+  common_errors::RequirePrimary(*_TypedOperand, *sm);
   sm->MoveOutOfCurrentScope();
 
   // Check that the right-hand-side to the "async" keyword is

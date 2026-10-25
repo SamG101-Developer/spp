@@ -485,7 +485,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // Read where the field is declared for this instance: its
   // owner's scope, which binds the parameters its type names.
   const auto lhs_sym = Lhs->InferTypeRef(sm, meta).Symbol;
-  const auto var_sym = analyse::utils::member_lookup::MemberOf(
+  const auto var_sym = member_lookup::MemberOf(
     *lhs_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
   return var_sym->TypeRefIn(*lhs_sym->LinkedScope);
 }

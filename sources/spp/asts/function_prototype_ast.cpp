@@ -12,6 +12,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.linear_utils;
@@ -449,13 +450,11 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
 
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
   ReturnType = type_resolution::AnalyseWrittenType(
-    *ReturnType, *sm, *meta, analyse::utils::type_resolution::SelfPolicy::kKeep);
+    *ReturnType, *sm, *meta, type_resolution::SelfPolicy::kKeep);
 
   // Ensure the function's return type does not have
   // a convention.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*ReturnType, *sm),
-    ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
+  common_errors::RequireNotBorrowed(*ReturnType, *ReturnType, "function return type", *sm);
 
   sm->MoveOutOfCurrentScope();
 }
@@ -782,7 +781,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     for (auto const &param : FnParamGroup->Params) {
       for (auto const &name : param->ExtractNames()) {
         if (const auto sym = tm.CurrentScope->FindVarSymbol(name.get()); sym != nullptr) {
-          analyse::utils::memory_state::StateOf(*tm.CurrentScope, *sym).InitializedBy(*param);
+          memory_state::StateOf(*tm.CurrentScope, *sym).InitializedBy(*param);
         }
       }
     }

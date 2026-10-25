@@ -10,8 +10,10 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
@@ -214,8 +216,6 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS; // Todo: Also prevent FwdRef/FwdMut? and prevent these 3 on generic ext too.
-  using generate::common_types_precompiled::COPY;
-  using generate::common_types_precompiled::DROP;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();
@@ -236,9 +236,8 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // Analyse the supertype after Self has been added
   // (allows use in generic arguments to the superclass).
   SuperCls->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*SuperCls, *sm),
-    ERR_ARGS(*this, *SuperCls, "superimposition supertype"));
+  common_errors::RequireNotBorrowed(
+    *SuperCls, *this, "superimposition supertype", *sm);
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
@@ -253,7 +252,8 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // the package's own, which is analysed as if it were absent.
   if (not Name->IsCompilerGeneratedType()) {
     const auto super_kind = TypeRef::ForKindCheck(*SuperCls, *sm->CurrentScope);
-    const auto is_marker = super_kind.IsA(*COPY, *sm->CurrentScope) or super_kind.IsA(*DROP, *sm->CurrentScope);
+    const auto is_marker = marker_sups::IsCopyMarker(super_kind, *sm->CurrentScope)
+      or marker_sups::IsDropMarker(super_kind, *sm->CurrentScope);
 
     // A blanket "sup [T] T ext Copy" names a generic parameter
     // rather than a type, so no package declares what it marks,
@@ -277,7 +277,6 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
-  using generate::common_types_precompiled::COPY;
 
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -311,7 +310,7 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // Mark the class as copyable if the "Copy" type is the supertype (that its attributes are all copyable is checked
   // in stage 7).
   for (const auto sup_scope : sup_scopes) {
-    if (TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) {
+    if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope)) {
       sm->CurrentScope->FindHeadSymbol(*Name)->IsDirectlyCopyable = true;
       cls_sym->IsDirectlyCopyable = true;
       break;
@@ -353,8 +352,7 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       // otherwise the copy duplicates something owned (a "Str"
       // buffer), which is then destroyed twice. An attribute of
       // a generic parameter's type is left to the instantiation.
-      using generate::common_types_precompiled::COPY;
-      if (TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)
+      if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope), *sm->CurrentScope)
         and cls_sym->LinkedScope != nullptr) {
         for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
           const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());

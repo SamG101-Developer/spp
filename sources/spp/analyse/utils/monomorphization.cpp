@@ -14,6 +14,7 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.aliases;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_attachment;
@@ -1314,9 +1315,8 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
 
     // Check the new return type isn't a borrow type.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      IsTypeBorrowed(*new_fn_proto->ReturnType, tm),
-      ERR_ARGS(*new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type"));
+    common_errors::RequireNotBorrowed(
+      *new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type", tm);
 
     const auto is_concrete = ComputeIsConcrete(id, *new_fn_proto, instance_self.get(), tm, meta);
 

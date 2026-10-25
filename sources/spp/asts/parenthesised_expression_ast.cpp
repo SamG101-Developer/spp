@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.token_ast;
@@ -57,9 +58,7 @@ auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
 
   // Forward analysis into the expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr.get()));
+  common_errors::RequirePrimary(*Expr, *sm);
 }
 
 auto ParenthesisedExpressionAst::Stage8_CheckMemory(

@@ -178,11 +178,12 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
 
 auto IdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   // A name evaluated as a value uses what it names: a holder
   // used again after a conflict with one of its loans means the
   // loan was live then.
   if (const auto sym = sm->CurrentScope->FindVarSymbol(this); sym != nullptr) {
-    analyse::utils::borrows::RaiseIfConflictedUse(*sym, *sm->CurrentScope);
+    borrows::RaiseIfConflictedUse(*sym, *sm->CurrentScope);
   }
 }
 
@@ -318,9 +319,10 @@ auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
 
 auto IdentifierAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // A comp parameter (or a binding of one) is read by its identity where it was written, with the bindings applied
   // ("type_resolution::ReadComp"). Any other name - a local, a constant, a function - is opaque, and kept.
-  return analyse::utils::type_resolution::ReadComp(*this, sub);
+  return type_resolution::ReadComp(*this, sub);
 }
 
 auto IdentifierAst::ToView() const noexcept -> StrView {

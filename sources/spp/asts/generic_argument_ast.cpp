@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.expr_utils;
@@ -175,6 +176,7 @@ auto GenericArgumentAst::Stage8_CheckMemory(
 
 auto GenericArgumentAst::AnalyseTypeVal(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // "Self" outside a function body is kept, for the caller
   // to decide per use; inside one it is the enclosing type.
   if (TypeVal->IsSelfType()
@@ -191,7 +193,7 @@ auto GenericArgumentAst::AnalyseTypeVal(
   // it with an instantiation's own parameters ("Single[Arr[T]]"
   // written inside "Single" never ends).
   if (auto const *const val_sym = scope.FindTypeSymbol(TypeVal.get()); val_sym != nullptr) {
-    analyse::utils::type_resolution::StampType(*TypeVal, *val_sym);
+    type_resolution::StampType(*TypeVal, *val_sym);
   }
 }
 
@@ -242,9 +244,7 @@ auto GenericArgumentAst::AnalyseCompVal(
     meta->ClearAssignmentTarget();
     target.Stage7_AnalyseSemantics(sm, meta);
   }
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(target, *sm),
-    ERR_ARGS(target));
+  common_errors::RequirePrimary(target, *sm);
 
   // Stamp every comp parameter named here - nested ones too
   // ("n + 1") - with that parameter, so a copy of this argument

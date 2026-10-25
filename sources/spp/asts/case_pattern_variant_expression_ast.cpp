@@ -6,6 +6,7 @@ module spp.asts.case_pattern_variant_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.expression_ast;
@@ -49,9 +50,7 @@ auto CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
 
   // Forward analysis into the expression.
   Expr->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr));
+  common_errors::RequirePrimary(*Expr, *sm);
 }
 
 auto CasePatternVariantExpressionAst::Stage8_CheckMemory(

@@ -111,6 +111,7 @@ auto CmpStatementAst::Stage1_PreProcess(
 
 auto CmpStatementAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
@@ -127,7 +128,7 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
     : VariableKind::Constant;
   _AliasSymbol = MakeShared<VariableSymbol>(
     Name, Type, sm->CurrentScope, kind, false, Visibility.first);
-  analyse::utils::memory_state::StateOf(
+  memory_state::StateOf(
     *sm->CurrentScope, *_AliasSymbol).InitializedBy(*this);
   _AliasSymbol->CompTimeValue = AstClone(Value);
   sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSymbol);

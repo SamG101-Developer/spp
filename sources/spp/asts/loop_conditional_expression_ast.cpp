@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -94,9 +95,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
 
   // Analyse the condition expression.
   Cond->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
-    ERR_ARGS(*Cond));
+  common_errors::RequirePrimary(*Cond, *sm);
 
   // Check the loop condition is boolean.
   if (not type_predicates::IsTypeBool(Cond->InferTypeRef(sm, meta), *sm->CurrentScope)) {
@@ -107,7 +106,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   // The loop's "exit"s, and its "else" once there is one, agree on
   // one type as a "case"'s branches do: onto what the loop is
   // assigned to, if anything ("type_join::TypeJoin").
-  auto join = analyse::utils::type_join::TypeJoin(
+  auto join = type_join::TypeJoin(
     meta->AssignmentTargetType, sm->CurrentScope, meta->AssignmentTarget.get());
 
   // Set the loop level information into the "meta" object.

@@ -117,6 +117,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
 auto DeferStatementAst::CheckAtExit(
   Ast const &exit_point, const StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Running the expression at this exit is checked as running it
   // there would be: the whole of its memory check - what it
   // consumes, and what it only reads or borrows - against the
@@ -125,14 +126,14 @@ auto DeferStatementAst::CheckAtExit(
   if (_DeferScope == nullptr) { Ice(*this, *sm.CurrentScope, "defer registered for an exit has no recorded scope"); }
   auto tm = sm.NewManagerAt(*_DeferPosition);
 
-  auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);
+  auto &flow = *memory_state::FlowOf(*_DeferScope);
   struct DeferExitGuard {
-    analyse::utils::memory_state::FlowState &Flow;
-    Opt<analyse::utils::memory_state::DeferExit> Outer;
+    memory_state::FlowState &Flow;
+    Opt<memory_state::DeferExit> Outer;
     ~DeferExitGuard() { Flow.Deferring = Outer; }
   } const guard{.Flow = flow, .Outer = flow.Deferring};
 
-  flow.Deferring = analyse::utils::memory_state::DeferExit{
+  flow.Deferring = memory_state::DeferExit{
     .Stmt = this, .ExitPoint = &exit_point, .ExitWhat = exit_what
   };
   Expr->Stage8_CheckMemory(&tm, meta);

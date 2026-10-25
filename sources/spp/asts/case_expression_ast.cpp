@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.case_utils;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
@@ -153,9 +154,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   }
 
   // Analyse the condition expression.
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Cond, *sm),
-    ERR_ARGS(*Cond));
+  common_errors::RequirePrimary(*Cond, *sm);
 
   // The subject as the branches' tests read it, so that they
   // never evaluate the condition again.
@@ -571,12 +570,13 @@ auto CaseExpressionAst::InferTypeRef(
 
 auto CaseExpressionAst::Diverges(
   ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  IMPORT_UTILS;
   // Before Stage 7 has worked out what it covers, only an
   // "else" says nothing falls through, and every branch counts.
   if (Branches.empty()) { return false; }
   const auto falls_through = _Plan != nullptr
     ? _Plan->Coverage.FallsThrough
-    : not analyse::utils::pattern_solver::IsElseBranch(*Branches.back());
+    : not pattern_solver::IsElseBranch(*Branches.back());
   if (falls_through) { return false; }
   for (auto const &[i, branch] : Branches | genex::views::ptr | genex::views::enumerate) {
     if ((_Plan == nullptr or _Plan->Coverage.Reachable[i]) and not branch->Body->Diverges(sm, meta)) { return false; }

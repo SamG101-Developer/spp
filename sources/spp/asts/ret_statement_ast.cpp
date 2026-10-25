@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
@@ -80,9 +81,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::VoidAt;
 
   // Analyse the expression.
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr));
+  if (Expr != nullptr) { common_errors::RequirePrimary(*Expr, *sm); }
 
   // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
   const auto function_flavour = meta->EnclosingFnFlavour;

@@ -176,9 +176,10 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
 
 auto FunctionParameterGroupAst::IsVoidParam(
   FunctionParameterAst const &param, Scope const &scope) -> bool {
+  IMPORT_UTILS;
   // Build a type-ref to the parameters type, and run a simple
   // comparison against the "Void" type.
-  return analyse::utils::type_predicates::IsTypeVoid(
+  return type_predicates::IsTypeVoid(
     TypeRef::ForKindCheck(*param.Type, scope), scope);
 }
 

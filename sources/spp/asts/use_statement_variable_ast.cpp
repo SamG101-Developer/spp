@@ -130,6 +130,7 @@ auto UseStatementVariableAst::_TakeTarget(
 
 auto UseStatementVariableAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // The end of a chain of imports that was not found in stage 3 (one still an import imports itself, round a cycle).
   auto *target = _Conversion->_AliasSymbol->AliasSymbol.get();
   while (target != nullptr and target->AliasSymbol != nullptr) { target = target->AliasSymbol.get(); }
@@ -142,7 +143,7 @@ auto UseStatementVariableAst::Stage4_ResolveDeclarations(
   // whatever this module can spell; in stage 3 it could name an alias whose target is not resolved yet.
   if (target != nullptr and target->Kind == VariableKind::Constant) {
     auto tm = sm->NewManagerAt(target->ScopeDefinedIn);
-    _Conversion->Type = analyse::utils::type_resolution::AnalyseWrittenType(*target->Type, tm, *meta);
+    _Conversion->Type = type_resolution::AnalyseWrittenType(*target->Type, tm, *meta);
     _Conversion->_AliasSymbol->Type = _Conversion->Type;
   }
 

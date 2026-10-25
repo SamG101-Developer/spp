@@ -779,7 +779,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // An instantiation whose arguments name a parameter it binds returns by identity, as does one naming "Self", keyed
   // where the overload is; "Self" is what the call decided it stands for ("PassedOverload::SelfId"). Spelled where the
   // call is, whose parameters those are.
-  const auto ret_id = analyse::utils::self_type::TypeIdWithSelf(
+  const auto ret_id = self_type::TypeIdWithSelf(
     proto.InstanceReturnTypeId, *ret_type, _OverloadInfo->OverloadScope, _OverloadInfo->SelfId);
   if (ret_id != nullptr) {
     if (auto spelled = sm->CurrentScope->TypeAstOf(ret_id); spelled != nullptr) {
@@ -961,12 +961,13 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
 
 auto PostfixExpressionOperatorFunctionCallAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
+  IMPORT_UTILS;
   // Handle the generic type and comp arguments that
   // take part in the function call.
   auto gn_arg_group = AstClone(GnArgGroup);
   for (auto const &gn_arg : gn_arg_group->Args) {
     if (gn_arg->IsTypeArg()) {
-      gn_arg->TypeVal = analyse::utils::type_resolution::ReadType(*gn_arg->TypeVal, sub);
+      gn_arg->TypeVal = type_resolution::ReadType(*gn_arg->TypeVal, sub);
     }
     else if (gn_arg->IsCompArg()) {
       gn_arg->CompVal = AstClone(gn_arg->CompVal->ReadExpr(sub));

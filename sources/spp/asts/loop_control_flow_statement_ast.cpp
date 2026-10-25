@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -99,9 +100,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
     // Analyse the expression if it is present.
     if (Expr != nullptr) {
       Expr->Stage7_AnalyseSemantics(sm, meta);
-      RaiseIf<SppInvalidPrimaryExpressionError>(
-        Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-        ERR_ARGS(*Expr.get()));
+      if (Expr != nullptr) { common_errors::RequirePrimary(*Expr, *sm); }
 
       expr_type = Expr->InferType(sm, meta);
       _ExprIsNever = expr_type->IsNeverType();

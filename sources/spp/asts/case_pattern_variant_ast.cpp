@@ -31,9 +31,10 @@ namespace {
   auto AnalyseNestedWrittenTypes(
     CasePatternVariantAst &pattern, ScopeManager &sm,
     CompilerMetaData &meta) -> void {
+    IMPORT_UTILS;
     using namespace spp::asts;
     if (auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
-      obj->Type = spp::analyse::utils::type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
+      obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
       for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
     else if (auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {

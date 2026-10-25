@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
@@ -61,9 +62,7 @@ auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   // Analyse the semantics of the value expression.
   const auto _target_guard = WithoutCallersTarget(meta);
   Val->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    ERR_ARGS(*Val));
+  common_errors::RequirePrimary(*Val, *sm);
 }
 
 auto FunctionCallArgumentAst::Stage8_CheckMemory(

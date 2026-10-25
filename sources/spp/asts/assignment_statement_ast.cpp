@@ -130,8 +130,8 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
          Rhs | genex::views::ptr,
          lhs_syms) | genex::to<Vec>()) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
-    const auto lhs_state = [&]() -> analyse::utils::memory_state::MemoryState& {
-      return analyse::utils::memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    const auto lhs_state = [&]() -> memory_state::MemoryState& {
+      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
     };
     const auto lhs_type = lhs_expr->InferType(sm, meta);
     const auto lhs_deref_ref = IsDeref(lhs_expr)

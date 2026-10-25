@@ -1,7 +1,9 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_resolution;
@@ -21,7 +23,8 @@ TypeAst::~TypeAst() = default;
 
 auto TypeAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
-  return analyse::utils::type_resolution::ReadType(*this, sub);
+  IMPORT_UTILS;
+  return type_resolution::ReadType(*this, sub);
 }
 
 auto TypeAst::Stage9_CompTimeResolve(

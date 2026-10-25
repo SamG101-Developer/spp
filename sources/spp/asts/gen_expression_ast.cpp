@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
@@ -132,9 +133,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
     }
     Expr->Stage7_AnalyseSemantics(sm, meta);
 
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-      ERR_ARGS(*Expr));
+    common_errors::RequirePrimary(*Expr, *sm);
 
     expr_type = Expr->InferType(sm, meta);
     if (Conv) { expr_type = expr_type->WithConvention(AstClone(Conv)); }
@@ -255,7 +254,7 @@ auto GenExpressionAst::Stage8_CheckMemory(
     RaiseIf<SppInvalidMutationError>(
       not sym->IsMutable,
       ERR_ARGS(
-        *sym->Name, *Conv, *analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
+        *sym->Name, *Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
         "immutable symbol"));
 
     // Immutable borrows, even if their symbol is mutable,

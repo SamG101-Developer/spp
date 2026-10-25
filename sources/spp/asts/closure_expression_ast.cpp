@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
@@ -205,7 +206,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // "case"'s branches do ("type_join::TypeJoin"), and so does the
     // body's own value when it can finish without one. A coroutine
     // closure's "gen"s agree on its yield type the same way.
-    auto ret_join = analyse::utils::type_join::TypeJoin();
+    auto ret_join = type_join::TypeJoin();
     const auto infers_ret = ReturnType == nullptr;
     const auto is_cor = Tok->TokenType == lex::SppTokenType::KW_COR;
     meta->ClosureRetJoin = infers_ret ? &ret_join : nullptr;
@@ -256,9 +257,9 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // The return type is inferred rather than declared, so it
     // never passes through the function prototype's return type
     // borrow check.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      Tok->TokenType == lex::SppTokenType::KW_FUN and type_predicates::IsTypeBorrowed(*_TrueRetType, *sm),
-      ERR_ARGS(*this, *_TrueRetType, "function return type"));
+    if (Tok->TokenType == lex::SppTokenType::KW_FUN) {
+      common_errors::RequireNotBorrowed(*_TrueRetType, *this, "function return type", *sm);
+    }
   }
 
   // Set the scope back.
