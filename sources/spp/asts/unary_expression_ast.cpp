@@ -57,7 +57,6 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
   // it.
   if (Op->RebuildsOperand()) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->UnaryExpressionRhs = Expr.get();
     Op->WrittenOperand = AstClone(Expr);
     Op->Stage7_AnalyseSemantics(sm, meta);
     return;
@@ -70,7 +69,6 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
     ERR_ARGS(*Expr));
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->UnaryExpressionRhs = Expr.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
 }
 
@@ -81,7 +79,6 @@ auto UnaryExpressionAst::Stage8_CheckMemory(
   // part of this unary expression.
   if (not Op->WalksOperand()) { Expr->Stage8_CheckMemory(sm, meta); }
   const auto _meta_guard = MetaGuard(meta);
-  meta->UnaryExpressionRhs = Expr.get();
   Op->Stage8_CheckMemory(sm, meta);
 }
 
@@ -89,7 +86,6 @@ auto UnaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the right-hand-side expression.
   const auto _meta_guard = MetaGuard(meta);
-  meta->UnaryExpressionRhs = Expr.get();
   const auto lhs_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return lhs_val;
 }
@@ -99,7 +95,6 @@ auto UnaryExpressionAst::InferType(
   // Infer the type of the right-hand-side expression,
   // adjusted by the operator.
   const auto _meta_guard = MetaGuard(meta);
-  meta->UnaryExpressionRhs = Expr.get();
   auto type = Op->InferType(sm, meta);
 
   return type;
@@ -108,7 +103,6 @@ auto UnaryExpressionAst::InferType(
 auto UnaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   const auto _meta_guard = MetaGuard(meta);
-  meta->UnaryExpressionRhs = Expr.get();
   return Op->InferTypeRef(sm, meta);
 }
 

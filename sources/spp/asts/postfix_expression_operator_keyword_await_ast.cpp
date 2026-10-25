@@ -84,11 +84,11 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   // Check the lhs is an owned future. This is the only type
   // that can be "awaited" on; its type is only spelled out
   // for the error.
-  const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+  const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
   if (lhs_ref.KindSymbol() == nullptr
     or not lhs_ref.IsA(*FUT, *sm->CurrentScope)) {
-    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    Raise<SppAwaitTargetNotFutureError>(ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppAwaitTargetNotFutureError>(ERR_ARGS(*TokAwait, *Lhs, *lhs_type));
   }
 
   // Map to the private "await_" method, so the wait
@@ -99,7 +99,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
     nullptr, std::move(name));
   field->Source.Lowered = true;
   auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
-    AstClone(meta->PostfixExpressionLhs), std::move(field));
+    AstClone(Lhs), std::move(field));
 
   // Convert the "await_" field into a function call by
   // applying the "()"; there are no arguments that this
@@ -128,7 +128,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   const auto handle_sym =
     handle != nullptr and type_predicates::IsTypeGenerator(InferTypeRef(sm, meta), *sm->CurrentScope)
     ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
-  if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
+  if (const auto lhs = Lhs->To<IdentifierAst>(); lhs != nullptr) {
     if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*lhs).first; sym != nullptr) {
       auto &loans = memory_state::LoansOf(*sm->CurrentScope);
       if (handle_sym != nullptr) {

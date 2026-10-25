@@ -84,19 +84,20 @@ namespace spp::analyse::utils::operator_desugaring {
     CompilerMetaData *meta)
     -> Unique<CaseExpressionAst>;
 
-  /// The index and slice operators' shared check: the left-hand side ("PostfixExpressionLhs") is a value whose type
-  /// has a scope to look its "index_*" / "slice_*" methods up in. A function value (a "$" mock) is not; "op" is where
-  /// the error points.
+  /// The index and slice operators' shared check: the left-hand side "lhs" is a value whose type has a scope to look
+  /// its "index_*" / "slice_*" methods up in. A function value (a "$" mock) is not; "op" is where the error points.
   SPP_EXP_FUN auto CheckIndexable(
     Ast const &op,
+    ExpressionAst &lhs,
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> void;
 
-  /// An operator on the left-hand side ("PostfixExpressionLhs") mapped to a call of its method: "lhs.method(args)",
-  /// built at "pos", remembering "op" as what it was written as, and analysed.
+  /// An operator on the left-hand side "lhs" mapped to a call of its method: "lhs.method(args)", built at "pos",
+  /// remembering "op" as what it was written as, and analysed.
   SPP_EXP_FUN auto MapToMethodCall(
     Ast &op,
+    ExpressionAst &lhs,
     std::size_t pos,
     StrView method,
     Vec<Unique<ExpressionAst>> &&args,

@@ -55,5 +55,5 @@ private:
   /// a call site) still reaches it, as the lhs may be relative.
   Scope const *_LhsNsScope;
 
-  auto LhsNsScope(ScopeManager const *sm, CompilerMetaData const *meta) -> Scope const*;
+  auto LhsNsScope(ScopeManager const *sm) -> Scope const*;
 };

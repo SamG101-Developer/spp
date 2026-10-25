@@ -93,7 +93,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   if (_MappedFn != nullptr) { return; }
 
   // Check the left-hand-side is a generator type (for specific errors).
-  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs = Lhs;
   const auto gen = marker_sups::FindGenSup(
     lhs->InferTypeRef(sm, meta), *sm->CurrentScope, *lhs, [&] { return lhs->InferType(sm, meta); },
     "resume expression");
@@ -106,7 +106,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
     nullptr, std::move(send));
   field->Source.Lowered = true;
   auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
-    AstClone(meta->PostfixExpressionLhs), std::move(field));
+    AstClone(Lhs), std::move(field));
   auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     nullptr, std::move(FnArgGroup), nullptr);
   func_call->Source.OriginalExpr = this;
@@ -119,7 +119,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   IMPORT_UTILS;
   // The generator, when it is a named one. A borrow yielded by an
   // unnamed one cannot be resumed past, as nothing names it again.
-  auto const *const lhs_name = meta->PostfixExpressionLhs->To<IdentifierAst>();
+  auto const *const lhs_name = Lhs->To<IdentifierAst>();
   auto *const gen_sym = lhs_name != nullptr ? sm->CurrentScope->FindVarSymbolOutermost(*lhs_name).first : nullptr;
 
   // Resuming the generator ends every "&mut" borrow it yielded
@@ -147,7 +147,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
     const auto yield_ref = marker_sups::GenYieldOf(*_GenRef);
     if (yield_ref.Conv == ConventionTag::MUT) {
       loans.emplace_back(memory_state::MakeLoan(
-        regions::PlaceAtOf(*meta->PostfixExpressionLhs, *sm->CurrentScope), true, holder, true,
+        regions::PlaceAtOf(*Lhs, *sm->CurrentScope), true, holder, true,
         holder == meta->AssignmentTargetSymbol));
     }
   }
@@ -165,7 +165,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // storage. The left-hand-side is not necessarily a bare
   // identifier - it can be a field, an element, or a temporary -
   // so it is resolved to an address rather than to a symbol.
-  const auto llvm_generator_addr = codegen::LlvmAddrOf(*meta->PostfixExpressionLhs, sm, meta, ctx);
+  const auto llvm_generator_addr = codegen::LlvmAddrOf(*Lhs, sm, meta, ctx);
   const auto llvm_generator_it = ctx->LlvmGenerators.find(llvm_generator_addr);
 
   // A generator that was produced by a coroutine call in this function was registered when that call was generated.
@@ -186,7 +186,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
 
   auto rebuilt_generator = Unique<codegen::LlvmGenerator>(nullptr);
   if (not registered_is_local) {
-    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
     const auto lhs_type_sym = lhs_ref.Symbol;
 
     const auto no_env_msg = Str(

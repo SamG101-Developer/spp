@@ -41,9 +41,6 @@ auto CompilerMetaData::ResetContext() -> void {
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
   LoopJoins.clear();
-  ObjectInitType = nullptr;
-  PostfixExpressionLhs = nullptr;
-  UnaryExpressionRhs = nullptr;
   SkipTypeAnalysisGnChecks = false;
   TypeAnalysisTypeScope = nullptr;
   AllowMoveDeref = false;
@@ -96,9 +93,6 @@ auto CompilerMetaData::Save() -> void {
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
   s.LoopJoins = LoopJoins;
-  s.ObjectInitType = ObjectInitType;
-  s.PostfixExpressionLhs = PostfixExpressionLhs;
-  s.UnaryExpressionRhs = UnaryExpressionRhs;
   s.SkipTypeAnalysisGnChecks = SkipTypeAnalysisGnChecks;
   s.TypeAnalysisTypeScope = TypeAnalysisTypeScope;
   s.AllowMoveDeref = AllowMoveDeref;
@@ -164,9 +158,6 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
   LoopJoins = std::move(state.LoopJoins);
-  ObjectInitType = std::move(state.ObjectInitType);
-  PostfixExpressionLhs = state.PostfixExpressionLhs;
-  UnaryExpressionRhs = state.UnaryExpressionRhs;
   SkipTypeAnalysisGnChecks = state.SkipTypeAnalysisGnChecks;
   TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
   AllowMoveDeref = state.AllowMoveDeref;

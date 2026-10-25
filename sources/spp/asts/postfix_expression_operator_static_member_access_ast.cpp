@@ -85,7 +85,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   using member_lookup::MemberAccessForm;
 
   // Handle types on the left-hand-side of a static member access.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
     _LhsTypeSymbol = lhs_type_sym;
 
@@ -153,17 +153,17 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   }
 
   // Otherwise, we are handling a namespace left-hand-side.
-  const auto lhs_as_ident = meta->PostfixExpressionLhs->To<IdentifierAst>();
+  const auto lhs_as_ident = Lhs->To<IdentifierAst>();
   const auto lhs_var_sym = sm->CurrentScope->FindVarSymbol(lhs_as_ident);
 
   // Check the lhs is a namespace and not a variable.
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
     lhs_var_sym != nullptr,
-    ERR_ARGS(*meta->PostfixExpressionLhs, *TokDblColon, "variable"));
+    ERR_ARGS(*Lhs, *TokDblColon, "variable"));
 
   // Check the constant exists inside the namespace.
   // Todo: inconsistent "true" for exclusive here vs ns
-  const auto lhs_ns_sym = LhsNsScope(sm, meta)->LinkedNamespaceSymbol;
+  const auto lhs_ns_sym = LhsNsScope(sm)->LinkedNamespaceSymbol;
   if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name.get(), true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(
     Name.get(), true)) {
     member_lookup::RaiseMissingIdentifierAndClosestOptions(
@@ -215,7 +215,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
 
   // Handle accessing a variable on a namespace.
   // Todo: Do we need to call stage_9 on the value?
-  const auto lhs_ns_sym = LhsNsScope(sm, meta)->LinkedNamespaceSymbol;
+  const auto lhs_ns_sym = LhsNsScope(sm)->LinkedNamespaceSymbol;
   const auto sym = lhs_ns_sym->LinkedScope->FindVarSymbol(Name.get(), true);
   meta->CompTimeResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
@@ -272,7 +272,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   }
 
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
-  const auto lhs_ns_scope = LhsNsScope(sm, meta);
+  const auto lhs_ns_scope = LhsNsScope(sm);
   const auto var_sym = lhs_ns_scope->FindVarSymbol(Name.get(), true);
   if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
@@ -280,13 +280,13 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
-  ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
+  ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
   // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
 
   // Get the left-hand-side type's member's type.
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
     const auto sym = member_lookup::MemberOf(
       *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
@@ -311,7 +311,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   }
 
   // Get the left-hand-side namespace's member's type.
-  const auto lhs_ns_scope = LhsNsScope(sm, meta);
+  const auto lhs_ns_scope = LhsNsScope(sm);
   const auto type = lhs_ns_scope->FindVarSymbol(Name.get(), true)->Type;
   return lhs_ns_scope->FindTypeSymbol(type.get())->FqName();
 }
@@ -321,7 +321,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
   // A member of a type is read where its owner declares it, which binds the parameters its type names; a method's
   // "$" mock is named as a nested type of the owner ("InferType"). A namespace member is read in its namespace.
   IMPORT_UTILS;
-  if (const auto lhs_as_type = meta->PostfixExpressionLhs->To<TypeAst>(); lhs_as_type != nullptr) {
+  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
     const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
     const auto sym = analyse::utils::member_lookup::MemberOf(
       *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
@@ -336,18 +336,18 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
       marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
     return inner_type_sym->LinkedScope->FindVarSymbol(Name.get(), true)->TypeRefIn(*inner_type_sym->LinkedScope);
   }
-  const auto lhs_ns_scope = LhsNsScope(sm, meta);
+  const auto lhs_ns_scope = LhsNsScope(sm);
   return lhs_ns_scope->FindVarSymbol(Name.get(), true)->TypeRefIn(*lhs_ns_scope);
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
-  ScopeManager const *sm, CompilerMetaData const *meta) -> Scope const* {
+  ScopeManager const *sm) -> Scope const* {
   // Resolve the namespace once, from where the access was written. A
   // parameter default is copied into each call site, and its lhs may
   // be relative to the callee's module ("cffi::x" in std), which the
   // caller's scope cannot reach.
   if (_LhsNsScope == nullptr) {
-    _LhsNsScope = sm->CurrentScope->FindNsScope(meta->PostfixExpressionLhs);
+    _LhsNsScope = sm->CurrentScope->FindNsScope(Lhs);
   }
   return _LhsNsScope;
 }

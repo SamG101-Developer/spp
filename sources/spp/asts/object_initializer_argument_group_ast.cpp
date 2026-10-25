@@ -94,7 +94,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   //
   IMPORT_UTILS;
 
-  const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*meta->ObjectInitType);
+  const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*InitType);
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
     | spp::views::tuple_nth<0>
@@ -139,7 +139,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
   RaiseIf<SppArgumentNameInvalidError>(
     not invalid_args.empty(),
-    ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
+    ERR_ARGS(*InitType, "attribute", *invalid_args[0], "object initializer argument"));
 
   // The generic arguments written on the type, named after the
   // parameters they bind. An attribute typed by a parameter is
@@ -147,9 +147,9 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // but in "MyType(..)" it is whatever the arguments infer - so
   // an overloaded call there has nothing to resolve against.
   auto bindings = Opt<GenericSubst>();
-  auto const &written_group = meta->ObjectInitType->LastTypePart()->GnArgGroup;
+  auto const &written_group = InitType->LastTypePart()->GnArgGroup;
   const auto instance = written_group != nullptr and not written_group->Args.empty()
-    ? TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope)
+    ? TypeRef::Of(*InitType, *sm->CurrentScope)
     : TypeRef();
   const auto own_params = cls_sym->Type != nullptr ? cls_sym->Type->GnParamGroup.get() : nullptr;
   if (own_params != nullptr and instance.Symbol != nullptr and instance.Symbol->InstanceOf != nullptr
@@ -158,7 +158,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   }
   else if (own_params != nullptr and written_group != nullptr and not written_group->Args.empty()) {
     const auto written_args = generic_inference::NamedGnArgs(
-      *written_group, *own_params, *meta->ObjectInitType, *sm, *meta);
+      *written_group, *own_params, *InitType, *sm, *meta);
     // Analysed before they are keyed, so a written "Str" is the
     // instance with its defaults ("Str[GlobalAlloc]").
     written_args->Stage7_AnalyseSemantics(sm, meta);
@@ -210,7 +210,7 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
   // Get the attributes on the type and supertypes.
-  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(meta->ObjectInitType.get());
+  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(InitType.get());
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
 
   // Type check the non-autofill arguments against the class attributes.
@@ -257,11 +257,11 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   const auto af_arg = GetAutoFillArg();
   if (af_arg != nullptr) {
     if (not type_compare::Assignable(
-      af_arg->Val->InferTypeRef(sm, meta), TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope),
+      af_arg->Val->InferTypeRef(sm, meta), TypeRef::Of(*InitType, *sm->CurrentScope),
       *sm->CurrentScope, *sm->CurrentScope)) {
       // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
       const auto af_arg_type = af_arg->Val->InferType(sm, meta);
-      Raise<SppTypeMismatchError>(ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
+      Raise<SppTypeMismatchError>(ERR_ARGS(*InitType, *InitType, *af_arg, *af_arg_type));
     }
   }
 

@@ -237,7 +237,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
 
   // Before stage 7 there is no lowering yet: the "Value" the
   // left-hand side's "Try" sup gives, as "InferType".
-  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs = Lhs;
   return marker_sups::FindTrySup(
     lhs->InferTypeRef(sm, meta), *lhs, [&] { return lhs->InferType(sm, meta); }, *sm,
     "early return").Symbol->TypeArgRef("Value");

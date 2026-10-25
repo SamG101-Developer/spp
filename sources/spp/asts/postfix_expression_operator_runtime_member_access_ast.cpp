@@ -135,60 +135,60 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   // name is its one value ("GlobalAlloc.allocate(..)",
   // "None").
   {
-    auto const *const lhs_type = meta->PostfixExpressionLhs->To<TypeAst>();
+    auto const *const lhs_type = Lhs->To<TypeAst>();
     auto const *const lhs_sym = lhs_type != nullptr ? sm->CurrentScope->FindTypeSymbol(lhs_type) : nullptr;
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
       lhs_type != nullptr and not (lhs_sym != nullptr and lhs_sym->IsZeroType()),
-      ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "type"));
+      ERR_ARGS(*Lhs, *TokDot, "type"));
   }
 
   // Numeric index access (for tuples). An unbound pack's length
   // is only known per instantiation, where it is a tuple and is
   // checked as one; here it only has an element type.
   if (std::isdigit(Name->Val[0])) {
-    if (UnboundPack(*meta->PostfixExpressionLhs, *sm) != nullptr) { return; }
+    if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
 
     // The lhs's type is only spelled out for the errors.
-    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention();
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
     if (not type_predicates::IsTypeCompTimeIndexable(lhs_ref, *sm->CurrentScope)) {
-      const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, *TokDot));
+      const auto lhs_type = Lhs->InferType(sm, meta);
+      Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*Lhs, *lhs_type, *TokDot));
     }
 
     // Check the index is within the bounds of the tuple
     // or array.
     if (const auto n = type_members::IndexBoundOf(lhs_ref, *sm->CurrentScope); std::stoul(Name->Val) >= n) {
-      const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-      Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, n, *TokDot));
+      const auto lhs_type = Lhs->InferType(sm, meta);
+      Raise<SppMemberAccessOutOfBoundsError>(ERR_ARGS(*Lhs, *lhs_type, n, *TokDot));
     }
   }
 
   // Accessing a regular attribute/method on an instance.
   else {
-    const auto lhs_as_ident_raw = meta->PostfixExpressionLhs->To<IdentifierAst>();
+    const auto lhs_as_ident_raw = Lhs->To<IdentifierAst>();
     const auto lhs_as_ident = lhs_as_ident_raw
       ? MakeShared<IdentifierAst>(lhs_as_ident_raw->PosStart(), lhs_as_ident_raw->Val)
       : nullptr;
     const auto lhs_ns_sym = sm->CurrentScope->FindNsSymbol(lhs_as_ident.get());
     const auto lhs_var_sym = sm->CurrentScope->FindVarSymbol(lhs_as_ident.get());
-    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
     const auto lhs_type_sym = lhs_ref.Symbol;
 
     // Check the lhs is a variable and not a namespace.
     RaiseIf<SppMemberAccessStaticOperatorExpectedError>(
       // Todo: this error message uses "Type" -> accept param for ctx (ns)
       lhs_var_sym == nullptr and lhs_ns_sym != nullptr,
-      ERR_ARGS(*meta->PostfixExpressionLhs, *TokDot, "namespace"));
+      ERR_ARGS(*Lhs, *TokDot, "namespace"));
 
     // Check whether the target field exists on the type,
     // or on the forwarded type.
     if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
       // If we are accessing via forwarding, then build the
       // forward call, and store it for later analysis.
-      auto fwd_call = marker_sups::BuildFwdCall(*meta->PostfixExpressionLhs, lhs_ref, sm, meta, Name.get());
+      auto fwd_call = marker_sups::BuildFwdCall(*Lhs, lhs_ref, sm, meta, Name.get());
       if (fwd_call != nullptr) {
         _MappedFwd = MakeShared<PostfixExpressionAst>(
           std::move(fwd_call),
@@ -202,7 +202,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       // a "Try" type - provide a more refined error.
       const auto try_op = AstAs<PostfixExpressionOperatorEarlyReturnAst>(Source.OriginalExpr);
       if (try_op != nullptr) {
-        const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+        const auto lhs_type = Lhs->InferType(sm, meta);
         Raise<SppExpressionNotTryError>(ERR_ARGS(*try_op, *lhs_type));
       }
 
@@ -287,7 +287,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
   }
 
   // Resolve the left-hand-side expression.
-  meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
+  Lhs->Stage9_CompTimeResolve(sm, meta);
 
   // Handle numeric index access (for tuples).
   if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<TupleLiteralAst>()) {
@@ -331,7 +331,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
 
   // Get the type of the left-hand-side expression.
   const auto uid = "." + Uid();
-  const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+  const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
   const auto lhs_type_sym = lhs_ref.Symbol;
 
   // Index through the object's own type, not a borrow's pointer
@@ -339,7 +339,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   const auto is_borrow = lhs_ref.IsBorrowed();
   const auto llvm_type = lhs_type_sym->LlvmInfo->LlvmType;
   SPP_ASSERT(llvm_type != nullptr);
-  const auto lhs_is_member_access = IsRuntimeMemberAccess(meta->PostfixExpressionLhs);
+  const auto lhs_is_member_access = IsRuntimeMemberAccess(Lhs);
 
   meta->Save();
   meta->LlvmWantAddress = lhs_is_member_access;
@@ -349,7 +349,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // operator. For "a.b.c", it is "a.b" etc.
   auto base_ptr = static_cast<llvm::Value*>(nullptr);
   if (lhs_is_member_access) {
-    base_ptr = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+    base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
     if (is_borrow) {
       base_ptr = ctx->Builder.CreateLoad(
         llvm::PointerType::get(*ctx->Context, 0), base_ptr, "load.member_access.base_ptr" + uid);
@@ -359,7 +359,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // If the lhs is symbolic, get the address of the outermost
   // part. The symbol's alloca is already the address of the
   // object (the base pointer). Load borrows to get value.
-  else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*meta->PostfixExpressionLhs).first;
+  else if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs).first;
     sym != nullptr) {
     SPP_ASSERT(sym->LlvmInfo->Alloca != nullptr);
 
@@ -381,13 +381,13 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // A borrowed expression already evaluates to the address
   // of the object.
   else if (is_borrow) {
-    base_ptr = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+    base_ptr = Lhs->Stage11_CodeGen(sm, meta, ctx);
   }
 
   // Materialize the lhs expression into a temporary, to have
   // an address to index through.
   else {
-    const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+    const auto lhs_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
     const auto temp = codegen::LlvmEntryAlloca(llvm_type, "temp.member_access.lhs" + uid, ctx);
     ctx->Builder.CreateStore(lhs_val, temp);
     base_ptr = temp;
@@ -473,17 +473,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // pack not yet bound to its tuple, which is typed as its
   // element.
   if (std::isdigit(Name->Val[0])) {
-    if (auto const *const pack = UnboundPack(*meta->PostfixExpressionLhs, *sm); pack != nullptr) {
+    if (auto const *const pack = UnboundPack(*Lhs, *sm); pack != nullptr) {
       return TypeRef::Of(*sm->CurrentScope->FindTypeSymbol(pack->Type.get()), *sm->CurrentScope);
     }
-    const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
     return type_members::GetNthTypeOfIndexableType(
       std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
   }
 
   // Read where the field is declared for this instance: its
   // owner's scope, which binds the parameters its type names.
-  const auto lhs_sym = meta->PostfixExpressionLhs->InferTypeRef(sm, meta).Symbol;
+  const auto lhs_sym = Lhs->InferTypeRef(sm, meta).Symbol;
   const auto var_sym = analyse::utils::member_lookup::MemberOf(
     *lhs_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
   return var_sym->TypeRefIn(*lhs_sym->LinkedScope);

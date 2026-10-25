@@ -34,6 +34,7 @@ PostfixExpressionAst::PostfixExpressionAst(
   Op(std::move(op)) {
   //
   Source.CachedInference = nullptr;
+  if (Op != nullptr) { Op->Lhs = Lhs.get(); }
 }
 
 PostfixExpressionAst::~PostfixExpressionAst() = default;
@@ -83,7 +84,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   // it.
   if (Op->RebuildsOperand()) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Lhs = Lhs.get();
     Op->WrittenOperand = AstClone(Lhs);
     Op->Stage7_AnalyseSemantics(sm, meta);
     return;
@@ -119,7 +120,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
   // Re-attach the meta info, as it is targeting the lhs.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
 
   // Use the hook to record information for the resolution and
@@ -147,7 +148,7 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   // here, and a "?" through the "case" it was rebuilt into.
   if (Op->WalksOperand()) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->PostfixExpressionLhs = Lhs.get();
+    Op->Lhs = Lhs.get();
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
@@ -185,12 +186,12 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   }
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
     // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
     mem_utils::ValidateSymbolMemory(
-      *meta->PostfixExpressionLhs, *Op, *sm, meta,
+      *Lhs, *Op, *sm, meta,
       {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
@@ -200,7 +201,7 @@ auto PostfixExpressionAst::Stage9_CompTimeResolve(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   Op->Stage9_CompTimeResolve(sm, meta);
 }
 
@@ -208,7 +209,7 @@ auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
 }
@@ -220,7 +221,7 @@ auto PostfixExpressionAst::InferType(
 
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   auto x = Op->InferType(sm, meta);
   return x;
 }
@@ -228,7 +229,7 @@ auto PostfixExpressionAst::InferType(
 auto PostfixExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   return Op->InferTypeRef(sm, meta);
 }
 

@@ -135,7 +135,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   // attribute's type through them ("MyType[T=Str](a=g())").
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->ObjectInitType = Type;
+    ArgGroup->InitType = Type;
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
@@ -171,7 +171,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   }
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->ObjectInitType = Type;
+  ArgGroup->InitType = Type;
   ArgGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 

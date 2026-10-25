@@ -165,7 +165,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
-    solver.emplace(*this, *meta->PostfixExpressionLhs, *sm, *meta);
+    solver.emplace(*this, *Lhs, *sm, *meta);
     FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes();
 
     // A fold's arguments are analysed in a scope of their own (see
@@ -200,7 +200,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       return head.KindSymbol() != nullptr and head.IsA(*tmpl, *sm->CurrentScope);
     };
     const auto conv = is_fun(FUN_MUT) ? ConventionTag::MUT : is_fun(FUN_REF) ? ConventionTag::REF : ConventionTag::MOV;
-    auto &lhs = *meta->PostfixExpressionLhs;
+    auto &lhs = *Lhs;
     const auto callee = lhs.InferTypeRef(sm, meta);
     _Indirect = _IndirectInfo{
       .FnType = indirect, .Conv = conv, .Callee = callee.Symbol,
@@ -294,7 +294,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
     _CoroRetSym = _OverloadInfo->OverloadScope->FindTypeSymbol(proto_ret_type.get());
     const auto gen = marker_sups::FindGenSup(
       TypeRef::Of(*proto_ret_type, *sm->CurrentScope), *sm->CurrentScope,
-      *meta->PostfixExpressionLhs, [&] { return proto_ret_type; }, "GenOnce collapse");
+      *Lhs, [&] { return proto_ret_type; }, "GenOnce collapse");
     _IsCoroAndAutoResume = marker_sups::IsGenOnce(gen, *sm->CurrentScope);
   }
 }
@@ -318,7 +318,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     // unlike moving the closure away, which the rule against
     // moving a holder of escaping borrows is there for.
     mem_utils::ValidateSymbolMemory(
-      *meta->PostfixExpressionLhs, *this, *sm, meta, {.CheckEscapingBorrowMove = false});
+      *Lhs, *this, *sm, meta, {.CheckEscapingBorrowMove = false});
   }
   else if (_CalleeArgGroup != nullptr) {
     _CalleeArgGroup->Stage8_CheckMemory(sm, meta);
@@ -485,7 +485,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     for (auto const &temp : _FoldTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
     auto results = Vec<llvm::Value*>();
     for (auto const &ast : _FoldedAsts) {
-      auto pf = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), AstClone(ast));
+      auto pf = MakeUnique<PostfixExpressionAst>(AstClone(Lhs), AstClone(ast));
       results.emplace_back(pf->Stage11_CodeGen(sm, meta, ctx));
     }
 
@@ -509,7 +509,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (_Indirect.has_value()) {
     const auto closure_uid = "." + Uid();
     const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    const auto closure_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+    const auto closure_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
 
     // The lhs' static type determines the physical field indices
     // of "{ fn_ptr, env_ptr }": a plain "FunXXX" has no extra
@@ -789,7 +789,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   if (_IsCoroAndAutoResume) {
     const auto yield_ref = marker_sups::GenYieldOf(marker_sups::FindGenSup(
       TypeRef::Of(*ret_type, *sm->CurrentScope), *sm->CurrentScope,
-      *meta->PostfixExpressionLhs, [&] { return ret_type; }, "function call"));
+      *Lhs, [&] { return ret_type; }, "function call"));
     // Read off the generator's identity, shared by every spelling of it, so it points at the return type the callee
     // wrote.
     ret_type = yield_ref.AstIn(*sm->CurrentScope)->WithSourceSpanAt(*proto.ReturnType);

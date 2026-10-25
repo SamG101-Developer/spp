@@ -127,7 +127,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
 
   RaiseIf<SppAsyncTargetNotFunctionCallError>(
     rhs_fn_call == nullptr,
-    ERR_ARGS(*TokAsync, *meta->UnaryExpressionRhs));
+    ERR_ARGS(*TokAsync, *WrittenOperand));
   rhs_fn_call->MarkAsAsync(this);
 
   // "async f(a, b)" becomes "Fut[T]::spawn(() f(a, b))".

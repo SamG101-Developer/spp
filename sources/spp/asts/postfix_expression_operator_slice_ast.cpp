@@ -93,7 +93,7 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
   if (_MappedFn != nullptr) { return; }
 
-  operator_desugaring::CheckIndexable(*this, sm, meta);
+  operator_desugaring::CheckIndexable(*this, *Lhs, sm, meta);
 
   // Decide the function variation based upon if the lhs/rhs are nullptr or not.
   const auto prefix = ExprLBound == nullptr and ExprRBound == nullptr
@@ -111,7 +111,7 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   auto args = Vec<Unique<ExpressionAst>>();
   if (ExprLBound != nullptr) { args.emplace_back(std::move(ExprLBound)); }
   if (ExprRBound != nullptr) { args.emplace_back(std::move(ExprRBound)); }
-  _MappedFn = operator_desugaring::MapToMethodCall(*this, PosStart(), func_name, std::move(args), sm, meta);
+  _MappedFn = operator_desugaring::MapToMethodCall(*this, *Lhs, PosStart(), func_name, std::move(args), sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(

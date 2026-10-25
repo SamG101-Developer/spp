@@ -250,18 +250,6 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// its own join while its body is analysed.
   Vec<analyse::utils::type_join::TypeJoin*> LoopJoins;
 
-  /// The object initializer type, because the object initializer
-  /// group needs it for generic inference.
-  Shared<TypeAst> ObjectInitType;
-
-  /// Track the left-hand-side of a postfix expression so that
-  /// the operator being applied to it can read from it.
-  ExpressionAst *PostfixExpressionLhs;
-
-  /// Track the right-hand-side of a unary expression so that
-  /// the operator being applied to it can reach from it.
-  ExpressionAst *UnaryExpressionRhs;
-
   /// There are some instances where we want to analyse a type
   /// but not the generics attached to it, so allow that.
   /// Todo: Remove and use ->WithoutGns()->Stage7...()?

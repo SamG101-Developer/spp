@@ -12,6 +12,7 @@ use(spp::asts, struct ObjectInitializerArgumentAst);
 use(spp::asts, struct ObjectInitializerArgumentKeywordAst);
 use(spp::asts, struct ObjectInitializerArgumentShorthandAst);
 use(spp::asts, struct TokenAst);
+use(spp::asts, struct TypeAst);
 
 /// A group of shorthand or keyword arguments in an object
 /// initializer.
@@ -27,6 +28,11 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentGroupAst final : Ast {
 
   /// The ")" token closing the argument group.
   Unique<TokenAst> TokR;
+
+  /// The type being initialised, as written, generics and all:
+  /// set by the object initializer before each stage it runs the
+  /// group for.
+  Shared<TypeAst> InitType;
 
   static auto NewEmpty() -> Unique<ObjectInitializerArgumentGroupAst>;
 

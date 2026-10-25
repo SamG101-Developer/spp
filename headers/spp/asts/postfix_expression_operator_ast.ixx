@@ -23,6 +23,11 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorAst : Ast, mixins::TypeIn
   /// ("RebuildsOperand").
   Unique<ExpressionAst> WrittenOperand;
 
+  /// The left-hand side the operator applies to: its expression's
+  /// "Lhs", not owned, set by the expression before each stage
+  /// and query it runs the operator for.
+  ExpressionAst *Lhs = nullptr;
+
   PostfixExpressionOperatorAst();
 
   ~PostfixExpressionOperatorAst() override;
