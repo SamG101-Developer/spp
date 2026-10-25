@@ -63,6 +63,12 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto GetAllAttrAsts(
     TypeSymbol const &cls_sym) -> Vec<ClassAttributeAst*>;
 
+  /// The attribute "name" as written in the class "attr_scope"
+  /// is ("GetAllAttrs" gives each attribute's), or nullptr for a
+  /// symbol with no written attribute (a generic's).
+  SPP_EXP_FUN auto AttrAstOf(
+    Scope const &attr_scope, IdentifierAst const &name) -> ClassAttributeAst*;
+
   /// Check that all the instances of a "cmp" constant, in a
   /// type and its super types it is extending, have a consistent
   /// type.

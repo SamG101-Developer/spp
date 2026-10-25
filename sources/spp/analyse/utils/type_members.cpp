@@ -360,31 +360,22 @@ auto spp::analyse::utils::type_members::IsLeftUnimplementedByAnError(
 auto spp::analyse::utils::type_members::GetAllAttrAsts(
   TypeSymbol const &cls_sym)
   -> Vec<ClassAttributeAst*> {
-  // Driven off the same walk as "GetAllAttrs" so the two line
-  // up index for index, then resolved to an ast by name within
-  // the scope the symbol came from. Enumerating the prototype's
-  // members directly is what let the two lists drift, because
-  // the member list has no notion of the generic symbols the
-  // other walk skips.
+  // Driven off the same walk as "GetAllAttrs", one entry per symbol (nullptr where none is written).
   auto attr_asts = Vec<ClassAttributeAst*>{};
   for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
-    const auto cls_proto = sup_scope->AstNode->As<ClassPrototypeAst>();
-    auto *found = static_cast<ClassAttributeAst*>(nullptr);
-    for (auto const &member : cls_proto->Impl->Members) {
-      const auto attr = member->To<ClassAttributeAst>();
-      if (attr != nullptr and *attr->Name == *sym->Name) {
-        found = attr;
-        break;
-      }
-    }
-
-    // Pushed even when nothing matched, so that a symbol with
-    // no written attribute shortens neither list and the index
-    // alignment holds regardless.
-    attr_asts.emplace_back(found);
+    attr_asts.emplace_back(AttrAstOf(*sup_scope, *sym->Name));
   }
-
   return attr_asts;
+}
+
+auto spp::analyse::utils::type_members::AttrAstOf(
+  Scope const &attr_scope, IdentifierAst const &name)
+  -> ClassAttributeAst* {
+  // Found by name in the class the scope is, where the symbol came from.
+  for (auto const &member : attr_scope.AstNode->As<ClassPrototypeAst>()->Impl->Members) {
+    if (const auto attr = member->To<ClassAttributeAst>(); attr != nullptr and *attr->Name == name) { return attr; }
+  }
+  return nullptr;
 }
 
 auto spp::analyse::utils::type_members::GetFieldIndexInType(
