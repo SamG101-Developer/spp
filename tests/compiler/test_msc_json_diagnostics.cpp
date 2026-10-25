@@ -704,7 +704,7 @@ fun kept() -> Void { }
   auto const &regions = spp::lsp::resolution_index::GetAllInactive();
   ASSERT_EQ(regions.size(), 2uz);
   for (auto const &region : regions) {
-    EXPECT_FALSE(region.Where.File.contains("/vcs/")) << region.Where.File;
+    EXPECT_FALSE(genex::contains(spp::Path(region.Where.File), spp::Path("vcs"))) << region.Where.File;
   }
   EXPECT_EQ(regions[0].Where.StartLine, 2uz);
   EXPECT_EQ(regions[0].Where.EndLine, 5uz) << "the function's body was left out of its region";

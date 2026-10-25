@@ -85,8 +85,9 @@ namespace spp_test {
 
       const auto q1 = block.find('\'');
       const auto q2 = block.find('\'', q1 + 1);
-      const auto path = block.substr(q1 + 1, q2 - q1 - 1);
-      EXPECT_TRUE(path.ends_with("/src/main.spp"))
+      // By path components, as the separator is "\\" on Windows.
+      const auto path = spp::Path(block.substr(q1 + 1, q2 - q1 - 1));
+      EXPECT_TRUE(path.filename() == "main.spp" and path.parent_path().filename() == "src")
         << "An error block points outside the test's own source:\n" << block;
       if (underline != nullptr and not primary_seen) {
         EXPECT_EQ(Underlined(block), spp::Str(underline))

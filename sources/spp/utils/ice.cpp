@@ -14,11 +14,13 @@ namespace spp {
     /// path of the machine that built the compiler means nothing to whoever reads the report.
     auto CompilerFileOf(
       std::source_location const &raised_at) -> Str {
-      const auto path = StrView(raised_at.file_name());
+      // MSVC names the file with "\\" separators.
+      auto path = Str(raised_at.file_name());
+      genex::actions::replace(path, '\\', '/');
       for (const auto root : {StrView("/sources/spp/"), StrView("/headers/spp/")}) {
-        if (const auto at = path.find(root); at != StrView::npos) { return Str(path.substr(at + 1)); }
+        if (const auto at = path.find(root); at != Str::npos) { return path.substr(at + 1); }
       }
-      return Str(path);
+      return path;
     }
 
     /// The call stack of the caller of "Ice", its own frame skipped, or a line saying this build has none to give.
