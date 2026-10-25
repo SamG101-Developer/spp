@@ -198,8 +198,8 @@ if [ -z "$qemu_version" ]; then
   status=1
 else
   fetch -o "$tmp/qemu-user.deb" "${qemu_pool}/qemu-user_${qemu_version}_amd64.deb"
-  set_pin pin.qemu.version "$qemu_version"
-  set_pin pin.qemu.sha256 "$(sha256sum "$tmp/qemu-user.deb" | cut -d ' ' -f 1)"
+  set_pin pin.qemu-user.version "$qemu_version"
+  set_pin pin.qemu-user.sha256 "$(sha256sum "$tmp/qemu-user.deb" | cut -d ' ' -f 1)"
 fi
 
 # LLVM (WINDOWS)
