@@ -19,6 +19,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Spelled compares OK off hot path](conventions/spelled-compares-ok-off-hot-path.md) — one-place "self"/"T" checks stay; N2.1/N2.3 struck
 - [[CHECKED] markers are the maintainer's](conventions/checked-markers-are-sams.md) — never add one; removing or folding a marked function is fine
 - [Check newer than apt](conventions/check-newer-than-apt.md) — any apt/brew-installed tool: compare upstream latest, pin if newer
+- [genex, not std::ranges](conventions/genex-not-std-ranges.md) — range algorithms via genex; add `import genex;`
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
 
 ## Build, test, verify

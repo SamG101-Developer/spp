@@ -13,4 +13,4 @@
 - [MSVC transitive namespace lookup](msvc-transitive-namespace-lookup.md) — relative `utils::` in spp::analyse hits analyse::utils; write spp::utils::
 - [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
 - [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp
-- [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use \; prelude went onto std files (E14); use ModuleTree flags/components
+- [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
