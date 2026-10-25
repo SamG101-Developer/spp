@@ -29,6 +29,7 @@ import spp.asts.is_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
