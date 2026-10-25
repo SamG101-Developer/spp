@@ -16,7 +16,9 @@ link gets the target's flags):
   rpath would have linked and then failed to load `libsppc.dylib`.
 - **COFF:** neither `-lm` (the CRT carries the maths functions) nor an rpath (PE has none). The link itself is not
   wired up yet: `LinkerCommand` returns `cc`, the output has no `.exe`, and staged DLLs sit in `lib/`, where the Windows
-  loader does not look.
+  loader does not look. Blocked on sppc (2026-10-25): it has no Windows build (`ready: false` in sppc's `_build.yaml`,
+  `PORTING.md` section 6 unstarted), so SPP-STL ships no `ffi/sppc/x86_64-windows-msvc/`. The planned files are
+  `sppc.dll` + `sppc.lib`: the link takes the import library, and the DLL goes beside the `.exe`.
 
 **Windows fails before linking anyway (2026-10-25).** On the `windows msvc` lane, `stl-conformance.sh` stops in codegen
 for `x86_64-windows-msvc` with `error: no libcall available for stackprotector check fail`, once per function.
@@ -24,7 +26,8 @@ Cause: `protect` (`sspstrong`) and `split` (`safestack`) together. Either alone 
 pass takes over the canary of any ssp function and checks it itself (`SafeStack::checkStackGuard`,
 `llvm/lib/CodeGen/SafeStack.cpp`), always calling the `STACKPROTECTOR_CHECK_FAIL` libcall (`__stack_chk_fail`), which
 MSVC triples do not have. It never uses the target's `__security_check_cookie` route. Reproduce locally with
-`spp build -m dev --target x86_64-pc-windows-msvc`, or `llc` on any MSVC IR with both attributes. See
+`spp build -m dev --target x86_64-pc-windows-msvc`, or `llc` on any MSVC IR with both attributes. Now refused in
+`CheckTargetSupport` (`HasSafeStackCanary`); the Windows lanes pass `off: memory.stack.split`. Upstream-watch U15. See
 [[stack-protector-heuristics]].
 
 **Why:** the ELF-only flags were added unconditionally, which broke the macOS lane's STL conformance link.

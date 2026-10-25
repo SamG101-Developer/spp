@@ -10,7 +10,7 @@
 - [Symbol mangling](spp-symbol-mangling.md) — path + $h<fnv64>; closures {closure#N}
 - [Stack protector heuristics](stack-protector-heuristics.md) — canaries everywhere; sspstrong = all
 - [ELF section hardening](spp-elf-section-hardening.md) — full RELRO + BIND_NOW; no nodlopen
-- [Link flags per object format](link-flags-per-object-format.md) — ELF -z + $ORIGIN; Mach-O @loader_path, no -z; COFF link unwired; MSVC protect+split clash
+- [Link flags per object format](link-flags-per-object-format.md) — ELF -z + $ORIGIN; Mach-O @loader_path, no -z; COFF link unwired; MSVC refuses protect+split (U15)
 - [Single abort path](spp-single-abort-path.md) — checks call sppc_check_failed; no frontend willreturn
 - [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; optimiser drops custom call md
 - [Hardening needs a feature gate](hardening-needs-feature-gate.md) — default on behind a key, fail loudly; old kernels via build-time floor (RHEL 8), never runtime skip

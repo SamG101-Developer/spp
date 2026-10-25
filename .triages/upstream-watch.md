@@ -31,6 +31,7 @@ Each entry gives:
 | U12 | sccache          | Caching C++20 module compiles from cl.exe                       | 2026-10-24   |
 | U13 | LLVM             | PC-relative EH pointers on m68k under PIC                       | 2026-10-24   |
 | U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-10-25   |
+| U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-10-25   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -288,6 +289,27 @@ Each entry gives:
 - **Sources:** [commit 1610aa22f4](https://github.com/Kitware/CMake/commit/1610aa22f4),
   [cmake-cxxmodules(7)](https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html),
   [CMake Discourse: import std on Windows](https://discourse.cmake.org/t/import-std-doesnt-work-on-windows/14268).
+
+## U15. LLVM: SafeStack's canary check on MSVC
+
+- **Library:** LLVM (`SafeStack::checkStackGuard`, `llvm/lib/CodeGen/SafeStack.cpp`).
+- **Want:** the SafeStack pass checking a function's canary the way the target's stack protector does, so MSVC
+  triples call `__security_check_cookie` (as `StackProtector` does through `getSSPStackGuardCheck`), not only
+  `STACKPROTECTOR_CHECK_FAIL`.
+- **Why:** SafeStack takes over the canary of every `ssp`/`sspstrong` function it splits, and its check always calls
+  `__stack_chk_fail`, which MSVC triples do not have. With `[memory.stack] protect` and `split` both on, every protected
+  function fails with "no libcall available for stackprotector check fail", and no object is written.
+- **Meanwhile:** `CheckTargetSupport` in `../sources/spp/cli.cpp` refuses the pair on a target without
+  `__stack_chk_fail` (`HasSafeStackCanary` in `../sources/spp/codegen/llvm_target.cpp`), naming both keys.
+  The Windows lanes pass `off: memory.stack.split` (`pr.yaml`, `post_merge.yaml`), keeping the canary. (Whether sppc's unsafe stack works on
+  Windows at all is open separately: sppc `PORTING.md` section 8.)
+- **Status (2026-10-25):** unchanged on trunk (`09ec836bbe83`); no upstream issue found.
+- **Check:** in `SafeStack.cpp`, whether `checkStackGuard` still errors when `STACKPROTECTOR_CHECK_FAIL` is
+  unsupported; or `llc -mtriple=x86_64-pc-windows-msvc` on a function with `sspstrong safestack`.
+- **When it lands:** delete `HasSafeStackCanary`/`TargetHasSafeStackCanary`, the refusal and its Todo, the two
+  `TestTargetSupport` canary tests, and `memory.stack.split` from the Windows lanes' `off` in `pr.yaml` and
+  `post_merge.yaml`.
+- **Last checked:** 2026-10-25.
 
 ## Resolved
 
