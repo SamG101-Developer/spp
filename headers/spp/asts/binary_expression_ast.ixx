@@ -120,4 +120,12 @@ private:
   auto _BindFoldOperand(
     Unique<ExpressionAst> &operand, ScopeManager *sm,
     CompilerMetaData *meta) -> void;
+
+  /// A fold's tuple operand ("t" in ".. + t" or "t + ..") bound
+  /// and checked, and each of its elements read off it in order
+  /// ("t.0", "t.1", ...), analysed. It must be a tuple of at least
+  /// two elements; "fold" (the "..") is named in the error too.
+  auto _FoldElements(
+    Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm,
+    CompilerMetaData *meta) -> Vec<Unique<PostfixExpressionAst>>;
 };

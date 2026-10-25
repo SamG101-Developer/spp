@@ -131,98 +131,67 @@ auto BinaryExpressionAst::_BindFoldOperand(
   operand->Stage7_AnalyseSemantics(sm, meta);
 }
 
+auto BinaryExpressionAst::_FoldElements(
+  Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm, CompilerMetaData *meta)
+  -> Vec<Unique<PostfixExpressionAst>> {
+  IMPORT_UTILS;
+  _BindFoldOperand(tuple, sm, meta);
+  common_errors::RequirePrimary(*tuple, *sm);
+
+  // The operand is a tuple (Todo: maybe allow arrays too?) of at
+  // least two elements.
+  const auto tuple_ref = tuple->InferTypeRef(sm, meta);
+  if (not type_predicates::IsTypeTuple(tuple_ref, *sm->CurrentScope)) {
+    const auto tuple_type = tuple->InferType(sm, meta);
+    Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*tuple, *tuple_type, fold));
+  }
+  const auto num_elems = tuple_ref.Symbol->TypeArgRefs().size();
+  if (num_elems < 2) {
+    const auto tuple_type = tuple->InferType(sm, meta);
+    Raise<SppInvalidBinaryFoldExpressionError>(ERR_ARGS(*tuple, *tuple_type, num_elems));
+  }
+
+  // Each element read off it ("t.0", "t.1", ...), analysed.
+  auto elems = Vec<Unique<PostfixExpressionAst>>();
+  for (auto i = 0uz; i < num_elems; ++i) {
+    auto field = MakeUnique<IdentifierAst>(tuple->PosStart(), std::to_string(i));
+    auto elem = MakeUnique<PostfixExpressionAst>(
+      AstClone(tuple), MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+    elem->Stage7_AnalyseSemantics(sm, meta);
+    elems.emplace_back(std::move(elem));
+  }
+  return elems;
+}
+
 auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // Todo: this guard shouldn't be needed?
+  // Analysed already: a clone shares the mapped call ("Clone"),
+  // and a fold has rewritten its operands, so analysing again
+  // would desugar what is no longer written.
   if (_MappedFn or _LogicalAnalysed) { return; }
 
-  // Handle lhs-folding.
-  if (Lhs->To<FoldExpressionAst>()) {
-    _BindFoldOperand(Rhs, sm, meta);
-    common_errors::RequirePrimary(*Rhs, *sm);
-
-    // Check the rhs is a tuple, and error otherwise. Todo:
-    // Maybe allow arrays too?
-    const auto rhs_tuple_ref = Rhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTuple(rhs_tuple_ref, *sm->CurrentScope)) {
-      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(
-        ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
+  // A fold reads its tuple's elements off it and combines them, for "t = (0, 1, 2, 3)": ".. + t" from the left,
+  // "(((t.0 + t.1) + t.2) + t.3)", and "t + .." from the right, "(t.0 + (t.1 + (t.2 + t.3)))".
+  if (Lhs->To<FoldExpressionAst>() != nullptr or Rhs->To<FoldExpressionAst>() != nullptr) {
+    const auto from_left = Lhs->To<FoldExpressionAst>() != nullptr;
+    auto elems = from_left ? _FoldElements(Rhs, *Lhs, sm, meta) : _FoldElements(Lhs, *Rhs, sm, meta);
+    if (from_left) {
+      Lhs = std::move(elems[0]);
+      Rhs = std::move(elems[1]);
+      for (auto &&elem : elems | genex::views::move | genex::views::drop(2)) {
+        Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+        Rhs = std::move(elem);
+      }
     }
-
-    // Get the parts of the tuple, and check there are at
-    // minimum 2 elements in the tuple.
-    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgRefs().size();
-    if (rhs_num_elems < 2) {
-      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
-      Raise<SppInvalidBinaryFoldExpressionError>(
-        ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
-    }
-
-    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
-    for (auto i = 0u; i < rhs_num_elems; ++i) {
-      auto field = MakeUnique<IdentifierAst>(Rhs->PosStart(), std::to_string(i));
-      auto new_ast = MakeUnique<PostfixExpressionAst>(
-        AstClone(Rhs),
-        MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-      new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.emplace_back(std::move(new_ast));
-    }
-
-    // Convert "t = (0, 1, 2, 3)", ".. + t" into
-    // "(((t.0 + t.1) + t.2) + t.3)".
-    Lhs = std::move(new_asts[0]);
-    Rhs = std::move(new_asts[1]);
-    for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
-      Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
-      Rhs = std::move(new_ast);
-    }
-    _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
-    _MappedFn->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // Handle rhs-folding.
-  else if (Rhs->To<FoldExpressionAst>()) {
-    _BindFoldOperand(Lhs, sm, meta);
-    common_errors::RequirePrimary(*Lhs, *sm);
-
-    // Check the rhs is a tuple, and error otherwise. Todo:
-    // Maybe allow arrays too?
-    const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTuple(lhs_tuple_ref, *sm->CurrentScope)) {
-      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(
-        ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
-    }
-
-    // Get the parts of the tuple, and check there are at
-    // minimum 2 elements in the tuple.
-    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().size();
-    if (lhs_num_elems < 2) {
-      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppInvalidBinaryFoldExpressionError>(
-        ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
-    }
-
-    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
-    for (auto i = 0U; i < lhs_num_elems; ++i) {
-      auto field = MakeUnique<IdentifierAst>(Lhs->PosStart(), std::to_string(i));
-      auto new_ast = MakeUnique<PostfixExpressionAst>(
-        AstClone(Lhs),
-        MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-      new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.emplace_back(std::move(new_ast));
-    }
-
-    // Convert "t = (0, 1, 2, 3)", "t + .." into
-    // "(t.0 + (t.1 + (t.2 + t.3)))".
-    Lhs = std::move(new_asts[new_asts.size() - 2]);
-    Rhs = std::move(new_asts[new_asts.size() - 1]);
-    for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
-      Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
-      Lhs = std::move(new_ast);
+    else {
+      Lhs = std::move(elems[elems.size() - 2]);
+      Rhs = std::move(elems[elems.size() - 1]);
+      for (auto &&elem : elems | genex::views::move_reverse | genex::views::drop(2)) {
+        Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+        Lhs = std::move(elem);
+      }
     }
     _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
     _MappedFn->Stage7_AnalyseSemantics(sm, meta);
@@ -404,7 +373,6 @@ auto BinaryExpressionAst::InferType(
   // scopes its operator is resolved through: a comparison
   // is boolean, and comp-time arithmetic keeps its left
   // operand's type.
-  // Todo: Remove this I think.
   if (_MappedFn == nullptr) {
     using lex::SppTokenType;
     const auto op = TokOp->TokenType;
