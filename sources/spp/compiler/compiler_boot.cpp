@@ -26,6 +26,7 @@ import spp.asts.identifier_ast;
 import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.type_ast;

@@ -19,6 +19,7 @@ import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_object_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.token_ast;
