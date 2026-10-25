@@ -238,8 +238,13 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // declaration order. Every argument names an attribute -
   // analysis rejects a name that is not one - so the search
   // always finds it.
-  const auto spp_attr_index_of = [&](IdentifierAst const &name) {
-    const auto index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
+  const auto spp_attr_index_of = [&](ObjectInitializerArgumentAst const &arg) {
+    // A generated argument knows its attribute: two base classes
+    // may share its name ("ObjectInitializerArgumentAst::AttrIndex").
+    if (arg.AttrIndex.has_value()) { return *arg.AttrIndex; }
+    const auto index = genex::position(attr_names, [&arg](auto const &attr_name) {
+      return *attr_name == *arg.Name;
+    });
     SPP_ASSERT(index.has_value());
     return *index;
   };
@@ -273,7 +278,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     arg_values.reserve(ArgGroup->Args.size());
     for (auto const &arg : ArgGroup->Args) {
       auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-      const auto attr_index = spp_attr_index_of(*arg->Name);
+      const auto attr_index = spp_attr_index_of(*arg);
       if (val == nullptr or is_valueless(attr_index)) { continue; }
 
       // An attribute whose type is a variant takes any one of
@@ -333,7 +338,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-    const auto attr_index = spp_attr_index_of(*arg->Name);
+    const auto attr_index = spp_attr_index_of(*arg);
     if (comp_val == nullptr or is_valueless(attr_index)) { continue; }
     comp_fields[llvm_attr_index(attr_index)] = llvm::cast<llvm::Constant>(comp_val);
   }

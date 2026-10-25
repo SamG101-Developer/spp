@@ -266,7 +266,6 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 
   // Generate an argument for every attribute the user didn't pass.
-  const auto all_attr_asts = type_members::GetAllAttrAsts(*cls_sym);
   const auto given_names = GetNonAutoFillArgs()
     | genex::views::transform([](auto const &x) { return x->Name; })
     | genex::to<Vec>();
@@ -274,11 +273,13 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   for (auto i = 0uz; i < all_attrs.size(); ++i) {
     auto const &[attr_name, attr_ref, attr_parent_scope] = all_attrs[i];
 
-    // Todo: this will fail when multiple bases classes have same attr name
-    // Todo: maybe we just block this? there's currently no way to refer to individual base class's fields.
+    // A name two base classes each declare is generated once per
+    // base, each argument filling its own ("AttrIndex"): writing
+    // it is ambiguous, so neither was given.
     if (genex::any_of(given_names, [&attr_name](auto const &x) { return *x == *attr_name; })) { continue; }
 
-    const auto attr_ast = all_attr_asts[i];
+    const auto attr_ast = type_members::AttrAstOf(
+      *attr_parent_scope, *attr_name);
     auto val = Unique<ExpressionAst>();
     auto val_scope = static_cast<Scope*>(nullptr);
 
@@ -306,16 +307,15 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
       // type is FQ and we need error reporting
     }
 
-    // Todo: Might need "tm" here? Otherwise switch program-wide "tm" to this pattern.
-    // Todo: Actually, make a method on the scope manager: "TempIn(scope, closure)".
-    const auto outer_scope = sm->CurrentScope;
-    sm->CurrentScope = val_scope;
-    WRAP_ERROR(val->Stage7_AnalyseSemantics(sm, meta));
-    sm->CurrentScope = outer_scope;
+    // Analysed where it is read, on a manager of its own there,
+    // so a raised error leaves this one where it was.
+    auto tm = sm->NewManagerAt(val_scope);
+    WRAP_ERROR(val->Stage7_AnalyseSemantics(&tm, meta));
 
     // Add the compiler generated argument.
     auto arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(val));
     arg->IsCompilerGenerated = true;
+    arg->AttrIndex = i;
     Args.emplace_back(std::move(arg));
   }
 

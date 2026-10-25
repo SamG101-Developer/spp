@@ -5,7 +5,8 @@
 # called leaves that to its body; a borrowed or copied capture is not dropped. A generator destroyed at a "gen" drops
 # what its frame still owns there, innermost scope and newest first, after the "defer"s that destroying it runs; what
 # it yielded, consumed, or has not declared yet is not dropped, one partly moved loses only what is left of it, and
-# one that finished drops nothing more. The unit
+# one that finished drops nothing more. A type extending two bases that each declare an attribute of one name holds
+# and drops both, each filled from its own base's default. The unit
 # tests only build these, so a destructor that never runs is only seen by running it.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-drops.sh [path/to/spp]
@@ -119,6 +120,18 @@ cor partial_nested() -> Gen[U64] {
     std::mem::ops::drop(o.d)
 }
 
+cls BaseB {
+    !public a: Noisy = Noisy(n=120_u64)
+}
+
+cls BaseC {
+    !public a: Noisy = Noisy(n=121_u64)
+}
+
+cls Both { }
+sup Both ext BaseB { }
+sup Both ext BaseC { }
+
 fun main() -> Void {
     std::console::println("closure dropped uncalled")
     let a = Noisy(n=1_u64)
@@ -207,6 +220,10 @@ fun main() -> Void {
     let mut g11 = partial_nested()
     let r11 = g11.res()
     std::mem::ops::drop(g11)
+
+    std::console::println("two bases sharing an attribute name")
+    let both = Both()
+    std::mem::ops::drop(both)
     std::console::println("end")
 }
 SPP
@@ -252,6 +269,9 @@ dropped 110
 dropped 113
 dropped 112
 dropped 111
+two bases sharing an attribute name
+dropped 121
+dropped 120
 end
 OUT
 

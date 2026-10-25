@@ -35,6 +35,7 @@ auto ObjectInitializerArgumentKeywordAst::Clone() const -> Unique<Ast> {
     AstClone(TokAssign),
     AstClone(Val));
   ast->IsCompilerGenerated = IsCompilerGenerated;
+  ast->AttrIndex = AttrIndex;
   return ast;
 }
 
