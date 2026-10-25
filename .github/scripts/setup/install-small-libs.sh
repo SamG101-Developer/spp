@@ -13,7 +13,7 @@ llvm_dir="$(llvm_prefix)"
 
 # Read before leaving the repository root: pins.py resolves the
 # manifest relative to the working directory.
-records="$(python3 .github/scripts/lib/pins.py libraries)"
+records="$(python3 .github/scripts/lib/pins.py libraries --os "$RUNNER_OS")"
 if [ -z "$records" ]; then
   echo "install-small-libs: the manifest lists no libraries" >&2
   exit 1

@@ -6,7 +6,8 @@ stated once instead of once per consumer.
 
 Subcommands:
     env         NAME=value lines for GITHUB_ENV (pins and install prefixes)
-    libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags
+    libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags;
+                with --os Windows, the flags include the library's cmake-flags-windows
     runners     one tab-separated record per canonical runner image
     caches      one tab-separated record per build-tree cache family: name, generation, key prefix
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
@@ -133,11 +134,12 @@ def libraries(data: dict) -> list[dict]:
             fail(f"[[library]] {name} repo must be an https .git URL: {repo!r}")
         if not HEX40.match(commit):
             fail(f"[[library]] {name} commit is not a full 40-character commit: {commit!r}")
-        for flag in entry.get("cmake-flags", []):
-            if not isinstance(flag, str) or not flag.startswith("-"):
-                fail(f"[[library]] {name} has a cmake flag that is not a flag: {flag!r}")
-            if any(c.isspace() for c in flag):
-                fail(f"[[library]] {name} cmake flag contains whitespace, which would split on read: {flag!r}")
+        for key in ("cmake-flags", "cmake-flags-windows"):
+            for flag in entry.get(key, []):
+                if not isinstance(flag, str) or not flag.startswith("-"):
+                    fail(f"[[library]] {name} has a {key} entry that is not a flag: {flag!r}")
+                if any(c.isspace() for c in flag):
+                    fail(f"[[library]] {name} {key} entry contains whitespace, which would split on read: {flag!r}")
     return list(data.get("library", []))
 
 
@@ -197,10 +199,12 @@ def cmd_env(data: dict) -> None:
         print(f"{name}={value}")
 
 
-def cmd_libraries(data: dict) -> None:
+def cmd_libraries(data: dict, os_name: str) -> None:
     for entry in libraries(data):
-        flags = " ".join(entry.get("cmake-flags", []))
-        print(f"{entry['name']}\t{entry['repo']}\t{entry['commit']}\t{flags}")
+        flags = entry.get("cmake-flags", [])
+        if os_name == "Windows":
+            flags = flags + entry.get("cmake-flags-windows", [])
+        print(f"{entry['name']}\t{entry['repo']}\t{entry['commit']}\t{' '.join(flags)}")
 
 
 def cmd_get(data: dict, name: str) -> None:
@@ -303,7 +307,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("env")
-    sub.add_parser("libraries")
+    libs = sub.add_parser("libraries")
+    libs.add_argument("--os", default="", help="the runner OS, as RUNNER_OS names it")
     sub.add_parser("runners")
     sub.add_parser("caches")
     check = sub.add_parser("check")
@@ -328,7 +333,7 @@ def main() -> None:
     if args.command == "env":
         cmd_env(data)
     elif args.command == "libraries":
-        cmd_libraries(data)
+        cmd_libraries(data, args.os)
     elif args.command == "runners":
         cmd_runners(data)
     elif args.command == "caches":

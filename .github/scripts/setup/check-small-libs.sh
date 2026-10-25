@@ -12,7 +12,7 @@ fi
 
 complete=false
 if [ -f "$PREFIX/.spp-libs-stamp" ] &&
-  python3 .github/scripts/lib/pins.py libraries | diff -q - "$PREFIX/.spp-libs-stamp" >/dev/null; then
+  python3 .github/scripts/lib/pins.py libraries --os "$RUNNER_OS" | diff -q - "$PREFIX/.spp-libs-stamp" >/dev/null; then
   complete=true
 fi
 
