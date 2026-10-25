@@ -225,7 +225,7 @@ namespace {
       if (head.Kind == TypeKey::Tag::Inst) {
         for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
       }
-      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.Members); }
+      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.VariantMembers); }
       for (const auto arg_id : arg_ids) {
         if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
       }

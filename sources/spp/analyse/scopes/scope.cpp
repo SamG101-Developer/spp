@@ -288,7 +288,7 @@ namespace {
   /// flattened into it.
   struct TypeKeyParts {
     TypeKey Key;
-    Vec<TypeKey> Members;
+    Vec<TypeKey> VariantMembers;
   };
 
   /// The aliases being keyed through their targets: a target that names its own alias (directly or down a chain) is keyed
@@ -329,7 +329,7 @@ namespace spp::analyse::scopes {
       out.Key.PushSpliced(*id);
       auto const &head = HeadOf(id);
       if (head.Kind == TypeKey::Tag::Variant and head.Conv == 0) {
-        for (const auto m : head.Members) { out.Members.emplace_back(TypeKey(*m)); }
+        for (const auto m : head.VariantMembers) { out.VariantMembers.emplace_back(TypeKey(*m)); }
       }
     }
 
@@ -546,7 +546,9 @@ namespace spp::analyse::scopes {
       auto out = TypeKeyParts();
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
-        auto flat = parts.Members.empty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
+        auto flat = parts.VariantMembers.empty()
+          ? spp::Vec<TypeKey>{std::move(parts.Key)}
+          : std::move(parts.VariantMembers);
 
         // A pack bound to its tuple ("Bool or Rest" with "Rest" bound to "(S32, Str)") is the tuple's elements, as
         // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str". Only a bare name can be a pack.
@@ -558,18 +560,18 @@ namespace spp::analyse::scopes {
           flat.clear();
           for (auto const &element : *elements) {
             auto element_parts = RawTypeKey(element.get(), nullptr, read_in);
-            if (element_parts.Members.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
-            else { for (auto &m : element_parts.Members) { flat.emplace_back(std::move(m)); } }
+            if (element_parts.VariantMembers.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
+            else { for (auto &m : element_parts.VariantMembers) { flat.emplace_back(std::move(m)); } }
           }
         }
         for (auto &m : flat) {
-          if (not genex::contains(out.Members, m)) { out.Members.emplace_back(std::move(m)); }
+          if (not genex::contains(out.VariantMembers, m)) { out.VariantMembers.emplace_back(std::move(m)); }
         }
       }
-      out.Members |= genex::actions::sort([](auto const &a, auto const &b) { return StableKeyLess(a, b); });
+      out.VariantMembers |= genex::actions::sort([](auto const &a, auto const &b) { return StableKeyLess(a, b); });
       out.Key.Push(TypeKey::Tag::Variant);
       out.Key.PushSymbol(&tmpl);
-      for (auto const &m : out.Members) { out.Key.PushTypePart(InternTypeKey(TypeKey(m))); }
+      for (auto const &m : out.VariantMembers) { out.Key.PushTypePart(InternTypeKey(TypeKey(m))); }
       return out;
     }
 
@@ -1723,7 +1725,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
       // type and insert the type arguments.
       case TypeKey::Tag::Variant: {
         auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
-        for (const auto member : head.Members) {
+        for (const auto member : head.VariantMembers) {
           auto type = TypeAstOf(member);
           if (type == nullptr) { return nullptr; }
           unordered.emplace_back(std::move(type), FindTypeSymbolById(BareOf(member)));
@@ -1878,7 +1880,7 @@ auto Scope::CompIdOf(ExpressionAst const &value) const -> CompId {
 /// [CHECKED]
 auto Scope::TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId {
   // Key the type symbol into the scope, and read off the "Key"
-  // field (ignore unused variant "Members".
+  // field (ignore unused "VariantMembers".
   auto key = RawTypeKey(nullptr, &sym, *this).Key;
   return key.HasUnresolved ? nullptr : InternTypeKey(std::move(key));
 }

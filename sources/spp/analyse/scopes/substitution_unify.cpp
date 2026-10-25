@@ -209,10 +209,10 @@ namespace {
     // the pack takes the members the others leave ("Bool or Rest" given "S32 or Bool" binds "Rest" to "(S32,)"), as
     // the two are matched whole below, rather than the whole given variant as one member.
     const auto pattern_has_pack = d.Kind == sc::TypeKey::Tag::Variant
-      and genex::any_of(d.Members, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
+      and genex::any_of(d.VariantMembers, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
     if (ctx.CheckVariant and d.Kind == sc::TypeKey::Tag::Variant
       and not (pattern_has_pack and g.Kind == sc::TypeKey::Tag::Variant)) {
-      for (const auto member : d.Members) {
+      for (const auto member : d.VariantMembers) {
         auto saved = ctx.Bindings;
         if (UnifyType(sc::BareOf(given), member, ctx)) { return true; }
         ctx.Bindings = std::move(saved);
@@ -226,27 +226,29 @@ namespace {
     if (d.Kind == sc::TypeKey::Tag::Variant and g.Kind == sc::TypeKey::Tag::Variant) {
       // A pack among the pattern's members ("Var[Variants]", "Var[None, Rest]") takes the members the others leave, as
       // a tuple in their canonical order: members are a set, so each other one takes whichever given member fits it.
-      const auto pack = genex::find_if(d.Members, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
-      if (pack != d.Members.end()) {
-        auto used = spp::Vec<bool>(g.Members.size(), false);
-        for (const auto member : d.Members) {
+      const auto pack = genex::find_if(d.VariantMembers, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
+      if (pack != d.VariantMembers.end()) {
+        auto used = spp::Vec<bool>(g.VariantMembers.size(), false);
+        for (const auto member : d.VariantMembers) {
           if (member == *pack) { continue; }
           auto found = false;
-          for (auto i = 0uz; i < g.Members.size() and not found; ++i) {
+          for (auto i = 0uz; i < g.VariantMembers.size() and not found; ++i) {
             if (used[i]) { continue; }
             auto saved = ctx.Bindings;
-            if (UnifyType(g.Members[i], member, ctx)) { used[i] = found = true; }
+            if (UnifyType(g.VariantMembers[i], member, ctx)) { used[i] = found = true; }
             else { ctx.Bindings = std::move(saved); }
           }
           if (not found) { return false; }
         }
         auto rest = spp::Vec<sc::TypeId>();
-        for (auto i = 0uz; i < g.Members.size(); ++i) { if (not used[i]) { rest.push_back(g.Members[i]); } }
+        for (auto i = 0uz; i < g.VariantMembers.size(); ++i) {
+          if (not used[i]) { rest.push_back(g.VariantMembers[i]); }
+        }
         return BindType(TypePackParamOf(*pack), TupleIdOf(rest, ctx.Given), ctx);
       }
-      if (g.Members.size() != d.Members.size()) { return false; }
-      for (auto i = 0uz; i < d.Members.size(); ++i) {
-        if (not UnifyType(g.Members[i], d.Members[i], ctx)) { return false; }
+      if (g.VariantMembers.size() != d.VariantMembers.size()) { return false; }
+      for (auto i = 0uz; i < d.VariantMembers.size(); ++i) {
+        if (not UnifyType(g.VariantMembers[i], d.VariantMembers[i], ctx)) { return false; }
       }
       return true;
     }

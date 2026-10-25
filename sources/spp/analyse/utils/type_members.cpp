@@ -556,6 +556,6 @@ auto spp::analyse::utils::type_members::VariantMemberRefs(
   auto members = Vec<TypeRef>();
   // Read straight off each member's identity, one per member:
   // a member's index is its tag.
-  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.emplace_back(TypeRef::Of(member, scope)); }
+  for (const auto member : scopes::HeadOf(ref.Id).VariantMembers) { members.emplace_back(TypeRef::Of(member, scope)); }
   return members;
 }

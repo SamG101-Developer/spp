@@ -291,7 +291,7 @@ namespace spp::analyse::utils::type_compare {
       if (head.Kind == TypeKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }
       auto members = Vec<TypeIdArg>();
       if (head.Kind == TypeKey::Tag::Variant) {
-        for (const auto m : head.Members) { members.push_back({.TypeVal = m}); }
+        for (const auto m : head.VariantMembers) { members.push_back({.TypeVal = m}); }
       }
       return members;
     }

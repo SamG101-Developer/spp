@@ -735,7 +735,7 @@ namespace spp::analyse::utils::monomorphization {
 
       // For variants, check their members too, adding the found
       // size into the accumulation.
-      for (const auto member : head.Members) {
+      for (const auto member : head.VariantMembers) {
         if (size >= cap) { break; }
         size += SpelledSizeOf(member, cap, memo);
       }
