@@ -19,6 +19,8 @@ use(spp::asts, struct LocalVariableAst);
 SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
   CasePatternVariantAst();
 
+  ~CasePatternVariantAst() override;
+
   /// Handle pattern matching for case expressions. This is
   /// reimplemented in all the other patterns, but due to a GCC
   /// modules bug, it must be defined here too.

@@ -52,6 +52,8 @@ CasePatternVariantAst::CasePatternVariantAst() :
   _MappedLet(nullptr) {
 }
 
+CasePatternVariantAst::~CasePatternVariantAst() = default;
+
 auto CasePatternVariantAst::Stage9_CompTimeResolve(
   ScopeManager *, CompilerMetaData *) -> void {
   // No behaviour but c++ module issues require this be
