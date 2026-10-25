@@ -979,8 +979,8 @@ SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarker
   AddCtxForErr(&type, "Type superimposed over here");
   AddErr(&marker, "Marker superimposed from outside its package here");
   AddFooter(
-    "A marker decides how every value of a type is handled, so only the package declaring the type may superimpose "
-    "one over it.",
+    "A marker decides how every value of a type is handled (copied, dropped, or forwarded to another type), so only "
+    "the package declaring the type may superimpose one over it.",
     "Superimpose the marker where the type is declared, or wrap the type in one this package owns.");
 }
 

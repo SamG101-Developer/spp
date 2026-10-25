@@ -359,14 +359,7 @@ namespace spp::analyse::utils::sup_attachment {
         // extension.
         if (const auto ext_ast = AstAs<SupPrototypeExtensionAst>(sup_scope->AstNode);
           ext_ast != nullptr and not ext_ast->Name->IsCompilerGeneratedType()) {
-          // A super class that did not resolve under this instance's
-          // arguments ("Try[.., Value=T]" with "T" bound to "Self",
-          // parameter 0, still open) has nothing to be cyclic with.
-          if (sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
-            ext_ast->CheckCyclicExtension(*sup_sym, *sup_scope);
-          }
-          ext_ast->CheckDoubleExtension(*cls_sym, *sup_scope);
-          ext_ast->CheckSelfExtension(*sup_scope);
+          ext_ast->CheckExtensionHierarchy(*cls_sym, sup_sym, *sup_scope);
         }
 
         // Register the super scope against the current scope.

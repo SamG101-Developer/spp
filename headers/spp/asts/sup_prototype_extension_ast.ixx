@@ -93,9 +93,12 @@ SPP_EXP_CLS struct spp::asts::SupPrototypeExtensionAst final : Ast, ModuleMember
   /// leaves abstract.
   auto CheckExtensionMembers(ScopeManager &sm, CompilerMetaData *meta) -> void;
 
-  auto CheckCyclicExtension(TypeSymbol const &sup_sym, Scope &check_scope) const -> void;
-
-  auto CheckDoubleExtension(TypeSymbol const &cls_sym, Scope &check_scope) const -> void;
-
-  auto CheckSelfExtension(Scope &check_scope) const -> void;
+  /// Check this block's place in the hierarchy as it is attached
+  /// to "cls_sym" (read in "check_scope"): it does not extend its
+  /// type with itself, nor with a super class the type already
+  /// extends at this level, nor with one ("sup_sym", when it
+  /// resolved) that already extends the type, at any level. Not
+  /// asked of a "$" type's block, generated once per overload.
+  auto CheckExtensionHierarchy(
+    TypeSymbol const &cls_sym, TypeSymbol const *sup_sym, Scope &check_scope) const -> void;
 };

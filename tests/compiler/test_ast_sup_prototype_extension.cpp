@@ -371,6 +371,46 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     sup [T] T ext Copy { }
 )");
 
+// A forwarding marker changes which methods a call on the type finds, so it is restricted to the type's package too.
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_external_fwd_ref_marker,
+  SppSuperimpositionExternalMarkerExtensionError, "FwdRef[Str]", R"(
+    use std::ops::fwd::FwdRef
+
+    sup Bool ext FwdRef[Str] {
+        cor fwd_ref(&self) -> GenOnce[&Str] { gen &Str::from("x") }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  AstSupPrototypeExtensionAst,
+  test_invalid_superimposition_extension_external_fwd_mut_marker,
+  SppSuperimpositionExternalMarkerExtensionError, "FwdMut[Str]", R"(
+    use std::ops::fwd::FwdMut
+
+    sup Bool ext FwdMut[Str] {
+        cor fwd_mut(&mut self) -> GenOnce[&mut Str] { gen &mut Str::from("x") }
+    }
+)");
+
+// A blanket extension naming its own parameter in the supertype ("T ext Wrap[T]") does not generate without end, the
+// worry its Todo raised: "Wrap[S32]" is reached, and a method on it called, once.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstSupPrototypeExtensionAst,
+  test_valid_superimposition_extension_blanket_self_wrapping, R"(
+    cls Wrap[T] { }
+    sup [T] Wrap[T] {
+        !public fun m(&self) -> Void { }
+    }
+    sup [T] T ext Wrap[T] { }
+
+    fun f() -> Void {
+        let x = 1
+        x.m()
+    }
+)");
+
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     AstSupPrototypeExtensionAst,
     test_valid_superimposition_extension_own_copy_marker, R"(

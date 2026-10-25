@@ -26,6 +26,11 @@ namespace spp::analyse::utils::marker_sups {
   SPP_EXP_FUN auto IsDropMarker(
     TypeRef const &kind, Scope const &scope) -> bool;
 
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is a forwarding marker ("FwdRef" / "FwdMut"), which
+  /// makes a call find the methods of the type forwarded to.
+  SPP_EXP_FUN auto IsFwdMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
   /// The function type ("FunRef" / "FunMut" / "FunMov") the type is or superimposes, looked at through an alias;
   /// none for a type that is not callable. A generic's constraint is considered first: a "FunRef" constrained to be a
   /// "FunMov" is treated as the "FunMov" would be, for consistent behaviour.

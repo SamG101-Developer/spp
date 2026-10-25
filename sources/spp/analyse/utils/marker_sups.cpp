@@ -99,6 +99,13 @@ auto spp::analyse::utils::marker_sups::IsDropMarker(
   return kind.IsA(*asts::generate::common_types_precompiled::DROP, scope);
 }
 
+auto spp::analyse::utils::marker_sups::IsFwdMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  using asts::generate::common_types_precompiled::FWD_MUT;
+  using asts::generate::common_types_precompiled::FWD_REF;
+  return kind.IsA(*FWD_REF, scope) or kind.IsA(*FWD_MUT, scope);
+}
+
 auto spp::analyse::utils::marker_sups::FindFnSup(
   TypeAst const &type, Scope const &scope) -> TypeRef {
   //
