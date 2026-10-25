@@ -88,6 +88,11 @@ on:
         required: false
         type: boolean
         default: false
+      advisory:
+        description: "Let the lane fail without failing the run, for a toolchain not expected to work yet."
+        required: false
+        type: boolean
+        default: false
 
     # The release collects each lane's staged spp by these, after
     # the whole lane - tests included - is green.
@@ -117,6 +122,7 @@ jobs:
     name: build
     runs-on: ${{ inputs.os }}
     timeout-minutes: 120
+    continue-on-error: ${{ inputs.advisory }}
     permissions:
       contents: read
     outputs:
@@ -177,7 +183,7 @@ jobs:
     needs: [ build ]
     runs-on: ${{ inputs.os }}
     timeout-minutes: ${{ matrix.timeout }}
-    continue-on-error: ${{ matrix.advisory }}
+    continue-on-error: ${{ matrix.advisory || inputs.advisory }}
     permissions:
       contents: read
     strategy:
