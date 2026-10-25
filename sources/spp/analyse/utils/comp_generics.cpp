@@ -45,7 +45,7 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
   reading.emplace_back(owner, Str(name));
   struct Leave {
     ~Leave() { reading.pop_back(); }
-  } const _leave;
+  } const _leave_guard;
 
   // The owner: a class, or a made instance of a template.
   auto const &head = scopes::HeadOf(owner);
