@@ -47,7 +47,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (16)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self (11)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (19)
-- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (20)
+- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (21)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (23)
 - [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (18)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (3)

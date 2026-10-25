@@ -5,6 +5,7 @@
 - [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit
 - [Visibility stage ordering](spp-visibility-stage-ordering.md) — attribute visibility syncs in Stage4; pre-stage-6 type names deferred (bug 45)
 - [Meta flags are per-stage](spp-meta-flags-are-per-stage.md) — stage 7 flags don't reach 8; new keywords
+- [Heavy guards, symmetric](meta-guard-heavy-symmetric.md) — Save/Restore only via MetaGuard; set an Enclosing* field = heavy guard, every stage
 - [_HasAnalysed conflation](spp-hasanalysed-conflation.md) — _Resolved not carried by Clone; 4 dead ends
 - [Clone() carries cached analysis](ast-clone-carries-cached-analysis.md) — rewriting a clone's child does nothing
 - [Call args replaced after analysis](call-args-replaced-after-analysis.md) — args moved into the winner
