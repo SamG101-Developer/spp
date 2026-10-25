@@ -18,6 +18,7 @@ import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
