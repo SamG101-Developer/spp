@@ -12,10 +12,15 @@ failure in function ...", is the richest signal for bad IR), and the asan build 
 builds the current directory (there is no `--dir`), compiling and linking; only optimisation/LTO are `-m rel` only.
 `spp test -g <group>` runs the s++ suites. Reserve the gtest suite for confirming a change before handing it over.
 
-**The suite:** `bash tests/compiler/run.sh` (gtest-parallel, ~15 min). Always `cmake --build ... --parallel` in the
+**The suite:** `bash tests/compiler/run.sh` (gtest-parallel, ~30 min for ~3180 tests). Always `cmake --build ... --parallel` in the
 same command first: a run started without it uses whatever `spp_tests` was last linked and reports the old test
 sources (three fixed tests once read as a fresh regression).
 
+- **Targeted changes get a targeted run, not the full suite.** Pick the suites the changes touch from
+  `spp_tests --gtest_list_tests` (generics/errors/tuples for a solver change, calls/overloads/parser for a cast change),
+  run them with `run.sh --gtest_filter=...`, and say which areas were covered and which were not. The full suite only
+  when asked, or for a change whose reach cannot be bounded (a harness-wide check). Disabled tests are listed but do not
+  run, so the run count is below the listed count.
 - **Read the result by counting files in `tests/gtest-parallel-logs/failed/`**, not by parsing the log text. Names are
   `spp_tests-<Suite>_<test>-<n>.log` (`.` becomes `_`).
 - **Wipe `tests/gtest-parallel-logs/` first if an earlier run was killed**: leftovers make the next run die in

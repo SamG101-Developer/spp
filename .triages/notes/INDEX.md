@@ -23,7 +23,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
 
 ## Build, test, verify
-- [Build workflow](build/build-workflow.md) — release build; fast probe loop; suite: rebuild first, count failed/, wipe after kills, run from build/tests
+- [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills
 - [README test badges](build/readme-test-badges-after-suite.md) — after a non-regressing full suite: total, passed, %
 - [IR diff verification](build/spp-ir-diff-verification.md) — diff out/llvm/**/*.ll, normalise Uids, print count
 - [Mangled names may change](build/mangled-names-may-change.md) — refactors may rename; check defines stay one-to-one
