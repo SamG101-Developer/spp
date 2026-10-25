@@ -132,7 +132,7 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   auto &lowered_cmp_code = *_Builtin->CompTimeImpl;
   auto arg_names = Vec<Shared<IdentifierAst>>{};
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
-  for (auto &&[name, arg] : meta->CompTimeArgs) {
+  for (auto &&[name, arg] : meta->CompTimeCall.FnArgs) {
     arg_names.emplace_back(name);
     extracted_args.emplace_back(std::move(arg));
   }
@@ -157,14 +157,14 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   _ValidateShiftAmount(extracted_args, meta);
   meta->CompTimeResult =
     lowered_cmp_code
-    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
+    .PreloadGns(sm, meta->CompTimeCall.GnTypeArgs, meta->CompTimeCall.GnCompArgs)
     .Invoke(extracted_args);
 
   // An "_assign" builtin writes its "&mut" operand in place:
   // the arguments go back as they were left, for the call to
   // write back to the places they came from.
   for (auto i = 0uz; i < arg_names.size(); ++i) {
-    meta->CompTimeArgs[arg_names[i]] = std::move(extracted_args[i]);
+    meta->CompTimeCall.FnArgs[arg_names[i]] = std::move(extracted_args[i]);
   }
 
   // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()

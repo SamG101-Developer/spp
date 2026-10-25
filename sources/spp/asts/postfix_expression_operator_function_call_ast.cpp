@@ -183,8 +183,12 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
 
   // If we are function folding, create transformed asts.
   if (Fold != nullptr) {
+    // Each folded call has no expression of its own: it applies to this call's left-hand side.
     _FoldedAsts = _HandleFnFolding(sm, meta);
-    for (auto const &ast : _FoldedAsts) { ast->Stage7_AnalyseSemantics(sm, meta); }
+    for (auto const &ast : _FoldedAsts) {
+      ast->Lhs = Lhs;
+      ast->Stage7_AnalyseSemantics(sm, meta);
+    }
     return;
   }
 
@@ -307,7 +311,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   if (Fold != nullptr) {
     _SkipFoldArgsScope(sm);
     for (auto const &temp : _FoldTemps) { temp->Stage8_CheckMemory(sm, meta); }
-    for (auto const &ast : _FoldedAsts) { ast->Stage8_CheckMemory(sm, meta); }
+    for (auto const &ast : _FoldedAsts) {
+      ast->Lhs = Lhs;
+      ast->Stage8_CheckMemory(sm, meta);
+    }
     return;
   }
 
@@ -372,10 +379,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     arg->Stage9_CompTimeResolve(sm, meta);
     args.emplace_back(std::move(name), std::move(meta->CompTimeResult));
   }
-  auto fn_arg_map = decltype(meta->CompTimeArgs)();
-  auto gn_arg_type_map = decltype(meta->CompTimeGnTypeArgs)();
-  auto gn_arg_comp_map = decltype(meta->CompTimeGnCompArgs)();
-  auto gn_comp_values = decltype(meta->CompTimeGnCompValues)();
+  auto fn_arg_map = decltype(meta->CompTimeCall.FnArgs)();
+  auto gn_arg_type_map = decltype(meta->CompTimeCall.GnTypeArgs)();
+  auto gn_arg_comp_map = decltype(meta->CompTimeCall.GnCompArgs)();
+  auto gn_comp_values = decltype(meta->CompTimeCall.GnCompValues)();
   for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
   for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) {
     gn_arg_type_map.emplace_back(MakeShared<TypeRef>(
@@ -425,10 +432,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
   {
     const auto _meta_guard = MetaGuard(meta);
     if (outer_site == nullptr) { meta->CompTimeCallSite = owner; }
-    meta->CompTimeArgs = std::move(fn_arg_map);
-    meta->CompTimeGnTypeArgs = std::move(gn_arg_type_map);
-    meta->CompTimeGnCompArgs = std::move(gn_arg_comp_map);
-    meta->CompTimeGnCompValues = std::move(gn_comp_values);
+    meta->CompTimeCall.FnArgs = std::move(fn_arg_map);
+    meta->CompTimeCall.GnTypeArgs = std::move(gn_arg_type_map);
+    meta->CompTimeCall.GnCompArgs = std::move(gn_arg_comp_map);
+    meta->CompTimeCall.GnCompValues = std::move(gn_comp_values);
     auto *const fn_scope = fn_proto->GetAstScope();
     auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
     fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
@@ -436,7 +443,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
     // Each "&mut" argument's place takes the value the callee left
     // its parameter with, as an assignment to it would.
     for (auto const &[name, place] : mut_places) {
-      auto value = meta->CompTimeArgs.contains(name) ? std::move(meta->CompTimeArgs[name]) : nullptr;
+      auto value = meta->CompTimeCall.FnArgs.contains(name) ? std::move(meta->CompTimeCall.FnArgs[name]) : nullptr;
       if (value == nullptr) { continue; }
       const auto place_sym = sm->CurrentScope->FindVarSymbolOutermost(*place).first;
       if (place->To<IdentifierAst>() != nullptr) {
@@ -749,7 +756,10 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // For function folding, collect a tuple of all return types.
   if (not _FoldedAsts.empty()) {
     auto folded_return_types = _FoldedAsts
-      | genex::views::transform([sm, meta](auto const &ast) { return ast->InferType(sm, meta); })
+      | genex::views::transform([this, sm, meta](auto const &ast) {
+        ast->Lhs = Lhs;
+        return ast->InferType(sm, meta);
+      })
       | genex::to<Vec>();
     auto tuple_type = TupleType(0, std::move(folded_return_types));
 

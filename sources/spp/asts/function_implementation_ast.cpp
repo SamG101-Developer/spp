@@ -57,7 +57,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
 
   // Inject the argument values. Todo: && & std::move?
   // A parameter resolves through the scope chain, so it can sit above the body's own scope and not be covered above.
-  for (auto const &[arg_name, arg_comp] : meta->CompTimeArgs) {
+  for (auto const &[arg_name, arg_comp] : meta->CompTimeCall.FnArgs) {
     const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
     caller_values.emplace_back(arg_sym, std::move(arg_sym->CompTimeValue));
     arg_sym->CompTimeValue = AstClone(arg_comp);
@@ -66,7 +66,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   // And the comp generics the call bound ("n" for "get[5]()"):
   // the template's body is what runs, so its comp parameters
   // are given their values for the call, as its parameters are.
-  for (auto const &[gn_name, gn_value] : meta->CompTimeGnCompValues) {
+  for (auto const &[gn_name, gn_value] : meta->CompTimeCall.GnCompValues) {
     const auto gn_sym = sm->CurrentScope->FindVarSymbol(gn_name.get());
     if (gn_sym == nullptr or gn_sym->Kind != VariableKind::GnCompParam) { continue; }
     caller_values.emplace_back(gn_sym, std::move(gn_sym->CompTimeValue));
@@ -85,7 +85,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
 
   // Each parameter's final value, for the call to write back
   // to the place a "&mut" argument came from.
-  for (auto &[arg_name, arg_comp] : meta->CompTimeArgs) {
+  for (auto &[arg_name, arg_comp] : meta->CompTimeCall.FnArgs) {
     const auto arg_sym = sm->CurrentScope->FindVarSymbol(arg_name.get());
     const auto value = arg_sym->CompTimeValue != nullptr
       ? arg_sym->CompTimeValue->To<ExpressionAst>()

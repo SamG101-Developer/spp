@@ -27,6 +27,7 @@ use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
 use(spp::asts::meta, enum class SubjectOnMatch : std::uint8_t);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
+use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
 use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
@@ -84,6 +85,40 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// The loop's own type, which each value reaching the phi node
   /// is coerced into; null when the loop yields no value.
   Shared<TypeRef> Type = nullptr;
+};
+
+/// What a "cmp" call binds for its callee (stage 9): its
+/// parameters' values and its generic arguments. The call sets
+/// them and runs the callee's body, which reads them, and writes
+/// each parameter's final value back for a "&mut" argument. A
+/// guard starts with none (the call's own guard included), so a
+/// nested scope or call never reads an outer call's; recursion
+/// is why they are here rather than on the callee.
+SPP_EXP_CLS struct spp::asts::meta::CompTimeCallArgs {
+  /// The function arguments: each parameter's value, by name.
+  Map<
+    Shared<IdentifierAst>, Unique<ExpressionAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>> FnArgs;
+
+  /// The call's generic arguments, each as it resolves at the
+  /// call site: a type's "TypeRef", a comp value's identity.
+  /// What "Self" stands for at the call, if anything, follows
+  /// the type arguments.
+  Vec<Shared<TypeRef>> GnTypeArgs;
+  Vec<analyse::scopes::CompId> GnCompArgs;
+
+  /// The call's comp generic arguments by the parameter each
+  /// binds ("n" for "get[5]()"), which the body of a "cmp fun"
+  /// reads its comp parameters as.
+  Vec<Pair<Shared<IdentifierAst>, analyse::scopes::CompId>> GnCompValues;
+
+  /// Exchange contents with "other", each container keeping its
+  /// buffers (a guard's slot is reused, see "Save").
+  auto Swap(CompTimeCallArgs &other) -> void;
+
+  /// Empty every container, keeping its buffers.
+  auto Clear() -> void;
 };
 
 /// The master meta context used for additional information
@@ -299,24 +334,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// loops and control flow.
   Vec<LlvmLoopInfo> LlvmLoopStack;
 
-  /// A collection of "cmp" compile-time information, typically
-  /// used in stage 9, to compute instructions at compile time.
-  Map<
-    Shared<IdentifierAst>, Unique<ExpressionAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
-
-  /// The call's generic arguments, each as it resolves at the
-  /// call site: a type's "TypeRef", a comp value's identity.
-  /// What "Self" stands for at the call, if anything, follows
-  /// the type arguments.
-  Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
-  Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
-
-  /// The call's comp generic arguments by the parameter each
-  /// binds ("n" for "get[5]()"), which the body of a "cmp fun"
-  /// reads its comp parameters as.
-  Vec<Pair<Shared<IdentifierAst>, analyse::scopes::CompId>> CompTimeGnCompValues;
+  /// The arguments of the "cmp" call being evaluated (stage 9).
+  CompTimeCallArgs CompTimeCall;
   Unique<ExpressionAst> CompTimeResult;
 
   /// Whether a comp-time "ret" has run, so the blocks and loops
@@ -396,15 +415,16 @@ public:
 private:
   friend struct MetaGuard;
 
-  /// Snapshot all the current values into the history, making
-  /// them "restorable". Only through a "MetaGuard", so a raised
-  /// error unwinds it.
-  SPP_ATTR_HOT auto Save() -> void;
+  /// Snapshot the current values into the history, making them
+  /// "restorable": the light ones, and with "heavy" the function
+  /// context too ("EnclosingFn*", "ClosureRetJoin"). Only through
+  /// a "MetaGuard", so a raised error unwinds it, and the same
+  /// "heavy" reaches both.
+  SPP_ATTR_HOT auto Save(bool heavy) -> void;
 
-  /// Restore all the light values (everything except function
-  /// context, which we want to persist upwards). Set "heavy"
-  /// to true to clear those too.
-  SPP_ATTR_HOT auto Restore(bool heavy = false) -> void;
+  /// Restore what "Save" took: the light values, and with "heavy"
+  /// the function context, which otherwise persists upwards.
+  SPP_ATTR_HOT auto Restore(bool heavy) -> void;
 };
 
 /// A scoped guard to prevent the desync of "Save"/"Restore"

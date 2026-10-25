@@ -57,16 +57,32 @@ auto CompilerMetaData::ResetContext() -> void {
   ParameterDefaultScope = nullptr;
 }
 
+auto CompTimeCallArgs::Swap(
+  CompTimeCallArgs &other)
+  -> void {
+  FnArgs.swap(other.FnArgs);
+  GnTypeArgs.swap(other.GnTypeArgs);
+  GnCompArgs.swap(other.GnCompArgs);
+  GnCompValues.swap(other.GnCompValues);
+}
+
+auto CompTimeCallArgs::Clear() -> void {
+  FnArgs.clear();
+  GnTypeArgs.clear();
+  GnCompArgs.clear();
+  GnCompValues.clear();
+}
+
 auto CompilerMetaData::ClearAssignmentTarget() -> void {
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
 }
 
-auto CompilerMetaData::Save() -> void {
+auto CompilerMetaData::Save(const bool heavy) -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
-  // storage persists across cycles. `CompTimeArgs` is moved (the guarded scope rebuilds it); `CompTimeResult` is not
-  // tracked.
+  // storage persists across cycles. `CompTimeCall` is moved out (each guard starts with none); `CompTimeResult` is not
+  // tracked. The function context is only taken for a heavy guard, the one restore that puts it back.
   if (_Depth == _History.size()) { _History.emplace_back(); }
   auto &s = _History[_Depth];
   ++_Depth;
@@ -83,12 +99,14 @@ auto CompilerMetaData::Save() -> void {
   s.InCompTimeValue = InCompTimeValue;
   s.WithinDeferTok = WithinDeferTok;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
-  s.EnclosingFnScope = EnclosingFnScope;
-  s.EnclosingFnFlavour = EnclosingFnFlavour;
-  s.EnclosingFnRetType = EnclosingFnRetType;
-  s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
-  s.ClosureRetJoin = ClosureRetJoin;
-  s.EnclosingFnCmp = EnclosingFnCmp;
+  if (heavy) {
+    s.EnclosingFnScope = EnclosingFnScope;
+    s.EnclosingFnFlavour = EnclosingFnFlavour;
+    s.EnclosingFnRetType = EnclosingFnRetType;
+    s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
+    s.ClosureRetJoin = ClosureRetJoin;
+    s.EnclosingFnCmp = EnclosingFnCmp;
+  }
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCall = TargetCall;
   s.LetStatementExplicitType = LetStatementExplicitType;
@@ -111,14 +129,8 @@ auto CompilerMetaData::Save() -> void {
   // this one's buffers, leaving both sides to allocate again next cycle - which is exactly what the pool is meant to
   // avoid. Swapping hands the slot the live contents and hands this side the slot's dead ones, and clearing those
   // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
-  CompTimeArgs.swap(s.CompTimeArgs);
-  CompTimeArgs.clear();
-  CompTimeGnTypeArgs.swap(s.CompTimeGnTypeArgs);
-  CompTimeGnTypeArgs.clear();
-  CompTimeGnCompArgs.swap(s.CompTimeGnCompArgs);
-  CompTimeGnCompArgs.clear();
-  CompTimeGnCompValues.swap(s.CompTimeGnCompValues);
-  CompTimeGnCompValues.clear();
+  CompTimeCall.Swap(s.CompTimeCall);
+  CompTimeCall.Clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
@@ -172,14 +184,8 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
-  CompTimeArgs.swap(state.CompTimeArgs);
-  state.CompTimeArgs.clear();
-  CompTimeGnTypeArgs.swap(state.CompTimeGnTypeArgs);
-  state.CompTimeGnTypeArgs.clear();
-  CompTimeGnCompArgs.swap(state.CompTimeGnCompArgs);
-  state.CompTimeGnCompArgs.clear();
-  CompTimeGnCompValues.swap(state.CompTimeGnCompValues);
-  state.CompTimeGnCompValues.clear();
+  CompTimeCall.Swap(state.CompTimeCall);
+  state.CompTimeCall.Clear();
   // Note: CompTimeResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
@@ -195,7 +201,7 @@ MetaGuard::MetaGuard(
   const bool heavy) :
   _Meta(meta),
   _Heavy(heavy) {
-  _Meta->Save();
+  _Meta->Save(_Heavy);
 }
 
 MetaGuard::~MetaGuard() {
