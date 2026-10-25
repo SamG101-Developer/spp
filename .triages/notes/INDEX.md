@@ -20,6 +20,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [[CHECKED] markers are the maintainer's](conventions/checked-markers-are-sams.md) — never add one; removing or folding a marked function is fine
 - [Check newer than apt](conventions/check-newer-than-apt.md) — any apt/brew-installed tool: compare upstream latest, pin if newer
 - [genex, not std::ranges](conventions/genex-not-std-ranges.md) — range algorithms via genex; add `import genex;`
+- [CI name casing](conventions/ci-name-casing.md) — Title Case workflows/jobs/matrix labels, sentence-case steps, kebab ids
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
 
 ## Build, test, verify
@@ -49,5 +50,5 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (19)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (21)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (23)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (18)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (19)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (3)

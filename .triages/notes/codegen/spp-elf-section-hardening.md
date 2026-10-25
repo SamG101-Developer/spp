@@ -77,6 +77,7 @@ Two real defects found:
    existing tree survives an update; the validator is what catches it.
 
 `-z text` and `--error-rwx-segments` are on the exe link since 2026-10-17 (plan G3).
+These flags are ELF-only; other formats are in [[link-flags-per-object-format]].
 
 **`spp run` used to run a stale binary after a failed build (fixed 2026-09-07).** Four things stacked up: `HandleBuild`
 returned `void`, so `HandleRun` asked "does an executable exist" instead of "did the build succeed"; the
