@@ -42,13 +42,13 @@ IdentifierAst::IdentifierAst(
   decltype(Val) val) :
   Val(std::move(val)),
   _Pos(pos),
-  _NameId(utils::Intern(Val)) {
+  _NameId(spp::utils::Intern(Val)) {
 }
 
 IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val,
-  const utils::InternedId name_id) :
+  const spp::utils::InternedId name_id) :
   Val(std::move(val)),
   _Pos(pos),
   _NameId(name_id) {
@@ -309,7 +309,7 @@ auto IdentifierAst::AnkerlHash() const -> std::size_t {
   // Consistent with "EqualsIdentifier", which decides
   // equality on the id, and a multiply rather than a
   // pass over the string.
-  return Hash<utils::InternedId>()(_NameId);
+  return Hash<spp::utils::InternedId>()(_NameId);
 }
 
 auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
