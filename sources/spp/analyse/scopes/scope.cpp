@@ -106,6 +106,40 @@ namespace spp::analyse::scopes {
       return nullptr;
     }
 
+    /// Every symbol in one of "scope"'s tables ("table"), then its ancestors' unless "exclusive", and with
+    /// "sup_scope_search" each super scope's own (exclusively, as "FindInSupScopesByName" does): what the
+    /// "Scope::GetAll*Symbols" collect.
+    template <typename Symbol, typename Table>
+    auto AllSymbols(
+      Scope const &scope, Table SymbolTable::*table, const bool exclusive, const bool sup_scope_search)
+      -> Vec<Symbol*> {
+      auto syms = (scope.InternalTable.*table).GetAll();
+      if (not exclusive and scope.Parent != nullptr) {
+        syms.append_range(AllSymbols<Symbol>(*scope.Parent, table, exclusive, sup_scope_search));
+      }
+      if (sup_scope_search) {
+        for (auto const *sup_scope : scope.GetSupScopes()) {
+          syms.append_range(AllSymbols<Symbol>(*sup_scope, table, true, false));
+        }
+      }
+      return syms;
+    }
+
+    /// Raise "sym" as a duplicate of "existing" ("what" names the kind) unless "allowed" (a function's mock, met
+    /// once per block declaring it; a declaration shadowing an import). The prelude is appended behind the author's
+    /// code, so a name it imports is reported through the author's side alone.
+    template <typename Symbol>
+    auto RaiseIfDuplicate(
+      Scope const &scope, Symbol const &existing, Symbol const &sym, const bool allowed, const StrView what)
+      -> void {
+      const auto existing_from_prelude = scope.IsFromPrelude(*existing.Name);
+      if (existing_from_prelude != scope.IsFromPrelude(*sym.Name)) {
+        auto const &mine = existing_from_prelude ? sym : existing;
+        RaiseIf<errors::SppIdentifierDuplicateError>(not allowed, ERR_ARGS(*mine.Name, what, mine.IsImport()));
+      }
+      RaiseIf<errors::SppIdentifierDuplicateError>(not allowed, ERR_ARGS(*existing.Name, *sym.Name, what));
+    }
+
     /// The symbol "scope"'s super scopes file for a parameter identity, searched as a name is
     /// ("FindInSupScopesByName"): each direct super scope, then its own.
     template <typename Symbol, typename ByParam>
@@ -976,26 +1010,12 @@ auto Scope::AddVarSymbolCheckConflict(
   // declared here may shadow an import.
   const auto existing_sym = FindVarSymbol(sym->Name.get(), false);
   if (existing_sym != nullptr) {
-    // Detect function and "use" (different target) variable
-    // symbol declaration.
+    // A function's mock, and a "use" (different target) shadowed
+    // by a declaration, are not duplicates.
     const auto is_functional = existing_sym->Kind == VariableKind::FnMock;
     const auto is_shadowed_import = existing_sym->IsImport() and not sym->IsImport();
-
-    // The prelude is appended behind the author's code, so a
-    // name it imports is reported through the author's side
-    // alone.
-    const auto existing_from_prelude = IsFromPrelude(*existing_sym->Name);
-    if (existing_from_prelude != IsFromPrelude(*sym->Name)) {
-      auto const &mine = existing_from_prelude ? *sym : *existing_sym;
-      RaiseIf<errors::SppIdentifierDuplicateError>(
-        not is_functional and not is_shadowed_import,
-        ERR_ARGS(*mine.Name, "comptime variable identifier", mine.IsImport()));
-    }
-
-    // Standard raise for non-functional symbols.
-    RaiseIf<errors::SppIdentifierDuplicateError>(
-      not is_functional and not is_shadowed_import,
-      ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
+    RaiseIfDuplicate(
+      *this, *existing_sym, *sym, is_functional or is_shadowed_import, "comptime variable identifier");
   }
 
   // Add a variable symbol to the corresponding symbol table.
@@ -1022,23 +1042,8 @@ auto Scope::AddTypeSymbolCheckConflict(
     // A function's mock class ("$F") is made once per block
     // that declares the function, so another block's is met
     // here; it is the same mock, not a redefinition.
-    const auto is_functional = existing_sym->IsMock();
-
-    // The prelude is appended behind the author's code, so a
-    // name it imports is reported through the author's side
-    // alone.
-    const auto existing_from_prelude = IsFromPrelude(*existing_sym->Name);
-    if (existing_from_prelude != IsFromPrelude(*sym->Name)) {
-      auto const &mine = existing_from_prelude ? *sym : *existing_sym;
-      RaiseIf<errors::SppIdentifierDuplicateError>(
-        not is_functional,
-        ERR_ARGS(*mine.Name, "type identifier", mine.IsImport()));
-    }
-
-    // Standard raise for non-functional symbols.
-    RaiseIf<errors::SppIdentifierDuplicateError>(
-      not is_functional,
-      ERR_ARGS(*existing_sym->Name, *sym->Name, "type identifier"));
+    RaiseIfDuplicate(
+      *this, *existing_sym, *sym, existing_sym->IsMock(), "type identifier");
   }
 
   // Add a type symbol to the corresponding symbol table.
@@ -1146,61 +1151,23 @@ auto Scope::RemNsSymbol(
 /// [CHECKED]
 auto Scope::GetAllVarSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<VariableSymbol*> {
-  // Get all the variable symbols from this scope.
-  auto syms = InternalTable.VarTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the variable symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllVarSymbols(exclusive, sup_scope_search));
-  }
-
-  // For sup-allowed searches, for each sup scope get the,
-  // variable symbols from the sup scopes too.
-  if (sup_scope_search) {
-    for (auto const *sup_scope : GetSupScopes()) {
-      syms.append_range(sup_scope->GetAllVarSymbols(true, false));
-    }
-  }
-
-  return syms;
+  return AllSymbols<VariableSymbol>(
+    *this, &SymbolTable::VarTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
 auto Scope::GetAllTypeSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<TypeSymbol*> {
-  // Get all the type symbols from this scope.
-  auto syms = InternalTable.TypeTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the type symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllTypeSymbols(exclusive, sup_scope_search));
-  }
-
-  // For sup-allowed searches, for each sup scope get the,
-  // type symbols from the sup scopes too.
-  if (sup_scope_search) {
-    for (const auto sup_scope : GetSupScopes()) {
-      syms.append_range(sup_scope->GetAllTypeSymbols(true, false));
-    }
-  }
-
-  return syms;
+  return AllSymbols<TypeSymbol>(
+    *this, &SymbolTable::TypeTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
 auto Scope::GetAllNsSymbols(
   const bool exclusive) const -> Vec<NamespaceSymbol*> {
-  // Get all the namespace symbols from this scope.
-  auto syms = InternalTable.NsTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the namespace symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllNsSymbols(exclusive));
-  }
-  return syms;
+  // A namespace has no super scopes to search.
+  return AllSymbols<NamespaceSymbol>(
+    *this, &SymbolTable::NsTable, exclusive, false);
 }
 
 /// [CHECKED]
