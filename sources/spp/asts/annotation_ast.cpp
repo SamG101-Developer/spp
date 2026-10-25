@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;

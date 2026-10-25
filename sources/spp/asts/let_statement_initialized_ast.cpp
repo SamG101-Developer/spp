@@ -11,6 +11,7 @@ import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_resolution;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
