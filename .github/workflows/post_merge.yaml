@@ -94,7 +94,7 @@ jobs:
   # lane missing here is a lane that compiles from cold on every
   # PR. A release runs it too, for linux-x64.
   linux:
-    name: Linux gcc
+    name: Linux GCC
     needs: [ changes, release-gate ]
     if: |
       !cancelled()
@@ -111,7 +111,7 @@ jobs:
   # The suites over a clang build that records what they run, for
   # Sonar below. Too slow for a pull request.
   coverage:
-    name: Linux clang coverage
+    name: Linux Clang Coverage
     needs: [ changes ]
     if: |
       !cancelled()
@@ -173,7 +173,7 @@ jobs:
   # One lane per release platform: separate jobs, since a matrix of
   # workflow calls keeps one cell's outputs.
   release-linux-arm64:
-    name: Release · linux-arm64
+    name: Release · Linux ARM64
     needs: [ release-gate ]
     if: needs.release-gate.outputs.release == 'true'
     permissions:
@@ -188,7 +188,7 @@ jobs:
       check-floor: true
 
   release-macos-arm64:
-    name: Release · macos-arm64
+    name: Release · macOS ARM64
     needs: [ release-gate ]
     if: needs.release-gate.outputs.release == 'true'
     permissions:
@@ -203,7 +203,7 @@ jobs:
       check-floor: true
 
   release-windows-x64:
-    name: Release · windows-x64
+    name: Release · Windows x64
     needs: [ release-gate ]
     if: needs.release-gate.outputs.release == 'true'
     permissions:

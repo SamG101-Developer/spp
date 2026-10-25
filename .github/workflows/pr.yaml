@@ -165,13 +165,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-arm gcc, os: ubuntu-24.04-arm, compiler: gcc }
-          - { name: linux-arm clang, os: ubuntu-24.04-arm, compiler: clang }
-          - { name: linux clang, os: ubuntu-24.04, compiler: clang }
-          - { name: macos clang, os: macos-15, compiler: clang }
-          - { name: windows msvc, os: windows-2025, compiler: msvc }
+          - { name: Linux ARM GCC, os: ubuntu-24.04-arm, compiler: gcc }
+          - { name: Linux ARM Clang, os: ubuntu-24.04-arm, compiler: clang }
+          - { name: Linux Clang, os: ubuntu-24.04, compiler: clang }
+          - { name: macOS Clang, os: macos-15, compiler: clang }
+          - { name: Windows MSVC, os: windows-2025, compiler: msvc }
           # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
-          - { name: windows clang-cl (advisory), os: windows-2025, compiler: clang-cl, advisory: true }
+          - { name: Windows clang-cl (Advisory), os: windows-2025, compiler: clang-cl, advisory: true }
     uses: ./.github/workflows/_lane.yaml
     with:
       os: ${{ matrix.os }}
@@ -185,7 +185,7 @@ jobs:
   # non-x86 - and check the object and the datalayout that came
   # out. Todo: Add to ci-success once more stable.
   cross-codegen:
-    name: Cross codegen (advisory)
+    name: Cross Codegen (Advisory)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -240,7 +240,7 @@ jobs:
   # behind cppcheck like the builds, and a red quality gate
   # does not block a merge. Todo: Add it to the ci-success.
   sonar:
-    name: Sonar (advisory)
+    name: Sonar (Advisory)
     needs: [ changes, cppcheck ]
     if: |
       !cancelled()
@@ -260,7 +260,7 @@ jobs:
   # spend a review on a pair of SHAs
   # Todo: Require all conversations to be resolved before merging.
   claude-review:
-    name: Claude review (advisory)
+    name: Claude Review (Advisory)
     needs: [ changes ]
     if: |
       github.event_name == 'pull_request'

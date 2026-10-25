@@ -12,6 +12,7 @@ permissions: { }
 
 jobs:
   claude:
+    name: Claude Code
     if: |
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
                github.event.comment.author_association

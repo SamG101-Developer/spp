@@ -17,7 +17,7 @@ permissions: { }
 
 jobs:
   codeql:
-    name: c-cpp
+    name: C/C++
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:

@@ -119,7 +119,7 @@ defaults:
 
 jobs:
   build:
-    name: build
+    name: Build
     runs-on: ${{ inputs.os }}
     timeout-minutes: 120
     continue-on-error: ${{ inputs.advisory }}
@@ -315,7 +315,7 @@ jobs:
   # Whatever the test cells covered, failed cells included: a red
   # test still ran the code it reached.
   coverage:
-    name: coverage
+    name: Coverage
     needs: [ build, test ]
     if: ${{ !cancelled() && inputs.coverage && needs.build.result == 'success' }}
     runs-on: ${{ inputs.os }}

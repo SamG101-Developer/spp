@@ -23,11 +23,11 @@ read -ra mode_list <<< "$MODES"
 # differential suite are Linux only, and advisory until each has
 # run clean for a while.
 extras=()
-[ "$STL" = true ] && extras+=("stl|stl conformance|20|false")
+[ "$STL" = true ] && extras+=("stl|STL Conformance|20|false")
 if [[ "$OS" == ubuntu* ]]; then
-  [ "$VALGRIND" = true ] && extras+=("valgrind|valgrind groups|30|true")
-  [ "$CODEGEN" = true ] && extras+=("codegen|codegen checks|30|true")
-  [ "$DIFFERENTIAL" = true ] && extras+=("differential|differential suite|30|true")
+  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Groups|30|true")
+  [ "$CODEGEN" = true ] && extras+=("codegen|Codegen Checks|30|true")
+  [ "$DIFFERENTIAL" = true ] && extras+=("differential|Differential Suite|30|true")
 fi
 
 entries=()
@@ -38,12 +38,13 @@ add() {  # suites label timeout advisory [mode shard]
 last_mode="${mode_list[${#mode_list[@]} - 1]}"
 for mode in "${mode_list[@]}"; do
   case "$mode" in
-    rel | dev) ;;
+    rel) mode_label=Rel ;;
+    dev) mode_label=Dev ;;
     *) echo "::error::bad test mode '${mode}'; expected rel or dev"; exit 1 ;;
   esac
   for ((shard = 0; shard < SHARD_COUNT; shard++)); do
     suites="gtest"
-    label="gtest ${mode} $((shard + 1))/${SHARD_COUNT}"
+    label="GTest ${mode_label} $((shard + 1))/${SHARD_COUNT}"
     timeout=60
     # A packed cell is advisory only if every suite in it is;
     # with gtest in it, it never is.
