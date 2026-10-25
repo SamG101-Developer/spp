@@ -53,6 +53,8 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
   Val(std::move(val)) {
 }
 
+FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
+
 auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;

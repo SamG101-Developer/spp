@@ -36,6 +36,8 @@ SPP_EXP_CLS struct spp::asts::FunctionCallArgumentAst : Ast, mixins::OrderableAs
     decltype(Val) &&val,
     utils::OrderableTag order_tag);
 
+  ~FunctionCallArgumentAst() override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
