@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_tuple_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;

@@ -19,6 +19,7 @@ import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_expression_branch_ast;
+import spp.asts.case_pattern_variant_ast;
 import spp.asts.case_pattern_variant_else_ast;
 import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;

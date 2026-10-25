@@ -11,6 +11,7 @@ import spp.asts.case_pattern_variant_destructure_array_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.asts.expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
