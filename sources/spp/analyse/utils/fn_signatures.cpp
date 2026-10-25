@@ -218,7 +218,7 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
 
   // Check for an overload conflict with all functions
   // of the same name.
-  for (auto const &[old_scope, old_fn, _, _] : existing) {
+  for (auto const &[old_scope, old_fn, _1, _2] : existing) {
     // Ignore the same object. A method it overrides on a base
     // class is not among them: "GetAllFnScopes" applies overrides.
     if (old_fn == &new_fn) { continue; }
