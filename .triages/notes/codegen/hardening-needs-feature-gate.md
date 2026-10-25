@@ -16,7 +16,7 @@ feature flag to disable it ... as we have seen with other memory features". Matc
 2.30). Resolved as a *build-time* floor, not a runtime fallback: `[target.floor]` in spp.toml leaves out a measure the
 floor can't have (deny_wx 6.6, seal 6.10) and records it in the hardening record; an explicit key above the floor is a
 build error. The default floor is the release floor, so by default deny_wx/seal are left out. Runtime still never skips a measure. A fallback that does the same *operation* another way (io_uring ->
-plain syscall) is fine. Plan: `../../../.triages/ci-production-readiness-plan.md` P1. Implemented 2026-10-21: a run-time measure's `KeySpec.MinLinux` + `features::Applied`/`LeftOut`/`CheckFloor`; a new
+plain syscall) is fine. Plan: `../../docs_wip/ci-production-readiness-plan.md` P1. Implemented 2026-10-21: a run-time measure's `KeySpec.MinLinux` + `features::Applied`/`LeftOut`/`CheckFloor`; a new
 one only needs `.MinLinux` and its `Applied` call where the shim is built.
 
 **How to apply:** a compile-time measure is gated with `FEATURE_GATE` in `compiler_boot.cpp`; a runtime one becomes an

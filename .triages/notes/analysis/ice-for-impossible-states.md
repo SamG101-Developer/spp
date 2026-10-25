@@ -23,6 +23,6 @@ scopes it printed nothing. `SPP_ASSERT` compiled to nothing in release, which is
 - Only where the check really tells the impossible state apart. N8.5 (2026-10-17): the formatter's "position past
   this file" ICE fired in 11 index tests, but a formatter can't tell another file's ast in range either, so the
   cause was error-builder formatter pairing (N8.7, now fixed: positions name their file); it became "no position". Probe std first, then the
-  full suite, before trusting a new ICE; audit record in `../../../.triages/failsafe-audit.md`.
+  full suite, before trusting a new ICE; audit record in `../../docs_closed/failsafe-audit.md`.
 - `Ice(ast, ...)` quotes through `ast.GetAstScope()`, which only scope-owning asts have; pass the scope for an
   expression. Related: [[spp-test-suite-stage-scope]].
