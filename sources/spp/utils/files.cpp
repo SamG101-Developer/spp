@@ -12,6 +12,7 @@ module;
   #include <sys/file.h>
   #include <unistd.h>
 #endif
+#include <stdlib.h>  // setenv, unsetenv; _dupenv_s, _putenv_s
 
 module spp.utils.files;
 import genex;
@@ -225,4 +226,43 @@ auto spp::utils::files::FindNewestVersion(
     }
   }
   return best;
+}
+
+auto spp::utils::files::GetEnv(
+  const StrView name)
+  -> Opt<Str> {
+#if SPP_PLATFORM_WINDOWS
+  // MSVC deprecates getenv for its shared static buffer.
+  char *raw = nullptr;
+  auto size = std::size_t{0};
+  if (_dupenv_s(&raw, &size, Str(name).c_str()) != 0 or raw == nullptr) { return Nullopt; }
+  auto value = Str(raw);
+  std::free(raw);
+  return value;
+#else
+  auto const *const raw = std::getenv(Str(name).c_str());
+  if (raw == nullptr) { return Nullopt; }
+  return Str(raw);
+#endif
+}
+
+auto spp::utils::files::SetEnv(
+  const StrView name,
+  const StrView value)
+  -> void {
+#if SPP_PLATFORM_WINDOWS
+  _putenv_s(Str(name).c_str(), Str(value).c_str());
+#else
+  setenv(Str(name).c_str(), Str(value).c_str(), 1);
+#endif
+}
+
+auto spp::utils::files::UnsetEnv(
+  const StrView name)
+  -> void {
+#if SPP_PLATFORM_WINDOWS
+  _putenv_s(Str(name).c_str(), "");
+#else
+  unsetenv(Str(name).c_str());
+#endif
 }

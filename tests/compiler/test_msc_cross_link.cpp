@@ -1,4 +1,3 @@
-#include <stdlib.h>  // setenv, unsetenv
 #include "test_macros.hpp"
 
 import spp.codegen.llvm_target;
@@ -27,14 +26,11 @@ namespace {
 
   /// PATH set to "value" for one scope, then put back.
   struct PathAs {
-    spp::Opt<spp::Str> Saved;
-    explicit PathAs(spp::Str const &value) {
-      if (auto const *const old = std::getenv("PATH"); old != nullptr) { Saved = old; }
-      setenv("PATH", value.c_str(), 1);
-    }
+    spp::Opt<spp::Str> Saved = spp::utils::files::GetEnv("PATH");
+    explicit PathAs(spp::Str const &value) { spp::utils::files::SetEnv("PATH", value); }
     ~PathAs() {
-      if (Saved.has_value()) { setenv("PATH", Saved->c_str(), 1); }
-      else { unsetenv("PATH"); }
+      if (Saved.has_value()) { spp::utils::files::SetEnv("PATH", *Saved); }
+      else { spp::utils::files::UnsetEnv("PATH"); }
     }
   };
 }

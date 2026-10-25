@@ -54,6 +54,16 @@ namespace spp::utils::files {
   /// first on PATH of two with the same N.
   SPP_EXP_FUN auto FindNewestVersion(StrView name) -> Opt<Path>;
 
+  /// The environment variable "name", or none when it is not set.
+  SPP_EXP_FUN auto GetEnv(StrView name) -> Opt<Str>;
+
+  /// Set the environment variable "name" to "value", replacing
+  /// any value it had. On Windows an empty value unsets it.
+  SPP_EXP_FUN auto SetEnv(StrView name, StrView value) -> void;
+
+  /// Remove the environment variable "name", if it is set.
+  SPP_EXP_FUN auto UnsetEnv(StrView name) -> void;
+
   /// An advisory lock over a whole file: "flock(2)" on POSIX,
   /// and the equivalent whole-range "LockFileEx" on Windows.
   /// Both platforms hold the lock on the open file rather than
