@@ -49,6 +49,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;

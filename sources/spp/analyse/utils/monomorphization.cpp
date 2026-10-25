@@ -35,6 +35,7 @@ import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.identifier_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.tuple_literal_ast;
