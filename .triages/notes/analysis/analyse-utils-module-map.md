@@ -50,6 +50,11 @@ now live in other modules.
 and `visibility_utils` checks) stay in their area, so the call site names it. `marker_sups::IsCopyMarker` /
 `IsDropMarker` replace the spelled `IsA(*COPY / *DROP, ..)` kind checks.
 
+**2026-10-25 (N7.2):** attributes are one walk: `type_members::GetAllAttrs` (name, type read where declared,
+declaring scope), `AttrIndicesOf(attrs, name)` (every position of a name; shared by `GetFieldIndexInType` and the
+object initializer) and `AttrAstOf(scope, name)` (the declaration). `GetAllAttrAsts` is gone. An object initializer's
+arguments carry `AttrIndex`, their position in `GetAllAttrs`, which codegen places them by.
+
 **Why:** memory files written before this date may name the old module. Most qualified names were rewritten, but
 prose may still say e.g. "func_utils".
 
