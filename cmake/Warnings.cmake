@@ -1,7 +1,7 @@
 # Enable all warnings on a target (SPP_WERROR => treating as errors).
 function(spp_target_warnings target)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(${target} PRIVATE /W4)
+    target_compile_options(${target} PRIVATE /W4 /external:templates-)
     return()
   endif ()
 
