@@ -21,6 +21,11 @@ protected:
   /// ("type_join::TypeJoin"); none for a loop with no "exit".
   Opt<analyse::utils::type_join::JoinedValue> _LoopExitTypeInfo;
 
+  /// Where the first value given to the loop was written (an
+  /// "exit"'s), for an error about the loop's value: the agreed
+  /// value may be what the loop is assigned to, which has none.
+  Ast const *_FirstExitSite = nullptr;
+
 public:
   /// The "loop" token starting the loop expression.
   Unique<TokenAst> TokLoop;

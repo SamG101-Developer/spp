@@ -64,7 +64,9 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Body),
     AstClone(ElseBlock));
   cloned->LoopDefer = AstClone(LoopDefer);
+  cloned->LoweredFrom = LoweredFrom;
   cloned->_LoopExitTypeInfo = _LoopExitTypeInfo;
+  cloned->_FirstExitSite = _FirstExitSite;
   cloned->_Scope = _Scope;
   return cloned;
 }
@@ -138,9 +140,12 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
     }
   }
   _LoopExitTypeInfo = Nullopt;
+  _FirstExitSite = nullptr;
   if (not join.Empty()) {
     _LoopExitTypeInfo = join.Solve();
     join.InstantiateFnValues(*_LoopExitTypeInfo, sm, meta);
+    const auto first = genex::find_if(join.Values(), [](auto const &v) { return not v.Diverges; });
+    _FirstExitSite = first != join.Values().end() ? first->Site : join.Values().front().Site;
   }
 
   // Exit the loop scope.
@@ -506,7 +511,9 @@ auto LoopConditionalExpressionAst::InferType(
     const auto exit_ref = TypeRef::Of(*agreed.Type, *agreed.TypeScope);
     RaiseIf<SppLoopMissingElseError>(
       not agreed.Diverges and not exit_ref.IsNever and not type_predicates::IsTypeVoid(exit_ref, *sm->CurrentScope),
-      ERR_ARGS(*this, agreed.Site != nullptr ? *agreed.Site : *static_cast<Ast const*>(this)));
+      ERR_ARGS(
+        LoweredFrom != nullptr ? *LoweredFrom : *static_cast<Ast const*>(this),
+        _FirstExitSite != nullptr ? *_FirstExitSite : *static_cast<Ast const*>(this)));
   }
   return type;
 }

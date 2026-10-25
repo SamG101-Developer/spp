@@ -78,8 +78,8 @@ auto LoopIterableExpressionAst::PosStart() const -> std::size_t {
 }
 
 auto LoopIterableExpressionAst::PosEnd() const -> std::size_t {
-  // Use the iterable or the transformed loop.
-  return Iterable != nullptr ? Iterable->PosEnd() : _TransformedLoop->PosEnd();
+  // Use the iterable, or where it ended once the lowering moved it.
+  return Iterable != nullptr ? Iterable->PosEnd() : _IterablePosEnd;
 }
 
 auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
@@ -97,6 +97,7 @@ auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
   ast->_TransformedFlagLet = AstClone(_TransformedFlagLet);
   ast->_TransformedLoop = AstClone(_TransformedLoop);
   ast->_IterableName = AstCloneShared(_IterableName);
+  ast->_IterablePosEnd = _IterablePosEnd;
   return ast;
 }
 
@@ -133,6 +134,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   auto iterable_let = [&] {
     auto mut = MakeUnique<TokenAst>(PosStart(), lex::SppTokenType::KW_MUT, "mut");
     auto iterable_var = MakeUnique<LocalVariableSingleIdentifierAst>(std::move(mut), iterable_name, nullptr);
+    _IterablePosEnd = Iterable->PosEnd();
     auto iterable_val = std::move(Iterable);
     return MakeUnique<LetStatementInitializedAst>(
       nullptr, std::move(iterable_var), nullptr, nullptr, std::move(iterable_val));
@@ -230,6 +232,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   }();
   loop_new->Body->Members.emplace_back(std::move(resume_let));
   loop_new->Body->Members.emplace_back(std::move(case_expr));
+  loop_new->LoweredFrom = this;
   _TransformedLoop = std::move(loop_new);
 
   // The iterator is consumed on every way out of the loop, and

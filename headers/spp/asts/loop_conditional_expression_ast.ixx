@@ -27,6 +27,11 @@ SPP_EXP_CLS struct spp::asts::LoopConditionalExpressionAst final : LoopExpressio
   /// gives one, to drop its iterator.
   Unique<DeferStatementAst> LoopDefer;
 
+  /// The iterable loop this one was lowered from, which an error
+  /// about the loop as a whole points at (this one has no "loop"
+  /// written); nullptr for a loop written as one.
+  Ast const *LoweredFrom = nullptr;
+
   LoopConditionalExpressionAst(
     decltype(TokLoop) &&tok_loop,
     decltype(Cond) &&cond,

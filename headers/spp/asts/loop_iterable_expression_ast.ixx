@@ -72,6 +72,10 @@ private:
 
   Unique<LoopConditionalExpressionAst> _TransformedLoop;
 
+  /// Where the iterable ended, kept as the lowering moves it out,
+  /// so the loop still spans what was written ("PosEnd").
+  std::size_t _IterablePosEnd = 0;
+
   /// The name of the desugared iterator variable ("$_iter_...").
   Shared<IdentifierAst> _IterableName;
 };
