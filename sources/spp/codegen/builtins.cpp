@@ -464,3 +464,8 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   Register(map, "std.threading.atomic.Atom.fetch_umin", AtomicRmw(AtomicRmwOp::UMin));
   return map;
 }
+
+// Defined here, not inline in the interface: MSVC emits no definition
+// for an exported inline variable with a dynamic initialiser.
+const spp::Map<spp::Str, spp::codegen::builtins::LoweredFnImpl> spp::codegen::builtins::kBuiltinFuncs =
+  MakeBuiltinFnMap();

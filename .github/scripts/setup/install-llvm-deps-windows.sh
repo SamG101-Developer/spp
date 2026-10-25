@@ -11,7 +11,8 @@ work="${RUNNER_TEMP}/llvm-deps"
 rm -rf "$work"
 mkdir -p "$work"
 
-# Static, against the static CRT the prebuilt LLVM forces on its users.
+# Static, against the static CRT the prebuilt LLVM forces on its users;
+# CMP0091 makes zstd, pinned to older policies, honour the setting.
 build() {
   local name="$1" url="$2" sha="$3" src="$4"
   shift 4
@@ -19,6 +20,7 @@ build() {
   pinned_checkout "${work}/${name}" "$url" "$sha"
   cmake_install "${work}/${name}/${src}" "${work}/${name}/build" "$prefix" \
     -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+    -DCMAKE_POLICY_DEFAULT_CMP0091=NEW \
     -DBUILD_SHARED_LIBS=OFF "$@"
 }
 

@@ -23,12 +23,13 @@ mkdir -p "$PREFIX" "${RUNNER_TEMP}/libs"
 cd "${RUNNER_TEMP}/libs"
 
 # The prebuilt LLVM forces the static CRT on its users, so
-# everything spp links must use it too.
+# everything spp links must use it too; CMP0091 makes projects
+# pinned to older policies honour the setting.
 platform_flags=()
 if [ "$RUNNER_OS" = "Windows" ]; then
   PREFIX="$(cygpath -m "$PREFIX")"
   export CMAKE_PREFIX_PATH="$PREFIX;$llvm_dir"
-  platform_flags+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded)
+  platform_flags+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW)
 else
   export CMAKE_PREFIX_PATH="$PREFIX:$llvm_dir"
 fi
