@@ -17,6 +17,7 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import re
 import sys
@@ -272,7 +273,7 @@ def cmd_set(path: str, value: str) -> None:
     else:
         fail(f"unsupported path {path!r}; expected pin.<name>.<key> or library.<name>.<key>")
 
-    text = MANIFEST.read_text()
+    text = MANIFEST.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
 
     start = next((i for i, line in enumerate(lines) if line.strip() == header), None)
@@ -293,7 +294,7 @@ def cmd_set(path: str, value: str) -> None:
             old = lines[i]
             lines[i] = f'{match.group(1)}"{value}"{match.group(2)}'
             if lines[i] != old:
-                MANIFEST.write_text("".join(lines))
+                MANIFEST.write_text("".join(lines), encoding="utf-8", newline="\n")
             return
     fail(f"{header} has no '{key}' key to rewrite")
 
@@ -312,6 +313,11 @@ def main() -> None:
     setter = sub.add_parser("set")
     setter.add_argument("path")
     setter.add_argument("value")
+
+    # Every subcommand is read by bash, which keeps the "\r" a
+    # Windows Python would otherwise end each line with.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(newline="\n")
 
     args = parser.parse_args()
     if args.command == "set":
