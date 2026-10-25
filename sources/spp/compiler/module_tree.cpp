@@ -111,6 +111,7 @@ spp::compiler::ModuleTree::ModuleTree(
     const auto keep_tst = tests.WantsLib(lib_name) and inner_path != Path("tst/main.spp");
 
     if (inner_path != Path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
+      m->IsStd = lib_name == "std" and top == "src";
       filtered_vcs_modules.emplace_back(std::move(m));
     }
   }

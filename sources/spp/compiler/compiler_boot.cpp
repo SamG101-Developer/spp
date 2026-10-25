@@ -95,7 +95,7 @@ auto spp::compiler::CompilerBoot::Lex(
   -> void {
   // Lexing stage.
   for (auto const &mod : tree) {
-    auto lexer = lex::Lexer(mod->Code, not utils::files::NativeString(mod->Path).contains("/src/std/"));
+    auto lexer = lex::Lexer(mod->Code, not mod->IsStd);
     mod->Tokens = lexer.Lex();
     mod->Formatter = utils::errors::ErrorFormatter::ForFile(
       mod->Tokens, utils::files::DisplayString(mod->Path), lexer.PreludeTokenIndex());

@@ -69,6 +69,12 @@ SPP_EXP_CLS struct spp::compiler::Module {
   /** Whether this module is a stub of an ffi package, from its owner's "ffi" folder. */
   bool IsFfi = false;
 
+  /**
+   * Whether this module is one of the standard library's own sources, from "vcs/std/src". These import what they use
+   * themselves, so the prelude is not appended to them.
+   */
+  bool IsStd = false;
+
   Module(
     spp::Path path,
     Str code,
