@@ -183,9 +183,11 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       lhs_var_sym == nullptr and lhs_ns_sym != nullptr,
       ERR_ARGS(*Lhs, *TokDot, "namespace"));
 
-    // Check whether the target field exists on the type,
-    // or on the forwarded type.
-    if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
+    // Check whether the target field exists on the type (a scope
+    // declaring it, supers included), or on the forwarded type.
+    _Owner = nullptr;
+    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(*lhs_type_sym->LinkedScope, *Name);
+    if (all_scopes_and_syms.empty()) {
       // If we are accessing via forwarding, then build the
       // forward call, and store it for later analysis.
       auto fwd_call = marker_sups::BuildFwdCall(*Lhs, lhs_ref, sm, meta, Name.get());
@@ -207,12 +209,26 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
       }
 
       // Type field was not found on this type, or the
-      // forwarding type (includes nested forwarding checks).
+      // forwarding type (includes nested forwarding checks). The
+      // candidates are what "." reaches on either: attributes and
+      // methods, not "cmp" constants.
+      auto candidates = lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true);
+      const auto [fwd_ref, fwd_mut] = marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope);
+      for (auto const &fwd : {fwd_ref, fwd_mut}) {
+        if (auto const *const target = marker_sups::FwdTargetOf(fwd).Symbol;
+          target != nullptr and target->LinkedScope != nullptr) {
+          candidates.append_range(target->LinkedScope->GetAllVarSymbols(true, true));
+        }
+      }
       member_lookup::RaiseMissingIdentifierAndClosestOptions(
-        *Name, lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true), {});
+        *Name, candidates | genex::views::filter([](auto const *sym) {
+          return member_lookup::MemberReachableBy(*sym, member_lookup::MemberAccessForm::Runtime);
+        }) | genex::to<Vec>(), {});
     }
 
-    auto all_scopes_and_syms = member_lookup::ScopesDeclaringVar(*lhs_type_sym->LinkedScope, *Name);
+    // The member, as "." reaches it, for every later read ("_Resolve").
+    _Owner = lhs_type_sym;
+    _Member = member_lookup::MemberOf(*lhs_type_sym->LinkedScope, *Name, MemberAccessForm::Runtime);
 
     // Enforce visibility on functional (method) members.
     // Their mock ("$"-typed) symbols are excluded from the
@@ -484,10 +500,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
 
   // Read where the field is declared for this instance: its
   // owner's scope, which binds the parameters its type names.
-  const auto lhs_sym = Lhs->InferTypeRef(sm, meta).Symbol;
-  const auto var_sym = member_lookup::MemberOf(
-    *lhs_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
-  return var_sym->TypeRefIn(*lhs_sym->LinkedScope);
+  return _Resolve(sm, meta)->TypeRefIn(*_Owner->LinkedScope);
+}
+
+auto PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
+  ScopeManager *sm, CompilerMetaData *meta) -> VariableSymbol* {
+  //
+  IMPORT_UTILS;
+  if (_Owner != nullptr) { return _Member; }
+  _Owner = Lhs->InferTypeRef(sm, meta).Symbol;
+  _Member = member_lookup::MemberOf(*_Owner->LinkedScope, *Name, member_lookup::MemberAccessForm::Runtime);
+  return _Member;
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {

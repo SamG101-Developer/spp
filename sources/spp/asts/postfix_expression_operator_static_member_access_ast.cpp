@@ -84,44 +84,38 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
   using member_lookup::MemberAccessForm;
 
+  // The member is looked up here, in the scope the access is analysed in, and reused from now on.
+  _MemberScope = nullptr;
+
   // Handle types on the left-hand-side of a static member access.
-  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
-    _LhsTypeSymbol = lhs_type_sym;
-
-    // Check the target field exists on the type.
-    if (not lhs_type_sym->LinkedScope->HasVarSymbol(Name.get(), true)) {
-      const auto lhs_ref = TypeRef::Of(*lhs_as_type, *sm->CurrentScope);
-      auto *const lhs_fwd_ref_type_sym =
-        marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
-      const auto found = lhs_fwd_ref_type_sym != nullptr
-        and lhs_fwd_ref_type_sym->LinkedScope->HasVarSymbol(Name.get(), true);
-      if (not found) {
-        // Todo: Need to filter these candidates to function groups who contain a static overload.
-        // Todo: Add fwd-ref type member candidates
-
-        auto candidates = lhs_type_sym->LinkedScope->GetAllVarSymbols(true, true)
-          | genex::views::filter([](auto const &sym) { return sym->Kind == VariableKind::FnMock; })
-          | genex::to<Vec>();
-        member_lookup::RaiseMissingIdentifierAndClosestOptions(*Name, std::move(candidates), {});
+  if (Lhs->To<TypeAst>() != nullptr) {
+    const auto member = _Resolve(sm);
+    // The member exists on the type, or on the type it forwards to. The candidates are the methods of either: a
+    // static access names a method or a constant (Todo: filter to the methods with a static overload).
+    if (member == nullptr) {
+      auto candidates = _LhsTypeSymbol->LinkedScope->GetAllVarSymbols(true, true);
+      const auto lhs_ref = TypeRef::Of(*Lhs->As<TypeAst>(), *sm->CurrentScope);
+      const auto fwd_sups = marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope);
+      if (auto const *const fwd = marker_sups::FwdTargetOf(fwd_sups.first).Symbol;
+        fwd != nullptr and fwd->LinkedScope != nullptr) {
+        candidates.append_range(fwd->LinkedScope->GetAllVarSymbols(true, true));
       }
-      _LhsTypeSymbol = lhs_fwd_ref_type_sym;
+      member_lookup::RaiseMissingIdentifierAndClosestOptions(
+        *Name, candidates | genex::views::filter([](auto const *sym) { return sym->Kind == VariableKind::FnMock; })
+          | genex::to<Vec>(), {});
     }
 
-    // Check there is only 1 target field on the type at the highest level.
-    if (const auto named = _LhsTypeSymbol->LinkedScope->FindVarSymbol(Name.get(), true);
-      named->Kind == VariableKind::FnMock) {
-      // Use the hook to record information for the resolution and
-      // completion plugin.
-      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, named);
+    // A method named as a value: its "$" mock. Use the hook to record information for the resolution and completion
+    // plugin.
+    if (member->Kind == VariableKind::FnMock) {
+      lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
       return;
     }
 
     // A class attribute belongs to a value of the type rather
     // than to the type, so it is reached with "." instead.
-    const auto member = member_lookup::MemberOf(*_LhsTypeSymbol->LinkedScope, *Name, MemberAccessForm::Static);
     RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-      member != nullptr and not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static),
+      not member_lookup::MemberReachableBy(*member, MemberAccessForm::Static),
       ERR_ARGS(*Name, *TokDblColon, "attribute"));
 
     // Which declaration the access resolves to: the nearest
@@ -152,34 +146,29 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
     return;
   }
 
-  // Otherwise, we are handling a namespace left-hand-side.
-  const auto lhs_as_ident = Lhs->To<IdentifierAst>();
-  const auto lhs_var_sym = sm->CurrentScope->FindVarSymbol(lhs_as_ident);
-
-  // Check the lhs is a namespace and not a variable.
+  // Otherwise, we are handling a namespace left-hand-side, which must not name a variable.
   RaiseIf<SppMemberAccessRuntimeOperatorExpectedError>(
-    lhs_var_sym != nullptr,
+    sm->CurrentScope->FindVarSymbol(Lhs->To<IdentifierAst>()) != nullptr,
     ERR_ARGS(*Lhs, *TokDblColon, "variable"));
+  const auto member = _Resolve(sm);
 
-  // Check the constant exists inside the namespace.
-  // Todo: inconsistent "true" for exclusive here vs ns
-  const auto lhs_ns_sym = LhsNsScope(sm)->LinkedNamespaceSymbol;
-  if (not lhs_ns_sym->LinkedScope->HasVarSymbol(Name.get(), true) and not lhs_ns_sym->LinkedScope->HasNsSymbol(
-    Name.get(), true)) {
+  // The name is a constant or a namespace of the namespace's own: "ns::x" reaches nothing the namespace's parents
+  // declare, so neither does a suggestion.
+  if (member == nullptr and not _MemberScope->HasNsSymbol(Name.get(), true)) {
     member_lookup::RaiseMissingIdentifierAndClosestOptions(
-      *Name, lhs_ns_sym->LinkedScope->GetAllVarSymbols(false, true), lhs_ns_sym->LinkedScope->GetAllNsSymbols());
+      *Name, _MemberScope->GetAllVarSymbols(true), _MemberScope->GetAllNsSymbols(true));
   }
 
   // Enforce visibility on the accessed namespace symbol.
   // Only for var symbols, not namespace symbols. Use the
   // hook to record information for the resolution and
   // completion plugin.
-  if (const auto sym = lhs_ns_sym->LinkedScope->FindVarSymbol(Name.get())) {
-    visibility_utils::CheckModuleMemberVisibility(*sym, *Name, *lhs_ns_sym->LinkedScope, *sm, *meta);
-    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, sym);
+  if (member != nullptr) {
+    visibility_utils::CheckModuleMemberVisibility(*member, *Name, *_MemberScope, *sm, *meta);
+    lsp::resolution_index::RecordVariable(*Name, *sm, *meta, member);
   }
   else {
-    lsp::resolution_index::RecordNamespaceMember(*Name, *sm, *meta, *lhs_ns_sym->LinkedScope);
+    lsp::resolution_index::RecordNamespaceMember(*Name, *sm, *meta, *_MemberScope);
   }
 }
 
@@ -197,8 +186,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
         }
       }
     }
-    const auto sym = member_lookup::MemberOf(
-      *_LhsTypeSymbol->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
+    const auto sym = _Resolve(sm);
 
     // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
     // as this is impossiblt to provide a value.
@@ -215,9 +203,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
 
   // Handle accessing a variable on a namespace.
   // Todo: Do we need to call stage_9 on the value?
-  const auto lhs_ns_sym = LhsNsScope(sm)->LinkedNamespaceSymbol;
-  const auto sym = lhs_ns_sym->LinkedScope->FindVarSymbol(Name.get(), true);
-  meta->CompTimeResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
+  meta->CompTimeResult = AstClone(_Resolve(sm)->CompTimeValue->To<ExpressionAst>());
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
@@ -237,8 +223,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
 
   // Type case: LHS is a TypeAst — access a cmp constant on the type's scope.
   if (_LhsTypeSymbol != nullptr) {
-    const auto var_sym = member_lookup::MemberOf(
-      *_LhsTypeSymbol->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
+    const auto var_sym = _Resolve(sm);
 
     // A method named as a value is its "$" mock's constant, the
     // "{fn, env}" pair; without one there is nothing to load.
@@ -272,8 +257,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   }
 
   // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
-  const auto lhs_ns_scope = LhsNsScope(sm);
-  const auto var_sym = lhs_ns_scope->FindVarSymbol(Name.get(), true);
+  const auto var_sym = _Resolve(sm);
   if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
@@ -283,61 +267,36 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
-  // Todo: use the stored symbol? that if it's null? is that possible ie if used before analysis? shouldn't be.
+  const auto sym = _Resolve(sm);
 
-  // Get the left-hand-side type's member's type.
-  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
-    const auto sym = member_lookup::MemberOf(
-      *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
-
-    // A method's "$" mock is declared in its "sup" block, so it is
-    // named as a nested type of the owner: "main::A::$Method". There
-    // is one mock per "sup" block the overloads are written in, each
-    // given all of them ("ScopeManager::CoalesceMethodMock").
-    if (sym != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
+  // A method's "$" mock is declared in its "sup" block, so it is
+  // named as a nested type of the owner: "main::A::$Method". There
+  // is one mock per "sup" block the overloads are written in, each
+  // given all of them ("ScopeManager::CoalesceMethodMock").
+  if (_LhsTypeSymbol != nullptr) {
+    if (sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
       return MakeShared<TypePostfixExpressionAst>(
-        AstCloneShared(lhs_type_sym->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
+        AstCloneShared(_LhsTypeSymbol->FqName()), MakeShared<TypePostfixExpressionOperatorNestedTypeAst>(
           nullptr, shared_cast<TypeIdentifierAst>(AstCloneShared(sym->Type))));
     }
-    if (sym != nullptr) { return sym->Type; }
-
-    // This is where we need to handle the FwdRef/FwdMut logic.
-    const auto lhs_ref = TypeRef::Of(*lhs_as_type, *sm->CurrentScope);
-    const auto inner_type_sym =
-      marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
-    const auto fwd_sym = inner_type_sym->LinkedScope->FindVarSymbol(Name.get(), true);
-    return fwd_sym->Type;
+    return sym->Type;
   }
 
-  // Get the left-hand-side namespace's member's type.
-  const auto lhs_ns_scope = LhsNsScope(sm);
-  const auto type = lhs_ns_scope->FindVarSymbol(Name.get(), true)->Type;
-  return lhs_ns_scope->FindTypeSymbol(type.get())->FqName();
+  // A namespace's member's type, as its namespace names it.
+  return _MemberScope->FindTypeSymbol(sym->Type.get())->FqName();
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // A member of a type is read where its owner declares it, which binds the parameters its type names; a method's
-  // "$" mock is named as a nested type of the owner ("InferType"). A namespace member is read in its namespace.
+  // A member is read where its owner (or the type it forwards to) declares it, which binds the parameters its type
+  // names; a method's "$" mock is named as a nested type of the owner ("InferType"). A namespace member is read in
+  // its namespace.
   IMPORT_UTILS;
-  if (const auto lhs_as_type = Lhs->To<TypeAst>(); lhs_as_type != nullptr) {
-    const auto lhs_type_sym = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
-    const auto sym = member_lookup::MemberOf(
-      *lhs_type_sym->LinkedScope, *Name, member_lookup::MemberAccessForm::Static);
-    if (sym != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
-      return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
-    }
-    if (sym != nullptr) { return sym->TypeRefIn(*lhs_type_sym->LinkedScope); }
-
-    // A member reached by forwarding is the forwarded-to type's.
-    const auto lhs_ref = TypeRef::Of(*lhs_as_type, *sm->CurrentScope);
-    const auto inner_type_sym =
-      marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
-    return inner_type_sym->LinkedScope->FindVarSymbol(Name.get(), true)->TypeRefIn(*inner_type_sym->LinkedScope);
+  const auto sym = _Resolve(sm);
+  if (_LhsTypeSymbol != nullptr and sym->Kind == VariableKind::FnMock and sym->Type->IsTypeIdentifier()) {
+    return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
   }
-  const auto lhs_ns_scope = LhsNsScope(sm);
-  return lhs_ns_scope->FindVarSymbol(Name.get(), true)->TypeRefIn(*lhs_ns_scope);
+  return sym->TypeRefIn(*_MemberScope);
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
@@ -350,6 +309,38 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
     _LhsNsScope = sm->CurrentScope->FindNsScope(Lhs);
   }
   return _LhsNsScope;
+}
+
+auto PostfixExpressionOperatorStaticMemberAccessAst::_Resolve(
+  ScopeManager const *sm) -> VariableSymbol* {
+  //
+  IMPORT_UTILS;
+  using member_lookup::MemberAccessForm;
+  if (_MemberScope != nullptr) { return _Member; }
+
+  // A namespace's own constant.
+  const auto lhs_as_type = Lhs->To<TypeAst>();
+  if (lhs_as_type == nullptr) {
+    _MemberScope = LhsNsScope(sm);
+    _Member = _MemberScope->FindVarSymbol(Name.get(), true);
+    return _Member;
+  }
+
+  // A type's member as "::" reaches it, else the forwarded-to type's.
+  _LhsTypeSymbol = sm->CurrentScope->FindTypeSymbol(lhs_as_type);
+  _Member = member_lookup::MemberOf(*_LhsTypeSymbol->LinkedScope, *Name, MemberAccessForm::Static);
+  if (_Member == nullptr) {
+    const auto lhs_ref = TypeRef::Of(*lhs_as_type, *sm->CurrentScope);
+    auto *const fwd = marker_sups::FwdTargetOf(marker_sups::FindFwdSups(lhs_ref, *sm->CurrentScope).first).Symbol;
+    if (fwd != nullptr and fwd->LinkedScope != nullptr) {
+      if (const auto via_fwd = member_lookup::MemberOf(*fwd->LinkedScope, *Name, MemberAccessForm::Static)) {
+        _LhsTypeSymbol = fwd;
+        _Member = via_fwd;
+      }
+    }
+  }
+  _MemberScope = _LhsTypeSymbol->LinkedScope;
+  return _Member;
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {

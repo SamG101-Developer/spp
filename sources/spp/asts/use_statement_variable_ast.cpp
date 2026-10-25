@@ -14,6 +14,7 @@ import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -112,9 +113,19 @@ auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
     return;
   }
 
-  // Todo: alternatives based on lhs of the old var.
-  const auto closest_match = spp::utils::strings::ClosestMatch(
-    OldVar->ToString(), {});
+  // The alternatives are the constants the named namespace declares itself ("ns::x" reaches nothing its parents
+  // declare), against the name looked for.
+  auto query = OldVar->ToString();
+  auto alternatives = Vec<Str>();
+  if (const auto postfix = OldVar->To<PostfixExpressionAst>(); postfix != nullptr) {
+    if (const auto access = postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>(); access != nullptr) {
+      query = access->Name->Val;
+      if (auto const *const ns_scope = sm->CurrentScope->FindNsScope(postfix->Lhs.get()); ns_scope != nullptr) {
+        for (auto const *sym : ns_scope->GetAllVarSymbols(true)) { alternatives.emplace_back(sym->Name->Val); }
+      }
+    }
+  }
+  const auto closest_match = spp::utils::strings::ClosestMatch(query, alternatives);
   Raise<SppIdentifierUnknownError>(ERR_ARGS(*this, "constant variable", closest_match));
 }
 
