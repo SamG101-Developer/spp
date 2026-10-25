@@ -45,6 +45,14 @@ namespace spp::utils::files {
   /// name, and "extension" is the target's, without the dot.
   SPP_EXP_FUN auto SharedLibraryName(StrView package, StrView extension) -> Str;
 
+  /// What separates the directories on PATH: ";" on Windows,
+  /// where a drive letter takes ":", and ":" elsewhere.
+#if SPP_PLATFORM_WINDOWS
+  SPP_EXP_CON inline constexpr auto PathListSeparator = ';';
+#else
+  SPP_EXP_CON inline constexpr auto PathListSeparator = ':';
+#endif
+
   /// Find a program as a shell would: "name" in each directory on
   /// PATH in turn, the first that is an executable file.
   SPP_EXP_FUN auto FindProgram(StrView name) -> Opt<Path>;

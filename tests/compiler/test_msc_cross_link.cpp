@@ -24,6 +24,12 @@ namespace {
       : std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
   }
 
+  /// "first" then "second", as PATH lists directories.
+  auto PathOf(spp::Path const &first, spp::Path const &second) -> spp::Str {
+    return spp::utils::files::NativeString(first) + spp::utils::files::PathListSeparator
+      + spp::utils::files::NativeString(second);
+  }
+
   /// PATH set to "value" for one scope, then put back.
   struct PathAs {
     spp::Opt<spp::Str> Saved = spp::utils::files::GetEnv("PATH");
@@ -53,8 +59,7 @@ TEST(TestCrossLink, test_the_newest_versioned_program_is_found) {
   Touch(second.Root / "cross-gcc-9", true);
   Touch(first.Root / "cross-gcc-15", false); // not executable
   Touch(first.Root / "cross-gcc-16x", true); // not a version
-  const auto path = PathAs(
-    spp::utils::files::NativeString(first.Root) + ":" + spp::utils::files::NativeString(second.Root));
+  const auto path = PathAs(PathOf(first.Root, second.Root));
 
   const auto newest = spp::utils::files::FindNewestVersion("cross-gcc");
   ASSERT_TRUE(newest.has_value());
@@ -68,8 +73,7 @@ TEST(TestCrossLink, test_a_program_is_found_on_path_in_order) {
   const auto second = ScratchDir();
   Touch(first.Root / "cross-gcc", false);
   Touch(second.Root / "cross-gcc", true);
-  const auto path = PathAs(
-    spp::utils::files::NativeString(first.Root) + ":" + spp::utils::files::NativeString(second.Root));
+  const auto path = PathAs(PathOf(first.Root, second.Root));
 
   const auto found = spp::utils::files::FindProgram("cross-gcc");
   ASSERT_TRUE(found.has_value());

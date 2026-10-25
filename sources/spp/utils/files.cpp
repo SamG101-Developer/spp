@@ -166,17 +166,12 @@ auto spp::utils::files::SharedLibraryName(
 namespace {
   /// The directories on PATH, in order.
   auto PathDirectories() -> spp::Vec<spp::Path> {
-#if SPP_PLATFORM_WINDOWS
-    constexpr auto separator = ';';
-#else
-    constexpr auto separator = ':';
-#endif
     auto dirs = spp::Vec<spp::Path>();
-    auto const *const raw = std::getenv("PATH");
-    if (raw == nullptr) { return dirs; }
-    auto rest = spp::StrView(raw);
+    const auto raw = spp::utils::files::GetEnv("PATH");
+    if (not raw.has_value()) { return dirs; }
+    auto rest = spp::StrView(*raw);
     while (not rest.empty()) {
-      const auto end = rest.find(separator);
+      const auto end = rest.find(spp::utils::files::PathListSeparator);
       const auto dir = rest.substr(0, end);
       if (not dir.empty()) { dirs.emplace_back(dir); }
       rest = end == spp::StrView::npos ? spp::StrView() : rest.substr(end + 1);

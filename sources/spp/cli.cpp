@@ -140,8 +140,8 @@ namespace spp::cli {
       return command;
 #else
       constexpr auto default_kb = 16ull * 1024 * 1024;
-      const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
-      const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
+      const auto env = utils::files::GetEnv("SPP_MEMORY_LIMIT_KB");
+      const auto limit_kb = env.has_value() ? std::strtoull(env->c_str(), nullptr, 10) : default_kb;
       return limit_kb == 0 ? command : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
 #endif
     }
@@ -172,7 +172,7 @@ namespace spp::cli {
     }
 
     auto IsRemoteReachable(Str const &url) -> bool {
-      if (url.empty() or std::getenv("SPP_NO_NETWORK_CHECK") != nullptr) { return true; }
+      if (url.empty() or utils::files::GetEnv("SPP_NO_NETWORK_CHECK").has_value()) { return true; }
       const auto args =
         " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
         + url;

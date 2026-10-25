@@ -72,8 +72,7 @@ auto EnsureTempProject(const bool refresh) -> bool {
 namespace {
   auto TestBuildMode() -> spp::Str const& {
     static const auto mode = [] {
-      const auto *env = std::getenv("SPP_TEST_MODE");
-      auto value = spp::Str(env != nullptr ? env : "rel");
+      auto value = spp::utils::files::GetEnv("SPP_TEST_MODE").value_or("rel");
       if (value != "dev" and value != "rel") {
         std::cerr << "SPP_TEST_MODE must be 'dev' or 'rel', not '" << value << "'\n";
         std::abort();
