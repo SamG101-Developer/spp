@@ -1,0 +1,15 @@
+- [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; needs brew binutils; specs inject rpath+loader
+- [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
+- [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
+- [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores; don't lower workers
+- [Cross-run blockers m68k/sparc64](cross-run-blockers-m68k-sparc64.md) — m68k abs eh_frame relocs; sparc64 RWX PLT; emit-only
+- [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
+- [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
+- [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
+- [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file
+- [MSVC GMF inline bodies](msvc-gmf-inline-bodies-in-importers.md) — CLI11 sentry; CLI11_COMPILE + plain TU
+- [MSVC requires-clause token match](msvc-requires-clause-token-match.md) — fwd decl and def spell it alike
+- [MSVC has no string+string_view](msvc-lacks-string-plus-view.md) — libstdc++-only; parenthesise macros
+- [MSVC transitive namespace lookup](msvc-transitive-namespace-lookup.md) — relative `utils::` in spp::analyse hits analyse::utils; write spp::utils::
+- [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
+- [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp

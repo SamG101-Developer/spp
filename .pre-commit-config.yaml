@@ -139,6 +139,7 @@ repos:
     hooks:
       - id: vale
         language_version: "1.25.7"
+        exclude: ^\.triages/notes/
 
   # CONFIG FILE LINTING
 
@@ -173,6 +174,7 @@ repos:
     hooks:
       - id: mdformat
         additional_dependencies: [ mdformat-gfm, mdformat-toc ]
+        exclude: ^\.triages/notes/
 
   - repo: https://github.com/ComPWA/taplo-pre-commit
     rev: ade0f95ddcf661c697d4670d2cfcbe95d0048a0a  # v0.9.3

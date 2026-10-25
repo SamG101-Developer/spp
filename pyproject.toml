@@ -40,14 +40,18 @@ exclude = ["tests/gtest-parallel"]
 [tool.ty.environment]
 extra-paths = [".github/scripts/lib"]
 
+[tool.typos.default]
+extend-ignore-re = ["\\b[0-9a-f]{7,40}\\b"]
+
 [tool.typos.default.extend-words]
-compex = "compex" # Compare exchange (atomics)
-olt = "olt"       # Ordered less than
-Cpy = "Cpy"       # Part of "MemCpy"
+compex = "compex"     # Compare exchange (atomics)
+olt = "olt"           # Ordered less than
+Cpy = "Cpy"           # Part of "MemCpy"
+pendings = "pendings"
 
 [tool.typos.files]
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType"
+ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics"
 skip = "./.vale,./tests/gtest-parallel,*.svg"

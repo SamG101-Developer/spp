@@ -1,0 +1,19 @@
+- [Generic inference engine](generic-inference-engine-shape.md) — GenericSolver: Give, Unify, worklist
+- [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
+- [Variadic pack model](variadic-pack-model.md) — IsVariadic; element-typed in templates, tuple in instances
+- [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
+- [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope
+- [Generic param syms link a dummy scope](generic-param-sym-links-dummy-scope.md) — use Kind==GenericParam
+- [Comp generic defaults](spp-comp-generic-default-crash.md) — fixed; Stage11 fold still load-bearing
+- [Defaults copied to use sites](spp-defaults-copied-to-use-sites.md) — no scopes in defaults (E108)
+- [Generic sup cmp + Void params](spp-generic-sup-cmp-and-void-params.md) — `cmp n: T` folded at the use
+- [Sup attach is lazy + memoised](sup-attach-fixed-point.md) — attach once on first read
+- [Lazy attach needs a clean context](lazy-attach-clean-context.md) — ResetContext under a heavy MetaGuard
+- [GetSupScopes is a snapshot](getsupscopes-snapshot.md) — SupScopeList; old const& was a UAF
+- [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — bind blanket/pack sups off the receiver
+- [E60 is order-dependent](e60-double-extension-order-dependent.md) — CI-only from unsorted module glob order
+- [Tuple sup matching](tuple-sup-matching-broken.md) — tuple args positional; 2 deliberately-red tests
+- [Overload arg matching order](overload-arg-matching-order.md) — exact, relaxed, forwarding; don't reorder
+- [Return-type overloading contexts](return-type-overloading-contexts.md) — where an overload gets its target
+- [Abstract types by value](abstract-types-by-value.md) — E45 only if held by value (FindHeldByValue)
+- [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; no FunXxx at attach

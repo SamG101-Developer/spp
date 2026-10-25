@@ -1,0 +1,18 @@
+- [Codegen coercion sites](codegen-coercion-sites.md) — one CoerceToSlot (llvm_coerce); site list; check-coercions.sh sees wrong values
+- [Variant widening in generic args](spp-variant-widening-in-generic-args.md) — codegen rebuilds (llvm_variant)
+- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bridge
+- [Stand-ins lose the field map](llvm-info-standins-lose-field-map.md) — LlvmType + FieldIndexMap together
+- [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — no cls can describe a C struct
+- [NonNull lowers to ptr](nonnull-lowers-to-ptr.md) — needs the is(*NON_NULL) special case
+- [noalias unsound on &mut params](noalias-unsound-on-mut-params.md) — plan is M7; index/slice borrows the blocker
+- [GetAllParams includes self](getallparams-includes-self.md) — [0] on a method is `self`
+- [rel miscompiles with intrinsics](rel-profile-miscompiles-with-intrinsics.md) — strip inliner lifetime markers
+- [Symbol mangling](spp-symbol-mangling.md) — path + $h<fnv64>; closures {closure#N}
+- [Stack protector heuristics](stack-protector-heuristics.md) — canaries everywhere; sspstrong = all
+- [ELF section hardening](spp-elf-section-hardening.md) — full RELRO + BIND_NOW; no nodlopen
+- [Single abort path](spp-single-abort-path.md) — checks call sppc_check_failed; no frontend willreturn
+- [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; optimiser drops custom call md
+- [Hardening needs a feature gate](hardening-needs-feature-gate.md) — default on behind a key, fail loudly; old kernels via build-time floor (RHEL 8), never runtime skip
+- [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
+- [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
+- [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()

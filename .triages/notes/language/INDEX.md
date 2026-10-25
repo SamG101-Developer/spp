@@ -1,0 +1,23 @@
+- [Linear types](spp-linear-types.md) — non-Copy used exactly once; 5 rules, Drop bound
+- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop_in_place
+- [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — mint in the monomorphisation drain
+- [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
+- [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — branch-consumption on; where red tests live
+- [Borrow is a param convention](borrow-is-param-convention.md) — f[T](x: T) can't take &Str
+- [Checked arithmetic is the default](checked-arithmetic-is-default.md) — +,-,* trap; use *_wrapping
+- [Full-width shift was poison](spp-full-width-shift-is-poison.md) — clamped in ApplyBinOp
+- [Case narrowing limits](spp-case-narrowing-limits.md) — `<name>` subjects narrow; symbol outlives branch
+- [One rule for an agreed type](type-join-agreed-type.md) — TypeJoin: case rule for case/loop exits/closure rets (N9.1)
+- [Pattern solver](pattern-solver.md) — N9.2: MatchPlan checks; gtest cannot see pattern miscompiles; run check-case-patterns
+- [Nested case with no else](nested-case-in-generic-segfaults.md) — no-else case is Void, not Never
+- [Destructure alias scope](spp-destructure-alias-scope.md) — `x as y` only in object destructures
+- [Defer applies to earlier exits](defer-applies-to-earlier-exits.md) — Stage 8 clears Deferred on entry
+- [Closure return types](closure-return-types.md) — `(x: T) -> R { ret .. }`
+- [Closure captures in loops](closure-captures-in-loops.md) — fixed; loop tests need a 2nd pass
+- [Closure borrowed capture](closure-borrowed-capture-and-consuming-self.md) — caps &mut smash; E7 self
+- [Closure env ownership header](closure-env-ownership-header.md) — {i8 owns, ptr drop_captures} (N5.5a); llvm_fn env helpers; sppc mirrors it
+- [$ mock types](spp-dollar-mock-types.md) — TypeFuncEq for $ types; IsTypeFunction yes
+- [GenDone sentinel](generator-gen-done-sentinel.md) — finished Gen answers GenDone; E110
+- [Resume ends &mut yields](resume-ends-mut-yields.md) — 2nd g.res() moves earlier &mut holders
+- [Green task detach UAF](spp-green-task-detach-uaf.md) — a dropped future must await
+- [!extends annotation plan](spp-extends-annotation-plan.md) — future; use `sup X ext Copy` for now

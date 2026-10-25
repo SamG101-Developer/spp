@@ -1,0 +1,12 @@
+- [GCC module forward decls](gcc-module-forward-decl-chain.md) — AST fwd decls SPP_EXP_CLS; 3 extern "C++" bugs
+- [SPP_MOD_BEGIN is extern "C++"](spp-mod-begin-extern-cpp-linkage.md) — SPP_EXP_CLS fns; friend rules; overload ICE
+- [Impl units can import upward](impl-units-can-import-upward.md) — .cpp may import higher modules; no hooks
+- [Third-party module wrappers](third-party-module-wrappers.md) — headers/wrappers/*.ixx; names must not collide
+- [llvm wrapper exports](llvm-module-wrapper-exports.md) — export missing LLVM symbols from llvm.ixx
+- [Only llvm_pipeline is a plain TU](llvm-passes-plain-tu.md) — llvm_passes split into 6 (2026-10-19); PassBuilder.h TU-local keeps the pipeline plain; rest are modules
+- [Boost multiprecision needs a GMF](boost-multiprecision-needs-gmf.md) — BigInt/BigDec arithmetic headers in GMF
+- [LLVM intrinsic overload arity](llvm-intrinsic-overload-arity.md) — multi-type intrinsics crash in the printer
+- [genex view gotchas](genex-view-gotchas.md) — zip/concat need to<Vec>; iota|transform breaks
+- [clang 23 implicit-dtor ICE](clang23-implicit-dtor-ice.md) — GetVTTParameter segfault; out-of-line special members
+- [cppcheck vs noreturn Raise](cppcheck-unreachable-missingreturn.md) — missingReturn: guard clause; null-guard deref: inline suppress
+- [C++ linters in CI](cpp-linters-local-only.md) — cppcheck is a blocking pr.yaml gate (2026-08-18)

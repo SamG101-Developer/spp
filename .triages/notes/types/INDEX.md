@@ -1,0 +1,11 @@
+- [Pure lookup + TypeId](pure-lookup-blocked-on-typeid.md) — FindTypeSymbol never instantiates; FindOrMake does
+- [Resolved-types generic identity](resolved-types-generic-identity.md) — stamp + Canon + ParamId; 5 rules
+- [Stamps live on the last part](stamps-live-on-last-part.md) — KeyStamped reads LastTypePart; common types stamped
+- [Use of a class files under the class](use-of-class-files-under-class.md) — InstanceTemplate; no spelling fallback
+- [Alias stamping rules](alias-stamping-rules.md) — aliases stamp as themselves; key-time follow
+- [Alias names read where written](alias-names-read-where-written.md) — DeclScope first; BoundAlias re-link
+- [use imports are alias symbols](use-imports-are-alias-symbols.md) — TypeRef resolves aliases; raw lookup doesn't
+- [Variant tag order](variant-tag-order-is-address-order.md) — StableKeyLess by Name + Serial, never FqName
+- [TypeEq vs Assignable](typeeq-accepts-forwarding.md) — TypeEq is identity; Assignable widens/forwards
+- [Generic leak into shared instantiations](generic-leak-shared-instantiations.md) — ancestor sweep gone (H18)
+- [Self type resolution](spp-self-type-resolution.md) — Self is stage 3; ~14 sites can't fold into FqName

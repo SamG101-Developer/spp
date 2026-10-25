@@ -1,6 +1,7 @@
 [code]
 skip = [
   "docs/*",
+  ".triages/*",
   ".vale/*",
   ".idea/*",
   "*.md",
