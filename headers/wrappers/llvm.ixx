@@ -1,7 +1,5 @@
 module;
 #include <llvm/ADT/StringSet.h>
-#include <llvm/CodeGen/MachineFunction.h>
-#include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
@@ -94,7 +92,6 @@ export namespace llvm {
   using ::llvm::Instruction;
   using ::llvm::IntegerType;
   using ::llvm::LLVMContext;
-  using ::llvm::MachineFunction;
   using ::llvm::MaybeAlign;
   using ::llvm::MDNode;
   using ::llvm::MDString;
@@ -113,7 +110,6 @@ export namespace llvm {
   using ::llvm::TargetMachine;
   using ::llvm::TargetOptions;
   using ::llvm::TargetRegistry;
-  using ::llvm::TargetSubtargetInfo;
   using ::llvm::Triple;
   using ::llvm::Type;
   using ::llvm::TypeSize;

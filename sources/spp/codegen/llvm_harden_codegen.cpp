@@ -66,9 +66,13 @@ auto spp::codegen::ApplySlsHardening(
   // and indirect jumps on x86, returns, indirect branches and
   // indirect calls on AArch64. Added to whatever features a
   // function already carries, as the backend reads them per
-  // function rather than off the target machine.
+  // function rather than off the target machine. AArch64's
+  // indirect calls go through thunks, which are COMDATs unless
+  // asked otherwise, and Mach-O has no COMDATs.
   const auto features = TargetTriple().isX86()
     ? llvm::StringRef("+harden-sls-ret,+harden-sls-ijmp")
+    : TargetTriple().isOSBinFormatMachO()
+    ? llvm::StringRef("+harden-sls-retbr,+harden-sls-blr,+harden-sls-nocomdat")
     : llvm::StringRef("+harden-sls-retbr,+harden-sls-blr");
 
   for (auto &fn : llvm_mod) {
