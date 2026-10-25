@@ -216,6 +216,8 @@ jobs:
       shard-count: 1
       pack: true
       check-floor: true
+      # Todo: drop once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+      off: memory.stack.split
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release.

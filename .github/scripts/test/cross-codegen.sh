@@ -30,16 +30,8 @@ fi
 scratch_project "$SPP" cross
 
 # Hardening the target's backend cannot emit fails the build, so
-# those keys are switched off rather than skipped. A bare key is
-# in [binary.codegen]; another section's is dotted.
-if [ -n "$CODEGEN_OFF" ]; then
-  declare -A sections=()
-  for key in $CODEGEN_OFF; do
-    [[ $key == *.* ]] || key="binary.codegen.${key}"
-    sections[${key%.*}]+="${key##*.} = false\n"
-  done
-  for section in "${!sections[@]}"; do printf '\n[%s]\n%b' "$section" "${sections[$section]}" >> spp.toml; done
-fi
+# those keys are switched off rather than skipped.
+features_off "$CODEGEN_OFF"
 
 echo "::group::spp build --target ${TRIPLE}"
 LOG="$("$SPP" build -m rel --target "$TRIPLE" 2>&1 | tr '\r' '\n' || true)"

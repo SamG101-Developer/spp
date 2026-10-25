@@ -88,6 +88,11 @@ on:
         required: false
         type: boolean
         default: false
+      off:
+        description: "spp.toml keys STL conformance turns off; bare is [binary.codegen], else dotted."
+        required: false
+        type: string
+        default: ""
       advisory:
         description: "Let the lane fail without failing the run, for a toolchain not expected to work yet."
         required: false
@@ -269,6 +274,8 @@ jobs:
 
           - name: s++ STL conformance
             if: contains(matrix.suites, 'stl')
+            env:
+              SPP_OFF: ${{ inputs.off }}
             run: bash .github/scripts/test/stl-conformance.sh
 
           # The compiled code's memory, over the groups that make

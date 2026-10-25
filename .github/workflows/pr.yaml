@@ -169,9 +169,10 @@ jobs:
           - { name: Linux ARM Clang, os: ubuntu-24.04-arm, compiler: clang }
           - { name: Linux Clang, os: ubuntu-24.04, compiler: clang }
           - { name: macOS Clang, os: macos-15, compiler: clang }
-          - { name: Windows MSVC, os: windows-2025, compiler: msvc }
+          # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+          - { name: Windows MSVC, os: windows-2025, compiler: msvc, off: memory.stack.split }
           # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
-          - { name: Windows clang-cl (Advisory), os: windows-2025, compiler: clang-cl, advisory: true }
+          - { name: Windows clang-cl (Advisory), os: windows-2025, compiler: clang-cl, advisory: true, off: memory.stack.split }
     uses: ./.github/workflows/_lane.yaml
     with:
       os: ${{ matrix.os }}
@@ -180,6 +181,7 @@ jobs:
       shard-count: 1
       pack: true
       advisory: ${{ matrix.advisory == true }}
+      off: ${{ matrix.off }}
 
   # Emit for architectures unlike the host - 32-bit, big-endian,
   # non-x86 - and check the object and the datalayout that came
