@@ -11,14 +11,14 @@ work="${RUNNER_TEMP}/llvm-deps"
 rm -rf "$work"
 mkdir -p "$work"
 
-# Static, against the dynamic CRT the prebuilt LLVM was built with.
+# Static, against the static CRT the prebuilt LLVM forces on its users.
 build() {
   local name="$1" url="$2" sha="$3" src="$4"
   shift 4
 
   pinned_checkout "${work}/${name}" "$url" "$sha"
   cmake_install "${work}/${name}/${src}" "${work}/${name}/build" "$prefix" \
-    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL \
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
     -DBUILD_SHARED_LIBS=OFF "$@"
 }
 

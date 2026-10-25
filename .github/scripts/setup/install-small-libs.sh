@@ -22,9 +22,13 @@ fi
 mkdir -p "$PREFIX" "${RUNNER_TEMP}/libs"
 cd "${RUNNER_TEMP}/libs"
 
+# The prebuilt LLVM forces the static CRT on its users, so
+# everything spp links must use it too.
+platform_flags=()
 if [ "$RUNNER_OS" = "Windows" ]; then
   PREFIX="$(cygpath -m "$PREFIX")"
   export CMAKE_PREFIX_PATH="$PREFIX;$llvm_dir"
+  platform_flags+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded)
 else
   export CMAKE_PREFIX_PATH="$PREFIX:$llvm_dir"
 fi
@@ -51,7 +55,8 @@ while IFS= read -r -u 3 record; do
   # flag containing whitespace so that this stays safe.
   read -ra flags <<< "$flagstr"
   pinned_checkout "$name" "$repo" "$commit"
-  cmake_install "$name" "$name/build" "$PREFIX" ${flags[@]+"${flags[@]}"}
+  cmake_install "$name" "$name/build" "$PREFIX" \
+    ${platform_flags[@]+"${platform_flags[@]}"} ${flags[@]+"${flags[@]}"}
   printf '%s' "$record" > "$stamp"
 done 3<<< "$records"
 
