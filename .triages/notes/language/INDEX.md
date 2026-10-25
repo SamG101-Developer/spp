@@ -2,6 +2,7 @@
 - [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop_in_place
 - [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — mint in the monomorphisation drain
 - [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
+- [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)
 - [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — branch-consumption on; where red tests live
 - [Borrow is a param convention](borrow-is-param-convention.md) — f[T](x: T) can't take &Str
 - [Checked arithmetic is the default](checked-arithmetic-is-default.md) — +,-,* trap; use *_wrapping
