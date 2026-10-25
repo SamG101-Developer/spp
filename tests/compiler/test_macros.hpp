@@ -56,8 +56,9 @@ namespace spp_test {
   /// Check where a raised error points. No block may show generated
   /// code or the end of the file, and every primary ("Error in")
   /// block must be in the test's own "main.spp". Overload
-  /// candidates listed under the error are skipped: they point at
-  /// the candidates' definitions, wherever those are. With
+  /// candidates listed under the error are only checked for an
+  /// ast with no position: they point at the candidates'
+  /// definitions, wherever those are. With
   /// "underline" set, the first primary block must underline
   /// exactly that text.
   template <typename Messages>
@@ -65,6 +66,11 @@ namespace spp_test {
     auto primary_seen = false;
     for (auto const &raw : messages) {
       const auto block = StripAnsi(spp::Str(raw));
+
+      // A block no file holds is written out instead of quoted ("ErrorFormatter::WithoutSource"), candidates' too: each
+      // ast an error names should have a position.
+      EXPECT_EQ(block.find("In generated code: "), std::string::npos)
+        << "An error block shows an ast with no position:\n" << block;
 
       // A candidate's own error (under "no valid signatures") points at that candidate, in whatever file it is in, but
       // never past the end of a file: a block formatted against the wrong file's text lands there.

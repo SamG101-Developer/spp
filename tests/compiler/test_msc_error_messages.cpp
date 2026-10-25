@@ -122,3 +122,24 @@ TEST(TestErrorMessages, test_move_from_borrowed_memory_shows_the_borrow_before_t
   ASSERT_NE(note, std::string::npos) << text;
   EXPECT_LT(borrowed, note) << text;
 }
+
+// A type inferred off part of an argument ("T" off a "Vec[T]") is shown as itself, pointed at that argument; it was
+// shown as the argument's type with itself as the "aka".
+// FIXED
+
+TEST(TestErrorMessages, test_type_inferred_off_part_of_an_argument_shown_as_itself) {
+  auto text = spp::Str();
+  try {
+    build_temp_project(R"(
+    cls NotCopy { }
+    fun h[T: std::copy::Copy](a: Vec[T]) -> Void { std::mem::ops::drop(a) }
+    fun g() -> Void { h(Vec[NotCopy]::new()) }
+)");
+  }
+  catch (spp::analyse::errors::SppFunctionCallNoValidSignaturesError const &e) {
+    for (auto const &m : e.Messages) { text += spp_test::StripAnsi(spp::Str(m)); }
+  }
+  ASSERT_FALSE(text.empty()) << "Expected a no valid signatures error.";
+  EXPECT_NE(text.find("Concrete type provided here as main::NotCopy"), std::string::npos) << text;
+  EXPECT_EQ(text.find("(aka main::NotCopy)"), std::string::npos) << text;
+}

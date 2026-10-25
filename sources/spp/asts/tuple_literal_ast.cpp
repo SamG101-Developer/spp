@@ -233,7 +233,9 @@ auto TupleLiteralAst::TypeOfElements(
   // Create a "..Ts" type, for the tuple type. A bound generic keeps
   // its parameter's name ("T"), so each element is taken as what it
   // is bound to - or an instantiation's "(T(), U())" is the generic
-  // tuple "(T, U)", which has no layout to generate. Todo: TIDY
+  // tuple "(T, U)", which has no layout to generate. Each element
+  // points at its value, so an error about one names it there.
+  // Todo: TIDY
   auto types_gen = elems
     | genex::views::transform([sm, meta](auto *elem) {
       auto type = elem->InferType(sm, meta);
@@ -241,7 +243,7 @@ auto TupleLiteralAst::TypeOfElements(
       if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
         type = sym->AsBound()->FqName()->WithConvention(AstClone(type->GetConvention()));
       }
-      return type;
+      return type->WithSourceSpanAt(*elem);
     })
     | genex::to<Vec>();
 

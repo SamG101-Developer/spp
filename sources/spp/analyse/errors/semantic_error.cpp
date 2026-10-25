@@ -1096,11 +1096,16 @@ SppNonCopyableTypeError::SppNonCopyableTypeError(
 }
 
 SppGenericParameterConflictError::SppGenericParameterConflictError(
-  Ast const &param, Ast const &first_infer, Ast const &second_infer) {
+  Ast const &param, Ast const &first_infer, Ast const &second_infer) :
+  SppGenericParameterConflictError(param, first_infer, second_infer, first_infer, second_infer) {
+}
+
+SppGenericParameterConflictError::SppGenericParameterConflictError(
+  Ast const &param, Ast const &first_infer, Ast const &second_infer, Ast const &first_at, Ast const &second_at) {
   AddHeader(71, "Generic Parameter Inferred Conflict Inferred Error");
   AddCtxForErr(&param, "Generic parameter defined here");
-  AddCtxForErr(&first_infer, "Generic inferred as " + INLINE_INFO(first_infer.ToString()));
-  AddErr(&second_infer, "Generic inferred as " + INLINE_INFO(second_infer.ToString()));
+  AddCtxForErr(&first_at, "Generic inferred as " + INLINE_INFO(first_infer.ToString()));
+  AddErr(&second_at, "Generic inferred as " + INLINE_INFO(second_infer.ToString()));
   AddFooter(
     "There is a conflict between inferred types for this generic parameter.",
     "Resolve the inference conflict.");

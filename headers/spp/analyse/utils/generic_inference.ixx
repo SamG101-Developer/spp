@@ -110,6 +110,7 @@ public:
 
 private:
   struct _TypeVal;
+  struct _CompVal;
   struct _Entry;
   struct _Equation;
 

@@ -595,6 +595,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppNonCopyableTypeError final : Semanti
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterConflictError final : SemanticError {
   explicit SppGenericParameterConflictError(Ast const &param, Ast const &first_infer,
     Ast const &second_infer);
+
+  /// Each inferred value shown at where it was read from ("first_at", "second_at"): a comp value read back from its
+  /// identity has no position of its own.
+  explicit SppGenericParameterConflictError(Ast const &param, Ast const &first_infer,
+    Ast const &second_infer, Ast const &first_at, Ast const &second_at);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterNotInferredError final : SemanticError {
