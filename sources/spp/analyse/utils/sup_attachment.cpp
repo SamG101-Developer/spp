@@ -20,6 +20,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
+import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
