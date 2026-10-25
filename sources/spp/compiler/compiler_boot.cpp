@@ -306,7 +306,8 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   // compile's LLVM context.
   _LlvmContext = MakeUnique<llvm::LLVMContext>();
   for (auto const &mod : _Modules) {
-    auto ctx = codegen::LlvmCtx::NewCtx(mod->FilePath, *_LlvmContext);
+    auto ctx = codegen::LlvmCtx::NewCtx(
+      utils::files::NativeString(mod->FilePath), *_LlvmContext);
     ctx->Sm = sm;
     _LlvmCtxs.emplace_back(std::move(ctx));
   }
