@@ -117,12 +117,18 @@ namespace spp::codegen {
         // The baseline the target's distributions build for, where
         // LLVM's generic CPU is less: on riscv64 Linux that is
         // rv64gc, with floating-point arguments in float registers
-        // (lp64d), as its libc and every library are built.
+        // (lp64d), as its libc and every library are built. On
+        // 32-bit PowerPC Linux it is the secure PLT, as gcc is
+        // configured: LLVM's default puts the PLT in a writable,
+        // executable segment, which the W^X link check rejects.
         auto features = Str();
         auto options = llvm::TargetOptions();
         if (triple.isRISCV64() and triple.isOSLinux()) {
           features = "+m,+a,+f,+d,+c";
           options.MCOptions.ABIName = "lp64d";
+        }
+        else if (triple.getArch() == llvm::Triple::ppc and triple.isOSLinux()) {
+          features = "+secure-plt";
         }
 
         // LLVM's "generic" CPU is each target's baseline, but on

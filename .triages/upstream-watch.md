@@ -326,7 +326,11 @@ Each entry gives:
   Mach-O, so `[binary.codegen] sls` (on by default) is refused there, naming the key; the `retbr` half, which works,
   goes with it, since the key covers both. The macOS test calls pass `off: sls` (`pr.yaml`, `post_merge.yaml`).
 - **Status (2026-10-26):** unchanged on trunk (`09ec836bbe83`). Reproduce: `llc -mtriple=aarch64-apple-macos -filetype=obj` on a function doing `call void %p()` with `"target-features"="+harden-sls-blr,+harden-sls-nocomdat"`;
-  `llvm-nm` shows `t ___llvm_slsblr_thunk_x0` and `U __llvm_slsblr_thunk_x0`. No upstream issue filed yet.
+  `llvm-nm` shows `t ___llvm_slsblr_thunk_x0` and `U __llvm_slsblr_thunk_x0`. A fix is drafted in the local
+  llvm-project working tree (2026-10-26, not yet a PR): `convertBLRToBL` takes the call's symbol from the thunk
+  function (`MF.getTarget().getSymbol`) instead of `Context.getOrCreateSymbol(ThunkName)`, with the test
+  `llvm/test/CodeGen/AArch64/speculation-hardening-sls-blr-macho.ll`. It fails on unpatched LLVM 23 and passes with
+  the patch, alongside the 8 existing AArch64 SLS tests.
 - **Check:** the same `llc` + `llvm-nm`: one defined name, no `U` thunk.
 - **When it lands:** restore the AArch64 Mach-O case in `TargetHasSlsHardening`, with `+harden-sls-nocomdat` added to
   its features on Mach-O again (Mach-O has no COMDATs), and drop `off: sls` from the macOS test calls.

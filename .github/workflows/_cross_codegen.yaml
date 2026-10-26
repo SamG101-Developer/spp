@@ -37,7 +37,7 @@ jobs:
           - { triple: "arm-unknown-linux-gnueabi", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds", qemu: "arm", sysroot: "arm-linux-gnueabi" }
           - { triple: "powerpc64le-unknown-linux-gnu", arch: "64-bit LSB.*PowerPC", layout: "e-m:e-Fn32-i64:64", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc64le", sysroot: "powerpc64le-linux-gnu" }
           - { triple: "powerpc64-unknown-linux-gnu", arch: "64-bit MSB.*PowerPC", layout: "E-m:e-Fi64", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc64", sysroot: "powerpc64-linux-gnu" }
-          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
+          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc", sysroot: "powerpc-linux-gnu" }
           - { triple: "mips-unknown-linux-gnu", arch: "32-bit MSB.*MIPS", layout: "E-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds", qemu: "mips", sysroot: "mips-linux-gnu" }
           - { triple: "mipsel-unknown-linux-gnu", arch: "32-bit LSB.*MIPS", layout: "e-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds", qemu: "mipsel", sysroot: "mipsel-linux-gnu" }
           - { triple: "mips64el-unknown-linux-gnuabi64", arch: "64-bit LSB.*MIPS", layout: "e-m:e-i8:8:32", off: "sls scrub cfi jump_table_bounds", qemu: "mips64el", sysroot: "mips64el-linux-gnuabi64" }
