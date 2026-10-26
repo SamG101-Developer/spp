@@ -894,11 +894,10 @@ auto spp::analyse::utils::comp_time_intrinsics::FoldBinaryOp(
   // operands of two kinds have none.
   const auto entry = genex::find_if(kBinaryOps, [op](auto const &e) { return e.Op == op; });
   if (entry == kBinaryOps.end()) { return nullptr; }
-  const auto both = [&]<typename Lit>() { return lhs.To<Lit>() != nullptr and rhs.To<Lit>() != nullptr; };
-  const auto fn = both.operator()<IntegerLiteralAst>() ? entry->Int
-    : both.operator()<FloatLiteralAst>() ? entry->Float
-    : both.operator()<BooleanLiteralAst>() ? entry->Bool
-    : nullptr;
+  auto fn = decltype(entry->Int)(nullptr);
+  if (lhs.To<IntegerLiteralAst>() != nullptr and rhs.To<IntegerLiteralAst>() != nullptr) { fn = entry->Int; }
+  else if (lhs.To<FloatLiteralAst>() != nullptr and rhs.To<FloatLiteralAst>() != nullptr) { fn = entry->Float; }
+  else if (lhs.To<BooleanLiteralAst>() != nullptr and rhs.To<BooleanLiteralAst>() != nullptr) { fn = entry->Bool; }
   if (fn == nullptr) { return nullptr; }
 
   // What the call raises (E90, E91) does not fold.
