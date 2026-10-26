@@ -5,8 +5,10 @@ updated: 2026-10-26
 ---
 
 The maintainer wants the run's job graph in clean columns (2026-10-26). In `pr.yaml`: changes/lint/docs, then
-cppcheck/version/security/claude review, then **every build** plus Analysis (CodeQL + Sonar in one box), then **every
-test**, then CI Success. `post_merge.yaml` follows the same rule for its builds and tests.
+cppcheck/version/security/Analysis (CodeQL + Sonar in one box)/claude review, then **every build**, then **every
+test**, then CI Success. `post_merge.yaml` follows the same rule for its builds and tests. Analysis needs only
+`changes`, not cppcheck: in the build column GitHub drew it among the builds (middle, then top, depending on
+definition and `needs` order, which is undocumented), breaking the build-to-test row alignment.
 
 How it is built:
 - `_build.yaml` (one job) builds, stages, and plans the test matrix (`plan-tests.sh`). It outputs everything a test
