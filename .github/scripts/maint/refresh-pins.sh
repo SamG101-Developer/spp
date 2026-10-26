@@ -218,6 +218,22 @@ else
   set_pin pin.alpine.sha256 "${alpine_latest#* }"
 fi
 
+# ARM GNU TOOLCHAIN
+echo
+echo "arm-gnu (${MANIFEST})"
+arm_api="https://gitlab.arm.com/api/v4/projects/tooling%2Fgnu-toolchains-for-arm"
+arm_version="$(fetch "${arm_api}/repository/files/README.md/raw?ref=main" \
+  | grep -oE 'Arm GNU Toolchain [0-9]+\.[0-9]+\.rel[0-9]+' | sed 's/^Arm GNU Toolchain //' | sort -uV | tail -1)"
+if [ -z "$arm_version" ]; then
+  echo "::error::could not read the latest Arm GNU Toolchain release"
+  status=1
+else
+  arm_tar="arm-gnu-toolchain-${arm_version}-x86_64-aarch64_be-none-linux-gnu.tar.xz"
+  set_pin pin.arm-gnu.version "$arm_version"
+  set_pin pin.arm-gnu.sha256-aarch64-be \
+    "$(fetch "${arm_api}/packages/generic/gnu-toolchain/${arm_version}/${arm_tar}.sha256asc" | cut -d ' ' -f 1)"
+fi
+
 # LLVM (WINDOWS)
 echo
 echo "Windows LLVM (checked, not refreshed)"
