@@ -2,13 +2,13 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.annotation_ast;
+import spp.analyse.utils.annotation_utils;
 import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(AnnotationAst);
-use(spp::analyse::utils::annotation_utils, enum class BuiltinAnnotation : std::uint8_t);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct FunctionCallArgumentGroupAst);
