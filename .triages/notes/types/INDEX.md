@@ -9,3 +9,4 @@
 - [TypeEq vs Assignable](typeeq-accepts-forwarding.md) — TypeEq is identity; Assignable widens/forwards
 - [Generic leak into shared instantiations](generic-leak-shared-instantiations.md) — ancestor sweep gone (H18)
 - [Self type resolution](spp-self-type-resolution.md) — Self is stage 3; ~14 sites can't fold into FqName
+- [Comp keys fold by intrinsics](comp-key-folds-by-intrinsics.md) — FoldBinaryOp op table; key refuses what the call raises (E90/E91)

@@ -1,7 +1,7 @@
 ---
 name: spp-dollar-mock-types
 description: "\\\"$\\\" mock types: TypeEq falls back to TypeFuncEq for them, they must be registered globally, and IsTypeFunction says yes to them"
-updated: 2026-09-12
+updated: 2026-10-26
 ---
 
 A `$`-prefixed type (`TypeIdentifierAst::IsCompilerGeneratedType()`, i.e. `Name[0] == '$'`) is a nominal type standing
@@ -20,7 +20,8 @@ expression. Three things about them are not obvious:
    module-scoped registration gives `SppIdentifierUnknownError` on the `$closure...` name.
 
 4. A named function used as a value (`spawn(f)`, `call_it(f)`) is the per-function `cmp f: $F = $F()` constant from
-   `FunctionPrototypeAst::Stage1_PreProcess`. Stage 9 skips `$` types, so until 2026-09-11 Stage 10 emitted it as
+   `FunctionPrototypeAst::Stage1_PreProcess`. The constant fold skips `$` types (Stage 9 then, Stage 7 since
+   2026-10-26), so until 2026-09-11 Stage 10 emitted it as
    `{null, null}` and any call through it jumped to address 0 (seen as a segfault in `closure.fn..` on a spawned
    thread). Fixed 2026-09-12 in the slim form (a ~680-line first version was rejected as too big):
    - **A call through a mock-typed value is a direct call:** `GetFnOwnerTypeAndFnName` (overload_utils) swaps in

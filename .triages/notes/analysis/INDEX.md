@@ -7,6 +7,9 @@
 - [Meta flags are per-stage](spp-meta-flags-are-per-stage.md) — stage 7 flags don't reach 8; new keywords
 - [Heavy guards, symmetric](meta-guard-heavy-symmetric.md) — Save/Restore only via MetaGuard; set an Enclosing* field = heavy guard, every stage
 - [_HasAnalysed conflation](spp-hasanalysed-conflation.md) — _Resolved not carried by Clone; 4 dead ends
+- [Free functions walk in reverse](free-functions-walk-in-reverse.md) — mock sups prepended; Stage 7 folds analyse the callee ahead (AnalyseAhead)
+- [Stage 9 walk removed](stage-9-walk-removed.md) — constants fold in Stage 7 via AnalyseAhead; Stage9 methods are the evaluator
+- [Evaluators only read their AST](evaluators-only-read-their-ast.md) — EvaluateCompTime never writes back; a cmp fun body is shared by calls and codegen
 - [Clone() carries cached analysis](ast-clone-carries-cached-analysis.md) — rewriting a clone's child does nothing
 - [Call args replaced after analysis](call-args-replaced-after-analysis.md) — args moved into the winner
 - [ExhaustScope leaves CurrentScope](exhaust-scope-current-scope.md) — now SkipSubtree; folded-expr scope pattern; comp arrays

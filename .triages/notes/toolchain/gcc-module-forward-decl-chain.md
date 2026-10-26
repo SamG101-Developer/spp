@@ -1,7 +1,7 @@
 ---
 name: gcc-module-forward-decl-chain
 description: "Every AST forward decl is SPP_EXP_CLS in the module purview (SPP_FWD_CLS was deleted) because GCC mishandles non-exported and GMF extern \\\"C++\\\" decls across modules; plus the redeclare-every-intermediate rule"
-updated: 2026-09-13
+updated: 2026-10-26
 ---
 
 **Current policy (2026-09-11):** every forward decl in the AST headers is `SPP_EXP_CLS` (`export extern "C++"`) inside the module purview. The per-file form is `SPP_AST_COMMON_FWD_DECL(Self) { SPP_EXP_CLS struct X; }`, placed after the imports; the macro also declares `ScopeManager`, `CompilerMetaData` and the exported self decl. `SPP_FWD_CLS` was deleted from `macros.hpp`. The global module fragment holds `#include`s only. Keep it this way until GCC is fixed. At that point the goal is non-exported (`extern "C++"`) purview decls - The maintainer doesn't want these names exported.
@@ -27,6 +27,10 @@ GCC 17 trunk gets `extern "C++"` forward decls across modules wrong in three way
 - 2026-10-02: an unqualified call to a free function of the same module from a member function body
   (`BindByName(ParamsOfGroup(..))` inside `TypeSymbol::AliasTargetId`, symbols.cpp) ICEd GCC 17 ("internal compiler
   error: in lookup_mark, at cp/tree.cc:2637"). Fully qualifying both calls (`spp::analyse::scopes::...`) fixed it.
+
+- 2026-10-26: bug 2 again, as an ICE this time: "internal compiler error: in finalize_dependencies, at
+  cp/module.cc" on `export module spp.asts.cmp_statement_ast;`, after adding `use(spp::asts, struct Ast);` there
+  (`Ast` is reachable only through `statement_ast`). Replacing the `use` with `import spp.asts.ast;` fixed it.
 
 Related: `expression-generic-substitution`, [[msvc-requires-clause-token-match]].
 - 2026-10-08: "fatal error: failed to load pendings for 'std::allocator'" plus "failed to read compiled module cluster

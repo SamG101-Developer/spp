@@ -6,6 +6,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Prefer proper fixes](conventions/prefer-proper-fixes.md) — root-cause fixes, not shape-specific band-aids
 - [Add tests even if failing](conventions/add-tests-even-if-failing.md) — red tests for known bugs wanted, plus a Todo at the site
 - [Code reduction means functions](conventions/code-reduction-means-functions.md) — remove dead/duplicate fns; not macros; single-use utils stay (de-bloat ASTs)
+- [Split at natural seams](conventions/split-functions-at-natural-seams.md) — no line target; private if one AST uses it, else utils/codegen module; dedupe siblings
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK
@@ -46,9 +47,9 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (12)
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (16)
-- [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self (11)
+- [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (12)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (19)
-- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (21)
+- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (23)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (24)
 - [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (19)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (3)

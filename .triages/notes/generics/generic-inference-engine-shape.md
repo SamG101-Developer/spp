@@ -1,7 +1,7 @@
 ---
 name: generic-inference-engine-shape
 description: "GenericSolver (generic_inference) - given layers, Unify equations, worklist solve; InferGnArgs/NameGnArgs/arg_naming are gone; plus traps hit adding comp->type (2026-09-28)"
-updated: 2026-09-27
+updated: 2026-10-26
 ---
 
 Since 2026-09-28 inference is `generic_inference::GenericSolver`, one per use site (a call candidate, or a generic
@@ -42,4 +42,5 @@ generic class with no arguments (`let A() = x`) is a separate gap, so use `drop`
 **Defaults (2026-09-29).**
 - A call default feeds inference only when its type is fully concrete. After solving, it is remade from the instantiation's own parameter, with the whole solution applied.
 - A comp default is translated from `GenericParameterAst::WrittenCompDefault`, because the parameter's own `CompDefault` is analysed and so desugared (`n + 1_uz` becomes `n.add(1_uz)`). It is folded when closed, and `_CrossSubstitute` re-derives it once all its names are bound.
-- `GenericParameterGroupAst::Stage9` skips a default that names a comp param (`comp_generics::NamesCompParam`).
+- `GenericParameterAst::Stage7` folds a closed comp default to prove it constant, and skips one that names a comp param
+  (`IsClosedCompId`). This was `GenericParameterGroupAst::Stage9` before the Stage 9 walk went (N7.11, 2026-10-26).

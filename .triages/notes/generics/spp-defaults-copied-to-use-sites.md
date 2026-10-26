@@ -12,8 +12,8 @@ by leaves and composites; failures raise `SppInvalidDefaultValueError` (E108), c
 Refused: `ret`/`?` (would leave the caller), and **anything that creates a scope - blocks, closures, `case`, `loop`,
 `gen`**. Scopes are matched to asts by walk order (one pre-order iterator; `CreateAndMoveIntoNewScope` does `++_It`),
 so a copy analysed at a use site has no scope of its own in that walk. The maintainer chose refusing them over a
-wrap-and-re-parent redesign; no std/project code used them. `cmp` statements need no such check - Stage 9 is already a
-deny-by-default compile-time check.
+wrap-and-re-parent redesign; no std/project code used them. `cmp` statements need no such check - their fold (Stage 7 since
+2026-10-26, Stage 9 before) is already a deny-by-default compile-time check.
 
 **When parameter defaults are analysed:** in `FunctionPrototypeAst::AnalysePendingDefaults`, drained by
 `CompilerBoot::Stage6` after every module's Stage 6. Not in Stage 7 (caller bodies can precede the callee, which handed
