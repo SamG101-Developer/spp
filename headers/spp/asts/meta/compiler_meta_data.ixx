@@ -43,8 +43,7 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kPreAnalyseSemantics, // stage 6
   kAnalyseSemantics, // stage 7
   kCheckMemory, // stage 8
-  kCompTimeResolve, // stage 9
-  kMonomorphise, // between stages 9 and 10
+  kMonomorphise, // between stages 8 and 10
   kPreCodeGen, // stage 10
   kCodeGen, // stage 11
 };
@@ -87,7 +86,7 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   Shared<TypeRef> Type = nullptr;
 };
 
-/// What a "cmp" call binds for its callee (stage 9): its
+/// What a "cmp" call binds for its callee when evaluated: its
 /// parameters' values and its generic arguments. The call sets
 /// them and runs the callee's body, which reads them, and writes
 /// each parameter's final value back for a "&mut" argument. A
@@ -334,7 +333,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// loops and control flow.
   Vec<LlvmLoopInfo> LlvmLoopStack;
 
-  /// The arguments of the "cmp" call being evaluated (stage 9).
+  /// The arguments of the "cmp" call being evaluated.
   CompTimeCallArgs CompTimeCall;
   Unique<ExpressionAst> CompTimeResult;
 
