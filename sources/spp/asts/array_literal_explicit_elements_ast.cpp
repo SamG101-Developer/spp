@@ -81,11 +81,16 @@ auto ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
 }
 
 auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<ArrayLiteralExplicitElementsAst>(
+  // Clone all the members of the ast, and the type stage 7 settled
+  // on, which its elements alone do not give ("[Some(..), None]" is
+  // an "[Opt[T]; 2]"): a "cmp" constant's value is read through a
+  // clone. Stage 7 rebuilds it for a clone it analyses.
+  auto ast = MakeUnique<ArrayLiteralExplicitElementsAst>(
     AstClone(TokL),
     AstCloneVec(Elems),
     AstClone(TokR));
+  ast->_InferredType = _InferredType;
+  return ast;
 }
 
 auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {

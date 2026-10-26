@@ -69,11 +69,14 @@ auto TupleLiteralAst::PosEnd() const -> std::size_t {
 }
 
 auto TupleLiteralAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<TupleLiteralAst>(
+  // Clone all the members of the ast, and the type stage 7 settled
+  // on, as an array literal's clone does.
+  auto ast = MakeUnique<TupleLiteralAst>(
     AstClone(TokL),
     AstCloneVec(Elems),
     AstClone(TokR));
+  ast->_InferredType = _InferredType;
+  return ast;
 }
 
 auto TupleLiteralAst::ToString() const -> Str {
@@ -196,9 +199,12 @@ auto TupleLiteralAst::EvaluateCompTime(
     cmp_elems.emplace_back(std::move(meta->CompTimeResult));
   }
 
-  // Wrap the compile-time tuple value.
-  meta->CompTimeResult = MakeUnique<TupleLiteralAst>(
-    nullptr, std::move(cmp_elems), nullptr);
+  // Wrap the compile-time tuple value. It keeps the type stage 7
+  // settled on ("(None, 1_u64)" as an "(Opt[U64], U64)"), as an
+  // array literal's value does, not its elements' own.
+  auto result = MakeUnique<TupleLiteralAst>(nullptr, std::move(cmp_elems), nullptr);
+  result->_InferredType = _InferredType;
+  meta->CompTimeResult = std::move(result);
 }
 
 auto TupleLiteralAst::InferType(
