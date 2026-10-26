@@ -96,10 +96,6 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     utils::ProgressBar &bar, ModuleTree &tree,
     analyse::scopes::ScopeManager *sm) -> void;
 
-  auto Stage9_CompTimeResolve(
-    utils::ProgressBar &bar, ModuleTree &tree,
-    analyse::scopes::ScopeManager *sm) -> void;
-
   auto Stage9_5_Monomorphise(
     utils::ProgressBar &bar, ModuleTree &tree,
     analyse::scopes::ScopeManager *sm) -> void;

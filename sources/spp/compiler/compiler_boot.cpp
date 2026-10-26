@@ -274,18 +274,6 @@ auto spp::compiler::CompilerBoot::Stage8_CheckMemory(
   }
 }
 
-auto spp::compiler::CompilerBoot::Stage9_CompTimeResolve(
-  utils::ProgressBar &bar,
-  ModuleTree &tree,
-  analyse::scopes::ScopeManager *sm)
-  -> void {
-  // Comptime resolution stage.
-  _EachModule(tree, sm, asts::meta::CompilerStage::kCompTimeResolve, &bar, [&](const auto i, auto &meta) {
-    _Modules[i]->Stage9_CompTimeResolve(sm, &meta);
-  });
-  bar.Finish();
-}
-
 auto spp::compiler::CompilerBoot::Stage9_5_Monomorphise(
   utils::ProgressBar &bar,
   ModuleTree &,
@@ -760,7 +748,7 @@ auto spp::compiler::CompilerBoot::_EachModule(
   -> void {
   // An analysis stage reads an instantiation as a lookup needs one ("InstantiateForScope"), made for that stage.
   using asts::meta::CompilerStage;
-  if (stage >= CompilerStage::kPreAnalyseSemantics and stage <= CompilerStage::kCompTimeResolve) {
+  if (stage >= CompilerStage::kPreAnalyseSemantics and stage <= CompilerStage::kCheckMemory) {
     analyse::utils::monomorphization::StartInstantiatingOnRead(sm->Tree(), stage);
   }
   for (auto i = 0uz; i < _Modules.size(); ++i) {
