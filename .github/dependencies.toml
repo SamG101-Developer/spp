@@ -164,7 +164,7 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "9c50bdd140d80744ebfa8dd7e850794f2cce50e3"
+commit = "2a56afc714d485870ae41cb1ac4fb0556f86726b"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -184,7 +184,7 @@ cmake-flags = [
 [[library]]
 name = "stringzilla"
 repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "99d950f85b4aca8ac10967d6e32cacc386bf04eb"
+commit = "3cd0f9bcab97912dd36ca4ca4253f1f46b33ef8e"
 cmake-flags = [
   "-DSTRINGZILLA_INSTALL=ON",
   "-DSTRINGZILLA_BUILD_TEST=OFF",
