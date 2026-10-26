@@ -10,3 +10,4 @@
 - [clang 23 implicit-dtor ICE](clang23-implicit-dtor-ice.md) — GetVTTParameter segfault; out-of-line special members
 - [cppcheck vs noreturn Raise](cppcheck-unreachable-missingreturn.md) — missingReturn: guard clause; null-guard deref: inline suppress
 - [C++ linters in CI](cpp-linters-local-only.md) — cppcheck is a blocking pr.yaml gate (2026-08-18)
+- [GCC opaque enum -g ICE](gcc-opaque-enum-dwarf-ice.md) — enum opaque in one module, defined in another: dwarf2out ICE under -g; import the definer
