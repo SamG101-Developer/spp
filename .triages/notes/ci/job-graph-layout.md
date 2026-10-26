@@ -1,6 +1,6 @@
 ---
 name: job-graph-layout
-description: "Workflows lay out as columns: every build in one, every test in the next; per-lane build/test pairs, tests fail on a failed build so ci-success needs only tests"
+description: "Workflows lay out as columns: every build in one, every test in the next; per-lane build/test pairs; ci-success needs only tests and fails a gating test that did not succeed"
 updated: 2026-10-26
 ---
 
@@ -18,11 +18,11 @@ How it is built:
   cannot be shared.
 - `_build.yaml` defaults are the common lane: `modes: rel`, `shard-count: 1`, `pack: true`. Linux GCC passes
   `rel dev`, 2 shards, `pack: false`; the nightly sanitizers lane 4 shards.
-- Every test job has `if: *test-gate` (`!cancelled() && !contains(needs.*.result, 'skipped')`): it runs after a
-  failed build too, and its first step fails when the build staged no artifact. So `ci-success` and
-  `collect-release` need only the test jobs (a skipped need counts as a pass, and `needs` is not transitive); a
-  skipped build (compile gate off) still skips its test. `_test.yaml` passes the build's outputs through (`build`,
-  `artifact`, digests) for `collect-release` and `_coverage.yaml`.
+- `ci-success` needs only the gating test jobs, not their builds. `needs` is not transitive and a skipped need
+  counts as a pass, so a failed build (which skips its tests) would slip through; its second step fails when
+  `needs.changes.outputs.compile == 'true'` and any gating test's result is not `success`. A new gating lane goes in
+  both its `needs` and that condition. `collect-release` needs only test jobs too (a skipped test skips it), and
+  `_test.yaml` passes the build's outputs through (`build`, `artifact`, digests) for it and `_coverage.yaml`.
 
 **Why:** a matrix of reusable workflow calls draws one group per cell with all of that call's jobs (build, test,
 coverage) inside, so builds and tests of different lanes landed in different columns. A matrix also makes every

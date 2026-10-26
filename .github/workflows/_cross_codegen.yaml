@@ -55,13 +55,6 @@ jobs:
           egress-policy: audit
           disable-sudo: ${{ !matrix.target.qemu }}
 
-      # Callers run this after a failed build too (see _test.yaml).
-      - name: Check the build staged
-        if: fromJSON(inputs.build).artifact == ''
-        run: |
-          echo "::error::the build failed; nothing to emit"
-          exit 1
-
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

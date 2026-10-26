@@ -208,13 +208,12 @@ jobs:
       compiler: msvc
       check-floor: true
 
-  # Run after a failed build too, and fail (see _test.yaml), so
-  # what follows needs only these; each passes its build's
-  # outputs through.
+  # Each passes its build's outputs through, so what follows needs
+  # only these. A failed build skips its tests, which skips what
+  # follows.
   linux-gcc-test:
     name: Linux GCC
     needs: [ linux-gcc-build ]
-    if: &test-gate ${{ !cancelled() && !contains(needs.*.result, 'skipped') }}
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -223,7 +222,6 @@ jobs:
   coverage-test:
     name: Linux Clang Coverage
     needs: [ coverage-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -232,7 +230,6 @@ jobs:
   release-linux-arm64-test:
     name: Release · Linux ARM64
     needs: [ release-linux-arm64-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -241,7 +238,6 @@ jobs:
   release-macos-arm64-test:
     name: Release · macOS ARM64
     needs: [ release-macos-arm64-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -251,7 +247,6 @@ jobs:
   release-windows-x64-test:
     name: Release · Windows x64
     needs: [ release-windows-x64-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:

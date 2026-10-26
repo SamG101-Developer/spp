@@ -69,7 +69,6 @@ jobs:
   sanitizers-test:
     name: Sanitizers (ASan, UBSan, LSan)
     needs: [ sanitizers-build ]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'skipped') }}
     permissions:
       contents: read
     uses: ./.github/workflows/_test.yaml

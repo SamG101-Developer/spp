@@ -231,13 +231,12 @@ jobs:
       variant: all-targets
       cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
 
-  # Each lane's tests, against its own build only. They run after
-  # a failed build too, and fail, so ci-success needs only them;
-  # a skipped build (the compile gate) still skips them.
+  # Each lane's tests, against its own build only. A failed build
+  # skips its tests; ci-success fails a skipped gating test when
+  # the compile gate is on.
   linux-gcc-test:
     name: Linux GCC
     needs: [ linux-gcc-build ]
-    if: &test-gate ${{ !cancelled() && !contains(needs.*.result, 'skipped') }}
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -246,7 +245,6 @@ jobs:
   linux-clang-test:
     name: Linux Clang
     needs: [ linux-clang-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -255,7 +253,6 @@ jobs:
   linux-arm-gcc-test:
     name: Linux ARM GCC
     needs: [ linux-arm-gcc-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -264,7 +261,6 @@ jobs:
   linux-arm-clang-test:
     name: Linux ARM Clang
     needs: [ linux-arm-clang-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -273,7 +269,6 @@ jobs:
   macos-clang-test:
     name: macOS Clang
     needs: [ macos-clang-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -283,7 +278,6 @@ jobs:
   windows-msvc-test:
     name: Windows MSVC
     needs: [ windows-msvc-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -293,7 +287,6 @@ jobs:
   windows-clang-cl-test:
     name: Windows clang-cl (Advisory)
     needs: [ windows-clang-cl-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_test.yaml
     with:
@@ -303,7 +296,6 @@ jobs:
   cross-codegen-test:
     name: Cross Codegen (Advisory)
     needs: [ cross-codegen-build ]
-    if: *test-gate
     permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
     with:
@@ -378,8 +370,9 @@ jobs:
 
   # One of the two required status checks for branch protection,
   # the other being "PR Title Format" from pr_title.yaml. Fails
-  # if any needed job failed or was cancelled; passes when they
-  # all succeeded or were skipped.
+  # if any needed job failed or was cancelled, or if a gating
+  # lane's tests did not pass while the compile gate was on: a
+  # failed build skips its tests, and a skip otherwise passes.
   ci-success:
     name: CI Success
     if: ${{ always() }}
@@ -417,5 +410,19 @@ jobs:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
           echo "One or more required jobs did not succeed:"
+          echo "$NEEDS_JSON"
+          exit 1
+
+      - name: Verify the gating lanes ran
+        if: >-
+          ${{ needs.changes.outputs.compile == 'true'
+          && (needs.linux-gcc-test.result != 'success'
+            || needs.linux-clang-test.result != 'success'
+            || needs.linux-arm-gcc-test.result != 'success'
+            || needs.linux-arm-clang-test.result != 'success') }}
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          echo "The compile gate is on, but a gating lane's tests did not pass (a failed build skips them):"
           echo "$NEEDS_JSON"
           exit 1

@@ -2,9 +2,8 @@
 # binaries: gtest (mode x shard), STL conformance, and on Linux
 # valgrind, the codegen checks and the differential suite when
 # asked for, each in a cell of its own or, with `pack`, beside
-# the last gtest shard. Callers run it after a failed build too,
-# so the failure reaches whatever needs only this job; the build's
-# outputs pass through for the same reason.
+# the last gtest shard. The build's outputs pass through, so a
+# job after the tests needs only this one.
 
 name: test
 
@@ -84,14 +83,6 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: ${{ !contains(matrix.suites, 'valgrind') }}
-
-      # The plan is written before the compile, so a failed build
-      # still has cells, and each fails here.
-      - name: Check the build staged
-        if: fromJSON(inputs.build).artifact == ''
-        run: |
-          echo "::error::the build failed; nothing to test"
-          exit 1
 
       # The test fixtures, at the same commit the binaries were built
       # from.
