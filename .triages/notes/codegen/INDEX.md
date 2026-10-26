@@ -18,3 +18,4 @@
 - [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
 - [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()
+- [musl programs need libgcc_s](musl-programs-need-libgcc-s.md) — __gcc_personality_v0; bare Alpine needs `apk add libgcc`, not an sppc gap

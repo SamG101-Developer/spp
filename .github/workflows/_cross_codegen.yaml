@@ -1,7 +1,7 @@
 # Prove the compiler can emit for a target that is not the
 # one it is running on, from an all-targets _build.yaml build.
 # Every target's object is inspected; a target with a "qemu"
-# arch is also linked and run.
+# arch is also linked and run, and musl ("run-in") in Alpine.
 
 name: cross-codegen
 
@@ -30,7 +30,7 @@ jobs:
           - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "s390x", sysroot: "s390x-linux-gnu" }
           - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub cfi jump_table_bounds", qemu: "riscv64", sysroot: "riscv64-linux-gnu" }
           - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32", qemu: "aarch64", sysroot: "aarch64-linux-gnu" }
-          - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
+          - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e", run-in: "alpine" }
           - { triple: "x86_64-unknown-linux-gnux32", arch: "32-bit LSB.*x86-64", layout: "p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64" }
           - { triple: "aarch64_be-unknown-linux-gnu", arch: "64-bit MSB.*ARM aarch64", layout: "E-m:e" }
           - { triple: "armv7-unknown-linux-gnueabihf", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds", qemu: "arm", sysroot: "arm-linux-gnueabihf" }
@@ -78,6 +78,10 @@ jobs:
         if: matrix.target.qemu
         run: bash .github/scripts/setup/install-qemu-linux.sh
 
+      - name: Install the Alpine musl linker
+        if: matrix.target.run-in == 'alpine'
+        run: bash .github/scripts/setup/install-alpine-musl-linux.sh
+
       # Emit the codegen for a cross-compiled target and check it
       # is for the correct target. "off" lists the hardening keys
       # the target has no backend support for: [binary.codegen]'s
@@ -92,6 +96,7 @@ jobs:
           '${{ matrix.target.off }}'
           '${{ matrix.target.qemu }}'
           '${{ matrix.target.sysroot }}'
+          '${{ matrix.target.run-in }}'
 
       # Upload the emitted IR on failure, so it can be inspected.
       - name: Upload emitted IR on failure

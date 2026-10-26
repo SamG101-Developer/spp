@@ -2,7 +2,7 @@
 - [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
 - [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
 - [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores; don't lower workers
-- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k (no unwind tables), ppc32 (+secure-plt) fixed
+- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k, ppc32 fixed; musl runs in Alpine
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)

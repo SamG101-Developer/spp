@@ -202,6 +202,22 @@ else
   set_pin pin.qemu-user.sha256 "$(sha256sum "$tmp/qemu-user.deb" | cut -d ' ' -f 1)"
 fi
 
+# ALPINE
+echo
+echo "alpine (${MANIFEST})"
+alpine_latest="$(fetch 'https://hub.docker.com/v2/repositories/library/alpine/tags?page_size=100' \
+  | python3 -c 'import json, re, sys
+tags = [t for t in json.load(sys.stdin)["results"] if re.fullmatch(r"\d+\.\d+\.\d+", t["name"])]
+tags.sort(key=lambda t: [int(p) for p in t["name"].split(".")])
+print(tags[-1]["name"], tags[-1]["digest"].removeprefix("sha256:")) if tags else None')"
+if [ -z "$alpine_latest" ]; then
+  echo "::error::could not read the latest alpine image"
+  status=1
+else
+  set_pin pin.alpine.version "${alpine_latest% *}"
+  set_pin pin.alpine.sha256 "${alpine_latest#* }"
+fi
+
 # LLVM (WINDOWS)
 echo
 echo "Windows LLVM (checked, not refreshed)"

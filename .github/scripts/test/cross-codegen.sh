@@ -5,7 +5,8 @@
 # with its cross gcc, against the sppc the STL ships for it;
 # where either is missing the link fails and only the object is
 # checked, and where it succeeds the executable is checked too.
-# Given a qemu arch and sysroot, it must link, and then run.
+# Given a qemu arch and sysroot, it must link, and then run;
+# given "alpine" (musl), it must link and run in Alpine.
 #
 # The corpus is a fresh `spp init` project - the STL, which its
 # [vcs] section clones, plus the entry point an object needs.
@@ -18,6 +19,7 @@ EXPECT_LAYOUT="$3"
 CODEGEN_OFF="${4:-}"
 QEMU="${5:-}"
 SYSROOT="${6:-}"
+RUN_IN="${7:-}"
 
 SPP="${PWD}/build/spp"
 if ! [ -x "$SPP" ]; then
@@ -91,7 +93,7 @@ if grep -q '^Built executable:' <<< "$LOG"; then
     echo "::error::${EXE} is not ${EXPECT_ARCH}: ${EXE_DESC}"
     exit 1
   fi
-elif [ -n "$QEMU" ]; then
+elif [ -n "${QEMU}${RUN_IN}" ]; then
   echo "::error::${TRIPLE} was to be run but did not link"
   exit 1
 else
@@ -99,12 +101,18 @@ else
 fi
 
 # Run: the scratch project's entry point prints one line.
+RUN=()
 if [ -n "$QEMU" ]; then
+  RUN=("qemu-${QEMU}" -L "/usr/${SYSROOT}" "$EXE")
+elif [ "$RUN_IN" = alpine ]; then
+  RUN=(docker run --rm -v "${PWD}:${PWD}" "$SPP_MUSL_RUN_IMAGE" "${PWD}/${EXE}")
+fi
+if [ "${#RUN[@]}" -gt 0 ]; then
   STATUS=0
-  OUTPUT="$(timeout 120 "qemu-${QEMU}" -L "/usr/${SYSROOT}" "$EXE" 2>&1)" || STATUS=$?
+  OUTPUT="$(timeout 120 "${RUN[@]}" 2>&1)" || STATUS=$?
   echo "run: ${OUTPUT} (exit ${STATUS})"
   if [ "$STATUS" -ne 0 ] || [ "$OUTPUT" != "Hello world!" ]; then
-    echo "::error::${EXE} under qemu-${QEMU} exited ${STATUS}: ${OUTPUT}"
+    echo "::error::${EXE} under ${RUN[0]} exited ${STATUS}: ${OUTPUT}"
     exit 1
   fi
 fi
