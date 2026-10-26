@@ -536,6 +536,16 @@ SPP_TEST_CMP_VALUES(
   cmp rem: S32 = 7 % 2
 )", {"band", "8_s32"}, {"bior", "14_s32"}, {"bxor", "6_s32"}, {"div", "3_s32"}, {"rem", "1_s32"});
 
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_bool_equality_and_bitwise, R"(
+  cmp eq: Bool = true == false
+  cmp ne: Bool = true != false
+  cmp band: Bool = true & false
+  cmp bior: Bool = true | false
+  cmp bxor: Bool = true ^ true
+)", {"eq", "false"}, {"ne", "true"}, {"band", "false"}, {"bior", "true"}, {"bxor", "false"});
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestCompTimeValues,
   test_invalid_integer_division_by_zero,
@@ -893,3 +903,27 @@ SPP_TEST_CMP_VALUES(
   cmp b: S32 = twice[21]()
   cmp c: S32 = outer[4]()
 )", {"a", "7_s32"}, {"b", "42_s32"}, {"c", "5_s32"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_array_literal_in_a_function_body_is_evaluated_per_call, R"(
+  cmp fun f(x: S32) -> [S32; 2_uz] { ret [x, x] }
+  cmp a: [S32; 2_uz] = f(1)
+  cmp b: [S32; 2_uz] = f(2)
+)", {"a", "[1_s32, 1_s32]"}, {"b", "[2_s32, 2_s32]"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_tuple_literal_in_a_function_body_is_evaluated_per_call, R"(
+  cmp fun f(x: S32) -> (S32, S32) { ret (x, x + 1) }
+  cmp a: (S32, S32) = f(1)
+  cmp b: (S32, S32) = f(5)
+)", {"a", "(1_s32, 2_s32)"}, {"b", "(5_s32, 6_s32)"});
+
+SPP_TEST_CMP_VALUES(
+  TestCompTimeValues,
+  test_repeated_array_literal_in_a_function_body_is_evaluated_per_call, R"(
+  cmp fun f(x: S32) -> [S32; 3_uz] { ret [x; 3_uz] }
+  cmp a: [S32; 3_uz] = f(1)
+  cmp b: [S32; 3_uz] = f(4)
+)", {"a", "[1_s32; 3_uz]"}, {"b", "[4_s32; 3_uz]"});

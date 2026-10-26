@@ -105,11 +105,16 @@ TEST(TestCompKey, test_fold_values) {
   EXPECT_EQ(FoldCompValues("+", Int(2, "u8"), Int(3, "uz")), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("/", Int(2, "uz"), Int(0, "uz")), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("%", Int(7, "uz"), Int(4, "uz")), Int(3, "uz"));
-  EXPECT_EQ(FoldCompValues("<<", Int(1, "u8"), Int(8, "u8")), Int(0, "u8"));
+  // A shift as wide as its type does not fold, as a folded call raises it (E91).
+  EXPECT_EQ(FoldCompValues("<<", Int(1, "u8"), Int(8, "u8")), spp::Nullopt);
+  EXPECT_EQ(FoldCompValues("<<", Int(1, "u8"), Int(7, "u8")), Int(128, "u8"));
   EXPECT_EQ(FoldCompValues("<<", Int(3, "uz"), Int(2, "u32")), Int(12, "uz"));
   EXPECT_EQ(FoldCompValues(">>", Int(8, "uz"), Int(2, "uz")), Int(2, "uz"));
   EXPECT_EQ(FoldCompValues("<", Int(1, "uz"), Int(2, "uz")), Bool(true));
   EXPECT_EQ(FoldCompValues("==", Bool(true), Bool(false)), Bool(false));
+  EXPECT_EQ(FoldCompValues("^", Bool(true), Bool(false)), Bool(true));
+  EXPECT_EQ(FoldCompValues("|", Bool(false), Bool(false)), Bool(false));
+  EXPECT_EQ(FoldCompValues("&", Bool(true), Bool(true)), Bool(true));
   EXPECT_EQ(FoldCompValues("+", Bool(true), Bool(false)), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("==", Bool(true), Int(1, "")), spp::Nullopt);
 
@@ -156,7 +161,9 @@ TEST(TestCompKey, test_fold_float_values) {
   EXPECT_EQ(FoldCompValues("*", Float(3, 2, "f64"), Float(2, 1, "")), Float(3, 1, "f64"));
   EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f32"), Float(1, 1, "f64")), spp::Nullopt);
   EXPECT_EQ(FoldCompValues("+", Float(1, 1, "f64"), Int(1, "")), spp::Nullopt);
-  EXPECT_EQ(FoldCompValues("%", Float(7, 1, "f64"), Float(2, 1, "f64")), spp::Nullopt);
+
+  // A float remainder folds, as "float_rem" does.
+  EXPECT_EQ(FoldCompValues("%", Float(7, 1, "f64"), Float(2, 1, "f64")), Float(1, 1, "f64"));
 
   // Comparisons fold to bools, on the values the operands stand for.
   EXPECT_EQ(FoldCompValues("<", Float(1, 3, "f64"), Float(34, 100, "f64")), Bool(true));

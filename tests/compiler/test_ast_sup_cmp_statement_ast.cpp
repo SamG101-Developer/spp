@@ -162,3 +162,17 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         !public cmp b: S32 = a
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstSupCmpStatementAst,
+    test_valid_sup_constant_read_by_a_stage_7_fold_before_it, R"(
+    fun f() -> Void {
+        let x: [S32; 6_uz] = [1; K::k]
+    }
+
+    cls K { }
+    sup K {
+        !public cmp k: USize = j * 3_uz
+        !public cmp j: USize = 1_uz + 1_uz
+    }
+)");

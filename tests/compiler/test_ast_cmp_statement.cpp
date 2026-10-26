@@ -274,3 +274,51 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         else { true }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CmpStatementAst,
+  test_valid_operator_constant_read_by_a_stage_7_fold, R"(
+    cmp b: USize = 1_uz + 2_uz
+
+    fun f() -> Void {
+        let x: [S32; 3_uz] = [1; b]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CmpStatementAst,
+  test_valid_operator_constant_read_by_a_stage_7_fold_before_it, R"(
+    fun f() -> Void {
+        let x: [S32; 3_uz] = [1; b]
+    }
+
+    cmp b: USize = 1_uz + 2_uz
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  CmpStatementAst,
+  test_valid_constant_chain_through_a_cmp_fun_read_by_a_stage_7_fold, R"(
+    cmp a: USize = b + 1_uz
+    cmp b: USize = ct()
+    cmp fun ct() -> USize { ret 3_uz }
+
+    fun f() -> Void {
+        let x: [S32; 4_uz] = [1; a]
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CmpStatementAst,
+  test_invalid_constant_read_by_a_stage_7_fold_mismatching, SppTypeMismatchError, R"(
+    fun f() -> Void {
+        let x: [S32; 5_uz] = [1; b]
+    }
+
+    cmp b: USize = 1_uz + 2_uz
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CmpStatementAst,
+  test_invalid_constant_reading_itself_through_an_operator, SppCompTimeConstantError, R"(
+    cmp a: USize = 1_uz + a
+)");

@@ -304,3 +304,220 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = C[255_u8 + 1_u8]()
     }
 )");
+
+// A "cmp fun" call is a comp-time value anywhere one is: a generic argument (positional or keyword), a comp
+// parameter's default, an array type's size. Each is compared with the type spelled with the literal it folds to, so
+// it has to be evaluated, not only accepted. A call to a runtime function there is not a comp-time value (E3).
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_call_as_a_positional_comp_argument, R"(
+    cls A[cmp n: USize] { }
+    cmp fun ct() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let x: A[3_uz] = A[ct()]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_call_as_a_keyword_comp_argument, R"(
+    cls A[cmp n: USize] { }
+    cmp fun ct() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let x: A[3_uz] = A[n=ct()]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_call_with_an_argument_as_a_comp_argument, R"(
+    cls A[cmp n: USize] { }
+    cmp fun twice(x: USize) -> USize { ret x * 2_uz }
+
+    fun g() -> Void {
+        let x: A[4_uz] = A[twice(2_uz)]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_call_as_a_comp_parameter_default, R"(
+    cmp fun ct() -> USize { ret 3_uz }
+    cls B[cmp n: USize = ct()] { }
+
+    fun g() -> Void {
+        let y: B[3_uz] = B()
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_call_as_an_array_type_size, R"(
+    cmp fun ct() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let a: [S32; ct()] = [1, 2, 3]
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_runtime_call_as_a_positional_comp_argument,
+    SppCompTimeConstantError, R"(
+    cls A[cmp n: USize] { }
+    fun rt() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let x = A[rt()]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_runtime_call_as_a_keyword_comp_argument,
+    SppCompTimeConstantError, R"(
+    cls A[cmp n: USize] { }
+    fun rt() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let x = A[n=rt()]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_runtime_call_as_a_comp_parameter_default,
+    SppCompTimeConstantError, R"(
+    fun rt() -> USize { ret 3_uz }
+    cls B[cmp n: USize = rt()] { }
+
+    fun g() -> Void {
+        let y = B()
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_runtime_call_as_an_array_type_size,
+    SppCompTimeConstantError, R"(
+    fun rt() -> USize { ret 3_uz }
+
+    fun g() -> Void {
+        let a: [S32; rt()] = [1, 2, 3]
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_comp_expression_arg_division_by_zero,
+    SppDivisionByZeroError, R"(
+    cls A[cmp n: USize] { }
+
+    fun g() -> Void {
+        let x = A[7_uz / 0_uz]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_comp_expression_arg_remainder_by_zero,
+    SppDivisionByZeroError, R"(
+    cls A[cmp n: USize] { }
+
+    fun g() -> Void {
+        let x = A[7_uz % 0_uz]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_comp_expression_arg_float_division_by_zero,
+    SppDivisionByZeroError, R"(
+    cls A[cmp n: F32] { }
+
+    fun g() -> Void {
+        let x = A[1.0_f32 / 0.0_f32]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_comp_expression_arg_shift_too_wide,
+    SppShiftAmountOutOfBoundsError, R"(
+    cls A[cmp n: U8] { }
+
+    fun g() -> Void {
+        let x = A[1_u8 << 9_u32]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_comp_expression_arg_division_by_zero_once_bound,
+    SppDivisionByZeroError, R"(
+    cls A[cmp n: USize] { }
+
+    fun f[cmp m: USize]() -> Void {
+        let x = A[m / 0_uz]()
+        std::mem::ops::drop(x)
+    }
+
+    fun g() -> Void {
+        f[4_uz]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_comp_expression_arg_float_remainder, R"(
+    cls A[cmp n: F32] { }
+
+    fun g() -> Void {
+        let x: A[1.0_f32] = A[5.0_f32 % 2.0_f32]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_comp_expression_arg_bool_bitwise, R"(
+    cls A[cmp b: Bool] { }
+
+    fun g() -> Void {
+        let x: A[true] = A[true ^ false]()
+        let y: A[true] = A[true | false]()
+        let z: A[false] = A[true & false]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+        std::mem::ops::drop(z)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_cmp_fun_bool_ops_match_comp_expression_arg, R"(
+    cls A[cmp b: Bool] { }
+    cmp fun eq() -> Bool { ret true == false }
+    cmp fun xor() -> Bool { ret true ^ false }
+
+    fun g() -> Void {
+        let x: A[false == true] = A[eq()]()
+        let y: A[true ^ false] = A[xor()]()
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+    }
+)");
