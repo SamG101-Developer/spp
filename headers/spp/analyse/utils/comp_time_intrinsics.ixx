@@ -12,6 +12,7 @@ module;
   }
 
 export module spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.scopes.comp_key;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import std;
@@ -256,9 +257,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitIor(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitIorAssign(
     IntegerLiteralAst &lhs,
@@ -266,9 +267,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitAnd(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitAndAssign(
     IntegerLiteralAst &lhs,
@@ -276,9 +277,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitXor(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitXorAssign(
     IntegerLiteralAst &lhs,
@@ -286,16 +287,16 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitNot(
-    IntegerLiteralAst const &val)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &val)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitNotAssign(
     IntegerLiteralAst &lhs)
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsEq(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsOeq(
@@ -304,8 +305,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsNe(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsOne(

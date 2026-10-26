@@ -296,38 +296,57 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShr(
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitIor(
-  IntegerLiteralAst const &lhs,
-  IntegerLiteralAst const &rhs)
-  -> Unique<IntegerLiteralAst> {
-  // Perform bitwise OR on two integer literals.
-  return IntegerLiteralAst::FromBigVal(lhs.BigVal() | rhs.BigVal(), lhs.Type);
+  ExpressionAst const &lhs,
+  ExpressionAst const &rhs)
+  -> Unique<ExpressionAst> {
+  // Perform bitwise OR on two integer literals, or on two "Bool"s, which std's "Bool::bit_ior" calls it for:
+  // "or" of the two.
+  if (const auto l = lhs.To<BooleanLiteralAst>(); l != nullptr) {
+    return BooleanLiteralAst::FromCppVal(l->CppVal() or rhs.As<BooleanLiteralAst>()->CppVal());
+  }
+  auto const &l = *lhs.As<IntegerLiteralAst>();
+  return IntegerLiteralAst::FromBigVal(l.BigVal() | rhs.As<IntegerLiteralAst>()->BigVal(), l.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitAnd(
-  IntegerLiteralAst const &lhs,
-  IntegerLiteralAst const &rhs)
-  -> Unique<IntegerLiteralAst> {
-  // Perform bitwise AND on two integer literals.
-  return IntegerLiteralAst::FromBigVal(lhs.BigVal() & rhs.BigVal(), lhs.Type);
+  ExpressionAst const &lhs,
+  ExpressionAst const &rhs)
+  -> Unique<ExpressionAst> {
+  // Perform bitwise AND on two integer literals, or on two "Bool"s, which std's "Bool::bit_and" calls it for:
+  // "and" of the two.
+  if (const auto l = lhs.To<BooleanLiteralAst>(); l != nullptr) {
+    return BooleanLiteralAst::FromCppVal(l->CppVal() and rhs.As<BooleanLiteralAst>()->CppVal());
+  }
+  auto const &l = *lhs.As<IntegerLiteralAst>();
+  return IntegerLiteralAst::FromBigVal(l.BigVal() & rhs.As<IntegerLiteralAst>()->BigVal(), l.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitXor(
-  IntegerLiteralAst const &lhs,
-  IntegerLiteralAst const &rhs)
-  -> Unique<IntegerLiteralAst> {
-  // Perform bitwise XOR on two integer literals.
-  return IntegerLiteralAst::FromBigVal(lhs.BigVal() ^ rhs.BigVal(), lhs.Type);
+  ExpressionAst const &lhs,
+  ExpressionAst const &rhs)
+  -> Unique<ExpressionAst> {
+  // Perform bitwise XOR on two integer literals, or on two "Bool"s, which std's "Bool::bit_xor" calls it for:
+  // "!=" of the two.
+  if (const auto l = lhs.To<BooleanLiteralAst>(); l != nullptr) {
+    return BooleanLiteralAst::FromCppVal(l->CppVal() != rhs.As<BooleanLiteralAst>()->CppVal());
+  }
+  auto const &l = *lhs.As<IntegerLiteralAst>();
+  return IntegerLiteralAst::FromBigVal(l.BigVal() ^ rhs.As<IntegerLiteralAst>()->BigVal(), l.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNot(
-  IntegerLiteralAst const &val)
-  -> Unique<IntegerLiteralAst> {
-  // Perform bitwise NOT on an integer literal, in its type's
-  // width: "~" alone is unbounded, which only a signed type
-  // agrees with ("~15_u32" is 2^32 - 16, not -16).
-  const auto inverted = ~val.BigVal();
-  const auto wrapped = spp::utils::numbers::WrapToInteger(inverted, val.Type);
-  return IntegerLiteralAst::FromBigVal(wrapped.value_or(inverted), val.Type);
+  ExpressionAst const &val)
+  -> Unique<ExpressionAst> {
+  // Perform bitwise NOT on a "Bool" (its "not"), or on an integer
+  // literal in its type's width: "~" alone is unbounded, which only
+  // a signed type agrees with ("~15_u32" is 2^32 - 16, not -16).
+  if (const auto b = val.To<BooleanLiteralAst>(); b != nullptr) {
+    return BooleanLiteralAst::FromCppVal(not b->CppVal());
+  }
+  auto const &i = *val.As<IntegerLiteralAst>();
+  const auto inverted = ~i.BigVal();
+  const auto wrapped = spp::utils::numbers::WrapToInteger(inverted, i.Type);
+  return IntegerLiteralAst::FromBigVal(wrapped.value_or(inverted), i.Type);
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNotAssign(
@@ -335,15 +354,19 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitNotAssign(
   -> void {
   // Perform bitwise NOT assignment on an integer literal. Written out rather than generated below because it is the
   // one unary assignment; it used to hand-roll the field copy that "AssignInPlace" does, and had drifted from it.
-  AssignInPlace(lhs, StdIntrinsicsBitNot(lhs));
+  AssignInPlace(lhs, StdIntrinsicsBitNot(static_cast<ExpressionAst const&>(lhs)));
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsEq(
-  IntegerLiteralAst const &lhs,
-  IntegerLiteralAst const &rhs)
+  ExpressionAst const &lhs,
+  ExpressionAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform equality comparison on two integer literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() == rhs.BigVal());
+  // Perform equality comparison on two integer literals, or on two
+  // "Bool"s, which std's "Bool::eq" calls it for.
+  if (const auto l = lhs.To<BooleanLiteralAst>(); l != nullptr) {
+    return BooleanLiteralAst::FromCppVal(l->CppVal() == rhs.As<BooleanLiteralAst>()->CppVal());
+  }
+  return BooleanLiteralAst::FromCppVal(lhs.As<IntegerLiteralAst>()->BigVal() == rhs.As<IntegerLiteralAst>()->BigVal());
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOeq(
@@ -357,11 +380,15 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOeq(
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsNe(
-  IntegerLiteralAst const &lhs,
-  IntegerLiteralAst const &rhs)
+  ExpressionAst const &lhs,
+  ExpressionAst const &rhs)
   -> Unique<BooleanLiteralAst> {
-  // Perform inequality comparison on two integer literals.
-  return BooleanLiteralAst::FromCppVal(lhs.BigVal() != rhs.BigVal());
+  // Perform inequality comparison on two integer literals, or on two
+  // "Bool"s, which std's "Bool::ne" calls it for.
+  if (const auto l = lhs.To<BooleanLiteralAst>(); l != nullptr) {
+    return BooleanLiteralAst::FromCppVal(l->CppVal() != rhs.As<BooleanLiteralAst>()->CppVal());
+  }
+  return BooleanLiteralAst::FromCppVal(lhs.As<IntegerLiteralAst>()->BigVal() != rhs.As<IntegerLiteralAst>()->BigVal());
 }
 
 auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsOne(
