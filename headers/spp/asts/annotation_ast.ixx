@@ -73,17 +73,18 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
 
   /// Analyse the generic arguments and function arguments
   /// (if provided), and do overload resolution on the target,
-  /// checking it exists (custom annotations).
+  /// checking it exists (custom annotations), and that it may be
+  /// applied to what it is applied to ("_CheckTarget").
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Do the final annotation compile time resolution -
-  /// evaluate the target and check it is correct. Safe to do
+private:
+  /// Evaluate the annotation definition's "target" mask and check
+  /// the ast this is applied to is one of its kinds. Safe to do
   /// it like this, because properties for builtins silently
   /// fail (fine) for non-matched asts. Todo: For custom
   /// annotations, this will need changing.
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto _CheckTarget(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-private:
   /// The target that this annotation "is" ie the function
   /// prototype defining it.
   FunctionPrototypeAst *_Target;

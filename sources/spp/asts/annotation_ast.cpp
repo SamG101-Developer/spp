@@ -292,9 +292,10 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   // Stamp the overload as the "target" of this annotation. This
   // will be used for extensively for custom annotations.
   _Target = overload;
+  _CheckTarget(sm, meta);
 }
 
-auto AnnotationAst::Stage9_CompTimeResolve(
+auto AnnotationAst::_CheckTarget(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using annotation_utils::AnnotationInfo;
@@ -307,20 +308,30 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   const auto outer_sup_ctx = _Ctx->GetAstCtx()->To<SupPrototypeFunctionsAst>();
   const auto outer_ext_ctx = _Ctx->GetAstCtx()->To<SupPrototypeExtensionAst>();
 
-  // The mask reads sup constants (attached in stage 5.5) and runs
-  // "cmp" functions (typed in stage 9), so it cannot be checked
-  // before the stage 5 effects. Each of those only modifies a
-  // function or a class, whichever its annotation applies to.
-  // Evaluate the context that this annotation can be applied to.
+  // The mask reads sup constants (attached in stage 5.5) and may
+  // run "cmp" functions (analysed ahead where one is not yet), so
+  // it cannot be checked before the stage 5 effects. Each of those
+  // only modifies a function or a class, whichever its annotation
+  // applies to. Evaluate the context that this annotation can be
+  // applied to.
   const auto annotation_scope_name = INJECT_CODE("std::annotations", ParseExpression);
   const auto annotation_scope = const_cast<Scope*>(
     sm->CurrentScope->FindNsScope(annotation_scope_name.get()));
   auto tm = sm->NewManagerAt(annotation_scope);
 
   const auto allowed_ctx = [&] {
+    // The mask is constants combined by "|", which its key folds
+    // without calling anything ("FoldCompValues"). Running the call
+    // instead would reach the method "|" desugars to while it may
+    // still be analysed: an annotation on "S32::bit_ior" itself is
+    // checked as that method's own analysis begins.
+    auto const &mask = *annotation_info->Definition->FnArgGroup->At("target")->Val;
+    if (const auto folded = annotation_scope->FoldedCompAstOf(mask); folded != nullptr) {
+      return folded->As<IntegerLiteralAst>()->CppVal<std::uint64_t>();
+    }
     const auto _meta_guard = MetaGuard(meta);
     annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
-    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->EvaluateCompTime(&tm, meta);
     const auto result = std::move(meta->CompTimeResult);
     return result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
   }();
