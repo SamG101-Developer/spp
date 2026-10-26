@@ -143,11 +143,10 @@ auto spp::compiler::Compiler::Compile() -> bool {
     _Boot->Stage6_PreAnalyseSemantics(next_bar(), *_Modules, _ScopeManager.get());
     _Boot->Stage7_AnalyseSemantics(next_bar(), *_Modules, is_exe, _ScopeManager.get());
     _Boot->Stage8_CheckMemory(next_bar(), *_Modules, _ScopeManager.get());
-    _Boot->Stage9_CompTimeResolve(next_bar(), *_Modules, _ScopeManager.get());
     CollectCompTimeConstants();
 
     // Builds that are "analyse only" (IDEA indexing), can stop
-    // after stage 9.
+    // after stage 8.
     if (_AnalyseOnly or analyse::errors::diagnostic_sink::HasErrors()) {
       built = not analyse::errors::diagnostic_sink::HasErrors();
     }

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.cmp_statement_ast;
+import spp.asts.ast;
 import spp.asts.ast_kind;
 import spp.asts.module_member_ast;
 import spp.asts.statement_ast;
@@ -88,8 +89,6 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -98,8 +97,25 @@ SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
 
   SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
 
+  /// Analyse and fold this constant ahead of the stage 7 walk, if the walk has not reached it yet: a fold reads a
+  /// constant through its symbol ("IdentifierAst::EvaluateCompTime"), which holds the value as written until then,
+  /// never analysed. The statement is walked from its own scope, with metadata of its own, so its scopes are built
+  /// where the walk would build them, and the walk skips it on reaching it. One still being analysed (a value that
+  /// reads itself again) cannot be read, so "site" is raised as non-constant.
+  auto AnalyseAhead(Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void;
+
 private:
   bool _FromUseStatement;
+
+  /// How far stage 7 has got with this statement ("AnalyseAhead").
+  enum class _Stage7Progress { kPending, kAnalysing, kAnalysedAhead, kDone } _Stage7 = _Stage7Progress::kPending;
+
+  /// The value folded in stage 7, which replaces "Value" once stage 8 has checked the analysed one, as that walks the
+  /// scopes the analysis built ("case" branches). Null for a value naming a generic, which is kept as written.
+  Unique<ExpressionAst> _FoldedValue;
+
+  /// Stage 7 in the statement's own scope: the value analysed, checked against the type, and folded.
+  auto _AnalyseValue(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   Shared<VariableSymbol> _AliasSymbol;
 };

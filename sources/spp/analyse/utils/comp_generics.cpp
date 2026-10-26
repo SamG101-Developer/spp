@@ -1,7 +1,10 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.comp_generics;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -19,9 +22,11 @@ import spp.asts.literal_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_size;
 import spp.lex.lexer;
@@ -107,6 +112,32 @@ auto spp::analyse::utils::comp_generics::NeedsSupScopesToType(
   return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
     return part.To<LiteralAst>() == nullptr and part.To<IdentifierAst>() == nullptr;
   });
+}
+
+auto spp::analyse::utils::comp_generics::FoldCompCall(
+  ExpressionAst &value, ScopeManager *sm, asts::meta::CompilerMetaData *meta) -> Unique<ExpressionAst> {
+  IMPORT_UTILS;
+  const auto has_call = type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
+    const auto postfix = part.To<PostfixExpressionAst>();
+    return postfix != nullptr and postfix->Op->To<PostfixExpressionOperatorFunctionCallAst>() != nullptr;
+  });
+  const auto unfolded_op = [&] {
+    if (not IsCompOperator(value)) { return false; }
+    const auto id = sm->CurrentScope->CompIdOf(value);
+    return scopes::IsClosedCompId(id) and not scopes::IsValueCompId(id);
+  };
+  if ((not has_call and not unfolded_op()) or sm->CurrentScope->IsInTemplate()) { return nullptr; }
+
+  // Folded with its own walk over the scope it is written in, as a "cmp" statement's value and an array literal's
+  // repeat count are; what the walk sets is put back, but the result, which is carried out.
+  auto tm = sm->NewManagerAt(sm->CurrentScope);
+  {
+    const auto _meta_guard = asts::meta::MetaGuard(meta);
+    meta->CompTimeResult = nullptr;
+    value.EvaluateCompTime(&tm, meta);
+  }
+  RaiseIf<SppCompTimeConstantError>(meta->CompTimeResult == nullptr, ERR_ARGS(value));
+  return std::move(meta->CompTimeResult);
 }
 
 /// [CHECKED]

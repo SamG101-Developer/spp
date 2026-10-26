@@ -734,18 +734,11 @@ namespace spp::analyse::scopes {
       // as a folded one is ("FoldCompValues"), so "0.1_f32" and
       // "0.05_f32 + 0.05_f32" are one value too. One the type
       // cannot hold is kept as written, for E16.
+      if (auto key = spp::analyse::utils::comp_time_intrinsics::ValueKeyOf(expr); key.has_value()) {
+        return std::move(*key);
+      }
       if (const auto lit = expr.To<FloatLiteralAst>(); lit != nullptr) {
-        const auto type = lit->TypeOrDefault();
-        const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(lit->BigVal(), type));
-        return CompKey::OfFloat(text.has_value() ? numex::BigDec(*text) : lit->BigVal(), type);
-      }
-
-      if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
-        return CompKey::OfInt(lit->BigVal(), lit->TypeOrDefault());
-      }
-
-      if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
-        return CompKey::OfBool(lit->CppVal());
+        return CompKey::OfFloat(lit->BigVal(), lit->TypeOrDefault());
       }
 
       // A "cmp" constant ("k", "ns::k") is its value, keyed where
@@ -1738,18 +1731,7 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
     // is a value of its type's format, whose decimal terminates,
     // so its literal is exact.
     case CompKey::Part::Value: {
-      if (auto const *const val = node.AsBool(); val != nullptr) {
-        return BooleanLiteralAst::FromCppVal(*val);
-      }
-
-      if (auto const *const val = node.AsInt(); val != nullptr) {
-        return IntegerLiteralAst::FromBigVal(*val, node.Text);
-      }
-
-      if (auto const *const val = node.AsFloat(); val != nullptr) {
-        return FloatLiteralAst::FromBigVal(*val, node.Text);
-      }
-      return nullptr;
+      return utils::comp_time_intrinsics::LiteralOf(node);
     }
 
     // For a generic comp parameter, get the corresponding

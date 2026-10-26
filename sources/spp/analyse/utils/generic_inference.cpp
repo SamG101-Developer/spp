@@ -922,7 +922,10 @@ auto GenericSolver::_CrossSubstitute() -> void {
     if (auto folded = sm.CurrentScope->FoldedCompAstOf(*comp); folded != nullptr) {
       comp = std::move(folded);
     }
-    else { comp->Stage7_AnalyseSemantics(_Sm, _Meta); }
+    else {
+      comp->Stage7_AnalyseSemantics(_Sm, _Meta);
+      if (auto folded = comp_generics::FoldCompCall(*comp, _Sm, _Meta); folded != nullptr) { comp = std::move(folded); }
+    }
     entry->CompVals.clear();
     entry->CompVals.emplace_back(_CompVal{.Val = std::move(comp), .Site = nullptr});
   }

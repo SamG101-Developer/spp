@@ -28,7 +28,6 @@ inline constexpr auto kCompilerStageNames = spp::Arr{
   "Pre-Analysing Semantics........ ",
   "Analysing Semantics............ ",
   "Checking Memory Safety......... ",
-  "Resolving comptime constants... ",
   "Monomorphising generics........ ",
   "Generating Code (1)............ ",
   "Generating Code (2)............ "
@@ -62,7 +61,7 @@ private:
   bool _ForCppGoogleTest = false;
 
   /// Stop once the analysis is done, leaving monomorphisation, pre-codegen and codegen unrun. What an editor asks for
-  /// is decided by stage 9 - types, errors, what a name resolved to, what a "cmp" evaluated to - and the stages after
+  /// is decided by stage 8 - types, errors, what a name resolved to, what a "cmp" evaluated to - and the stages after
   /// it cost more than every stage before them put together.
   bool _AnalyseOnly = false;
 
@@ -116,7 +115,7 @@ public:
   auto SetTestFilters(Str name_filter, Str group_filter) const -> void;
 
   /**
-   * Stop after stage 9 rather than going on to generate anything. Must be set before @c Compile . Nothing is written
+   * Stop after stage 8 rather than going on to generate anything. Must be set before @c Compile . Nothing is written
    * to the output tree in this mode, so the artefacts of a real build are left as they were.
    */
   auto SetAnalyseOnly(bool analyse_only) -> void;

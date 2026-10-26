@@ -7,6 +7,8 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
+use(spp::asts::meta, struct CompilerMetaData);
 use(spp::analyse::utils::comp_generics, struct CompTimeResolutionGuard);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct VariableSymbol);
@@ -36,6 +38,19 @@ namespace spp::analyse::utils::comp_generics {
   /// analysed and type-checked only after they are.
   SPP_EXP_FUN auto NeedsSupScopesToType(
     ExpressionAst const &value) -> bool;
+
+  /// A comp value with a function call in it ("ct()", "n + ct()"),
+  /// evaluated as a "cmp" statement's value is: the literal it
+  /// folds to, running any "cmp fun" it calls, or an E3 for one
+  /// that is no comp-time value (a runtime function's call). A
+  /// call keys only as its spelling, so is folded where it is
+  /// written. So is an operation over values its key leaves
+  /// unfolded ("1_uz / 0_uz"), as the call it desugars to, for
+  /// the error that call raises. Nullptr for anything else, or
+  /// in a template, which each instantiation folds for itself.
+  /// "value" is analysed already.
+  SPP_EXP_FUN auto FoldCompCall(
+    ExpressionAst &value, ScopeManager *sm, asts::meta::CompilerMetaData *meta) -> Unique<ExpressionAst>;
 
   /// Whether a comp value (or an element of it) is an operation,
   /// which is analysed on a copy, as its operator call.

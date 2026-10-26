@@ -182,6 +182,47 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     return MakeUnique<CompTimeFnImpl<true, true, Ret, Args...>>(fn);
   }
 
+  /// Whether a divisor is zero: an integer or float literal, as "/" and "%" cannot fold over. The call raises it
+  /// (E90); a key leaves the operation unfolded.
+  SPP_EXP_FUN auto IsZeroDivisor(
+    ExpressionAst const &divisor)
+    -> bool;
+
+  /// The width in bits of an integer type, by its suffix ("s32" is 32); the pointer-sized ones are as wide as a pointer
+  /// here.
+  SPP_EXP_FUN auto IntegerWidth(
+    StrView type)
+    -> std::int64_t;
+
+  /// Whether a shift amount is as wide as the type it shifts, or wider: a shift cannot fold over one. The call raises
+  /// it (E91); a key leaves the operation unfolded.
+  SPP_EXP_FUN auto IsShiftTooWide(
+    IntegerLiteralAst const &value,
+    IntegerLiteralAst const &amount)
+    -> bool;
+
+  /// A literal's value key, which "A[1 + 2]" and "A[3]" both key as: one value however it is spelled ("0x10_uz" and
+  /// "16_uz"), a float as its value in its type's format. None for a float its type cannot hold (an infinity, a NaN),
+  /// or anything but a literal.
+  SPP_EXP_FUN auto ValueKeyOf(
+    ExpressionAst const &lit)
+    -> Opt<scopes::CompKey>;
+
+  /// A value key as the literal it is; null for any other part.
+  SPP_EXP_FUN auto LiteralOf(
+    scopes::CompKey const &key)
+    -> Unique<ExpressionAst>;
+
+  /// Fold a binary operator over two literal operands as its std method does: "+" over integers is "add", whose body
+  /// calls "std::intrinsics::sadd" or "uadd", which fold by "StdIntrinsicsAdd". "and" and "or" are the language's own,
+  /// not methods. Null when the operator has no intrinsic over those operands, or the intrinsic cannot fold them (a
+  /// zero divisor, a shift too wide), so a comp key and a folded call agree on every value.
+  SPP_EXP_FUN auto FoldBinaryOp(
+    StrView op,
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
+
   SPP_EXP_FUN auto StdIntrinsicsAdd(
     IntegerLiteralAst const &lhs,
     IntegerLiteralAst const &rhs)

@@ -5,6 +5,7 @@ module;
 module spp.asts.generic_parameter_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
@@ -307,6 +308,15 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
     const auto default_type = CompDefault->InferType(sm, meta);
     Raise<SppTypeMismatchError>(ERR_ARGS(*CompType, *CompType, *CompDefault, *default_type));
   }
+
+  // Folded too, to prove it is a constant even if nothing ever
+  // uses it. The result is thrown away - a use site folds its own
+  // copy. One naming another parameter ("m = n + 1_uz") is no
+  // constant until instantiated, where it is folded as bound.
+  if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*WrittenCompDefault))) { return; }
+  auto tm = sm->NewManagerAt(sm->CurrentScope);
+  const auto _meta_guard = MetaGuard(meta);
+  CompDefault->EvaluateCompTime(&tm, meta);
 }
 
 auto GenericParameterAst::Stage11_CodeGen(

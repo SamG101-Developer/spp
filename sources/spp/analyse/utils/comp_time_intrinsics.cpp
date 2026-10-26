@@ -109,6 +109,13 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     }
 
     auto AssignInPlace(
+      IntegerLiteralAst &lhs, Unique<ExpressionAst> &&result) -> void {
+      // A bitwise operation folds a "Bool" too, so it hands its
+      // result back as an expression: over integers, an integer.
+      AssignInPlace(lhs, Unique<IntegerLiteralAst>(result.release()->As<IntegerLiteralAst>()));
+    }
+
+    auto AssignInPlace(
       FloatLiteralAst &lhs, Unique<FloatLiteralAst> &&result) -> void {
       lhs.TokSign = std::move(result->TokSign);
       lhs.IntVal = std::move(result->IntVal);
@@ -775,3 +782,129 @@ SPP_CMP_ASSIGN_OP(Fdiv, FloatLiteralAst)
 SPP_CMP_ASSIGN_OP(Frem, FloatLiteralAst)
 
 #undef SPP_CMP_ASSIGN_OP
+
+auto spp::analyse::utils::comp_time_intrinsics::IsZeroDivisor(
+  ExpressionAst const &divisor) -> bool {
+  // Either an integer or a float can divide.
+  const auto int_divisor = divisor.To<IntegerLiteralAst>();
+  const auto flt_divisor = divisor.To<FloatLiteralAst>();
+  return (int_divisor != nullptr and int_divisor->BigVal() == 0)
+    or (flt_divisor != nullptr and flt_divisor->BigVal() == 0);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::IntegerWidth(
+  const StrView type) -> std::int64_t {
+  // The digits in the type name ("s32" -> 32); the pointer-sized
+  // names carry none.
+  const auto digits = type
+    | genex::views::filter([](auto c) { return std::isdigit(static_cast<unsigned char>(c)); })
+    | genex::to<Str>();
+  return digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::IsShiftTooWide(
+  IntegerLiteralAst const &value, IntegerLiteralAst const &amount) -> bool {
+  // The amount is a "U32", so never negative.
+  return amount.BigVal() >= numex::BigInt(IntegerWidth(value.TypeOrDefault()));
+}
+
+namespace spp::analyse::utils::comp_time_intrinsics {
+  namespace {
+    /// An intrinsic over two literals of one kind, read as the expressions a fold has.
+    template <typename Lit, auto Fn>
+    auto Over(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+      return Fn(*lhs.As<Lit>(), *rhs.As<Lit>());
+    }
+
+    /// "and" and "or" are built in, short-circuiting, so no
+    /// intrinsic folds them; over two values, they are this.
+    auto LogicalAnd(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+      return BooleanLiteralAst::FromCppVal(
+        lhs.As<BooleanLiteralAst>()->CppVal() and rhs.As<BooleanLiteralAst>()->CppVal());
+    }
+
+    auto LogicalOr(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+      return BooleanLiteralAst::FromCppVal(
+        lhs.As<BooleanLiteralAst>()->CppVal() or rhs.As<BooleanLiteralAst>()->CppVal());
+    }
+
+    /// An operator, and the intrinsic each kind of operand folds
+    /// it by - what std's method for it calls ("S32::add" calls
+    /// "sadd", "F32::ne" calls "one"); null where there is none.
+    struct BinaryOp {
+      StrView Op;
+      Unique<ExpressionAst> (*Int)(ExpressionAst const &, ExpressionAst const &);
+      Unique<ExpressionAst> (*Float)(ExpressionAst const &, ExpressionAst const &);
+      Unique<ExpressionAst> (*Bool)(ExpressionAst const &, ExpressionAst const &);
+    };
+
+    using Int = IntegerLiteralAst;
+    using Flt = FloatLiteralAst;
+    using Any = ExpressionAst;
+    constexpr auto kBinaryOps = std::to_array<BinaryOp>({
+      {"+", Over<Int, StdIntrinsicsAdd>, Over<Flt, StdIntrinsicsFadd>, nullptr},
+      {"-", Over<Int, StdIntrinsicsSub>, Over<Flt, StdIntrinsicsFsub>, nullptr},
+      {"*", Over<Int, StdIntrinsicsMul>, Over<Flt, StdIntrinsicsFmul>, nullptr},
+      {"/", Over<Int, StdIntrinsicsDiv>, Over<Flt, StdIntrinsicsFdiv>, nullptr},
+      {"%", Over<Int, StdIntrinsicsRem>, Over<Flt, StdIntrinsicsFrem>, nullptr},
+      {"<<", Over<Int, StdIntrinsicsBitShl>, nullptr, nullptr},
+      {">>", Over<Int, StdIntrinsicsBitShr>, nullptr, nullptr},
+      {"|", Over<Any, StdIntrinsicsBitIor>, nullptr, Over<Any, StdIntrinsicsBitIor>},
+      {"&", Over<Any, StdIntrinsicsBitAnd>, nullptr, Over<Any, StdIntrinsicsBitAnd>},
+      {"^", Over<Any, StdIntrinsicsBitXor>, nullptr, Over<Any, StdIntrinsicsBitXor>},
+      {"==", Over<Any, StdIntrinsicsEq>, Over<Flt, StdIntrinsicsOeq>, Over<Any, StdIntrinsicsEq>},
+      {"!=", Over<Any, StdIntrinsicsNe>, Over<Flt, StdIntrinsicsOne>, Over<Any, StdIntrinsicsNe>},
+      {"<", Over<Int, StdIntrinsicsLt>, Over<Flt, StdIntrinsicsOlt>, nullptr},
+      {"<=", Over<Int, StdIntrinsicsLe>, Over<Flt, StdIntrinsicsOle>, nullptr},
+      {">", Over<Int, StdIntrinsicsGt>, Over<Flt, StdIntrinsicsOgt>, nullptr},
+      {">=", Over<Int, StdIntrinsicsGe>, Over<Flt, StdIntrinsicsOge>, nullptr},
+      {"and", nullptr, nullptr, LogicalAnd},
+      {"or", nullptr, nullptr, LogicalOr},
+    });
+  }
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::ValueKeyOf(
+  ExpressionAst const &lit) -> Opt<scopes::CompKey> {
+  using scopes::CompKey;
+  if (const auto flt = lit.To<FloatLiteralAst>(); flt != nullptr) {
+    const auto type = flt->TypeOrDefault();
+    const auto text = spp::utils::numbers::WriteFloat(spp::utils::numbers::ReadFloat(flt->BigVal(), type));
+    return text.has_value() ? Opt(CompKey::OfFloat(numex::BigDec(*text), type)) : Nullopt;
+  }
+  if (const auto i = lit.To<IntegerLiteralAst>(); i != nullptr) {
+    return CompKey::OfInt(i->BigVal(), i->TypeOrDefault());
+  }
+  if (const auto b = lit.To<BooleanLiteralAst>(); b != nullptr) { return CompKey::OfBool(b->CppVal()); }
+  return Nullopt;
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::LiteralOf(
+  scopes::CompKey const &key) -> Unique<ExpressionAst> {
+  if (key.Kind != scopes::CompKey::Part::Value) { return nullptr; }
+  if (auto const *const val = key.AsBool(); val != nullptr) { return BooleanLiteralAst::FromCppVal(*val); }
+  if (auto const *const val = key.AsInt(); val != nullptr) { return IntegerLiteralAst::FromBigVal(*val, key.Text); }
+  if (auto const *const val = key.AsFloat(); val != nullptr) { return FloatLiteralAst::FromBigVal(*val, key.Text); }
+  return nullptr;
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::FoldBinaryOp(
+  const StrView op, ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+  // The intrinsic for the operator over this kind of operand;
+  // operands of two kinds have none.
+  const auto entry = genex::find_if(kBinaryOps, [op](auto const &e) { return e.Op == op; });
+  if (entry == kBinaryOps.end()) { return nullptr; }
+  const auto both = [&]<typename Lit>() { return lhs.To<Lit>() != nullptr and rhs.To<Lit>() != nullptr; };
+  const auto fn = both.operator()<IntegerLiteralAst>() ? entry->Int
+    : both.operator()<FloatLiteralAst>() ? entry->Float
+    : both.operator()<BooleanLiteralAst>() ? entry->Bool
+    : nullptr;
+  if (fn == nullptr) { return nullptr; }
+
+  // What the call raises (E90, E91) does not fold.
+  if ((op == "/" or op == "%") and IsZeroDivisor(rhs)) { return nullptr; }
+  if ((op == "<<" or op == ">>") and IsShiftTooWide(*lhs.As<IntegerLiteralAst>(), *rhs.As<IntegerLiteralAst>())) {
+    return nullptr;
+  }
+  return fn(lhs, rhs);
+}

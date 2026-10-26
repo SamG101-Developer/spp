@@ -184,7 +184,7 @@ namespace spp::analyse::scopes {
     return &*interned.emplace(std::move(node)).first;
   }
 
-  /// A lightweight stage 9 operation, where a number of
+  /// A lightweight comp-time evaluation, where a number of
   /// operations are computable in isolation. Allows for
   /// A[1 + 2] to be the same type as A[3] etc.
   SPP_EXP_FUN auto FoldCompValues(

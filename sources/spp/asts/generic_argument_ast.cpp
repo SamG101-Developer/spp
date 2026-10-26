@@ -246,6 +246,14 @@ auto GenericArgumentAst::AnalyseCompVal(
   }
   common_errors::RequirePrimary(target, *sm);
 
+  // A call keys as its spelling, so it is evaluated here, and the argument is the literal it folds to: "A[ct()]" is
+  // "A[3_uz]".
+  if (auto folded = comp_generics::FoldCompCall(target, sm, meta); folded != nullptr) {
+    if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) { lit->ValidateBounds(*CompVal); }
+    CompVal = std::move(folded);
+    return;
+  }
+
   // Stamp every comp parameter named here - nested ones too
   // ("n + 1") - with that parameter, so a copy of this argument
   // carried into another scope keeps naming it there, where the
