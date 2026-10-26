@@ -202,15 +202,6 @@ auto SupPrototypeFunctionsAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Move to the next scope.
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  Impl->Stage9_CompTimeResolve(sm, meta);
-  sm->MoveOutOfCurrentScope();
-}
-
 auto SupPrototypeFunctionsAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.

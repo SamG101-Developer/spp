@@ -180,23 +180,6 @@ auto ObjectInitializerAst::Stage8_CheckMemory(
   ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto ObjectInitializerAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values.
-  auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
-  for (auto const &elem : ArgGroup->Args) {
-    elem->Stage9_CompTimeResolve(sm, meta);
-    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
-      elem->Name, nullptr, std::move(meta->CompTimeResult));
-    cmp_arg->AttrIndex = elem->AttrIndex;
-    cmp_elems->Args.emplace_back(std::move(cmp_arg));
-  }
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<ObjectInitializerAst>(
-    Type, std::move(cmp_elems));
-}
-
 auto ObjectInitializerAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -347,6 +330,23 @@ auto ObjectInitializerAst::Stage11_CodeGen(
 
   // Return the constant struct.
   return llvm::ConstantStruct::get(struct_type, comp_fields);
+}
+
+auto ObjectInitializerAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner elements to compile-time values.
+  auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
+  for (auto const &elem : ArgGroup->Args) {
+    elem->EvaluateCompTime(sm, meta);
+    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
+      elem->Name, nullptr, std::move(meta->CompTimeResult));
+    cmp_arg->AttrIndex = elem->AttrIndex;
+    cmp_elems->Args.emplace_back(std::move(cmp_arg));
+  }
+
+  // Wrap the compile-time array value.
+  meta->CompTimeResult = MakeUnique<ObjectInitializerAst>(
+    Type, std::move(cmp_elems));
 }
 
 auto ObjectInitializerAst::InferTypeRef(

@@ -48,13 +48,13 @@ SPP_EXP_CLS struct spp::asts::AssignmentStatementAst final : StatementAst {
   /// partial move resolutions too.
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// As long as all the right-hand-side values are compile-time
-  /// evaluatable, move the resolved right-side values into the
-  /// left-side symbols.
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   /// Run the codegen steps to convert the right-side values and
   /// inject them into the left-side symbols. All the right-side
   /// values are evaluated first, allowing "a, b = b, a" to evaluate.
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  /// As long as all the right-hand-side values are compile-time
+  /// evaluatable, move the resolved right-side values into the
+  /// left-side symbols.
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

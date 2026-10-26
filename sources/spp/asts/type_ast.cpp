@@ -27,18 +27,18 @@ auto TypeAst::ReadExpr(
   return type_resolution::ReadType(*this, sub);
 }
 
-auto TypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The zero type's value, with no attributes to resolve.
-  const auto init = MakeUnique<ObjectInitializerAst>(AstCloneShared(this), nullptr);
-  init->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto TypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // These are always "zero_type", so return init.
   const auto init = MakeUnique<ObjectInitializerAst>(AstCloneShared(this), nullptr);
   return init->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto TypeAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The zero type's value, with no attributes to resolve.
+  const auto init = MakeUnique<ObjectInitializerAst>(AstCloneShared(this), nullptr);
+  init->EvaluateCompTime(sm, meta);
 }
 
 auto TypeAst::IsAllowedInDefault() const -> bool {

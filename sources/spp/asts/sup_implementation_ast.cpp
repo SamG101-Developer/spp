@@ -72,12 +72,6 @@ auto SupImplementationAst::Stage8_CheckMemory(
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 }
 
-auto SupImplementationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to members.
-  for (auto const &m : Members) { m->Stage9_CompTimeResolve(sm, meta); }
-}
-
 auto SupImplementationAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to members.

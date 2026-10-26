@@ -68,15 +68,15 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// we could be doing "a.b or c", and "a" must be valid.
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Resolve the binary operator at compile time - either
-  /// moving into the mapped function (must be "cmp") or
-  /// manually computing the "and"/"or" (+ short circuiting)
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   /// Forward the codegen into the mapped function, or build
   /// an "and"/"or" IR injection that allows for short
   /// circuiting.
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  /// Resolve the binary operator at compile time - either
+  /// moving into the mapped function (must be "cmp") or
+  /// manually computing the "and"/"or" (+ short circuiting)
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// Infer the type from the mapped function, or use Bool for
   /// the logical operators.
@@ -87,8 +87,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// Do the substitution of the left and right side operators.
   /// Todo: Do we need to use function mapping here?
   SPP_ATTR_NODISCARD auto ReadExpr(
-    ExprSubst const &sub) const
-    -> Shared<ExpressionAst> override;
+    ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
   /// Check the left and right side are safe to use in runtime
   /// default contexts.

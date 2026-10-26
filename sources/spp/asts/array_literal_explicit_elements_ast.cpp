@@ -162,29 +162,6 @@ auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   }
 }
 
-auto ArrayLiteralExplicitElementsAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values.
-  // Todo: What happens if an inner element isn't comp
-  // time compatible? Does it raise there, or here?
-  auto cmp_elems = Vec<Unique<ExpressionAst>>();
-  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
-    elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CompTimeResult);
-    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
-  }
-
-  // Wrap the comp-time array value, in the translated
-  // asts derived from requesting comp-time evaluation. It keeps
-  // the type stage 7 settled on, which is its target's element
-  // type ("[Some(..), None]" is an "[Opt[T]; 2]"), not its first
-  // element's.
-  auto result = MakeUnique<ArrayLiteralExplicitElementsAst>(
-    nullptr, std::move(cmp_elems), nullptr);
-  result->_InferredType = _InferredType;
-  meta->CompTimeResult = std::move(result);
-}
-
 auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -285,6 +262,31 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
     const auto llvm_ct_arr_ty = llvm::ArrayType::get(codegen::GetLlvmTypeOf(elem_ref, ctx), Elems.size());
     return codegen::BuildAggregate(llvm_ct_arr_ty, llvm_ct_elems, "array.ct" + uid, ctx);
   }
+}
+
+auto ArrayLiteralExplicitElementsAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner elements to compile-time values. One that
+  // has none raises in its own evaluation (E3 for a runtime name,
+  // E77 for an expression with no comp-time form). The elements
+  // are only read: in a "cmp" function's body, writing a value
+  // back would hand it to every later call, and to the runtime
+  // code generated from the body.
+  auto cmp_elems = Vec<Unique<ExpressionAst>>();
+  for (auto const &elem : Elems) {
+    elem->EvaluateCompTime(sm, meta);
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
+  }
+
+  // Wrap the comp-time array value, in the translated
+  // asts derived from requesting comp-time evaluation. It keeps
+  // the type stage 7 settled on, which is its target's element
+  // type ("[Some(..), None]" is an "[Opt[T]; 2]"), not its first
+  // element's.
+  auto result = MakeUnique<ArrayLiteralExplicitElementsAst>(
+    nullptr, std::move(cmp_elems), nullptr);
+  result->_InferredType = _InferredType;
+  meta->CompTimeResult = std::move(result);
 }
 
 auto ArrayLiteralExplicitElementsAst::InferType(

@@ -347,38 +347,6 @@ auto CaseExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Scopes.
-  sm->MoveToNextScope();
-
-  // Load meta information for compile-time resolution.
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->CaseCondition = Cond.get();
-
-    // The subject's comptime value, for the tests to read.
-    IMPORT_UTILS;
-    auto const &plan = Plan(sm, meta);
-    if (plan.ReadsSubject) {
-      Cond->Stage9_CompTimeResolve(sm, meta);
-      if (meta->CompTimeResult != nullptr) { case_utils::BindSubjectCompTimeValue(plan, *meta->CompTimeResult); }
-    }
-
-    // Delegate to the branches' compile-time resolution (break
-    // at first match).
-    meta->CompTimeResult = nullptr;
-    for (auto const &branch : Branches) {
-      branch->Stage9_CompTimeResolve(sm, meta);
-      if (meta->CompTimeResult != nullptr) { break; }
-    }
-
-    // Otherwise, if no branches matched, this is non-returning,
-    // so nullptr is fine.
-  }
-  sm->MoveOutOfCurrentScope();
-}
-
 auto CaseExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -510,6 +478,38 @@ auto CaseExpressionAst::Stage11_CodeGen(
   ctx->Builder.SetInsertPoint(case_end_bb);
   sm->MoveOutOfCurrentScope();
   return phi;
+}
+
+auto CaseExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Scopes.
+  sm->MoveToNextScope();
+
+  // Load meta information for compile-time resolution.
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->CaseCondition = Cond.get();
+
+    // The subject's comptime value, for the tests to read.
+    IMPORT_UTILS;
+    auto const &plan = Plan(sm, meta);
+    if (plan.ReadsSubject) {
+      Cond->EvaluateCompTime(sm, meta);
+      if (meta->CompTimeResult != nullptr) { case_utils::BindSubjectCompTimeValue(plan, *meta->CompTimeResult); }
+    }
+
+    // Delegate to the branches' compile-time resolution (break
+    // at first match).
+    meta->CompTimeResult = nullptr;
+    for (auto const &branch : Branches) {
+      branch->EvaluateCompTime(sm, meta);
+      if (meta->CompTimeResult != nullptr) { break; }
+    }
+
+    // Otherwise, if no branches matched, this is non-returning,
+    // so nullptr is fine.
+  }
+  sm->MoveOutOfCurrentScope();
 }
 
 auto CaseExpressionAst::InferType(

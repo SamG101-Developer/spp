@@ -37,9 +37,10 @@ SPP_EXP_CLS struct spp::asts::RetStatementAst final : StatementAst {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// Emit a return of "expr" (none for a bare "ret") from the
   /// function being generated, coerced to "ret_type" (else the

@@ -211,19 +211,6 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto InnerScopeExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Comptime resolve each member of the inner scope.
-  sm->MoveToNextScope();
-  for (auto const &m : this->Members) {
-    m->Stage9_CompTimeResolve(sm, meta);
-    if (meta->CompTimeReturned) { break; }
-  }
-
-  // Exit the scope.
-  sm->MoveOutOfCurrentScope();
-}
-
 auto InnerScopeExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
@@ -278,6 +265,19 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
     return ret_val;
   }
   return ret_val;
+}
+
+auto InnerScopeExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Comptime resolve each member of the inner scope.
+  sm->MoveToNextScope();
+  for (auto const &m : this->Members) {
+    m->EvaluateCompTime(sm, meta);
+    if (meta->CompTimeReturned) { break; }
+  }
+
+  // Exit the scope.
+  sm->MoveOutOfCurrentScope();
 }
 
 auto InnerScopeExpressionAst::InferType(

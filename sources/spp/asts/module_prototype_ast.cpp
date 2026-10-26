@@ -88,12 +88,6 @@ auto ModulePrototypeAst::Stage8_CheckMemory(
   Impl->Stage8_CheckMemory(sm, meta);
 }
 
-auto ModulePrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Shift to implementation.
-  Impl->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto ModulePrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to implementation.

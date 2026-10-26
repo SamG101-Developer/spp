@@ -70,16 +70,16 @@ auto ParenthesisedExpressionAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.MarkMoves = false});
 }
 
-auto ParenthesisedExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward comptime resolution into the expression.
-  Expr->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto ParenthesisedExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the inner expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto ParenthesisedExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward comptime resolution into the expression.
+  Expr->EvaluateCompTime(sm, meta);
 }
 
 auto ParenthesisedExpressionAst::InferType(

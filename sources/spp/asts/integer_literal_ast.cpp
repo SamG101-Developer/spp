@@ -132,13 +132,6 @@ auto IntegerLiteralAst::FromBigVal(
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
-auto IntegerLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the float literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
-}
-
 auto IntegerLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormaliseIntegerString;
@@ -170,6 +163,13 @@ auto IntegerLiteralAst::Stage11_CodeGen(
   const auto ap_int = llvm::APInt(bit_width, mapped_val.ToString(), 10);
   const auto co_int = llvm::ConstantInt::get(*ctx->Context, ap_int);
   return co_int;
+}
+
+auto IntegerLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the integer literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto IntegerLiteralAst::_PrecompiledType(

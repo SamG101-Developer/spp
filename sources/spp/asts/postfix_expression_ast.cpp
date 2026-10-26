@@ -197,14 +197,6 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   Op->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward into the operator AST.
-  const auto _meta_guard = MetaGuard(meta);
-  Op->Lhs = Lhs.get();
-  Op->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward into the operator AST.
@@ -212,6 +204,14 @@ auto PostfixExpressionAst::Stage11_CodeGen(
   Op->Lhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
+}
+
+auto PostfixExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward into the operator AST.
+  const auto _meta_guard = MetaGuard(meta);
+  Op->Lhs = Lhs.get();
+  Op->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionAst::InferType(

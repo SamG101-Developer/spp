@@ -119,16 +119,16 @@ auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PostfixExpressionOperatorSliceAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::InferType(
@@ -143,7 +143,7 @@ auto PostfixExpressionOperatorSliceAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorSliceAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens.
   return MakeUnique<PostfixExpressionOperatorSliceAst>(

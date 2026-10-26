@@ -74,14 +74,14 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
   /// A type written as a value is a zero type's one value ("None"),
   /// so it is resolved and generated as the object initializer of
   /// itself it stands for.
-  auto Stage9_CompTimeResolve(
+  auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage11_CodeGen(
-    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /// A copy of this type that reports "written"'s source span as
   /// its own position. For a type rebuilt from its symbol (a

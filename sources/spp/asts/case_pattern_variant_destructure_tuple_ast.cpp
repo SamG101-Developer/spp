@@ -81,16 +81,16 @@ auto CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureTupleAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Resolve the mapped "let"; the "case"'s plan tests the literals.
-  CompTimeResolveDestructure(sm, meta);
-}
-
 auto CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Run the mapped "let"; the "case"'s plan tests the literals.
   return CodeGenDestructure(sm, meta, ctx);
+}
+
+auto CasePatternVariantDestructureTupleAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Resolve the mapped "let"; the "case"'s plan tests the literals.
+  EvaluateCompTimeDestructure(sm, meta);
 }
 
 auto CasePatternVariantDestructureTupleAst::ConvToVar(

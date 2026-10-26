@@ -179,7 +179,12 @@ auto RetStatementAst::Stage8_CheckMemory(
     *TokRet, "Return", *sm, meta);
 }
 
-auto RetStatementAst::Stage9_CompTimeResolve(
+auto RetStatementAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+}
+
+auto RetStatementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
   // resolved on top of it.
@@ -187,12 +192,7 @@ auto RetStatementAst::Stage9_CompTimeResolve(
   if (Expr == nullptr) { return; }
 
   // Resolve the expression.
-  Expr->Stage9_CompTimeResolve(sm, meta);
-}
-
-auto RetStatementAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+  Expr->EvaluateCompTime(sm, meta);
 }
 
 auto RetStatementAst::EmitReturn(

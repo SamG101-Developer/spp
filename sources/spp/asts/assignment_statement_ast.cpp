@@ -305,35 +305,6 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
   }
 }
 
-auto AssignmentStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Wrap the rhs value and move it into the value of the
-  // variable symbol.
-  for (auto i = 0uz; i < Lhs.size(); ++i) {
-    Rhs[i]->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
-
-    // Assign to a full identifier.
-    if (Lhs[i]->To<IdentifierAst>() != nullptr) {
-      lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
-    }
-
-    // Assign to an attribute.
-    else if (regions::IsAttr(Lhs[i].get(), sm)) {
-      comp_time_intrinsics::SetCompTimeAttrValue(
-        lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
-        Lhs[i].get(), std::move(meta->CompTimeResult), sm);
-    }
-
-    // Otherwise, unsupported in the comptime context.
-    else {
-      Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*Lhs[i]));
-    }
-  }
-}
-
 auto AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -416,6 +387,35 @@ auto AssignmentStatementAst::Stage11_CodeGen(
   // Statements are always generated into a builder so no need
   // to return anything.
   return nullptr;
+}
+
+auto AssignmentStatementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // Wrap the rhs value and move it into the value of the
+  // variable symbol.
+  for (auto i = 0uz; i < Lhs.size(); ++i) {
+    Rhs[i]->EvaluateCompTime(sm, meta);
+    const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
+
+    // Assign to a full identifier.
+    if (Lhs[i]->To<IdentifierAst>() != nullptr) {
+      lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
+    }
+
+    // Assign to an attribute.
+    else if (regions::IsAttr(Lhs[i].get(), sm)) {
+      comp_time_intrinsics::SetCompTimeAttrValue(
+        lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
+        Lhs[i].get(), std::move(meta->CompTimeResult), sm);
+    }
+
+    // Otherwise, unsupported in the comptime context.
+    else {
+      Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*Lhs[i]));
+    }
+  }
 }
 
 SPP_MOD_END

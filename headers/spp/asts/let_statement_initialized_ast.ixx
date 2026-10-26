@@ -50,10 +50,12 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
   /// A "let" runs its value, so it diverges when that does.
-  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+  SPP_ATTR_NODISCARD auto Diverges(
+    ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 };

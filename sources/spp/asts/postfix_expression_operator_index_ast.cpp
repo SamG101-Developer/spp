@@ -98,16 +98,16 @@ auto PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PostfixExpressionOperatorIndexAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::InferType(

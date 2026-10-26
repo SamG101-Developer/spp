@@ -139,19 +139,6 @@ auto DeferStatementAst::CheckAtExit(
   Expr->Stage8_CheckMemory(&tm, meta);
 }
 
-auto DeferStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *) -> void {
-  IMPORT_UTILS;
-
-  // Only a body being evaluated at compile time reaches this:
-  // a function prototype exhausts its scope at stage 9 rather
-  // than descending into it. The comptime evaluator has no
-  // notion of a scope exit to run the expression at, so rather
-  // than silently skipping it, say so.
-  // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompTimeFunctionError>(ERR_ARGS(*TokDefer));
-}
-
 auto DeferStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
@@ -162,6 +149,19 @@ auto DeferStatementAst::Stage11_CodeGen(
   // loop body is walked twice against the same scope.
   codegen::ReachDefer(*sm->CurrentScope, *this, ctx);
   return nullptr;
+}
+
+auto DeferStatementAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
+
+  // Only a body being evaluated at compile time reaches this:
+  // nothing else evaluates a function's body. The comptime
+  // evaluator has no
+  // notion of a scope exit to run the expression at, so rather
+  // than silently skipping it, say so.
+  // Todo: Use the generic comptime error?
+  Raise<SppDeferInCompTimeFunctionError>(ERR_ARGS(*TokDefer));
 }
 
 SPP_MOD_END

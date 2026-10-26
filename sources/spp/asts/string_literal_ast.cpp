@@ -68,12 +68,6 @@ auto StringLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto StringLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the float literal as is for compile-time resolution.
-  meta->CompTimeResult = AstClone(this);
-}
-
 auto StringLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
@@ -114,6 +108,12 @@ auto StringLiteralAst::Stage11_CodeGen(
   // Harden string storage.
   llvm_global_view->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
   return llvm_global_view;
+}
+
+auto StringLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the float literal as is for compile-time resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto StringLiteralAst::InferType(

@@ -42,15 +42,18 @@ SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
   /// Check running the expression at an exit of its scope: its
   /// memory check, against the state the exit is reached with,
   /// walking the expression where it is written. Whatever it
   /// consumes is consumed there.
-  auto CheckAtExit(Ast const &exit_point, StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void;
+  auto CheckAtExit(
+    Ast const &exit_point, StrView exit_what, ScopeManager &sm,
+    CompilerMetaData *meta) -> void;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
   /// Where stage 8 walked the expression: its scope, and the walk

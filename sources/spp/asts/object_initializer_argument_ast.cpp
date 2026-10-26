@@ -44,10 +44,10 @@ auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Val, *this, *sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::Stage9_CompTimeResolve(
+auto ObjectInitializerArgumentAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve the value expression.
-  Val->Stage9_CompTimeResolve(sm, meta);
+  Val->EvaluateCompTime(sm, meta);
 }
 
 auto ObjectInitializerArgumentAst::InferType(

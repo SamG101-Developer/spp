@@ -34,7 +34,7 @@ auto FunctionImplementationAst::DiscardsFinalMember() const -> bool {
   return true;
 }
 
-auto FunctionImplementationAst::Stage9_CompTimeResolve(
+auto FunctionImplementationAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A function has one scope, shared by every call to it, so the values this call writes into that scope's symbols
   // are the caller's values as far as an enclosing call is concerned. Take them out for the duration of the call and
@@ -78,7 +78,7 @@ auto FunctionImplementationAst::Stage9_CompTimeResolve(
   const auto caller_returned = meta->CompTimeReturned;
   meta->CompTimeReturned = false;
   for (auto const &member : this->Members) {
-    member->Stage9_CompTimeResolve(sm, meta);
+    member->EvaluateCompTime(sm, meta);
     if (meta->CompTimeReturned) { break; }
   }
   meta->CompTimeReturned = caller_returned;

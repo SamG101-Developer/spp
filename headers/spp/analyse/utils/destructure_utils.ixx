@@ -83,16 +83,6 @@ namespace spp::analyse::utils::destructure_utils {
     CompilerMetaData *meta)
     -> void;
 
-  /// Stage 9 for a destructure: resolve the hidden temporary, the flow-typing "let" if there is one, and each expanded
-  /// binding.
-  SPP_EXP_FUN auto DestructureStage9(
-    Vec<Unique<LetStatementInitializedAst>> const &new_asts,
-    Shared<IdentifierAst> const &tmp_name,
-    LetStatementInitializedAst *cond_let,
-    ScopeManager &sm,
-    CompilerMetaData *meta)
-    -> void;
-
   /// Run uniform stage 11 code generation on the destructure
   /// temporary materialization, should it exist (this won't
   /// be called if not). The value bound to the destructure's
@@ -104,6 +94,16 @@ namespace spp::analyse::utils::destructure_utils {
     ScopeManager &sm,
     CompilerMetaData *meta,
     LlvmCtx *ctx)
+    -> void;
+
+  /// Comp-time evaluation of a destructure: resolve the hidden temporary, the flow-typing "let" if there is one, and
+  /// each expanded binding.
+  SPP_EXP_FUN auto DestructureEvaluateCompTime(
+    Vec<Unique<LetStatementInitializedAst>> const &new_asts,
+    Shared<IdentifierAst> const &tmp_name,
+    LetStatementInitializedAst *cond_let,
+    ScopeManager &sm,
+    CompilerMetaData *meta)
     -> void;
 
   /// Whether the expression holds "destructure-able" storage

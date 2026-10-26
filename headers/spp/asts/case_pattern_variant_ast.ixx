@@ -24,13 +24,15 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantAst : Ast {
   /// Handle pattern matching for case expressions. This is
   /// reimplemented in all the other patterns, but due to a GCC
   /// modules bug, it must be defined here too.
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// Case patterns can introduce variables via bindings. This
   /// conversion introduces all required bindings into scope,
   /// including nested ones, and is overridden on the different
   /// destructuring patterns.
-  virtual auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst>;
+  virtual auto ConvToVar(
+    CompilerMetaData *meta) -> Unique<LocalVariableAst>;
 
   /// Whether this pattern takes a value out of what it is
   /// matched against, rather than only testing it. A name binds
@@ -52,8 +54,9 @@ protected:
     ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
     ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-  /// Stage 9 for a destructuring pattern: resolve its "let". It matches; the "case"'s plan tests its literals.
-  auto CompTimeResolveDestructure(
+  /// Comp-time evaluation of a destructuring pattern: resolve its "let". It matches; the "case"'s plan tests its
+  /// literals.
+  auto EvaluateCompTimeDestructure(
     ScopeManager *sm, CompilerMetaData *meta) const -> void;
 
   /// Stage 11 for a destructuring pattern: run its "let" over the case condition, introducing the bindings. It matches

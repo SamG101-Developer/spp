@@ -80,16 +80,16 @@ auto CasePatternVariantDestructureArrayAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureArrayAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward comptime checking to the shared helper.
-  CompTimeResolveDestructure(sm, meta);
-}
-
 auto CasePatternVariantDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Run the mapped "let"; the "case"'s plan tests the literals.
   return CodeGenDestructure(sm, meta, ctx);
+}
+
+auto CasePatternVariantDestructureArrayAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward comptime checking to the shared helper.
+  EvaluateCompTimeDestructure(sm, meta);
 }
 
 auto CasePatternVariantDestructureArrayAst::ConvToVar(

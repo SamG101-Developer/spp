@@ -117,21 +117,6 @@ auto TupleLiteralAst::Stage8_CheckMemory(
   }
 }
 
-auto TupleLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values.
-  auto cmp_elems = Vec<Unique<ExpressionAst>>();
-  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
-    elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CompTimeResult);
-    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
-  }
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<TupleLiteralAst>(
-    nullptr, std::move(cmp_elems), nullptr);
-}
-
 auto TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -199,6 +184,21 @@ auto TupleLiteralAst::Stage11_CodeGen(
     comp_elems.emplace_back(llvm::cast<llvm::Constant>(comp_elem));
   }
   return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
+}
+
+auto TupleLiteralAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner elements to compile-time values. They are
+  // only read, as an array literal's are.
+  auto cmp_elems = Vec<Unique<ExpressionAst>>();
+  for (auto const &elem : Elems) {
+    elem->EvaluateCompTime(sm, meta);
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
+  }
+
+  // Wrap the compile-time tuple value.
+  meta->CompTimeResult = MakeUnique<TupleLiteralAst>(
+    nullptr, std::move(cmp_elems), nullptr);
 }
 
 auto TupleLiteralAst::InferType(

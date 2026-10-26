@@ -23,5 +23,6 @@ SPP_EXP_CLS struct spp::asts::FunctionImplementationAst : InnerScopeExpressionAs
 
   SPP_ATTR_NODISCARD auto DiscardsFinalMember() const -> bool override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

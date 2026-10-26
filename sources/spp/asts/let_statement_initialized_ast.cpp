@@ -193,19 +193,6 @@ auto LetStatementInitializedAst::Stage8_CheckMemory(
   Var->Stage8_CheckMemory(sm, meta);
 }
 
-auto LetStatementInitializedAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The value is resolved before the binding is declared (the
-  // variable declares it once the value is done).
-  Val->Stage9_CompTimeResolve(sm, meta);
-
-  // Assign the comptime value to the variable.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTarget = Var->ExtractName();
-  meta->LetStatementValue = Val.get();
-  Var->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto LetStatementInitializedAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
@@ -227,6 +214,19 @@ auto LetStatementInitializedAst::Stage11_CodeGen(
   // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
   return alloca;
+}
+
+auto LetStatementInitializedAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The value is resolved before the binding is declared (the
+  // variable declares it once the value is done).
+  Val->EvaluateCompTime(sm, meta);
+
+  // Assign the comptime value to the variable.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->AssignmentTarget = Var->ExtractName();
+  meta->LetStatementValue = Val.get();
+  Var->EvaluateCompTime(sm, meta);
 }
 
 auto LetStatementInitializedAst::Diverges(

@@ -174,10 +174,4 @@ auto ClassAttributeAst::Stage8_CheckMemory(
     *DefaultVal, *DefaultVal, *sm, meta);
 }
 
-auto ClassAttributeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-}
-
 SPP_MOD_END

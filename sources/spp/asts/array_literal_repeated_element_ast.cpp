@@ -171,7 +171,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   // own walk over the size's scope, as a "cmp" statement's value
   // is, and becomes the literal it folds to.
   auto tm = sm->NewManagerAt(_SizeScope);
-  _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
+  _AnalysedSize->EvaluateCompTime(&tm, meta);
   RaiseIf<SppCompTimeConstantError>(
     meta->CompTimeResult == nullptr,
     ERR_ARGS(*_AnalysedSize));
@@ -204,18 +204,6 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
     ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
   }
-}
-
-auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner element to a compile-time value.
-  Elem->Stage9_CompTimeResolve(sm, meta);
-  Elem = AstClone(meta->CompTimeResult);
-  SkipSizeScope(sm);
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
-    nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
 }
 
 auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
@@ -316,6 +304,18 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
       llvm_ct_arr_ty, llvm_ct_elems);
     return arr_alloc;
   }
+}
+
+auto ArrayLiteralRepeatedElementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner element to a compile-time value. It is only
+  // read, as an explicit array literal's elements are.
+  Elem->EvaluateCompTime(sm, meta);
+  SkipSizeScope(sm);
+
+  // Wrap the compile-time array value.
+  meta->CompTimeResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
+    nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
 }
 
 auto ArrayLiteralRepeatedElementAst::InferType(

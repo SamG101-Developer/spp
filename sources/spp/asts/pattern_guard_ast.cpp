@@ -100,16 +100,16 @@ auto PatternGuardAst::Stage8_CheckMemory(
   }
 }
 
-auto PatternGuardAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Resolve the expression at compile-time.
-  Expr->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PatternGuardAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PatternGuardAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Resolve the expression at compile-time.
+  Expr->EvaluateCompTime(sm, meta);
 }
 
 SPP_MOD_END

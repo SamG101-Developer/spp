@@ -24,9 +24,9 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVaria
 
   ~CasePatternVariantElseAst() override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto MarkForIterLoopExit() -> void;
 

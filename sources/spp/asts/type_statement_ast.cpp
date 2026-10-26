@@ -373,14 +373,6 @@ auto TypeStatementAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  sm->MoveOutOfCurrentScope();
-}
-
 auto TypeStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   sm->MoveToNextScope();
@@ -395,6 +387,15 @@ auto TypeStatementAst::Stage11_CodeGen(
   // SPP_ASSERT(sm->CurrentScope == _Scope);
   sm->MoveOutOfCurrentScope();
   return nullptr;
+}
+
+auto TypeStatementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  // A "type" statement in a "cmp" function's body has a scope of
+  // its own, which the walk of the body steps over.
+  sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->MoveOutOfCurrentScope();
 }
 
 auto TypeStatementAst::MarkFromUseStatement() -> void {

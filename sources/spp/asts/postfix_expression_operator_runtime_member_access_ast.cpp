@@ -290,44 +290,6 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
-  IMPORT_UTILS;
-
-  // A member reached by forwarding is resolved against the
-  // forwarded-to value, which the rewritten access names.
-  if (_MappedFwd != nullptr) {
-    _MappedFwd->Stage9_CompTimeResolve(sm, meta);
-    return;
-  }
-
-  // Resolve the left-hand-side expression.
-  Lhs->Stage9_CompTimeResolve(sm, meta);
-
-  // Handle numeric index access (for tuples).
-  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<TupleLiteralAst>()) {
-    const auto cmp_tup = meta->CompTimeResult->To<TupleLiteralAst>();
-    const auto index = std::stoul(Name->Val);
-    auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CompTimeResult = std::move(cmp_field);
-    return;
-  }
-
-  // Handle numeric index access (for arrays).
-  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>()) {
-    const auto cmp_tup = meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>();
-    const auto index = std::stoul(Name->Val);
-    auto cmp_field = AstClone(cmp_tup->Elems[index]);
-    meta->CompTimeResult = std::move(cmp_field);
-    return;
-  }
-
-  // Handle normal attribute access (for objects).
-  const auto cmp_obj = meta->CompTimeResult->To<ObjectInitializerAst>();
-  meta->CompTimeResult = comp_time_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
-}
-
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
@@ -460,6 +422,44 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   // the field's own lowered type is always the type held in
   // the slot.
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
+}
+
+auto PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  //
+  IMPORT_UTILS;
+
+  // A member reached by forwarding is resolved against the
+  // forwarded-to value, which the rewritten access names.
+  if (_MappedFwd != nullptr) {
+    _MappedFwd->EvaluateCompTime(sm, meta);
+    return;
+  }
+
+  // Resolve the left-hand-side expression.
+  Lhs->EvaluateCompTime(sm, meta);
+
+  // Handle numeric index access (for tuples).
+  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<TupleLiteralAst>()) {
+    const auto cmp_tup = meta->CompTimeResult->To<TupleLiteralAst>();
+    const auto index = std::stoul(Name->Val);
+    auto cmp_field = AstClone(cmp_tup->Elems[index]);
+    meta->CompTimeResult = std::move(cmp_field);
+    return;
+  }
+
+  // Handle numeric index access (for arrays).
+  if (std::isdigit(Name->Val[0]) and meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>()) {
+    const auto cmp_tup = meta->CompTimeResult->To<ArrayLiteralExplicitElementsAst>();
+    const auto index = std::stoul(Name->Val);
+    auto cmp_field = AstClone(cmp_tup->Elems[index]);
+    meta->CompTimeResult = std::move(cmp_field);
+    return;
+  }
+
+  // Handle normal attribute access (for objects).
+  const auto cmp_obj = meta->CompTimeResult->To<ObjectInitializerAst>();
+  meta->CompTimeResult = comp_time_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 
 auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(

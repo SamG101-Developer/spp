@@ -340,142 +340,6 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   FnArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
-/// [CLEAN] -> Move param/arg writebacks (&mut) into helper probably
-auto PostfixExpressionOperatorFunctionCallAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
-  IMPORT_UTILS;
-
-  // A call folded before its own stage 7 (a comp default folded where it is used) is resolved here, once.
-  if (not _OverloadInfo.has_value()) { Stage7_AnalyseSemantics(sm, meta); }
-
-  // Get the function prototype and resolve it.
-  auto const *const fn_proto = _OverloadInfo->Proto->GetNonGnImpl();
-  RaiseIf<SppCompTimeConstantError>(
-    fn_proto->TokCmp == nullptr,
-    ERR_ARGS(*this));
-
-  // Todo: For now, don't allow folding in comptime.
-  RaiseIf<SppCompTimeConstantError>(
-    Fold != nullptr,
-    ERR_ARGS(*Fold));
-
-  // Create the argument map for the function to use: stage 7 left one keyword argument per parameter
-  // ("ElaborateCall"), the receiver of a method call included. An argument given to a "&mut" parameter is a copy of
-  // its value, so the place it came from is kept, to be given the value the callee leaves it with.
-  auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
-  auto mut_places = Vec<Pair<Shared<IdentifierAst>, ExpressionAst*>>();
-  for (auto *arg : FnArgGroup->GetAllArgs()) {
-    auto name = arg->As<FunctionCallArgumentKeywordAst>()->Name;
-    const auto params = fn_proto->FnParamGroup->GetAllParams();
-    const auto param = genex::find_if(params, [&](auto const *p) {
-      const auto param_name = p->ExtractName();
-      return param_name != nullptr and *param_name == *name;
-    });
-    const auto conv = param != params.end() ? ParamConvention(**param) : nullptr;
-    if (conv != nullptr and conv->To<ConventionMutAst>() != nullptr) {
-      mut_places.emplace_back(name, arg->Val.get());
-    }
-    arg->Stage9_CompTimeResolve(sm, meta);
-    args.emplace_back(std::move(name), std::move(meta->CompTimeResult));
-  }
-  auto fn_arg_map = decltype(meta->CompTimeCall.FnArgs)();
-  auto gn_arg_type_map = decltype(meta->CompTimeCall.GnTypeArgs)();
-  auto gn_arg_comp_map = decltype(meta->CompTimeCall.GnCompArgs)();
-  auto gn_comp_values = decltype(meta->CompTimeCall.GnCompValues)();
-  for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
-  for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) {
-    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(
-      TypeRef::Of(*gn_arg->TypeVal, *sm->CurrentScope)));
-  }
-
-  // What "Self" stands for at this call goes after the call's own
-  // type arguments: a builtin with none of its own reads the type
-  // it was called on from it ("S32::zero()" is an "S32").
-  if (_OverloadInfo->SelfId != nullptr) {
-    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(_OverloadInfo->SelfId, *sm->CurrentScope)));
-  }
-
-  // Each comp argument by the parameter it binds: its keyword,
-  // or, given by position, the comp parameter in the same
-  // place (one for one only: a variadic parameter takes several).
-  const auto comp_args = GnArgGroup->GetCompArgs();
-  const auto comp_params = fn_proto->GnParamGroup->GetCompParams();
-  for (auto i = 0uz; i < comp_args.size(); ++i) {
-    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*comp_args[i]->CompVal));
-    auto name = comp_args[i]->CompNameAsId();
-    if (name == nullptr and comp_args.size() == comp_params.size()) {
-      name = IdentifierAst::FromType(*comp_params[i]->Name);
-    }
-    if (name != nullptr) { gn_comp_values.emplace_back(std::move(name), gn_arg_comp_map.back()); }
-  }
-
-  // Resolve the function with the arguments. The first call to
-  // be folded is the one the user wrote, and the calls it makes
-  // report their errors there rather than inside std.
-  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
-  const auto *const outer_site = meta->CompTimeCallSite;
-
-  // Each nested call is a nested evaluation on the compiler's
-  // own stack, so recursion that never bottoms out has to be
-  // stopped here, rather than left to overflow it.
-  static thread_local auto cmp_call_depth = 0uz;
-  constexpr auto kMaxCompTimeCallDepth = 1000uz;
-  struct CompTimeCallDepthGuard {
-    decltype(cmp_call_depth) &Depth;
-    explicit CompTimeCallDepthGuard(decltype(cmp_call_depth) &depth) : Depth(depth) { ++Depth; }
-    ~CompTimeCallDepthGuard() { --Depth; }
-  } const depth_guard(cmp_call_depth);
-  RaiseIf<SppInvalidCompTimeOperationError>(
-    cmp_call_depth > kMaxCompTimeCallDepth,
-    ERR_ARGS(outer_site != nullptr ? *outer_site : *owner));
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    if (outer_site == nullptr) { meta->CompTimeCallSite = owner; }
-    meta->CompTimeCall.FnArgs = std::move(fn_arg_map);
-    meta->CompTimeCall.GnTypeArgs = std::move(gn_arg_type_map);
-    meta->CompTimeCall.GnCompArgs = std::move(gn_arg_comp_map);
-    meta->CompTimeCall.GnCompValues = std::move(gn_comp_values);
-    auto *const fn_scope = fn_proto->GetAstScope();
-    auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
-    fn_proto->Impl->Stage9_CompTimeResolve(&tm, meta);
-
-    // Each "&mut" argument's place takes the value the callee left
-    // its parameter with, as an assignment to it would.
-    for (auto const &[name, place] : mut_places) {
-      auto value = meta->CompTimeCall.FnArgs.contains(name) ? std::move(meta->CompTimeCall.FnArgs[name]) : nullptr;
-      if (value == nullptr) { continue; }
-      const auto place_sym = sm->CurrentScope->FindVarSymbolOutermost(*place).first;
-      if (place->To<IdentifierAst>() != nullptr) {
-        place_sym->CompTimeValue = std::move(value);
-      }
-      else if (regions::IsAttr(place, sm)) {
-        comp_time_intrinsics::SetCompTimeAttrValue(
-          place_sym->CompTimeValue->To<ObjectInitializerAst>(), place, std::move(value), sm);
-      }
-      else {
-        Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*place));
-      }
-    }
-  }
-
-  // Every function reaches comp-time resolution through here,
-  // so this is where an integer result is checked against what
-  // its type can hold. Comp-time arithmetic is exact, so a
-  // result that does not fit arrives intact rather than having
-  // wrapped on the way out. Checked per call to catch overflow.
-  auto const &site = outer_site != nullptr ? *outer_site : *owner;
-  if (const auto int_result =
-    meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<IntegerLiteralAst>() : nullptr) {
-    int_result->ValidateBounds(site);
-  }
-  else if (const auto flt_result =
-    meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<FloatLiteralAst>() : nullptr) {
-    flt_result->ValidateBounds(site);
-  }
-
-}
-
 auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
@@ -745,6 +609,143 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   }
 
   return llvm_call;
+}
+
+/// [CLEAN] -> Move param/arg writebacks (&mut) into helper probably
+auto PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  //
+  IMPORT_UTILS;
+
+  // A call folded before its own stage 7 (a comp default folded where it is used) is resolved here, once.
+  if (not _OverloadInfo.has_value()) { Stage7_AnalyseSemantics(sm, meta); }
+
+  // Get the function prototype and resolve it.
+  auto *const fn_proto = _OverloadInfo->Proto->GetNonGnImpl();
+  RaiseIf<SppCompTimeConstantError>(
+    fn_proto->TokCmp == nullptr,
+    ERR_ARGS(*this));
+
+  // Todo: For now, don't allow folding in comptime.
+  RaiseIf<SppCompTimeConstantError>(
+    Fold != nullptr,
+    ERR_ARGS(*Fold));
+
+  // Create the argument map for the function to use: stage 7 left one keyword argument per parameter
+  // ("ElaborateCall"), the receiver of a method call included. An argument given to a "&mut" parameter is a copy of
+  // its value, so the place it came from is kept, to be given the value the callee leaves it with.
+  auto args = Vec<Pair<Shared<IdentifierAst>, Unique<ExpressionAst>>>();
+  auto mut_places = Vec<Pair<Shared<IdentifierAst>, ExpressionAst*>>();
+  for (auto *arg : FnArgGroup->GetAllArgs()) {
+    auto name = arg->As<FunctionCallArgumentKeywordAst>()->Name;
+    const auto params = fn_proto->FnParamGroup->GetAllParams();
+    const auto param = genex::find_if(params, [&](auto const *p) {
+      const auto param_name = p->ExtractName();
+      return param_name != nullptr and *param_name == *name;
+    });
+    const auto conv = param != params.end() ? ParamConvention(**param) : nullptr;
+    if (conv != nullptr and conv->To<ConventionMutAst>() != nullptr) {
+      mut_places.emplace_back(name, arg->Val.get());
+    }
+    arg->EvaluateCompTime(sm, meta);
+    args.emplace_back(std::move(name), std::move(meta->CompTimeResult));
+  }
+  auto fn_arg_map = decltype(meta->CompTimeCall.FnArgs)();
+  auto gn_arg_type_map = decltype(meta->CompTimeCall.GnTypeArgs)();
+  auto gn_arg_comp_map = decltype(meta->CompTimeCall.GnCompArgs)();
+  auto gn_comp_values = decltype(meta->CompTimeCall.GnCompValues)();
+  for (auto &&[name, val] : args) { fn_arg_map[name] = std::move(val); }
+  for (auto &&gn_arg : GnArgGroup->GetTypeArgs()) {
+    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(
+      TypeRef::Of(*gn_arg->TypeVal, *sm->CurrentScope)));
+  }
+
+  // What "Self" stands for at this call goes after the call's own
+  // type arguments: a builtin with none of its own reads the type
+  // it was called on from it ("S32::zero()" is an "S32").
+  if (_OverloadInfo->SelfId != nullptr) {
+    gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(_OverloadInfo->SelfId, *sm->CurrentScope)));
+  }
+
+  // Each comp argument by the parameter it binds: its keyword,
+  // or, given by position, the comp parameter in the same
+  // place (one for one only: a variadic parameter takes several).
+  const auto comp_args = GnArgGroup->GetCompArgs();
+  const auto comp_params = fn_proto->GnParamGroup->GetCompParams();
+  for (auto i = 0uz; i < comp_args.size(); ++i) {
+    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*comp_args[i]->CompVal));
+    auto name = comp_args[i]->CompNameAsId();
+    if (name == nullptr and comp_args.size() == comp_params.size()) {
+      name = IdentifierAst::FromType(*comp_params[i]->Name);
+    }
+    if (name != nullptr) { gn_comp_values.emplace_back(std::move(name), gn_arg_comp_map.back()); }
+  }
+
+  // Resolve the function with the arguments. The first call to
+  // be folded is the one the user wrote, and the calls it makes
+  // report their errors there rather than inside std.
+  const auto owner = Source.OriginalExpr != nullptr ? Source.OriginalExpr : static_cast<Ast*>(this);
+  const auto *const outer_site = meta->CompTimeCallSite;
+
+  // Each nested call is a nested evaluation on the compiler's
+  // own stack, so recursion that never bottoms out has to be
+  // stopped here, rather than left to overflow it.
+  static thread_local auto cmp_call_depth = 0uz;
+  constexpr auto kMaxCompTimeCallDepth = 1000uz;
+  struct CompTimeCallDepthGuard {
+    decltype(cmp_call_depth) &Depth;
+    explicit CompTimeCallDepthGuard(decltype(cmp_call_depth) &depth) : Depth(depth) { ++Depth; }
+    ~CompTimeCallDepthGuard() { --Depth; }
+  } const depth_guard(cmp_call_depth);
+  RaiseIf<SppInvalidCompTimeOperationError>(
+    cmp_call_depth > kMaxCompTimeCallDepth,
+    ERR_ARGS(outer_site != nullptr ? *outer_site : *owner));
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    if (outer_site == nullptr) { meta->CompTimeCallSite = owner; }
+    meta->CompTimeCall.FnArgs = std::move(fn_arg_map);
+    meta->CompTimeCall.GnTypeArgs = std::move(gn_arg_type_map);
+    meta->CompTimeCall.GnCompArgs = std::move(gn_arg_comp_map);
+    meta->CompTimeCall.GnCompValues = std::move(gn_comp_values);
+    fn_proto->AnalyseAhead(*owner, sm, meta);
+    auto *const fn_scope = fn_proto->GetAstScope();
+    auto tm = sm->NewManagerAt(not fn_scope->Children.empty() ? fn_scope->Children[0].get() : fn_scope);
+    fn_proto->Impl->EvaluateCompTime(&tm, meta);
+
+    // Each "&mut" argument's place takes the value the callee left
+    // its parameter with, as an assignment to it would.
+    for (auto const &[name, place] : mut_places) {
+      auto value = meta->CompTimeCall.FnArgs.contains(name) ? std::move(meta->CompTimeCall.FnArgs[name]) : nullptr;
+      if (value == nullptr) { continue; }
+      const auto place_sym = sm->CurrentScope->FindVarSymbolOutermost(*place).first;
+      if (place->To<IdentifierAst>() != nullptr) {
+        place_sym->CompTimeValue = std::move(value);
+      }
+      else if (regions::IsAttr(place, sm)) {
+        comp_time_intrinsics::SetCompTimeAttrValue(
+          place_sym->CompTimeValue->To<ObjectInitializerAst>(), place, std::move(value), sm);
+      }
+      else {
+        Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*place));
+      }
+    }
+  }
+
+  // Every function reaches comp-time resolution through here,
+  // so this is where an integer result is checked against what
+  // its type can hold. Comp-time arithmetic is exact, so a
+  // result that does not fit arrives intact rather than having
+  // wrapped on the way out. Checked per call to catch overflow.
+  auto const &site = outer_site != nullptr ? *outer_site : *owner;
+  if (const auto int_result =
+    meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<IntegerLiteralAst>() : nullptr) {
+    int_result->ValidateBounds(site);
+  }
+  else if (const auto flt_result =
+    meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<FloatLiteralAst>() : nullptr) {
+    flt_result->ValidateBounds(site);
+  }
+
 }
 
 auto PostfixExpressionOperatorFunctionCallAst::InferType(

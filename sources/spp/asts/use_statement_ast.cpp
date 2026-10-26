@@ -118,12 +118,6 @@ auto UseStatementAst::Stage8_CheckMemory(
   _Conversion->Stage8_CheckMemory(sm, meta);
 }
 
-auto UseStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Comptime resolve the conversion AST.
-  return _Conversion->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto UseStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Code gen for the conversion AST.

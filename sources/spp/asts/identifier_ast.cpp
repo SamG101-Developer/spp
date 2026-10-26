@@ -16,6 +16,7 @@ import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
+import spp.asts.cmp_statement_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -187,44 +188,6 @@ auto IdentifierAst::Stage8_CheckMemory(
   }
 }
 
-auto IdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Extract the value from the symbol table and return
-  // it.
-  const auto var_sym = sm->CurrentScope->FindVarSymbol(this);
-  auto tm = sm->NewManagerAt(var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
-
-  // An unbound comp generic has no value yet, and stands for
-  // itself - as it does in a template's signature.
-  if (var_sym != nullptr
-    and var_sym->Kind == VariableKind::GnCompParam
-    and var_sym->CompTimeValue == nullptr) {
-    meta->CompTimeResult = AstClone(this);
-    return;
-  }
-
-  // Anything else resolves through its value, and having none
-  // is an error.
-  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
-  RaiseIf<SppCompTimeConstantError>(
-    var_sym != nullptr and value == nullptr,
-    ERR_ARGS(*this));
-
-  // A constant whose value reaches its own symbol again has
-  // no value to resolve to: the walk below would re-enter
-  // here for the same symbol and never terminate.
-  RaiseIf<SppCompTimeConstantError>(
-    comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
-    ERR_ARGS(*this));
-
-  // Call the inner resolution on the provided value for
-  // "walking" the comptime resolution.
-  const auto guard = comp_generics::CompTimeResolutionGuard(var_sym);
-  value->Stage9_CompTimeResolve(&tm, meta);
-}
-
 auto IdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -280,6 +243,48 @@ auto IdentifierAst::Stage11_CodeGen(
   const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
   SPP_ASSERT(llvm_type != nullptr);
   return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
+}
+
+auto IdentifierAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // Extract the value from the symbol table and return
+  // it.
+  const auto var_sym = sm->CurrentScope->FindVarSymbol(this);
+  auto tm = sm->NewManagerAt(var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
+
+  // An unbound comp generic has no value yet, and stands for
+  // itself - as it does in a template's signature.
+  if (var_sym != nullptr
+    and var_sym->Kind == VariableKind::GnCompParam
+    and var_sym->CompTimeValue == nullptr) {
+    meta->CompTimeResult = AstClone(this);
+    return;
+  }
+
+  // A constant stage 7 has not reached yet holds its value as
+  // written, which is analysed and folded first.
+  if (var_sym != nullptr and var_sym->Stmt != nullptr) { var_sym->Stmt->AnalyseAhead(*this, sm, meta); }
+
+  // Anything else resolves through its value, and having none
+  // is an error.
+  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
+  RaiseIf<SppCompTimeConstantError>(
+    var_sym != nullptr and value == nullptr,
+    ERR_ARGS(*this));
+
+  // A constant whose value reaches its own symbol again has
+  // no value to resolve to: the walk below would re-enter
+  // here for the same symbol and never terminate.
+  RaiseIf<SppCompTimeConstantError>(
+    comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
+    ERR_ARGS(*this));
+
+  // Call the inner resolution on the provided value for
+  // "walking" the comptime resolution.
+  const auto guard = comp_generics::CompTimeResolutionGuard(var_sym);
+  value->EvaluateCompTime(&tm, meta);
 }
 
 auto IdentifierAst::InferType(

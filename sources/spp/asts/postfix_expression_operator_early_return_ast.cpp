@@ -189,18 +189,18 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
   _TransformedExpr->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to the lowered form.
-  _TransformedExpr->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTargetType = nullptr;
   const auto llvm_val = _TransformedExpr->Stage11_CodeGen(sm, meta, ctx);
   return llvm_val;
+}
+
+auto PostfixExpressionOperatorEarlyReturnAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward to the lowered form.
+  _TransformedExpr->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorEarlyReturnAst::InferType(

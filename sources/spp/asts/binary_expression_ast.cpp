@@ -273,27 +273,6 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto BinaryExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Run comptime resolution on the temporary materialized
-  // comparison chain values (checks validity).
-  for (auto const &temp : _ChainTemps) { temp->Stage9_CompTimeResolve(sm, meta); }
-
-  // Do the short-circuiting at compile time by evaluating
-  // the left-hand-side, and if it is true, and we are not
-  // doing an "and", then we can return true already.
-  if (IsLogicalOperator()) {
-    Lhs->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
-    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
-    Rhs->Stage9_CompTimeResolve(sm, meta);
-    return;
-  }
-
-  // Forward the compile-time resolution to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto BinaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -360,6 +339,27 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   return llvm_res;
 }
 
+auto BinaryExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Run comptime resolution on the temporary materialized
+  // comparison chain values (checks validity).
+  for (auto const &temp : _ChainTemps) { temp->EvaluateCompTime(sm, meta); }
+
+  // Do the short-circuiting at compile time by evaluating
+  // the left-hand-side, and if it is true, and we are not
+  // doing an "and", then we can return true already.
+  if (IsLogicalOperator()) {
+    Lhs->EvaluateCompTime(sm, meta);
+    const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
+    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
+    Rhs->EvaluateCompTime(sm, meta);
+    return;
+  }
+
+  // Forward the compile-time resolution to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
+}
+
 auto BinaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // A logical operator is boolean by construction - both
@@ -421,7 +421,7 @@ auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, Express
 }
 
 auto BinaryExpressionAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both operands are expressions, read where they are written or where analysis moved them.
   const auto [lhs, rhs] = Operands();
   if (lhs == nullptr or rhs == nullptr) { return AstCloneShared(this); }

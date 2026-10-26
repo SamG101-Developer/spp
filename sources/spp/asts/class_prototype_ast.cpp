@@ -251,17 +251,6 @@ auto ClassPrototypeAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Skip the class body.
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
-  Impl->Stage9_CompTimeResolve(sm, meta);
-  sm->MoveOutOfCurrentScope();
-}
-
 auto ClassPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for the class body.

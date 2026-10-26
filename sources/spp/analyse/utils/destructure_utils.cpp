@@ -134,10 +134,10 @@ namespace spp::analyse::utils::destructure_utils {
       memory_state::StateOf(*sm.CurrentScope, *sym).InitializedBy(tmp_name);
     }
 
-    /// Run uniform stage 9 comptime resolution on the
+    /// Run uniform comp-time evaluation on the
     /// destructure temporary materialization, should it exist
     /// (this won't be called if not).
-    auto DestructureTempStage9(
+    auto DestructureTempEvaluateCompTime(
       Shared<IdentifierAst> const &tmp_name, ScopeManager const &sm,
       CompilerMetaData const *meta) -> void {
       // The owning "let" statement has already resolved the
@@ -221,6 +221,17 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
   ctx->Builder.CreateStore(llvm_val, alloca);
 }
 
+auto spp::analyse::utils::destructure_utils::DestructureEvaluateCompTime(
+  Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
+  LetStatementInitializedAst *cond_let, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Hand the already-resolved value to the hidden temporary
+  // so the elements can index it, then resolve the flow-typing
+  // variable, if flow typing introduced one, and each element.
+  if (tmp_name != nullptr) { DestructureTempEvaluateCompTime(tmp_name, sm, meta); }
+  if (cond_let != nullptr) { cond_let->EvaluateCompTime(&sm, meta); }
+  for (auto const &x : new_asts) { x->EvaluateCompTime(&sm, meta); }
+}
+
 auto spp::analyse::utils::destructure_utils::DestructureStage8(
   LocalVariableAst const &destructure, Vec<Unique<LocalVariableAst>> const &elems,
   Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
@@ -272,17 +283,6 @@ auto spp::analyse::utils::destructure_utils::DestructureStage8(
   }
   if (from_case_pattern and not destructure.BindsByMove()) { return; }
   ConsumeDestructureSource(destructure, from_case_pattern, accounts_for_parts, sm, meta);
-}
-
-auto spp::analyse::utils::destructure_utils::DestructureStage9(
-  Vec<Unique<LetStatementInitializedAst>> const &new_asts, Shared<IdentifierAst> const &tmp_name,
-  LetStatementInitializedAst *cond_let, ScopeManager &sm, CompilerMetaData *meta) -> void {
-  // Hand the already-resolved value to the hidden temporary
-  // so the elements can index it, then resolve the flow-typing
-  // variable, if flow typing introduced one, and each element.
-  if (tmp_name != nullptr) { DestructureTempStage9(tmp_name, sm, meta); }
-  if (cond_let != nullptr) { cond_let->Stage9_CompTimeResolve(&sm, meta); }
-  for (auto const &x : new_asts) { x->Stage9_CompTimeResolve(&sm, meta); }
 }
 
 auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(

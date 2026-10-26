@@ -233,7 +233,7 @@ auto spp::analyse::utils::case_utils::ResolvePatternChecks(
       continue;
     }
     if (check.Value->CompTimeValue == nullptr) { return false; }
-    check.Call->Stage9_CompTimeResolve(sm, meta);
+    check.Call->EvaluateCompTime(sm, meta);
     const auto result = meta->CompTimeResult != nullptr ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
     if (result == nullptr or not result->IsTrue()) { return false; }
   }

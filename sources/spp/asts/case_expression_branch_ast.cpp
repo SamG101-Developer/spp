@@ -144,62 +144,6 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionBranchAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-  // Combine the case expression with the pattern to determine
-  // if this branch should be taken, at compile-time.
-  sm->MoveToNextScope();
-  const auto tests_condition_directly =
-    Op == nullptr
-    and not Patterns.empty()
-    and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
-
-  SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
-  for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
-    auto *tested = tests_condition_directly
-      ? static_cast<Ast*>(meta->CaseCondition)
-      : _MappedPatFns[i] != nullptr
-      ? static_cast<Ast*>(_MappedPatFns[i].get())
-      : static_cast<Ast*>(pattern);
-
-    // Determine if this branch is not a match (false): the checks
-    // the plan says the pattern makes, before the pattern binds
-    // anything (a binding reads a payload only its tag says is
-    // there), and then the pattern itself.
-    const auto checks_hold = tested != pattern
-      or case_utils::ResolvePatternChecks(
-        *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
-    if (checks_hold) { tested->Stage9_CompTimeResolve(sm, meta); }
-    const auto cmp_pat_bool = checks_hold and meta->CompTimeResult != nullptr
-      ? meta->CompTimeResult->To<BooleanLiteralAst>()
-      : nullptr;
-    if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
-      ignore = sm->SkipSubtree(sm->CurrentScope);
-      continue;
-    }
-
-    // Check with the branch guard if it exists.
-    if (Guard != nullptr) {
-      Guard->Stage9_CompTimeResolve(sm, meta);
-      const auto cmp_guard_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
-      if (not cmp_guard_bool or not cmp_guard_bool->IsTrue()) {
-        ignore = sm->SkipSubtree(sm->CurrentScope);
-        continue;
-      }
-    }
-
-    // At this point, the correct branch has been identified, so resolve the body.
-    Body->Stage9_CompTimeResolve(sm, meta);
-    sm->MoveOutOfCurrentScope();
-    return;
-  }
-
-  // None of the patterns on this branch matched.
-  meta->CompTimeResult = nullptr;
-  sm->MoveOutOfCurrentScope();
-}
-
 auto CaseExpressionBranchAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -284,6 +228,62 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   ctx->Builder.SetInsertPoint(next_bb);
   sm->MoveOutOfCurrentScope();
   return nullptr;
+}
+
+auto CaseExpressionBranchAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // Combine the case expression with the pattern to determine
+  // if this branch should be taken, at compile-time.
+  sm->MoveToNextScope();
+  const auto tests_condition_directly =
+    Op == nullptr
+    and not Patterns.empty()
+    and Patterns[0]->To<CasePatternVariantExpressionAst>() != nullptr;
+
+  SPP_ASSERT(_MappedPatFns.size() == Patterns.size());
+  for (auto const &[i, pattern] : Patterns | genex::views::ptr | genex::views::enumerate) {
+    auto *tested = tests_condition_directly
+      ? static_cast<Ast*>(meta->CaseCondition)
+      : _MappedPatFns[i] != nullptr
+      ? static_cast<Ast*>(_MappedPatFns[i].get())
+      : static_cast<Ast*>(pattern);
+
+    // Determine if this branch is not a match (false): the checks
+    // the plan says the pattern makes, before the pattern binds
+    // anything (a binding reads a payload only its tag says is
+    // there), and then the pattern itself.
+    const auto checks_hold = tested != pattern
+      or case_utils::ResolvePatternChecks(
+        *_CasePlan, _CasePlan->Branches[_CaseIndex].Checks[i], sm, meta);
+    if (checks_hold) { tested->EvaluateCompTime(sm, meta); }
+    const auto cmp_pat_bool = checks_hold and meta->CompTimeResult != nullptr
+      ? meta->CompTimeResult->To<BooleanLiteralAst>()
+      : nullptr;
+    if (cmp_pat_bool == nullptr or not cmp_pat_bool->IsTrue()) {
+      ignore = sm->SkipSubtree(sm->CurrentScope);
+      continue;
+    }
+
+    // Check with the branch guard if it exists.
+    if (Guard != nullptr) {
+      Guard->EvaluateCompTime(sm, meta);
+      const auto cmp_guard_bool = meta->CompTimeResult ? meta->CompTimeResult->To<BooleanLiteralAst>() : nullptr;
+      if (not cmp_guard_bool or not cmp_guard_bool->IsTrue()) {
+        ignore = sm->SkipSubtree(sm->CurrentScope);
+        continue;
+      }
+    }
+
+    // At this point, the correct branch has been identified, so resolve the body.
+    Body->EvaluateCompTime(sm, meta);
+    sm->MoveOutOfCurrentScope();
+    return;
+  }
+
+  // None of the patterns on this branch matched.
+  meta->CompTimeResult = nullptr;
+  sm->MoveOutOfCurrentScope();
 }
 
 auto CaseExpressionBranchAst::UsePlan(

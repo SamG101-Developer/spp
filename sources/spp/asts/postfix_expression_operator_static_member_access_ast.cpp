@@ -16,6 +16,7 @@ import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
+import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
@@ -172,40 +173,6 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-  // Handle accessing a symbol on a type.
-  if (_LhsTypeSymbol != nullptr) {
-    if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
-      if (const auto read = comp_generics::FindCompMemberId(owner, Name->ToView()); read != nullptr) {
-        if (const auto value = sm->CurrentScope->CompAstOf(read);
-          value != nullptr and value->To<LiteralAst>() != nullptr) {
-          meta->CompTimeResult = AstClone(value.get());
-          return;
-        }
-      }
-    }
-    const auto sym = _Resolve(sm);
-
-    // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
-    // as this is impossiblt to provide a value.
-    using comp_generics::CompTimeResolutionGuard;
-    RaiseIf<SppCompTimeConstantError>(
-      CompTimeResolutionGuard::IsResolving(sym),
-      ERR_ARGS(*this));
-    const auto _guard = CompTimeResolutionGuard(sym);
-    auto tm = sm->NewManagerAt(_LhsTypeSymbol->LinkedScope);
-    sym->CompTimeValue->Stage9_CompTimeResolve(&tm, meta);
-    meta->CompTimeResult = AstClone(meta->CompTimeResult);
-    return;
-  }
-
-  // Handle accessing a variable on a namespace.
-  // Todo: Do we need to call stage_9 on the value?
-  meta->CompTimeResult = AstClone(_Resolve(sm)->CompTimeValue->To<ExpressionAst>());
-}
-
 auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -215,7 +182,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   // not a load. Resolve recursively and return the
   // result from the meta context.
   if (ctx->InConstantContext) {
-    Stage9_CompTimeResolve(sm, meta);
+    EvaluateCompTime(sm, meta);
     if (const auto folded = std::move(meta->CompTimeResult); folded != nullptr) {
       return folded->Stage11_CodeGen(sm, meta, ctx);
     }
@@ -235,7 +202,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
     // has no global (only the template is generated), so its
     // folded value is emitted in place.
     if (var_sym->LlvmInfo->Alloca == nullptr) {
-      Stage9_CompTimeResolve(sm, meta);
+      EvaluateCompTime(sm, meta);
       const auto folded = std::move(meta->CompTimeResult);
       SPP_ASSERT(folded != nullptr);
 
@@ -261,6 +228,44 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
+}
+
+auto PostfixExpressionOperatorStaticMemberAccessAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // Handle accessing a symbol on a type.
+  if (_LhsTypeSymbol != nullptr) {
+    if (const auto owner = NameTypeIdOf(*_LhsTypeSymbol); IsClosedTypeId(owner)) {
+      if (const auto read = comp_generics::FindCompMemberId(owner, Name->ToView()); read != nullptr) {
+        if (const auto value = sm->CurrentScope->CompAstOf(read);
+          value != nullptr and value->To<LiteralAst>() != nullptr) {
+          meta->CompTimeResult = AstClone(value.get());
+          return;
+        }
+      }
+    }
+    const auto sym = _Resolve(sm);
+    if (sym->Stmt != nullptr) { sym->Stmt->AnalyseAhead(*this, sm, meta); }
+
+    // Prevent loops of "cmp a = Self::b" and "cmp b = Self::a",
+    // as this is impossiblt to provide a value.
+    using comp_generics::CompTimeResolutionGuard;
+    RaiseIf<SppCompTimeConstantError>(
+      CompTimeResolutionGuard::IsResolving(sym),
+      ERR_ARGS(*this));
+    const auto _guard = CompTimeResolutionGuard(sym);
+    auto tm = sm->NewManagerAt(_LhsTypeSymbol->LinkedScope);
+    sym->CompTimeValue->EvaluateCompTime(&tm, meta);
+    meta->CompTimeResult = AstClone(meta->CompTimeResult);
+    return;
+  }
+
+  // Handle accessing a variable on a namespace: a constant stage 7
+  // has not reached yet is analysed and folded first.
+  // Todo: Do we need to evaluate the value?
+  const auto sym = _Resolve(sm);
+  if (sym->Stmt != nullptr) { sym->Stmt->AnalyseAhead(*this, sm, meta); }
+  meta->CompTimeResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
 
 auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(

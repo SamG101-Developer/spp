@@ -102,13 +102,6 @@ auto CharLiteralAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto CharLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the char literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
-}
-
 auto CharLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Decode the char literal token (which includes its
@@ -132,6 +125,13 @@ auto CharLiteralAst::Stage11_CodeGen(
   const auto struct_type = llvm::cast<llvm::StructType>(llvm_type);
   const auto inner = llvm::ConstantInt::get(struct_type->getElementType(0), code_point);
   return llvm::ConstantStruct::get(struct_type, {inner});
+}
+
+auto CharLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the char literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto CharLiteralAst::InferType(

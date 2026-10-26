@@ -57,7 +57,7 @@ CasePatternVariantAst::CasePatternVariantAst() :
 
 CasePatternVariantAst::~CasePatternVariantAst() = default;
 
-auto CasePatternVariantAst::Stage9_CompTimeResolve(
+auto CasePatternVariantAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   // No behaviour but c++ module issues require this be
   // defined here (maybe GCC bug).
@@ -94,11 +94,11 @@ auto CasePatternVariantAst::AnalyseDestructure(
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto CasePatternVariantAst::CompTimeResolveDestructure(
+auto CasePatternVariantAst::EvaluateCompTimeDestructure(
   ScopeManager *sm, CompilerMetaData *meta) const -> void {
   // Resolve the "let" statement introducing the symbols. The
   // literals the pattern tests are the "case"'s plan's.
-  _MappedLet->Stage9_CompTimeResolve(sm, meta);
+  _MappedLet->EvaluateCompTime(sm, meta);
   meta->CompTimeResult = BooleanLiteralAst::True(PosStart());
 }
 

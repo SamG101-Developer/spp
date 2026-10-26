@@ -179,18 +179,6 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   }
 }
 
-auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The value is resolved before this binding is declared, then assigned into it.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
-  meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
-  if (const auto sym = _Declare(sm); sym != nullptr) {
-    // Can be nullptr for the materialization into $ symbols.
-    sym->CompTimeValue = std::move(meta->CompTimeResult);
-  }
-}
-
 auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -265,6 +253,18 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
 
   // Alloca already added; return nullptr.
   return nullptr;
+}
+
+auto LocalVariableSingleIdentifierAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The value is resolved before this binding is declared, then assigned into it.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
+  meta->LetStatementValue->EvaluateCompTime(sm, meta);
+  if (const auto sym = _Declare(sm); sym != nullptr) {
+    // Can be nullptr for the materialization into $ symbols.
+    sym->CompTimeValue = std::move(meta->CompTimeResult);
+  }
 }
 
 auto LocalVariableSingleIdentifierAst::_Own(

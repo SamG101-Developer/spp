@@ -209,24 +209,6 @@ auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The narrowed subject holds the subject's comptime value: it
-  // was copied at stage 7, before the subject had one, and the
-  // bindings read through it. The subject is read where it was
-  // declared, as this branch's scope holds the narrowed one.
-  if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->ScopeDefinedIn != nullptr) {
-    const auto live_sym = _CondSymbol->ScopeDefinedIn->FindVarSymbol(_CondSymbol->Name.get());
-    const auto &value = live_sym != nullptr ? live_sym->CompTimeValue : _CondSymbol->CompTimeValue;
-    _FlowSymbol->CompTimeValue = AstClone(value);
-  }
-
-  // Resolve the mapped "let"; the "case"'s plan checks the tags
-  // and the literals.
-  _DeclareFlowSymbol(*sm);
-  CompTimeResolveDestructure(sm, meta);
-}
-
 auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Whether the subject holds what this pattern names is the
@@ -348,6 +330,24 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     _MappedLet->Stage11_CodeGen(sm, meta, ctx);
   }
   return llvm::ConstantInt::getTrue(*ctx->Context);
+}
+
+auto CasePatternVariantDestructureObjectAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The narrowed subject holds the subject's comptime value: it
+  // was copied at stage 7, before the subject had one, and the
+  // bindings read through it. The subject is read where it was
+  // declared, as this branch's scope holds the narrowed one.
+  if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->ScopeDefinedIn != nullptr) {
+    const auto live_sym = _CondSymbol->ScopeDefinedIn->FindVarSymbol(_CondSymbol->Name.get());
+    const auto &value = live_sym != nullptr ? live_sym->CompTimeValue : _CondSymbol->CompTimeValue;
+    _FlowSymbol->CompTimeValue = AstClone(value);
+  }
+
+  // Resolve the mapped "let"; the "case"'s plan checks the tags
+  // and the literals.
+  _DeclareFlowSymbol(*sm);
+  EvaluateCompTimeDestructure(sm, meta);
 }
 
 auto CasePatternVariantDestructureObjectAst::ConvToVar(

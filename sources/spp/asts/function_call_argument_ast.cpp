@@ -71,18 +71,18 @@ auto FunctionCallArgumentAst::Stage8_CheckMemory(
   Val->Stage8_CheckMemory(sm, meta);
 }
 
-auto FunctionCallArgumentAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Delegate comptime resolution to the value expression.
-  Val->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   const auto _target_guard = WithoutCallersTarget(meta);
   if (Conv == nullptr) { return Val->Stage11_CodeGen(sm, meta, ctx); }
   return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
+}
+
+auto FunctionCallArgumentAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Delegate comptime resolution to the value expression.
+  Val->EvaluateCompTime(sm, meta);
 }
 
 auto FunctionCallArgumentAst::InferType(

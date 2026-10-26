@@ -153,13 +153,6 @@ auto FloatLiteralAst::FromText(
     Str(type));
 }
 
-auto FloatLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the float literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
-}
-
 auto FloatLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormalizeFloatString;
@@ -188,6 +181,13 @@ auto FloatLiteralAst::Stage11_CodeGen(
   const auto value = spp::utils::numbers::ReadFloat(mapped_val, Type);
   if (llvm_type->isIntegerTy()) { return llvm::ConstantInt::get(*ctx->Context, value.bitcastToAPInt()); }
   return llvm::ConstantFP::get(*ctx->Context, value);
+}
+
+auto FloatLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the float literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto FloatLiteralAst::_PrecompiledType(

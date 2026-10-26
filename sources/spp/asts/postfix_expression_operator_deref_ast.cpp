@@ -81,12 +81,6 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // As this is cmp context, just return the "lhs" generation.
-  Lhs->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -107,6 +101,12 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   const auto deref_val = ctx->Builder.CreateLoad(
     llvm_type, borrow_val, "deref" + uid);
   return deref_val;
+}
+
+auto PostfixExpressionOperatorDerefAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // As this is cmp context, just return the "lhs" generation.
+  Lhs->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorDerefAst::InferType(
