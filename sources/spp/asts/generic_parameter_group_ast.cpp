@@ -226,22 +226,6 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto GenericParameterGroupAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Fold each comp default, to prove it is a constant even if
-  // nothing ever uses it. The result is thrown away - a use
-  // site folds its own copy. One naming another parameter
-  // ("m = n + 1_uz") is no constant until instantiated, where
-  // it is folded as bound.
-  for (auto const &p : Params) {
-    if (not p->IsCompParam() or not p->IsOptional()) { continue; }
-    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*p->WrittenCompDefault))) { continue; }
-    auto tm = sm->NewManagerAt(sm->CurrentScope);
-    p->CompDefault->Stage9_CompTimeResolve(&tm, meta);
-    meta->CompTimeResult = nullptr;
-  }
-}
-
 auto GenericParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Run the code generation steps on each parameter in the group.
