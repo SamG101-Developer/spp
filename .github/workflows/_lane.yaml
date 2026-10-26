@@ -103,7 +103,7 @@ jobs:
       # go without it.
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
 
@@ -151,7 +151,7 @@ jobs:
       # endpoints are known.
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
           disable-sudo: true
@@ -200,7 +200,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: runner.os == 'Linux'
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
           disable-sudo: true
@@ -237,7 +237,7 @@ jobs:
       # Builds valgrind into the home directory, but needs sudo
       # for libc6-dbg, which valgrind reads only from /usr/lib/debug.
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
 
@@ -296,7 +296,7 @@ jobs:
     steps:
       # Installs nothing: cc, c++ and objdump are on the image.
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
           disable-sudo: true

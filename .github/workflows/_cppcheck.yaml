@@ -21,7 +21,7 @@ jobs:
       # Audit, not block: this job gates the builds, so an
       # endpoint missing from the list would stop every merge.
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2
         with:
           egress-policy: audit
 
