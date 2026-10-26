@@ -243,11 +243,12 @@ namespace spp::analyse::utils::generic_inference {
       };
       const auto bind = [&](GenericArgumentAst &named, GenericArgumentAst const &positional) {
         named.CompVal = AstCloneShared(positional.CompVal);
+        named.ExpectedCompType = positional.ExpectedCompType;
         auto &val = *named.CompVal;
         const auto stage = meta.CurrentStage;
         if (stage >= meta::CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
           or (stage >= meta::CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
-          val.Stage7_AnalyseSemantics(&sm, &meta);
+          named.AnalyseCompExpr(val, &sm, &meta);
         }
       };
       NameArgs(args, params, owner, sm, meta, pack, bind);
@@ -1104,11 +1105,15 @@ SPP_MOD_END
 
 /// [CHECKED]
 auto spp::analyse::utils::generic_inference::NamedGnArgs(
-  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Ast const &owner, ScopeManager &sm,
-  meta::CompilerMetaData &meta, const bool is_tuple_owner) -> Unique<GenericArgumentGroupAst> {
-  // A tuple's arguments stay positional.
+  GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const *params_scope,
+  Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta,
+  const bool is_tuple_owner) -> Unique<GenericArgumentGroupAst> {
+  // A tuple's arguments stay positional. The copy's comp arguments
+  // are given their parameters' types before they are named, which
+  // analyses the positional ones.
   auto named = AstClone(&written);
   if (is_tuple_owner) { return named; }
+  if (params_scope != nullptr) { comp_generics::ExpectCompParamTypes(*named, p_group, *params_scope); }
 
   // The two kinds are named separately, as a type and a comp
   // parameter cannot share a name, then put in parameter order.

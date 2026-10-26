@@ -283,7 +283,8 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
       and not own_params_alias;
 
     // Name all the generic arguments.
-    GnArgGroup = generic_inference::NamedGnArgs(*GnArgGroup, *gn_param_group, *this, *sm, *meta, is_tuple);
+    GnArgGroup = generic_inference::NamedGnArgs(
+      *GnArgGroup, *gn_param_group, type_sym->LinkedScope, *this, *sm, *meta, is_tuple);
 
     // Analyse the generic arguments. Naming an abstract type as
     // one ("B[A]") produces no value of it; an instantiation that

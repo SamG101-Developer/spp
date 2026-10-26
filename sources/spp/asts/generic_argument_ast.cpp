@@ -100,9 +100,12 @@ auto GenericArgumentAst::PosEnd() const -> std::size_t {
 }
 
 auto GenericArgumentAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<GenericArgumentAst>(
+  // Clone all the members of the ast, and the parameter type a
+  // comp value is analysed against.
+  auto ast = MakeUnique<GenericArgumentAst>(
     AstCloneShared(_KeywordName), AstClone(TokAssign), AstCloneShared(TypeVal), AstCloneShared(CompVal));
+  ast->ExpectedCompType = ExpectedCompType;
+  return ast;
 }
 
 auto GenericArgumentAst::ToString() const -> Str {
@@ -232,18 +235,10 @@ auto GenericArgumentAst::AnalyseCompVal(
   // Analysing an operator expression desugars it into a call
   // and moves its operands there ("n + 1" becomes "n.add(1)"),
   // so one is checked on a copy: the written expression is what
-  // is folded, keyed and substituted. A comp argument is also
-  // an expression of its own: nothing the enclosing one set up
-  // - the return type a "ret" resolves overloads against, an
-  // assignment target - applies to that call.
+  // is folded, keyed and substituted.
   const auto checked = comp_generics::IsCompOperator(*CompVal) ? AstClone(CompVal) : nullptr;
   auto &target = checked != nullptr ? *checked : *CompVal;
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->ClearAssignmentTarget();
-    target.Stage7_AnalyseSemantics(sm, meta);
-  }
+  AnalyseCompExpr(target, sm, meta);
   common_errors::RequirePrimary(target, *sm);
 
   // A call keys as its spelling, so it is evaluated here, and the argument is the literal it folds to: "A[ct()]" is
@@ -259,6 +254,21 @@ auto GenericArgumentAst::AnalyseCompVal(
   // carried into another scope keeps naming it there, where the
   // same spelling may name another.
   type_resolution::StampCompParts(*CompVal, *sm->CurrentScope);
+}
+
+auto GenericArgumentAst::AnalyseCompExpr(
+  ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> void {
+  // A comp argument is an expression of its own: nothing the
+  // enclosing one set up - the return type a "ret" resolves
+  // overloads against, an assignment target - applies to it. Its
+  // target is its parameter's type, where that is known: without
+  // it, a variant array ("[Some(val=1), None]") would hold each
+  // element to the first one's type.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->ReturnTypeOverloadResolverType = nullptr;
+  meta->ClearAssignmentTarget();
+  if (ExpectedCompType != nullptr) { meta->AssignmentTargetType = ExpectedCompType->AstIn(*sm->CurrentScope); }
+  value.Stage7_AnalyseSemantics(sm, meta);
 }
 
 SPP_MOD_END

@@ -164,8 +164,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
-    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     solver.emplace(*this, *Lhs, *sm, *meta);
+    const auto expected_comp = solver->ExpectedCompArgTypes();
+    for (auto i = 0uz; i < GnArgGroup->Args.size(); ++i) { GnArgGroup->Args[i]->ExpectedCompType = expected_comp[i]; }
+    GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
     FnArgGroup->ExpectedTypes = solver->ExpectedArgTypes();
 
     // A fold's arguments are analysed in a scope of their own (see
@@ -667,18 +669,19 @@ auto PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
     gn_arg_type_map.emplace_back(MakeShared<TypeRef>(TypeRef::Of(_OverloadInfo->SelfId, *sm->CurrentScope)));
   }
 
-  // Each comp argument by the parameter it binds: its keyword,
-  // or, given by position, the comp parameter in the same
-  // place (one for one only: a variadic parameter takes several).
-  const auto comp_args = GnArgGroup->GetCompArgs();
-  const auto comp_params = fn_proto->GnParamGroup->GetCompParams();
-  for (auto i = 0uz; i < comp_args.size(); ++i) {
-    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*comp_args[i]->CompVal));
-    auto name = comp_args[i]->CompNameAsId();
-    if (name == nullptr and comp_args.size() == comp_params.size()) {
-      name = IdentifierAst::FromType(*comp_params[i]->Name);
+  // Each comp argument by the parameter it binds ("type_resolution::
+  // ParamsBoundByArgs"): its keyword's, or, given by position, the
+  // next comp parameter. A variadic parameter takes several, so
+  // none of them binds it by name.
+  const auto all_args = GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
+  const auto bound = type_resolution::ParamsBoundByArgs(
+    all_args, fn_proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>());
+  for (auto i = 0uz; i < all_args.size(); ++i) {
+    if (not all_args[i]->IsCompArg()) { continue; }
+    gn_arg_comp_map.emplace_back(sm->CurrentScope->CompIdOf(*all_args[i]->CompVal));
+    if (auto const *const param = bound[i]; param != nullptr and not param->IsVariadic()) {
+      gn_comp_values.emplace_back(IdentifierAst::FromType(*param->Name), gn_arg_comp_map.back());
     }
-    if (name != nullptr) { gn_comp_values.emplace_back(std::move(name), gn_arg_comp_map.back()); }
   }
 
   // Resolve the function with the arguments. The first call to

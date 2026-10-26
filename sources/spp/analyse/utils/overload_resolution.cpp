@@ -1180,7 +1180,7 @@ namespace spp::analyse::utils::overload_resolution {
       // any generic symbols in scope are the pre-bound ones.
       auto solver = generic_inference::GenericSolver(*fn_proto->GnParamGroup, *fn_scope, *sm, *meta);
       solver.Give(std::move(generic_inference::NamedGnArgs(
-        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, *fn_proto->Name, *sm, *meta)->Args));
+        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, fn_scope, *fn_proto->Name, *sm, *meta)->Args));
       solver.Give(
         ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : site.OwnerType.get(), *sm),
         *sm->CurrentScope);
@@ -1379,6 +1379,45 @@ auto OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
 
     // Given all the overloads agreed about the argument, mark
     // its expected type. Otherwise, leave it as nullptr.
+    if (agreed) { out[i] = expected; }
+  }
+  return out;
+}
+
+auto OverloadSolver::ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>> {
+  // As "ExpectedArgTypes": every candidate has to agree on the
+  // type, and have one of its own there ("cmp n: T" has none,
+  // nor does a pack, whose type is its elements').
+  using type_compare::TypeEq;
+  const auto args = _Call.GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
+  auto out = Vec<Shared<TypeRef>>(args.size());
+  if (_Candidates.Overloads.empty()) { return out; }
+
+  auto bound = Vec<Vec<GenericParameterAst*>>();
+  for (auto const &candidate : _Candidates.Overloads) {
+    const auto params = candidate.Proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>();
+    bound.emplace_back(type_resolution::ParamsBoundByArgs(args, params));
+  }
+  for (auto i = 0uz; i < args.size(); ++i) {
+    if (not args[i]->IsCompArg()) { continue; }
+    auto expected = Shared<TypeRef>(nullptr);
+    auto expected_scope = static_cast<Scope const*>(nullptr);
+    auto agreed = true;
+    for (auto const &[c, candidate] : _Candidates.Overloads | genex::views::enumerate) {
+      auto const *const param = bound[c][i];
+      if (param == nullptr or param->IsVariadic() or param->CompType == nullptr
+        or not type_predicates::IsTypeConcrete(*param->CompType, *candidate.FnScope)) {
+        agreed = false;
+        break;
+      }
+      const auto ref = MakeShared<TypeRef>(TypeRef::Of(*param->CompType, *candidate.FnScope));
+      if (expected != nullptr and not TypeEq(*expected, *ref, *expected_scope, *candidate.FnScope)) {
+        agreed = false;
+        break;
+      }
+      expected = ref;
+      expected_scope = candidate.FnScope;
+    }
     if (agreed) { out[i] = expected; }
   }
   return out;

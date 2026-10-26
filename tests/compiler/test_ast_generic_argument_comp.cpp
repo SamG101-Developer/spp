@@ -521,3 +521,83 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(y)
     }
 )");
+
+// Todo (red): a comp argument is analysed with no target type ("GenericArgumentAst::AnalyseCompVal"), so a variant
+//  array value holds every element to its first one's type ("None" against "Some[U64]"), not to the parameter's.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_variant_array_literal_as_a_comp_argument, R"(
+    cls A[cmp n: [Opt[U64]; 2_uz]] { }
+
+    fun g() -> Void {
+        let x = A[[Some(val=1_u64), None]]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_variant_array_constant_as_a_comp_argument_read_again, R"(
+    cls A[cmp n: [Opt[U64]; 2_uz]] { }
+    cmp k: [Opt[U64]; 2_uz] = [Some(val=1_u64), None]
+
+    fun g() -> Void {
+        let x = A[k]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_variant_array_cmp_fun_call_as_a_comp_argument, R"(
+    cls A[cmp n: [Opt[U64]; 2_uz]] { }
+    cmp fun mk() -> [Opt[U64]; 2_uz] { ret [Some(val=1_u64), None] }
+
+    fun g() -> Void {
+        let x = A[mk()]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_variant_array_literal_as_a_function_comp_argument, R"(
+    fun f[cmp n: [Opt[U64]; 2_uz]]() -> Void { }
+
+    fun g() -> Void {
+        f[[Some(val=1_u64), None]]()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_variant_array_keyword_function_comp_argument, R"(
+    fun f[cmp n: [Opt[U64]; 2_uz]]() -> Void { }
+
+    fun g() -> Void {
+        f[n=[Some(val=1_u64), None]]()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_array_comp_argument_element_not_of_the_parameter_type,
+    SppTypeMismatchError, R"(
+    cls A[cmp n: [Opt[U64]; 2_uz]] { }
+
+    fun g() -> Void {
+        let x = A[[Some(val=1_u64), 5_u64]]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestGenericArgumentComp,
+    test_invalid_array_function_comp_argument_element_not_of_the_parameter_type,
+    SppTypeMismatchError, R"(
+    fun f[cmp n: [Opt[U64]; 2_uz]]() -> Void { }
+
+    fun g() -> Void {
+        f[[Some(val=1_u64), 5_u64]]()
+    }
+)");

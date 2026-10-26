@@ -219,6 +219,13 @@ public:
   /// "h(g())".
   SPP_ATTR_NODISCARD auto ExpectedArgTypes() const -> Vec<Shared<TypeRef>>;
 
+  /// For each generic argument of the call, the type every
+  /// candidate's comp parameter has there, or null (and null for
+  /// a type argument):
+  /// the comp twin of "ExpectedArgTypes", read before the generic
+  /// arguments are analysed, which are analysed against it.
+  SPP_ATTR_NODISCARD auto ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>>;
+
   /// Check each candidate against the analysed arguments, and
   /// choose the one the call makes: generic inference, type
   /// forwarding, argument validation, and disambiguation. A

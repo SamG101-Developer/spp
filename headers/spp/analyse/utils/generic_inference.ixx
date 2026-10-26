@@ -165,8 +165,12 @@ namespace spp::analyse::utils::generic_inference {
   /// binds the next parameter not named by a keyword one, and a
   /// trailing variadic parameter takes the rest as a tuple (a lone
   /// argument naming a pack already is that tuple). "written" is
-  /// not changed. A tuple's arguments stay positional.
+  /// not changed. A tuple's arguments stay positional. Each comp
+  /// argument is analysed against its parameter's type, read in
+  /// "params_scope", where the parameters are declared ("comp_
+  /// generics::ExpectCompParamTypes"); none when it is null.
   SPP_EXP_FUN auto NamedGnArgs(
-    GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Ast const &owner, ScopeManager &sm,
-    meta::CompilerMetaData &meta, bool is_tuple_owner = false) -> Unique<GenericArgumentGroupAst>;
+    GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const *params_scope,
+    Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta,
+    bool is_tuple_owner = false) -> Unique<GenericArgumentGroupAst>;
 }

@@ -88,7 +88,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
   auto named = generic_inference::NamedGnArgs(
     *old_type->LastTypePart()->GnArgGroup,
     carrier->GnParams() != nullptr ? *carrier->GnParams() : *GenericParameterGroupAst::NewEmpty(),
-    *old_type, *sm, *meta, is_tuple);
+    carrier->LinkedScope, *old_type, *sm, *meta, is_tuple);
   auto attach = carrier->Alias != nullptr and not carrier->Alias->IsFromUseStmt
     ? filter_params(*carrier->Alias->Params, *named)
     : GenericParameterGroupAst::NewEmptyShared();

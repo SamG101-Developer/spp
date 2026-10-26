@@ -158,7 +158,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   }
   else if (own_params != nullptr and written_group != nullptr and not written_group->Args.empty()) {
     const auto written_args = generic_inference::NamedGnArgs(
-      *written_group, *own_params, *InitType, *sm, *meta);
+      *written_group, *own_params, cls_sym->LinkedScope, *InitType, *sm, *meta);
     // Analysed before they are keyed, so a written "Str" is the
     // instance with its defaults ("Str[GlobalAlloc]").
     written_args->Stage7_AnalyseSemantics(sm, meta);

@@ -14,9 +14,14 @@ import spp.analyse.scopes.type_key;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
+import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.expression_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
+import spp.asts.generic_parameter_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.literal_ast;
 import spp.asts.parenthesised_expression_ast;
@@ -112,6 +117,20 @@ auto spp::analyse::utils::comp_generics::NeedsSupScopesToType(
   return type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
     return part.To<LiteralAst>() == nullptr and part.To<IdentifierAst>() == nullptr;
   });
+}
+
+auto spp::analyse::utils::comp_generics::ExpectCompParamTypes(
+  GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params, Scope const &params_scope) -> void {
+  // A parameter typed by another one ("cmp n: T") has no type to
+  // give until that one is bound, and a pack's is its elements'.
+  const auto all_args = args.Args | genex::views::ptr | genex::to<Vec>();
+  const auto bound = type_resolution::ParamsBoundByArgs(all_args, params.Params | genex::views::ptr | genex::to<Vec>());
+  for (auto i = 0uz; i < all_args.size(); ++i) {
+    auto const *const param = bound[i];
+    if (not all_args[i]->IsCompArg() or param == nullptr or param->IsVariadic() or param->CompType == nullptr
+      or not type_predicates::IsTypeConcrete(*param->CompType, params_scope)) { continue; }
+    all_args[i]->ExpectedCompType = MakeShared<TypeRef>(TypeRef::Of(*param->CompType, params_scope));
+  }
 }
 
 auto spp::analyse::utils::comp_generics::FoldCompCall(

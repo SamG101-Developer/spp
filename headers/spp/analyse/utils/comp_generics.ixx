@@ -13,6 +13,8 @@ use(spp::analyse::utils::comp_generics, struct CompTimeResolutionGuard);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct GenericArgumentGroupAst);
+use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 
@@ -38,6 +40,12 @@ namespace spp::analyse::utils::comp_generics {
   /// analysed and type-checked only after they are.
   SPP_EXP_FUN auto NeedsSupScopesToType(
     ExpressionAst const &value) -> bool;
+
+  /// Give each comp argument its parameter's type to be analysed against ("GenericArgumentAst::ExpectedCompType"),
+  /// where the parameter it binds ("type_resolution::ParamsBoundByArgs") has one of its own ("cmp n: [Opt[U64]; 2_uz]",
+  /// not "cmp n: T", nor a variadic one), read where "params" is declared.
+  SPP_EXP_FUN auto ExpectCompParamTypes(
+    GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params, Scope const &params_scope) -> void;
 
   /// A comp value with a function call in it ("ct()", "n + ct()"),
   /// evaluated as a "cmp" statement's value is: the literal it
