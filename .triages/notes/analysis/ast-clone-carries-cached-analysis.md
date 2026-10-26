@@ -1,7 +1,7 @@
 ---
 name: ast-clone-carries-cached-analysis
 description: "Several Clone() impls copy resolved analysis state, so rewriting a clone silently does nothing - build the node instead"
-updated: 2026-09-02
+updated: 2026-10-26
 ---
 
 `Ast::Clone()` is not uniformly structural. `BinaryExpressionAst` copies `_MappedFn` and `Source`; the index, slice and `.res` postfix operators copy their `_MappedFn`; `PostfixExpressionOperatorFunctionCallAst` copies `_OverloadInfo`, `_TransformedAst` and the closure dummies.
@@ -15,3 +15,9 @@ original at whatever stage it was taken (async `_TransformedFn`, call `_Transfor
 `_Transformed*`/`_Iter*` members, `?`'s `_TransformedExpr`, the else pattern's `_ForIterLoopExit`). Clones after Stage
 7 come from generic instantiation, which then swaps in `Source.OriginalImpl` - re-analysis always starts from the
 pristine body, never from a clone of an analysed one.
+
+**Settled types too (2026-10-26).** `ArrayLiteralExplicitElementsAst` and `TupleLiteralAst` clones copy
+`_InferredType`, the type Stage 7 settled on from the target (`[Some(..), None]` as `[Opt[U64]; 2]`). Without it, a
+clone falls back to its first element's type. A `cmp` constant's value reaches codegen through a clone of the
+symbol's `CompTimeValue`, so a `None` element was emitted into a `Some` slot as zeros. Only a run shows that
+(`check-coercions`' `slots` case); the IR verifies either way.
