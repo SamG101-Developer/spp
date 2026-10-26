@@ -25,6 +25,7 @@ use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ClassPrototypeAst);
+use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterGroupAst);
@@ -478,6 +479,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// or the parameter still unbound). What reading the binding answers, with no lookup and no scope. Null for anything
   /// else, and for a value naming a constant that cannot be read yet ("IsReadableCompId"), which is keyed where read.
   CompId BoundCompId = nullptr;
+
+  /// The statement declaring this constant, which a fold reading it before stage 7 has reached it analyses first
+  /// ("CmpStatementAst::AnalyseAhead"). Null for anything else, and for a copy made per instantiation, whose value is
+  /// read through its template's.
+  asts::CmpStatementAst *Stmt = nullptr;
 
   VariableSymbol(
     Shared<IdentifierAst> name,
