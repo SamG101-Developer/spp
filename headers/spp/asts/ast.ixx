@@ -67,6 +67,11 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   /// bypass RTTI dynamic casting checks; see "To", "As" and "AstAs".
   SPP_ATTR_NODISCARD virtual auto Kind() const noexcept -> AstKind = 0;
 
+  /// Evaluate this node at compile time, into "meta->CompTimeResult": a "cmp" statement's value, a comp generic
+  /// argument or array size, or a "cmp" function's body as a call runs it. Asked for as a value is needed, not walked
+  /// as a stage. Only the nodes with a compile-time form override it; the rest raise that they have none.
+  virtual auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
   /// The RTTI-bypassed casting check, to convert a node into
   /// a derived type if possible, and otherwise nullptr. Uses
   /// the "Kind" and a static cast, with a rare dynamic cast
