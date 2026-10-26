@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Expand a lane's test matrix: one entry per gtest mode and
-# shard, then STL conformance, valgrind, the codegen checks and
-# the differential suite where the lane asks for them, all
-# against one build. With PACK, those ride in the last gtest
+# shard (each carrying the shard count), then STL conformance,
+# valgrind, the codegen checks and the differential suite where
+# the lane asks for them, all against one build. With PACK, those ride in the last gtest
 # cell instead, where the test job runs every suite of a cell in
 # parallel.
 set -euo pipefail
@@ -32,7 +32,7 @@ fi
 
 entries=()
 add() {  # suites label timeout advisory [mode shard]
-  entries+=("{\"suites\":\"$1\",\"label\":\"$2\",\"timeout\":$3,\"advisory\":$4,\"mode\":\"${5:-}\",\"shard\":${6:-0}}")
+  entries+=("{\"suites\":\"$1\",\"label\":\"$2\",\"timeout\":$3,\"advisory\":$4,\"mode\":\"${5:-}\",\"shard\":${6:-0},\"shards\":${SHARD_COUNT}}")
 }
 
 last_mode="${mode_list[${#mode_list[@]} - 1]}"

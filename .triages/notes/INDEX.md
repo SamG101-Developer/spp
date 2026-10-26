@@ -47,7 +47,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (12)
-- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (16)
+- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (17)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (12)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (20)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (23)

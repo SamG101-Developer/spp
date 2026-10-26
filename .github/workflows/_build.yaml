@@ -1,0 +1,175 @@
+# One build, staged as a digest-checked artifact, and the test
+# matrix _test.yaml runs against it. Every output _test.yaml and
+# _coverage.yaml need is here, so a caller hands them the whole
+# set: `build: ${{ toJSON(needs.<build job>.outputs) }}`.
+
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "Runner image; one listed under [runner] in .github/dependencies.toml."
+        required: false
+        type: string
+        default: "ubuntu-24.04"
+      compiler:
+        description: "Compiler (gcc | clang | msvc | clang-cl); its version comes from the manifest."
+        required: false
+        type: string
+        default: "gcc"
+      variant:
+        description: "Names the build tree's cache entry. Sonar restores it by this name."
+        required: false
+        type: string
+        default: "release"
+      build-type:
+        required: false
+        type: string
+        default: "Release"
+      cmake-flags:
+        description: "Extra CMake flags for the build, e.g. sanitizers. Give such a build its own variant."
+        required: false
+        type: string
+        default: ""
+      check-floor:
+        description: "Fail the build when its binaries need a newer system than [floor] in .github/dependencies.toml."
+        required: false
+        type: boolean
+        default: false
+      coverage:
+        description: "Build with SPP_COVERAGE (clang only); the test cells then collect profiles for _coverage.yaml."
+        required: false
+        type: boolean
+        default: false
+      modes:
+        description: "Space-separated s++ modes (rel | dev) the gtest suite runs in, each against the same build."
+        required: false
+        type: string
+        default: "rel"
+      shard-count:
+        description: "Jobs each mode's gtest sweep is split across."
+        required: false
+        type: number
+        default: 1
+      stl-conformance:
+        description: "Run `spp init` / `spp build` / `spp test --all-libs` against the build."
+        required: false
+        type: boolean
+        default: true
+      valgrind:
+        description: "Run chosen `!test` groups under valgrind (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
+      codegen:
+        description: "Run the tests/codegen hardening checks against the build (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
+      differential:
+        description: "Run the tests/differential programs at dev and rel and compare them (Linux only; advisory)."
+        required: false
+        type: boolean
+        default: false
+      pack:
+        description: "Run STL conformance, valgrind, the codegen checks and the differential suite in the last gtest cell, in parallel with it, rather than in cells of their own."
+        required: false
+        type: boolean
+        default: true
+      advisory:
+        description: "Let the build and its tests fail without failing the run, for a toolchain not expected to work yet."
+        required: false
+        type: boolean
+        default: false
+
+    outputs:
+      os:
+        value: ${{ jobs.build.outputs.os }}
+      compiler:
+        value: ${{ jobs.build.outputs.compiler }}
+      variant:
+        value: ${{ jobs.build.outputs.variant }}
+      coverage:
+        value: ${{ jobs.build.outputs.coverage }}
+      advisory:
+        value: ${{ jobs.build.outputs.advisory }}
+      tests:
+        description: "The test matrix, as JSON."
+        value: ${{ jobs.build.outputs.tests }}
+      artifact:
+        description: "Name of the staged binaries artifact."
+        value: ${{ jobs.build.outputs.artifact }}
+      spp-sha256:
+        description: "sha256 of the staged spp."
+        value: ${{ jobs.build.outputs.spp-sha256 }}
+      tests-sha256:
+        description: "sha256 of the staged spp_tests; empty when the build has no tests."
+        value: ${{ jobs.build.outputs.tests-sha256 }}
+
+permissions: { }
+
+# Windows otherwise defaults `run` to PowerShell.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 120
+    continue-on-error: ${{ inputs.advisory }}
+    permissions:
+      contents: read
+    outputs:
+      os: ${{ inputs.os }}
+      compiler: ${{ inputs.compiler }}
+      variant: ${{ inputs.variant }}
+      coverage: ${{ inputs.coverage }}
+      advisory: ${{ inputs.advisory }}
+      tests: ${{ steps.plan.outputs.tests }}
+      artifact: ${{ steps.compile.outputs.artifact }}
+      spp-sha256: ${{ steps.compile.outputs.spp-sha256 }}
+      tests-sha256: ${{ steps.compile.outputs.tests-sha256 }}
+    steps:
+      # The action is Linux-only, so the Windows and macOS variants
+      # go without it.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      # Full history: restore-mtimes walks it to date the sources for
+      # the incremental build.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Plan the tests
+        id: plan
+        env:
+          OS: ${{ inputs.os }}
+          MODES: ${{ inputs.modes }}
+          SHARD_COUNT: ${{ inputs.shard-count }}
+          STL: ${{ inputs.stl-conformance }}
+          VALGRIND: ${{ inputs.valgrind }}
+          CODEGEN: ${{ inputs.codegen }}
+          DIFFERENTIAL: ${{ inputs.differential }}
+          PACK: ${{ inputs.pack }}
+        run: bash .github/scripts/test/plan-tests.sh
+
+      - name: Build
+        id: compile
+        uses: ./.github/actions/compile
+        with:
+          os: ${{ inputs.os }}
+          compiler: ${{ inputs.compiler }}
+          variant: ${{ inputs.variant }}
+          build-type: ${{ inputs.build-type }}
+          cmake-flags: ${{ inputs.cmake-flags }}${{ inputs.coverage && ' -DSPP_COVERAGE=ON' || '' }}
+          check-floor: ${{ inputs.check-floor }}
+          stage: true

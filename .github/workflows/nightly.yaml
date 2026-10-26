@@ -43,8 +43,9 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    uses: ./.github/workflows/_codeql.yaml
+    uses: ./.github/workflows/_analysis.yaml
     with:
+      codeql: true
       full-scan: true
 
   # The compiler under ASan, UBSan and LSan, over the suites
@@ -54,21 +55,27 @@ jobs:
   # quarantining freed memory, halves that; a report still names
   # the error, and a failure can be re-run locally with ASan's
   # defaults.
-  sanitizers:
+  sanitizers-build:
     name: Sanitizers (ASan, UBSan, LSan)
     permissions:
       contents: read
-    uses: ./.github/workflows/_lane.yaml
+    uses: ./.github/workflows/_build.yaml
     with:
-      os: ubuntu-24.04
-      compiler: gcc
       variant: sanitizers
       cmake-flags: "-DSPP_SANITIZER=address,undefined,leak"
+      stl-conformance: false
+      shard-count: 4
+
+  sanitizers-test:
+    name: Sanitizers (ASan, UBSan, LSan)
+    needs: [ sanitizers-build ]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.sanitizers-build.outputs) }}
       gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
       asan-options: "malloc_context_size=0:quarantine_size_mb=0"
-      stl-conformance: false
-      modes: rel
-      shard-count: 4
 
   # Grades what cannot be seen from inside a workflow: token
   # permissions, action pinning, branch protection.

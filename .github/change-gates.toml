@@ -55,7 +55,9 @@ paths = [
 paths = [
   ".github/workflows/pr.yaml",
   ".github/workflows/post_merge.yaml",
-  ".github/workflows/_lane.yaml",
+  ".github/workflows/_build.yaml",
+  ".github/workflows/_test.yaml",
+  ".github/workflows/_coverage.yaml",
   ".github/actions/compile/*",
   ".github/actions/setup-runtime/*",
   ".github/actions/restore-mtimes/*",
@@ -72,6 +74,7 @@ include = ["toolchain"]
 [gate.cross_codegen]
 paths = [
   ".github/workflows/pr.yaml",
+  ".github/workflows/_build.yaml",
   ".github/workflows/_cross_codegen.yaml",
   ".github/actions/restore-mtimes/*",
   ".github/actions/compile/*",
@@ -85,6 +88,7 @@ include = ["toolchain"]
 paths = [
   ".github/workflows/pr.yaml",
   ".github/workflows/_security.yaml",
+  ".github/workflows/_analysis.yaml",
   ".github/scripts/scan/osv.sh",
   ".github/scripts/scan/osv-pins.py",
   ".github/scripts/scan/gitleaks.sh",
@@ -96,7 +100,7 @@ pinnable = true
 paths = [
   ".github/workflows/pr.yaml",
   ".github/workflows/post_merge.yaml",
-  ".github/workflows/_sonar.yaml",
+  ".github/workflows/_analysis.yaml",
   ".github/actions/restore-mtimes/*",
   ".github/scripts/test/coverage-report.sh",
 ]

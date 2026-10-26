@@ -1,12 +1,12 @@
 ---
 name: ci-name-casing
 description: "CI names: Title Case for workflows that trigger runs and every job/matrix label; sentence case for steps; kebab-case for identifiers"
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 Display names in `.github`:
 - **Workflows that trigger runs** (`PR`, `Nightly`) and **every job name**, in callers, inside reusable workflows, and
-  in matrix labels (the `platforms` matrix, `plan-tests.sh` labels): Title Case. `(Advisory)` and other bracketed
+  in matrix labels (`plan-tests.sh` labels): Title Case. `(Advisory)` and other bracketed
   qualifiers are Title Case too.
 - **Step names:** sentence case (`Upload test logs on failure`).
 - **Identifiers** (job ids, artifact names, composite action names, a reusable `_*.yaml` workflow's own `name:`):

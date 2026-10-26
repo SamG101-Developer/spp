@@ -1,7 +1,7 @@
 # Dependency, secret and licence scanning. These read the
 # tree or the dependency graph rather than building it, so
 # nothing gates them. CodeQL builds the project and
-# therefore waits on cppcheck; it lives in _codeql.yaml.
+# therefore waits on cppcheck; it lives in _analysis.yaml.
 
 name: security
 

@@ -128,82 +128,207 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # The `if` opts out of the implicit success() over `needs`,
-  # because cppcheck has its own filter and can be skipped
-  # while this runs; a skipped need would otherwise skip this
-  # too. Red cppcheck still stops the build.
-  linux:
+  # Every build needs cppcheck, so they all sit in one column of
+  # the job graph and every test in the next. The `if` opts out
+  # of the implicit success() over `needs`, because cppcheck has
+  # its own filter and can be skipped while this runs; a skipped
+  # need would otherwise skip the build too. Red cppcheck still
+  # stops it. The anchors here are reused by every build.
+  linux-gcc-build:
     name: Linux GCC
-    needs: [ changes, cppcheck ]
-    if: |
+    needs: &build-needs [ changes, cppcheck ]
+    if: &build-gate |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
-    permissions:
+    permissions: &read
       contents: read
-    uses: ./.github/workflows/_lane.yaml
+    uses: ./.github/workflows/_build.yaml
     with:
+      modes: rel dev
+      shard-count: 2
+      pack: false
       valgrind: true
       codegen: true
       differential: true
 
-  # Aspirational toolchains: they run and report red on
-  # failure, but are deliberately omitted from ci-success,
-  # so they never block a merge.
-  platforms:
-    name: ${{ matrix.name }}
-    needs: [ changes, cppcheck ]
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.compile == 'true'
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: Linux ARM GCC, os: ubuntu-24.04-arm, compiler: gcc }
-          - { name: Linux ARM Clang, os: ubuntu-24.04-arm, compiler: clang }
-          - { name: Linux Clang, os: ubuntu-24.04, compiler: clang }
-          - { name: macOS Clang, os: macos-15, compiler: clang }
-          # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
-          - { name: Windows MSVC, os: windows-2025, compiler: msvc, off: memory.stack.split }
-          # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
-          - { name: Windows clang-cl (Advisory), os: windows-2025, compiler: clang-cl, advisory: true, off: memory.stack.split }
-    uses: ./.github/workflows/_lane.yaml
+  linux-clang-build:
+    name: Linux Clang
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
     with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      modes: rel
-      shard-count: 1
-      pack: true
-      advisory: ${{ matrix.advisory == true }}
-      off: ${{ matrix.off }}
+      compiler: clang
 
-  # Emit for architectures unlike the host - 32-bit, big-endian,
-  # non-x86 - and check the object and the datalayout that came
-  # out. Todo: Add to ci-success once more stable.
-  cross-codegen:
+  linux-arm-gcc-build:
+    name: Linux ARM GCC
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: ubuntu-24.04-arm
+
+  linux-arm-clang-build:
+    name: Linux ARM Clang
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: ubuntu-24.04-arm
+      compiler: clang
+
+  # Not in ci-success until its spp_tests abort is fixed.
+  macos-clang-build:
+    name: macOS Clang
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: macos-15
+      compiler: clang
+
+  # Not in ci-success until sppc builds for Windows.
+  windows-msvc-build:
+    name: Windows MSVC
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: windows-2025
+      compiler: msvc
+
+  # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
+  windows-clang-cl-build:
+    name: Windows clang-cl (Advisory)
+    needs: *build-needs
+    if: *build-gate
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: windows-2025
+      compiler: clang-cl
+      advisory: true
+
+  # Every backend linked in, for the emits below. Todo: Add to
+  # ci-success once more stable.
+  cross-codegen-build:
     name: Cross Codegen (Advisory)
-    needs: [ changes, cppcheck ]
+    needs: *build-needs
     if: |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.cross_codegen == 'true'
+    permissions: *read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      variant: all-targets
+      cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
+
+  # CodeQL and Sonar each build the whole project, so they sit
+  # behind cppcheck like the builds. Sonar is advisory inside
+  # the call, so only CodeQL can fail it.
+  analysis:
+    name: Analysis
+    needs: *build-needs
+    if: |
+      !cancelled()
+      && needs.cppcheck.result != 'failure'
+      && needs.cppcheck.result != 'cancelled'
+      && ((needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
+        || needs.changes.outputs.sonar == 'true')
     permissions:
       contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_analysis.yaml
+    with:
+      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      sonar: >-
+        ${{ needs.changes.outputs.sonar == 'true'
+        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Each lane's tests, against its own build only.
+  linux-gcc-test:
+    name: Linux GCC
+    needs: [ linux-gcc-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-gcc-build.outputs) }}
+
+  linux-clang-test:
+    name: Linux Clang
+    needs: [ linux-clang-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-clang-build.outputs) }}
+
+  linux-arm-gcc-test:
+    name: Linux ARM GCC
+    needs: [ linux-arm-gcc-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-arm-gcc-build.outputs) }}
+
+  linux-arm-clang-test:
+    name: Linux ARM Clang
+    needs: [ linux-arm-clang-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-arm-clang-build.outputs) }}
+
+  macos-clang-test:
+    name: macOS Clang
+    needs: [ macos-clang-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.macos-clang-build.outputs) }}
+
+  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+  windows-msvc-test:
+    name: Windows MSVC
+    needs: [ windows-msvc-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.windows-msvc-build.outputs) }}
+      off: &msvc-off memory.stack.split
+
+  windows-clang-cl-test:
+    name: Windows clang-cl (Advisory)
+    needs: [ windows-clang-cl-build ]
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.windows-clang-cl-build.outputs) }}
+      off: *msvc-off
+
+  cross-codegen-test:
+    name: Cross Codegen (Advisory)
+    needs: [ cross-codegen-build ]
+    permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
+    with:
+      build: ${{ toJSON(needs.cross-codegen-build.outputs) }}
 
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
   docs:
     name: Docs
-    permissions:
-      contents: read
+    permissions: *read
     uses: ./.github/workflows/_docs.yaml
 
   # Ungated by cppcheck: these read the tree and the dependency
@@ -220,46 +345,9 @@ jobs:
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # Behind cppcheck for the same reason as the builds: CodeQL
-  # builds the whole project under its extractor, and cppcheck
-  # rejects the same code in well under a minute.
-  codeql:
-    name: CodeQL
-    needs: [ changes, cppcheck ]
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.security == 'true'
-      && needs.changes.outputs.ci_pins_only != 'true'
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    uses: ./.github/workflows/_codeql.yaml
-
-  # Advisory: Sonar's scanner wraps a full build, so it sits
-  # behind cppcheck like the builds, and a red quality gate
-  # does not block a merge. Todo: Add it to the ci-success.
-  sonar:
-    name: Sonar (Advisory)
-    needs: [ changes, cppcheck ]
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.sonar == 'true'
-      && (github.event_name != 'pull_request'
-        || github.event.pull_request.head.repo.full_name == github.repository)
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_sonar.yaml
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  # Advisory, like Sonar. There is nothing to review in a pin
-  # bump, so it sits behind `changes` to skip those rather than
-  # spend a review on a pair of SHAs
+  # Advisory. There is nothing to review in a pin bump, so it
+  # sits behind `changes` to skip those rather than spend a
+  # review on a pair of SHAs.
   # Todo: Require all conversations to be resolved before merging.
   claude-review:
     name: Claude Review (Advisory)
@@ -285,7 +373,22 @@ jobs:
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, version, cppcheck, linux, docs, security, codeql ] # sonar, claude-review
+    needs:
+      - changes
+      - lint
+      - version
+      - cppcheck
+      - docs
+      - security
+      - analysis
+      - linux-gcc-build
+      - linux-gcc-test
+      - linux-clang-build
+      - linux-clang-test
+      - linux-arm-gcc-build
+      - linux-arm-gcc-test
+      - linux-arm-clang-build
+      - linux-arm-clang-test
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }

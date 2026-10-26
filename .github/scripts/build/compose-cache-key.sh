@@ -2,7 +2,7 @@
 # Compose a build-tree cache key and publish it as the
 # `prefix` and `key` step outputs. The only place a key is
 # spelled out: the compile action writes the trees and
-# _sonar.yaml restores one, and a key
+# _analysis.yaml (Sonar) restores one, and a key
 # written separately in each drifts silently into a
 # permanent cold build.
 set -euo pipefail
