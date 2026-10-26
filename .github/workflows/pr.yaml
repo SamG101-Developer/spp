@@ -301,31 +301,6 @@ jobs:
     with:
       build: ${{ toJSON(needs.cross-codegen-build.outputs) }}
 
-  # CodeQL and Sonar each build the whole project, so they sit
-  # behind cppcheck like the builds. Sonar is advisory inside
-  # the call, so only CodeQL can fail it.
-  analysis:
-    name: Analysis
-    needs: *build-needs
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && ((needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
-        || needs.changes.outputs.sonar == 'true')
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    uses: ./.github/workflows/_analysis.yaml
-    with:
-      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
-      sonar: >-
-        ${{ needs.changes.outputs.sonar == 'true'
-        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
   docs:
@@ -346,6 +321,29 @@ jobs:
       security-events: write
       actions: read
     uses: ./.github/workflows/_security.yaml
+
+  # CodeQL and Sonar each build the whole project. Not behind
+  # cppcheck, so the build column holds only builds; on a red
+  # cppcheck they still run. Sonar is advisory inside the call,
+  # so only CodeQL can fail it.
+  analysis:
+    name: Analysis
+    needs: [ changes ]
+    if: |
+      (needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
+      || needs.changes.outputs.sonar == 'true'
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/_analysis.yaml
+    with:
+      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      sonar: >-
+        ${{ needs.changes.outputs.sonar == 'true'
+        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # Advisory. There is nothing to review in a pin bump, so it
   # sits behind `changes` to skip those rather than spend a
