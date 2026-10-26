@@ -143,3 +143,70 @@ TEST(TestErrorMessages, test_type_inferred_off_part_of_an_argument_shown_as_itse
   EXPECT_NE(text.find("Concrete type provided here as main::NotCopy"), std::string::npos) << text;
   EXPECT_EQ(text.find("(aka main::NotCopy)"), std::string::npos) << text;
 }
+
+// An unknown name's suggestion is drawn from what that position can reach, and only offered when it shares at least
+// half its characters ("ClosestMatch").
+
+namespace {
+  /// Compile "code", expect an unknown identifier, and answer its
+  /// message as plain text (empty, and a failure, if none).
+  auto UnknownIdentifierText(spp::Str code) -> spp::Str {
+    try {
+      build_temp_project(std::move(code));
+    }
+    catch (spp::analyse::errors::SppIdentifierUnknownError const &e) {
+      return spp_test::StripAnsi(e.what());
+    }
+    ADD_FAILURE() << "Expected an unknown identifier error.";
+    return {};
+  }
+}
+
+TEST(TestErrorMessages, test_unknown_namespace_function_suggests_its_own) {
+  const auto text = UnknownIdentifierText(R"(
+    fun f() -> Void { std::console::printn("x") }
+)");
+  EXPECT_NE(text.find("did you mean 'println'?"), std::string::npos) << text;
+}
+
+TEST(TestErrorMessages, test_unknown_use_target_suggests_the_namespaces_own) {
+  const auto text = UnknownIdentifierText(R"(
+    use std::console::printn
+)");
+  EXPECT_NE(text.find("did you mean 'println'?"), std::string::npos) << text;
+}
+
+// A "cmp" constant is reached with "::", so it is no suggestion for a "." access, however close.
+TEST(TestErrorMessages, test_unknown_attribute_suggests_only_what_dot_reaches) {
+  const auto text = UnknownIdentifierText(R"(
+    cls A { !public value: S32 }
+    sup A { !public cmp valuz: S32 = 1 }
+    fun f(a: A) -> Void { let x = a.valuzz }
+)");
+  EXPECT_NE(text.find("did you mean 'value'?"), std::string::npos) << text;
+  EXPECT_EQ(text.find("'valuz'"), std::string::npos) << text;
+}
+
+TEST(TestErrorMessages, test_unknown_identifier_with_nothing_close_suggests_nothing) {
+  const auto text = UnknownIdentifierText(R"(
+    fun f() -> Void {
+        let count = 1
+        let y = cxyz
+    }
+)");
+  EXPECT_EQ(text.find("did you mean"), std::string::npos) << text;
+}
+
+// A member reached through forwarding is a suggestion too: "Wrapper" forwards to "Inner", which has "value".
+TEST(TestErrorMessages, test_unknown_attribute_suggests_through_forwarding) {
+  const auto text = UnknownIdentifierText(R"(
+    use std::ops::fwd::FwdRef
+    cls Inner { !public value: S32 }
+    cls Wrapper { !public inner: Inner }
+    sup Wrapper ext FwdRef[Inner] {
+        cor fwd_ref(&self) -> GenOnce[&Inner] { gen &self.inner }
+    }
+    fun f(w: &Wrapper) -> Void { let x = w.valu }  # spellchecker:disable-line
+)");
+  EXPECT_NE(text.find("did you mean 'value'?"), std::string::npos) << text;
+}

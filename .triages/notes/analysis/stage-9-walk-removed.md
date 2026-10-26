@@ -6,9 +6,11 @@ updated: 2026-10-26
 
 Since 2026-10-26 (N7.11) there is no Stage 9 walk over the modules: no `kCompTimeResolve`, no
 `CompilerBoot::Stage9_CompTimeResolve`, and no overrides on declaration nodes. The remaining methods were renamed
-`EvaluateCompTime` (declared and defined after `Stage11_CodeGen`), as the comp-time **evaluator** that folds call (`FoldCompCall`, a call's Stage 9, the `cmp` fold). The
-evaluator walks a `cmp fun` body, so `TypeStatementAst::EvaluateCompTime` stays, to step over a local `type` statement's scope.
-After Stage 8 comes Stage 9.5 (monomorphisation).
+`EvaluateCompTime` (declared and defined after `Stage11_CodeGen`), and its base is on `Ast` rather than the
+`CompilerStages` mixin, since it is no stage: the default raises E77. They are the comp-time **evaluator** that the
+folds call (`FoldCompCall`, a call's `EvaluateCompTime`, the `cmp` fold). The evaluator walks a `cmp fun` body, so
+`TypeStatementAst::EvaluateCompTime` stays, to step over a local `type` statement's scope. After Stage 8 comes Stage 9.5
+(monomorphisation).
 
 The walk's three jobs moved into Stage 7:
 - **Constants:** `CmpStatementAst::_AnalyseValue` analyses the value and then folds it, putting the result on the

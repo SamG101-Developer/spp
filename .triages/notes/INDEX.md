@@ -14,6 +14,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Identity renames 2026-10-06](conventions/identity-renames-2026-10-06.md) — old→new names map (TypeKey, CompKey, Stamp*, ...)
 - [Terse comments, none in config](conventions/terse-comments-in-config.md) — no comments in config; brief in scripts
 - [LF line endings only](conventions/lf-line-endings.md) — CRLF breaks git hooks; check `git ls-files --eol`
+- [spellchecker:disable-line](conventions/spellchecker-disable-line.md) — deliberate typos take the line marker; typos + codespell skip it
 - [Map/Set, never std::unordered](conventions/spp-map-set-not-std-unordered.md) — Map/Set default, StableMap/Set if addresses escape
 - [types.ixx: aliases not wrappers](conventions/dead-code-sweep-skip-types.md) — Vec is a std::vector alias (N0.1); Opt, Path, Arr, Span, Func, FuncRef aliases (N0.2-3)
 - [import std, not STL headers](conventions/import-std-not-stl-headers.md) — no STL includes in a GMF for std facilities
