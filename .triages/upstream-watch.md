@@ -32,6 +32,7 @@ Each entry gives:
 | U13 | LLVM             | PC-relative EH pointers on m68k under PIC                       | 2026-10-24   |
 | U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-10-25   |
 | U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-10-25   |
+| U16 | LLVM             | AArch64 SLS indirect-call thunks named for Mach-O               | 2026-10-26   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -310,6 +311,26 @@ Each entry gives:
   `TestTargetSupport` canary tests, and `memory.stack.split` from the Windows lanes' `off` in `pr.yaml` and
   `post_merge.yaml`.
 - **Last checked:** 2026-10-25.
+
+## U16. LLVM: AArch64 SLS thunks on Mach-O
+
+- **Library:** LLVM (`SLSHardeningInserter::convertBLRToBL`, `llvm/lib/Target/AArch64/AArch64SLSHardening.cpp`).
+- **Want:** the `bl` to an SLS indirect-call thunk naming the thunk by its mangled symbol, so on Mach-O it carries the
+  `_` global prefix like the thunk's definition.
+- **Why:** with `+harden-sls-blr` (and `+harden-sls-nocomdat`, as Mach-O needs), the thunk is an IR function emitted
+  as `___llvm_slsblr_thunk_xN`, but the call site uses `Context.getOrCreateSymbol(ThunkName)`, the raw
+  `__llvm_slsblr_thunk_xN`, which nothing defines. Every macOS arm64 link fails with "Undefined symbols ...
+  \_\_llvm_slsblr_thunk_x10". clang's `-mharden-sls=blr` on Darwin hits the same. ELF is unaffected (no prefix). LLVM's
+  SLS tests have no Darwin case.
+- **Meanwhile:** `TargetHasSlsHardening` in `../sources/spp/codegen/llvm_harden_codegen.cpp` is false for AArch64
+  Mach-O, so `[binary.codegen] sls` (on by default) is refused there, naming the key; the `retbr` half, which works,
+  goes with it, since the key covers both. The macOS test calls pass `off: sls` (`pr.yaml`, `post_merge.yaml`).
+- **Status (2026-10-26):** unchanged on trunk (`09ec836bbe83`). Reproduce: `llc -mtriple=aarch64-apple-macos -filetype=obj` on a function doing `call void %p()` with `"target-features"="+harden-sls-blr,+harden-sls-nocomdat"`;
+  `llvm-nm` shows `t ___llvm_slsblr_thunk_x0` and `U __llvm_slsblr_thunk_x0`. No upstream issue filed yet.
+- **Check:** the same `llc` + `llvm-nm`: one defined name, no `U` thunk.
+- **When it lands:** restore the AArch64 Mach-O case in `TargetHasSlsHardening`, with `+harden-sls-nocomdat` added to
+  its features on Mach-O again (Mach-O has no COMDATs), and drop `off: sls` from the macOS test calls.
+- **Last checked:** 2026-10-26.
 
 ## Resolved
 

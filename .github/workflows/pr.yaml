@@ -266,6 +266,7 @@ jobs:
     with:
       build: ${{ toJSON(needs.linux-arm-clang-build.outputs) }}
 
+  # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
   macos-clang-test:
     name: macOS Clang
     needs: [ macos-clang-build ]
@@ -273,6 +274,7 @@ jobs:
     uses: ./.github/workflows/_test.yaml
     with:
       build: ${{ toJSON(needs.macos-clang-build.outputs) }}
+      off: sls
 
   # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   windows-msvc-test:

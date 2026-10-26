@@ -19,9 +19,12 @@ namespace spp::codegen {
     constexpr auto kJumpTableHardeningAttr = llvm::StringLiteral("aarch64-jump-table-hardening");
 
     /// Whether the selected target has straight-line speculation
-    /// hardening: x86 and AArch64 do, nothing else does.
+    /// hardening: x86 and AArch64 do, nothing else does. Not
+    /// AArch64 Mach-O: LLVM calls its indirect-call thunks by the
+    /// unprefixed name, so every call is an undefined symbol.
+    /// Todo: drop the Mach-O case once fixed; .triages/upstream-watch.md U16.
     auto TargetHasSlsHardening() -> bool {
-      return TargetTriple().isX86() or TargetTriple().isAArch64();
+      return TargetTriple().isX86() or (TargetTriple().isAArch64() and not TargetTriple().isOSBinFormatMachO());
     }
 
     /// Whether the selected target can scrub registers on return:
@@ -67,12 +70,9 @@ auto spp::codegen::ApplySlsHardening(
   // indirect calls on AArch64. Added to whatever features a
   // function already carries, as the backend reads them per
   // function rather than off the target machine. AArch64's
-  // indirect calls go through thunks, which are COMDATs unless
-  // asked otherwise, and Mach-O has no COMDATs.
+  // indirect calls go through thunks.
   const auto features = TargetTriple().isX86()
     ? llvm::StringRef("+harden-sls-ret,+harden-sls-ijmp")
-    : TargetTriple().isOSBinFormatMachO()
-    ? llvm::StringRef("+harden-sls-retbr,+harden-sls-blr,+harden-sls-nocomdat")
     : llvm::StringRef("+harden-sls-retbr,+harden-sls-blr");
 
   for (auto &fn : llvm_mod) {
