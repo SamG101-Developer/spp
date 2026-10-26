@@ -524,7 +524,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
   // If this is a !compiler_builtin function, swap in the lowered
   // implementation now (stage 6), so that the lowered (comptime)
-  // body is available to any stage 9 call regardless of definition
+  // body is available to any comp-time call regardless of definition
   // order.
   _InstallLoweredImpl(sm);
   sm->MoveOutOfCurrentScope();
@@ -570,6 +570,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // Move into the function scope, as it is now ready for
   // semantic analysis.
   sm->MoveToNextScope();
+  _Stage7 = _Stage7Progress::kAnalysing;
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
@@ -613,7 +614,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
   // Note: the !compiler_builtin lowered-implementation swap
   // now happens in Stage6_PreAnalyseSemantics, so that the
-  // lowered comptime body is available to dependent stage 9
+  // lowered comptime body is available to dependent comp-time
   // calls regardless of definition order.
 
   // There is no scope exit, as subclasses will call this
@@ -659,16 +660,6 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   }
 
   // Move out of the function scope, as it is now complete.
-  sm->MoveOutOfCurrentScope();
-}
-
-auto FunctionPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Manual scope skipping.
-  sm->MoveToNextScope();
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
-  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -793,6 +784,37 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
 
     _EnsureDropsForBuiltin(*sub.Proto, tm, meta);
   }
+}
+
+auto FunctionPrototypeAst::AnalyseAhead(
+  Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
+  IMPORT_UTILS;
+  // Analysed already, by the walk or ahead of it.
+  if (_Stage7 == _Stage7Progress::kAnalysedAhead or _Stage7 == _Stage7Progress::kDone) { return; }
+  RaiseIf<SppCompTimeConstantError>(
+    _Stage7 == _Stage7Progress::kAnalysing,
+    ERR_ARGS(site));
+
+  // The prototype's scope is the only child of its mock "sup" block's ("GenericSubstitution::ProtoScope"), so a walk
+  // started there steps straight into it, as the stage 7 walk does. Nothing of the caller's metadata applies here.
+  auto tm = sm->NewManagerAt(_Scope->Parent);
+  auto own_meta = CompilerMetaData();
+  own_meta.CurrentStage = CompilerStage::kAnalyseSemantics;
+  own_meta.IsTestHarness = meta->IsTestHarness;
+  Stage7_AnalyseSemantics(&tm, &own_meta);
+  _Stage7 = _Stage7Progress::kAnalysedAhead;
+}
+
+auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
+  ScopeManager *sm) -> bool {
+  // The scopes "AnalyseAhead" built are where this walk would
+  // have built them, so it only has to step past them.
+  if (_Stage7 != _Stage7Progress::kAnalysedAhead) { return false; }
+  sm->MoveToNextScope();
+  ignore = sm->SkipSubtree(sm->CurrentScope);
+  sm->MoveOutOfCurrentScope();
+  _Stage7 = _Stage7Progress::kDone;
+  return true;
 }
 
 auto FunctionPrototypeAst::_EnsureDropsForBuiltin(

@@ -121,6 +121,7 @@ auto CoroutinePrototypeAst::_CloneWithImpl(
 auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
+  if (_SkipIfAnalysedAhead(sm)) { return; }
 
   // Perform default function prototype semantic analysis
   FunctionPrototypeAst::Stage7_AnalyseSemantics(sm, meta);
@@ -156,6 +157,7 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
     sm->MoveOutOfCurrentScope();
   }
   meta->LoopJoins.clear();
+  _Stage7 = _Stage7Progress::kDone;
 }
 
 auto CoroutinePrototypeAst::Stage10_PreCodeGen(
