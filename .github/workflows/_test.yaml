@@ -2,7 +2,9 @@
 # binaries: gtest (mode x shard), STL conformance, and on Linux
 # valgrind, the codegen checks and the differential suite when
 # asked for, each in a cell of its own or, with `pack`, beside
-# the last gtest shard.
+# the last gtest shard. Callers run it after a failed build too,
+# so the failure reaches whatever needs only this job; the build's
+# outputs pass through for the same reason.
 
 name: test
 
@@ -29,6 +31,20 @@ on:
         type: string
         default: ""
 
+    outputs:
+      build:
+        description: "The build's outputs, as given."
+        value: ${{ jobs.test.outputs.build }}
+      artifact:
+        description: "Name of the tested build's staged binaries artifact."
+        value: ${{ jobs.test.outputs.artifact }}
+      spp-sha256:
+        description: "sha256 of the tested staged spp."
+        value: ${{ jobs.test.outputs.spp-sha256 }}
+      tests-sha256:
+        description: "sha256 of the tested staged spp_tests."
+        value: ${{ jobs.test.outputs.tests-sha256 }}
+
 permissions: { }
 
 # Windows otherwise defaults `run` to PowerShell.
@@ -50,6 +66,11 @@ jobs:
     continue-on-error: ${{ matrix.advisory || fromJSON(inputs.build).advisory == 'true' }}
     permissions:
       contents: read
+    outputs:
+      build: ${{ inputs.build }}
+      artifact: ${{ fromJSON(inputs.build).artifact }}
+      spp-sha256: ${{ fromJSON(inputs.build)['spp-sha256'] }}
+      tests-sha256: ${{ fromJSON(inputs.build)['tests-sha256'] }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(fromJSON(inputs.build).tests) }}
@@ -63,6 +84,14 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: ${{ !contains(matrix.suites, 'valgrind') }}
+
+      # The plan is written before the compile, so a failed build
+      # still has cells, and each fails here.
+      - name: Check the build staged
+        if: fromJSON(inputs.build).artifact == ''
+        run: |
+          echo "::error::the build failed; nothing to test"
+          exit 1
 
       # The test fixtures, at the same commit the binaries were built
       # from.

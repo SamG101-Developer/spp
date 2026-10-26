@@ -14,4 +14,4 @@
 - [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
 - [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
-- [Job graph layout](job-graph-layout.md) — builds in one column, tests in the next; per-lane build/test pairs via _build/_test, anchors; ci-success lists both
+- [Job graph layout](job-graph-layout.md) — builds in one column, tests in the next; per-lane _build/_test pairs, anchors; tests fail on a failed build, so ci-success needs only tests

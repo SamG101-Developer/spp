@@ -231,6 +231,84 @@ jobs:
       variant: all-targets
       cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
 
+  # Each lane's tests, against its own build only. They run after
+  # a failed build too, and fail, so ci-success needs only them;
+  # a skipped build (the compile gate) still skips them.
+  linux-gcc-test:
+    name: Linux GCC
+    needs: [ linux-gcc-build ]
+    if: &test-gate ${{ !cancelled() && !contains(needs.*.result, 'skipped') }}
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-gcc-build.outputs) }}
+
+  linux-clang-test:
+    name: Linux Clang
+    needs: [ linux-clang-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-clang-build.outputs) }}
+
+  linux-arm-gcc-test:
+    name: Linux ARM GCC
+    needs: [ linux-arm-gcc-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-arm-gcc-build.outputs) }}
+
+  linux-arm-clang-test:
+    name: Linux ARM Clang
+    needs: [ linux-arm-clang-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.linux-arm-clang-build.outputs) }}
+
+  macos-clang-test:
+    name: macOS Clang
+    needs: [ macos-clang-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.macos-clang-build.outputs) }}
+
+  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+  windows-msvc-test:
+    name: Windows MSVC
+    needs: [ windows-msvc-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.windows-msvc-build.outputs) }}
+      off: &msvc-off memory.stack.split
+
+  windows-clang-cl-test:
+    name: Windows clang-cl (Advisory)
+    needs: [ windows-clang-cl-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.windows-clang-cl-build.outputs) }}
+      off: *msvc-off
+
+  cross-codegen-test:
+    name: Cross Codegen (Advisory)
+    needs: [ cross-codegen-build ]
+    if: *test-gate
+    permissions: *read
+    uses: ./.github/workflows/_cross_codegen.yaml
+    with:
+      build: ${{ toJSON(needs.cross-codegen-build.outputs) }}
+
   # CodeQL and Sonar each build the whole project, so they sit
   # behind cppcheck like the builds. Sonar is advisory inside
   # the call, so only CodeQL can fail it.
@@ -255,74 +333,6 @@ jobs:
         && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  # Each lane's tests, against its own build only.
-  linux-gcc-test:
-    name: Linux GCC
-    needs: [ linux-gcc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-gcc-build.outputs) }}
-
-  linux-clang-test:
-    name: Linux Clang
-    needs: [ linux-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-clang-build.outputs) }}
-
-  linux-arm-gcc-test:
-    name: Linux ARM GCC
-    needs: [ linux-arm-gcc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-arm-gcc-build.outputs) }}
-
-  linux-arm-clang-test:
-    name: Linux ARM Clang
-    needs: [ linux-arm-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-arm-clang-build.outputs) }}
-
-  macos-clang-test:
-    name: macOS Clang
-    needs: [ macos-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.macos-clang-build.outputs) }}
-
-  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
-  windows-msvc-test:
-    name: Windows MSVC
-    needs: [ windows-msvc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.windows-msvc-build.outputs) }}
-      off: &msvc-off memory.stack.split
-
-  windows-clang-cl-test:
-    name: Windows clang-cl (Advisory)
-    needs: [ windows-clang-cl-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.windows-clang-cl-build.outputs) }}
-      off: *msvc-off
-
-  cross-codegen-test:
-    name: Cross Codegen (Advisory)
-    needs: [ cross-codegen-build ]
-    permissions: *read
-    uses: ./.github/workflows/_cross_codegen.yaml
-    with:
-      build: ${{ toJSON(needs.cross-codegen-build.outputs) }}
 
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
@@ -380,15 +390,11 @@ jobs:
       - cppcheck
       - docs
       - security
-      - analysis
-      - linux-gcc-build
       - linux-gcc-test
-      - linux-clang-build
       - linux-clang-test
-      - linux-arm-gcc-build
       - linux-arm-gcc-test
-      - linux-arm-clang-build
       - linux-arm-clang-test
+      - analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
