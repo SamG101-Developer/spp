@@ -16,3 +16,4 @@
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
 - [Job graph layout](job-graph-layout.md) — builds in one column, tests in the next; per-lane _build/_test pairs, anchors; ci-success needs only tests, fails non-success under compile gate
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
+- [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu

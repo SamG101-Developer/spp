@@ -62,11 +62,14 @@ namespace spp::cli {
   /// library's tests. "runner", when given, is a command the
   /// test executable is run under ("valgrind ..."), with the
   /// memory cap lifted, since a runner reserves far more
-  /// address space than the program it runs.
+  /// address space than the program it runs. "target" is a
+  /// target triple, or empty for the host; any other target
+  /// needs a runner that can execute it ("qemu-aarch64 -L
+  /// /usr/aarch64-linux-gnu").
   SPP_EXP_FUN auto HandleTest(
     Str const &name_filter = "", Str const &group_filter = "",
     Vec<Str> const &libs = {}, bool all_libs = false,
-    Str const &runner = "") -> void;
+    Str const &runner = "", Str const &target = "") -> void;
 
   /// Check the current directory has the structure a project
   /// needs, reporting anything missing, and answer whether it

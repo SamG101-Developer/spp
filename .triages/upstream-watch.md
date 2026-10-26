@@ -33,6 +33,7 @@ Each entry gives:
 | U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-10-25   |
 | U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-10-25   |
 | U16 | LLVM             | AArch64 SLS indirect-call thunks named for Mach-O               | 2026-10-26   |
+| U17 | qemu             | `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user    | 2026-10-26   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -334,6 +335,26 @@ Each entry gives:
 - **Check:** the same `llc` + `llvm-nm`: one defined name, no `U` thunk.
 - **When it lands:** restore the AArch64 Mach-O case in `TargetHasSlsHardening`, with `+harden-sls-nocomdat` added to
   its features on Mach-O again (Mach-O has no COMDATs), and drop `off: sls` from the macOS test calls.
+- **Last checked:** 2026-10-26.
+
+## U17. qemu: `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user
+
+- **Library:** qemu (`do_getsockopt`, `linux-user/syscall.c`, the `get_timeout:` branch).
+- **Want:** the NULL-`optval` special case there to test `!optval_addr`, as every other case that commit
+  `08dc3e240fc0` ("linux-user: Allow getsockopt() with NULL optval address", first in 11.1.0) converted does.
+- **Why:** with the inverted test, any `getsockopt` of a socket timeout with a real buffer succeeds, copies nothing and
+  reports length 0. The cross-codegen job's unit-test step (`.github/scripts/test/cross-unit-tests.sh`) runs the
+  standard library's tests under qemu for every qemu target, and
+  `std::tst::net::{tcp,udp}::test_a_{read,write}_timeout_reads_back_as_it_was_set` fail there (550/554 on aarch64);
+  on some targets they pass by luck, the buffer still holding the value just set (see
+  `notes/ci/qemu-getsockopt-timeout-empty.md`).
+- **Meanwhile:** nothing: those four stay red under qemu, by choice, and pass natively and in the musl (Alpine) run.
+- **Status (2026-10-26):** unchanged in qemu master (`d7314928`) and in 11.1.2, the pinned qemu-user. A one-line patch
+  (`if (optval_addr)` to `if (!optval_addr)`, `Fixes: 08dc3e240fc0`, `Cc: qemu-stable`) is written, to be sent to
+  qemu-devel; it applies to master, but was not built or run here.
+- **Check:** a guest program that sets `SO_RCVTIMEO` to 250 ms and reads it back gets optlen 16 and about 250000 us
+  (not optlen 0) under the newest qemu-user; or the four tests pass on every qemu target in the cross-codegen job.
+- **When it lands:** bump `[pin.qemu-user]` to the release with it (`refresh-pins.sh`), and delete the note.
 - **Last checked:** 2026-10-26.
 
 ## Resolved

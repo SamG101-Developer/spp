@@ -1,7 +1,8 @@
 # Prove the compiler can emit for a target that is not the
 # one it is running on, from an all-targets _build.yaml build.
 # Every target's object is inspected; a target with a "qemu"
-# arch is also linked and run, and musl ("run-in") in Alpine.
+# arch is also linked and run, and musl ("run-in") in Alpine;
+# those also run the standard library's unit tests there.
 
 name: cross-codegen
 
@@ -94,6 +95,17 @@ jobs:
           '${{ matrix.target.arch }}'
           '${{ matrix.target.layout }}'
           '${{ matrix.target.off }}'
+          '${{ matrix.target.qemu }}'
+          '${{ matrix.target.sysroot }}'
+          '${{ matrix.target.run-in }}'
+
+      # The standard library's unit tests, built for the target and
+      # run under what ran its program above.
+      - name: Unit tests on ${{ matrix.target.triple }}
+        if: matrix.target.qemu || matrix.target.run-in
+        run: >-
+          bash .github/scripts/test/cross-unit-tests.sh
+          '${{ matrix.target.triple }}'
           '${{ matrix.target.qemu }}'
           '${{ matrix.target.sysroot }}'
           '${{ matrix.target.run-in }}'

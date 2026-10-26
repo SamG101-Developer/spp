@@ -305,6 +305,7 @@ auto spp::cli::RunCli(
   auto test_libs = Vec<Str>();
   auto test_all_libs = false;
   auto test_runner = Str();
+  auto test_target = Str();
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
@@ -321,11 +322,15 @@ auto spp::cli::RunCli(
   test_cmd->add_option(
     "--runner", test_runner,
     "Run the test executable under this command, e.g. \"valgrind --error-exitcode=9\" (lifts the memory cap)");
+  test_cmd->add_option(
+    "-t,--target", test_target,
+    "Target triple to build the tests for; the host by default. Another target's tests run only under a '--runner' "
+    "that can execute them, e.g. \"qemu-aarch64 -L /usr/aarch64-linux-gnu\"");
 
-  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner] {
+  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner, &test_target] {
     HandleTest(
       test_name_filter, test_group_filter,
-      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
+      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner, test_target);
   });
 
   app.add_subcommand("validate", "Validate the project")
@@ -619,9 +624,21 @@ auto spp::cli::HandleClean(
 auto spp::cli::HandleTest(
   Str const &name_filter, Str const &group_filter,
   Vec<Str> const &libs, const bool all_libs,
-  Str const &runner) -> void {
+  Str const &runner, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
+
+  // Choose the target before anything is compiled, as a build
+  // does. Nothing this machine can execute comes out of a cross
+  // build, so one is only tested under a runner that can - and
+  // that is known before compiling, not after.
+  if (not codegen::SelectTarget(target.c_str())) { std::exit(1); }
+  if (not codegen::TargetIsHost() and runner.empty()) {
+    std::cerr
+      << "Error: Cannot run tests built for '" << codegen::TargetFolderName()
+      << "' here; give a '--runner' that can, e.g. \"qemu-<arch> -L <sysroot>\".\n";
+    std::exit(1);
+  }
 
   // Fetch the dependencies, as an ordinary build does: a
   // test build compiles the same sources plus the "tst"
