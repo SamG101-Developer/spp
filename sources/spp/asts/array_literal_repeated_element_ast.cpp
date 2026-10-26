@@ -150,7 +150,17 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _SizeScope = sm->CurrentScope;
   _AnalysedSize = AstClone(Size);
-  _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
+
+  // The size is an expression of its own: what the enclosing one
+  // set up - the "let" type the array is assigned to, the return
+  // type a "ret" resolves overloads against - is not its target,
+  // and a "case" in it would hold its branches to that type.
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    meta->ClearAssignmentTarget();
+    _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
+  }
   common_errors::RequirePrimary(*_AnalysedSize, *sm);
 
   // In a template, the size may depend on a generic that has no
@@ -338,7 +348,7 @@ auto ArrayLiteralRepeatedElementAst::InferTypeRef(
 }
 
 auto ArrayLiteralRepeatedElementAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both the repeated element and the count are expressions;
   // the count is the one that names a comp parameter.
   return MakeShared<ArrayLiteralRepeatedElementAst>(
