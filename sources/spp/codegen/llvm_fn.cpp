@@ -125,8 +125,40 @@ namespace {
   }
 }
 
+auto spp::codegen::CAbiExtendOf(
+  llvm::Type const *type,
+  const bool is_signed)
+  -> llvm::Attribute::AttrKind {
+  // As clang marks a C prototype's integers for each target.
+  const auto integer = llvm::dyn_cast<llvm::IntegerType>(type);
+  if (integer == nullptr) { return llvm::Attribute::None; }
+  const auto by_sign = is_signed ? llvm::Attribute::SExt : llvm::Attribute::ZExt;
+  const auto width = integer->getBitWidth();
+  if (width == 1) { return llvm::Attribute::ZExt; }
+  if (width < 32) { return by_sign; }
+  if (width > 32) { return llvm::Attribute::None; }
+
+  switch (TargetTriple().getArch()) {
+    case llvm::Triple::ppc64:
+    case llvm::Triple::ppc64le:
+    case llvm::Triple::systemz:
+    case llvm::Triple::sparcv9:
+      return by_sign;
+    case llvm::Triple::riscv64:
+    case llvm::Triple::loongarch64:
+    case llvm::Triple::mips:
+    case llvm::Triple::mipsel:
+    case llvm::Triple::mips64:
+    case llvm::Triple::mips64el:
+      return llvm::Attribute::SExt;
+    default:
+      return llvm::Attribute::None;
+  }
+}
+
 auto spp::codegen::CAbiParamsOf(
   Vec<llvm::Type*> const &value_types,
+  Vec<bool> const &is_signed,
   llvm::Module const &module)
   -> Vec<CAbiParam> {
   // Each target's rule, as clang lowers a C struct parameter for
@@ -139,8 +171,12 @@ auto spp::codegen::CAbiParamsOf(
 
   auto params = Vec<CAbiParam>();
   params.reserve(value_types.size());
-  for (const auto type : value_types) {
-    auto param = CAbiParam{.How = CAbiParam::Kind::Direct, .Value = type, .Declared = type};
+  for (auto i = 0uz; i < value_types.size(); ++i) {
+    const auto type = value_types[i];
+    auto param = CAbiParam{
+      .How = CAbiParam::Kind::Direct, .Value = type, .Declared = type,
+      .Extend = CAbiExtendOf(type, i < is_signed.size() and is_signed[i])
+    };
     if (IsCStruct(type) and (by_val or s390x)) {
       const auto size = layout.getTypeAllocSize(type).getFixedValue();
       if (s390x and (size == 1 or size == 2 or size == 4 or size == 8)) {
@@ -163,6 +199,7 @@ auto spp::codegen::CAbiAddParamAttrs(
   -> void {
   const auto &layout = fn.getParent()->getDataLayout();
   for (auto i = 0u; i < params.size(); ++i) {
+    if (params[i].Extend != llvm::Attribute::None) { fn.addParamAttr(i, params[i].Extend); }
     if (params[i].How != CAbiParam::Kind::ByVal) { continue; }
     fn.addParamAttr(i, llvm::Attribute::getWithByValType(fn.getContext(), params[i].Value));
     fn.addParamAttr(i, llvm::Attribute::getWithAlignment(fn.getContext(), layout.getABITypeAlign(params[i].Value)));

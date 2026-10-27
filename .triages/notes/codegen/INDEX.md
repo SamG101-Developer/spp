@@ -19,4 +19,4 @@
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
 - [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()
 - [musl programs need libgcc_s](musl-programs-need-libgcc-s.md) — __gcc_personality_v0; bare Alpine needs `apk add libgcc`, not an sppc gap
-- [ffi struct params in the C ABI](ffi-struct-params-c-abi.md) — byval on ppc32/m68k, pointer or int on s390x; one-field structs are scalars; no sret
+- [ffi params in the C ABI](ffi-struct-params-c-abi.md) — structs byval/by pointer on ppc32, m68k, s390x; small ints signext/zeroext per target; one-field structs are scalars

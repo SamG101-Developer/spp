@@ -182,8 +182,14 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // parameters as the target's C calling convention does, which
     // is not always as their LLVM values ("CAbiParamsOf").
     const auto ffi_symbol = GetFfiSymbolName();
+    const auto is_signed = [&](TypeAst const &type) {
+      return type_predicates::IsTypeSignedInteger(type, *sm->CurrentScope);
+    };
+    const auto params_signed = FnParamGroup->Params
+      | genex::views::transform([&](auto const &x) { return is_signed(*x->Type); })
+      | genex::to<Vec>();
     const auto c_abi = ffi_symbol.has_value()
-      ? codegen::CAbiParamsOf(llvm_param_types, *ctx->Module)
+      ? codegen::CAbiParamsOf(llvm_param_types, params_signed, *ctx->Module)
       : Vec<codegen::CAbiParam>();
     auto declared_param_types = llvm_param_types;
     for (auto i = 0uz; i < c_abi.size(); ++i) { declared_param_types[i] = c_abi[i].Declared; }
@@ -222,6 +228,9 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     else {
       func->Target->addFnAttr(codegen::kFfiFnAttr);
       codegen::CAbiAddParamAttrs(*func->Target, c_abi);
+      if (const auto ext = codegen::CAbiExtendOf(llvm_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
+        func->Target->addRetAttr(ext);
+      }
     }
     if (InlineAnnotation != nullptr) {
       using A = annotation_utils::BuiltinAnnotation;

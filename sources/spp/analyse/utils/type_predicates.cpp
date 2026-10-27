@@ -194,6 +194,15 @@ namespace {
   }
 }
 
+auto spp::analyse::utils::type_predicates::IsTypeSignedInteger(
+  TypeAst const &type,
+  Scope const &scope) -> bool {
+  auto const *const sym = scope.FindTypeSymbol(&type);
+  const auto signed_id = sym != nullptr ? sym->CompArgId("signed") : nullptr;
+  auto const *const is_signed = signed_id != nullptr ? signed_id->AsBool() : nullptr;
+  return is_signed != nullptr and *is_signed;
+}
+
 auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   TypeRef const &ref) -> bool {
   // A template named bare, its parameters unbound ("IsUnboundTemplate").

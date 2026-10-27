@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.type_members;
+import spp.analyse.utils.type_predicates;
 import spp.asts.ast_kind;
 import spp.asts.boolean_literal_ast;
 import spp.asts.coroutine_prototype_ast;
@@ -825,30 +826,6 @@ auto fn_impls::SimpleAtomicFetchRmw(
   ctx->Builder.CreateRet(FromAtomic(ctx, rmw(op, val_arg), val_ty));
 }
 
-namespace {
-  /**
-   * Whether a resolved sized-integer type is a signed one.
-   *
-   * @n
-   * Not a question the name can answer. @c "U8" is an alias for @c "SizedIntegerUnsigned[8]", which is itself an
-   * alias for @c "SizedInteger[8, false]" - so by the time the type is resolved every width of both signednesses is
-   * called @c SizedInteger . Reading the first letter made all of them look signed, and @c "max_val[U8]()" came back
-   * as 127. The signedness is the type's own @c signed comp argument, so that is what is read; a type without one
-   * (not an integer) is not signed.
-   *
-   * @param type The resolved return type of the intrinsic.
-   * @return Whether it is a signed integer.
-   */
-  auto IsSignedIntegerType(
-    TypeAst const &type,
-    spp::analyse::scopes::Scope const &scope) -> bool {
-    auto const *const sym = scope.FindTypeSymbol(&type);
-    const auto signed_id = sym != nullptr ? sym->CompArgId("signed") : nullptr;
-    auto const *const is_signed = signed_id != nullptr ? signed_id->AsBool() : nullptr;
-    return is_signed != nullptr and *is_signed;
-  }
-}
-
 auto fn_impls::SimpleBinaryIntrinsicCall(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
   llvm::Type *rhs_ty) -> void {
@@ -1498,7 +1475,8 @@ auto fn_impls::StdIntrinsicsMinVal(
   -> void {
   // The lowest representable value for this sized-integer type. LLVM integer types carry no sign, so signedness is
   // read off the resolved "Self" return type's name ("S32" vs "U32") instead of "ty".
-  const auto is_signed = IsSignedIntegerType(*proto->ReturnType, *sm->CurrentScope);
+  const auto is_signed = analyse::utils::type_predicates::IsTypeSignedInteger(
+    *proto->ReturnType, *sm->CurrentScope);
   const auto bit_width = ty->getIntegerBitWidth();
   const auto val = llvm::ConstantInt::get(
     ty, is_signed ? llvm::APInt::getSignedMinValue(bit_width) : llvm::APInt::getMinValue(bit_width));
@@ -1510,7 +1488,8 @@ auto fn_impls::StdIntrinsicsMaxVal(
   -> void {
   // The highest representable value for this sized-integer type. See StdIntrinsicsMinVal for why signedness
   // comes from the return type's name rather than "ty".
-  const auto is_signed = IsSignedIntegerType(*proto->ReturnType, *sm->CurrentScope);
+  const auto is_signed = analyse::utils::type_predicates::IsTypeSignedInteger(
+    *proto->ReturnType, *sm->CurrentScope);
   const auto bit_width = ty->getIntegerBitWidth();
   const auto val = llvm::ConstantInt::get(
     ty, is_signed ? llvm::APInt::getSignedMaxValue(bit_width) : llvm::APInt::getMaxValue(bit_width));

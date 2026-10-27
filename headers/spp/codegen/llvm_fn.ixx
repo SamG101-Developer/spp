@@ -40,8 +40,9 @@ namespace spp::codegen {
   /// it is already does; 32-bit PowerPC and m68k take it "byval"
   /// (a pointer to a copy the callee may write), and s390x one of
   /// 1, 2, 4 or 8 bytes as an integer that size, and any other
-  /// as a pointer to a copy. Todo: a returned C struct ("sret")
-  /// is not lowered; sppc returns none.
+  /// as a pointer to a copy. A small integer is extended to its
+  /// register as "CAbiExtendOf" says. Todo: a returned C struct
+  /// ("sret") is not lowered; sppc returns none.
   SPP_EXP_CLS struct CAbiParam {
     enum class Kind { Direct, ByVal, Indirect, Coerce };
     Kind How = Kind::Direct;
@@ -50,18 +51,34 @@ namespace spp::codegen {
     /// Its type in the declaration: "Value", a pointer, or an
     /// integer of "Value"'s size.
     llvm::Type *Declared = nullptr;
+    /// "SExt" or "ZExt" for an integer the caller extends to its
+    /// register ("CAbiExtendOf"), else "None".
+    llvm::Attribute::AttrKind Extend = llvm::Attribute::None;
   };
 
+  /// Whether the target's C convention extends an integer of
+  /// @p type (signed if @p is_signed) to the register it is passed
+  /// or returned in, and how; "None" for no integer or no need.
+  /// Every target extends "char", "short" and "bool"; 64-bit
+  /// PowerPC, s390x and SPARC extend "int" by its signedness, and
+  /// RISC-V, LoongArch and MIPS sign-extend it either way. A
+  /// caller that leaves the upper half as it was hands a callee
+  /// that reads the whole register a wrong value.
+  SPP_EXP_FUN auto CAbiExtendOf(
+    llvm::Type const *type,
+    bool is_signed) -> llvm::Attribute::AttrKind;
+
   /// The C form of each parameter of an "!ffi" function whose
-  /// LLVM value types are @p value_types, for the target being
-  /// built.
+  /// LLVM value types are @p value_types, @p is_signed saying
+  /// which are signed integers, for the target being built.
   SPP_EXP_FUN auto CAbiParamsOf(
     Vec<llvm::Type*> const &value_types,
+    Vec<bool> const &is_signed,
     llvm::Module const &module) -> Vec<CAbiParam>;
 
   /// The attributes "CAbiParamsOf" calls for on @p fn, declared
   /// with each parameter's "Declared" type: "byval" and its
-  /// alignment where it takes a copy.
+  /// alignment where it takes a copy, and an integer's extension.
   SPP_EXP_FUN auto CAbiAddParamAttrs(
     llvm::Function &fn,
     Vec<CAbiParam> const &params) -> void;
