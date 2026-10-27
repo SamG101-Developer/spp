@@ -1,27 +1,49 @@
-# Whatever a coverage build's test cells covered, failed cells
-# included: a red test still ran the code it reached.
+# The coverage lane: a clang build that records what it runs, the
+# suites over it, and the merged report, which Sonar reads. The
+# report covers failed cells too: a red test still ran the code it
+# reached.
 
 name: coverage
 
 on:
   workflow_call:
-    inputs:
-      build:
-        description: "The coverage build job's outputs, as JSON: `toJSON(needs.<build job>.outputs)`."
-        required: true
-        type: string
-
     outputs:
       artifact:
-        description: "Name of the coverage report artifact."
-        value: ${{ jobs.coverage.outputs.artifact }}
+        description: "Name of the coverage report artifact; empty when the lane did not report."
+        value: ${{ jobs.report.outputs.artifact }}
 
 permissions: { }
 
 jobs:
-  coverage:
-    name: Coverage
-    runs-on: ${{ fromJSON(inputs.build).os }}
+  build:
+    name: Build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      compiler: clang
+      variant: coverage
+      coverage: true
+      shard-count: 2
+      pack: false
+      codegen: true
+      differential: true
+
+  test:
+    name: Test
+    needs: [ build ]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.build.outputs) }}
+
+  # Waits on every cell, as it merges all their profiles.
+  report:
+    name: Report
+    needs: [ build, test ]
+    if: ${{ !cancelled() && needs.build.outputs.artifact != '' }}
+    runs-on: ${{ needs.build.outputs.os }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -44,14 +66,14 @@ jobs:
       - name: Fetch and verify binaries
         uses: ./.github/actions/setup-runtime
         with:
-          artifact: ${{ fromJSON(inputs.build).artifact }}
-          spp-sha256: ${{ fromJSON(inputs.build)['spp-sha256'] }}
-          tests-sha256: ${{ fromJSON(inputs.build)['tests-sha256'] }}
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
+          tests-sha256: ${{ needs.build.outputs.tests-sha256 }}
 
       - name: Download coverage profiles
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          pattern: prof-${{ fromJSON(inputs.build).os }}-${{ fromJSON(inputs.build).variant }}-*
+          pattern: prof-${{ needs.build.outputs.os }}-${{ needs.build.outputs.variant }}-*
           path: ${{ runner.temp }}/prof
           merge-multiple: true
 
@@ -66,8 +88,8 @@ jobs:
       - name: Name the report
         id: name
         env:
-          OS: ${{ fromJSON(inputs.build).os }}
-          VARIANT: ${{ fromJSON(inputs.build).variant }}
+          OS: ${{ needs.build.outputs.os }}
+          VARIANT: ${{ needs.build.outputs.variant }}
         run: echo "artifact=coverage-${OS}-${VARIANT}" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage report

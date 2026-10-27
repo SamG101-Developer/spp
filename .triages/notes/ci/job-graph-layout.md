@@ -1,6 +1,6 @@
 ---
 name: job-graph-layout
-description: "Workflows lay out as columns: every build in one, every test in the next; per-lane build/test pairs; ci-success needs only tests and fails a gating test that did not succeed"
+description: "Workflows lay out as columns: every build in one, every test in the next; per-lane build/test pairs; coverage is one lane call; ci-success needs only tests and fails a gating test that did not succeed"
 updated: 2026-10-26
 ---
 
@@ -13,7 +13,10 @@ definition and `needs` order, which is undocumented), breaking the build-to-test
 How it is built:
 - `_build.yaml` (one job) builds, stages, and plans the test matrix (`plan-tests.sh`). It outputs everything a test
   needs, so a test call is just `build: ${{ toJSON(needs.<lane>-build.outputs) }}` into `_test.yaml` (one matrix
-  job), `_cross_codegen.yaml` (emit only) or `_coverage.yaml` (post_merge only).
+  job) or `_cross_codegen.yaml`.
+- Coverage (post_merge only) is the exception: one `coverage` job calling `_coverage.yaml`, which is the whole lane
+  (its own `_build.yaml` and `_test.yaml` calls, then a report job), drawn as one box. Its report has to wait for every
+  test cell, to merge their profiles, so a build/test pair cannot hold it; Sonar needs only `coverage`.
 - One explicit `<lane>-build` and `<lane>-test` job per lane in the caller, with matching `name`s. The shared
   `needs`/`if`/`permissions` are YAML anchors (`&build-gate`, `*read`); GitHub, actionlint 1.7.12, zizmor and
   `classify-changes.py check` all accept them. Merge keys (`<<:`) are not supported by GitHub, so a whole `with:`
@@ -24,7 +27,7 @@ How it is built:
   counts as a pass, so a failed build (which skips its tests) would slip through; its second step fails when
   `needs.changes.outputs.compile == 'true'` and any gating test's result is not `success`. A new gating lane goes in
   both its `needs` and that condition. `collect-release` needs only test jobs too (a skipped test skips it), and
-  `_test.yaml` passes the build's outputs through (`build`, `artifact`, digests) for it and `_coverage.yaml`.
+  `_test.yaml` passes the build's outputs through (`build`, `artifact`, digests) for it.
 
 **Why:** a matrix of reusable workflow calls draws one group per cell with all of that call's jobs (build, test,
 coverage) inside, so builds and tests of different lanes landed in different columns. A matrix also makes every

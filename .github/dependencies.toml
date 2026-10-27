@@ -80,8 +80,8 @@ version = "3.28.0"
 sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
 [pin.qemu-user]
-version = "11.1.2+ds-3"
-sha256 = "4bacc2bf647f1756c5f08e7f146161d3eeef9d9f53e5d6412d1b3daca0c93655"
+tag = "spp-2026.10.26.2"
+sha256 = "7ce31b76d67578ad07c5b746d649f412552e12a251c3b832787ce3a2267b41a9"
 
 [pin.arm-gnu]
 version = "15.3.rel2"

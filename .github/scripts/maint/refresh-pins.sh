@@ -187,19 +187,22 @@ else
   set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
 fi
 
-# QEMU
+# QEMU (our fork's newest release; upstream-watch U17-U19)
 echo
 echo "qemu (${MANIFEST})"
-qemu_pool="https://deb.debian.org/debian/pool/main/q/qemu"
-qemu_version="$(fetch "${qemu_pool}/" \
-  | grep -oE 'qemu-user_[0-9][^_"]*_amd64\.deb' | sed -E 's/^qemu-user_|_amd64\.deb$//g' | sort -uV | tail -1)"
-if [ -z "$qemu_version" ]; then
-  echo "::error::could not read the latest qemu-user package"
+qemu_repo="SamG101-Developer/qemu"
+qemu_tag="$(fetch "${auth[@]}" "https://api.github.com/repos/${qemu_repo}/releases/latest" \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin).get("tag_name", ""))')"
+qemu_digest=""
+if [ -n "$qemu_tag" ]; then
+  qemu_digest="$(asset_digest "$qemu_repo" "$qemu_tag" "qemu-user-static-${qemu_tag}-x86_64.tar.xz")"
+fi
+if [ -z "$qemu_digest" ]; then
+  echo "::error::could not read the latest qemu-user release of ${qemu_repo}"
   status=1
 else
-  fetch -o "$tmp/qemu-user.deb" "${qemu_pool}/qemu-user_${qemu_version}_amd64.deb"
-  set_pin pin.qemu-user.version "$qemu_version"
-  set_pin pin.qemu-user.sha256 "$(sha256sum "$tmp/qemu-user.deb" | cut -d ' ' -f 1)"
+  set_pin pin.qemu-user.tag "$qemu_tag"
+  set_pin pin.qemu-user.sha256 "$qemu_digest"
 fi
 
 # ALPINE

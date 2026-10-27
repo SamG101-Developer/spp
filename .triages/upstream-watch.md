@@ -34,6 +34,8 @@ Each entry gives:
 | U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-10-25   |
 | U16 | LLVM             | AArch64 SLS indirect-call thunks named for Mach-O               | 2026-10-26   |
 | U17 | qemu             | `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user    | 2026-10-26   |
+| U18 | qemu             | ppc32 rt sigreturn CFA missing `RT_SIGFRAME_ADJUST` (vDSO)      | 2026-10-26   |
+| U19 | qemu             | loongarch64 sigreturn CFA register and return column (vDSO)     | 2026-10-26   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -348,13 +350,71 @@ Each entry gives:
   `std::tst::net::{tcp,udp}::test_a_{read,write}_timeout_reads_back_as_it_was_set` fail there (550/554 on aarch64);
   on some targets they pass by luck, the buffer still holding the value just set (see
   `notes/ci/qemu-getsockopt-timeout-empty.md`).
-- **Meanwhile:** nothing: those four stay red under qemu, by choice, and pass natively and in the musl (Alpine) run.
-- **Status (2026-10-26):** unchanged in qemu master (`d7314928`) and in 11.1.2, the pinned qemu-user. A one-line patch
-  (`if (optval_addr)` to `if (!optval_addr)`, `Fixes: 08dc3e240fc0`, `Cc: qemu-stable`) is written, to be sent to
-  qemu-devel; it applies to master, but was not built or run here.
+- **Meanwhile:** CI's qemu-user is a static release of our fork, `SamG101-Developer/qemu` (`spp-patches`: qemu master
+  plus this fix and U18-U19, rebased weekly by its Sync workflow; a `spp-*` tag builds and checks the release),
+  pinned in `[pin.qemu-user]` and in sppc's `_build.yaml`. Under it the four tests pass.
+- **Status (2026-10-26):** unchanged in qemu master (`d7314928`) and in 11.1.2, the pinned qemu-user. The fix is
+  one character (`if (optval_addr)` to `if (!optval_addr)`, `Fixes: 08dc3e240fc0`, `Cc: qemu-stable`):
+  `.triages/tickets/0003-linux-user-Fix-inverted-NULL-check-in-getsockopt-for-SO_RCVTIMEO.patch`, with the GitLab
+  issue text in `.triages/tickets/qemu-getsockopt-timeout.md`. Carried in the fork; its Release build's check
+  (`.github/spp/check-fixes.sh`) reads back `len=16` under the patched qemu-aarch64 (2026-10-26). Upstream
+  issue not yet filed.
 - **Check:** a guest program that sets `SO_RCVTIMEO` to 250 ms and reads it back gets optlen 16 and about 250000 us
-  (not optlen 0) under the newest qemu-user; or the four tests pass on every qemu target in the cross-codegen job.
-- **When it lands:** bump `[pin.qemu-user]` to the release with it (`refresh-pins.sh`), and delete the note.
+  (not optlen 0) under qemu-user built from qemu master; or the four tests pass on every qemu target in the
+  cross-codegen job.
+- **When it lands:** nothing in the fork: once qemu master has it, the weekly Sync drops the patch by itself. Once
+  U17-U19 are all in a qemu release, retire the fork: move `[pin.qemu-user]` and sppc's `_build.yaml` back to Debian's
+  newest `qemu-user` deb (restoring the Debian section of `refresh-pins.sh` and `install-qemu-linux.sh` from git
+  history), and delete the notes.
+- **Last checked:** 2026-10-26.
+
+## U18. qemu: the ppc32 rt sigreturn CFA in the linux-user vDSO
+
+- **Library:** qemu (`linux-user/ppc/vdso.S`, `__kernel_sigtramp_rt32`; `RT_SIGFRAME_ADJUST` in
+  `linux-user/ppc/signal.c`).
+- **Want:** the trampoline's CFA to include `RT_SIGFRAME_ADJUST`, the 16 bytes `setup_rt_frame()` puts the 32-bit rt
+  sigframe above the dummy frame, as Linux does.
+- **Why:** without it the CFA is `r1 + 384` while the mcontext is at `r1 + 400`, so any unwind out of a signal handler
+  under qemu-ppc reads every register 16 bytes off: glibc's `backtrace()` crashes in the handler, and sppc's crash
+  reporter never reaches the faulting frame. qemu-ppc64 is fine (its adjustment is 0). Since e34136d93059
+  ("linux-user/ppc: Add vdso"), qemu 8.2.
+- **Meanwhile:** carried in our qemu fork with U17, which CI uses; its Release check unwinds 6 frames out of a handler
+  under the patched qemu-ppc (2026-10-26). sppc's `_sppc_bt_print` also prints the fault pc alone as `#0`
+  when an unwinder never reaches it (`../sppc/.triages/notes/ci/qemu-ppc32-vdso-sigframe-cfa.md`).
+- **Status (2026-10-26):** unchanged in qemu master (`d7314928`). No upstream issue yet. The patch moves
+  `RT_SIGFRAME_ADJUST` into `vdso-asmoffset.h` and adds it to the CFA (`Fixes: e34136d93059`, `Cc: qemu-stable`);
+  `vdso-32.so` must be regenerated from it:
+  `.triages/tickets/0001-linux-user-ppc-Include-RT_SIGFRAME_ADJUST-in-the-32-bit-rt-sigreturn-CFA.patch`, with the
+  GitLab issue text in `.triages/tickets/qemu-ppc32-rt-sigreturn-cfa.md`. Upstream issue not yet filed.
+- **Check:** the issue's `sigbt.c`, built with `powerpc-linux-gnu-gcc`, prints a backtrace through
+  `__kernel_sigtramp_rt32` under qemu-ppc built from qemu master, instead of dying with SIGSEGV.
+- **When it lands:** as U17. Then the sppc fallback can stay (it is right on any unwinder that stops short), but drop
+  the sppc note.
+- **Last checked:** 2026-10-26.
+
+## U19. qemu: the loongarch64 sigreturn CFA and return column in the linux-user vDSO
+
+- **Library:** qemu (`linux-user/loongarch64/vdso.S`, `__vdso_rt_sigreturn`).
+- **Want:** two riscv numbers copied into its CFI corrected: the CFA register 3 (`$sp`), not 2 (`$tp` on LoongArch; `sp`
+  on riscv), and the return column 72, GCC's `DWARF_ALT_FRAME_RETURN_COLUMN` for LoongArch, not 64 (riscv's; on
+  LoongArch it is `fcc0`, a 1-bit register).
+- **Why:** the signal frame's CFA is taken from the thread pointer, so any unwind out of a signal handler under
+  qemu-loongarch64 faults (glibc's `backtrace()`, libgcc's `_Unwind_Backtrace`). With only the CFA fixed, libgcc reads
+  the return address through `_Unwind_GetGR` on column 64, which it sizes at one byte, and aborts
+  (`libgcc/unwind-dw2.c`); glibc's fatal message goes to `/dev/tty`, so in CI the run just dies (exit 134). Since 00cc2934b2f0
+  ("linux-user/loongarch64: Add vdso"), qemu 8.2.
+- **Meanwhile:** carried in our qemu fork with U17, which CI uses. With the CFA alone, its Release check showed the
+  abort above; with both halves (`vdso.so` rebuilt: llvm-dwarfdump shows return column 72, CFA `R3 +304`; binutils
+  2.44's readelf stops at that CIE), it unwinds 7 frames out of a handler under the patched qemu-loongarch64
+  (2026-10-26). sppc's crash reporter falls back to printing the fault pc, as for U18; its loongarch64 build is
+  `required: false` in `../sppc/.github/workflows/_build.yaml`.
+- **Status (2026-10-26):** reported as https://gitlab.com/qemu-project/qemu/-/work_items/4743 (2026-10-23, open).
+  The issue proposes only the CFA half; the patch has both (`Resolves:` that issue, `Fixes: 00cc2934b2f0`,
+  `Cc: qemu-stable`; `vdso.so` must be regenerated):
+  `.triages/tickets/0002-linux-user-loongarch64-Use-sp-not-tp-for-the-sigreturn-CFA.patch`.
+- **Check:** the issue's reproducer prints `backtrace: 7 frames` under qemu-loongarch64 built from qemu master; or
+  the issue is closed by a commit.
+- **When it lands:** as U17; then consider making sppc's loongarch64 build required again.
 - **Last checked:** 2026-10-26.
 
 ## Resolved

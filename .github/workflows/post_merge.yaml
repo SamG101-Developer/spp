@@ -153,10 +153,10 @@ jobs:
       differential: true
       check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
-  # The suites over a clang build that records what they run, for
-  # Sonar below. Too slow for a pull request. It waits on the
-  # release gate only to share the Linux GCC build's column.
-  coverage-build:
+  # The coverage lane, for Sonar below: build, suites and report in
+  # one box. Too slow for a pull request. It waits on the release
+  # gate only to start beside the Linux GCC build.
+  coverage:
     name: Linux Clang Coverage
     needs: [ changes, release-gate ]
     if: |
@@ -164,15 +164,7 @@ jobs:
       && needs.changes.result == 'success'
       && needs.changes.outputs.compile == 'true'
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
-    with:
-      compiler: clang
-      variant: coverage
-      coverage: true
-      shard-count: 2
-      pack: false
-      codegen: true
-      differential: true
+    uses: ./.github/workflows/_coverage.yaml
 
   # One lane per release platform: separate jobs, since a matrix of
   # workflow calls keeps one cell's outputs.
@@ -219,14 +211,6 @@ jobs:
     with:
       build: ${{ toJSON(needs.linux-gcc-build.outputs) }}
 
-  coverage-test:
-    name: Linux Clang Coverage
-    needs: [ coverage-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.coverage-build.outputs) }}
-
   release-linux-arm64-test:
     name: Release · Linux ARM64
     needs: [ release-linux-arm64-build ]
@@ -254,17 +238,6 @@ jobs:
     with:
       build: ${{ toJSON(needs.release-windows-x64-build.outputs) }}
       off: memory.stack.split
-
-  # Whatever the coverage lane's cells covered, failed cells
-  # included, as long as its build staged.
-  coverage-report:
-    name: Linux Clang Coverage
-    needs: [ coverage-test ]
-    if: ${{ !cancelled() && needs.coverage-test.outputs.artifact != '' }}
-    permissions: *read
-    uses: ./.github/workflows/_coverage.yaml
-    with:
-      build: ${{ needs.coverage-test.outputs.build }}
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release.
@@ -474,7 +447,7 @@ jobs:
   # report.
   sonar:
     name: Sonar
-    needs: [ changes, linux-gcc-build, coverage-report ]
+    needs: [ changes, linux-gcc-build, coverage ]
     if: |
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
@@ -484,6 +457,6 @@ jobs:
     uses: ./.github/workflows/_analysis.yaml
     with:
       sonar: true
-      coverage-artifact: ${{ needs.coverage-report.outputs.artifact }}
+      coverage-artifact: ${{ needs.coverage.outputs.artifact }}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
