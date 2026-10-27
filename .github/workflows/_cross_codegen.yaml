@@ -27,7 +27,7 @@ jobs:
     name: Emit ${{ matrix.target.triple }}
     needs: [ build ]
     runs-on: ${{ needs.build.outputs.os }}
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: read
     strategy:
