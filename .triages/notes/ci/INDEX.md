@@ -14,6 +14,6 @@
 - [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
 - [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
-- [Job graph layout](job-graph-layout.md) — build/test column pairs per lane, anchors; coverage is one _coverage.yaml lane box; ci-success needs only tests, fails non-success
+- [Job graph layout](job-graph-layout.md) — one box per lane via _lane.yaml (build→test); failed build fails the lane; ci-success needs lanes only
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
 - [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu

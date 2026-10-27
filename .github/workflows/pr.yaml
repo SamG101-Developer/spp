@@ -128,23 +128,24 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # Every build needs cppcheck, so they all sit in one column of
-  # the job graph and every test in the next. The `if` opts out
-  # of the implicit success() over `needs`, because cppcheck has
-  # its own filter and can be skipped while this runs; a skipped
-  # need would otherwise skip the build too. Red cppcheck still
-  # stops it. The anchors here are reused by every build.
-  linux-gcc-build:
+  # One box per lane, its build and then its tests. Every lane
+  # needs cppcheck, so they all sit in one column of the job
+  # graph. The `if` opts out of the implicit success() over
+  # `needs`, because cppcheck has its own filter and can be
+  # skipped while this runs; a skipped need would otherwise skip
+  # the lane too. Red cppcheck still stops it. The anchors here
+  # are reused by every lane.
+  linux-gcc:
     name: Linux GCC
-    needs: &build-needs [ changes, cppcheck ]
-    if: &build-gate |
+    needs: &lane-needs [ changes, cppcheck ]
+    if: &lane-gate |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
     permissions: &read
       contents: read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       modes: rel dev
       shard-count: 2
@@ -153,155 +154,84 @@ jobs:
       codegen: true
       differential: true
 
-  linux-clang-build:
+  linux-clang:
     name: Linux Clang
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       compiler: clang
 
-  linux-arm-gcc-build:
+  linux-arm-gcc:
     name: Linux ARM GCC
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       os: ubuntu-24.04-arm
 
-  linux-arm-clang-build:
+  linux-arm-clang:
     name: Linux ARM Clang
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       os: ubuntu-24.04-arm
       compiler: clang
 
   # Not in ci-success until its spp_tests abort is fixed.
-  macos-clang-build:
+  # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
+  macos-clang:
     name: macOS Clang
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       os: macos-15
       compiler: clang
+      off: sls
 
   # Not in ci-success until sppc builds for Windows.
-  windows-msvc-build:
+  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+  windows-msvc:
     name: Windows MSVC
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       os: windows-2025
       compiler: msvc
+      off: &msvc-off memory.stack.split
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
-  windows-clang-cl-build:
+  windows-clang-cl:
     name: Windows clang-cl (Advisory)
-    needs: *build-needs
-    if: *build-gate
+    needs: *lane-needs
+    if: *lane-gate
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       os: windows-2025
       compiler: clang-cl
       advisory: true
+      off: *msvc-off
 
-  # Every backend linked in, for the emits below. Todo: Add to
-  # ci-success once more stable.
-  cross-codegen-build:
+  # Todo: Add to ci-success once more stable.
+  cross-codegen:
     name: Cross Codegen (Advisory)
-    needs: *build-needs
+    needs: *lane-needs
     if: |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.cross_codegen == 'true'
     permissions: *read
-    uses: ./.github/workflows/_build.yaml
-    with:
-      variant: all-targets
-      cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
-
-  # Each lane's tests, against its own build only. A failed build
-  # skips its tests; ci-success fails a skipped gating test when
-  # the compile gate is on.
-  linux-gcc-test:
-    name: Linux GCC
-    needs: [ linux-gcc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-gcc-build.outputs) }}
-
-  linux-clang-test:
-    name: Linux Clang
-    needs: [ linux-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-clang-build.outputs) }}
-
-  linux-arm-gcc-test:
-    name: Linux ARM GCC
-    needs: [ linux-arm-gcc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-arm-gcc-build.outputs) }}
-
-  linux-arm-clang-test:
-    name: Linux ARM Clang
-    needs: [ linux-arm-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.linux-arm-clang-build.outputs) }}
-
-  # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
-  macos-clang-test:
-    name: macOS Clang
-    needs: [ macos-clang-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.macos-clang-build.outputs) }}
-      off: sls
-
-  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
-  windows-msvc-test:
-    name: Windows MSVC
-    needs: [ windows-msvc-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.windows-msvc-build.outputs) }}
-      off: &msvc-off memory.stack.split
-
-  windows-clang-cl-test:
-    name: Windows clang-cl (Advisory)
-    needs: [ windows-clang-cl-build ]
-    permissions: *read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.windows-clang-cl-build.outputs) }}
-      off: *msvc-off
-
-  cross-codegen-test:
-    name: Cross Codegen (Advisory)
-    needs: [ cross-codegen-build ]
-    permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
-    with:
-      build: ${{ toJSON(needs.cross-codegen-build.outputs) }}
 
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
@@ -370,9 +300,8 @@ jobs:
 
   # One of the two required status checks for branch protection,
   # the other being "PR Title Format" from pr_title.yaml. Fails
-  # if any needed job failed or was cancelled, or if a gating
-  # lane's tests did not pass while the compile gate was on: a
-  # failed build skips its tests, and a skip otherwise passes.
+  # if any needed job failed or was cancelled; a lane whose build
+  # failed has failed, not skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
@@ -383,10 +312,10 @@ jobs:
       - cppcheck
       - docs
       - security
-      - linux-gcc-test
-      - linux-clang-test
-      - linux-arm-gcc-test
-      - linux-arm-clang-test
+      - linux-gcc
+      - linux-clang
+      - linux-arm-gcc
+      - linux-arm-clang
       - analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -410,19 +339,5 @@ jobs:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
           echo "One or more required jobs did not succeed:"
-          echo "$NEEDS_JSON"
-          exit 1
-
-      - name: Verify the gating lanes ran
-        if: >-
-          ${{ needs.changes.outputs.compile == 'true'
-          && (needs.linux-gcc-test.result != 'success'
-            || needs.linux-clang-test.result != 'success'
-            || needs.linux-arm-gcc-test.result != 'success'
-            || needs.linux-arm-clang-test.result != 'success') }}
-        env:
-          NEEDS_JSON: ${{ toJSON(needs) }}
-        run: |
-          echo "The compile gate is on, but a gating lane's tests did not pass (a failed build skips them):"
           echo "$NEEDS_JSON"
           exit 1

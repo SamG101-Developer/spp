@@ -1,0 +1,126 @@
+# One platform's lane: its _build.yaml build, then the
+# _test.yaml matrix against it, drawn as one box in the job
+# graph. A failed build fails the lane, so a caller gating on
+# the lane cannot mistake its skipped tests for a pass. The
+# inputs are those two workflows', passed through.
+
+name: lane
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: false
+        type: string
+        default: "ubuntu-24.04"
+      compiler:
+        required: false
+        type: string
+        default: "gcc"
+      variant:
+        required: false
+        type: string
+        default: "release"
+      build-type:
+        required: false
+        type: string
+        default: "Release"
+      cmake-flags:
+        required: false
+        type: string
+        default: ""
+      check-floor:
+        required: false
+        type: boolean
+        default: false
+      modes:
+        required: false
+        type: string
+        default: "rel"
+      shard-count:
+        required: false
+        type: number
+        default: 1
+      stl-conformance:
+        required: false
+        type: boolean
+        default: true
+      valgrind:
+        required: false
+        type: boolean
+        default: false
+      codegen:
+        required: false
+        type: boolean
+        default: false
+      differential:
+        required: false
+        type: boolean
+        default: false
+      pack:
+        required: false
+        type: boolean
+        default: true
+      advisory:
+        required: false
+        type: boolean
+        default: false
+      gtest-filter:
+        required: false
+        type: string
+        default: ""
+      asan-options:
+        required: false
+        type: string
+        default: ""
+      off:
+        required: false
+        type: string
+        default: ""
+
+    outputs:
+      artifact:
+        description: "Name of the lane's staged binaries artifact."
+        value: ${{ jobs.build.outputs.artifact }}
+      spp-sha256:
+        description: "sha256 of the lane's staged spp."
+        value: ${{ jobs.build.outputs.spp-sha256 }}
+      tests-sha256:
+        description: "sha256 of the lane's staged spp_tests."
+        value: ${{ jobs.build.outputs.tests-sha256 }}
+
+permissions: { }
+
+jobs:
+  build:
+    name: Build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      os: ${{ inputs.os }}
+      compiler: ${{ inputs.compiler }}
+      variant: ${{ inputs.variant }}
+      build-type: ${{ inputs.build-type }}
+      cmake-flags: ${{ inputs.cmake-flags }}
+      check-floor: ${{ inputs.check-floor }}
+      modes: ${{ inputs.modes }}
+      shard-count: ${{ inputs.shard-count }}
+      stl-conformance: ${{ inputs.stl-conformance }}
+      valgrind: ${{ inputs.valgrind }}
+      codegen: ${{ inputs.codegen }}
+      differential: ${{ inputs.differential }}
+      pack: ${{ inputs.pack }}
+      advisory: ${{ inputs.advisory }}
+
+  test:
+    name: Test
+    needs: [ build ]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_test.yaml
+    with:
+      build: ${{ toJSON(needs.build.outputs) }}
+      gtest-filter: ${{ inputs.gtest-filter }}
+      asan-options: ${{ inputs.asan-options }}
+      off: ${{ inputs.off }}

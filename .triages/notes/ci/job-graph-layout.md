@@ -1,38 +1,33 @@
 ---
 name: job-graph-layout
-description: "Workflows lay out as columns: every build in one, every test in the next; per-lane build/test pairs; coverage is one lane call; ci-success needs only tests and fails a gating test that did not succeed"
-updated: 2026-10-26
+description: "One box per lane in the job graph: each lane is one call to _lane.yaml (or _coverage/_cross_codegen), build then tests inside; callers need the lane job"
+updated: 2026-10-27
 ---
 
-The maintainer wants the run's job graph in clean columns (2026-10-26). In `pr.yaml`: changes/lint/docs, then
-cppcheck/version/security/Analysis (CodeQL + Sonar in one box)/claude review, then **every build**, then **every
-test**, then CI Success. `post_merge.yaml` follows the same rule for its builds and tests. Analysis needs only
-`changes`, not cppcheck: in the build column GitHub drew it among the builds (middle, then top, depending on
-definition and `needs` order, which is undocumented), breaking the build-to-test row alignment.
+The maintainer wants each platform's build and tests grouped in one box of the run's job graph (2026-10-27; this
+replaced a build column + test column layout from the day before). A lane is one job in the caller that calls a
+reusable workflow holding the whole lane:
+- `_lane.yaml`: `_build.yaml` then `_test.yaml` (`build: ${{ toJSON(needs.build.outputs) }}`). Its inputs are both
+  workflows' inputs, passed through with the same defaults (`modes: rel`, `shard-count: 1`, `pack: true`); a new
+  `_build.yaml` or `_test.yaml` input has to be added here too. Outputs: the build's `artifact` and digests.
+- `_coverage.yaml` (post_merge): build, tests, then a report job that waits on every test cell to merge their
+  profiles, so it cannot live in a build/test pair. Output: the report's artifact name, for Sonar.
+- `_cross_codegen.yaml` (pr): the all-targets build, then the emit matrix (which also runs the s++ conformance).
+- pr.yaml's lane `if`/`needs` are YAML anchors (`&lane-gate`, `&lane-needs`, `*read`); GitHub, actionlint 1.7.12,
+  zizmor and `classify-changes.py check` all accept them. Merge keys (`<<:`) are not supported by GitHub.
 
-How it is built:
-- `_build.yaml` (one job) builds, stages, and plans the test matrix (`plan-tests.sh`). It outputs everything a test
-  needs, so a test call is just `build: ${{ toJSON(needs.<lane>-build.outputs) }}` into `_test.yaml` (one matrix
-  job) or `_cross_codegen.yaml`.
-- Coverage (post_merge only) is the exception: one `coverage` job calling `_coverage.yaml`, which is the whole lane
-  (its own `_build.yaml` and `_test.yaml` calls, then a report job), drawn as one box. Its report has to wait for every
-  test cell, to merge their profiles, so a build/test pair cannot hold it; Sonar needs only `coverage`.
-- One explicit `<lane>-build` and `<lane>-test` job per lane in the caller, with matching `name`s. The shared
-  `needs`/`if`/`permissions` are YAML anchors (`&build-gate`, `*read`); GitHub, actionlint 1.7.12, zizmor and
-  `classify-changes.py check` all accept them. Merge keys (`<<:`) are not supported by GitHub, so a whole `with:`
-  cannot be shared.
-- `_build.yaml` defaults are the common lane: `modes: rel`, `shard-count: 1`, `pack: true`. Linux GCC passes
-  `rel dev`, 2 shards, `pack: false`; the nightly sanitizers lane 4 shards.
-- `ci-success` needs only the gating test jobs, not their builds. `needs` is not transitive and a skipped need
-  counts as a pass, so a failed build (which skips its tests) would slip through; its second step fails when
-  `needs.changes.outputs.compile == 'true'` and any gating test's result is not `success`. A new gating lane goes in
-  both its `needs` and that condition. `collect-release` needs only test jobs too (a skipped test skips it), and
-  `_test.yaml` passes the build's outputs through (`build`, `artifact`, digests) for it.
+A call job's result is `failure` if any job inside failed, so a failed build fails its lane instead of skipping its
+tests. `ci-success` therefore needs just the gating lanes (the 4 Linux ones), with no extra "did the tests run" step;
+`collect-release` needs the release lanes and reads their outputs. post_merge's Sonar waits on the Linux GCC lane (to
+restore that run's tree) and runs unless the lane's build did not stage: `result == 'skipped' || outputs.artifact != ''`,
+so a test failure alone does not skip it. `continue-on-error` is not allowed on a call job; advisory lanes pass
+`advisory: true`, which the jobs inside apply.
 
-**Why:** a matrix of reusable workflow calls draws one group per cell with all of that call's jobs (build, test,
-coverage) inside, so builds and tests of different lanes landed in different columns. A matrix also makes every
-test wait on every build.
+**Why:** a matrix of workflow calls (the first `_lane.yaml`) laid each cell out on its own, so lanes with different inner
+jobs drew build and test at different depths, and anything after the matrix waited on every cell. Explicit per-lane
+calls avoid both. Not yet confirmed on GitHub: how the nested calls draw (one box or boxes inside a box) and the check
+names they produce (e.g. `Linux GCC / Build / Build`).
 
-**How to apply:** a new lane is a `<lane>-build` + `<lane>-test` pair, not a matrix entry; a new analysis that
-builds the project goes into `_analysis.yaml` behind an input. Related: [[gha-parallel-steps-limits]],
-[[ci-name-casing]].
+**How to apply:** a new lane is one job calling `_lane.yaml`, not a matrix entry and not a separate build and test job;
+a gating one also goes in `ci-success`'s `needs`. A lane with a step after its tests gets its own workflow like
+`_coverage.yaml`. Related: [[gha-parallel-steps-limits]], [[ci-name-casing]].

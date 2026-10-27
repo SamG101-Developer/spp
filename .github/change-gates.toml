@@ -57,6 +57,7 @@ paths = [
   ".github/workflows/post_merge.yaml",
   ".github/workflows/_build.yaml",
   ".github/workflows/_test.yaml",
+  ".github/workflows/_lane.yaml",
   ".github/workflows/_coverage.yaml",
   ".github/actions/compile/*",
   ".github/actions/setup-runtime/*",

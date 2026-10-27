@@ -2,8 +2,7 @@
 # binaries: gtest (mode x shard), STL conformance, and on Linux
 # valgrind, the codegen checks and the differential suite when
 # asked for, each in a cell of its own or, with `pack`, beside
-# the last gtest shard. The build's outputs pass through, so a
-# job after the tests needs only this one.
+# the last gtest shard.
 
 name: test
 
@@ -30,20 +29,6 @@ on:
         type: string
         default: ""
 
-    outputs:
-      build:
-        description: "The build's outputs, as given."
-        value: ${{ jobs.test.outputs.build }}
-      artifact:
-        description: "Name of the tested build's staged binaries artifact."
-        value: ${{ jobs.test.outputs.artifact }}
-      spp-sha256:
-        description: "sha256 of the tested staged spp."
-        value: ${{ jobs.test.outputs.spp-sha256 }}
-      tests-sha256:
-        description: "sha256 of the tested staged spp_tests."
-        value: ${{ jobs.test.outputs.tests-sha256 }}
-
 permissions: { }
 
 # Windows otherwise defaults `run` to PowerShell.
@@ -65,11 +50,6 @@ jobs:
     continue-on-error: ${{ matrix.advisory || fromJSON(inputs.build).advisory == 'true' }}
     permissions:
       contents: read
-    outputs:
-      build: ${{ inputs.build }}
-      artifact: ${{ fromJSON(inputs.build).artifact }}
-      spp-sha256: ${{ fromJSON(inputs.build)['spp-sha256'] }}
-      tests-sha256: ${{ fromJSON(inputs.build)['tests-sha256'] }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(fromJSON(inputs.build).tests) }}

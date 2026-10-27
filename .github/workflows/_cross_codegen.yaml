@@ -1,25 +1,32 @@
-# Prove the compiler can emit for a target that is not the
-# one it is running on, from an all-targets _build.yaml build.
-# Every target's object is inspected; a target with a "qemu"
-# arch is also linked and run, and musl ("run-in") in Alpine;
-# those also run the standard library's unit tests there.
+# The cross-codegen lane: an all-targets build, then proof the
+# compiler can emit for a target that is not the one it is
+# running on. Every target's object is inspected; a target with
+# a "qemu" arch is also linked and run, and musl ("run-in") in
+# Alpine; those also run the standard library's unit tests
+# there.
 
 name: cross-codegen
 
 on:
-  workflow_call:
-    inputs:
-      build:
-        description: "The all-targets build job's outputs, as JSON: `toJSON(needs.<build job>.outputs)`."
-        required: true
-        type: string
+  workflow_call: { }
 
 permissions: { }
 
 jobs:
+  # Every backend linked in, for the emits below.
+  build:
+    name: Build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_build.yaml
+    with:
+      variant: all-targets
+      cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
+
   emit:
     name: Emit ${{ matrix.target.triple }}
-    runs-on: ${{ fromJSON(inputs.build).os }}
+    needs: [ build ]
+    runs-on: ${{ needs.build.outputs.os }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -67,8 +74,8 @@ jobs:
       - name: Fetch and verify spp
         uses: ./.github/actions/setup-runtime
         with:
-          artifact: ${{ fromJSON(inputs.build).artifact }}
-          spp-sha256: ${{ fromJSON(inputs.build)['spp-sha256'] }}
+          artifact: ${{ needs.build.outputs.artifact }}
+          spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
 
       # "toolchain" is the gcc package, where it is not gcc-<sysroot>, or "arm-gnu" for Arm's own release.
       - name: Install cross gcc

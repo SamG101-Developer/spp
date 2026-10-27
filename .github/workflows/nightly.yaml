@@ -55,25 +55,16 @@ jobs:
   # quarantining freed memory, halves that; a report still names
   # the error, and a failure can be re-run locally with ASan's
   # defaults.
-  sanitizers-build:
+  sanitizers:
     name: Sanitizers (ASan, UBSan, LSan)
     permissions:
       contents: read
-    uses: ./.github/workflows/_build.yaml
+    uses: ./.github/workflows/_lane.yaml
     with:
       variant: sanitizers
       cmake-flags: "-DSPP_SANITIZER=address,undefined,leak"
       stl-conformance: false
       shard-count: 4
-
-  sanitizers-test:
-    name: Sanitizers (ASan, UBSan, LSan)
-    needs: [ sanitizers-build ]
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_test.yaml
-    with:
-      build: ${{ toJSON(needs.sanitizers-build.outputs) }}
       gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
       asan-options: "malloc_context_size=0:quarantine_size_mb=0"
 

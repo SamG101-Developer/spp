@@ -1,7 +1,7 @@
 # One build, staged as a digest-checked artifact, and the test
-# matrix _test.yaml runs against it. Every output _test.yaml and
-# _coverage.yaml need is here, so a caller hands them the whole
-# set: `build: ${{ toJSON(needs.<build job>.outputs) }}`.
+# matrix _test.yaml runs against it. Every output _test.yaml
+# needs is here, so a lane hands it the whole set:
+# `build: ${{ toJSON(needs.build.outputs) }}`.
 
 name: build
 
