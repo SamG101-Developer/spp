@@ -172,7 +172,7 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "2a56afc714d485870ae41cb1ac4fb0556f86726b"
+commit = "94fe31eb9b94debcae52bc0d493a2232c11dbeaf"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
