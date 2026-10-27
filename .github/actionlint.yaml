@@ -12,12 +12,7 @@ paths:
     ignore:
       - 'unexpected key "(background|parallel|wait|wait-all|cancel)" for '
       - 'step must run script with "run" section or run action with "uses" section'
-  .github/workflows/_lane.yaml:
-    ignore:
-      - 'unexpected key "(background|parallel|wait|wait-all|cancel)" for '
-      - 'step must run script with "run" section or run action with "uses" section'
-      - 'property "tests" is not defined in object type'
-  .github/workflows/_coverage.yaml:
+  .github/workflows/_test.yaml:
     ignore:
       - 'unexpected key "(background|parallel|wait|wait-all|cancel)" for '
       - 'step must run script with "run" section or run action with "uses" section'

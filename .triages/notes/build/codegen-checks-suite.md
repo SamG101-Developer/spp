@@ -1,7 +1,7 @@
 ---
 name: codegen-checks-suite
 description: "tests/codegen/run.sh runs the check-*.sh hardening checks (~3 min, ~60 builds); new checks go on lib.sh; not part of gtest"
-updated: 2026-10-27
+updated: 2026-10-26
 ---
 
 Since 2026-10-18 (codegen-test-plan.md P1-P4) the tests are split by suite: `tests/compiler/` is the gtest suite
@@ -16,7 +16,7 @@ All eight took 2m58s locally (~60 build+run cycles, ~3 s each). Each check sourc
 `SPPC_LIB=` works for every check. std is copied from `tests/test_outputs/vcs`, or cloned once per script when
 there is no fixture (CI).
 
-CI (P6): the `codegen` cell of a lane's test job (`_lane.yaml` input `codegen: true`, on the pr.yaml/post_merge.yaml Linux GCC lanes) runs
+CI (P6): the `codegen` cell of `_test.yaml` (`_build.yaml` input `codegen: true`, on the pr.yaml/post_merge.yaml Linux GCC lanes) runs
 `bash tests/codegen/run.sh build/spp`. Advisory (`continue-on-error`) until a green run proves the hosted kernel has
 mseal/MDWE; then delete that line. The maintainer decided 2026-10-18 the rest of codegen-test-plan.md (C0-C7, the Python
 driver) is backlog only - don't start it unprompted.
