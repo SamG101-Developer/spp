@@ -322,6 +322,26 @@ auto spp::codegen::UnfortifiedImport(
   return plain;
 }
 
+auto spp::codegen::ImportsAtomicLibcalls(
+  char const *path) -> bool {
+  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  if (not object) {
+    llvm::consumeError(object.takeError());
+    return false;
+  }
+  for (auto const &sym : object->getBinary()->symbols()) {
+    auto flags = sym.getFlags();
+    auto name = sym.getName();
+    if (not flags or not name) {
+      if (not flags) { llvm::consumeError(flags.takeError()); }
+      if (not name) { llvm::consumeError(name.takeError()); }
+      continue;
+    }
+    if ((*flags & llvm::object::SymbolRef::SF_Undefined) != 0 and name->starts_with("__atomic_")) { return true; }
+  }
+  return false;
+}
+
 auto spp::codegen::UnhardenedLink(
   char const *path) -> Opt<Str> {
   // If llvm failed to make an object file then consume the error

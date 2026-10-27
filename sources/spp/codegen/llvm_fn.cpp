@@ -112,6 +112,85 @@ auto spp::codegen::GetOrAddTargetIntoCurrentModule(
   return mirror;
 }
 
+namespace {
+  /// Whether @p type is a C struct, as a by-value "!ffi"
+  /// parameter: a struct of two or more fields. One of a single
+  /// field is the scalar inside it, however deeply wrapped.
+  auto IsCStruct(llvm::Type const *type) -> bool {
+    while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+      if (st->getNumElements() != 1) { return st->getNumElements() > 1; }
+      type = st->getElementType(0);
+    }
+    return false;
+  }
+}
+
+auto spp::codegen::CAbiParamsOf(
+  Vec<llvm::Type*> const &value_types,
+  llvm::Module const &module)
+  -> Vec<CAbiParam> {
+  // Each target's rule, as clang lowers a C struct parameter for
+  // it (checked against "clang --target=<t> -S -emit-llvm").
+  const auto &triple = TargetTriple();
+  const auto arch = triple.getArch();
+  const auto by_val = arch == llvm::Triple::ppc or arch == llvm::Triple::ppcle or arch == llvm::Triple::m68k;
+  const auto s390x = arch == llvm::Triple::systemz;
+  const auto &layout = module.getDataLayout();
+
+  auto params = Vec<CAbiParam>();
+  params.reserve(value_types.size());
+  for (const auto type : value_types) {
+    auto param = CAbiParam{.How = CAbiParam::Kind::Direct, .Value = type, .Declared = type};
+    if (IsCStruct(type) and (by_val or s390x)) {
+      const auto size = layout.getTypeAllocSize(type).getFixedValue();
+      if (s390x and (size == 1 or size == 2 or size == 4 or size == 8)) {
+        param.How = CAbiParam::Kind::Coerce;
+        param.Declared = llvm::IntegerType::get(type->getContext(), static_cast<unsigned>(size * 8));
+      }
+      else {
+        param.How = by_val ? CAbiParam::Kind::ByVal : CAbiParam::Kind::Indirect;
+        param.Declared = llvm::PointerType::get(type->getContext(), 0);
+      }
+    }
+    params.emplace_back(param);
+  }
+  return params;
+}
+
+auto spp::codegen::CAbiAddParamAttrs(
+  llvm::Function &fn,
+  Vec<CAbiParam> const &params)
+  -> void {
+  const auto &layout = fn.getParent()->getDataLayout();
+  for (auto i = 0u; i < params.size(); ++i) {
+    if (params[i].How != CAbiParam::Kind::ByVal) { continue; }
+    fn.addParamAttr(i, llvm::Attribute::getWithByValType(fn.getContext(), params[i].Value));
+    fn.addParamAttr(i, llvm::Attribute::getWithAlignment(fn.getContext(), layout.getABITypeAlign(params[i].Value)));
+  }
+}
+
+auto spp::codegen::CAbiAdaptArgs(
+  llvm::Function const &callee,
+  Vec<llvm::Value*> &args,
+  LlvmCtx *ctx)
+  -> void {
+  if (not callee.hasFnAttribute(kFfiFnAttr)) { return; }
+  const auto fn_type = callee.getFunctionType();
+  for (auto i = 0u; i < args.size() and i < fn_type->getNumParams(); ++i) {
+    const auto declared = fn_type->getParamType(i);
+    const auto value = args[i];
+    if (value->getType() == declared or not IsCStruct(value->getType())) { continue; }
+
+    // The copy is the caller's, made for this call: "byval" lets
+    // the callee write it, and s390x's pointer is to a copy the
+    // callee owns.
+    const auto slot = LlvmEntryAlloca(value->getType(), "cabi.arg", ctx);
+    ctx->Builder.CreateStore(value, slot);
+    args[i] = declared->isPointerTy() ? static_cast<llvm::Value*>(slot)
+      : ctx->Builder.CreateLoad(declared, slot, "cabi.arg.int");
+  }
+}
+
 auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   llvm::GlobalVariable const &target,
   llvm::Module &current_module)

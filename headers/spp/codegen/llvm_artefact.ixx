@@ -29,6 +29,13 @@ namespace spp::codegen {
   /// an ELF library, which has no such scheme to check for.
   SPP_EXP_FUN auto UnfortifiedImport(char const *path) -> Opt<Str>;
 
+  /// Whether the object at @p path calls into libatomic: an
+  /// undefined "__atomic_*" symbol, which LLVM leaves for an
+  /// atomic its target has no instructions for (any on m68k, and
+  /// the wide ones on most 32-bit targets). False when it cannot
+  /// be read.
+  SPP_EXP_FUN auto ImportsAtomicLibcalls(char const *path) -> bool;
+
   /// Whether the shared library at "path" was linked without
   /// full RELRO: answers what it lacks ("PT_GNU_RELRO",
   /// "BIND_NOW", or both), as a program linked with

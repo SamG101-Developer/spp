@@ -528,6 +528,15 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   // an ".exe" name, and the staged DLLs beside the executable.
   const auto &triple = codegen::TargetTriple();
   if (not triple.isOSBinFormatCOFF()) { command += " -lm"; }
+
+  // An atomic the target has no instructions for is a call into
+  // libatomic (any atomic on m68k, the 64-bit ones on most 32-bit
+  // targets), which gcc's toolchain ships but does not link by
+  // default. Linked only when the object calls it, so a program
+  // needing none gains no library. Darwin's runtime has them.
+  if (triple.isOSLinux() and codegen::ImportsAtomicLibcalls(utils::files::NativeString(object_file).c_str())) {
+    command += " -latomic";
+  }
   if (triple.isOSBinFormatELF()) { command += " -Wl,-rpath,'$ORIGIN/lib'"; }
   if (triple.isOSBinFormatMachO()) { command += " -Wl,-rpath,@loader_path/lib"; }
 

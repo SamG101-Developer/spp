@@ -571,6 +571,10 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     ++p;
   }
 
+  // An ffi function takes a struct argument as the target's C
+  // convention does, which may be through a copy.
+  codegen::CAbiAdaptArgs(*llvm_func, llvm_func_args, ctx);
+
   // Create the call instruction (a call returning Void cannot be given a name - llvm forbids naming void
   // values).
   if (llvm_func->getReturnType()->isVoidTy()) {

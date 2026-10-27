@@ -60,6 +60,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.codegen.builtins;
+import spp.codegen.llvm_fn;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
@@ -174,6 +175,19 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     sm, meta, ctx);
 
   if (not is_generic) {
+    // An ffi function is declared under the symbol its annotation
+    // names, because that is what the shared library exports and
+    // what the linker will resolve against. Everything else gets
+    // the S++ mangled name. It takes its by-value struct
+    // parameters as the target's C calling convention does, which
+    // is not always as their LLVM values ("CAbiParamsOf").
+    const auto ffi_symbol = GetFfiSymbolName();
+    const auto c_abi = ffi_symbol.has_value()
+      ? codegen::CAbiParamsOf(llvm_param_types, *ctx->Module)
+      : Vec<codegen::CAbiParam>();
+    auto declared_param_types = llvm_param_types;
+    for (auto i = 0uz; i < c_abi.size(); ++i) { declared_param_types[i] = c_abi[i].Declared; }
+
     // Create the LLVM function type. A "..a: T" parameter is
     // never true C-ABI varargs - the call site ("BindSlots")
     // always collapses the trailing arguments into a single
@@ -181,14 +195,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
     const auto llvm_fun_type = llvm::FunctionType::get(
-      llvm_ret_type, llvm_param_types, false);
-
-    // Create the LLVM function and add it to the context. An
-    // ffi function is declared under the symbol its annotation
-    // names, because that is what the shared library exports
-    // and what the linker will resolve against. Everything
-    // else gets the S++ mangled name.
-    const auto ffi_symbol = GetFfiSymbolName();
+      llvm_ret_type, declared_param_types, false);
 
     // Shortcut for ffi functions: only ever one symbol
     // because of the C ABI compatibility. Enforced by the
@@ -212,7 +219,10 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // can throw), so it is marked for "ApplyFfiUnwindGuard"
     // to guard its calls rather than claimed not to.
     if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
-    else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
+    else {
+      func->Target->addFnAttr(codegen::kFfiFnAttr);
+      codegen::CAbiAddParamAttrs(*func->Target, c_abi);
+    }
     if (InlineAnnotation != nullptr) {
       using A = annotation_utils::BuiltinAnnotation;
       switch (InlineAnnotation->Builtin) {

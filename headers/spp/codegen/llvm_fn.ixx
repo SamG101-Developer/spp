@@ -31,6 +31,51 @@ namespace spp::codegen {
     llvm::Function const &target,
     llvm::Module &current_module) -> llvm::Function*;
 
+  /// How the target's C calling convention takes one by-value
+  /// parameter of an "!ffi" function, where that differs from
+  /// passing its LLVM value as it is. A struct of one field
+  /// stands for that field's C scalar ("NonNull" is a pointer),
+  /// so only one of two or more fields is a C struct. Most
+  /// targets pass a small one as its fields, which the value as
+  /// it is already does; 32-bit PowerPC and m68k take it "byval"
+  /// (a pointer to a copy the callee may write), and s390x one of
+  /// 1, 2, 4 or 8 bytes as an integer that size, and any other
+  /// as a pointer to a copy. Todo: a returned C struct ("sret")
+  /// is not lowered; sppc returns none.
+  SPP_EXP_CLS struct CAbiParam {
+    enum class Kind { Direct, ByVal, Indirect, Coerce };
+    Kind How = Kind::Direct;
+    /// The parameter's LLVM value type, as S++ lays it out.
+    llvm::Type *Value = nullptr;
+    /// Its type in the declaration: "Value", a pointer, or an
+    /// integer of "Value"'s size.
+    llvm::Type *Declared = nullptr;
+  };
+
+  /// The C form of each parameter of an "!ffi" function whose
+  /// LLVM value types are @p value_types, for the target being
+  /// built.
+  SPP_EXP_FUN auto CAbiParamsOf(
+    Vec<llvm::Type*> const &value_types,
+    llvm::Module const &module) -> Vec<CAbiParam>;
+
+  /// The attributes "CAbiParamsOf" calls for on @p fn, declared
+  /// with each parameter's "Declared" type: "byval" and its
+  /// alignment where it takes a copy.
+  SPP_EXP_FUN auto CAbiAddParamAttrs(
+    llvm::Function &fn,
+    Vec<CAbiParam> const &params) -> void;
+
+  /// Pass @p args to an "!ffi" @p callee as its declaration takes
+  /// them: an argument whose value is not of its parameter's type
+  /// is a struct its C form passes another way, so goes through a
+  /// stack copy, passed by its address or read back as the
+  /// integer. Nothing changes for any other callee.
+  SPP_EXP_FUN auto CAbiAdaptArgs(
+    llvm::Function const &callee,
+    Vec<llvm::Value*> &args,
+    LlvmCtx *ctx) -> void;
+
   /// The global constant equivalent of the above function;
   /// "cmp" statements can be defined in one module, and accessed
   /// in another, so again we need to expose the declaration into

@@ -36,6 +36,8 @@ Each entry gives:
 | U17 | qemu             | `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user    | 2026-10-26   |
 | U18 | qemu             | ppc32 rt sigreturn CFA missing `RT_SIGFRAME_ADJUST` (vDSO)      | 2026-10-26   |
 | U19 | qemu             | loongarch64 sigreturn CFA register and return column (vDSO)     | 2026-10-26   |
+| U20 | LLVM             | ARMv5 sub-word `__sync_*` results sign- vs zero-extended        | 2026-10-27   |
+| U21 | LLVM             | m68k 16-bit PC-relative and PLT relocations in large programs   | 2026-10-27   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -416,6 +418,41 @@ Each entry gives:
   the issue is closed by a commit.
 - **When it lands:** as U17; then consider making sppc's loongarch64 build required again.
 - **Last checked:** 2026-10-26.
+
+## U20. LLVM: ARMv5's sub-word `__sync_*` results are taken as zero-extended
+
+- **Library:** LLVM's ARM backend (the libcalls it makes for atomics on a target with no atomic instructions), against
+  libgcc's `libgcc/config/arm/linux-atomic.c`.
+- **Want:** a 1- or 2-byte `__sync_val_compare_and_swap_N` (and the other sub-word `__sync_*`) result treated as libgcc
+  returns it: sign-extended, as it declares them with `signed char` and `short` (lines 249-250), not zero-extended.
+- **Why:** ARMv5 (`arm-linux-gnueabi`) has no atomic instructions, so LLVM lowers an atomic `i8` load to
+  `__sync_val_compare_and_swap_1(p, 0, 0)` and compares the result as if zero-extended; libgcc hands back
+  `0xffffffc8` for 200, so any byte of 128 or more misreads. `std::tst::threading::atomic:: test_an_atomic_of_a_narrower_width` fails on arm-linux-gnueabi (553/554). gcc's own callers agree with libgcc.
+- **Meanwhile:** nothing; that one test stays red on arm-linux-gnueabi. A workaround was considered and not taken:
+  sppc exporting zero-extending sub-word `__sync_*`, which, linked ahead of libgcc, would win.
+- **Status (2026-10-27):** not reported. Reproduce with no spp: a C file doing
+  `unsigned char a[4] = {200}; __sync_val_compare_and_swap(&a[0], 0, 0)`, built with `clang --target=armv5te-linux-gnueabi --sysroot=/usr/arm-linux-gnueabi -O1 -c`, linked with `arm-linux-gnueabi-gcc`, run
+  under qemu-arm: it reads 4294967240; built with `arm-linux-gnueabi-gcc -march=armv5te` it reads 200.
+- **Check:** that reproducer reads 200 with the newest clang; or the test passes on arm-linux-gnueabi.
+- **When it lands:** nothing to undo; the test goes green on the LLVM bump.
+- **Last checked:** 2026-10-27.
+
+## U21. LLVM: m68k reaches data and calls through 16-bit relocations
+
+- **Library:** LLVM's M68k backend.
+- **Want:** 32-bit displacements (the 68020's `(bd,PC)` addressing, or a `GOT32`/`PLT32` sequence) where a 16-bit one
+  cannot reach, at least for `-mcpu=M68020` and up, as gcc does.
+- **Why:** LLVM addresses data and calls with `R_68K_PC16`, `R_68K_GOT16` and `R_68K_PLT16`, so a program whose text
+  is larger than they reach does not link ("relocation truncated to fit"). Hello world links; the standard library's
+  unit-test binary does not (11 relocations, with `-latomic` linked). Tried on the test binary's IR with `llc-23`:
+  `-mcpu=M68020`, `-code-model=large` and `medium`, and `-relocation-model=static`; all leave the same 11.
+- **Meanwhile:** the cross-codegen job's m68k unit-test step fails at link; its hello-world run still links and runs.
+  The missing `__atomic_*` functions it also hit are fixed in spp: the link adds `-latomic` when the object imports
+  them (`ImportsAtomicLibcalls`, `../sources/spp/compiler/compiler_boot.cpp`).
+- **Status (2026-10-27):** not reported; unchanged in LLVM 23.
+- **Check:** `spp test --all-libs --target m68k-unknown-linux-gnu` links.
+- **When it lands:** nothing to undo; the m68k unit-test step goes green on the LLVM bump.
+- **Last checked:** 2026-10-27.
 
 ## Resolved
 

@@ -106,6 +106,12 @@ jobs:
           '${{ matrix.target.sysroot }}'
           '${{ matrix.target.run-in }}'
 
+      # The C calling convention for "!ffi" struct parameters, which
+      # needs the all-targets build only this lane has; run once.
+      - name: Check the C ABI of ffi declarations
+        if: matrix.target.triple == 'powerpc-unknown-linux-gnu'
+        run: bash tests/codegen/run.sh build/spp c-abi
+
       # The standard library's unit tests, built for the target and
       # run under what ran its program above.
       - name: Unit tests on ${{ matrix.target.triple }}
