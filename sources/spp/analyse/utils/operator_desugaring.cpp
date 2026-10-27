@@ -190,19 +190,21 @@ auto spp::analyse::utils::operator_desugaring::ConvertIsExprToCase(
 
 auto spp::analyse::utils::operator_desugaring::CheckIndexable(
   Ast const &op,
+  ExpressionAst &lhs,
   ScopeManager *sm,
   CompilerMetaData *meta)
   -> void {
   // Checked here, not left to the method lookup: the parse of "a[..]" is ambiguous with generic arguments.
-  const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
+  const auto lhs_type = lhs.InferType(sm, meta);
   const auto type_sym = sm->CurrentScope->FindTypeSymbol(lhs_type.get());
   RaiseIf<errors::SppMemberAccessNonIndexableError>(
     type_sym == nullptr or type_sym->LinkedScope == nullptr or lhs_type->IsCompilerGeneratedType(),
-    ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_type, op));
+    ERR_ARGS(lhs, *lhs_type, op));
 }
 
 auto spp::analyse::utils::operator_desugaring::MapToMethodCall(
   Ast &op,
+  ExpressionAst &lhs,
   const std::size_t pos,
   const StrView method,
   Vec<Unique<ExpressionAst>> &&args,
@@ -213,10 +215,15 @@ auto spp::analyse::utils::operator_desugaring::MapToMethodCall(
   for (auto &&arg : args) {
     arg_group->Args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(nullptr, nullptr, std::move(arg)));
   }
-  auto field_name = MakeUnique<IdentifierAst>(pos, Str(method));
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(AstClone(meta->PostfixExpressionLhs), std::move(field));
-  auto fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, std::move(arg_group), nullptr);
+
+  auto field_name = MakeUnique<IdentifierAst>(
+    pos, Str(method));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+    nullptr, std::move(field_name));
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    AstClone(&lhs), std::move(field));
+  auto fn_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, std::move(arg_group), nullptr);
   fn_call->Source.OriginalExpr = &op;
   auto mapped = MakeShared<PostfixExpressionAst>(std::move(member_access), std::move(fn_call));
   mapped->Stage7_AnalyseSemantics(sm, meta);

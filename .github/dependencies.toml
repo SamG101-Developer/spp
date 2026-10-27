@@ -76,8 +76,20 @@ sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
 # Built from the release tarball: the runner's apt valgrind trails
 # upstream by years.
 [pin.valgrind]
-version = "3.27.1"
-sha256 = "5d589152eb8071c02feab8ce6ab719e431a1fbc3e2b1700f5432632a8b9264dc"
+version = "3.28.0"
+sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
+
+[pin.qemu-user]
+tag = "spp-2026.10.26.2"
+sha256 = "7ce31b76d67578ad07c5b746d649f412552e12a251c3b832787ce3a2267b41a9"
+
+[pin.arm-gnu]
+version = "15.3.rel2"
+sha256-aarch64-be = "bdf8e9b4c62791c5c3aeeb8ba3791421d73c7d147dd04f0da502716885bcc1d2"
+
+[pin.alpine]
+version = "3.24.3"
+sha256 = "be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -86,6 +98,16 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
+[pin.ccache]
+version = "4.14.2"
+sha256-linux-x86-64 = "d540ba01f160addbd3dd5e18eda9bd34005591b095c09ac8ae9d0a1b655e7ef5"
+sha256-linux-aarch64 = "2be524bbccfc7e9ff0085d110da7dc9964de983bd92d29acf3b872e557194945"
+sha256-darwin = "cf240009630b605b775c7c5c7b7105a3b196c79f31af322c1557969aa28003fc"
+
+[pin.sccache]
+version = "0.19.0"
+sha256 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353"
+
 [pin.osv-scanner]
 version = "2.7.0"
 sha256 = "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
@@ -113,11 +135,18 @@ macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
 
+[floor]
+glibc = "2.28"
+linux = "4.18"
+binutils = "2.30"
+macos = "11.0"
+
 # Install prefixes, exported as SPP_<KEY>_PREFIX. {home} expands at load time.
 [prefix]
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 valgrind = "{home}/.tools/valgrind"
+qemu = "{home}/.tools/qemu"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
 llvm-deps-win = "{home}/llvm-deps"
@@ -131,18 +160,19 @@ generation = "v3"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "ddd49116e63be7345b448351cad153653a712fdb"
+commit = "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5"
 
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "31d034d94cdb8e22f7d7ed55967f581a2d6e831d"
-cmake-flags = ["-DMI_SECURE=OFF"]
+commit = "8b08dbb8f9c8db7f01e9abe5b1a981d985e1fa46"
+cmake-flags = ["-DMI_SECURE=OFF", "-DMI_BUILD_TESTS=OFF"]
+cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "0e95fe8200adbf0e033d0c0818eea473e1d4d346"
+commit = "94fe31eb9b94debcae52bc0d493a2232c11dbeaf"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -162,7 +192,7 @@ cmake-flags = [
 [[library]]
 name = "stringzilla"
 repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "86d73f1021e6cce022c3cceb1f7837eb50338774"
+commit = "3cd0f9bcab97912dd36ca4ca4253f1f46b33ef8e"
 cmake-flags = [
   "-DSTRINGZILLA_INSTALL=ON",
   "-DSTRINGZILLA_BUILD_TEST=OFF",
@@ -184,7 +214,7 @@ cmake-flags = [
 [[library]]
 name = "CLI11"
 repo = "https://github.com/CLIUtils/CLI11.git"
-commit = "fb7eb86af71afde547c13d062e5aebfa27fc45c5"
+commit = "1764a057b760e8873eab03f4635b4aaed5303a04"
 cmake-flags = ["-DCLI11_BUILD_TESTS=OFF", "-DCLI11_BUILD_EXAMPLES=OFF"]
 
 [[library]]

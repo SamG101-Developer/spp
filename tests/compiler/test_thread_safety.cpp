@@ -318,3 +318,33 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         needs_safe(w)
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestThreadSafety,
+  test_invalid_variant_holding_a_hazard_is_a_hazard,
+  SppGenericConstraintError, R"(
+    use std::annotations::thread_hazard
+    use std::threading::safe::ThreadSafe
+
+    !thread_hazard
+    cls Haz { }
+    cls Box[T: ThreadSafe] { !public v: T }
+
+    fun f() -> Void {
+        let b = Box[Haz or Bool](v=Haz())
+        std::mem::ops::drop(b)
+    }
+)");
+
+// Todo: red - std's "thread_hazard" still lists "Annotation::new_type" as a target; markers apply to classes only.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestThreadSafety,
+  test_invalid_thread_hazard_on_type_alias,
+  SppCalledAnnotationAppliedToInvalidAstError, R"(
+    use std::annotations::thread_hazard
+
+    cls Plain { }
+
+    !thread_hazard
+    type Haz = Plain
+)");

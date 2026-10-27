@@ -27,6 +27,7 @@ import spp.asts.object_initializer_argument_keyword_ast;
 import spp.asts.object_initializer_argument_shorthand_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
@@ -93,7 +94,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   //
   IMPORT_UTILS;
 
-  const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*meta->ObjectInitType);
+  const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*InitType);
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
     | spp::views::tuple_nth<0>
@@ -138,7 +139,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
 
   RaiseIf<SppArgumentNameInvalidError>(
     not invalid_args.empty(),
-    ERR_ARGS(*meta->ObjectInitType, "attribute", *invalid_args[0], "object initializer argument"));
+    ERR_ARGS(*InitType, "attribute", *invalid_args[0], "object initializer argument"));
 
   // The generic arguments written on the type, named after the
   // parameters they bind. An attribute typed by a parameter is
@@ -146,9 +147,9 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   // but in "MyType(..)" it is whatever the arguments infer - so
   // an overloaded call there has nothing to resolve against.
   auto bindings = Opt<GenericSubst>();
-  auto const &written_group = meta->ObjectInitType->LastTypePart()->GnArgGroup;
+  auto const &written_group = InitType->LastTypePart()->GnArgGroup;
   const auto instance = written_group != nullptr and not written_group->Args.empty()
-    ? TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope)
+    ? TypeRef::Of(*InitType, *sm->CurrentScope)
     : TypeRef();
   const auto own_params = cls_sym->Type != nullptr ? cls_sym->Type->GnParamGroup.get() : nullptr;
   if (own_params != nullptr and instance.Symbol != nullptr and instance.Symbol->InstanceOf != nullptr
@@ -157,7 +158,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   }
   else if (own_params != nullptr and written_group != nullptr and not written_group->Args.empty()) {
     const auto written_args = generic_inference::NamedGnArgs(
-      *written_group, *own_params, *meta->ObjectInitType, *sm, *meta);
+      *written_group, *own_params, cls_sym->LinkedScope, *InitType, *sm, *meta);
     // Analysed before they are keyed, so a written "Str" is the
     // instance with its defaults ("Str[GlobalAlloc]").
     written_args->Stage7_AnalyseSemantics(sm, meta);
@@ -209,22 +210,20 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   Args |= genex::actions::remove_if([](auto const &x) { return x->IsCompilerGenerated; });
 
   // Get the attributes on the type and supertypes.
-  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(meta->ObjectInitType.get());
+  const auto cls_sym = sm->CurrentScope->FindTypeSymbol(InitType.get());
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
 
   // Type check the non-autofill arguments against the class attributes.
   for (auto const &arg : GetNonAutoFillArgs()) {
-    auto matching_attrs = all_attrs
-      | genex::views::filter([&arg](auto const &x) { return *spp::get<0>(x) == *arg->Name; })
-      | genex::to<Vec>();
-
-    // Each attribute is shown from the class that declares it, which
-    // can be in another file than the initializer.
+    // The attribute the argument names, by its position in "all_attrs", which codegen places it by ("AttrIndex"); stage
+    // 6 has rejected a name that is no attribute. Each attribute is shown from the class that declares it, which can
+    // be in another file than the initializer.
+    const auto matching = type_members::AttrIndicesOf(all_attrs, *arg->Name);
     RaiseIf<SppAmbiguousMemberAccessError>(
-      matching_attrs.size() > 1,
-      ERR_ARGS(*spp::get<0>(matching_attrs[0]), *spp::get<0>(matching_attrs[1]), *this));
-
-    auto [attr, attr_ref, attr_scope] = matching_attrs[0];
+      matching.size() > 1,
+      ERR_ARGS(*spp::get<0>(all_attrs[matching[0]]), *spp::get<0>(all_attrs[matching[1]]), *this));
+    arg->AttrIndex = matching[0];
+    auto const &[attr, attr_ref, attr_scope] = all_attrs[matching[0]];
 
     // Enforce visibility on the field being initialized.
     {
@@ -248,23 +247,23 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // attribute's type asks for.
-    fn_values::InstantiateFnValue(arg_ref, attr_ref, sm, meta);
+    fn_values::InstantiateFnValue(
+      arg_ref, attr_ref, sm, meta);
   }
 
   // Type check the default argument (if it exists).
   const auto af_arg = GetAutoFillArg();
   if (af_arg != nullptr) {
     if (not type_compare::Assignable(
-      af_arg->Val->InferTypeRef(sm, meta), TypeRef::Of(*meta->ObjectInitType, *sm->CurrentScope),
+      af_arg->Val->InferTypeRef(sm, meta), TypeRef::Of(*InitType, *sm->CurrentScope),
       *sm->CurrentScope, *sm->CurrentScope)) {
       // Todo: pass a "meta->SourceObjectInitType" or just pass a "meta->ObjectInit"
       const auto af_arg_type = af_arg->Val->InferType(sm, meta);
-      Raise<SppTypeMismatchError>(ERR_ARGS(*meta->ObjectInitType, *meta->ObjectInitType, *af_arg, *af_arg_type));
+      Raise<SppTypeMismatchError>(ERR_ARGS(*InitType, *InitType, *af_arg, *af_arg_type));
     }
   }
 
   // Generate an argument for every attribute the user didn't pass.
-  const auto all_attr_asts = type_members::GetAllAttrAsts(*cls_sym);
   const auto given_names = GetNonAutoFillArgs()
     | genex::views::transform([](auto const &x) { return x->Name; })
     | genex::to<Vec>();
@@ -272,11 +271,13 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   for (auto i = 0uz; i < all_attrs.size(); ++i) {
     auto const &[attr_name, attr_ref, attr_parent_scope] = all_attrs[i];
 
-    // Todo: this will fail when multiple bases classes have same attr name
-    // Todo: maybe we just block this? there's currently no way to refer to individual base class's fields.
+    // A name two base classes each declare is generated once per
+    // base, each argument filling its own ("AttrIndex"): writing
+    // it is ambiguous, so neither was given.
     if (genex::any_of(given_names, [&attr_name](auto const &x) { return *x == *attr_name; })) { continue; }
 
-    const auto attr_ast = all_attr_asts[i];
+    const auto attr_ast = type_members::AttrAstOf(
+      *attr_parent_scope, *attr_name);
     auto val = Unique<ExpressionAst>();
     auto val_scope = static_cast<Scope*>(nullptr);
 
@@ -304,16 +305,15 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
       // type is FQ and we need error reporting
     }
 
-    // Todo: Might need "tm" here? Otherwise switch program-wide "tm" to this pattern.
-    // Todo: Actually, make a method on the scope manager: "TempIn(scope, closure)".
-    const auto outer_scope = sm->CurrentScope;
-    sm->CurrentScope = val_scope;
-    WRAP_ERROR(val->Stage7_AnalyseSemantics(sm, meta));
-    sm->CurrentScope = outer_scope;
+    // Analysed where it is read, on a manager of its own there,
+    // so a raised error leaves this one where it was.
+    auto tm = sm->NewManagerAt(val_scope);
+    WRAP_ERROR(val->Stage7_AnalyseSemantics(&tm, meta));
 
     // Add the compiler generated argument.
     auto arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(attr_name, nullptr, std::move(val));
     arg->IsCompilerGenerated = true;
+    arg->AttrIndex = i;
     Args.emplace_back(std::move(arg));
   }
 

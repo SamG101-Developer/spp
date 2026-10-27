@@ -49,6 +49,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
@@ -148,12 +149,6 @@ namespace spp::analyse::utils::overload_resolution {
       const auto postfix_lhs_as_type = postfix_lhs ? postfix_lhs->Lhs->To<TypeAst>() : nullptr;
       const auto lhs_as_ident = lhs.To<IdentifierAst>();
 
-      // If the lhs is an identifier, it must be a variable
-      // symbol, not a namespace symbol.
-      if (lhs_as_ident and sm.CurrentScope->FindVarSymbol(lhs_as_ident) == nullptr) {
-        RaiseMissingIdentifierAndClosestOptions(*lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {});
-      }
-
       // Variables that will be set in each branch, and
       // returned. These are used to determine what variation
       // of function call is being performed.
@@ -184,10 +179,12 @@ namespace spp::analyse::utils::overload_resolution {
         fn_name = static_field->Name;
 
         // Add a name check here because we need to get
-        // the type off of it before it is even analysed.
-        const auto fn_owner_sym = fn_owner_scope->FindVarSymbol(fn_name.get());
+        // the type off of it before it is even analysed. The
+        // namespace's own: "ns::f" reaches nothing its parents
+        // declare, so neither does a suggestion.
+        const auto fn_owner_sym = fn_owner_scope->FindVarSymbol(fn_name.get(), true);
         if (fn_owner_sym == nullptr) {
-          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(), {});
+          RaiseMissingIdentifierAndClosestOptions(*fn_name, fn_owner_scope->GetAllVarSymbols(true), {});
         }
         fn_owner_type = fn_owner_sym->Type;
       }
@@ -195,16 +192,29 @@ namespace spp::analyse::utils::overload_resolution {
       // Direct access into a non-namespaced function:
       // "function()":
       else if (lhs_as_ident != nullptr) {
-        fn_owner_type = nullptr;
+        // It must be a variable symbol, not a namespace symbol.
+        const auto sym = sm.CurrentScope->FindVarSymbol(lhs_as_ident);
+        if (sym == nullptr) {
+          RaiseMissingIdentifierAndClosestOptions(
+            *lhs_as_ident, sm.CurrentScope->GetAllVarSymbols(), {});
+        }
         fn_name = AstCloneShared(lhs_as_ident);
 
         // A name declared inside the function (a function-type
         // variable) is a value being called, not a module function
-        // spelled the same.
+        // spelled the same. A function found nearer than the module
+        // (a method of the type being extended, through its "sup"
+        // scope) is not a bare call's target: the module's function
+        // of that name is, if it has one, looked up where it is
+        // declared (through a "use" import, its target's scope).
         const auto mod_scope = sm.CurrentScope->GetParentModule();
-        const auto sym = sm.CurrentScope->FindVarSymbol(lhs_as_ident);
-        const auto is_local = sym != nullptr and sym->ScopeDefinedIn != mod_scope;
-        fn_owner_scope = is_local ? nullptr : mod_scope;
+        auto mod_sym = mod_scope != nullptr ? mod_scope->FindVarSymbol(lhs_as_ident) : nullptr;
+        if (mod_sym != nullptr and mod_sym->IsCompTime() and (sym == mod_sym or sym->Kind == VariableKind::FnMock)) {
+          fn_owner_scope = mod_sym->UseTarget()->ScopeDefinedIn;
+        }
+        else {
+          fn_owner_scope = sym->ScopeDefinedIn == mod_scope ? mod_scope : nullptr;
+        }
       }
 
       // Non-callable AST.
@@ -231,30 +241,6 @@ namespace spp::analyse::utils::overload_resolution {
     }
 
     /// [CHECKED]
-    /// For a function, it may be an alias, imported under a
-    /// "use" statement. Get the fully qualified version if so.
-    /// Todo: This will be removed by N2.10.
-    auto CalleeExpr(
-      ExpressionAst const &lhs, ScopeManager const &sm)
-      -> Pair<ExpressionAst const*, Shared<ExpressionAst>> {
-      if (const auto id = lhs.To<IdentifierAst>()) {
-        // A name declared inside the function (a function-type
-        // variable) is a value being called, not a module function
-        // spelled the same.
-        const auto local = sm.CurrentScope->FindVarSymbol(id);
-        if (local == nullptr or local->IsCompTime()) {
-          const auto mod_scope = sm.CurrentScope->GetParentModule();
-          const auto x = mod_scope != nullptr ? mod_scope->FindVarSymbol(id) : local;
-          if (x and x->IsCompTime()) {
-            auto qualified = x->FqName();
-            return {qualified.get(), std::move(qualified)};
-          }
-        }
-      }
-      return {&lhs, nullptr};
-    }
-
-    /// [CHECKED]
     /// Given a written expression being called, for example
     /// "a.b.c()", the "written" part is "a.b.c". Relevant
     /// information is extracted to form a "call site" object.
@@ -262,25 +248,26 @@ namespace spp::analyse::utils::overload_resolution {
       ExpressionAst &written, ScopeManager &sm,
       meta::CompilerMetaData *meta) -> CallSite {
       // Build an empty call site and attach the written
-      // expression into it. Qualify functions imported from a
-      // "use" statement.
+      // expression into it.
       auto site = CallSite();
       site.Written = &written;
-      tie(site.Callee, site.Qualified) = CalleeExpr(written, sm);
 
       // Get the owning type (nullptr for free functions), the
-      // function scope, and its name, based on the callee
+      // function scope, and its name, based on the written
       // expression.
-      tie(site.OwnerType, site.OwnerScope, site.FnName) = GetFnOwnerTypeAndFnName(*site.Callee, sm, meta);
+      tie(site.OwnerType, site.OwnerScope, site.FnName) = GetFnOwnerTypeAndFnName(written, sm, meta);
 
       // If we are dealing with a "." or "::" in the left-side
-      // of the method, set the "IsMethod" flag for ".", and
-      // the "CalledType" to a "::"'s explicit type, otherwise
-      // the "."'s inferred type.
+      // of the method, keep a "."'s member access and receiver
+      // (a method call), and set the "CalledOn" to a "::"'s
+      // explicit type, otherwise the "."'s inferred type.
       if (const auto postfix = written.To<PostfixExpressionAst>(); postfix != nullptr) {
-        site.IsMethod = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() != nullptr
-          and site.OwnerType != nullptr and site.FnName != nullptr;
-        site.CalledOn = site.IsMethod ? site.OwnerType.get() : postfix->Lhs->To<TypeAst>();
+        const auto member_access = postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+        if (member_access != nullptr and site.OwnerType != nullptr and site.FnName != nullptr) {
+          site.MemberAccess = member_access;
+          site.Receiver = postfix->Lhs.get();
+        }
+        site.CalledOn = site.IsMethod() ? site.OwnerType.get() : postfix->Lhs->To<TypeAst>();
       }
       return site;
     }
@@ -296,21 +283,14 @@ namespace spp::analyse::utils::overload_resolution {
     auto InjectReceiver(
       PostfixExpressionOperatorFunctionCallAst const &fn_call,
       CallSite const &site) -> void {
-      // Get the originally user-written site of the function
-      // call, such as "x.m(a)" or "Str::from(1)" etc. It is
-      // guaranteed because only "IsMethod" calls reach here.
-      auto const &lhs = *site.Written->ToUnchecked<
-        PostfixExpressionAst>();
-      const auto member_access = lhs.Op->ToUnchecked<
-        PostfixExpressionOperatorRuntimeMemberAccessAst>();
-
       // If a mapped forwarding method has been created, then
       // this is what becomes the "receiver", as the method is
-      // on that target type (the View for example).
-      const auto fwd_receiver = member_access->GetFwdReceiver();
+      // on that target type (the View for example). Only
+      // "IsMethod" calls reach here, so the site has both.
+      const auto fwd_receiver = site.MemberAccess->GetFwdReceiver();
       const auto self_expr = fwd_receiver != nullptr
         ? fwd_receiver
-        : lhs.Lhs.get();
+        : site.Receiver;
 
       // Wrap the "self" expression into a positional argument
       // and inject it into the 0th argument slot. This argument
@@ -503,8 +483,8 @@ namespace spp::analyse::utils::overload_resolution {
       if (matches(sm.CurrentScope->TypeIdOf(*receiver_type), *sm.CurrentScope)) { return bound; }
       if (auto const *const receiver_sym = sm.CurrentScope->FindTypeSymbol(receiver_type.get());
         receiver_sym != nullptr and receiver_sym->LinkedScope != nullptr) {
-        for (auto const *const cls_scope : type_members::SuperClsScopes(receiver_sym->LinkedScope->GetSupScopes())) {
-          if (matches(cls_scope->TypeIdOfSymbol(*cls_scope->LinkedTypeSymbol), *cls_scope)) { break; }
+        for (auto const &[cls, cls_scope] : type_members::SuperClsReads(receiver_sym->LinkedScope->GetSupScopes())) {
+          if (matches(cls.Id, *cls_scope)) { break; }
         }
       }
       return bound;
@@ -877,7 +857,7 @@ namespace spp::analyse::utils::overload_resolution {
           // it. A "Self" or generic receiver names nothing concrete to hold it to.
           auto const &arg = *fn_args.Args[slot->Args[0]];
           if (auto const *const receiver = site.CalledOn;
-            not site.IsMethod and receiver != nullptr and not receiver->IsSelfType()) {
+            not site.IsMethod() and receiver != nullptr and not receiver->IsSelfType()) {
             const auto receiver_sym = sm->CurrentScope->FindTypeSymbol(receiver);
             auto const *const a_sym = arg.Val->InferTypeRef(sm, meta).Symbol;
             if (receiver_sym != nullptr and a_sym != nullptr
@@ -933,10 +913,10 @@ namespace spp::analyse::utils::overload_resolution {
         auto p_written = Shared<TypeAst const>(param->Type);
         if (const auto variadic_param = param->To<FunctionParameterVariadicAst>(); variadic_param != nullptr) {
           const auto variadic_gn_param = fn_proto.GetNonGnImpl()->GnParamGroup->GetVariadicParam();
-          const auto orig_name = dynamic_shared_cast<TypeIdentifierAst>(variadic_param->Source.OriginalType);
+          const auto orig_name = shared_cast<TypeIdentifierAst>(variadic_param->Source.OriginalType);
           const auto is_variadic_generic_type = variadic_gn_param != nullptr
             and orig_name != nullptr
-            and *orig_name == *dynamic_shared_cast<TypeIdentifierAst>(variadic_gn_param->Name);
+            and *orig_name == *shared_cast<TypeIdentifierAst>(variadic_gn_param->Name);
           auto p_tuple = spelled();
           if (not is_variadic_generic_type) {
             auto ts = Vec(packs::TypePackElements(*a_type).size(), p_tuple);
@@ -1063,8 +1043,8 @@ namespace spp::analyse::utils::overload_resolution {
       auto const *const variadic = tmpl->FnParamGroup->GetVariadicParam();
       if (variadic == nullptr) { return 0; }
       auto const *const pack = tmpl->GnParamGroup->GetVariadicParam();
-      const auto element = dynamic_shared_cast<TypeIdentifierAst>(variadic->Type);
-      const auto pack_name = pack != nullptr ? dynamic_shared_cast<TypeIdentifierAst>(pack->Name) : nullptr;
+      const auto element = shared_cast<TypeIdentifierAst>(variadic->Type);
+      const auto pack_name = pack != nullptr ? shared_cast<TypeIdentifierAst>(pack->Name) : nullptr;
       return element != nullptr and pack_name != nullptr and *element == *pack_name ? 2 : 1;
     }
 
@@ -1200,7 +1180,7 @@ namespace spp::analyse::utils::overload_resolution {
       // any generic symbols in scope are the pre-bound ones.
       auto solver = generic_inference::GenericSolver(*fn_proto->GnParamGroup, *fn_scope, *sm, *meta);
       solver.Give(std::move(generic_inference::NamedGnArgs(
-        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, *fn_proto->Name, *sm, *meta)->Args));
+        *fn_call.GnArgGroup, *fn_proto->GnParamGroup, fn_scope, *fn_proto->Name, *sm, *meta)->Args));
       solver.Give(
         ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : site.OwnerType.get(), *sm),
         *sm->CurrentScope);
@@ -1359,7 +1339,7 @@ auto OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
 
     for (auto const &candidate : _Candidates.Overloads) {
       // A method's receiver is not among the written arguments.
-      const auto params = _Site.IsMethod
+      const auto params = _Site.IsMethod()
         ? candidate.Proto->FnParamGroup->GetNonSelfParams()
         : candidate.Proto->FnParamGroup->GetAllParams();
 
@@ -1404,6 +1384,45 @@ auto OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
   return out;
 }
 
+auto OverloadSolver::ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>> {
+  // As "ExpectedArgTypes": every candidate has to agree on the
+  // type, and have one of its own there ("cmp n: T" has none,
+  // nor does a pack, whose type is its elements').
+  using type_compare::TypeEq;
+  const auto args = _Call.GnArgGroup->Args | genex::views::ptr | genex::to<Vec>();
+  auto out = Vec<Shared<TypeRef>>(args.size());
+  if (_Candidates.Overloads.empty()) { return out; }
+
+  auto bound = Vec<Vec<GenericParameterAst*>>();
+  for (auto const &candidate : _Candidates.Overloads) {
+    const auto params = candidate.Proto->GnParamGroup->Params | genex::views::ptr | genex::to<Vec>();
+    bound.emplace_back(type_resolution::ParamsBoundByArgs(args, params));
+  }
+  for (auto i = 0uz; i < args.size(); ++i) {
+    if (not args[i]->IsCompArg()) { continue; }
+    auto expected = Shared<TypeRef>(nullptr);
+    auto expected_scope = static_cast<Scope const*>(nullptr);
+    auto agreed = true;
+    for (auto const &[c, candidate] : _Candidates.Overloads | genex::views::enumerate) {
+      auto const *const param = bound[c][i];
+      if (param == nullptr or param->IsVariadic() or param->CompType == nullptr
+        or not type_predicates::IsTypeConcrete(*param->CompType, *candidate.FnScope)) {
+        agreed = false;
+        break;
+      }
+      const auto ref = MakeShared<TypeRef>(TypeRef::Of(*param->CompType, *candidate.FnScope));
+      if (expected != nullptr and not TypeEq(*expected, *ref, *expected_scope, *candidate.FnScope)) {
+        agreed = false;
+        break;
+      }
+      expected = ref;
+      expected_scope = candidate.FnScope;
+    }
+    if (agreed) { out[i] = expected; }
+  }
+  return out;
+}
+
 auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   auto const &fn_call = _Call;
   const auto sm = _Sm;
@@ -1415,7 +1434,7 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   // "1.add(2)" is checked as "S32::add(1, 2)". A runtime
   // access naming no method (a closure held in an field)
   // is called as the value it is, with no receiver.
-  const auto has_receiver = site.IsMethod and candidates.IndirectFnType == nullptr;
+  const auto has_receiver = site.IsMethod() and candidates.IndirectFnType == nullptr;
   if (has_receiver) { InjectReceiver(fn_call, site); }
   auto pass_overloads = Vec<PassedOverload>{};
   auto fail_overloads = Vec<FailedOverload>{};
@@ -1448,14 +1467,12 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
 auto OverloadSolver::_Check(
   FnOverload &candidate)
   -> Expected<PassedOverload, FailedOverload> {
-  // A check that raises part way leaves what it saved on
-  // "meta" unrestored, so that is unwound here.
-  const auto depth = _Meta->Depth();
+  // A check that raises part way has its "meta" changes put back
+  // by the guards it unwinds through.
   try {
     return CheckCandidate(_Call, candidate, _Site, _Candidates.IndirectFnType != nullptr, _Sm, _Meta);
   }
   catch (errors::SemanticError const &e) {
-    while (_Meta->Depth() > depth) { _Meta->Restore(); }
     const auto reason = RejectionReasonOf(e);
     if (not reason.has_value()) { throw; }
     return Unexpected(FailedOverload{candidate.Proto, e.what(), Str(*reason)});
@@ -1556,7 +1573,7 @@ auto spp::analyse::utils::overload_resolution::MethodsOf(
     // of sup-asts, which are pre-processed functions, each in
     // turn containing the actual function.
     for (const auto sup_ast : AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<SupPrototypeExtensionAst*>()) {
-      if (sup_ast->Name->ToUnchecked<TypeIdentifierAst>()->Name != mock->Val) { continue; }
+      if (sup_ast->Name->As<TypeIdentifierAst>()->Name != mock->Val) { continue; }
 
       // Now we know the name is correct for the target function
       // name ("sup $name ext ..." where the target name is
@@ -1626,11 +1643,11 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
 
   // A discovered sup-ext scope is valid if the ast is the
   // correct type, and its target type matches the mapped
-  // name ("$func"). Todo: dynamic_cast, and no interning?
+  // name ("$func"). Todo: no interning?
   auto is_valid_ext_scope = [mapped_name=mapped_name.get()](auto const *scope) {
     const auto ext = AstAs<SupPrototypeExtensionAst>(scope->AstNode);
     if (ext == nullptr) { return false; }
-    const auto ext_name = dynamic_shared_cast<TypeIdentifierAst>(ext->Name);
+    const auto ext_name = ext->Name->template To<TypeIdentifierAst>();
     return ext_name != nullptr and ext_name->Name == mapped_name->Val;
   };
 

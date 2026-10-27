@@ -21,15 +21,15 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.object_initializer_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -130,8 +130,8 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
          Rhs | genex::views::ptr,
          lhs_syms) | genex::to<Vec>()) {
     auto const &[lhs_sym, _] = lhs_sym_and_scope;
-    const auto lhs_state = [&]() -> analyse::utils::memory_state::MemoryState& {
-      return analyse::utils::memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
+    const auto lhs_state = [&]() -> memory_state::MemoryState& {
+      return memory_state::StateOf(*sm->CurrentScope, *lhs_sym);
     };
     const auto lhs_type = lhs_expr->InferType(sm, meta);
     const auto lhs_deref_ref = IsDeref(lhs_expr)
@@ -168,7 +168,8 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
 
     // A function named as the value stands for the overload the
     // target's type asks for.
-    fn_values::InstantiateFnValue(rhs_ref, lhs_ref, sm, meta);
+    fn_values::InstantiateFnValue(
+      rhs_ref, lhs_ref, sm, meta);
   }
 }
 
@@ -304,35 +305,6 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
   }
 }
 
-auto AssignmentStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Wrap the rhs value and move it into the value of the
-  // variable symbol.
-  for (auto i = 0uz; i < Lhs.size(); ++i) {
-    Rhs[i]->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
-
-    // Assign to a full identifier.
-    if (Lhs[i]->To<IdentifierAst>() != nullptr) {
-      lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
-    }
-
-    // Assign to an attribute.
-    else if (regions::IsAttr(Lhs[i].get(), sm)) {
-      comp_time_intrinsics::SetCompTimeAttrValue(
-        lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
-        Lhs[i].get(), std::move(meta->CompTimeResult), sm);
-    }
-
-    // Otherwise, unsupported in the comptime context.
-    else {
-      Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*Lhs[i]));
-    }
-  }
-}
-
 auto AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -361,14 +333,8 @@ auto AssignmentStatementAst::Stage11_CodeGen(
       // the tag).
       const auto target_ref = Lhs[i]->InferTypeRef(sm, meta);
       if (target_ref.Symbol != nullptr) {
-        value = codegen::CoerceToFnValue(
-          value, target_ref,
-          Rhs[i]->InferTypeRef(sm, meta), *sm, ctx);
-
-        value = codegen::CoerceToVariant(
-          value, target_ref,
-          Rhs[i]->InferTypeRef(sm, meta), *sm->CurrentScope,
-          "assign.variant." + Uid(), ctx);
+        value = codegen::CoerceToSlot(
+          value, target_ref, Rhs[i]->InferTypeRef(sm, meta), *sm, "assign.variant." + Uid(), ctx);
       }
 
       return value;
@@ -421,6 +387,35 @@ auto AssignmentStatementAst::Stage11_CodeGen(
   // Statements are always generated into a builder so no need
   // to return anything.
   return nullptr;
+}
+
+auto AssignmentStatementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // Wrap the rhs value and move it into the value of the
+  // variable symbol.
+  for (auto i = 0uz; i < Lhs.size(); ++i) {
+    Rhs[i]->EvaluateCompTime(sm, meta);
+    const auto lhs_sym = sm->CurrentScope->FindVarSymbolOutermost(*Lhs[i]).first;
+
+    // Assign to a full identifier.
+    if (Lhs[i]->To<IdentifierAst>() != nullptr) {
+      lhs_sym->CompTimeValue = std::move(meta->CompTimeResult);
+    }
+
+    // Assign to an attribute.
+    else if (regions::IsAttr(Lhs[i].get(), sm)) {
+      comp_time_intrinsics::SetCompTimeAttrValue(
+        lhs_sym->CompTimeValue->To<ObjectInitializerAst>(),
+        Lhs[i].get(), std::move(meta->CompTimeResult), sm);
+    }
+
+    // Otherwise, unsupported in the comptime context.
+    else {
+      Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*Lhs[i]));
+    }
+  }
 }
 
 SPP_MOD_END

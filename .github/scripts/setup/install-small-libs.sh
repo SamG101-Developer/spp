@@ -13,7 +13,7 @@ llvm_dir="$(llvm_prefix)"
 
 # Read before leaving the repository root: pins.py resolves the
 # manifest relative to the working directory.
-records="$(python3 .github/scripts/lib/pins.py libraries)"
+records="$(python3 .github/scripts/lib/pins.py libraries --os "$RUNNER_OS")"
 if [ -z "$records" ]; then
   echo "install-small-libs: the manifest lists no libraries" >&2
   exit 1
@@ -22,9 +22,14 @@ fi
 mkdir -p "$PREFIX" "${RUNNER_TEMP}/libs"
 cd "${RUNNER_TEMP}/libs"
 
+# The prebuilt LLVM forces the static CRT on its users, so
+# everything spp links must use it too; CMP0091 makes projects
+# pinned to older policies honour the setting.
+platform_flags=()
 if [ "$RUNNER_OS" = "Windows" ]; then
   PREFIX="$(cygpath -m "$PREFIX")"
   export CMAKE_PREFIX_PATH="$PREFIX;$llvm_dir"
+  platform_flags+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW)
 else
   export CMAKE_PREFIX_PATH="$PREFIX:$llvm_dir"
 fi
@@ -51,7 +56,8 @@ while IFS= read -r -u 3 record; do
   # flag containing whitespace so that this stays safe.
   read -ra flags <<< "$flagstr"
   pinned_checkout "$name" "$repo" "$commit"
-  cmake_install "$name" "$name/build" "$PREFIX" ${flags[@]+"${flags[@]}"}
+  cmake_install "$name" "$name/build" "$PREFIX" \
+    ${platform_flags[@]+"${platform_flags[@]}"} ${flags[@]+"${flags[@]}"}
   printf '%s' "$record" > "$stamp"
 done 3<<< "$records"
 

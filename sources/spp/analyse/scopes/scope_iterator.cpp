@@ -31,24 +31,6 @@ auto ScopeIterator::operator*() -> reference {
 }
 
 /// [CHECKED]
-auto ScopeIterator::operator*() const -> const_reference {
-  // Hook into the node on the frame at the back of the stack.
-  return _Stack.back().Node;
-}
-
-/// [CHECKED]
-auto ScopeIterator::operator->() -> pointer {
-  // Hook into the node on the frame at the back of the stack.
-  return &_Stack.back().Node;
-}
-
-/// [CHECKED]
-auto ScopeIterator::operator->() const -> const_pointer {
-  // Hook into the node on the frame at the back of the stack.
-  return &_Stack.back().Node;
-}
-
-/// [CHECKED]
 auto ScopeIterator::operator++() -> ScopeIterator& {
   // Nothing in the stack means that no more iteration can be
   // done.
@@ -79,13 +61,6 @@ auto ScopeIterator::operator++() -> ScopeIterator& {
   // At this point, the stack is empty, meaning the iteration is
   // complete.
   return *this;
-}
-
-/// [CHECKED]
-auto ScopeIterator::operator++(int) -> ScopeIterator {
-  auto tmp = *this;
-  ++*this;
-  return tmp;
 }
 
 /// [CHECKED]

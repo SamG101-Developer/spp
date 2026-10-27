@@ -17,7 +17,7 @@ LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMu
   decltype(TokEllipsis) &&tok_ellipsis,
   Unique<LocalVariableAst> &&binding) :
   TokEllipsis(std::move(tok_ellipsis)),
-  Binding(dynamic_unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
+  Binding(unique_cast<LocalVariableSingleIdentifierAst>(std::move(binding))) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 

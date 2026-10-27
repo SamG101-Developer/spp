@@ -46,5 +46,5 @@ namespace spp::codegen::builtins {
 
   /// Create the static const map that will be used so that
   /// the lookup map only has to be generated once.
-  SPP_EXP_CMP const auto kBuiltinFuncs = MakeBuiltinFnMap();
+  SPP_EXP_FUN extern const Map<Str, LoweredFnImpl> kBuiltinFuncs;
 }

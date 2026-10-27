@@ -44,18 +44,18 @@ auto CasePatternVariantElseAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CasePatternVariantElseAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // The "else" pattern always matches, so return "true".
-  meta->CompTimeResult = BooleanLiteralAst::True(TokElse->PosStart());
-}
-
 auto CasePatternVariantElseAst::Stage11_CodeGen(
   ScopeManager *, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The "else" pattern always matches, so return "true".
   // However, should a previous branch match before this one
   // is reached, then that one will be selected.
   return llvm::ConstantInt::getTrue(*ctx->Context);
+}
+
+auto CasePatternVariantElseAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // The "else" pattern always matches, so return "true".
+  meta->CompTimeResult = BooleanLiteralAst::True(TokElse->PosStart());
 }
 
 auto CasePatternVariantElseAst::MarkForIterLoopExit() -> void {

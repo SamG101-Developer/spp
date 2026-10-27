@@ -244,6 +244,15 @@ SppTypeMismatchError::SppTypeMismatchError(
   AddHeader(1, "Type Mismatch Error");
   AddCtxForErr(&lhs, "Expected type " + INLINE_INFO(TypeForMessage(lhs_ty)));
   AddErr(&rhs, "Found type " + INLINE_INFO(TypeForMessage(rhs_ty)));
+
+  if (lhs_ty.ToString().starts_with('$') or rhs_ty.ToString().starts_with('$')) {
+    AddFooter(
+      "The two types are not symbolically equal. A function used as a value has a type of its own, which no other\n"
+      "function has.",
+      "Declare the function type the value is used as, for example \"let f: FunRef[(S32,), S32] = ..\", so each\n"
+      "function is converted into it.");
+    return;
+  }
   AddFooter(
     "The two types are not symbolically equal.",
     "Change one of the expression to match the other's type. If using variant types, consider swapping the\n"
@@ -970,8 +979,8 @@ SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarker
   AddCtxForErr(&type, "Type superimposed over here");
   AddErr(&marker, "Marker superimposed from outside its package here");
   AddFooter(
-    "A marker decides how every value of a type is handled, so only the package declaring the type may superimpose "
-    "one over it.",
+    "A marker decides how every value of a type is handled (copied, dropped, or forwarded to another type), so only "
+    "the package declaring the type may superimpose one over it.",
     "Superimpose the marker where the type is declared, or wrap the type in one this package owns.");
 }
 
@@ -1087,11 +1096,16 @@ SppNonCopyableTypeError::SppNonCopyableTypeError(
 }
 
 SppGenericParameterConflictError::SppGenericParameterConflictError(
-  Ast const &param, Ast const &first_infer, Ast const &second_infer) {
+  Ast const &param, Ast const &first_infer, Ast const &second_infer) :
+  SppGenericParameterConflictError(param, first_infer, second_infer, first_infer, second_infer) {
+}
+
+SppGenericParameterConflictError::SppGenericParameterConflictError(
+  Ast const &param, Ast const &first_infer, Ast const &second_infer, Ast const &first_at, Ast const &second_at) {
   AddHeader(71, "Generic Parameter Inferred Conflict Inferred Error");
   AddCtxForErr(&param, "Generic parameter defined here");
-  AddCtxForErr(&first_infer, "Generic inferred as " + INLINE_INFO(first_infer.ToString()));
-  AddErr(&second_infer, "Generic inferred as " + INLINE_INFO(second_infer.ToString()));
+  AddCtxForErr(&first_at, "Generic inferred as " + INLINE_INFO(first_infer.ToString()));
+  AddErr(&second_at, "Generic inferred as " + INLINE_INFO(second_infer.ToString()));
   AddFooter(
     "There is a conflict between inferred types for this generic parameter.",
     "Resolve the inference conflict.");
@@ -1421,6 +1435,40 @@ SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
     "Remove the branch.");
 }
 
+SppLoopMissingElseError::SppLoopMissingElseError(
+  Ast const &loop, Ast const &exit_value) {
+  AddHeader(117, "Loop Missing Else Error");
+  AddCtxForErr(&exit_value, "Loop value given here");
+  AddErr(&loop, "Loop with no else block introduced here");
+  AddFooter(
+    "A loop whose " + INLINE_NOTE("exit") + " gives a value has none when its condition ends it instead, so it needs "
+    "an " + INLINE_NOTE("else") + " block, which runs then, however many times the loop went round.",
+    "Add an " + INLINE_HELP("else") + " block giving the loop's value when it ends without an " +
+    INLINE_HELP("exit") + ".");
+}
+
+SppCfgUnknownKeyError::SppCfgUnknownKeyError(
+  Ast const &arg, const StrView key) {
+  AddHeader(118, "Cfg Unknown Key Error");
+  AddErr(&arg, key.empty() ? Str("Condition with no key here") : "Unknown key '" + Str(key) + "' here");
+  AddFooter(
+    "A " + INLINE_NOTE("!cfg") + " condition is a set of " + INLINE_NOTE("key=\"value\"") + " pairs, and an unknown "
+    "key would make one that never holds.",
+    "Use one of " + INLINE_HELP("mode") + ", " + INLINE_HELP("family") + ", " + INLINE_HELP("os") + ", " +
+    INLINE_HELP("arch") + ", " + INLINE_HELP("env") + ", " + INLINE_HELP("pointer_width") + " or " +
+    INLINE_HELP("endian") + ".");
+}
+
+SppCfgInvalidValueError::SppCfgInvalidValueError(
+  Ast const &value, const StrView key, const StrView why) {
+  AddHeader(119, "Cfg Invalid Value Error");
+  AddErr(&value, "Invalid value for '" + Str(key) + "' here");
+  AddFooter(
+    "The value " + Str(why) + ".",
+    "Give a string naming one or more of the key's values, separated by " + INLINE_HELP("|") + ", optionally after a "
+    "leading " + INLINE_HELP("!") + " to match all others, spelled as the target's folder name spells them.");
+}
+
 SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");
@@ -1495,6 +1543,17 @@ SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
     "A 'GenOnce' is guaranteed to yield exactly once, which is what lets a caller read it as the value it yields\n\t"
     "rather than as a generator to be tested. A 'ret' reached before any 'gen' breaks that guarantee.",
     "Yield a value on this path before returning, or make the coroutine a 'Gen', which may yield nothing.");
+}
+
+SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
+  Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
+  AddHeader(120, "Ffi Package Not Owned Error");
+  AddErr(&access_site, "Use of the ffi package " + INLINE_INFO(package) + " here");
+  AddFooter(
+    "The ffi package '" + INLINE_NOTE(package) + "' is shipped by " + Str(package_owner) + ", not by " +
+    Str(accessing_owner) + ", so only " + Str(package_owner) + " can name it.",
+    "Ship the package in this project's own 'ffi' folder to use it directly, or go through " + Str(package_owner) +
+    "'s own functions.");
 }
 
 SPP_MOD_END

@@ -8,12 +8,14 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_resolution;
 import spp.asts.char_literal_ast;
 import spp.asts.expression_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.identifier_ast;
 import spp.asts.integer_literal_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -73,11 +75,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   // The divisor has already been resolved to a literal, so
   // whether it is zero is known here.
   auto const &divisor = *args[1];
-  const auto int_divisor = divisor.To<IntegerLiteralAst>();
-  const auto flt_divisor = divisor.To<FloatLiteralAst>();
-  const auto is_zero =
-    (int_divisor != nullptr and int_divisor->BigVal() == 0) or
-    (flt_divisor != nullptr and flt_divisor->BigVal() == 0);
+  const auto is_zero = comp_time_intrinsics::IsZeroDivisor(divisor);
 
   // Folded from a call, the division is the call the user
   // wrote; neither this builtin nor its folded divisor is
@@ -104,15 +102,8 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   const auto amount = args[1]->To<IntegerLiteralAst>();
   if (value == nullptr or amount == nullptr) { return; }
 
-  // The width is the digits in the type name ("s32" -> 32);
-  // the pointer-sized names carry no digits and are however
-  // wide a pointer is here.
-  const auto digits = value->Type
-    | genex::views::filter([](auto c) { return std::isdigit(static_cast<unsigned char>(c)); })
-    | genex::to<Str>();
-  const auto width = digits.empty() ? static_cast<std::int64_t>(sizeof(void*)) * 8 : std::stol(digits);
-
-  const auto too_wide = amount->BigVal() >= numex::BigInt(width);
+  const auto width = comp_time_intrinsics::IntegerWidth(value->TypeOrDefault());
+  const auto too_wide = comp_time_intrinsics::IsShiftTooWide(*value, *amount);
   if (meta->CompTimeCallSite != nullptr) {
     RaiseIf<SppShiftAmountOutOfBoundsError>(
       too_wide,
@@ -121,7 +112,25 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   RaiseIf<SppShiftAmountOutOfBoundsError>(too_wide, ERR_ARGS(*this, *args[1], value->Type, width));
 }
 
-auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
+auto FunctionImplementationLoweredAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  IMPORT_UTILS;
+  // Use the builtin to build the llvm custom lowered code. The
+  // lowering reads the prototype's own scope, so it runs before
+  // the scope walk below moves the cursor off it.
+  const auto ret_type = self_type::SubstituteSelf(
+    *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(),
+    *sm->CurrentScope, sm, meta);
+
+  _Builtin->LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
+
+  // Skip scopes to get back to the parent scope (skipping inner
+  // scopes on the lowered function - `!intrinsic` etc).
+  ignore = sm->SkipSubtree(sm->CurrentScope);
+  return nullptr;
+}
+
+auto FunctionImplementationLoweredAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   if (_Builtin->CompTimeImpl == nullptr) {
@@ -129,8 +138,10 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   }
 
   auto &lowered_cmp_code = *_Builtin->CompTimeImpl;
+  auto arg_names = Vec<Shared<IdentifierAst>>{};
   auto extracted_args = Vec<Unique<ExpressionAst>>{};
-  for (auto &&[_, arg] : std::move(meta->CompTimeArgs)) {
+  for (auto &&[name, arg] : meta->CompTimeCall.FnArgs) {
+    arg_names.emplace_back(name);
     extracted_args.emplace_back(std::move(arg));
   }
 
@@ -154,30 +165,19 @@ auto FunctionImplementationLoweredAst::Stage9_CompTimeResolve(
   _ValidateShiftAmount(extracted_args, meta);
   meta->CompTimeResult =
     lowered_cmp_code
-    .PreloadGns(sm, meta->CompTimeGnTypeArgs, meta->CompTimeGnCompArgs)
-    .Invoke(std::move(extracted_args));
+    .PreloadGns(sm, meta->CompTimeCall.GnTypeArgs, meta->CompTimeCall.GnCompArgs)
+    .Invoke(extracted_args);
+
+  // An "_assign" builtin writes its "&mut" operand in place:
+  // the arguments go back as they were left, for the call to
+  // write back to the places they came from.
+  for (auto i = 0uz; i < arg_names.size(); ++i) {
+    meta->CompTimeCall.FnArgs[arg_names[i]] = std::move(extracted_args[i]);
+  }
 
   // analyse::errors::SemanticErrorBuilder<analyse::errors::SppInvalidCompTimeOperationError>()
   //     .with_args(*this)
   //     .raises_from(sm->CurrentScope);
-}
-
-auto FunctionImplementationLoweredAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  IMPORT_UTILS;
-  // Use the builtin to build the llvm custom lowered code. The
-  // lowering reads the prototype's own scope, so it runs before
-  // the scope walk below moves the cursor off it.
-  const auto ret_type = self_type::SubstituteSelf(
-    *_ProtoPtr->ReturnType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(),
-    *sm->CurrentScope, sm, meta);
-
-  _Builtin->LlvmImpl(sm, _ProtoPtr, meta, ctx, codegen::GetLlvmTypeOf(TypeRef::Of(*ret_type, *sm->CurrentScope), ctx));
-
-  // Skip scopes to get back to the parent scope (skipping inner
-  // scopes on the lowered function - `!intrinsic` etc).
-  ignore = sm->SkipSubtree(sm->CurrentScope);
-  return nullptr;
 }
 
 auto FunctionImplementationLoweredAst::SetBuiltin(

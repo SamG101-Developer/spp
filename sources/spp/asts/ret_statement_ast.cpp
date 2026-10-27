@@ -8,12 +8,14 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_resolution;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
@@ -29,10 +31,9 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_defer;
-import spp.codegen.llvm_fn;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.uid;
 
@@ -80,9 +81,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
   using generate::common_types_precompiled::VoidAt;
 
   // Analyse the expression.
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    Expr and not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr));
+  if (Expr != nullptr) { common_errors::RequirePrimary(*Expr, *sm); }
 
   // Check the enclosing function is a subroutine and not a subroutine, if a value is being returned.
   const auto function_flavour = meta->EnclosingFnFlavour;
@@ -98,9 +97,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
 
     // For case conditions, we need an assignment target in case of variants. Closures have no declared return
     // type (it is inferred from the "ret" expression), so there may be no assignment target type available.
-    meta->AssignmentTargetType = meta->EnclosingFnRetType.empty()
-      ? nullptr
-      : meta->EnclosingFnRetType.back();
+    meta->AssignmentTargetType = meta->EnclosingFnRetType;
     if (meta->AssignmentTargetType != nullptr) {
       meta->AssignmentTargetType = self_type::SubstituteSelf(
         *meta->AssignmentTargetType, sm->CurrentScope->FindEnclosingSelfType(*meta).get(), *sm->CurrentScope, sm, meta);
@@ -119,17 +116,19 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
     expr_type = Expr->InferType(sm, meta);
 
     _RetType = meta->AssignmentTargetType;
-    Source._OriginalRetType = meta->EnclosingFnSourceRetType.empty()
-      ? nullptr
-      : meta->EnclosingFnSourceRetType[0];
+    Source._OriginalRetType = meta->EnclosingFnSourceRetType;
   }
 
-  // Functions provide the return type, closures require inference; handle the inference.
-  if (meta->EnclosingFnRetType.empty()) {
-    _RetType = expr_type;
-    Source._OriginalRetType = _RetType;
-    meta->EnclosingFnRetType.emplace_back(_RetType);
-    meta->EnclosingFnSourceRetType.emplace_back(_RetType);
+  // Functions provide the return type; a closure with none written has its "ret"s agree on one ("ClosureRetJoin"),
+  // which each is generated into once the closure knows it (no "_RetType" of its own). A value that diverges ("!")
+  // is no value.
+  if (meta->EnclosingFnRetType == nullptr) {
+    _RetType = nullptr;
+    if (meta->ClosureRetJoin != nullptr and function_flavour->TokenType == lex::SppTokenType::KW_FUN) {
+      Ast const &site = Expr != nullptr ? *Expr->To<Ast>() : *TokRet->To<Ast>();
+      meta->ClosureRetJoin->Give(site, expr_type, *sm->CurrentScope, expr_type->IsNeverType());
+    }
+    return;
   }
 
   // Type check the expression type against the return type of the enclosing subroutine.
@@ -180,7 +179,12 @@ auto RetStatementAst::Stage8_CheckMemory(
     *TokRet, "Return", *sm, meta);
 }
 
-auto RetStatementAst::Stage9_CompTimeResolve(
+auto RetStatementAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+}
+
+auto RetStatementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
   // resolved on top of it.
@@ -188,45 +192,56 @@ auto RetStatementAst::Stage9_CompTimeResolve(
   if (Expr == nullptr) { return; }
 
   // Resolve the expression.
-  Expr->Stage9_CompTimeResolve(sm, meta);
-}
-
-auto RetStatementAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
+  Expr->EvaluateCompTime(sm, meta);
 }
 
 auto RetStatementAst::EmitReturn(
   ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
   CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
-  // A "GenOnce" is lowered into an ordinary subroutine, where
-  // a "gen" reads as the return. A "ret" written after one is
-  // therefore unreachable: the block it lands in has already
-  // returned. Todo: This is a bandaid until dead code detection
-  // is fixed.
-  if (const auto block = ctx->Builder.GetInsertBlock(); block != nullptr and block->hasTerminator()) {
-    return nullptr;
+  // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
+  // coerced into the return variant before it leaves the function.
+  const auto uid = "." + Uid();
+  const auto ret_type = ret_type_written != nullptr
+    ? ret_type_written
+    : meta->EnclosingFnRetType;
+
+  auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
+    if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
+    const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
+    const auto expr_ref = expr->InferTypeRef(sm, meta);
+    return codegen::CoerceToSlot(llvm_ret_val, ret_ref, expr_ref, *sm, "ret.variant" + uid, ctx);
+  };
+
+  // The returned value is produced first, while everything it
+  // reads is still alive. It is always generated, even when it
+  // is discarded below, because it may have side effects that
+  // have to happen before the function returns.
+  const auto _meta_guard = MetaGuard(meta);
+  auto llvm_ret_val = static_cast<llvm::Value*>(nullptr);
+  if (expr != nullptr) {
+    meta->AssignmentTargetType = ret_type;
+    if (meta->AssignmentTarget == nullptr) {
+      meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
+    }
+    llvm_ret_val = expr->Stage11_CodeGen(sm, meta, ctx);
   }
+
+  // Then every scope between here and the function's own runs
+  // what it deferred, and control leaves.
+  codegen::EmitScopeExit(meta->EnclosingFnScope->Parent, sm, meta, ctx);
 
   // Inside a coroutine, "ret" ends the generator rather than
   // returning anything (stage 7 rejects one carrying a value),
   // so it leaves the body the same way running off the end
-  // does: every scope between here and the coroutine's own
-  // runs what it deferred, and then control joins the one
-  // final suspend.
+  // does: control joins the one final suspend.
   if (meta->LlvmGenerator != nullptr and meta->LlvmGenerator->FinalBlock != nullptr) {
-    codegen::EmitDeferredUnwind(
-      *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
     ctx->Builder.CreateBr(meta->LlvmGenerator->FinalBlock);
     return nullptr;
   }
 
   // Use the return void instruction if there is no return value.
   if (expr == nullptr) {
-    codegen::EmitDeferredUnwind(
-      *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
-
     // A bare "ret" reached in a function that owes a value is a
     // "GenOnce" lowered to a subroutine finishing on a path that
     // never yielded - an ordinary subroutine could not get here,
@@ -242,40 +257,6 @@ auto RetStatementAst::EmitReturn(
     return nullptr;
   }
 
-  // A function returning a variant may return any one of its members, or a narrower variant, so the value has to be
-  // coerced into the return variant before it leaves the function.
-  const auto uid = "." + Uid();
-  const auto ret_type = ret_type_written != nullptr
-    ? ret_type_written
-    : meta->EnclosingFnRetType.empty()
-    ? nullptr
-    : meta->EnclosingFnRetType.back();
-
-  auto wrap_variant = [&](llvm::Value *llvm_ret_val) -> llvm::Value* {
-    if (llvm_ret_val == nullptr or ret_type == nullptr) { return llvm_ret_val; }
-    const auto ret_ref = TypeRef::Of(*ret_type, *sm->CurrentScope);
-    const auto expr_ref = expr->InferTypeRef(sm, meta);
-    llvm_ret_val = codegen::CoerceToFnValue(llvm_ret_val, ret_ref, expr_ref, *sm, ctx);
-    return codegen::CoerceToVariant(
-      llvm_ret_val, ret_ref, expr_ref, *sm->CurrentScope, "ret.variant" + uid, ctx);
-  };
-
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTargetType = ret_type_written;
-  if (meta->AssignmentTarget == nullptr) {
-    meta->AssignmentTarget = MakeShared<IdentifierAst>(site.PosStart(), "$ret");
-  }
-
-  // The expression is always code-generated, even when its value
-  // is discarded below, because it may have side effects that
-  // have to happen before the function returns.
-  const auto llvm_ret_val = expr->Stage11_CodeGen(sm, meta, ctx);
-
-  // The returned value is produced first, then every scope between here and the function's own runs what it deferred,
-  // then control leaves.
-  codegen::EmitDeferredUnwind(
-    *sm->CurrentScope, meta->EnclosingFnScope, true, sm, meta, ctx);
-
   // A generic function instantiated so that its return type is
   // "Void" lowers to an LLVM function returning void, but its
   // body still reads "ret <expr>". Map to llvm's ret void.
@@ -286,8 +267,9 @@ auto RetStatementAst::EmitReturn(
   return nullptr;
 }
 
-auto RetStatementAst::Terminates() const -> bool {
-  // This is the only statement that always terminates.
+auto RetStatementAst::Diverges(
+  ScopeManager *, CompilerMetaData *) -> bool {
+  // A "ret" always leaves the function.
   return true;
 }
 

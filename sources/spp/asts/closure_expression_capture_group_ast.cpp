@@ -112,9 +112,10 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
 
 auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Any borrowed captures need pinning and marking as extended
   // borrows.
-  const auto ass_sym = analyse::utils::mem_utils::AssignmentTargetSymbol(
+  const auto ass_sym = mem_utils::AssignmentTargetSymbol(
     *meta->CurrentLambdaOuterScope, *meta);
   for (auto const &cap : Captures) {
     // The closure's own copy of the capture is initialised here,
@@ -123,7 +124,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
     // whatever the body did to the copy on the first.
     const auto inner_sym = sm->CurrentScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
     if (inner_sym != nullptr) {
-      analyse::utils::memory_state::StateOf(*sm->CurrentScope, *inner_sym).InitializedBy(*cap);
+      memory_state::StateOf(*sm->CurrentScope, *inner_sym).InitializedBy(*cap);
     }
 
     if (cap->Conv != nullptr) {
@@ -141,9 +142,9 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       const auto outer_cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap_val);
       if (ass_sym != nullptr and outer_cap_sym != nullptr) {
         const auto is_mut = *cap->Conv == ConventionTag::MUT;
-        const auto borrowed = analyse::utils::regions::PlaceAtOf(*cap->Val, *meta->CurrentLambdaOuterScope);
-        analyse::utils::memory_state::LoansOf(*meta->CurrentLambdaOuterScope).emplace_back(
-          analyse::utils::memory_state::MakeLoan(
+        const auto borrowed = regions::PlaceAtOf(*cap->Val, *meta->CurrentLambdaOuterScope);
+        memory_state::LoansOf(*meta->CurrentLambdaOuterScope).emplace_back(
+          memory_state::MakeLoan(
             borrowed, is_mut, ass_sym, false, ass_sym == meta->AssignmentTargetSymbol));
       }
     }
@@ -154,7 +155,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
       const auto cap_sym = meta->CurrentLambdaOuterScope->FindVarSymbol(cap->Val->To<IdentifierAst>());
       const auto cap_type_sym = cap_sym->TypeRefIn(*meta->CurrentLambdaOuterScope).Symbol;
       if (cap_type_sym == nullptr or not cap_type_sym->IsCopyable()) {
-        analyse::utils::memory_state::StateOf(*meta->CurrentLambdaOuterScope, *cap_sym).MovedBy(*cap);
+        memory_state::StateOf(*meta->CurrentLambdaOuterScope, *cap_sym).MovedBy(*cap);
       }
     }
   }

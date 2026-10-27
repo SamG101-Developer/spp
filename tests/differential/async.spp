@@ -1,0 +1,144 @@
+# Async: futures awaited in a chain and out of the order they were started in, tasks that spawn and await their own,
+# tasks taking turns by yielding, a "&mut" borrow of the caller's local written from another task, awaits in a loop and
+# in a "case", a deep call stack on a task, a heap result through the result cell, a future dropped without an await,
+# a generator driven on a task, and "await_all". Tasks run from one FIFO run queue, with no timers, so the order tasks
+# print in is fixed. Printing can switch tasks, so each line is built whole and printed once. The deep stack stays
+# within a task's stack at "dev", whose frames are larger.
+
+cls Counter {
+  !public
+  n: U64
+}
+
+fun show(what: &StrView, text: Str) -> Void {
+  let mut line = Str::from("")
+  line.append_str(what)
+  line.append_str(" = ")
+  line.append_str(&text)
+  std::console::println(&line)
+  std::mem::ops::drop(text)
+  std::mem::ops::drop(line)
+}
+
+fun double(n: U64) -> U64 {
+  ret n * 2_u64
+}
+
+fun outer(n: U64) -> U64 {
+  let inner = async double(n)
+  let x = inner.await
+  ret x + 1_u64
+}
+
+fun worker(id: U32, steps: U32) -> U32 {
+  let mut i = 0_u32
+  let mut acc = 0_u32
+  loop i < steps {
+    show("worker step", Str::from(id * 10_u32 + i))
+    acc += id * 10_u32 + i
+    std::future::yield_now()
+    i += 1_u32
+  }
+  ret acc
+}
+
+fun bump(c: &mut Counter, by: U64) -> Void {
+  std::future::yield_now()
+  c.n += by
+}
+
+fun depth(n: U64) -> U64 {
+  case n == 0_u64 { ret 0_u64 }
+  let below = depth(n - 1_u64)
+  ret below + n
+}
+
+fun greeting(name: &StrView) -> Str {
+  let mut s = Str::from("hello, ")
+  s.append_str(name)
+  ret s
+}
+
+fun noisy(n: U64) -> U64 {
+  std::console::println("dropped task ran")
+  ret n
+}
+
+cor squares(n: U32) -> std::iterator::Iterator[U32] {
+  let mut i = 0_u32
+  loop i < n {
+    gen i * i
+    i += 1_u32
+  }
+}
+
+fun sum_squares(n: U32) -> U32 {
+  let mut s = 0_u32
+  loop x in squares(n) {
+    s += x
+  }
+  ret s
+}
+
+fun main() -> Void {
+  let f1 = async double(21_u64)
+  let a = f1.await
+  let f2 = async double(a)
+  let b = f2.await
+  show("chain", Str::from(b))
+
+  let nested = async outer(20_u64)
+  show("nested", Str::from(nested.await))
+
+  let w1 = async worker(1_u32, 3_u32)
+  let w2 = async worker(2_u32, 2_u32)
+  let w3 = async worker(3_u32, 4_u32)
+  show("worker 3", Str::from(w3.await))
+  show("worker 1", Str::from(w1.await))
+  show("worker 2", Str::from(w2.await))
+
+  let mut counter = Counter(n=5_u64)
+  let bumped = async bump(&mut counter, 37_u64)
+  bumped.await
+  show("mut borrow across tasks", Str::from(counter.n))
+  std::mem::ops::drop(counter)
+
+  let mut total = 0_u64
+  let mut k = 0_u64
+  loop k < 5_u64 {
+    let f = async double(k)
+    total += f.await
+    k += 1_u64
+  }
+  show("await in loop", Str::from(total))
+
+  let picked = case total > 10_u64 {
+    let f = async double(total)
+    f.await
+  } else { 0_u64 }
+  show("await in case", Str::from(picked))
+
+  let deep = async depth(500_u64)
+  show("deep stack", Str::from(deep.await))
+
+  let name = Str::from("world")
+  let hello = async greeting(&name)
+  show("heap result", hello.await)
+  std::mem::ops::drop(name)
+
+  let unawaited = async noisy(7_u64)
+  std::mem::ops::drop(unawaited)
+  std::console::println("after drop")
+
+  let gen_task = async sum_squares(6_u32)
+  show("generator on a task", Str::from(gen_task.await))
+
+  let mut futures = Vec[Fut[U64]]()
+  futures.append(async double(1_u64))
+  futures.append(async double(2_u64))
+  futures.append(async double(3_u64))
+  let results = Fut[U64]::await_all(futures)
+  loop r in results.iter_mov() {
+    show("await_all", Str::from(r))
+  }
+}

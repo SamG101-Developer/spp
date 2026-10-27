@@ -59,6 +59,8 @@ namespace spp::lsp::resolution_index {
 
       Vec<CompTimeValue> Values;
       Set<Str> SeenValues;
+
+      Vec<InactiveRegion> Inactive;
     };
 
     /// Singleton instance to the static state for the current
@@ -93,14 +95,7 @@ namespace spp::lsp::resolution_index {
         const auto proto = not body.empty() ? body[0]->To<FunctionPrototypeAst>() : nullptr;
         if (proto == nullptr or proto->FnParamGroup == nullptr or proto->ReturnType == nullptr) { continue; }
 
-        // Manual stringification because ToString() leaves in the
-        // trailing "," on parameters. Todo: Use .ToString() once
-        // that bug is fixed.
-        auto params = Str("(");
-        for (auto const &param : proto->FnParamGroup->Params) {
-          params += (params.length() > 1 ? ", " : "") + param->ToString();
-        }
-        signatures.emplace_back(params + ") -> " + proto->ReturnType->ToString());
+        signatures.emplace_back(proto->FnParamGroup->ToString() + " -> " + proto->ReturnType->ToString());
       }
       return signatures;
     }
@@ -135,17 +130,18 @@ namespace spp::lsp::resolution_index {
     auto NamespacePathOf(
       NamespaceSymbol const &sym)
       -> Str {
-      // The current namespace part and all parent scopes up to the root.
+      // The current namespace part and all parent scopes up to the
+      // root, but the global scope (the one with no parent), whose
+      // namespace is no part of a path.
       auto parts = Vec<Str>();
       for (auto const *scope : sym.LinkedScope->GetAncestors()) {
+        if (scope->Parent == nullptr) { continue; }
         parts.emplace_back(scope->LinkedNamespaceSymbol->Name->ToString());
       }
 
-      // Join all the parts into a "::"-joined string, leaving
-      // the "_global" root part. Todo: Move to a constant.
+      // Join all the parts into a "::"-joined string, outermost first.
       auto path = Str();
       for (auto i = parts.size(); i > 0; --i) {
-        if (parts[i - 1] == "_global") { continue; }
         path += (path.empty() ? "" : "::") + parts[i - 1];
       }
       return path;
@@ -549,10 +545,7 @@ auto spp::lsp::resolution_index::RecordVariable(
   // For symbols introduced via a "use" statement, we want to
   // get back to the actual cmp/fun definition in a different
   // module, through each "use" in turn.
-  auto target = &sym;
-  while (target->AliasSymbol != nullptr and target->AliasSymbol.get() != target) {
-    target = target->AliasSymbol.get();
-  }
+  auto const *const target = sym.UseTarget();
 
   // The definition is the span of the name within the scope
   // that the symbol was defined in.
@@ -626,7 +619,7 @@ auto spp::lsp::resolution_index::RecordIdentifier(
   // of a path - the "std" of "std::mem::ops::mem_cmp".
   if (sym != nullptr) { return RecordVariable(use, sm, meta, sym); }
   RecordNamespace(
-    use, sm, meta, sm.CurrentScope->FindNsSymbol(use.ToUnchecked<IdentifierAst>()));
+    use, sm, meta, sm.CurrentScope->FindNsSymbol(use.As<IdentifierAst>()));
 }
 
 auto spp::lsp::resolution_index::RecordExpression(
@@ -794,6 +787,14 @@ auto spp::lsp::resolution_index::RecordCompTimeValue(
   });
 }
 
+auto spp::lsp::resolution_index::RecordInactive(
+  ErrorFormatter const &formatter, const std::size_t start, const std::size_t end) -> void {
+  // Only for a file being indexed, and only for source that was
+  // written: a generated member has no position to grey out.
+  if (not IsEnabled() or not Wants(formatter.FilePath()) or start == 0) { return; }
+  Current().Inactive.emplace_back(InactiveRegion{.Where = formatter.SpanAcross(start, end)});
+}
+
 auto spp::lsp::resolution_index::RecordScopeOf(
   Ast const &node, ScopeManager const &sm, const bool whole_file) -> void {
   // If we are not bothered about this scope, then return early;
@@ -867,6 +868,12 @@ auto spp::lsp::resolution_index::GetAllScopes()
   return Current().Scopes;
 }
 
+auto spp::lsp::resolution_index::GetAllInactive()
+  -> Vec<InactiveRegion> const& {
+  // Getter for the inactive regions, for json for the IDEA plugin.
+  return Current().Inactive;
+}
+
 auto spp::lsp::resolution_index::Clear()
   -> void {
   Current().Entries.clear();
@@ -879,4 +886,5 @@ auto spp::lsp::resolution_index::Clear()
   Current().SeenScopes.clear();
   Current().Values.clear();
   Current().SeenValues.clear();
+  Current().Inactive.clear();
 }

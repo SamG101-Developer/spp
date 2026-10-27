@@ -283,7 +283,7 @@ auto spp::analyse::scopes::HeadOf(
         head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2]));
         for (auto rest = words.subspan(3); not rest.empty();) {
           auto taken = 0uz;
-          head.Members.push_back(TypeKey::_DecodePart(rest, taken));
+          head.VariantMembers.push_back(TypeKey::_DecodePart(rest, taken));
           rest = rest.subspan(taken);
         }
       }

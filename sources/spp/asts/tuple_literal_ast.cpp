@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
@@ -68,11 +69,14 @@ auto TupleLiteralAst::PosEnd() const -> std::size_t {
 }
 
 auto TupleLiteralAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<TupleLiteralAst>(
+  // Clone all the members of the ast, and the type stage 7 settled
+  // on, as an array literal's clone does.
+  auto ast = MakeUnique<TupleLiteralAst>(
     AstClone(TokL),
     AstCloneVec(Elems),
     AstClone(TokR));
+  ast->_InferredType = _InferredType;
+  return ast;
 }
 
 auto TupleLiteralAst::ToString() const -> Str {
@@ -91,17 +95,13 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*elem, *sm),
-      ERR_ARGS(*elem));
+    common_errors::RequirePrimary(*elem, *sm);
   }
 
   // Check all the elements are owned by the tuple, not borrowed.
   for (auto const &elem : Elems | genex::views::ptr) {
     auto elem_type = elem->InferType(sm, meta);
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      type_predicates::IsTypeBorrowed(*elem_type, *sm),
-      ERR_ARGS(*elem, *elem_type, "tuple element type"));
+    common_errors::RequireNotBorrowed(*elem_type, *elem, "tuple element type", *sm);
   }
 
   // Analyse the inferred tuple type to generate the generic implementation.
@@ -118,21 +118,6 @@ auto TupleLiteralAst::Stage8_CheckMemory(
     elem->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, meta, {.MarkMoves = false});
   }
-}
-
-auto TupleLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values.
-  auto cmp_elems = Vec<Unique<ExpressionAst>>();
-  for (auto [i, elem] : Elems | genex::views::ptr | genex::views::enumerate) {
-    elem->Stage9_CompTimeResolve(sm, meta);
-    Elems[i] = AstClone(meta->CompTimeResult);
-    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
-  }
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<TupleLiteralAst>(
-    nullptr, std::move(cmp_elems), nullptr);
 }
 
 auto TupleLiteralAst::Stage11_CodeGen(
@@ -204,6 +189,24 @@ auto TupleLiteralAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
 }
 
+auto TupleLiteralAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner elements to compile-time values. They are
+  // only read, as an array literal's are.
+  auto cmp_elems = Vec<Unique<ExpressionAst>>();
+  for (auto const &elem : Elems) {
+    elem->EvaluateCompTime(sm, meta);
+    cmp_elems.emplace_back(std::move(meta->CompTimeResult));
+  }
+
+  // Wrap the compile-time tuple value. It keeps the type stage 7
+  // settled on ("(None, 1_u64)" as an "(Opt[U64], U64)"), as an
+  // array literal's value does, not its elements' own.
+  auto result = MakeUnique<TupleLiteralAst>(nullptr, std::move(cmp_elems), nullptr);
+  result->_InferredType = _InferredType;
+  meta->CompTimeResult = std::move(result);
+}
+
 auto TupleLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type stage 7 settled on; a tuple not analysed yet has its
@@ -233,7 +236,9 @@ auto TupleLiteralAst::TypeOfElements(
   // Create a "..Ts" type, for the tuple type. A bound generic keeps
   // its parameter's name ("T"), so each element is taken as what it
   // is bound to - or an instantiation's "(T(), U())" is the generic
-  // tuple "(T, U)", which has no layout to generate. Todo: TIDY
+  // tuple "(T, U)", which has no layout to generate. Each element
+  // points at its value, so an error about one names it there.
+  // Todo: TIDY
   auto types_gen = elems
     | genex::views::transform([sm, meta](auto *elem) {
       auto type = elem->InferType(sm, meta);
@@ -241,7 +246,7 @@ auto TupleLiteralAst::TypeOfElements(
       if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
         type = sym->AsBound()->FqName()->WithConvention(AstClone(type->GetConvention()));
       }
-      return type;
+      return type->WithSourceSpanAt(*elem);
     })
     | genex::to<Vec>();
 
@@ -252,7 +257,8 @@ auto TupleLiteralAst::TypeOfElements(
 }
 
 auto TupleLiteralAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // Each element is an expression so substitute them
   // all too.
   // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
@@ -264,7 +270,9 @@ auto TupleLiteralAst::ReadExpr(
     auto const *const id = elem->To<IdentifierAst>();
     auto const *const pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
     if (pack != nullptr and pack->IsVariadic and sub_elem->To<TupleLiteralAst>() != nullptr) {
-      for (auto const *inner : analyse::utils::packs::CompPackElements(*sub_elem)) { elems.emplace_back(AstClone(inner)); }
+      for (auto const *inner : packs::CompPackElements(*sub_elem)) {
+        elems.emplace_back(AstClone(inner));
+      }
       continue;
     }
     elems.emplace_back(AstClone(sub_elem));

@@ -203,7 +203,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     _FlowSymbol->Type = Type;
 
     if (Type->GetConvention() != nullptr) { _FlowSymbol->MemInfo->AstBorrowed = Type.get(); }
-    _CondLet->Var->ToUnchecked<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
+    _CondLet->Var->As<LocalVariableSingleIdentifierAst>()->Narrow(_FlowSymbol, *sm->CurrentScope);
     effective_val = uid_name.get();
   }
 
@@ -243,12 +243,6 @@ auto LocalVariableDestructureObjectAst::Stage8_CheckMemory(
   IMPORT_UTILS;
   destructure_utils::DestructureStage8(
     *this, Elems, _NewAsts, _TmpName, _CondLet.get(), _FromCasePattern, *sm, meta);
-}
-
-auto LocalVariableDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-  destructure_utils::DestructureStage9(_NewAsts, _TmpName, _CondLet.get(), *sm, meta);
 }
 
 auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
@@ -303,6 +297,13 @@ auto LocalVariableDestructureObjectAst::Stage11_CodeGen(
   // Generate the "let" statements for each element.
   for (auto const &ast : _NewAsts) { ast->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;
+}
+
+auto LocalVariableDestructureObjectAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  destructure_utils::DestructureEvaluateCompTime(
+    _NewAsts, _TmpName, _CondLet.get(), *sm, meta);
 }
 
 auto LocalVariableDestructureObjectAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {

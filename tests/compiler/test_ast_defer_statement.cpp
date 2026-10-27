@@ -135,7 +135,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 )");
 
 // A "?" inside a closure written in a deferred expression returns from the closure, not from the deferring function,
-// so it is past the point the restriction applies to.
+// so it is past the point the restriction applies to. The closure declares its return type: the "?" returns a bare
+// "Fail[E]", which only a declared "Res[Void, E]" widens it into (inferred, it would be the closure's type).
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   DeferStatementAst,
   test_valid_defer_early_return_inside_a_closure, R"(
@@ -144,7 +145,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> std::result::Res[Void, E] { ret std::result::Pass[Void]() }
 
     fun f() -> Void {
-        defer std::mem::ops::drop(() g()?)
+        defer std::mem::ops::drop(() -> std::result::Res[Void, E] {
+            g()?
+            std::result::Pass[Void]()
+        })
     }
 )");
 
@@ -241,4 +245,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
         defer g(&x)
         drop(x)
     }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  DeferStatementAst,
+  test_invalid_defer_in_comptime_function,
+  SppDeferInCompTimeFunctionError, R"(
+    cmp fun noop() -> Void { }
+
+    cmp fun f(n: S32) -> S32 {
+        defer noop()
+        ret n
+    }
+
+    cmp a: S32 = f(1)
 )");

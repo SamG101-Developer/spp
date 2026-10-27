@@ -30,6 +30,14 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
 
   bool IsCompilerGenerated = false;
 
+  /// Which attribute the argument fills, as its position in
+  /// "type_members::GetAllAttrs", set in stage 7 (a written one by
+  /// its name, a generated one as it is made) and what codegen
+  /// places it by. A name may be shared, by attributes two base
+  /// classes each declare ("B.a", "C.a"): each base's is filled,
+  /// and only writing that name is ambiguous.
+  Opt<std::size_t> AttrIndex;
+
   explicit ObjectInitializerArgumentAst(
     decltype(Name) name,
     decltype(Val) &&val);
@@ -40,11 +48,14 @@ SPP_EXP_CLS struct spp::asts::ObjectInitializerArgumentAst : Ast, mixins::TypeIn
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto InferType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 };

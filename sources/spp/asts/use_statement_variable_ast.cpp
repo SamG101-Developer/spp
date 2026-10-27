@@ -8,11 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.cmp_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -95,28 +97,63 @@ auto UseStatementVariableAst::Stage3_GenTopLvlAliases(
   // Generate the top-level alias for the converted type statement.
   const auto [old_var_sym, scope] = sm->CurrentScope->FindVarSymbolOutermost(*OldVar);
   if (old_var_sym != nullptr) {
-    // Cmp statements
-    _Conversion->Type = old_var_sym->TypeRefIn(*scope).Symbol->FqName(false);
-    old_var_sym->Type = _Conversion->Type;
-
+    // What is imported is found now. An import of another import
+    // names the end of that chain, which a module not yet given
+    // this stage has not found yet: then what it is is taken in
+    // stage 4, once every module has found its own.
     _Conversion->_AliasSymbol->AliasSymbol = old_var_sym->SharedFromThis<VariableSymbol>();
-    _Conversion->_AliasSymbol->Type = _Conversion->Type;
-
-    // The import's type is only known now, so it takes the kind of
-    // what it names (a function's mock, or a constant) here too.
-    _Conversion->_AliasSymbol->Kind = old_var_sym->Kind;
+    auto *const target = old_var_sym->UseTarget();
+    auto const *const target_scope = target != old_var_sym ? target->ScopeDefinedIn : scope;
+    if (target->Kind != VariableKind::Import) { _TakeTarget(*target, *target_scope); }
     _Conversion->Stage3_GenTopLvlAliases(sm, meta);
     return;
   }
 
-  // Todo: alternatives based on lhs of the old var.
-  const auto closest_match = spp::utils::strings::ClosestMatch(
-    OldVar->ToString(), {});
+  // The alternatives are the constants the named namespace declares itself ("ns::x" reaches nothing its parents
+  // declare), against the name looked for.
+  auto query = OldVar->ToString();
+  auto alternatives = Vec<Str>();
+  if (const auto postfix = OldVar->To<PostfixExpressionAst>(); postfix != nullptr) {
+    if (const auto access = postfix->Op->To<PostfixExpressionOperatorStaticMemberAccessAst>(); access != nullptr) {
+      query = access->Name->Val;
+      if (auto const *const ns_scope = sm->CurrentScope->FindNsScope(postfix->Lhs.get()); ns_scope != nullptr) {
+        for (auto const *sym : ns_scope->GetAllVarSymbols(true)) { alternatives.emplace_back(sym->Name->Val); }
+      }
+    }
+  }
+  const auto closest_match = spp::utils::strings::ClosestMatch(query, alternatives);
   Raise<SppIdentifierUnknownError>(ERR_ARGS(*this, "constant variable", closest_match));
+}
+
+auto UseStatementVariableAst::_TakeTarget(
+  VariableSymbol &target, Scope const &target_scope) -> void {
+  // The import takes the kind of what it names (a function's mock, or a constant).
+  _Conversion->_AliasSymbol->Kind = target.Kind;
+  if (target.Kind == VariableKind::Constant) { return; }
+  _Conversion->Type = target.TypeRefIn(target_scope).Symbol->FqName(false);
+  target.Type = _Conversion->Type;
+  _Conversion->_AliasSymbol->Type = _Conversion->Type;
 }
 
 auto UseStatementVariableAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // The end of a chain of imports that was not found in stage 3 (one still an import imports itself, round a cycle).
+  auto *const named = _Conversion->_AliasSymbol->AliasSymbol.get();
+  auto *const target = named != nullptr ? named->UseTarget() : nullptr;
+  if (target != nullptr and _Conversion->_AliasSymbol->Kind == VariableKind::Import
+    and target->Kind != VariableKind::Import) {
+    _TakeTarget(*target, *target->ScopeDefinedIn);
+  }
+
+  // A constant's type is its written type read where it is declared, so it names the same type from here, by identity,
+  // whatever this module can spell; in stage 3 it could name an alias whose target is not resolved yet.
+  if (target != nullptr and target->Kind == VariableKind::Constant) {
+    auto tm = sm->NewManagerAt(target->ScopeDefinedIn);
+    _Conversion->Type = type_resolution::AnalyseWrittenType(*target->Type, tm, *meta);
+    _Conversion->_AliasSymbol->Type = _Conversion->Type;
+  }
+
   // Qualify the types in the conversion AST.
   _Conversion->Stage4_ResolveDeclarations(sm, meta);
 }
@@ -143,12 +180,6 @@ auto UseStatementVariableAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check memory for the conversion AST.
   _Conversion->Stage8_CheckMemory(sm, meta);
-}
-
-auto UseStatementVariableAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Comptime resolve the conversion AST.
-  _Conversion->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto UseStatementVariableAst::Stage10_PreCodeGen(

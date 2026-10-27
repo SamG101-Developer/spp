@@ -1,9 +1,10 @@
 import collections
 import difflib
-import glob
 import itertools
 import re
 import sys
+from pathlib import Path
+from typing import TypedDict
 
 # Generates the RTTI replacement used by Ast::Kind(), which lets "Ast::To<T>()" bypass most `dynamic_cast`s:
 #  - ast_kind.ixx holds the AstKind enum.
@@ -21,18 +22,26 @@ OUT_KIND = "headers/spp/asts/ast_kind.ixx"
 OUT_RANGE = "headers/spp/asts/ast_kind_range.ixx"
 CHECK = "--check" in sys.argv
 
-# name -> {final, bases, file}
-H = {}
+
+class ClassInfo(TypedDict):
+    final: bool
+    bases: list[str]
+    file: str
+    tmpl: bool
+
+
+# name -> its class info
+H: dict[str, ClassInfo] = {}
 pat = re.compile(
     r"SPP_EXP_CLS\s*(?:template\s*<[^>]*>\s*)?struct\s+spp::asts::(\w+)\s*(final)?\s*(?::\s*([^{]+))?\{", re.S
 )
-for f in sorted(glob.glob("headers/spp/asts/**/*.ixx", recursive=True)):
-    for m in pat.finditer(open(f).read()):
+for f in sorted(str(p) for p in Path("headers/spp/asts").rglob("*.ixx")):
+    for m in pat.finditer(Path(f).read_text()):
         name = m.group(1)
         raw = m.group(3) or ""
         bases = [re.sub(r"^(public|private|protected)\s+", "", b.strip()).strip() for b in raw.split(",") if b.strip()]
         bases = [b.split("<")[0].replace("mixins::", "").strip() for b in bases]
-        H[name] = dict(
+        H[name] = ClassInfo(
             final=bool(m.group(2)),
             bases=bases,
             file=f,
@@ -55,7 +64,7 @@ order = []
 rng = {}
 
 
-def dfs(n):
+def dfs(n: str) -> None:
     first = len(order)
     order.append(n)
     for c in kids[n]:
@@ -132,7 +141,7 @@ outputs = {OUT_KIND: kind_text, OUT_RANGE: range_text}
 if CHECK:
     stale = False
     for path, text in outputs.items():
-        have = open(path).read()
+        have = Path(path).read_text()
         if have != text:
             diff = difflib.unified_diff(have.splitlines(True), text.splitlines(True), path, "generated", n=1)
             sys.stderr.writelines(itertools.islice(diff, 40))
@@ -143,5 +152,5 @@ if CHECK:
     sys.exit(0)
 
 for path, text in outputs.items():
-    open(path, "w").write(text)
+    Path(path).write_text(text)
     print(f"wrote {path}", file=sys.stderr)

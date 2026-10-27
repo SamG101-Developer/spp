@@ -25,9 +25,15 @@ EOF
 
 make_project() {
     local dir="$1" protect="$2" count="$3"
+    # The probe writes through a pointer of unknown size, which no fortification
+    # can check, so its library imports no "__*_chk" and would read as built
+    # without it; that is check-fortified-ffi.sh's business, not this check's.
     new_project "${dir}" "
 [memory.stack]
-protect = ${protect}"
+protect = ${protect}
+
+[binary.link]
+fortified_ffi = false"
 
     add_ffi "${dir}" smash "${WORK}/smash.c" <<'EOF'
 use std::cffi::CULong

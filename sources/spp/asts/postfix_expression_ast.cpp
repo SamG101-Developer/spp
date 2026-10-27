@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
@@ -17,11 +18,8 @@ import spp.asts.ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_deref_ast;
-import spp.asts.postfix_expression_operator_early_return_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_index_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
-import spp.asts.postfix_expression_operator_slice_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -37,9 +35,19 @@ PostfixExpressionAst::PostfixExpressionAst(
   Op(std::move(op)) {
   //
   Source.CachedInference = nullptr;
+  if (Op != nullptr) { Op->Lhs = Lhs.get(); }
 }
 
 PostfixExpressionAst::~PostfixExpressionAst() = default;
+
+auto PostfixExpressionAst::NewOverAnalysedLhs(
+  decltype(Lhs) &&lhs, decltype(Op) &&op) -> Unique<PostfixExpressionAst> {
+  // The lhs is a clone of an analysed operand, so it carries its
+  // analysis; analysing it again would open its scopes twice.
+  auto out = MakeUnique<PostfixExpressionAst>(std::move(lhs), std::move(op));
+  out->_LhsAnalysed = true;
+  return out;
+}
 
 auto PostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
@@ -53,9 +61,11 @@ auto PostfixExpressionAst::PosEnd() const -> std::size_t {
 
 auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<PostfixExpressionAst>(
+  auto ast = MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
     AstClone(Op));
+  ast->_LhsAnalysed = _LhsAnalysed;
+  return ast;
 }
 
 auto PostfixExpressionAst::ToString() const -> Str {
@@ -70,12 +80,14 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   //
   IMPORT_UTILS;
 
-  if (Op->To<PostfixExpressionOperatorEarlyReturnAst>() != nullptr) {
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->PostfixExpressionLhs = Lhs.get();
-      Op->Stage7_AnalyseSemantics(sm, meta);
-    }
+  // An operator that rebuilds its operand ("?" into a "case")
+  // get a copy of it as written, and owns every analysis of
+  // it.
+  if (Op->RebuildsOperand()) {
+    const auto _meta_guard = MetaGuard(meta);
+    Op->Lhs = Lhs.get();
+    Op->WrittenOperand = AstClone(Lhs);
+    Op->Stage7_AnalyseSemantics(sm, meta);
     return;
   }
 
@@ -84,7 +96,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->ReturnTypeOverloadResolverType = nullptr;
     if (Lhs->To<TypeAst>() != nullptr) {
-      auto temp_lhs = Shared<TypeAst>(Lhs.release()->ToUnchecked<TypeAst>());
+      auto temp_lhs = Shared<TypeAst>(Lhs.release()->As<TypeAst>());
       temp_lhs = type_resolution::AnalyseWrittenType(*temp_lhs, *sm, *meta);
       Lhs = AstClone(temp_lhs); // Todo: std::move here once shared pointers are removed
     }
@@ -98,16 +110,16 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
       // Standard analysis of the lhs (which is not a type), and
       // checking that the lhs is a valid form of primary expression.
-      Lhs->Stage7_AnalyseSemantics(sm, meta);
-      RaiseIf<SppInvalidPrimaryExpressionError>(
-        not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm, {.AllowTypeAst = true}),
-        ERR_ARGS(*Lhs.get()));
+      if (not _LhsAnalysed) {
+        Lhs->Stage7_AnalyseSemantics(sm, meta);
+        common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
+      }
     }
   }
 
   // Re-attach the meta info, as it is targeting the lhs.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   Op->Stage7_AnalyseSemantics(sm, meta);
 
   // Use the hook to record information for the resolution and
@@ -129,33 +141,13 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   //
   IMPORT_UTILS;
 
-  // A method call's receiver is checked as its "self" argument,
-  // so the lhs ("obj.m") is not also checked as a use of its
-  // own.
-  if (const auto func = Op->To<PostfixExpressionOperatorFunctionCallAst>();
-    func != nullptr and func->HasReceiver()) {
+  // An operator that walks its operand itself checks it there: a
+  // method call (or "x[i]", "x.await", "x.res()", which map to
+  // one) as its "self" argument, rather than as a use of its own
+  // here, and a "?" through the "case" it was rebuilt into.
+  if (Op->WalksOperand()) {
     const auto _meta_guard = MetaGuard(meta);
-    meta->PostfixExpressionLhs = Lhs.get();
-    Op->Stage8_CheckMemory(sm, meta);
-    return;
-  }
-
-  if (const auto early_ret = Op->To<PostfixExpressionOperatorEarlyReturnAst>();
-    early_ret != nullptr) {
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->PostfixExpressionLhs = Lhs.get();
-      Op->Stage8_CheckMemory(sm, meta);
-    }
-    return;
-  }
-
-  // Index and slice operators desugar to borrow-based method calls (index_ref/mut, slice_ref/mut). Route memory
-  // checking through their mapped function like a normal method call, rather than treating the identifier lhs as a
-  // moved value here (which the desugared "&self"/"&mut self" call handles correctly).
-  if (
-    Op->To<PostfixExpressionOperatorIndexAst>() != nullptr or
-    Op->To<PostfixExpressionOperatorSliceAst>() != nullptr) {
+    Op->Lhs = Lhs.get();
     Op->Stage8_CheckMemory(sm, meta);
     return;
   }
@@ -165,10 +157,11 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   // "index_ref" coroutine) belongs to that temporary, not to the assignment target, so clear the target while the lhs
   // is checked - otherwise the target is recorded as containing a borrow it never receives, and nothing ever releases
   // it.
-  const auto saved_assignment_target = meta->AssignmentTarget;
-  if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
-  if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
-  meta->AssignmentTarget = saved_assignment_target;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    if (Op->To<PostfixExpressionOperatorDerefAst>() != nullptr) { meta->AssignmentTarget = nullptr; }
+    if (Lhs != nullptr) { Lhs->Stage8_CheckMemory(sm, meta); }
+  }
 
   // An attribute read off a linear temporary takes that attribute and leaves the rest with no owner, unless the
   // attribute is the one owned part there is ("mk().a" on a value whose other parts are all "Copy").
@@ -193,32 +186,32 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   }
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   if (Lhs->To<IdentifierAst>() != nullptr) {
     // Validate the receiver is usable (not moved-out / inconsistent) before applying the operator, but do not treat
     // it as a move: accessing a member/deref/etc reads or borrows the receiver, it never consumes it.
     mem_utils::ValidateSymbolMemory(
-      *meta->PostfixExpressionLhs, *Op, *sm, meta,
+      *Lhs, *Op, *sm, meta,
       {.CheckMove = false, .CheckPartialMove = false, .CheckMoveFromBorrowedCtx = false, .MarkMoves = false});
   }
   Op->Stage8_CheckMemory(sm, meta);
-}
-
-auto PostfixExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward into the operator AST.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
-  Op->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   const auto ret_val = Op->Stage11_CodeGen(sm, meta, ctx);
   return ret_val;
+}
+
+auto PostfixExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward into the operator AST.
+  const auto _meta_guard = MetaGuard(meta);
+  Op->Lhs = Lhs.get();
+  Op->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionAst::InferType(
@@ -228,7 +221,7 @@ auto PostfixExpressionAst::InferType(
 
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   auto x = Op->InferType(sm, meta);
   return x;
 }
@@ -236,7 +229,7 @@ auto PostfixExpressionAst::InferType(
 auto PostfixExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   const auto _meta_guard = MetaGuard(meta);
-  meta->PostfixExpressionLhs = Lhs.get();
+  Op->Lhs = Lhs.get();
   return Op->InferTypeRef(sm, meta);
 }
 
@@ -252,7 +245,7 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
 }
 
 auto PostfixExpressionAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
   // and the operator carries whatever a call, an index or

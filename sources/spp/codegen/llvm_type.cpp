@@ -30,6 +30,7 @@ import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ice;
+import spp.utils.numbers;
 import spp.utils.types;
 import genex;
 import llvm;
@@ -47,17 +48,6 @@ namespace spp::codegen {
       -> void {
       target.LlvmType = source.LlvmType;
       target.FieldIndexMap = source.FieldIndexMap;
-    }
-
-    auto GetFloatIntrinsic(const std::size_t bit_width) -> llvm::fltSemantics const& {
-      switch (bit_width) {
-        case 8: { return llvm::APFloatBase::IEEEhalf(); }
-        case 16: { return llvm::APFloatBase::IEEEhalf(); }
-        case 32: { return llvm::APFloatBase::IEEEsingle(); }
-        case 64: { return llvm::APFloatBase::IEEEdouble(); }
-        case 128: { return llvm::APFloatBase::IEEEquad(); }
-        default: Ice(std::format("no float semantics for a {}-bit float", bit_width));
-      }
     }
 
     /**
@@ -150,12 +140,22 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower S++ "F[8|16|32|64|128]" to the llvm "f[8|16|32|64|128]" type.
+  // Lower S++ "F8" (FP8 E4M3) to its bits, an llvm "i8": llvm has
+  // no 8-bit float type. It is converted by "fpext" and "fptrunc"
+  // ("EmitF8Decode", "EmitF8Encode"), and has no arithmetic.
+  if (is(*F8)) {
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getInt8Ty(*ctx->Context);
+    return;
+  }
+
+  // Lower S++ "F[16|32|64|128]" to the llvm float of its format
+  // ("utils::numbers::FloatSemantics").
   if (is(*SIZED_FLOAT)) {
     const auto bit_width = U64Of(scope->LinkedTypeSymbol->CompArgId("w"));
     if (not bit_width.has_value()) { return; }
     const auto w = static_cast<unsigned>(*bit_width);
-    cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(*ctx->Context, GetFloatIntrinsic(w));
+    cls_sym->LlvmInfo->LlvmType = llvm::Type::getFloatingPointTy(
+      *ctx->Context, spp::utils::numbers::FloatSemantics(std::format("f{}", w)));
     return;
   }
 

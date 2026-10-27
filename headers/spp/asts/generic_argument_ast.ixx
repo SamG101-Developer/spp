@@ -14,6 +14,7 @@ use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 
@@ -36,6 +37,16 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   /// type can be represented at compile time. Null for a type
   /// argument.
   Shared<ExpressionAst> CompVal;
+
+  /// The type of the comp parameter this argument binds, when it is known before analysis and has a type of its own
+  /// ("comp_generics::ExpectCompParamTypes", "OverloadSolver::ExpectedCompArgTypes"): the value's target, as a "let"
+  /// type is its value's, so "[Some(val=1), None]" is an "[Opt[U64]; 2_uz]". Null otherwise.
+  Shared<analyse::scopes::TypeRef> ExpectedCompType;
+
+  /// Analyse "value" as this argument's comp value is analysed: as an expression of its own, nothing the enclosing one
+  /// set up applying to it, against "ExpectedCompType". For the value itself, a copy of it, or one named after its
+  /// parameter ("generic_inference::NamedGnArgs").
+  auto AnalyseCompExpr(ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> void;
 
   static auto NewType(Shared<TypeAst> name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
 
@@ -92,10 +103,12 @@ private:
 
   /// Analyse a comp value: one that folds is checked against its
   /// type's bounds and not analysed further, anything else is
-  /// analysed (an operator expression on a copy), and every comp
+  /// analysed (an operator expression on a copy) against its
+  /// parameter's type ("ExpectedCompType"), and every comp
   /// generic it names records the parameter it means
   /// here.
   auto AnalyseCompVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
 
   /// Whether the comp value itself is what stage 7 analysed
   /// ("AnalyseCompVal"): not one that folds (never analysed), nor

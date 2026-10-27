@@ -27,8 +27,6 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
-import spp.asts.object_initializer_argument_group_ast;
-import spp.asts.object_initializer_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -104,9 +102,13 @@ auto TypeIdentifierAst::PosStart() const -> std::size_t {
 }
 
 auto TypeIdentifierAst::PosEnd() const -> std::size_t {
-  // Use the final generic argument or name.
+  // Use the "]" of the generic arguments written after the name,
+  // else the name. Arguments the compiler filled in have no "]"
+  // of their own, or one that is not after this name.
   if (_HasSourceSpan) { return _SpanEnd; }
-  return _Pos + Name.length();
+  const auto name_end = _Pos + Name.length();
+  const auto tok_r = GnArgGroup != nullptr ? GnArgGroup->TokR.get() : nullptr;
+  return tok_r != nullptr and tok_r->PosStart() >= name_end ? tok_r->PosEnd() : name_end;
 }
 
 auto TypeIdentifierAst::Clone() const -> Unique<Ast> {
@@ -229,7 +231,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     ERR_ARGS(NotYetSupportedFeature::NestedTypeBeforeSupScopes, *scope->LinkedTypeSymbol->Name, *this));
 
   const auto type_sym = member_lookup::FindTypeSymbolOrError(
-    *scope, *WithoutGns()->ToUnchecked<TypeIdentifierAst>());
+    *scope, *WithoutGns()->As<TypeIdentifierAst>());
 
   // Use the hook to record information for the resolution and
   // completion plugin.
@@ -252,26 +254,17 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // "use".
   if (not type_sym->IsGn()) { _StampedTemplateId = NameTypeIdOf(*type_sym->InstanceTemplate()); }
 
-  if (_IsSourceWritten and meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
-    and type_sym->ScopeDefinedIn != nullptr
-    and type_sym->Name->Name == Name) {
-    // A type declared in a "sup" block is a member of the type
-    // that block is over, so it follows the type-level rule
-    // like the block's attributes and methods do. Anything else
-    // is a module member.
-    // Todo: TIDY
-    const auto def_node = type_sym->ScopeDefinedIn->AstNode;
-    const auto in_sup_block = def_node != nullptr and (
-      AstAs<SupPrototypeFunctionsAst>(def_node) != nullptr or AstAs<SupPrototypeExtensionAst>(def_node) != nullptr);
-    const auto owner_sym = in_sup_block
-      ? type_sym->ScopeDefinedIn->FindHeadSymbol(*AstName(def_node))
-      : nullptr;
+  // Which owner's modules can name an ffi package is known from the start, unlike visibility.
+  if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
+    visibility_utils::CheckFfiPackageOwner(*type_sym, *type_sym->ScopeDefinedIn, *this, *sm, *meta);
+  }
 
-    if (owner_sym != nullptr and owner_sym->LinkedScope != nullptr) {
-      visibility_utils::CheckTypeTypeVisibility(*type_sym, *this, *owner_sym->LinkedScope->NonGnScope, *sm, *meta);
-    }
-    else {
-      visibility_utils::CheckModuleTypeVisibility(*type_sym, *this, *type_sym->ScopeDefinedIn, *sm, *meta);
+  // Visibility is on a class's symbol from stage 5, so a name read before then (a signature's or an attribute's type)
+  // is checked once every module has finished it. A generic parameter has none of its own: it is its argument.
+  if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
+    if (meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics) { _CheckVisibility(*type_sym, sm, meta); }
+    else if (not meta->IgnoreAccessModifierViolations and not type_sym->IsGn()) {
+      _PendingVisibility.push_back({.Written = AstClone(this), .Sym = type_sym, .From = sm->CurrentScope});
     }
   }
 
@@ -290,7 +283,8 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
       and not own_params_alias;
 
     // Name all the generic arguments.
-    GnArgGroup = generic_inference::NamedGnArgs(*GnArgGroup, *gn_param_group, *this, *sm, *meta, is_tuple);
+    GnArgGroup = generic_inference::NamedGnArgs(
+      *GnArgGroup, *gn_param_group, type_sym->LinkedScope, *this, *sm, *meta, is_tuple);
 
     // Analyse the generic arguments. Naming an abstract type as
     // one ("B[A]") produces no value of it; an instantiation that
@@ -414,13 +408,6 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   _HasAnalysed = true;
   _Resolved = true;
   _CachedStringification.clear();
-}
-
-auto TypeIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // These are always "zero_type", so return init.
-  const auto mock_init = MakeUnique<ObjectInitializerAst>(AstClone(this), nullptr);
-  return mock_init->Stage11_CodeGen(sm, meta, ctx);
 }
 
 auto TypeIdentifierAst::IsNeverType() const noexcept -> bool {
@@ -580,6 +567,47 @@ auto TypeIdentifierAst::TypePartsInto(
 auto TypeIdentifierAst::InferFromAttributes(
   Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> &&equations) -> void {
   _AttributeEquations = std::move(equations);
+}
+
+auto TypeIdentifierAst::_CheckVisibility(
+  TypeSymbol const &type_sym, ScopeManager *sm, CompilerMetaData *meta) const
+  -> void {
+  IMPORT_UTILS;
+
+  // A type declared in a "sup" block is a member of the type
+  // that block is over, so it follows the type-level rule
+  // like the block's attributes and methods do. Anything else
+  // is a module member.
+  const auto def_node = type_sym.ScopeDefinedIn->AstNode;
+  const auto in_sup_block = def_node != nullptr and (
+    AstAs<SupPrototypeFunctionsAst>(def_node) != nullptr or AstAs<SupPrototypeExtensionAst>(def_node) != nullptr);
+  const auto owner_sym = in_sup_block
+    ? type_sym.ScopeDefinedIn->FindHeadSymbol(*AstName(def_node))
+    : nullptr;
+
+  if (owner_sym != nullptr and owner_sym->LinkedScope != nullptr) {
+    visibility_utils::CheckTypeTypeVisibility(type_sym, *this, *owner_sym->LinkedScope->NonGnScope, *sm, *meta);
+  }
+  else {
+    visibility_utils::CheckModuleTypeVisibility(type_sym, *this, *type_sym.ScopeDefinedIn, *sm, *meta);
+  }
+}
+
+auto TypeIdentifierAst::CheckPendingVisibility(
+  ScopeManager *sm)
+  -> void {
+  auto pending = std::move(_PendingVisibility);
+  _PendingVisibility.clear();
+  for (auto const &[written, sym, from] : pending) {
+    auto tm = sm->NewManagerAt(from);
+    auto meta = CompilerMetaData();
+    meta.CurrentStage = CompilerStage::kPreAnalyseSemantics;
+    written->_CheckVisibility(*sym, &tm, &meta);
+  }
+}
+
+auto TypeIdentifierAst::ClearPendingVisibility() -> void {
+  _PendingVisibility.clear();
 }
 
 SPP_MOD_END

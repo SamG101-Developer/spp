@@ -94,3 +94,42 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret y
     }
 )");
+
+// Members differing only by a float or bool comp argument are ordered by value, so either written order is one type.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantMemberOrder,
+    test_valid_members_differing_by_a_float_or_bool_comp_argument, R"(
+    cls A[cmp x: F64] { }
+    cls C[cmp b: Bool] { }
+    fun f(v: A[2.5_f64] or A[1.5_f64]) -> Void { std::mem::ops::drop(v) }
+    fun h(v: C[true] or C[false]) -> Void { std::mem::ops::drop(v) }
+    fun g() -> Void {
+        let a: A[1.5_f64] or A[2.5_f64] = A[1.5_f64]()
+        f(a)
+        let c: C[false] or C[true] = C[true]()
+        h(c)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestVariantMemberOrder,
+    test_valid_members_differing_by_a_comp_operation, R"(
+    cls A[cmp n: USize] { }
+    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
+    fun g() -> Void {
+        let a: A[2_uz] or A[3_uz] = A[2_uz]()
+        f[1_uz](a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    TestVariantMemberOrder,
+    test_invalid_members_differing_by_a_comp_operation_wrong_binding,
+    SppFunctionCallNoValidSignaturesError, R"(
+    cls A[cmp n: USize] { }
+    fun f[cmp n: USize](v: A[n + 2_uz] or A[n + 1_uz]) -> Void { std::mem::ops::drop(v) }
+    fun g() -> Void {
+        let a: A[2_uz] or A[3_uz] = A[2_uz]()
+        f[2_uz](a)
+    }
+)");

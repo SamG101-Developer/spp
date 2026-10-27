@@ -621,3 +621,141 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         std::mem::ops::drop(y)
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_an_async_expression, R"(
+    fun h() -> Str { ret Str::from("x") }
+    fun g() -> Void {
+        let s = (async h()).await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_a_block, R"(
+    fun h() -> Str { ret Str::from("x") }
+    fun g() -> Void {
+        let s = { async h() }.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_await_on_an_early_return, R"(
+    fun g(o: Opt[std::future::Fut[Str]]) -> Opt[Str] {
+        let s = o?.await
+        ret Some(val=s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_with_an_early_return_in_an_argument, R"(
+    fun h(x: U64) -> U64 { ret x }
+    fun g(o: Opt[U64]) -> Opt[U64] {
+        let fut = async h(o?)
+        let v = fut.await
+        ret Some(val=v)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_call_of_a_computed_callable, R"(
+    fun inc(n: S32) -> S32 { ret n + 1 }
+    fun pick() -> FunRef[(S32,), S32] { ret inc }
+    fun g() -> Void {
+        let f = async (pick())(1)
+        std::mem::ops::drop(f)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_two_borrowed_arguments, R"(
+    fun f(a: &StrView, b: &StrView) -> Str { ret Str::from(a) }
+    fun g() -> Void {
+        let x = Str::from("hello")
+        let y = Str::from("world")
+        let future = async f(&x, &y)
+        let s = future.await
+        std::mem::ops::drop(s)
+        std::mem::ops::drop(x)
+        std::mem::ops::drop(y)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_consuming_method_on_a_temporary, R"(
+    cls A { }
+    sup A {
+        !public
+        fun consume(self) -> Str {
+            std::mem::ops::drop(self)
+            ret Str::from("hello")
+        }
+    }
+    fun make() -> A { ret A() }
+    fun g() -> Void {
+        let future = async make().consume()
+        let s = future.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_consuming_method_on_an_attribute, R"(
+    cls A { }
+    sup A {
+        !public
+        fun consume(self) -> Str {
+            std::mem::ops::drop(self)
+            ret Str::from("hello")
+        }
+    }
+    cls B { !public a: A }
+    fun g() -> Void {
+        let b = B(a=A())
+        let future = async b.a.consume()
+        let s = future.await
+        std::mem::ops::drop(s)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_valid_async_static_constant_as_argument_and_receiver, R"(
+    cls C { }
+    sup C ext Copy { }
+    sup C {
+        !public
+        fun eat(self) -> S32 { ret 1 }
+    }
+    cls M { }
+    sup M {
+        !public cmp c: C = C()
+    }
+    fun f(a: &C) -> S32 { ret 2 }
+    fun g() -> Void {
+        let f1 = async f(&M::c)
+        let x = f1.await
+        let f2 = async M::c.eat()
+        let y = f2.await
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestUnaryExpressionOperatorAsyncAst,
+  test_invalid_direct_await_method_call,
+  SppAccessViolationError, R"(
+    fun f() -> U64 { ret 1_u64 }
+    fun g() -> Void {
+        let future = async f()
+        let x = future.await_()
+    }
+)");

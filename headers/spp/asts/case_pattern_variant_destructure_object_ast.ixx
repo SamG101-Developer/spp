@@ -47,18 +47,13 @@ SPP_EXP_CLS struct spp::asts::CasePatternVariantDestructureObjectAst final : Cas
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  /// What type this object destructure is narrowing the condition
-  /// too. For example, This ast could be matching "Some" when the
-  /// condition is "Opt".
-  SPP_ATTR_NODISCARD auto NarrowsTo() const -> TypeAst const* override;
-
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto ConvToVar(CompilerMetaData *meta) -> Unique<LocalVariableAst> override;
 

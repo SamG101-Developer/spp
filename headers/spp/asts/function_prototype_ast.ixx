@@ -67,8 +67,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   AnnotationAst *TestAnnotation;
 
   /// Optional "!always_inline", "!inline" or "!noinline"
-  /// annotation, controlling whether the function is inlined.
-  Pair<AnnotationAst*, Str> InlineAnnotation;
+  /// annotation, controlling whether the function is inlined
+  /// (which, its "Builtin").
+  AnnotationAst *InlineAnnotation;
 
   /// All annotations applied to this prototype, including the
   /// access modifiers, "!virtual_method", "!abstract_method"
@@ -154,8 +155,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   /// The linkage name an "!ffi" function is declared under:
@@ -163,9 +162,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// name the shared library actually exports. An ffi function
   /// is never mangled the S++ way, because the definition it
   /// binds to was compiled by something else entirely
-  /// (effectively: extern "C"). Empty if this is not an ffi
-  /// function.
-  SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Str;
+  /// (effectively: extern "C"). None if this is not an ffi
+  /// function, or its annotation names no symbol.
+  SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Opt<Str>;
 
   SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
 
@@ -270,6 +269,15 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// at its own scope.
   auto AnalysePendingGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
+  /// Analyse this prototype ahead of the stage 7 walk, if the walk has not reached it yet: a comp-time fold run in
+  /// stage 7 ("[x; f()]", "A[f()]") resolves the callee's body, which only holds what stage 7 desugars ("1 + 2" as
+  /// "1.add(2)") once it has been analysed. The prototype is walked from its own position in the scope tree, with
+  /// metadata of its own, so its scopes are built where the walk would build them, and the walk skips it on reaching
+  /// it. One still being analysed (a body folding a call to itself) cannot be resolved, so "site" is raised as
+  /// non-constant.
+  auto AnalyseAhead(
+    Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void;
+
   static auto AnalysePendingDefaults(ScopeManager *sm) -> void;
   static auto ClearPendingDefaults() -> void;
 
@@ -323,6 +331,14 @@ protected:
   GenericSubstitution *_OwnGnSubstitution = nullptr;
 
   FunctionPrototypeAst *_NonGnImpl;
+
+  /// How far stage 7 has got with this prototype; an instantiation is analysed on its own clone, so it is not copied.
+  enum class _Stage7Progress { kPending, kAnalysing, kAnalysedAhead, kDone } _Stage7 = _Stage7Progress::kPending;
+
+  /// Step the walk over this prototype's scopes when "AnalyseAhead" has already analysed it, returning whether it
+  /// did. The start of each subclass's stage 7.
+  auto _SkipIfAnalysedAhead(
+    ScopeManager *sm) -> bool;
 
   /// The LLVM generated function for this prototype. This is
   /// set during the first pass of code generation, and used

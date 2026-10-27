@@ -174,14 +174,6 @@ auto ModuleImplementationAst::Stage8_CheckMemory(
   }
 }
 
-auto ModuleImplementationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Shift to members, and return nullptr as this value is never used.
-  for (auto const &member : Members) {
-    RunMember(member.get(), sm, [&](auto *m) { m->Stage9_CompTimeResolve(sm, meta); });
-  }
-}
-
 auto ModuleImplementationAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to members.

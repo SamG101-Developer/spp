@@ -63,3 +63,63 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         let o = c(1)
     }
 )");
+
+// With no written return type, a closure's "ret"s (and its body's own value, when it can finish) agree on one type as a
+// "case"'s branches do ("type_join::TypeJoin"): the widest variant among them, in either order.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_valid_inferred_rets_agree_on_the_widest_variant, R"(
+    fun f(n: Opt[S32]) -> Void {
+        let c = (b: Bool, m: Opt[S32]) {
+            case b of {
+                == true { ret Some(val=1) }
+                else { ret m }
+            }
+        }
+        let o: Opt[S32] = c(true, n)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_invalid_inferred_rets_of_unrelated_types,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        let c = (b: Bool) {
+            case b of {
+                == true { ret 1 }
+                else { ret false }
+            }
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_invalid_inferred_ret_and_body_value_of_unrelated_types,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        let c = (b: Bool) {
+            case b of {
+                == true { ret 1 }
+                else { }
+            }
+            false
+        }
+    }
+)");
+
+// A "?" returns a bare "Fail[E]" ("Res::op_as_residual"), which only a written return type widens: inferred, it is the
+// closure's type, and the success path's value ("Void" here) does not fit it.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ClosureExpressionReturnTypeAst,
+  test_invalid_inferred_early_return_needs_a_declared_type,
+  SppTypeMismatchError, R"(
+    cls E { }
+
+    fun g() -> std::result::Res[Void, E] { ret std::result::Pass[Void]() }
+
+    fun f() -> Void {
+        let c = () g()?
+    }
+)");

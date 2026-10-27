@@ -11,6 +11,7 @@ siblings, so nothing is indented and namespaces holding nothing are dropped enti
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import NamedTuple
 
 from docutils import nodes
@@ -59,7 +60,7 @@ class Group(NamedTuple):
 
 def _collect(desc: addnodes.desc, prefix: list[str]) -> list[Group]:
     """Walk a namespace tree, returning one group per namespace that actually contains something."""
-    qualified = prefix + [_name(desc)]
+    qualified = [*prefix, _name(desc)]
     content = _content(desc)
 
     # Each entity is preceded by its own index node. Those are collected as they are passed and attached to whatever
@@ -128,11 +129,11 @@ def flatten(app: Sphinx, doctree: nodes.document) -> None:
         parent[index : index + 1] = replacement
 
 
-def _ancestors(node: nodes.Node):
-    node = node.parent
-    while node is not None:
-        yield node
-        node = node.parent
+def _ancestors(node: nodes.Node) -> Iterator[nodes.Element]:
+    parent = node.parent
+    while parent is not None:
+        yield parent
+        parent = parent.parent
 
 
 def setup(app: Sphinx) -> dict[str, object]:

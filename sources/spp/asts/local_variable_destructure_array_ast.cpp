@@ -107,13 +107,6 @@ auto LocalVariableDestructureArrayAst::Stage8_CheckMemory(
     *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
-auto LocalVariableDestructureArrayAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Use shared helper.
-  IMPORT_UTILS;
-  destructure_utils::DestructureStage9(_NewAsts, _TmpName, nullptr, *sm, meta);
-}
-
 auto LocalVariableDestructureArrayAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once,
@@ -131,6 +124,14 @@ auto LocalVariableDestructureArrayAst::Stage11_CodeGen(
   // Generate the "let" statements for each element.
   for (auto const &ast : _NewAsts) { ast->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;
+}
+
+auto LocalVariableDestructureArrayAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Use shared helper.
+  IMPORT_UTILS;
+  destructure_utils::DestructureEvaluateCompTime(
+    _NewAsts, _TmpName, nullptr, *sm, meta);
 }
 
 auto LocalVariableDestructureArrayAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {

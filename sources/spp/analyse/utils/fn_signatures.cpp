@@ -1,6 +1,3 @@
-module;
-#include <spp/analyse/macros.hpp>
-
 module spp.analyse.utils.fn_signatures;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -12,6 +9,7 @@ import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_compare;
 import spp.asts.ast;
 import spp.asts.convention_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_required_ast;
 import spp.asts.function_parameter_self_ast;
@@ -124,7 +122,7 @@ namespace spp::analyse::utils::fn_signatures {
         if (own_b[i]->IsTypeParam()) {
           auto const *const a_param = scope_a.FindTypeSymbol(own_a[i]->Name.get());
           if (a_param == nullptr) { continue; }
-          bind_b(b_param(*own_b[i]->Name->ToUnchecked<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param));
+          bind_b(b_param(*own_b[i]->Name->As<TypeIdentifierAst>()), scope_a.TypeIdOfSymbol(*a_param));
           continue;
         }
         auto const *const b_var = scope_b.FindVarSymbol(IdentifierAst::FromType(*own_b[i]->Name).get());
@@ -220,7 +218,7 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
 
   // Check for an overload conflict with all functions
   // of the same name.
-  for (auto const &[old_scope, old_fn, _, _] : existing) {
+  for (auto const &[old_scope, old_fn, _1, _2] : existing) {
     // Ignore the same object. A method it overrides on a base
     // class is not among them: "GetAllFnScopes" applies overrides.
     if (old_fn == &new_fn) { continue; }
@@ -377,7 +375,7 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverride(
 
   // Check for an overload conflict with all functions
   // of the same name.
-  for (auto const &[old_scope, old_fn, _, _] : existing) {
+  for (auto const &[old_scope, old_fn, _1, _2] : existing) {
     // Ignore if the method is the same object.
     if (old_fn == &new_fn) { continue; }
 

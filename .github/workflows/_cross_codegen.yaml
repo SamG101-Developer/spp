@@ -1,86 +1,70 @@
-# Prove the compiler can emit for a target that is not the
-# one it is running on. This is code generation only: the
-# object is emitted and inspected, never linked or executed.
-# Linking a foreign object needs a cross linker and a cross-
-# built sppc runtime, and the runtime a project ships is a
-# host binary, so there is nothing to link against.
-
+# The cross-codegen lane: an all-targets build, then proof the
+# compiler can emit for a target that is not the one it is
+# running on. Every target's object is inspected; a target with
+# a "qemu" arch is also linked and run, and musl ("run-in") in
+# Alpine; those also run the standard library's unit tests
+# there.
 
 name: cross-codegen
 
 on:
-  workflow_call:
-    inputs:
-      os:
-        description: "Runner image to emit from; the host, which is deliberately none of the targets."
-        required: false
-        type: string
-        default: "ubuntu-24.04"
+  workflow_call: { }
 
 permissions: { }
 
 jobs:
+  # Every backend linked in, for the emits below.
   build:
-    name: build
-    runs-on: ${{ inputs.os }}
-    timeout-minutes: 90
+    name: Build
     permissions:
       contents: read
-    outputs:
-      artifact: ${{ steps.compile.outputs.artifact }}
-      spp-sha256: ${{ steps.compile.outputs.spp-sha256 }}
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
-        with:
-          egress-policy: audit
-
-      # Full history: restore-mtimes walks it to date the sources
-      # for the incremental build.
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # SPP_ALL_TARGETS links every backend, which `--target` needs;
-      # its own variant keeps the tree apart.
-      - name: Build
-        id: compile
-        uses: ./.github/actions/compile
-        with:
-          os: ${{ inputs.os }}
-          compiler: gcc
-          variant: all-targets
-          build-type: Release
-          cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
-          stage: true
+    uses: ./.github/workflows/_build.yaml
+    with:
+      variant: all-targets
+      cmake-flags: "-DSPP_ALL_TARGETS=ON -DSPP_BUILD_TESTS=OFF"
 
   emit:
-    name: emit ${{ matrix.target.triple }}
+    name: Emit ${{ matrix.target.triple }}
     needs: [ build ]
-    runs-on: ${{ inputs.os }}
-    timeout-minutes: 30
+    runs-on: ${{ needs.build.outputs.os }}
+    timeout-minutes: 90
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         target:
-          - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32" }
-          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub" }
-          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub" }
-          - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32" }
-          - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e" }
+          - { triple: "i686-unknown-linux-gnu", arch: "Intel (80386|i386)", layout: "p:32:32", off: "cfi", qemu: "i386", sysroot: "i686-linux-gnu" }
+          - { triple: "s390x-unknown-linux-gnu", arch: "IBM S/390", layout: "E-S64-m:e", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "s390x", sysroot: "s390x-linux-gnu" }
+          - { triple: "riscv64-unknown-linux-gnu", arch: "RISC-V", layout: "p:64:64", off: "sls scrub cfi jump_table_bounds", qemu: "riscv64", sysroot: "riscv64-linux-gnu" }
+          - { triple: "aarch64-unknown-linux-gnu", arch: "ARM aarch64", layout: "i8:8:32", qemu: "aarch64", sysroot: "aarch64-linux-gnu" }
+          - { triple: "x86_64-unknown-linux-musl", arch: "x86-64", layout: "e-m:e", run-in: "alpine" }
+          - { triple: "x86_64-unknown-linux-gnux32", arch: "32-bit LSB.*x86-64", layout: "p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64" }
+          - { triple: "aarch64_be-unknown-linux-gnu", arch: "64-bit MSB.*ARM aarch64", layout: "E-m:e", qemu: "aarch64_be", sysroot: "aarch64_be-linux-gnu", toolchain: "arm-gnu" }
+          - { triple: "armv7-unknown-linux-gnueabihf", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds", qemu: "arm", sysroot: "arm-linux-gnueabihf" }
+          - { triple: "arm-unknown-linux-gnueabi", arch: "32-bit LSB.*ARM, EABI5", layout: "e-m:e-p:32:32-Fi8", off: "sls scrub cfi jump_table_bounds", qemu: "arm", sysroot: "arm-linux-gnueabi" }
+          - { triple: "powerpc64le-unknown-linux-gnu", arch: "64-bit LSB.*PowerPC", layout: "e-m:e-Fn32-i64:64", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc64le", sysroot: "powerpc64le-linux-gnu" }
+          - { triple: "powerpc64-unknown-linux-gnu", arch: "64-bit MSB.*PowerPC", layout: "E-m:e-Fi64", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc64", sysroot: "powerpc64-linux-gnu" }
+          - { triple: "powerpc-unknown-linux-gnu", arch: "32-bit MSB.*PowerPC", layout: "E-m:e-p:32:32", off: "sls scrub cfi jump_table_bounds memory.stack.split", qemu: "ppc", sysroot: "powerpc-linux-gnu" }
+          - { triple: "mips-unknown-linux-gnu", arch: "32-bit MSB.*MIPS", layout: "E-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds", qemu: "mips", sysroot: "mips-linux-gnu" }
+          - { triple: "mipsel-unknown-linux-gnu", arch: "32-bit LSB.*MIPS", layout: "e-m:m-p:32:32", off: "sls scrub cfi jump_table_bounds", qemu: "mipsel", sysroot: "mipsel-linux-gnu" }
+          - { triple: "mips64el-unknown-linux-gnuabi64", arch: "64-bit LSB.*MIPS", layout: "e-m:e-i8:8:32", off: "sls scrub cfi jump_table_bounds", qemu: "mips64el", sysroot: "mips64el-linux-gnuabi64" }
+          - { triple: "sparc64-unknown-linux-gnu", arch: "64-bit MSB.*SPARC V9", layout: "E-m:e-i64:64", off: "sls scrub cfi jump_table_bounds" }
+          - { triple: "loongarch64-unknown-linux-gnu", arch: "64-bit LSB.*LoongArch", layout: "e-m:e-p:64:64", off: "sls scrub cfi jump_table_bounds", qemu: "loongarch64", sysroot: "loongarch64-linux-gnu", toolchain: "gcc-14-loongarch64-linux-gnu" }
+          - { triple: "m68k-unknown-linux-gnu", arch: "32-bit MSB.*m68k", layout: "i32:16:32", off: "sls scrub cfi jump_table_bounds ffi_unwind_guard", qemu: "m68k", sysroot: "m68k-linux-gnu" }
+          - { triple: "x86_64-pc-windows-gnu", arch: "(x86-64|amd64) COFF", layout: "e-m:w" }
+          - { triple: "wasm32-unknown-wasip1", arch: "WebAssembly", layout: "p:32:32-p10:8:8", off: "sls scrub cfi jump_table_bounds memory.stack.split" }
+          - { triple: "x86_64-unknown-freebsd", arch: "64-bit LSB.*x86-64.*FreeBSD", layout: "e-m:e" }
+          - { triple: "x86_64-apple-darwin", arch: "Mach-O 64-bit x86_64", layout: "e-m:o" }
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
-          disable-sudo: true
+          disable-sudo: ${{ !matrix.target.qemu }}
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -93,9 +77,23 @@ jobs:
           artifact: ${{ needs.build.outputs.artifact }}
           spp-sha256: ${{ needs.build.outputs.spp-sha256 }}
 
+      # "toolchain" is the gcc package, where it is not gcc-<sysroot>, or "arm-gnu" for Arm's own release.
+      - name: Install cross gcc
+        if: matrix.target.qemu
+        run: bash .github/scripts/setup/install-cross-gcc-linux.sh '${{ matrix.target.sysroot }}' '${{ matrix.target.toolchain }}'
+
+      - name: Install qemu
+        if: matrix.target.qemu
+        run: bash .github/scripts/setup/install-qemu-linux.sh
+
+      - name: Install the Alpine musl linker
+        if: matrix.target.run-in == 'alpine'
+        run: bash .github/scripts/setup/install-alpine-musl-linux.sh
+
       # Emit the codegen for a cross-compiled target and check it
-      # is for the correct target. "off" lists the [binary.codegen]
-      # keys the target has no backend support for.
+      # is for the correct target. "off" lists the hardening keys
+      # the target has no backend support for: [binary.codegen]'s
+      # bare, another section's dotted.
       - name: Emit and check ${{ matrix.target.triple }}
         id: emit
         run: >-
@@ -104,11 +102,31 @@ jobs:
           '${{ matrix.target.arch }}'
           '${{ matrix.target.layout }}'
           '${{ matrix.target.off }}'
+          '${{ matrix.target.qemu }}'
+          '${{ matrix.target.sysroot }}'
+          '${{ matrix.target.run-in }}'
+
+      # The C calling convention for "!ffi" struct parameters, which
+      # needs the all-targets build only this lane has; run once.
+      - name: Check the C ABI of ffi declarations
+        if: matrix.target.triple == 'powerpc-unknown-linux-gnu'
+        run: bash tests/codegen/run.sh build/spp c-abi
+
+      # The standard library's unit tests, built for the target and
+      # run under what ran its program above.
+      - name: Unit tests on ${{ matrix.target.triple }}
+        if: matrix.target.qemu || matrix.target.run-in
+        run: >-
+          bash .github/scripts/test/cross-unit-tests.sh
+          '${{ matrix.target.triple }}'
+          '${{ matrix.target.qemu }}'
+          '${{ matrix.target.sysroot }}'
+          '${{ matrix.target.run-in }}'
 
       # Upload the emitted IR on failure, so it can be inspected.
       - name: Upload emitted IR on failure
         if: failure() && steps.emit.outputs.ir != ''
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cross-ir-${{ matrix.target.triple }}
           path: ${{ steps.emit.outputs.ir }}

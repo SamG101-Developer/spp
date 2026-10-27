@@ -4,12 +4,14 @@
 # shellcheck shell=bash
 
 # macOS ships shasum and no sha256sum. Also used on its own, to
-# hand a built binary's digest from one job to the next.
+# hand a built binary's digest from one job to the next. Hashes
+# stdin: a backslash in the path (Windows RUNNER_TEMP) makes
+# sha256sum escape the name and prefix the digest with "\".
 sha256_of() {
   if command -v sha256sum > /dev/null 2>&1; then
-    sha256sum "$1" | cut -d ' ' -f 1
+    sha256sum < "$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 "$1" | cut -d ' ' -f 1
+    shasum -a 256 < "$1" | cut -d ' ' -f 1
   fi
 }
 
@@ -49,11 +51,13 @@ verified_install_bin() {
   mkdir -p "$bin"
   verified_fetch "$url" "$download" "$want"
   if [ -n "$member" ]; then
-    tar -xzf "$download" -C "$bin" "$member"
+    # On stdin: GNU tar reads Windows' "D:\..." as a remote "host:path".
+    tar -xzf - -C "$bin" "$member" < "$download"
     [ "$member" = "$name" ] || mv "${bin}/${member}" "${bin}/${name}"
   else
     mv "$download" "${bin}/${name}"
   fi
   chmod +x "${bin}/${name}"
-  echo "$bin" >> "$GITHUB_PATH"
+  # GITHUB_PATH is read by every shell, so Windows wants C:\... rather than Git Bash's /c/....
+  if [ "${RUNNER_OS:-}" = "Windows" ]; then cygpath -w "$bin"; else echo "$bin"; fi >> "$GITHUB_PATH"
 }

@@ -27,8 +27,9 @@ auto CompilerMetaData::ResetContext() -> void {
   InCompTimeValue = false;
   EnclosingFnScope = nullptr;
   EnclosingFnFlavour = nullptr;
-  EnclosingFnRetType = {};
-  EnclosingFnSourceRetType = {};
+  EnclosingFnRetType = nullptr;
+  EnclosingFnSourceRetType = nullptr;
+  ClosureRetJoin = nullptr;
   EnclosingFnCmp = nullptr;
   OverriddenScopeForClosure = nullptr;
   CurrentLambdaOuterScope = nullptr;
@@ -39,10 +40,7 @@ auto CompilerMetaData::ResetContext() -> void {
   LetStatementPrecomputedValue = nullptr;
   LoopCurrentDepth = 0;
   LoopCurrentAst = nullptr;
-  LoopReturnTypes = MakeShared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>>();
-  ObjectInitType = nullptr;
-  PostfixExpressionLhs = nullptr;
-  UnaryExpressionRhs = nullptr;
+  LoopJoins.clear();
   SkipTypeAnalysisGnChecks = false;
   TypeAnalysisTypeScope = nullptr;
   AllowMoveDeref = false;
@@ -59,11 +57,32 @@ auto CompilerMetaData::ResetContext() -> void {
   ParameterDefaultScope = nullptr;
 }
 
-auto CompilerMetaData::Save() -> void {
+auto CompTimeCallArgs::Swap(
+  CompTimeCallArgs &other)
+  -> void {
+  FnArgs.swap(other.FnArgs);
+  GnTypeArgs.swap(other.GnTypeArgs);
+  GnCompArgs.swap(other.GnCompArgs);
+  GnCompValues.swap(other.GnCompValues);
+}
+
+auto CompTimeCallArgs::Clear() -> void {
+  FnArgs.clear();
+  GnTypeArgs.clear();
+  GnCompArgs.clear();
+  GnCompValues.clear();
+}
+
+auto CompilerMetaData::ClearAssignmentTarget() -> void {
+  AssignmentTarget = nullptr;
+  AssignmentTargetType = nullptr;
+}
+
+auto CompilerMetaData::Save(const bool heavy) -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
-  // storage persists across cycles. `CompTimeArgs` is moved (the guarded scope rebuilds it); `CompTimeResult` is not
-  // tracked.
+  // storage persists across cycles. `CompTimeCall` is moved out (each guard starts with none); `CompTimeResult` is not
+  // tracked. The function context is only taken for a heavy guard, the one restore that puts it back.
   if (_Depth == _History.size()) { _History.emplace_back(); }
   auto &s = _History[_Depth];
   ++_Depth;
@@ -80,11 +99,14 @@ auto CompilerMetaData::Save() -> void {
   s.InCompTimeValue = InCompTimeValue;
   s.WithinDeferTok = WithinDeferTok;
   s.OverriddenScopeForClosure = OverriddenScopeForClosure;
-  s.EnclosingFnScope = EnclosingFnScope;
-  s.EnclosingFnFlavour = EnclosingFnFlavour;
-  s.EnclosingFnRetType = EnclosingFnRetType;
-  s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
-  s.EnclosingFnCmp = EnclosingFnCmp;
+  if (heavy) {
+    s.EnclosingFnScope = EnclosingFnScope;
+    s.EnclosingFnFlavour = EnclosingFnFlavour;
+    s.EnclosingFnRetType = EnclosingFnRetType;
+    s.EnclosingFnSourceRetType = EnclosingFnSourceRetType;
+    s.ClosureRetJoin = ClosureRetJoin;
+    s.EnclosingFnCmp = EnclosingFnCmp;
+  }
   s.CurrentLambdaOuterScope = CurrentLambdaOuterScope;
   s.TargetCall = TargetCall;
   s.LetStatementExplicitType = LetStatementExplicitType;
@@ -93,10 +115,7 @@ auto CompilerMetaData::Save() -> void {
   s.LetStatementPrecomputedValue = LetStatementPrecomputedValue;
   s.LoopCurrentDepth = LoopCurrentDepth;
   s.LoopCurrentAst = LoopCurrentAst;
-  s.LoopReturnTypes = LoopReturnTypes;
-  s.ObjectInitType = ObjectInitType;
-  s.PostfixExpressionLhs = PostfixExpressionLhs;
-  s.UnaryExpressionRhs = UnaryExpressionRhs;
+  s.LoopJoins = LoopJoins;
   s.SkipTypeAnalysisGnChecks = SkipTypeAnalysisGnChecks;
   s.TypeAnalysisTypeScope = TypeAnalysisTypeScope;
   s.AllowMoveDeref = AllowMoveDeref;
@@ -110,12 +129,8 @@ auto CompilerMetaData::Save() -> void {
   // this one's buffers, leaving both sides to allocate again next cycle - which is exactly what the pool is meant to
   // avoid. Swapping hands the slot the live contents and hands this side the slot's dead ones, and clearing those
   // frees the same objects at the same point a move-assignment would have, keeping the allocation on both sides.
-  CompTimeArgs.swap(s.CompTimeArgs);
-  CompTimeArgs.clear();
-  CompTimeGnTypeArgs.swap(s.CompTimeGnTypeArgs);
-  CompTimeGnTypeArgs.clear();
-  CompTimeGnCompArgs.swap(s.CompTimeGnCompArgs);
-  CompTimeGnCompArgs.clear();
+  CompTimeCall.Swap(s.CompTimeCall);
+  CompTimeCall.Clear();
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
@@ -147,6 +162,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
     EnclosingFnFlavour = state.EnclosingFnFlavour;
     EnclosingFnRetType = std::move(state.EnclosingFnRetType);
     EnclosingFnSourceRetType = std::move(state.EnclosingFnSourceRetType);
+    ClosureRetJoin = state.ClosureRetJoin;
     EnclosingFnCmp = state.EnclosingFnCmp;
   }
   OverriddenScopeForClosure = state.OverriddenScopeForClosure;
@@ -158,10 +174,7 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LetStatementPrecomputedValue = state.LetStatementPrecomputedValue;
   LoopCurrentDepth = state.LoopCurrentDepth;
   LoopCurrentAst = state.LoopCurrentAst;
-  LoopReturnTypes = std::move(state.LoopReturnTypes);
-  ObjectInitType = std::move(state.ObjectInitType);
-  PostfixExpressionLhs = state.PostfixExpressionLhs;
-  UnaryExpressionRhs = state.UnaryExpressionRhs;
+  LoopJoins = std::move(state.LoopJoins);
   SkipTypeAnalysisGnChecks = state.SkipTypeAnalysisGnChecks;
   TypeAnalysisTypeScope = state.TypeAnalysisTypeScope;
   AllowMoveDeref = state.AllowMoveDeref;
@@ -171,12 +184,8 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmCaseCondition = state.LlvmCaseCondition;
   LlvmPhi = state.LlvmPhi;
   LlvmLoopStack = std::move(state.LlvmLoopStack);
-  CompTimeArgs.swap(state.CompTimeArgs);
-  state.CompTimeArgs.clear();
-  CompTimeGnTypeArgs.swap(state.CompTimeGnTypeArgs);
-  state.CompTimeGnTypeArgs.clear();
-  CompTimeGnCompArgs.swap(state.CompTimeGnCompArgs);
-  state.CompTimeGnCompArgs.clear();
+  CompTimeCall.Swap(state.CompTimeCall);
+  state.CompTimeCall.Clear();
   // Note: CompTimeResult deliberately omitted here, allowing to pass back up.
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
@@ -187,18 +196,12 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
-auto CompilerMetaData::Depth() const
-  -> std::size_t {
-  // Get the number of live history items.
-  return _Depth;
-}
-
 MetaGuard::MetaGuard(
   CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
   _Heavy(heavy) {
-  _Meta->Save();
+  _Meta->Save(_Heavy);
 }
 
 MetaGuard::~MetaGuard() {

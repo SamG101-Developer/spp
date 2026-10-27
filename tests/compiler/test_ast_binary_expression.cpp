@@ -251,6 +251,26 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  BinaryExpressionAst,
+  test_valid_binary_lhs_folding_over_a_call, R"(
+    use std::bignum::bigint::BigInt
+    fun g() -> (BigInt, BigInt, BigInt) { ret (BigInt::from(1), BigInt::from(2), BigInt::from(3)) }
+    fun f() -> Void {
+        let a = .. + g()
+        std::mem::ops::drop(a)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  BinaryExpressionAst,
+  test_valid_binary_rhs_folding_over_a_call, R"(
+    fun g() -> (S32, S32, S32) { ret (1, 2, 3) }
+    fun f() -> Void {
+        let b = g() * ..
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   BinaryExpressionAst,
   test_invalid_binary_non_tuple_lhs_folding,

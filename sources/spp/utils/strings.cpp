@@ -61,13 +61,15 @@ auto spp::utils::strings::IsAlNum(const char c) -> bool {
 
 auto spp::utils::strings::ClosestMatch(
   const StrView query, Vec<Str> const &choices) -> Opt<Str> {
+  constexpr auto kMinScore = 0.5;
   auto match_found = false;
   auto best_score = 0.0;
   auto best_match = Str();
 
   for (auto const &choice : choices) {
+    if (choice.starts_with('$')) { continue; }
     const auto score = SimilarityRatio(query, choice);
-    if (score > best_score) {
+    if (score >= kMinScore and score > best_score) {
       best_score = score;
       best_match = choice;
       match_found = true;

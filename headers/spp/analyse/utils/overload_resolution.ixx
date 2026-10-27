@@ -19,6 +19,7 @@ use(spp::asts, struct FunctionParameterAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
+use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::overload_resolution {
@@ -115,11 +116,6 @@ namespace spp::analyse::utils::overload_resolution {
     /// The left-hand side as written ("f", "x.m", "T::m", "ns::f").
     ExpressionAst *Written = nullptr;
 
-    /// What its overloads are looked up by: "Written", or a module
-    /// constant's qualified name, kept alive by "Qualified".
-    ExpressionAst const *Callee = nullptr;
-    Shared<ExpressionAst> Qualified;
-
     /// The type owning the function ("x"'s type, "T"), the scope
     /// its overloads are found in, and its name.
     Shared<TypeAst> OwnerType;
@@ -131,8 +127,14 @@ namespace spp::analyse::utils::overload_resolution {
     /// a module-level "f()" has nothing.
     TypeAst const *CalledOn = nullptr;
 
+    /// For a method called on a value ("obj.method()"), its member
+    /// access (".method") and the value it is called on ("obj", the
+    /// receiver); nullptr for every other call.
+    PostfixExpressionOperatorRuntimeMemberAccessAst const *MemberAccess = nullptr;
+    ExpressionAst *Receiver = nullptr;
+
     /// Whether it is a method called on a value ("obj.method()").
-    bool IsMethod = false;
+    SPP_ATTR_NODISCARD auto IsMethod() const -> bool { return MemberAccess != nullptr; }
   };
 
   /// The overloads a call could resolve to: the named function's,
@@ -216,6 +218,13 @@ public:
   /// only on its return type, is resolved against it, like
   /// "h(g())".
   SPP_ATTR_NODISCARD auto ExpectedArgTypes() const -> Vec<Shared<TypeRef>>;
+
+  /// For each generic argument of the call, the type every
+  /// candidate's comp parameter has there, or null (and null for
+  /// a type argument):
+  /// the comp twin of "ExpectedArgTypes", read before the generic
+  /// arguments are analysed, which are analysed against it.
+  SPP_ATTR_NODISCARD auto ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>>;
 
   /// Check each candidate against the analysed arguments, and
   /// choose the one the call makes: generic inference, type

@@ -49,8 +49,6 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterGroupAst final : Ast {
 
   SPP_ATTR_NODISCARD auto GetSelfParam() const -> FunctionParameterSelfAst*;
 
-  SPP_ATTR_NODISCARD auto GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*>;
-
   SPP_ATTR_NODISCARD auto GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*>;
 
   SPP_ATTR_NODISCARD auto GetVariadicParam() const -> FunctionParameterVariadicAst*;

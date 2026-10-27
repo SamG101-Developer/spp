@@ -28,3 +28,16 @@ scratch_project() {
   fi
   echo "project: ${root}"
 }
+
+# Switch spp.toml keys off in the current project: a bare key is
+# in [binary.codegen]; another section's is dotted
+# ("memory.stack.split").
+features_off() {
+  local key section
+  local -A sections=()
+  for key in $1; do
+    [[ $key == *.* ]] || key="binary.codegen.${key}"
+    sections[${key%.*}]+="${key##*.} = false\n"
+  done
+  for section in "${!sections[@]}"; do printf '\n[%s]\n%b' "$section" "${sections[$section]}" >> spp.toml; done
+}

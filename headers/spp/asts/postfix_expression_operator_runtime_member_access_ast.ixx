@@ -14,6 +14,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst final : PostfixExpressionOperatorAst {
@@ -28,6 +30,7 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
 
   struct {
     Ast *OriginalExpr; // Original asts mapped into member accesses - (try? op for example)
+    bool Lowered; // Built by a lowering (".res()", ".await") to call a method the user cannot: no visibility check
   } Source;
 
   explicit PostfixExpressionOperatorRuntimeMemberAccessAst(
@@ -38,13 +41,16 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst fi
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
@@ -66,4 +72,15 @@ private:
   /// a "FwdRef" / "FwdMut" superimposition. When set, inference
   /// and code generation both defer to it.
   Shared<PostfixExpressionAst> _MappedFwd;
+
+  /// For a named member (not a forwarded one, nor ".0"): the type
+  /// owning it, as the left-hand side's type, and the member as
+  /// "." reaches it ("_Resolve"). Not cloned: a copy resolves for
+  /// itself.
+  TypeSymbol *_Owner = nullptr;
+  VariableSymbol *_Member = nullptr;
+
+  /// The named member, looked up once: Stage 7 sets it in its own
+  /// scope, and anything asking before then resolves it here.
+  auto _Resolve(ScopeManager *sm, CompilerMetaData *meta) -> VariableSymbol*;
 };

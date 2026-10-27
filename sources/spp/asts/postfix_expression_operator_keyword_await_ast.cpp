@@ -84,11 +84,11 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   // Check the lhs is an owned future. This is the only type
   // that can be "awaited" on; its type is only spelled out
   // for the error.
-  const auto lhs_ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+  const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
   if (lhs_ref.KindSymbol() == nullptr
     or not lhs_ref.IsA(*FUT, *sm->CurrentScope)) {
-    const auto lhs_type = meta->PostfixExpressionLhs->InferType(sm, meta);
-    Raise<SppAwaitTargetNotFutureError>(ERR_ARGS(*TokAwait, *meta->PostfixExpressionLhs, *lhs_type));
+    const auto lhs_type = Lhs->InferType(sm, meta);
+    Raise<SppAwaitTargetNotFutureError>(ERR_ARGS(*TokAwait, *Lhs, *lhs_type));
   }
 
   // Map to the private "await_" method, so the wait
@@ -97,8 +97,9 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   auto name = MakeUnique<IdentifierAst>(PosStart(), "await_");
   auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
     nullptr, std::move(name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(
-    AstClone(meta->PostfixExpressionLhs), std::move(field));
+  field->Source.Lowered = true;
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    AstClone(Lhs), std::move(field));
 
   // Convert the "await_" field into a function call by
   // applying the "()"; there are no arguments that this
@@ -109,11 +110,8 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
     nullptr, std::move(arg_group), nullptr);
   func_call->Source.OriginalExpr = this;
 
-  // Analyse the function call to the "await_" method,
-  // temporarily ignoring access modifiers because that
-  // method is private.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->IgnoreAccessModifierViolations = true;
+  // Analyse the function call to the private "await_"
+  // method, which the lowered access may call.
   _MappedFn = MakeUnique<PostfixExpressionAst>(
     std::move(member_access), std::move(func_call));
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
@@ -130,7 +128,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   const auto handle_sym =
     handle != nullptr and type_predicates::IsTypeGenerator(InferTypeRef(sm, meta), *sm->CurrentScope)
     ? mem_utils::AssignmentTargetSymbol(*sm->CurrentScope, *meta) : nullptr;
-  if (const auto lhs = meta->PostfixExpressionLhs->To<IdentifierAst>(); lhs != nullptr) {
+  if (const auto lhs = Lhs->To<IdentifierAst>(); lhs != nullptr) {
     if (const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*lhs).first; sym != nullptr) {
       auto &loans = memory_state::LoansOf(*sm->CurrentScope);
       if (handle_sym != nullptr) {
@@ -142,9 +140,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
 
   // Call the memory check on the mapped function. The borrows
   // are managed beforehand to stay uniform with standard mem
-  // analysis rules, where async needs a bypass (sneaky hack).
-  const auto _meta_guard = MetaGuard(meta);
-  meta->IgnoreAccessModifierViolations = true;
+  // analysis rules.
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
@@ -168,7 +164,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
-  analyse::scopes::ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Nothing inside the operator is an expression, so there is
   // nothing to substitute into.
   return MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(
@@ -178,6 +174,11 @@ auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
 auto PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const -> bool {
   // Waits on a future the way a call waits on its callee,
   // so nothing leaves the code it is in.
+  return true;
+}
+
+auto PostfixExpressionOperatorKeywordAwaitAst::WalksOperand() const -> bool {
+  // Checked through "await_", over the operand.
   return true;
 }
 

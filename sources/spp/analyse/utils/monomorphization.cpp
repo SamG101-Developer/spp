@@ -14,6 +14,7 @@ import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.aliases;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.packs;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_attachment;
@@ -35,6 +36,7 @@ import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.identifier_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.tuple_literal_ast;
@@ -294,7 +296,8 @@ namespace spp::analyse::utils::monomorphization {
     auto BindingTypeName(
       scopes::TypeIdArg const &arg)
       -> Shared<TypeIdentifierAst> {
-      const auto by_param = arg.Named and arg.Slot != 0;
+      SPP_ASSERT(arg.Named);
+      const auto by_param = arg.Slot != 0;
       if (by_param) {
         if (auto const *const param = scopes::FindGnTypeParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
@@ -309,7 +312,8 @@ namespace spp::analyse::utils::monomorphization {
     auto BindingCompName(
       scopes::TypeIdArg const &arg)
       -> Shared<IdentifierAst> {
-      if (arg.Named and arg.Slot != 0) {
+      SPP_ASSERT(arg.Named);
+      if (arg.Slot != 0) {
         if (auto const *const param = scopes::FindGnCompParamById(arg.Slot); param != nullptr) { return param->Name; }
       }
       return MakeShared<IdentifierAst>(0, scopes::ArgNameOf(arg));
@@ -459,6 +463,7 @@ namespace spp::analyse::utils::monomorphization {
       // "2_uz"), and a bound comp generic it names read as what it is bound to where it was keyed ("SizedInteger[w]" in
       // a "[cmp w: U32]" instance binds 32).
       auto bound = sm.CurrentScope->CompAstOf(value);
+      if (bound == nullptr) { Ice(*name, *sm.CurrentScope, "a comp argument's value has no expression to spell it"); }
 
       auto const *const declared = param != nullptr ? param->Type.get() : nullptr;
       const auto declared_id = declared != nullptr ? sm.CurrentScope->TypeIdOf(*declared) : nullptr;
@@ -731,7 +736,7 @@ namespace spp::analyse::utils::monomorphization {
 
       // For variants, check their members too, adding the found
       // size into the accumulation.
-      for (const auto member : head.Members) {
+      for (const auto member : head.VariantMembers) {
         if (size >= cap) { break; }
         size += SpelledSizeOf(member, cap, memo);
       }
@@ -912,6 +917,23 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   meta::CompilerMetaData *meta) -> TypeSymbol* {
   // Made already under that identity: nothing to make.
   if (const auto made = sm->CurrentScope->FindTypeSymbolById(args_id); made != nullptr) { return made; }
+
+  // An alias whose target is one of its own parameters ("type
+  // Id[T] = T") has no class behind it to copy: an instantiation
+  // of it is its target under the arguments ("Id[Bool]" is "Bool").
+  // Not a workaround, just a bit of a messy way it has to be done.
+  if (old_cls_sym->Alias != nullptr) {
+    const auto written = old_cls_sym->AliasTargetId(nullptr);
+    if (written != nullptr and scopes::HeadOf(written).Kind == scopes::TypeKey::Tag::TypeParam) {
+      const auto target = aliases::InstanceTargetIdOf(*old_cls_sym, args_id);
+      const auto spelled = target != nullptr ? sm->CurrentScope->TypeAstOf(target) : nullptr;
+      if (spelled == nullptr) {
+        Ice(*old_cls_sym->Name, *sm->CurrentScope, "an instance of a generic alias has no target");
+      }
+      spelled->Stage7_AnalyseSemantics(sm, meta);
+      return sm->CurrentScope->FindTypeSymbol(spelled.get());
+    }
+  }
 
   // 0. Stamp the arguments with what they mean where they are
   // written, before anything below copies them.
@@ -1293,9 +1315,8 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     new_fn_proto->ReturnType->Stage7_AnalyseSemantics(&tm, meta);
 
     // Check the new return type isn't a borrow type.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      IsTypeBorrowed(*new_fn_proto->ReturnType, tm),
-      ERR_ARGS(*new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type"));
+    common_errors::RequireNotBorrowed(
+      *new_fn_proto->ReturnType, *new_fn_proto->ReturnType, "substituted function return type", tm);
 
     const auto is_concrete = ComputeIsConcrete(id, *new_fn_proto, instance_self.get(), tm, meta);
 

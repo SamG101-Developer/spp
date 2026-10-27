@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.overload_resolution;
@@ -26,6 +27,7 @@ import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.string_literal_ast;
+import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
@@ -42,7 +44,6 @@ namespace spp::analyse::utils::drop_utils {
     auto FindDropOverloadInfo(
       TypeSymbol const &type_sym, ScopeManager &sm,
       CompilerMetaData *meta) -> FnOverload {
-      using generate::common_types_precompiled::DROP;
 
       // The "none" mini-constructor for the function overload
       // type, setting every field to nullptr.
@@ -73,7 +74,7 @@ namespace spp::analyse::utils::drop_utils {
       const auto superimposes_drop = genex::any_of(
         type_sym.LinkedScope->GetSupScopes(), [&](auto const *sup_scope) {
           if (sup_scope->LinkedTypeSymbol == nullptr) { return false; }
-          return TypeRef::ForKindCheck(*sup_scope).IsA(*DROP, *sup_scope);
+          return marker_sups::IsDropMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope);
         });
       if (not superimposes_drop) { return none(); }
 
@@ -151,7 +152,7 @@ auto spp::analyse::utils::drop_utils::EndsArgument(
   // Only a value given as it is can be ended, not a borrow of one.
   if (arg.Conv != nullptr) { return false; }
   if (auto const *const builtin = proto.BuiltinAnnotation; builtin != nullptr) {
-    const auto name = builtin->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    const auto name = builtin->FnArgGroup->At("name")->Val->As<StringLiteralAst>()->CppVal();
     if (name == "std.mem.ops.drop") { return true; }
   }
   if (not is_receiver) { return false; }

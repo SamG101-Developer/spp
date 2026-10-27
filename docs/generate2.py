@@ -50,7 +50,7 @@ class DocumentGenerator:
         while True:
             package = self._format_module_or_package(directory)
             self.module_map.setdefault(package, set()).add(child)
-            if directory.parent == Path("."):
+            if directory.parent == Path():
                 return
             child, directory = package, directory.parent
 
@@ -62,7 +62,7 @@ class DocumentGenerator:
         entries: list[str],
         maxdepth: int = 1,
     ) -> None:
-        with open(path, "w", encoding="utf-8") as f:
+        with path.open("w", encoding="utf-8") as f:
             f.write(f"{title}\n")
             f.write(underline * len(title) + "\n\n")
             f.write(".. toctree::\n")
@@ -99,7 +99,7 @@ class DocumentGenerator:
             # breathe resolves doxygenfile against the path doxygen recorded, which STRIP_FROM_PATH reduces to a path
             # relative to headers/ (eg "spp/asts/ast.ixx").
             file_path = module.replace(".", "/") + suffix
-            with open(self.api_dir / f"{module}.rst", "w", encoding="utf-8") as f:
+            with (self.api_dir / f"{module}.rst").open("w", encoding="utf-8") as f:
                 f.write(f"{module}\n")
                 f.write("-" * len(module) + "\n\n")
                 f.write(f".. doxygenfile:: {file_path}\n")

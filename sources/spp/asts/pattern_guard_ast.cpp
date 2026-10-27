@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -62,9 +63,7 @@ auto PatternGuardAst::Stage7_AnalyseSemantics(
 
   // Check the expression in the pattern guard.
   Expr->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Expr, *sm),
-    ERR_ARGS(*Expr.get()));
+  common_errors::RequirePrimary(*Expr, *sm);
 
   // Check the guard's type is boolean.
   if (not type_predicates::IsTypeBool(Expr->InferTypeRef(sm, meta), *sm->CurrentScope)) {
@@ -101,16 +100,16 @@ auto PatternGuardAst::Stage8_CheckMemory(
   }
 }
 
-auto PatternGuardAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Resolve the expression at compile-time.
-  Expr->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PatternGuardAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PatternGuardAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Resolve the expression at compile-time.
+  Expr->EvaluateCompTime(sm, meta);
 }
 
 SPP_MOD_END

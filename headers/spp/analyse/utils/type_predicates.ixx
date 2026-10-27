@@ -79,6 +79,12 @@ namespace spp::analyse::utils::type_predicates {
   /// bare.
   SPP_EXP_FUN auto IsTypeConcrete(TypeAst const &type, Scope const &scope) -> bool;
 
+  /// Whether a sized-integer type is a signed one. Not a question its name can answer: "U8" is an alias for
+  /// "SizedIntegerUnsigned[8]", itself for "SizedInteger[8, false]", so once resolved every width of both
+  /// signednesses is called "SizedInteger" (reading the first letter made "max_val[U8]()" 127). It is the type's own
+  /// "signed" comp argument; a type without one (not an integer) is not signed.
+  SPP_EXP_FUN auto IsTypeSignedInteger(TypeAst const &type, Scope const &scope) -> bool;
+
   /// "IsTypeConcrete" on a resolved type: its identity is concrete
   /// ("IsConcreteTypeId"), and it is not a bare template.
   SPP_EXP_FUN auto IsTypeConcrete(TypeRef const &ref) -> bool;

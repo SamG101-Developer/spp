@@ -10,8 +10,10 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.sup_blocks;
 import spp.analyse.utils.type_members;
@@ -164,8 +166,6 @@ auto SupPrototypeExtensionAst::Stage1_PreProcess(
 
   // Preprocess the implementation.
   Impl->Stage1_PreProcess(this);
-
-  // Todo: some sort of check that prevents something like "sup [T] T ext Borrow[T]", because this is infinite generation
 }
 
 auto SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
@@ -213,9 +213,7 @@ auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
 auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  IMPORT_UTILS; // Todo: Also prevent FwdRef/FwdMut? and prevent these 3 on generic ext too.
-  using generate::common_types_precompiled::COPY;
-  using generate::common_types_precompiled::DROP;
+  IMPORT_UTILS;
 
   // Move into the superimposition scope.
   sm->MoveToNextScope();
@@ -236,9 +234,8 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   // Analyse the supertype after Self has been added
   // (allows use in generic arguments to the superclass).
   SuperCls->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*SuperCls, *sm),
-    ERR_ARGS(*this, *SuperCls, "superimposition supertype"));
+  common_errors::RequireNotBorrowed(
+    *SuperCls, *this, "superimposition supertype", *sm);
 
   // Check the supertype is not generic.
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
@@ -248,12 +245,16 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
 
   // A marker is restricted to the package declaring the type:
   // "Copy" and "Drop" decide how every value of that type is
-  // handled, so one superimposed from outside would silently
+  // handled, and "FwdRef" / "FwdMut" which methods a call on it
+  // finds, so one superimposed from outside would silently
   // change the analysis of code that cannot see it - including
   // the package's own, which is analysed as if it were absent.
   if (not Name->IsCompilerGeneratedType()) {
     const auto super_kind = TypeRef::ForKindCheck(*SuperCls, *sm->CurrentScope);
-    const auto is_marker = super_kind.IsA(*COPY, *sm->CurrentScope) or super_kind.IsA(*DROP, *sm->CurrentScope);
+    auto const &scope = *sm->CurrentScope;
+    const auto is_marker = marker_sups::IsCopyMarker(super_kind, scope)
+      or marker_sups::IsDropMarker(super_kind, scope)
+      or marker_sups::IsFwdMarker(super_kind, scope);
 
     // A blanket "sup [T] T ext Copy" names a generic parameter
     // rather than a type, so no package declares what it marks,
@@ -277,7 +278,6 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
-  using generate::common_types_precompiled::COPY;
 
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -311,7 +311,7 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   // Mark the class as copyable if the "Copy" type is the supertype (that its attributes are all copyable is checked
   // in stage 7).
   for (const auto sup_scope : sup_scopes) {
-    if (TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) {
+    if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope)) {
       sm->CurrentScope->FindHeadSymbol(*Name)->IsDirectlyCopyable = true;
       cls_sym->IsDirectlyCopyable = true;
       break;
@@ -353,14 +353,16 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
       // otherwise the copy duplicates something owned (a "Str"
       // buffer), which is then destroyed twice. An attribute of
       // a generic parameter's type is left to the instantiation.
-      using generate::common_types_precompiled::COPY;
-      if (TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)
+      if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_sym, *sm->CurrentScope), *sm->CurrentScope)
         and cls_sym->LinkedScope != nullptr) {
-        for (auto const *attr : type_members::GetAllAttrAsts(*cls_sym)) {
-          const auto attr_sym = cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
-          RaiseIf<SppGenericConstraintError>(
-            attr_sym != nullptr and not attr_sym->IsGn() and not attr_sym->IsCopyable(),
-            ERR_ARGS(*SuperCls, *attr->Type));
+        // Each attribute's type as its declaring class reads it (an inherited one is the base's); the declaration
+        // is only looked up to point the error at.
+        for (auto const &[attr_name, attr_ref, attr_scope] : type_members::GetAllAttrs(*cls_sym)) {
+          auto const *const attr_sym = attr_ref.Symbol;
+          if (attr_sym == nullptr or attr_sym->IsGn() or attr_sym->IsCopyable()) { continue; }
+          auto const *const attr_ast = type_members::AttrAstOf(*attr_scope, *attr_name);
+          Raise<SppGenericConstraintError>(
+            ERR_ARGS(*SuperCls, attr_ast != nullptr ? static_cast<Ast const&>(*attr_ast->Type) : *SuperCls));
         }
       }
     }
@@ -376,15 +378,6 @@ auto SupPrototypeExtensionAst::Stage8_CheckMemory(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   Impl->Stage8_CheckMemory(sm, meta);
-  sm->MoveOutOfCurrentScope();
-}
-
-auto SupPrototypeExtensionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Move to the next scope.
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  Impl->Stage9_CompTimeResolve(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -478,45 +471,32 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
   }
 }
 
-auto SupPrototypeExtensionAst::CheckCyclicExtension(
-  TypeSymbol const &sup_sym, Scope &check_scope) const -> void {
-  // Prevent cyclic inheritance: this block's super class
-  // already extending its type, at any level.
+auto SupPrototypeExtensionAst::CheckExtensionHierarchy(
+  TypeSymbol const &cls_sym, TypeSymbol const *sup_sym, Scope &check_scope) const -> void {
+  //
   IMPORT_UTILS;
-  const auto cycle = FindMatchingExtension(sup_sym.LinkedScope->GetSupScopes(), *Name, *SuperCls, check_scope, true);
-  // The extension closing the cycle is shown from its own
-  // block, which can be in another file than this one.
-  RaiseIf<SppSuperimpositionCyclicExtensionError>(
-    cycle.second != nullptr,
-    ERR_ARGS(*cycle.second->SuperCls, *SuperCls));
-}
 
-auto SupPrototypeExtensionAst::CheckDoubleExtension(
-  TypeSymbol const &cls_sym, Scope &check_scope) const -> void {
-  // Prevent double inheritance: the same type extended by
-  // the same super class, at this level. A function class's
-  // blocks are generated one per overload, so it is not
-  // checked.
-  IMPORT_UTILS;
-  if (cls_sym.IsMock()) { return; }
+  // Cyclic: the super class already extends this type, at any
+  // level. The extension closing the cycle is shown from its own
+  // block, which can be in another file than this one. A super
+  // class that did not resolve under this instance's arguments
+  // ("Try[.., Value=T]" with "T" bound to "Self", still open) has
+  // nothing to be cyclic with.
+  if (sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
+    const auto cycle = FindMatchingExtension(sup_sym->LinkedScope->GetSupScopes(), *Name, *SuperCls, check_scope, true);
+    RaiseIf<SppSuperimpositionCyclicExtensionError>(
+      cycle.second != nullptr,
+      ERR_ARGS(*cycle.second->SuperCls, *SuperCls));
+  }
+
+  // Double: the same type extended by the same super class, at
+  // this level.
   const auto twin = FindMatchingExtension(cls_sym.LinkedScope->DirectSupScopes, *SuperCls, *Name, check_scope, false);
   if (twin.second != nullptr) {
     Raise<SppSuperimpositionDoubleExtensionError>(ERR_ARGS(*twin.second->SuperCls, *SuperCls));
   }
-}
 
-auto SupPrototypeExtensionAst::CheckSelfExtension(
-  Scope &check_scope) const -> void {
-  //
-  IMPORT_UTILS;
-
-  // Optimization as $Types can never extend themselves, given
-  // that they are compiler generated.
-  // Todo: Apply to cyclic and double extension checks too?
-  if (Name->IsCompilerGeneratedType()) { return; }
-
-  // Check if the superimposition is extending itself: the same
-  // identity, read where both are written.
+  // Self: the same identity, read where both are written.
   const auto name_id = check_scope.TypeIdOf(*Name);
   RaiseIf<SppSuperimpositionSelfExtensionError>(
     name_id != nullptr and name_id == check_scope.TypeIdOf(*SuperCls),

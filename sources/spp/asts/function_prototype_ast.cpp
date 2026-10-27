@@ -1,7 +1,6 @@
 module;
 #include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 #include <spp/codegen/macros.hpp>
 
 module spp.asts.function_prototype_ast;
@@ -13,8 +12,8 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
-import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_signatures;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.memory_state;
@@ -61,6 +60,8 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.codegen.builtins;
+import spp.codegen.llvm_fn;
+import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -113,7 +114,7 @@ FunctionPrototypeAst::FunctionPrototypeAst(
   FfiAnnotation(nullptr),
   BuiltinAnnotation(nullptr),
   TestAnnotation(nullptr),
-  InlineAnnotation({nullptr, ""}),
+  InlineAnnotation(nullptr),
   Annotations(std::move(annotations)),
   TokCmp(std::move(tok_cmp)),
   TokFun(std::move(tok_fun)),
@@ -170,11 +171,29 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> Shared<codegen::LlvmFnWrapper> {
   IMPORT_UTILS;
   // Generate the return and parameter types.
-  using A = annotation_utils::BuiltinAnnotations;
   auto [is_generic, llvm_ret_type, llvm_param_types] = _IsPureGn(
     sm, meta, ctx);
 
   if (not is_generic) {
+    // An ffi function is declared under the symbol its annotation
+    // names, because that is what the shared library exports and
+    // what the linker will resolve against. Everything else gets
+    // the S++ mangled name. It takes its by-value struct
+    // parameters as the target's C calling convention does, which
+    // is not always as their LLVM values ("CAbiParamsOf").
+    const auto ffi_symbol = GetFfiSymbolName();
+    const auto is_signed = [&](TypeAst const &type) {
+      return type_predicates::IsTypeSignedInteger(type, *sm->CurrentScope);
+    };
+    const auto params_signed = FnParamGroup->Params
+      | genex::views::transform([&](auto const &x) { return is_signed(*x->Type); })
+      | genex::to<Vec>();
+    const auto c_abi = ffi_symbol.has_value()
+      ? codegen::CAbiParamsOf(llvm_param_types, params_signed, *ctx->Module)
+      : Vec<codegen::CAbiParam>();
+    auto declared_param_types = llvm_param_types;
+    for (auto i = 0uz; i < c_abi.size(); ++i) { declared_param_types[i] = c_abi[i].Declared; }
+
     // Create the LLVM function type. A "..a: T" parameter is
     // never true C-ABI varargs - the call site ("BindSlots")
     // always collapses the trailing arguments into a single
@@ -182,20 +201,13 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
     const auto llvm_fun_type = llvm::FunctionType::get(
-      llvm_ret_type, llvm_param_types, false);
-
-    // Create the LLVM function and add it to the context. An
-    // ffi function is declared under the symbol its annotation
-    // names, because that is what the shared library exports
-    // and what the linker will resolve against. Everything
-    // else gets the S++ mangled name.
-    const auto ffi_symbol = GetFfiSymbolName();
+      llvm_ret_type, declared_param_types, false);
 
     // Shortcut for ffi functions: only ever one symbol
     // because of the C ABI compatibility. Enforced by the
     // generics ban too.
-    if (not ffi_symbol.empty()) {
-      if (const auto existing = ctx->Module->getFunction(ffi_symbol); existing != nullptr) {
+    if (ffi_symbol.has_value()) {
+      if (const auto existing = ctx->Module->getFunction(*ffi_symbol); existing != nullptr) {
         *_LlvmFn = MakeShared<codegen::LlvmFnWrapper>(existing);
         return *_LlvmFn;
       }
@@ -203,7 +215,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
 
     const auto created_llvm_func = llvm::Function::Create(
       llvm_fun_type, llvm::Function::ExternalLinkage,
-      ffi_symbol.empty() ? codegen::mangle::MangleFnName(*sm->CurrentScope, *this) : ffi_symbol,
+      ffi_symbol.has_value() ? *ffi_symbol : codegen::mangle::MangleFnName(*sm->CurrentScope, *this),
       ctx->Module.get());
     const auto func = MakeShared<codegen::LlvmFnWrapper>(created_llvm_func);
 
@@ -212,17 +224,21 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // function never unwinds; a foreign one may (a C++ library
     // can throw), so it is marked for "ApplyFfiUnwindGuard"
     // to guard its calls rather than claimed not to.
-    if (ffi_symbol.empty()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
-    else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
-    if (InlineAnnotation.first != nullptr) {
-      if (InlineAnnotation.second == A::kLlvmInline) {
-        func->Target->addFnAttr(llvm::Attribute::InlineHint);
+    if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
+    else {
+      func->Target->addFnAttr(codegen::kFfiFnAttr);
+      codegen::CAbiAddParamAttrs(*func->Target, c_abi);
+      if (const auto ext = codegen::CAbiExtendOf(llvm_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
+        func->Target->addRetAttr(ext);
       }
-      else if (InlineAnnotation.second == A::kLlvmAlwaysInline) {
-        func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
-      }
-      else if (InlineAnnotation.second == A::kLlvmNoInline) {
-        func->Target->addFnAttr(llvm::Attribute::NoInline);
+    }
+    if (InlineAnnotation != nullptr) {
+      using A = annotation_utils::BuiltinAnnotation;
+      switch (InlineAnnotation->Builtin) {
+        case A::kLlvmInline: func->Target->addFnAttr(llvm::Attribute::InlineHint); break;
+        case A::kLlvmAlwaysInline: func->Target->addFnAttr(llvm::Attribute::AlwaysInline); break;
+        case A::kLlvmNoInline: func->Target->addFnAttr(llvm::Attribute::NoInline); break;
+        default: break;
       }
     }
 
@@ -450,13 +466,11 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
 
   FnParamGroup->Stage7_AnalyseSemantics(sm, meta);
   ReturnType = type_resolution::AnalyseWrittenType(
-    *ReturnType, *sm, *meta, analyse::utils::type_resolution::SelfPolicy::kKeep);
+    *ReturnType, *sm, *meta, type_resolution::SelfPolicy::kKeep);
 
   // Ensure the function's return type does not have
   // a convention.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*ReturnType, *sm),
-    ERR_ARGS(*ReturnType, *ReturnType, "function return type"));
+  common_errors::RequireNotBorrowed(*ReturnType, *ReturnType, "function return type", *sm);
 
   sm->MoveOutOfCurrentScope();
 }
@@ -529,7 +543,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
 
   // If this is a !compiler_builtin function, swap in the lowered
   // implementation now (stage 6), so that the lowered (comptime)
-  // body is available to any stage 9 call regardless of definition
+  // body is available to any comp-time call regardless of definition
   // order.
   _InstallLoweredImpl(sm);
   sm->MoveOutOfCurrentScope();
@@ -542,7 +556,7 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
   if (BuiltinAnnotation) {
     // The builtin is resolved once, here, and kept on the lowered
     // implementation; every later stage reads it from there.
-    const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->ToUnchecked<StringLiteralAst>()->CppVal();
+    const auto name = BuiltinAnnotation->FnArgGroup->At("name")->Val->As<StringLiteralAst>()->CppVal();
     const auto builtin = codegen::builtins::kBuiltinFuncs.find(name);
     const auto err1 = "compiler_builtin function '" + name + "' is not registered in kBuiltinFuncs";
     if (builtin == codegen::builtins::kBuiltinFuncs.end()) { Ice(*Name, *sm->CurrentScope, err1); }
@@ -575,6 +589,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // Move into the function scope, as it is now ready for
   // semantic analysis.
   sm->MoveToNextScope();
+  _Stage7 = _Stage7Progress::kAnalysing;
 
   for (auto const &a : Annotations) { a->Stage7_AnalyseSemantics(sm, meta); }
 
@@ -618,7 +633,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
 
   // Note: the !compiler_builtin lowered-implementation swap
   // now happens in Stage6_PreAnalyseSemantics, so that the
-  // lowered comptime body is available to dependent stage 9
+  // lowered comptime body is available to dependent comp-time
   // calls regardless of definition order.
 
   // There is no scope exit, as subclasses will call this
@@ -638,7 +653,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   // 7, because the early-exit linearity check needs to know
   // where to stop walking outwards.
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnScope = sm->CurrentScope;
     const auto _flow = memory_state::BodyFlow(*sm->CurrentScope);
     FnParamGroup->Stage8_CheckMemory(sm, meta);
@@ -650,7 +665,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
     // overrides it. There is no body that could have consumed the
     // parameters, so there is nothing to hold to the rule.
     if (BuiltinAnnotation == nullptr and FfiAnnotation == nullptr and AbstractAnnotation == nullptr
-      and not expr_utils::Diverges(*Impl, sm, meta)) {
+      and not Impl->Diverges(sm, meta)) {
       linear_utils::CheckScopeExit(
         *sm->CurrentScope, *Impl, "Function end", *sm, meta);
     }
@@ -664,16 +679,6 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   }
 
   // Move out of the function scope, as it is now complete.
-  sm->MoveOutOfCurrentScope();
-}
-
-auto FunctionPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Manual scope skipping.
-  sm->MoveToNextScope();
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
-  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -757,10 +762,9 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
     sub.Proto->_InstallLoweredImpl(&tm);
 
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     const auto _analysing = AnalysingGnSubstitutionGuard(sub);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
 
     // Same relaxation, and for the same reason, as the one
     // "AnalyseSubstitutedType" applies to the types a substitution
@@ -784,7 +788,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     for (auto const &param : FnParamGroup->Params) {
       for (auto const &name : param->ExtractNames()) {
         if (const auto sym = tm.CurrentScope->FindVarSymbol(name.get()); sym != nullptr) {
-          analyse::utils::memory_state::StateOf(*tm.CurrentScope, *sym).InitializedBy(*param);
+          memory_state::StateOf(*tm.CurrentScope, *sym).InitializedBy(*param);
         }
       }
     }
@@ -792,13 +796,44 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     sub.Proto->FnParamGroup->Stage8_CheckMemory(&tm, meta);
     sub.Proto->Impl->Stage8_CheckMemory(&tm, meta);
     if (sub.Proto->BuiltinAnnotation == nullptr and sub.Proto->FfiAnnotation == nullptr
-      and sub.Proto->AbstractAnnotation == nullptr and not expr_utils::Diverges(*sub.Proto->Impl, &tm, meta)) {
+      and sub.Proto->AbstractAnnotation == nullptr and not sub.Proto->Impl->Diverges(&tm, meta)) {
       linear_utils::CheckScopeExit(
         *tm.CurrentScope, *sub.Proto->Impl, "Function end", tm, meta);
     }
 
     _EnsureDropsForBuiltin(*sub.Proto, tm, meta);
   }
+}
+
+auto FunctionPrototypeAst::AnalyseAhead(
+  Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
+  IMPORT_UTILS;
+  // Analysed already, by the walk or ahead of it.
+  if (_Stage7 == _Stage7Progress::kAnalysedAhead or _Stage7 == _Stage7Progress::kDone) { return; }
+  RaiseIf<SppCompTimeConstantError>(
+    _Stage7 == _Stage7Progress::kAnalysing,
+    ERR_ARGS(site));
+
+  // The prototype's scope is the only child of its mock "sup" block's ("GenericSubstitution::ProtoScope"), so a walk
+  // started there steps straight into it, as the stage 7 walk does. Nothing of the caller's metadata applies here.
+  auto tm = sm->NewManagerAt(_Scope->Parent);
+  auto own_meta = CompilerMetaData();
+  own_meta.CurrentStage = CompilerStage::kAnalyseSemantics;
+  own_meta.IsTestHarness = meta->IsTestHarness;
+  Stage7_AnalyseSemantics(&tm, &own_meta);
+  _Stage7 = _Stage7Progress::kAnalysedAhead;
+}
+
+auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
+  ScopeManager *sm) -> bool {
+  // The scopes "AnalyseAhead" built are where this walk would
+  // have built them, so it only has to step past them.
+  if (_Stage7 != _Stage7Progress::kAnalysedAhead) { return false; }
+  sm->MoveToNextScope();
+  ignore = sm->SkipSubtree(sm->CurrentScope);
+  sm->MoveOutOfCurrentScope();
+  _Stage7 = _Stage7Progress::kDone;
+  return true;
 }
 
 auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
@@ -821,13 +856,17 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   drop_utils::EnsureDropInstantiated(TypeRef::Of(*t_ast, *tm.CurrentScope), tm, meta);
 }
 
-auto FunctionPrototypeAst::GetFfiSymbolName() const -> Str {
-  //
-  if (FfiAnnotation == nullptr) { return ""; }
+auto FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
+  // The "symbol" argument of the "!ffi" annotation, when it is
+  // a non-empty string literal.
+  if (FfiAnnotation == nullptr) { return Nullopt; }
   const auto symbol_arg = FfiAnnotation->FnArgGroup->At("symbol");
-  if (symbol_arg == nullptr) { return ""; }
+  if (symbol_arg == nullptr) { return Nullopt; }
   const auto symbol_literal = symbol_arg->Val->To<StringLiteralAst>();
-  return symbol_literal != nullptr ? symbol_literal->CppVal() : Str();
+  if (symbol_literal == nullptr) { return Nullopt; }
+  auto symbol = symbol_literal->CppVal();
+  if (symbol.empty()) { return Nullopt; }
+  return symbol;
 }
 
 auto FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {

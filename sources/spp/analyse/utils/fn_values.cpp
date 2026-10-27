@@ -167,6 +167,28 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
 auto spp::analyse::utils::fn_values::InstantiateFnValue(
   TypeRef const &value, TypeRef const &target,
   ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+
+  // A tuple or an array holds its function values element by
+  // element, as "codegen::CoerceToSlot" builds them: "(f, 1)"
+  // into "(FunRef[..], S32)" needs "f"'s overload for its first.
+  auto const &scope = *sm->CurrentScope;
+  if (value.Symbol != nullptr and target.Symbol != nullptr and value.Id != target.Id) {
+    if (type_predicates::IsTypeTuple(value, scope) and type_predicates::IsTypeTuple(target, scope)) {
+      const auto value_args = value.Symbol->TypeArgRefs();
+      const auto target_args = target.Symbol->TypeArgRefs();
+      if (value_args.size() == target_args.size()) {
+        for (auto i = 0uz; i < value_args.size(); ++i) {
+          InstantiateFnValue(value_args[i], target_args[i], sm, meta);
+        }
+      }
+      return;
+    }
+    if (type_predicates::IsTypeArray(value, scope) and type_predicates::IsTypeArray(target, scope)) {
+      InstantiateFnValue(value.Symbol->TypeArgRef("T"), target.Symbol->TypeArgRef("T"), sm, meta);
+      return;
+    }
+  }
+
   const auto match = MatchFnValue(value, target, *sm->CurrentScope);
   const auto args_id = match.has_value() ? scopes::ArgsIdOfBindings(match->Bindings, *sm->CurrentScope) : nullptr;
   if (args_id == nullptr) { return; }

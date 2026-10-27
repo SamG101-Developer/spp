@@ -84,52 +84,6 @@ auto InnerScopeAst<T>::ToString() const -> Str {
 }
 
 template <typename T>
-auto InnerScopeAst<T>::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Create a scope for the InnerScopeAst node.
-  IMPORT_UTILS;
-  auto scope_name = ScopeBlockName::FromParts(
-    "inner-scope", {}, PosStart());
-  sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
-  _Scope = sm->CurrentScope;
-
-  // Analyse the members of the inner scope.
-  for (auto const &x : this->Members) { x->Stage7_AnalyseSemantics(sm, meta); }
-
-  // What can be written in this block, for an editor offering
-  // names where nothing is being accessed. Recorded from here,
-  // where the block and its scope are both to hand and both
-  // alive.
-  if (lsp::resolution_index::IsEnabled()) {
-    lsp::resolution_index::RecordScopeOf(*this, *sm);
-  }
-  sm->MoveOutOfCurrentScope();
-}
-
-template <typename T>
-auto InnerScopeAst<T>::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Move into the next scope.
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Check the memory of each member.
-  for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
-
-  // If the final expression of the inner scope is being used
-  // (ie assigned or outer variable), then memory check it.
-  if (const auto move = meta->AssignmentTarget; not Members.empty() and move != nullptr) {
-    if (const auto expr_member = FinalMember()->template To<ExpressionAst>(); expr_member != nullptr) {
-      mem_utils::ValidateSymbolMemory(*expr_member, *move, *sm, meta);
-    }
-  }
-
-  sm->MoveOutOfCurrentScope();
-}
-
-template <typename T>
 auto InnerScopeAst<T>::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Add all the expressions/statements into the current scope.

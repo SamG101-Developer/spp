@@ -6,6 +6,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.substitution;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.monomorphization;
@@ -112,7 +113,22 @@ namespace {
     auto const *const last = type.LastTypePart();
     auto open = scope.FindTypeSymbolById(type.StampedTypeId());
     if (open == nullptr and last != &type) { open = scope.FindTypeSymbolById(last->StampedTypeId()); }
-    return open != nullptr ? MakeOnRead(scope, *open, scope.ReadIn(open->Id)) : nullptr;
+    if (open != nullptr) { return MakeOnRead(scope, *open, scope.ReadIn(open->Id)); }
+
+    // Stamped before a part of it could be read ("A[Self::n]"
+    // stamped while "Self::n" was still the member, keyed now
+    // as "A[4_uz]"), the stamp names nothing, and not what the
+    // type keys to now: that instantiation is made, from its
+    // template. A stamp that reads as the same identity is an
+    // instantiation not made yet, left to whoever makes it.
+    using namespace spp::analyse::scopes;
+    const auto id = scope.TypeIdOf(type);
+    if (not IsClosedTypeId(id) or HeadOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
+    const auto stamp = last->StampedTypeId();
+    if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
+    auto const *const tmpl = HeadOf(id).Symbol();
+    if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
+    return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
   }
 
   /// Whether a marker annotation was written on this type, or
@@ -210,7 +226,7 @@ namespace {
       if (head.Kind == TypeKey::Tag::Inst) {
         for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
       }
-      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.Members); }
+      else if (head.Kind == TypeKey::Tag::Variant) { arg_ids.append_range(head.VariantMembers); }
       for (const auto arg_id : arg_ids) {
         if (not IsThreadSafeRec(arg_scope->FindTypeSymbolById(arg_id), seen)) { return false; }
       }
@@ -242,7 +258,9 @@ NamespaceSymbol::NamespaceSymbol(
 NamespaceSymbol::NamespaceSymbol(
   NamespaceSymbol const &that) :
   Name(that.Name),
-  LinkedScope(that.LinkedScope) {
+  LinkedScope(that.LinkedScope),
+  Owner(that.Owner),
+  IsFfiPackage(that.IsFfiPackage) {
 }
 
 NamespaceSymbol::~NamespaceSymbol() = default;
@@ -296,6 +314,7 @@ VariableSymbol::VariableSymbol(
   CompTimeValue(AstClone(that.CompTimeValue)),
   BoundCompId(that.BoundCompId) {
   LlvmInfo->Alloca = that.LlvmInfo->Alloca;
+  LlvmInfo->ValueType = that.LlvmInfo->ValueType;
 }
 
 VariableSymbol::~VariableSymbol() = default;
@@ -365,7 +384,7 @@ auto spp::analyse::scopes::GnPackParamId(
 
 auto spp::analyse::scopes::ArgNameOf(
   TypeIdArg const &arg) -> Str {
-  if (not arg.Named) { return Str(); }
+  SPP_ASSERT(arg.Named);
   return ParamNameOf(arg.Slot);
 }
 
@@ -390,7 +409,6 @@ auto spp::analyse::scopes::NameTypeIdOf(
   return InternTypeKey(std::move(key));
 }
 
-
 auto spp::analyse::scopes::NextGnParamId() -> std::uint64_t {
   // Never zero, which is what a symbol that is not a parameter
   // holds.
@@ -409,7 +427,6 @@ auto VariableSymbol::operator==(
 }
 
 auto TypeSymbol::IsCopyable() const -> bool {
-  using generate::common_types_precompiled::COPY;
 
   // If this is a generic type, then check the copyable
   // flag on this type, and the bound type.
@@ -424,7 +441,7 @@ auto TypeSymbol::IsCopyable() const -> bool {
   if (InstanceOf != nullptr and LinkedScope != nullptr) {
     for (auto const *sup_scope : LinkedScope->GetSupScopes()) {
       if (sup_scope->LinkedTypeSymbol == nullptr) { continue; }
-      if (not TypeRef::ForKindCheck(*sup_scope).IsA(*COPY, *sup_scope)) { continue; }
+      if (not utils::marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*sup_scope), *sup_scope)) { continue; }
 
       // "Copy" superimposed over a generic class ("sup [T] P[T]
       // ext Copy") only holds for an instance whose attributes
@@ -665,22 +682,53 @@ auto AliasInfo::DeclaredIn() const -> Scope* {
   return WrittenIn->AstNode != nullptr and WrittenIn->AstNode == Stmt ? WrittenIn->Parent : WrittenIn;
 }
 
+namespace {
+  /// The aliases a chain of them has passed through, to stop on
+  /// one it comes back to. Inline: a chain is short.
+  template <typename S = TypeSymbol>
+  using PassedAliases = spp::SmallVec<S const*, 4>;
+
+  template <typename S>
+  auto WasPassed(PassedAliases<S> const &passed, S const *const sym) -> bool {
+    for (auto i = 0uz; i < passed.size(); ++i) {
+      if (passed[i] == sym) { return true; }
+    }
+    return false;
+  }
+}
+
+auto VariableSymbol::UseTarget() const -> VariableSymbol* {
+  // A cycle of "use"s is rejected where one is declared, but can be followed before then.
+  auto *s = const_cast<VariableSymbol*>(this);
+  auto passed = PassedAliases<VariableSymbol>{s};
+  while (s->AliasSymbol != nullptr
+    and not WasPassed(passed, static_cast<VariableSymbol const*>(s->AliasSymbol.get()))) {
+    s = s->AliasSymbol.get();
+    passed.emplace_back(s);
+  }
+  return s;
+}
+
 auto TypeSymbol::AliasTarget(
   Scope const &scope, const bool make) const -> TypeSymbol* {
-  // Followed until nothing changes: a cycle ("type A = A") is rejected where it is declared. Read where
-  // it was written first: its linked scope is the target class's own, where the target's spelling can name that
-  // class's parameters instead ("type Mine = Vec[A]" in "sup A", read in "Vec", is "Vec[A=A]").
+  // Followed until nothing changes, or until it comes back to an alias it has passed: a cycle ("type A = B",
+  // "type B = A") is rejected where it is declared ("aliases::StatementTarget"), but can be followed before then (the
+  // borrow check of a target, earlier in the same stage). Read where it was written first: its linked scope is the
+  // target class's own, where the target's spelling can name that class's parameters instead ("type Mine = Vec[A]" in
+  // "sup A", read in "Vec", is "Vec[A=A]").
   const auto read = [make](Scope const *where, TypeAst const &resolved) -> TypeSymbol* {
     if (where == nullptr) { return nullptr; }
     return make ? FindOrMakeTypeSymbol(*where, resolved) : where->FindTypeSymbol(&resolved);
   };
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases<>{s};
   while (s->Alias != nullptr and s->Alias->Resolved != nullptr) {
     auto const &resolved = *s->Alias->Resolved;
     auto *next = read(s->Alias->WrittenIn, resolved);
     if (next == nullptr) { next = read(s->LinkedScope, resolved); }
     if (next == nullptr) { next = read(&scope, resolved); }
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
@@ -703,12 +751,15 @@ auto TypeSymbol::AliasTargetId(
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {
-  // Followed until nothing changes, as "AliasTarget" is: a cycle of "use"s is rejected where one is declared.
+  // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle of "use"s is rejected where one is
+  // declared, but can be followed before then.
   auto *s = const_cast<TypeSymbol*>(this);
+  auto passed = PassedAliases<>{s};
   while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
     and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);
-    if (next == nullptr or next == s) { break; }
+    if (next == nullptr or WasPassed(passed, next)) { break; }
+    passed.emplace_back(next);
     s = next;
   }
   return s;
@@ -748,7 +799,9 @@ auto TypeSymbol::FqName(
   // argument it was given instead.
   if (Kind == TypeKind::GnTypeArg and LinkedSymbol() != this) {
     auto bound = LinkedSymbol()->FqName();
-    return Convention != ConventionTag::MOV ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention)) : bound;
+    return Convention != ConventionTag::MOV
+      ? bound->WithConvention(spp::analyse::scopes::ConventionAstOf(Convention))
+      : bound;
   }
   if (Kind == TypeKind::GnTypeArg and BoundTypeVal != nullptr) {
     return BoundTypeVal;
@@ -803,7 +856,7 @@ auto TypeSymbol::FqName(
   // built from a copy: "Name" is shared with the declaration.
   const auto records_id = Kind == TypeKind::Cls and Alias == nullptr;
   auto qualifier_scope = LinkedScope->Parent;
-  auto qualified_name = records_id ? AstCloneShared(Name) : dynamic_shared_cast<TypeAst>(Name);
+  auto qualified_name = records_id ? AstCloneShared(Name) : shared_cast<TypeAst>(Name);
   while (qualifier_scope->Parent != nullptr) {
     while (holds_alternative<ScopeBlockName>(qualifier_scope->Name)) {
       qualifier_scope = qualifier_scope->Parent;
@@ -1135,7 +1188,9 @@ auto TypeRef::AstIn(
   // the symbol exist), and otherwise the scope's "type ast of"
   // for the id.
   if (Id == nullptr) { return nullptr; }
-  auto type = Symbol != nullptr ? AstCloneShared(Symbol->FqName()) : scope.TypeAstOf(Id);
+  auto type = Symbol != nullptr
+    ? AstCloneShared(Symbol->FqName())
+    : scope.TypeAstOf(Id);
   if (type == nullptr or Conv == ConventionTag::MOV) { return type; }
 
   // Given a convention is now guaranteed, build the convention

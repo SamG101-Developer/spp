@@ -165,3 +165,19 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestLinearCaseSubject,
+    test_valid_case_on_attribute_takes_that_part, R"(
+    cls Holder {
+        !public inner: Opt[Str]
+        !public other: Str
+    }
+    fun f(h: Holder) -> Void {
+        case h.inner of {
+            is Some[Str](val) { std::mem::ops::drop(val) }
+            else { std::mem::ops::drop(h.inner) }
+        }
+        std::mem::ops::drop(h.other)
+    }
+)");

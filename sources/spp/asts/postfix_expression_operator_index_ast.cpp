@@ -86,11 +86,11 @@ auto PostfixExpressionOperatorIndexAst::Stage7_AnalyseSemantics(
   if (_MappedFn != nullptr) { return; }
 
   // "a[i]" is "a.index_ref(i)", or "a.index_mut(i)" for "a[mut i]".
-  operator_desugaring::CheckIndexable(*this, sm, meta);
+  operator_desugaring::CheckIndexable(*this, *Lhs, sm, meta);
   auto args = Vec<Unique<ExpressionAst>>();
   args.emplace_back(std::move(Expr));
   _MappedFn = operator_desugaring::MapToMethodCall(
-    *this, PosStart(), TokMut != nullptr ? "index_mut" : "index_ref", std::move(args), sm, meta);
+    *this, *Lhs, PosStart(), TokMut != nullptr ? "index_mut" : "index_ref", std::move(args), sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
@@ -98,16 +98,16 @@ auto PostfixExpressionOperatorIndexAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorIndexAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorIndexAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PostfixExpressionOperatorIndexAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorIndexAst::InferType(
@@ -135,6 +135,11 @@ auto PostfixExpressionOperatorIndexAst::ReadExpr(
 auto PostfixExpressionOperatorIndexAst::IsAllowedInDefault() const -> bool {
   // Check the inner expression.
   return Expr->IsAllowedInDefault();
+}
+
+auto PostfixExpressionOperatorIndexAst::WalksOperand() const -> bool {
+  // Checked through "index_ref"/"index_mut", over the operand.
+  return true;
 }
 
 SPP_MOD_END

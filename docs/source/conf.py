@@ -1,5 +1,5 @@
-import os
 import sys
+from pathlib import Path
 
 from pygments.lexer import RegexLexer
 from pygments.token import (
@@ -14,8 +14,8 @@ from pygments.token import (
 )
 from sphinx.application import Sphinx
 
-sys.path.insert(0, os.path.abspath("_static/style"))
-sys.path.insert(0, os.path.abspath("_ext"))
+sys.path.insert(0, str(Path("_static/style").resolve()))
+sys.path.insert(0, str(Path("_ext").resolve()))
 
 project = "s++"
 copyright = "2025, Sam Gardner"

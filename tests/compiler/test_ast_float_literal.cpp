@@ -21,7 +21,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_f8_lower_bound,
     SppFloatOutOfBoundsError, R"(
     fun f() -> Void {
-        let x = -57345.0_f8
+        let x = -449.0_f8
     }
 )");
 
@@ -30,7 +30,24 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     test_invalid_f8_upper_bound,
     SppFloatOutOfBoundsError, R"(
     fun f() -> Void {
-        let x = 57345.0_f8
+        let x = 449.0_f8
+    }
+)");
+
+// An "f8" is FP8 E4M3: its largest finite value is 448.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FloatLiteralAst,
+    test_valid_f8_lower_bound, R"(
+    fun f() -> Void {
+        let x = -448.0_f8
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    FloatLiteralAst,
+    test_valid_f8_upper_bound, R"(
+    fun f() -> Void {
+        let x = 448.0_f8
     }
 )");
 
@@ -168,4 +185,51 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     FloatLiteralAst,
     test_valid_comptime_float, R"(
     cmp x: F32 = 1.5
+)");
+
+// An "F8" is FP8 E4M3 kept as its bits: it converts to and from every float, and reads as a "U8", but has no
+// arithmetic or comparisons of its own.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    Float8Storage,
+    test_valid_conversions, R"(
+    fun f() -> Void {
+        let x = 1.5_f8
+        let wide = std::intrinsics::fpext_f8[32_u32](x)
+        let narrow = std::intrinsics::fptrunc_f8(2.75_f64)
+        let via_from = F64::from(x)
+        let into = F8::from(0.5_f16)
+        let bits = std::intrinsics::bit_cast[U8](x)
+        let back = std::intrinsics::bit_cast[F8](bits)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    Float8Storage,
+    test_invalid_arithmetic,
+    SppIdentifierUnknownError, R"(
+    fun f() -> Void {
+        let x = 1.5_f8
+        let y = x + x
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    Float8Storage,
+    test_invalid_comparison,
+    SppIdentifierUnknownError, R"(
+    fun f() -> Void {
+        let x = 1.5_f8
+        let y = x < x
+    }
+)");
+
+// The float intrinsics take a "FloatingPoint", which an "F8" is not.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    Float8Storage,
+    test_invalid_float_intrinsic,
+    SppFunctionCallNoValidSignaturesError, R"(
+    fun f() -> Void {
+        let x = 1.5_f8
+        let y = std::intrinsics::float_add(x, x)
+    }
 )");

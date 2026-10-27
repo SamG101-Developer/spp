@@ -5,12 +5,14 @@ module;
 module spp.asts.generic_parameter_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -100,10 +102,6 @@ auto GenericParameterAst::IsOptional() const -> bool {
   return TypeDefault != nullptr or CompDefault != nullptr;
 }
 
-auto GenericParameterAst::IsRequired() const -> bool {
-  return not IsVariadic() and not IsOptional();
-}
-
 auto GenericParameterAst::PosStart() const -> std::size_t {
   // Use the first token: "cmp", "..", or the name.
   if (TokCmp != nullptr) { return TokCmp->PosStart(); }
@@ -172,6 +170,7 @@ auto GenericParameterAst::ToString() const -> Str {
 
 auto GenericParameterAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   using utils::Visibility;
 
   // An inherited parameter names its "sup" block's symbol; a
@@ -185,7 +184,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
       IdentifierAst::FromType(*Name), CompType, sm->CurrentScope,
       VariableKind::GnCompParam, false, Visibility::kPublic);
 
-    analyse::utils::memory_state::StateOf(
+    memory_state::StateOf(
       *sm->CurrentScope, *sym).InitializedBy(*this);
     if (*_ParamId == 0) { *_ParamId = NextGnParamId(); }
     sym->OwnParamId = *_ParamId;
@@ -273,9 +272,7 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   // Ensure that the convention type doesn't have a
   // convention, as this violates second class borrow
   // rules.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*CompType, *sm),
-    ERR_ARGS(*CompType, *CompType, "generic comp argument"));
+  common_errors::RequireNotBorrowed(*CompType, *CompType, "generic comp argument", *sm);
 }
 
 auto GenericParameterAst::Stage7_AnalyseSemantics(
@@ -311,30 +308,15 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
     const auto default_type = CompDefault->InferType(sm, meta);
     Raise<SppTypeMismatchError>(ERR_ARGS(*CompType, *CompType, *CompDefault, *default_type));
   }
-}
 
-auto GenericParameterAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Only an optional comp parameter's default holds memory to
-  // check.
-  if (not IsCompParam() or not IsOptional()) {
-    Ast::Stage8_CheckMemory(sm, meta);
-    return;
-  }
-  CompDefault->Stage8_CheckMemory(sm, meta);
-  mem_utils::ValidateSymbolMemory(*CompDefault, *CompDefault, *sm, meta);
-}
-
-auto GenericParameterAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // A comp parameter resolves to its own name.
-  if (IsTypeParam()) {
-    Ast::Stage9_CompTimeResolve(sm, meta);
-    return;
-  }
-  meta->CompTimeResult = IdentifierAst::FromType(*Name);
+  // Folded too, to prove it is a constant even if nothing ever
+  // uses it. The result is thrown away - a use site folds its own
+  // copy. One naming another parameter ("m = n + 1_uz") is no
+  // constant until instantiated, where it is folded as bound.
+  if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*WrittenCompDefault))) { return; }
+  auto tm = sm->NewManagerAt(sm->CurrentScope);
+  const auto _meta_guard = MetaGuard(meta);
+  CompDefault->EvaluateCompTime(&tm, meta);
 }
 
 auto GenericParameterAst::Stage11_CodeGen(

@@ -38,7 +38,7 @@ ScopeIdentifierName::ScopeIdentifierName(
 /// [CHECKED]
 ScopeTypeIdentifierName::ScopeTypeIdentifierName(
   Shared<TypeAst> const &name) :
-  Name(dynamic_shared_cast<TypeIdentifierAst>(name)) {
+  Name(shared_cast<TypeIdentifierAst>(name)) {
 }
 
 /// [CHECKED]

@@ -37,9 +37,9 @@ public:
 
   SPP_ATTR_NODISCARD auto Clone() const -> Unique<Ast> override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto SetBuiltin(codegen::builtins::LoweredFnImpl const *builtin) -> void;
 

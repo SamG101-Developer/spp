@@ -92,8 +92,12 @@ auto FloatLiteralAst::ToString() const -> Str {
 auto FloatLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
-  Type = Type.empty() ? "f32" : Type;
+  Type = TypeOrDefault();
   ValidateBounds(*this);
+}
+
+auto FloatLiteralAst::TypeOrDefault() const -> Str {
+  return Type.empty() ? "f32" : Type;
 }
 
 auto FloatLiteralAst::BigVal() const -> numex::BigDec {
@@ -114,7 +118,7 @@ auto FloatLiteralAst::ValidateBounds(
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.
-  auto const &[lower, upper] = kBounds.at(Type);
+  auto const &[lower, upper] = utils::numbers::FloatBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,
@@ -122,11 +126,17 @@ auto FloatLiteralAst::ValidateBounds(
 }
 
 auto FloatLiteralAst::FromBigVal(
-  numex::BigDec const &value, Str const &type, const Opt<std::uint64_t> places) -> Unique<FloatLiteralAst> {
+  numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
-  const auto digits = (is_negative ? -value : value).Decimal(
-    places.has_value() ? *places : kDecimalPlaces.at(type));
+  const auto digits = (is_negative ? -value : value).Decimal(spp::utils::numbers::FloatDecimalPlaces(type));
+  return FromText((is_negative ? "-" : "") + digits, type);
+}
+
+auto FloatLiteralAst::FromText(
+  Str const &text, Str const &type) -> Unique<FloatLiteralAst> {
+  const auto is_negative = text.starts_with('-');
+  const auto digits = is_negative ? text.substr(1) : text;
   const auto point = digits.find('.');
 
   auto int_part = point == Str::npos ? digits : digits.substr(0, point);
@@ -141,13 +151,6 @@ auto FloatLiteralAst::FromBigVal(
     MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DOT, "."),
     MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, std::move(frac_part)),
     Str(type));
-}
-
-auto FloatLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the float literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
 }
 
 auto FloatLiteralAst::Stage11_CodeGen(
@@ -168,17 +171,23 @@ auto FloatLiteralAst::Stage11_CodeGen(
 
   // Normalise the literal exactly as Stage7 does, then
   // apply the optional sign.
-  auto const &semantics = llvm_type->getFltSemantics();
   auto mapped_val = NormalizeFloatString(IntVal->TokenData, FracVal->TokenData);
   if (TokSign != nullptr and TokSign->TokenType == lex::SppTokenType::TK_SUB) {
     mapped_val = "-" + mapped_val;
   }
 
-  // Create the LLVM constant float value from the
-  // normalised decimal string (APFloat handled the sign).
-  const auto ap_float = llvm::APFloat(semantics, mapped_val);
-  const auto co_float = llvm::ConstantFP::get(*ctx->Context, ap_float);
-  return co_float;
+  // Read in the type's own format, as comp-time arithmetic is.
+  // An "F8" has no llvm float: it is its bits, an "i8".
+  const auto value = spp::utils::numbers::ReadFloat(mapped_val, Type);
+  if (llvm_type->isIntegerTy()) { return llvm::ConstantInt::get(*ctx->Context, value.bitcastToAPInt()); }
+  return llvm::ConstantFP::get(*ctx->Context, value);
+}
+
+auto FloatLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the float literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto FloatLiteralAst::_PrecompiledType(

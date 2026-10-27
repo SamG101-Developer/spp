@@ -210,7 +210,7 @@ namespace spp::analyse::scopes {
           case TypeKey::Tag::Variant: {
             if (head.Symbol() == nullptr) { Ice("variant identity has no template symbol"); }
             auto members = Vec<TypeId>();
-            for (const auto written : head.Members) {
+            for (const auto written : head.VariantMembers) {
               const auto member = RewriteTypeId(written, subst, subst_id);
               if (member == nullptr) { return nullptr; }
               auto const &member_head = HeadOf(member);
@@ -220,7 +220,7 @@ namespace spp::analyse::scopes {
               const auto is_pack = written_head.Kind == TypeKey::Tag::TypeParam and written_head.Conv == 0
                 and genex::contains(subst.TypePackParams, written_head.TypeParamId);
               auto flat = member_head.Kind == TypeKey::Tag::Variant and member_head.Conv == 0
-                ? member_head.Members
+                ? member_head.VariantMembers
                 : Vec{member};
               if (is_pack and member != written) {
                 flat.clear();

@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.operator_desugaring;
@@ -20,6 +21,8 @@ import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_single_identifier_alias_ast;
+import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
@@ -111,100 +114,84 @@ auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
   return _IsLogical;
 }
 
+auto BinaryExpressionAst::_BindFoldOperand(
+  Unique<ExpressionAst> &operand, ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // A name is read in place. Anything else is evaluated once,
+  // into a temporary, rather than once per element read off
+  // it.
+  if (operand->To<IdentifierAst>() == nullptr) {
+    auto temp_name = MakeShared<IdentifierAst>(operand->PosStart(), "$fold." + spp::utils::Uid());
+    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
+    auto temp_let = MakeUnique<LetStatementInitializedAst>(
+      nullptr, std::move(temp_var), nullptr, nullptr, std::move(operand));
+    temp_let->Stage7_AnalyseSemantics(sm, meta);
+    _ChainTemps.emplace_back(std::move(temp_let));
+    operand = AstClone(temp_name);
+  }
+  operand->Stage7_AnalyseSemantics(sm, meta);
+}
+
+auto BinaryExpressionAst::_FoldElements(
+  Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm, CompilerMetaData *meta)
+  -> Vec<Unique<PostfixExpressionAst>> {
+  IMPORT_UTILS;
+  _BindFoldOperand(tuple, sm, meta);
+  common_errors::RequirePrimary(*tuple, *sm);
+
+  // The operand is a tuple (Todo: maybe allow arrays too?) of at
+  // least two elements.
+  const auto tuple_ref = tuple->InferTypeRef(sm, meta);
+  if (not type_predicates::IsTypeTuple(tuple_ref, *sm->CurrentScope)) {
+    const auto tuple_type = tuple->InferType(sm, meta);
+    Raise<SppMemberAccessNonIndexableError>(ERR_ARGS(*tuple, *tuple_type, fold));
+  }
+  const auto num_elems = tuple_ref.Symbol->TypeArgRefs().size();
+  if (num_elems < 2) {
+    const auto tuple_type = tuple->InferType(sm, meta);
+    Raise<SppInvalidBinaryFoldExpressionError>(ERR_ARGS(*tuple, *tuple_type, num_elems));
+  }
+
+  // Each element read off it ("t.0", "t.1", ...), analysed.
+  auto elems = Vec<Unique<PostfixExpressionAst>>();
+  for (auto i = 0uz; i < num_elems; ++i) {
+    auto field = MakeUnique<IdentifierAst>(tuple->PosStart(), std::to_string(i));
+    auto elem = MakeUnique<PostfixExpressionAst>(
+      AstClone(tuple), MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+    elem->Stage7_AnalyseSemantics(sm, meta);
+    elems.emplace_back(std::move(elem));
+  }
+  return elems;
+}
+
 auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // Todo: this guard shouldn't be needed?
+  // Analysed already: a clone shares the mapped call ("Clone"),
+  // and a fold has rewritten its operands, so analysing again
+  // would desugar what is no longer written.
   if (_MappedFn or _LogicalAnalysed) { return; }
 
-  // Handle lhs-folding.
-  if (Lhs->To<FoldExpressionAst>()) {
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      ERR_ARGS(*Rhs));
-
-    // Check the rhs is a tuple, and error otherwise. Todo:
-    // Maybe allow arrays too?
-    const auto rhs_tuple_ref = Rhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTuple(rhs_tuple_ref, *sm->CurrentScope)) {
-      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(
-        ERR_ARGS(*Rhs, *rhs_tuple_type, *Lhs));
+  // A fold reads its tuple's elements off it and combines them, for "t = (0, 1, 2, 3)": ".. + t" from the left,
+  // "(((t.0 + t.1) + t.2) + t.3)", and "t + .." from the right, "(t.0 + (t.1 + (t.2 + t.3)))".
+  if (Lhs->To<FoldExpressionAst>() != nullptr or Rhs->To<FoldExpressionAst>() != nullptr) {
+    const auto from_left = Lhs->To<FoldExpressionAst>() != nullptr;
+    auto elems = from_left ? _FoldElements(Rhs, *Lhs, sm, meta) : _FoldElements(Lhs, *Rhs, sm, meta);
+    if (from_left) {
+      Lhs = std::move(elems[0]);
+      Rhs = std::move(elems[1]);
+      for (auto &&elem : elems | genex::views::move | genex::views::drop(2)) {
+        Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+        Rhs = std::move(elem);
+      }
     }
-
-    // Get the parts of the tuple, and check there are at
-    // minimum 2 elements in the tuple.
-    const auto rhs_num_elems = rhs_tuple_ref.Symbol->TypeArgRefs().size();
-    if (rhs_num_elems < 2) {
-      const auto rhs_tuple_type = Rhs->InferType(sm, meta);
-      Raise<SppInvalidBinaryFoldExpressionError>(
-        ERR_ARGS(*Rhs, *rhs_tuple_type, rhs_num_elems));
-    }
-
-    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
-    for (auto i = 0u; i < rhs_num_elems; ++i) {
-      auto field = MakeUnique<IdentifierAst>(Rhs->PosStart(), std::to_string(i));
-      auto new_ast = MakeUnique<PostfixExpressionAst>(
-        AstClone(Rhs),
-        MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-      new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.emplace_back(std::move(new_ast));
-    }
-
-    // Convert "t = (0, 1, 2, 3)", ".. + t" into
-    // "(((t.0 + t.1) + t.2) + t.3)".
-    Lhs = std::move(new_asts[0]);
-    Rhs = std::move(new_asts[1]);
-    for (auto &&new_ast : new_asts | genex::views::move | genex::views::drop(2)) {
-      Lhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
-      Rhs = std::move(new_ast);
-    }
-    _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
-    _MappedFn->Stage7_AnalyseSemantics(sm, meta);
-  }
-
-  // Handle rhs-folding.
-  else if (Rhs->To<FoldExpressionAst>()) {
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      ERR_ARGS(*Lhs));
-
-    // Check the rhs is a tuple, and error otherwise. Todo:
-    // Maybe allow arrays too?
-    const auto lhs_tuple_ref = Lhs->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTuple(lhs_tuple_ref, *sm->CurrentScope)) {
-      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppMemberAccessNonIndexableError>(
-        ERR_ARGS(*Lhs, *lhs_tuple_type, *Rhs));
-    }
-
-    // Get the parts of the tuple, and check there are at
-    // minimum 2 elements in the tuple.
-    const auto lhs_num_elems = lhs_tuple_ref.Symbol->TypeArgRefs().size();
-    if (lhs_num_elems < 2) {
-      const auto lhs_tuple_type = Lhs->InferType(sm, meta);
-      Raise<SppInvalidBinaryFoldExpressionError>(
-        ERR_ARGS(*Lhs, *lhs_tuple_type, lhs_num_elems));
-    }
-
-    auto new_asts = Vec<Unique<PostfixExpressionAst>>();
-    for (auto i = 0U; i < lhs_num_elems; ++i) {
-      auto field = MakeUnique<IdentifierAst>(Lhs->PosStart(), std::to_string(i));
-      auto new_ast = MakeUnique<PostfixExpressionAst>(
-        AstClone(Lhs),
-        MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-      new_ast->Stage7_AnalyseSemantics(sm, meta);
-      new_asts.emplace_back(std::move(new_ast));
-    }
-
-    // Convert "t = (0, 1, 2, 3)", "t + .." into
-    // "(t.0 + (t.1 + (t.2 + t.3)))".
-    Lhs = std::move(new_asts[new_asts.size() - 2]);
-    Rhs = std::move(new_asts[new_asts.size() - 1]);
-    for (auto &&new_ast : new_asts | genex::views::move_reverse | genex::views::drop(2)) {
-      Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
-      Lhs = std::move(new_ast);
+    else {
+      Lhs = std::move(elems[elems.size() - 2]);
+      Rhs = std::move(elems[elems.size() - 1]);
+      for (auto &&elem : elems | genex::views::move_reverse | genex::views::drop(2)) {
+        Rhs = MakeUnique<BinaryExpressionAst>(std::move(Lhs), AstClone(TokOp), std::move(Rhs));
+        Lhs = std::move(elem);
+      }
     }
     _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
     _MappedFn->Stage7_AnalyseSemantics(sm, meta);
@@ -221,13 +208,8 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     Rhs = std::move(combined->Rhs);
     _IsLogical = IsLogicalToken(TokOp.get());
 
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Lhs, *sm),
-      ERR_ARGS(*Lhs));
-
-    RaiseIf<SppInvalidPrimaryExpressionError>(
-      not expr_utils::IsPrimaryExprTypeValid(*Rhs, *sm),
-      ERR_ARGS(*Rhs));
+    common_errors::RequirePrimary(*Lhs, *sm);
+    common_errors::RequirePrimary(*Rhs, *sm);
 
     // "and" and "or" are not mapped to a method; they are built
     // in, like "not", for short-circuiting. Both operands must
@@ -289,27 +271,6 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
 
   // Forward the memory checking to the mapped function.
   _MappedFn->Stage8_CheckMemory(sm, meta);
-}
-
-auto BinaryExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Run comptime resolution on the temporary materialized
-  // comparison chain values (checks validity).
-  for (auto const &temp : _ChainTemps) { temp->Stage9_CompTimeResolve(sm, meta); }
-
-  // Do the short-circuiting at compile time by evaluating
-  // the left-hand-side, and if it is true, and we are not
-  // doing an "and", then we can return true already.
-  if (IsLogicalOperator()) {
-    Lhs->Stage9_CompTimeResolve(sm, meta);
-    const auto lhs_is_true = meta->CompTimeResult->ToUnchecked<BooleanLiteralAst>()->IsTrue();
-    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
-    Rhs->Stage9_CompTimeResolve(sm, meta);
-    return;
-  }
-
-  // Forward the compile-time resolution to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto BinaryExpressionAst::Stage11_CodeGen(
@@ -378,6 +339,27 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   return llvm_res;
 }
 
+auto BinaryExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Run comptime resolution on the temporary materialized
+  // comparison chain values (checks validity).
+  for (auto const &temp : _ChainTemps) { temp->EvaluateCompTime(sm, meta); }
+
+  // Do the short-circuiting at compile time by evaluating
+  // the left-hand-side, and if it is true, and we are not
+  // doing an "and", then we can return true already.
+  if (IsLogicalOperator()) {
+    Lhs->EvaluateCompTime(sm, meta);
+    const auto lhs_is_true = meta->CompTimeResult->As<BooleanLiteralAst>()->IsTrue();
+    if (lhs_is_true != (TokOp->TokenType == lex::SppTokenType::KW_AND)) { return; }
+    Rhs->EvaluateCompTime(sm, meta);
+    return;
+  }
+
+  // Forward the compile-time resolution to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
+}
+
 auto BinaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // A logical operator is boolean by construction - both
@@ -391,7 +373,6 @@ auto BinaryExpressionAst::InferType(
   // scopes its operator is resolved through: a comparison
   // is boolean, and comp-time arithmetic keeps its left
   // operand's type.
-  // Todo: Remove this I think.
   if (_MappedFn == nullptr) {
     using lex::SppTokenType;
     const auto op = TokOp->TokenType;
@@ -440,7 +421,7 @@ auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, Express
 }
 
 auto BinaryExpressionAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both operands are expressions, read where they are written or where analysis moved them.
   const auto [lhs, rhs] = Operands();
   if (lhs == nullptr or rhs == nullptr) { return AstCloneShared(this); }

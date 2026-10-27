@@ -90,15 +90,14 @@ SPP_EXP_CLS struct spp::asts::TypeStatementAst final :
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto MarkFromUseStatement() -> void;
+  auto EvaluateCompTime(
+      ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  SPP_ATTR_NODISCARD auto IsFromUseStatement() const -> bool;
+  auto MarkFromUseStatement() -> void;
 
   /// Resolve this alias's target now, ahead of its own stage 4:
   /// for an instantiation in an earlier declaration's stage 4

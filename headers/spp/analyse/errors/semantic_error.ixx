@@ -124,6 +124,10 @@ use(spp::analyse::errors, struct SppPatternGuardMovesValueError);
 use(spp::analyse::errors, struct SppLinearValueNotConsumedError);
 use(spp::analyse::errors, struct SppDiscardedValueError);
 use(spp::analyse::errors, struct SppLinearValueSkippedInDestructureError);
+use(spp::analyse::errors, struct SppLoopMissingElseError);
+use(spp::analyse::errors, struct SppCfgUnknownKeyError);
+use(spp::analyse::errors, struct SppCfgInvalidValueError);
+use(spp::analyse::errors, struct SppFfiPackageNotOwnedError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
 use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
@@ -165,7 +169,7 @@ SPP_EXP_CLS struct spp::analyse::errors::ErrorInformation {
   /// answer it is to hand, so that a caught error carries its
   /// own positions and a consumer needs nothing else to place
   /// them.
-  utils::errors::SourceSpan Span = {};
+  spp::utils::errors::SourceSpan Span = {};
 };
 
 /// The base semantic error type forms the basis for all the
@@ -173,7 +177,7 @@ SPP_EXP_CLS struct spp::analyse::errors::ErrorInformation {
 /// All the information appending methods are provided for
 /// easy setup.
 SPP_EXP_CLS struct spp::analyse::errors::SemanticError :
-  utils::errors::AbstractError {
+  spp::utils::errors::AbstractError {
   using AbstractError::AbstractError;
   SPP_ATTR_COLD SemanticError(SemanticError const &) = default;
 
@@ -591,6 +595,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppNonCopyableTypeError final : Semanti
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterConflictError final : SemanticError {
   explicit SppGenericParameterConflictError(Ast const &param, Ast const &first_infer,
     Ast const &second_infer);
+
+  /// Each inferred value shown at where it was read from ("first_at", "second_at"): a comp value read back from its
+  /// identity has no position of its own.
+  explicit SppGenericParameterConflictError(Ast const &param, Ast const &first_infer,
+    Ast const &second_infer, Ast const &first_at, Ast const &second_at);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterNotInferredError final : SemanticError {
@@ -755,6 +764,23 @@ SPP_EXP_CLS struct spp::analyse::errors::SppLinearValueSkippedInDestructureError
     StrView attr_name, StrView type_name);
 };
 
+SPP_EXP_CLS struct spp::analyse::errors::SppLoopMissingElseError final : SemanticError {
+  explicit SppLoopMissingElseError(Ast const &loop, Ast const &exit_value);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCfgUnknownKeyError final : SemanticError {
+  explicit SppCfgUnknownKeyError(Ast const &arg, StrView key);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppCfgInvalidValueError final : SemanticError {
+  explicit SppCfgInvalidValueError(Ast const &value, StrView key, StrView why);
+};
+
 SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError final : SemanticError {
   explicit SppGenOnceFinishesWithoutYieldingError(Ast const &ret_stmt);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFfiPackageNotOwnedError final : SemanticError {
+  explicit SppFfiPackageNotOwnedError(Ast const &access_site, StrView package, StrView package_owner,
+    StrView accessing_owner);
 };

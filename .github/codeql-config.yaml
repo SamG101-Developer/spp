@@ -2,3 +2,10 @@ name: "S++ CodeQL"
 
 paths-ignore:
   - tests
+
+# C++ modules workaround
+query-filters:
+  - exclude:
+      id: cpp/short-global-name
+  - exclude:
+      id: cpp/implicit-function-declaration

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Install and size this runner's compiler cache, or turn it
-# off. Windows gets sccache, which can drive cl and clang-cl;
-# ccache cannot. Off, configure.sh reads
-# SPP_NO_COMPILER_LAUNCHER and leaves
+# Point this runner's compiler cache at RUNNER_TEMP, or turn it
+# off. ccache-action installs and sizes it and reads these
+# dirs, as does any server restarted mid-build. Off,
+# configure.sh reads SPP_NO_COMPILER_LAUNCHER and leaves
 # CMAKE_<LANG>_COMPILER_LAUNCHER unset.
 set -euo pipefail
 
@@ -14,20 +14,7 @@ if [ "${1:-on}" = off ]; then
   exit 0
 fi
 
-case "$RUNNER_OS" in
-  Linux) sudo apt-get install -y ccache ;;
-  macOS) brew install ccache ;;
-  Windows) choco install sccache -y ;;
-esac
-
-if [ "$RUNNER_OS" = "Windows" ]; then
-  {
-    echo "SCCACHE_DIR=${USERPROFILE}\\.cache\\sccache"
-    echo "SCCACHE_CACHE_SIZE=500M"
-  } >> "$GITHUB_ENV"
-else
-  {
-    echo "CCACHE_MAXSIZE=500M"
-    echo "CCACHE_COMPRESS=true"
-  } >> "$GITHUB_ENV"
-fi
+{
+  echo "CCACHE_DIR=${RUNNER_TEMP}/ccache"
+  echo "SCCACHE_DIR=${RUNNER_TEMP}/sccache"
+} >> "$GITHUB_ENV"

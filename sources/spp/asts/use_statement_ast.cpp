@@ -71,7 +71,7 @@ auto UseStatementAst::Stage2_GenTopLvlScopes(
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // Create the type statement AST conversion.
-  const auto new_type = dynamic_shared_cast<TypeIdentifierAst>(
+  const auto new_type = shared_cast<TypeIdentifierAst>(
     OldType->LastTypePart()->WithoutGns());
 
   _Conversion = MakeUnique<TypeStatementAst>(
@@ -116,12 +116,6 @@ auto UseStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check memory for the conversion AST.
   _Conversion->Stage8_CheckMemory(sm, meta);
-}
-
-auto UseStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Comptime resolve the conversion AST.
-  return _Conversion->Stage9_CompTimeResolve(sm, meta);
 }
 
 auto UseStatementAst::Stage10_PreCodeGen(

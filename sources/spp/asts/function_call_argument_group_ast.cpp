@@ -107,17 +107,6 @@ auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArg
   return out;
 }
 
-auto FunctionCallArgumentGroupAst::GetPositionalArgs() const -> Vec<FunctionCallArgumentPositionalAst*> {
-  // Filter by casting.
-  auto out = Vec<FunctionCallArgumentPositionalAst*>();
-  for (auto const &arg : Args) {
-    if (auto *pos_arg = arg->To<FunctionCallArgumentPositionalAst>(); pos_arg != nullptr) {
-      out.emplace_back(pos_arg);
-    }
-  }
-  return out;
-}
-
 auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
@@ -235,12 +224,13 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
       : nullptr;
     const auto arg_carries_borrows = closure_arg != nullptr and closure_arg->HasBorrowedCaptures();
 
-    const auto saved_assignment_target = meta->AssignmentTarget;
-    if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
-      meta->AssignmentTarget = nullptr;
+    {
+      const auto _meta_guard = MetaGuard(meta);
+      if ((arg->Conv == nullptr or not pins_required) and not arg_carries_borrows) {
+        meta->AssignmentTarget = nullptr;
+      }
+      arg->Stage8_CheckMemory(sm, meta);
     }
-    arg->Stage8_CheckMemory(sm, meta);
-    meta->AssignmentTarget = saved_assignment_target;
 
     // A closure written as an argument holds its borrowed captures while the call runs, as the call holds its other
     // arguments' borrows: a captured "&mut x" beside an argument "&mut x" is two ways to one place. Checked against
@@ -274,6 +264,16 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
           : static_cast<Ast const*>(arg->Val.get());
         Raise<SppMoveFromBorrowedMemoryError>(ERR_ARGS(*arg->Val, *where_borrow, *where_borrow));
       }
+    }
+
+    // An argument that is itself a "&" borrow ("v[i]", a "&T" whatever "v" is) cannot be mutably borrowed, whatever
+    // its root symbol: the borrow it is reached through says it is immutable here. A temporary has no symbol for the
+    // checks below, so this reads the argument's own type.
+    if (arg->Conv != nullptr and *arg->Conv == ConventionTag::MUT) {
+      const auto arg_ref = arg->Val->InferTypeRef(sm, meta);
+      RaiseIf<SppInvalidMutationError>(
+        arg_ref.IsBorrowed() and arg_ref.Conv == ConventionTag::REF,
+        ERR_ARGS(*arg->Val, *arg->Conv, *arg->Val, "immutable borrow"));
     }
 
     // A borrow the argument list has to keep apart, but that is named neither by a spelled convention nor by an
@@ -356,10 +356,8 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
           *sym->Name, *arg->Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
           "immutable symbol"));
 
-      // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed.
-      // Todo: Only the root symbol is checked, so an argument that is itself a "&" borrow ("v[i]", a "&T" whatever
-      //  "v" is) can be mutably borrowed; and it never gets here, being a temporary with no symbol. See next-steps
-      //  N1.11 and the red tests in test_mem_move_from_borrowed_ctx.cpp.
+      // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed. An argument that is itself a
+      // "&" borrow, a symbol's or not, was rejected above.
       RaiseIf<SppInvalidMutationError>(
         sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
         ERR_ARGS(*sym->Name, *arg->Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));

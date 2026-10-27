@@ -117,14 +117,6 @@ auto IsExpressionAst::Stage8_CheckMemory(
   _DeclareExposed(*sm);
 }
 
-auto IsExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward the resolution to the mapped function, then expose
-  // what it binds, as stage 8 does.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-  _DeclareExposed(*sm);
-}
-
 auto IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // As moving to the next scope clears ast-generated bindings
@@ -148,6 +140,14 @@ auto IsExpressionAst::Stage11_CodeGen(
 
   // Forward the code generation to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto IsExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward the resolution to the mapped function, then expose
+  // what it binds, as stage 8 does.
+  _MappedFn->EvaluateCompTime(sm, meta);
+  _DeclareExposed(*sm);
 }
 
 auto IsExpressionAst::InferTypeRef(

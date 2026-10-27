@@ -1,6 +1,8 @@
 module spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
+import spp.analyse.utils.comp_time_intrinsics;
+import spp.asts.expression_ast;
 import spp.utils.ice;
 import spp.utils.numbers;
 import spp.utils.types;
@@ -11,13 +13,6 @@ import numex.big_int;
 
 namespace spp::analyse::scopes {
   namespace {
-    /// [CHECKED]
-    /// A shift count, as the shift intrinsics read one.
-    auto ShiftCount(numex::BigInt const &count) -> Opt<std::uint32_t> {
-      const auto value = spp::utils::numbers::ToU64(count);
-      return value.has_value() ? Opt(static_cast<std::uint32_t>(*value)) : Nullopt;
-    }
-
     /// Whether a constant named through the "type" (a "TypeId"'s
     /// word) cannot be read yet: its type did not resolve, or
     /// is closed and its constant cannot be reached yet. An open
@@ -39,81 +34,30 @@ auto spp::analyse::scopes::FoldCompValues(
   CompKey const &lhs,
   CompKey const &rhs)
   -> Opt<CompKey> {
-  // Two bools compare for equality, and nothing else.
-  // Todo: "and" & "or" for bools?
-  const auto lhs_bool = lhs.AsBool();
-  const auto rhs_bool = rhs.AsBool();
-  if (lhs_bool != nullptr or rhs_bool != nullptr) {
-    if (lhs_bool == nullptr or rhs_bool == nullptr) { return Nullopt; }
-    if (op == "==") { return CompKey::OfBool(*lhs_bool == *rhs_bool); }
-    if (op == "!=") { return CompKey::OfBool(*lhs_bool != *rhs_bool); }
-    return Nullopt;
-  }
+  namespace ct = utils::comp_time_intrinsics;
 
-  // Two floats fold exactly, by the four operations and the
-  // comparisons; a float never mixes with an integer. The
-  // suffixes combine as an integer's do (below).
-  const auto lf = lhs.AsFloat();
-  const auto rf = rhs.AsFloat();
-  if (lf != nullptr or rf != nullptr) {
-    if (lf == nullptr or rf == nullptr) { return Nullopt; }
-    if (not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return Nullopt; }
-    auto const &type = not lhs.Text.empty() ? lhs.Text : rhs.Text;
-    const auto of = [&type](numex::BigDec value) { return Opt(CompKey::OfFloat(std::move(value), type)); };
-    if (op == "+") { return of(*lf + *rf); }
-    if (op == "-") { return of(*lf - *rf); }
-    if (op == "*") { return of(*lf * *rf); }
-    if (op == "/") { return *rf == numex::BigDec(0) ? Nullopt : of(*lf / *rf); }
-    if (op == "==") { return CompKey::OfBool(*lf == *rf); }
-    if (op == "!=") { return CompKey::OfBool(*lf != *rf); }
-    if (op == "<") { return CompKey::OfBool(*lf < *rf); }
-    if (op == "<=") { return CompKey::OfBool(*lf <= *rf); }
-    if (op == ">") { return CompKey::OfBool(*lf > *rf); }
-    if (op == ">=") { return CompKey::OfBool(*lf >= *rf); }
-    return Nullopt;
-  }
-
-  // An unsuffixed integer takes the other side's type, as it
-  // does in an expression ("n + 1" with "n: USize"); two
-  // different types do not mix. A shift's count is its own
-  // type ("U32"), so a shift is typed by the value shifted alone.
-  const auto l = lhs.AsInt();
-  const auto r = rhs.AsInt();
-  if (l == nullptr or r == nullptr) { Ice("folding comp values that are neither bool, float nor integer"); }
-  auto const &a = *l;
-  auto const &b = *r;
-  auto const &l_type = lhs.Text;
-  auto const &r_type = rhs.Text;
+  // Two numbers of different types do not mix. An unsuffixed one
+  // takes the other side's type, as it does in an expression ("n +
+  // 1" with "n: USize"). A shift's count is its own type ("U32"),
+  // so a shift is typed by the value shifted alone.
   const auto is_shift = op == "<<" or op == ">>";
-  if (not is_shift and not l_type.empty() and not r_type.empty() and l_type != r_type) { return Nullopt; }
-  const auto type = is_shift or not l_type.empty() ? l_type : r_type;
-  const auto by_zero = b == numex::BigInt(0);
-  const auto of = [&type](numex::BigInt value) { return Opt(CompKey::OfInt(std::move(value), type)); };
+  if (not is_shift and not lhs.Text.empty() and not rhs.Text.empty() and lhs.Text != rhs.Text) { return Nullopt; }
+  auto typed_lhs = lhs;
+  auto typed_rhs = rhs;
+  if (typed_lhs.Text.empty() and not is_shift) { typed_lhs.Text = rhs.Text; }
+  if (typed_rhs.Text.empty() and not is_shift) { typed_rhs.Text = lhs.Text; }
 
-  if (op == "+") { return of(a + b); }
-  if (op == "-") { return of(a - b); }
-  if (op == "*") { return of(a * b); }
-  if (op == "/") { return by_zero ? Nullopt : of(a / b); }
-  if (op == "%") { return by_zero ? Nullopt : of(a % b); }
-  if (op == "|") { return of(a | b); }
-  if (op == "&") { return of(a & b); }
-  if (op == "^") { return of(a ^ b); }
-  if (op == "<<") {
-    const auto count = ShiftCount(b);
-    auto wrapped = count.has_value() ? spp::utils::numbers::WrapToInteger(a << *count, type) : Nullopt;
-    return wrapped.has_value() ? of(std::move(*wrapped)) : Nullopt;
+  // The operation is the intrinsic std's method for the operator
+  // calls ("FoldBinaryOp"), so a key folds what a folded call
+  // does, to the same value, and leaves unfolded what the call
+  // raises, as it does a value no constant of its type can hold.
+  const auto l = ct::LiteralOf(typed_lhs);
+  const auto r = ct::LiteralOf(typed_rhs);
+  if (l == nullptr or r == nullptr) {
+    Ice("folding comp values that are neither bool, float nor integer");
   }
-  if (op == ">>") {
-    const auto count = ShiftCount(b);
-    return count.has_value() ? of(a >> *count) : Nullopt;
-  }
-  if (op == "==") { return CompKey::OfBool(a == b); }
-  if (op == "!=") { return CompKey::OfBool(a != b); }
-  if (op == "<") { return CompKey::OfBool(a < b); }
-  if (op == "<=") { return CompKey::OfBool(a <= b); }
-  if (op == ">") { return CompKey::OfBool(a > b); }
-  if (op == ">=") { return CompKey::OfBool(a >= b); }
-  return Nullopt;
+  const auto result = ct::FoldBinaryOp(op, *l, *r);
+  return result != nullptr ? ct::ValueKeyOf(*result) : Nullopt;
 }
 
 /// [CHECKED]

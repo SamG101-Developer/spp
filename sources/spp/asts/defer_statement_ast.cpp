@@ -16,6 +16,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_defer;
 import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
@@ -67,15 +68,16 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   // - reports against this "defer" rather than expanding into
   // a "ret" that codegen then has to emit at every exit the
   // deferred expression is replayed at.
-  const auto saved_defer_tok = meta->WithinDeferTok;
-  meta->WithinDeferTok = TokDefer.get();
-  Expr->Stage7_AnalyseSemantics(sm, meta);
-  meta->WithinDeferTok = saved_defer_tok;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->WithinDeferTok = TokDefer.get();
+    Expr->Stage7_AnalyseSemantics(sm, meta);
+  }
 
   // Leaving the scope is what runs a deferred expression, so
   // an expression that itself leaves has nowhere sensible to
   // go: it would be unwinding out of the unwind.
-  RaiseIf<SppDeferTerminatesError>(expr_utils::Diverges(*Expr, sm, meta), ERR_ARGS(*TokDefer, *Expr));
+  RaiseIf<SppDeferTerminatesError>(Expr->Diverges(sm, meta), ERR_ARGS(*TokDefer, *Expr));
 
   // Nothing is in a position to receive the value, so there
   // must not be one. This is the ordinary discarded-value
@@ -115,6 +117,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
 
 auto DeferStatementAst::CheckAtExit(
   Ast const &exit_point, const StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Running the expression at this exit is checked as running it
   // there would be: the whole of its memory check - what it
   // consumes, and what it only reads or borrows - against the
@@ -123,44 +126,42 @@ auto DeferStatementAst::CheckAtExit(
   if (_DeferScope == nullptr) { Ice(*this, *sm.CurrentScope, "defer registered for an exit has no recorded scope"); }
   auto tm = sm.NewManagerAt(*_DeferPosition);
 
-  auto &flow = *analyse::utils::memory_state::FlowOf(*_DeferScope);
+  auto &flow = *memory_state::FlowOf(*_DeferScope);
   struct DeferExitGuard {
-    analyse::utils::memory_state::FlowState &Flow;
-    Opt<analyse::utils::memory_state::DeferExit> Outer;
+    memory_state::FlowState &Flow;
+    Opt<memory_state::DeferExit> Outer;
     ~DeferExitGuard() { Flow.Deferring = Outer; }
   } const guard{.Flow = flow, .Outer = flow.Deferring};
 
-  flow.Deferring = analyse::utils::memory_state::DeferExit{
+  flow.Deferring = memory_state::DeferExit{
     .Stmt = this, .ExitPoint = &exit_point, .ExitWhat = exit_what
   };
   Expr->Stage8_CheckMemory(&tm, meta);
 }
 
-auto DeferStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *) -> void {
-  IMPORT_UTILS;
-
-  // Only a body being evaluated at compile time reaches this:
-  // a function prototype exhausts its scope at stage 9 rather
-  // than descending into it. The comptime evaluator has no
-  // notion of a scope exit to run the expression at, so rather
-  // than silently skipping it, say so.
-  // Todo: Use the generic comptime error?
-  Raise<SppDeferInCompTimeFunctionError>(ERR_ARGS(*TokDefer));
-}
-
 auto DeferStatementAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
-  // each of the scope's exits, by "EmitDeferredScope". What
+  // each of the scope's exits, by "EmitScopeExit". What
   // reaching this statement does is register it, so that only
   // the exits below it run it - the same thing stage 8 does
   // with "Scope::Deferred". Guarded against repeats because a
   // loop body is walked twice against the same scope.
-  if (not genex::contains(sm->CurrentScope->DeferredReached, this)) {
-    sm->CurrentScope->DeferredReached.emplace_back(this);
-  }
+  codegen::ReachDefer(*sm->CurrentScope, *this, ctx);
   return nullptr;
+}
+
+auto DeferStatementAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
+
+  // Only a body being evaluated at compile time reaches this:
+  // nothing else evaluates a function's body. The comptime
+  // evaluator has no
+  // notion of a scope exit to run the expression at, so rather
+  // than silently skipping it, say so.
+  // Todo: Use the generic comptime error?
+  Raise<SppDeferInCompTimeFunctionError>(ERR_ARGS(*TokDefer));
 }
 
 SPP_MOD_END

@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.annotation_utils;
 import spp.asts.class_prototype_ast;
 import spp.asts.cmp_statement_ast;
+import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
@@ -39,22 +40,17 @@ namespace spp::asts {
   namespace {
     using namespace spp::asts::utils;
 
-    /// Simple utility method to convert a visibility-oriented
-    /// annotation tag into a genuine visibility tag. Returns
-    /// Nullopt if the annotation is not a visibility tag.
-    auto VisibilityOf(Str const &fq_name) -> Opt<Visibility> {
-      IMPORT_UTILS;
-      // Declare enums to cast between.
-      using A = annotation_utils::BuiltinAnnotations;
-      using V = Visibility;
-
-      // Simple comparison and return the actual visibility, or
-      // nullopt.
-      if (fq_name == A::kPublic) { return V::kPublic; }
-      if (fq_name == A::kPackage) { return V::kPackage; }
-      if (fq_name == A::kProtected) { return V::kProtected; }
-      if (fq_name == A::kPrivate) { return V::kPrivate; }
-      return Nullopt;
+    /// The visibility a visibility annotation names, or Nullopt
+    /// for any other annotation.
+    auto VisibilityOf(const analyse::utils::annotation_utils::BuiltinAnnotation builtin) -> Opt<Visibility> {
+      using A = analyse::utils::annotation_utils::BuiltinAnnotation;
+      switch (builtin) {
+        case A::kPublic: return Visibility::kPublic;
+        case A::kPackage: return Visibility::kPackage;
+        case A::kProtected: return Visibility::kProtected;
+        case A::kPrivate: return Visibility::kPrivate;
+        default: return Nullopt;
+      }
     }
   }
 }
@@ -97,6 +93,8 @@ auto AnnotationAst::Clone() const -> Unique<Ast> {
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->_Target = _Target;
+  ast->Builtin = Builtin;
+  ast->_BuiltinResolved = _BuiltinResolved;
   return ast;
 }
 
@@ -133,14 +131,12 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
   // Get the fully qualified name of the annotation, to bypass
   // "use"-imports annotations. Needed to check if we are
   // currently analysing a "!annotation" annotation.
-  const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Name).first;
-  if (sym == nullptr) { return; } // Todo: Remove?
-  const auto fq_name = sym->FqName()->ToString();
+  if (not _ResolveBuiltin(sm)) { return; }
   const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
 
   // Early-apply the visibility annotations as some stage 5
   // mechanics need it in asts that can have visibility.
-  if (const auto vis = VisibilityOf(fq_name); vis.has_value()) {
+  if (const auto vis = VisibilityOf(Builtin); vis.has_value()) {
     if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) {
       vis_ctx->Visibility = {*vis, this};
     }
@@ -150,7 +146,7 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
   // a valid target (unique for this ast), as a cmp function,
   // so future steps can read off it properly. Root of all
   // annotations.
-  if (fq_name == "std::annotations::annotation") {
+  if (Builtin == annotation_utils::BuiltinAnnotation::kAnnotation) {
     RaiseIf<SppAnnotationTargetNotACmpFunctionError>(
       not(func_ctx and func_ctx->TokCmp),
       ERR_ARGS(*this, *_Ctx));
@@ -162,7 +158,6 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
 auto AnnotationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
-  using A = annotation_utils::BuiltinAnnotations;
 
   // Analyse the target to ensure that it is valid. This needs
   // to *not* include the "()" call on it, just the actual
@@ -176,10 +171,8 @@ auto AnnotationAst::Stage5_LoadSupScopes(
       : Name->Stage7_AnalyseSemantics(sm, meta);
   }
 
-  // Get the fully qualified name like in stage 4 - todo: can we
-  // stamp this symbol into the ast? saves on one lookup per ast.
-  const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Name).first;
-  const auto fq_name = sym->FqName()->ToString();
+  // Resolved in stage 4, unless its function was not found yet.
+  if (not _BuiltinResolved) { _ResolveBuiltin(sm); }
 
   // For the known builtin annotations, they will attempt to
   // modify their contextual objects if possible, for required
@@ -187,109 +180,85 @@ auto AnnotationAst::Stage5_LoadSupScopes(
   // prototypes. If the context is incorrect, nothing happens,
   // and a later stage will pickup the error, as there is a
   // unified target-checking mechanism (custom and builtin).
+  using A = annotation_utils::BuiltinAnnotation;
+  const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
+  const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
+  switch (Builtin) {
+    // An intrinsic function is a "builtin", and the compiler will
+    // generate raw LLVM IR for it. This typically leverages LLVM
+    // intrinsics, but sometimes involves larger functions that
+    // cannot be expression in S++ (pointer maths for example).
+    case A::kIntrinsic:
+      if (fun_ctx) { fun_ctx->BuiltinAnnotation = this; }
+      break;
 
-  // An intrinsic function is a "builtin", and the compiler will
-  // generate raw LLVM IR for it. This typically leverages LLVM
-  // intrinsics, but sometimes involves larger functions that
-  // cannot be expression in S++ (pointer maths for example).
-  if (fq_name == A::kIntrinsic) {
-    const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (func_ctx) { func_ctx->BuiltinAnnotation = this; }
-  }
+    // Mark a visibility-enabled ast with the visibility it names.
+    case A::kPublic:
+    case A::kPackage:
+    case A::kProtected:
+    case A::kPrivate:
+      if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) { vis_ctx->Visibility = {*VisibilityOf(Builtin), this}; }
+      break;
 
-  // Mark a visibility-enabled ast with the visibility it names.
-  // Needed in stage 4 and 5 for some analysis fixes (just leave
-  // it for now).
-  else if (const auto vis = VisibilityOf(fq_name); vis.has_value()) {
-    const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>();
-    if (vis_ctx) { vis_ctx->Visibility = {*vis, this}; }
-  }
+    // Mark a method as "virtual" (overridable) or "abstract" (to
+    // be overridden).
+    case A::kVirtualMethod:
+      if (fun_ctx) { fun_ctx->VirtualAnnotation = this; }
+      break;
+    case A::kAbstractMethod:
+      if (fun_ctx) { fun_ctx->AbstractAnnotation = this; }
+      break;
 
-  // Mark a method ast as being "virtual", enabling overriding.
-  else if (fq_name == A::kVirtualMethod) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->VirtualAnnotation = this; }
-  }
+    // Mark a function as "ffi", additionally providing a linkage
+    // name, and a unit test as non-callable: both are public.
+    case A::kFfi:
+      if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
+      if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
+      break;
+    case A::kTest:
+      if (fun_ctx) { fun_ctx->TestAnnotation = this; }
+      if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
+      break;
 
-  // Mark a method ast as being "abstract", requiring overriding.
-  else if (fq_name == A::kAbstractMethod) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->AbstractAnnotation = this; }
-  }
+    // Mark a class as a "zero type" (Todo: does this have an attr
+    // count check?), or as a thread hazard, so neither it nor
+    // anything holding one may cross a thread boundary.
+    case A::kZeroType:
+      if (cls_ctx) {
+        sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyZeroType = true;
+        cls_ctx->ZeroTypeAnnotation = this;
+      }
+      break;
+    case A::kThreadHazard:
+      if (cls_ctx) { sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyThreadHazard = true; }
+      break;
 
-  // Mark a function ast as being "ffi", additionally providing a
-  // linkage name. Makes a function public (stub.spp file).
-  else if (fq_name == A::kFfi) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
-    if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
-  }
+    // Mark a function's llvm inlining (which kind is read off
+    // "Builtin" at codegen), or its temperature.
+    case A::kLlvmInline:
+    case A::kLlvmAlwaysInline:
+    case A::kLlvmNoInline:
+      if (fun_ctx) { fun_ctx->InlineAnnotation = this; }
+      break;
+    case A::kLlvmHot:
+    case A::kLlvmCold:
+      if (fun_ctx) { fun_ctx->TemperatureAnnotation = this; }
+      break;
 
-  // Mark a type symbol as being "zero type". This can be applied
-  // to a class or a type alias. Todo: does this have an attr count
-  // check?
-  else if (fq_name == A::kZeroType and _Ctx->To<ClassPrototypeAst>()) {
-    const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyZeroType = true;
-    if (cls_ctx) { cls_ctx->ZeroTypeAnnotation = this; }
+    // A custom annotation, "!annotation" (stage 4), "!cfg" (before
+    // analysis) and "!versioned" (documentation) do nothing here.
+    default:
+      break;
   }
+}
 
-  else if (fq_name == A::kZeroType and _Ctx->To<TypeStatementAst>()) {
-    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->NewType)->IsDirectlyZeroType = true;
-    sm->CurrentScope->FindTypeSymbol(cls_ctx->OldType.get())->IsDirectlyZeroType = true;
-  }
-
-  // Mark a type symbol as a thread hazard, so neither it nor
-  // anything holding one may cross a thread boundary.
-  else if (fq_name == A::kThreadHazard and _Ctx->To<ClassPrototypeAst>()) {
-    const auto cls_ctx = _Ctx->To<ClassPrototypeAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->IsDirectlyThreadHazard = true;
-  }
-
-  else if (fq_name == A::kThreadHazard and _Ctx->To<TypeStatementAst>()) {
-    const auto cls_ctx = _Ctx->To<TypeStatementAst>();
-    sm->CurrentScope->FindHeadSymbol(*cls_ctx->NewType)->IsDirectlyThreadHazard = true;
-    sm->CurrentScope->FindTypeSymbol(cls_ctx->OldType.get())->IsDirectlyThreadHazard = true;
-  }
-
-  // Mark a function as being a "unit test" (makes it non-callable
-  // etc).
-  else if (fq_name == A::kTest) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->TestAnnotation = this; }
-    if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
-  }
-
-  // Mark a function as being inlinable via llvm.
-  else if (fq_name == A::kLlvmInline) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
-  }
-
-  // Mark a function as being always inlined via llvm.
-  else if (fq_name == A::kLlvmAlwaysInline) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
-  }
-
-  // Mark a function as being never inlined via llvm.
-  else if (fq_name == A::kLlvmNoInline) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->InlineAnnotation = {this, fq_name}; }
-  }
-
-  // Mark a function as being "hot" via llvm.
-  else if (fq_name == A::kLlvmHot) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->TemperatureAnnotation = this; }
-  }
-
-  // Mark a function as being "cold" via llvm.
-  else if (fq_name == A::kLlvmCold) {
-    const auto fun_ctx = _Ctx->To<FunctionPrototypeAst>();
-    if (fun_ctx) { fun_ctx->TemperatureAnnotation = this; }
-  }
+auto AnnotationAst::_ResolveBuiltin(
+  ScopeManager *sm) -> bool {
+  const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Name).first;
+  if (sym == nullptr) { return false; }
+  Builtin = analyse::utils::annotation_utils::BuiltinAnnotationOf(sym->FqName()->ToString());
+  _BuiltinResolved = true;
+  return true;
 }
 
 auto AnnotationAst::Stage7_AnalyseSemantics(
@@ -323,9 +292,10 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   // Stamp the overload as the "target" of this annotation. This
   // will be used for extensively for custom annotations.
   _Target = overload;
+  _CheckTarget(sm, meta);
 }
 
-auto AnnotationAst::Stage9_CompTimeResolve(
+auto AnnotationAst::_CheckTarget(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using annotation_utils::AnnotationInfo;
@@ -338,17 +308,30 @@ auto AnnotationAst::Stage9_CompTimeResolve(
   const auto outer_sup_ctx = _Ctx->GetAstCtx()->To<SupPrototypeFunctionsAst>();
   const auto outer_ext_ctx = _Ctx->GetAstCtx()->To<SupPrototypeExtensionAst>();
 
-  // Todo: Maybe do this in stage7, with stage9 evaluation? needs cmp args.
-  // Evaluate the context that this annotation can be applied to.
+  // The mask reads sup constants (attached in stage 5.5) and may
+  // run "cmp" functions (analysed ahead where one is not yet), so
+  // it cannot be checked before the stage 5 effects. Each of those
+  // only modifies a function or a class, whichever its annotation
+  // applies to. Evaluate the context that this annotation can be
+  // applied to.
   const auto annotation_scope_name = INJECT_CODE("std::annotations", ParseExpression);
   const auto annotation_scope = const_cast<Scope*>(
     sm->CurrentScope->FindNsScope(annotation_scope_name.get()));
   auto tm = sm->NewManagerAt(annotation_scope);
 
   const auto allowed_ctx = [&] {
+    // The mask is constants combined by "|", which its key folds
+    // without calling anything ("FoldCompValues"). Running the call
+    // instead would reach the method "|" desugars to while it may
+    // still be analysed: an annotation on "S32::bit_ior" itself is
+    // checked as that method's own analysis begins.
+    auto const &mask = *annotation_info->Definition->FnArgGroup->At("target")->Val;
+    if (const auto folded = annotation_scope->FoldedCompAstOf(mask); folded != nullptr) {
+      return folded->As<IntegerLiteralAst>()->CppVal<std::uint64_t>();
+    }
     const auto _meta_guard = MetaGuard(meta);
     annotation_info->Definition->FnArgGroup->At("target")->Val->Stage7_AnalyseSemantics(&tm, meta);
-    annotation_info->Definition->FnArgGroup->At("target")->Val->Stage9_CompTimeResolve(&tm, meta);
+    annotation_info->Definition->FnArgGroup->At("target")->Val->EvaluateCompTime(&tm, meta);
     const auto result = std::move(meta->CompTimeResult);
     return result->To<IntegerLiteralAst>()->CppVal<std::uint64_t>();
   }();

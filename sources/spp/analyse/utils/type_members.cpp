@@ -357,34 +357,24 @@ auto spp::analyse::utils::type_members::IsLeftUnimplementedByAnError(
   return false;
 }
 
-auto spp::analyse::utils::type_members::GetAllAttrAsts(
-  TypeSymbol const &cls_sym)
-  -> Vec<ClassAttributeAst*> {
-  // Driven off the same walk as "GetAllAttrs" so the two line
-  // up index for index, then resolved to an ast by name within
-  // the scope the symbol came from. Enumerating the prototype's
-  // members directly is what let the two lists drift, because
-  // the member list has no notion of the generic symbols the
-  // other walk skips.
-  auto attr_asts = Vec<ClassAttributeAst*>{};
-  for (auto const &[sup_scope, sym] : CollectAttrSymbols(cls_sym)) {
-    const auto cls_proto = sup_scope->AstNode->ToUnchecked<ClassPrototypeAst>();
-    auto *found = static_cast<ClassAttributeAst*>(nullptr);
-    for (auto const &member : cls_proto->Impl->Members) {
-      const auto attr = member->To<ClassAttributeAst>();
-      if (attr != nullptr and *attr->Name == *sym->Name) {
-        found = attr;
-        break;
-      }
-    }
-
-    // Pushed even when nothing matched, so that a symbol with
-    // no written attribute shortens neither list and the index
-    // alignment holds regardless.
-    attr_asts.emplace_back(found);
+auto spp::analyse::utils::type_members::AttrIndicesOf(
+  Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> const &attrs, IdentifierAst const &name)
+  -> Vec<std::size_t> {
+  auto out = Vec<std::size_t>();
+  for (auto i = 0uz; i < attrs.size(); ++i) {
+    if (*spp::get<0>(attrs[i]) == name) { out.emplace_back(i); }
   }
+  return out;
+}
 
-  return attr_asts;
+auto spp::analyse::utils::type_members::AttrAstOf(
+  Scope const &attr_scope, IdentifierAst const &name)
+  -> ClassAttributeAst* {
+  // Found by name in the class the scope is, where the symbol came from.
+  for (auto const &member : attr_scope.AstNode->As<ClassPrototypeAst>()->Impl->Members) {
+    if (const auto attr = member->To<ClassAttributeAst>(); attr != nullptr and *attr->Name == name) { return attr; }
+  }
+  return nullptr;
 }
 
 auto spp::analyse::utils::type_members::GetFieldIndexInType(
@@ -397,17 +387,11 @@ auto spp::analyse::utils::type_members::GetFieldIndexInType(
   // index has to be shifted past them.
   const auto base = GetSuperimposedFatPointerFieldCount(type_sym);
 
-  // Get all the attributes on the type.
+  // The first attribute so named; past the last when none is (a name access to a shared one is ambiguous, so
+  // the first is the one).
   const auto all_attrs = GetAllAttrs(type_sym);
-
-  // Find the field index.
-  for (auto index = 0uz; index < all_attrs.size(); ++index) {
-    if (*spp::get<0>(all_attrs[index]) == field_name) {
-      return base + index;
-    }
-  }
-
-  return base + all_attrs.size();
+  const auto indices = AttrIndicesOf(all_attrs, field_name);
+  return base + (indices.empty() ? all_attrs.size() : indices.front());
 }
 
 auto spp::analyse::utils::type_members::SuperClsRefs(
@@ -430,6 +414,16 @@ auto spp::analyse::utils::type_members::SuperClsScopes(
     if (sup_scope->LinkedTypeSymbol == nullptr
       or asts::AstAs<ClassPrototypeAst>(sup_scope->AstNode) == nullptr) { continue; }
     out.emplace_back(sup_scope);
+  }
+  return out;
+}
+
+auto spp::analyse::utils::type_members::SuperClsReads(
+  Vec<Scope*> const &sup_scopes)
+  -> Vec<Pair<TypeRef, Scope const*>> {
+  auto out = Vec<Pair<TypeRef, Scope const*>>();
+  for (auto const *cls_scope : SuperClsScopes(sup_scopes)) {
+    out.emplace_back(TypeRef::Of(*cls_scope->LinkedTypeSymbol, *cls_scope), cls_scope);
   }
   return out;
 }
@@ -556,6 +550,6 @@ auto spp::analyse::utils::type_members::VariantMemberRefs(
   auto members = Vec<TypeRef>();
   // Read straight off each member's identity, one per member:
   // a member's index is its tag.
-  for (const auto member : scopes::HeadOf(ref.Id).Members) { members.emplace_back(TypeRef::Of(member, scope)); }
+  for (const auto member : scopes::HeadOf(ref.Id).VariantMembers) { members.emplace_back(TypeRef::Of(member, scope)); }
   return members;
 }

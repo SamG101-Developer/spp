@@ -11,6 +11,7 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(UseStatementVariableAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct CmpStatementAst);
@@ -59,8 +60,6 @@ SPP_EXP_CLS struct spp::asts::UseStatementVariableAst final : StatementAst, Modu
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
@@ -76,4 +75,10 @@ private:
   /// The cmp statement generated from this use statement, so
   /// it is analysed uniformly with "type Str = std::Str".
   Unique<CmpStatementAst> _Conversion;
+
+  /// Take the kind of what is imported, "target" (the end of a
+  /// chain of imports, found in "target_scope"), and a function's
+  /// mock type, which is the compiler's and named from anywhere.
+  /// A constant's written type is read in stage 4.
+  auto _TakeTarget(VariableSymbol &target, Scope const &target_scope) -> void;
 };

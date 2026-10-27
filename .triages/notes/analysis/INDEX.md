@@ -1,0 +1,24 @@
+- [analyse::utils module map](analyse-utils-module-map.md) — 2026-09-28 reorg + 2026-10-16 regrouping old→new homes
+- [IMPORT_UTILS convention](import-utils-macro-convention.md) — utils as module::F, errors unqualified
+- [Scope symbol family duplication](scope-symbol-family-duplication.md) — one member per kind (symmetric), shared bodies; FindTypeSymbol kept apart
+- [ScopeDefinedIn can dangle](scope-defined-in-can-dangle.md) — resolve through LinkedScope
+- [Same-scope shadowing](spp-same-scope-shadowing.md) — lets declare at their position each walk (M2); hide on entry, reveal on exit
+- [Visibility stage ordering](spp-visibility-stage-ordering.md) — attribute visibility syncs in Stage4; pre-stage-6 type names deferred (bug 45)
+- [Meta flags are per-stage](spp-meta-flags-are-per-stage.md) — stage 7 flags don't reach 8; new keywords
+- [Heavy guards, symmetric](meta-guard-heavy-symmetric.md) — Save/Restore only via MetaGuard; set an Enclosing* field = heavy guard, every stage
+- [_HasAnalysed conflation](spp-hasanalysed-conflation.md) — _Resolved not carried by Clone; 4 dead ends
+- [Free functions walk in reverse](free-functions-walk-in-reverse.md) — mock sups prepended; Stage 7 folds analyse the callee ahead (AnalyseAhead)
+- [Stage 9 walk removed](stage-9-walk-removed.md) — constants fold in Stage 7 via AnalyseAhead; Stage9 methods are the evaluator
+- [Evaluators only read their AST](evaluators-only-read-their-ast.md) — EvaluateCompTime never writes back; a cmp fun body is shared by calls and codegen
+- [Clone() carries cached analysis](ast-clone-carries-cached-analysis.md) — rewriting a clone's child does nothing
+- [Call args replaced after analysis](call-args-replaced-after-analysis.md) — args moved into the winner
+- [ExhaustScope leaves CurrentScope](exhaust-scope-current-scope.md) — now SkipSubtree; folded-expr scope pattern; comp arrays
+- [ScopeManager walk API](scope-manager-walk-api.md) — NewManagerAt (positioned), ScopePositionGuard, SkipSubtree, ScopeTree
+- [Diverges is the one definition](diverges-single-definition.md) — StatementAst::Diverges virtual (N4.1); Terminates() gone
+- [Ice for impossible states](ice-for-impossible-states.md) — spp::Ice, not SemanticError/unreachable; SPP_ASSERT live in release
+- [ERR_ARGS holds references](err-args-hold-references.md) — fresh ASTs inline in ERR_ARGS dangle; hold in a local
+- [Errors quote each AST from its own file](error-scope-per-block.md) — N8.7: positions name their file; Raise takes no scopes
+- [Type source-span override](type-source-span-override.md) — WithSourceSpanOf(written) last; error locations
+- [IDE recovery sectioning](ide-recovery-sectioning.md) — sink-mode recovery per member, stages 6-9
+- [Perf hot path](spp-perf-hot-path.md) — time is in type-symbol lookup, not scope cloning
+- [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons

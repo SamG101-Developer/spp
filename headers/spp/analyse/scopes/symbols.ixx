@@ -25,6 +25,7 @@ use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ClassPrototypeAst);
+use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterGroupAst);
@@ -280,6 +281,15 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
   /// symbol will be the "LinkedNamespaceSymbol" on the linked scope.
   Scope *LinkedScope;
 
+  /// For a top-level namespace, who shipped the modules in it:
+  /// the "vcs" dependency, by folder name, or none for the
+  /// project ("Module::Owner").
+  Opt<Str> Owner;
+
+  /// Whether this top-level namespace is an ffi package, which
+  /// only its owner's modules can name what is in.
+  bool IsFfiPackage = false;
+
   NamespaceSymbol(Shared<IdentifierAst> name, Scope *scope);
   NamespaceSymbol(NamespaceSymbol const &that);
   ~NamespaceSymbol() override;
@@ -358,8 +368,8 @@ namespace spp::analyse::scopes {
   /// is spelled again (in a type's name, a mangled name, and a stable order).
   SPP_EXP_CLS auto ParamNameOf(std::uint64_t id) -> Str;
 
-  /// The name a key's named argument is written under: its parameter's ("ParamNameOf"). Empty for a positional
-  /// argument.
+  /// The name a key's named argument is written under: its parameter's ("ParamNameOf"). Only a named argument has
+  /// one.
   SPP_EXP_CLS auto ArgNameOf(TypeIdArg const &arg) -> Str;
 
   /// The identity a type symbol stands for wherever it is named, as a type written naming it means it: a parameter
@@ -470,6 +480,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// else, and for a value naming a constant that cannot be read yet ("IsReadableCompId"), which is keyed where read.
   CompId BoundCompId = nullptr;
 
+  /// The statement declaring this constant, which a fold reading it before stage 7 has reached it analyses first
+  /// ("CmpStatementAst::AnalyseAhead"). Null for anything else, and for a copy made per instantiation, whose value is
+  /// read through its template's.
+  asts::CmpStatementAst *Stmt = nullptr;
+
   VariableSymbol(
     Shared<IdentifierAst> name,
     Shared<TypeAst> type,
@@ -512,6 +527,13 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// Whether this has no runtime storage of its own: a "cmp"
   /// constant, a function's mock constant, or a comp generic.
   SPP_ATTR_NODISCARD auto IsCompTime() const -> bool;
+
+  /// What a "use" names, followed through each "use" in turn
+  /// ("AliasSymbol"), stopping on one it comes back to: the
+  /// constant or function at the end, or an import still waiting
+  /// for its target. Anything not imported is itself. The twin of
+  /// "TypeSymbol::UseTarget".
+  SPP_ATTR_NODISCARD auto UseTarget() const -> VariableSymbol*;
 
   /// Whether this names something brought in by a "use" rather
   /// than declared here: an import still waiting for its target,

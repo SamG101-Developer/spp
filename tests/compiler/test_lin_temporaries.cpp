@@ -178,3 +178,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearTemporaries,
+  test_invalid_temporary_case_subject_kept_by_falling_through,
+  SppLinearValueNotConsumedError, R"(
+    cls TmpSubject { }
+
+    fun mk() -> TmpSubject or S32 { ret TmpSubject() }
+
+    fun f() -> Void {
+        case mk() of {
+            is S32() { }
+        }
+    }
+)");

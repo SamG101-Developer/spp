@@ -9,6 +9,7 @@ import spp.asts.defer_statement_ast;
 import spp.asts.expression_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.meta.compiler_meta_data;
+import genex;
 
 auto spp::codegen::EmitDeferredScope(
   analyse::scopes::Scope const &scope,
@@ -23,26 +24,41 @@ auto spp::codegen::EmitDeferredScope(
 
   // Reverse order: the statements run last-registered-first, so a value deferred after another is released first.
   // Read from the reached list rather than from every "defer" the scope contains, so an exit part-way through runs
-  // only what control actually registered on its way here.
-  for (auto i = scope.DeferredReached.size(); i > 0uz; --i) {
-    scope.DeferredReached[i - 1uz]->Expr->Stage11_CodeGen(sm, meta, ctx);
+  // only what control actually registered on its way here. Copied, as generating a deferred expression walks its
+  // own scopes, which can add to the map.
+  const auto found = ctx->Deferred->InScope.find(&scope);
+  if (found == ctx->Deferred->InScope.end()) { return; }
+  const auto reached = found->second;
+  for (auto i = reached.size(); i > 0uz; --i) {
+    reached[i - 1uz]->Expr->Stage11_CodeGen(sm, meta, ctx);
   }
 }
 
-auto spp::codegen::EmitDeferredUnwind(
-  analyse::scopes::Scope const &innermost,
-  analyse::scopes::Scope const *const boundary,
-  const bool boundary_inclusive,
+auto spp::codegen::EmitScopeExit(
+  analyse::scopes::Scope const *const into,
   analyse::scopes::ScopeManager *const sm,
   asts::meta::CompilerMetaData *const meta,
   LlvmCtx *const ctx)
   -> void {
-  // Leaving early skips the scope ends that would otherwise have run the deferred expressions, so every scope between
-  // here and the one being jumped out of runs them at the jump instead - innermost first, the order they would have
-  // been left in had control reached their ends.
-  for (auto const *scope = &innermost; scope != nullptr; scope = scope->Parent) {
-    if (scope == boundary and not boundary_inclusive) { break; }
+  // An early exit skips the ends of the scopes it jumps out of, so what they deferred runs at the jump instead -
+  // innermost first, the order they would have been left in had control reached their ends.
+  for (auto const *scope = sm->CurrentScope; scope != nullptr and scope != into; scope = scope->Parent) {
     EmitDeferredScope(*scope, sm, meta, ctx);
-    if (scope == boundary) { break; }
   }
+}
+
+auto spp::codegen::EnterDeferScope(
+  analyse::scopes::Scope const &scope,
+  LlvmCtx *const ctx)
+  -> void {
+  ctx->Deferred->InScope.erase(&scope);
+}
+
+auto spp::codegen::ReachDefer(
+  analyse::scopes::Scope const &scope,
+  asts::DeferStatementAst &defer,
+  LlvmCtx *const ctx)
+  -> void {
+  auto &reached = ctx->Deferred->InScope[&scope];
+  if (not genex::contains(reached, &defer)) { reached.emplace_back(&defer); }
 }

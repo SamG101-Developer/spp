@@ -32,7 +32,7 @@ skip-comments = true
 allow = [
   "headers/spp/utils/types.ixx",
   "headers/wrappers",
-  "headers/spp/codegen/llvm_passes.hpp",
+  "headers/spp/codegen/llvm_pipeline.hpp",
 ]
 
 [rule.suggest]
@@ -70,7 +70,7 @@ skip-comments = true
 allow = [
   "headers/spp/utils/types.ixx",
   "headers/wrappers",
-  "headers/spp/codegen/llvm_passes.hpp",
+  "headers/spp/codegen/llvm_pipeline.hpp",
 ]
 
 [rule.suggest]

@@ -41,9 +41,8 @@ TEST(TestScopeLetBindings, test_reveal_after_full_walk_reads_final_shadow) {
   EXPECT_EQ(scope.InternalTable.VarTable.Find(first->Name.get()), second.get());
 }
 
-// Red: a walk leaving part-way between two shadows of a name (a comp-time "ret" in Stage 9 stops the walk there) leaves
-// the earlier one filed, and "RevealLetBindings" only fills names that are empty, so the scope goes on reading the
-// earlier binding instead of the last one declared. See docs/next-steps.md N6.15.
+// A walk leaving part-way between two shadows of a name (a comp-time "ret" in Stage 9 stops the walk there) leaves the
+// earlier one filed: revealing puts the last one declared back over it.
 TEST(TestScopeLetBindings, test_reveal_after_partial_walk_reads_final_shadow) {
   using spp::analyse::scopes::Scope;
   using spp::analyse::scopes::ScopeBlockName;

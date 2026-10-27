@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.analyse.utils.expr_utils;
@@ -99,9 +100,12 @@ auto GenericArgumentAst::PosEnd() const -> std::size_t {
 }
 
 auto GenericArgumentAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<GenericArgumentAst>(
+  // Clone all the members of the ast, and the parameter type a
+  // comp value is analysed against.
+  auto ast = MakeUnique<GenericArgumentAst>(
     AstCloneShared(_KeywordName), AstClone(TokAssign), AstCloneShared(TypeVal), AstCloneShared(CompVal));
+  ast->ExpectedCompType = ExpectedCompType;
+  return ast;
 }
 
 auto GenericArgumentAst::ToString() const -> Str {
@@ -150,7 +154,7 @@ auto GenericArgumentAst::Value() const -> ExpressionAst* {
 auto GenericArgumentAst::ViewName() const -> StrView {
   // Get the name from the keyword part.
   if (_KeywordName == nullptr) { return ""; }
-  return _KeywordName->ToUnchecked<TypeIdentifierAst>()->Name;
+  return _KeywordName->As<TypeIdentifierAst>()->Name;
 }
 
 auto GenericArgumentAst::Stage7_AnalyseSemantics(
@@ -175,6 +179,7 @@ auto GenericArgumentAst::Stage8_CheckMemory(
 
 auto GenericArgumentAst::AnalyseTypeVal(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // "Self" outside a function body is kept, for the caller
   // to decide per use; inside one it is the enclosing type.
   if (TypeVal->IsSelfType()
@@ -191,7 +196,7 @@ auto GenericArgumentAst::AnalyseTypeVal(
   // it with an instantiation's own parameters ("Single[Arr[T]]"
   // written inside "Single" never ends).
   if (auto const *const val_sym = scope.FindTypeSymbol(TypeVal.get()); val_sym != nullptr) {
-    analyse::utils::type_resolution::StampType(*TypeVal, *val_sym);
+    type_resolution::StampType(*TypeVal, *val_sym);
   }
 }
 
@@ -230,28 +235,40 @@ auto GenericArgumentAst::AnalyseCompVal(
   // Analysing an operator expression desugars it into a call
   // and moves its operands there ("n + 1" becomes "n.add(1)"),
   // so one is checked on a copy: the written expression is what
-  // is folded, keyed and substituted. A comp argument is also
-  // an expression of its own: nothing the enclosing one set up
-  // - the return type a "ret" resolves overloads against, an
-  // assignment target - applies to that call.
+  // is folded, keyed and substituted.
   const auto checked = comp_generics::IsCompOperator(*CompVal) ? AstClone(CompVal) : nullptr;
   auto &target = checked != nullptr ? *checked : *CompVal;
-  {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->ReturnTypeOverloadResolverType = nullptr;
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
-    target.Stage7_AnalyseSemantics(sm, meta);
+  AnalyseCompExpr(target, sm, meta);
+  common_errors::RequirePrimary(target, *sm);
+
+  // A call keys as its spelling, so it is evaluated here, and the argument is the literal it folds to: "A[ct()]" is
+  // "A[3_uz]".
+  if (auto folded = comp_generics::FoldCompCall(target, sm, meta); folded != nullptr) {
+    if (auto const *const lit = folded->To<IntegerLiteralAst>(); lit != nullptr) { lit->ValidateBounds(*CompVal); }
+    CompVal = std::move(folded);
+    return;
   }
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(target, *sm),
-    ERR_ARGS(target));
 
   // Stamp every comp parameter named here - nested ones too
   // ("n + 1") - with that parameter, so a copy of this argument
   // carried into another scope keeps naming it there, where the
   // same spelling may name another.
   type_resolution::StampCompParts(*CompVal, *sm->CurrentScope);
+}
+
+auto GenericArgumentAst::AnalyseCompExpr(
+  ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> void {
+  // A comp argument is an expression of its own: nothing the
+  // enclosing one set up - the return type a "ret" resolves
+  // overloads against, an assignment target - applies to it. Its
+  // target is its parameter's type, where that is known: without
+  // it, a variant array ("[Some(val=1), None]") would hold each
+  // element to the first one's type.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->ReturnTypeOverloadResolverType = nullptr;
+  meta->ClearAssignmentTarget();
+  if (ExpectedCompType != nullptr) { meta->AssignmentTargetType = ExpectedCompType->AstIn(*sm->CurrentScope); }
+  value.Stage7_AnalyseSemantics(sm, meta);
 }
 
 SPP_MOD_END

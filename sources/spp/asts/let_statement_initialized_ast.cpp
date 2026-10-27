@@ -7,10 +7,12 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_resolution;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_array_ast;
@@ -130,18 +132,21 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
     ? MakeShared<TypeRef>(TypeRef::Of(*Type, *sm->CurrentScope))
     : nullptr;
 
+  // The declared type is the value's target, set before the value
+  // is analysed (as "ret" and an assignment set theirs): a "case"
+  // takes its branches' type from it, and an array literal its
+  // element type.
+  meta->AssignmentTargetType = Type;
+
   // Check the value is a valid expression type.
   Val->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    ERR_ARGS(*Val.get()));
+  common_errors::RequirePrimary(*Val, *sm);
 
   meta->AssignmentTarget = Var->ExtractName();
 
   // Ensure the value's type matches the type (if given),
   // including variant matching.
   if (Type != nullptr) {
-    meta->AssignmentTargetType = Type;
     const auto val_type = Val->InferType(sm, meta);
     if (not type_compare::Assignable(
       TypeRef::Of(*Type, *sm->CurrentScope),
@@ -188,19 +193,6 @@ auto LetStatementInitializedAst::Stage8_CheckMemory(
   Var->Stage8_CheckMemory(sm, meta);
 }
 
-auto LetStatementInitializedAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The value is resolved before the binding is declared (the
-  // variable declares it once the value is done).
-  Val->Stage9_CompTimeResolve(sm, meta);
-
-  // Assign the comptime value to the variable.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTarget = Var->ExtractName();
-  meta->LetStatementValue = Val.get();
-  Var->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto LetStatementInitializedAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
@@ -222,6 +214,26 @@ auto LetStatementInitializedAst::Stage11_CodeGen(
   // in doing it this way.
   const auto alloca = Var->Stage11_CodeGen(sm, meta, ctx);
   return alloca;
+}
+
+auto LetStatementInitializedAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The value is resolved before the binding is declared (the
+  // variable declares it once the value is done).
+  Val->EvaluateCompTime(sm, meta);
+
+  // Assign the comptime value to the variable.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->AssignmentTarget = Var->ExtractName();
+  meta->LetStatementValue = Val.get();
+  Var->EvaluateCompTime(sm, meta);
+}
+
+auto LetStatementInitializedAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // The variable is "Void" typed when its value is "!", so the
+  // value is what is asked.
+  return Val->Diverges(sm, meta);
 }
 
 SPP_MOD_END

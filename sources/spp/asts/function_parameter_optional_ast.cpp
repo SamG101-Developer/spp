@@ -7,9 +7,11 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
+import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
@@ -94,9 +96,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
     meta->ParameterDefaultScope = sm->CurrentScope;
     DefaultVal->Stage7_AnalyseSemantics(sm, meta);
   }
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*DefaultVal, *sm),
-    ERR_ARGS(*DefaultVal));
+  common_errors::RequirePrimary(*DefaultVal, *sm);
 
   // Do a type check on the default value's type vs the type
   // given; the default's type is only spelled out for the

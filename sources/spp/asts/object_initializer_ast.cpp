@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_members;
@@ -27,11 +28,10 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -90,9 +90,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   }
 
   // Check this type isn't a borrow violation.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*Type, *sm),
-    ERR_ARGS(*this, *Source.OriginalType, "object initializer"));
+  common_errors::RequireNotBorrowed(*Type, *this, *Source.OriginalType, "object initializer", *sm);
   const auto named_cls_sym = sm->CurrentScope->FindHeadSymbol(*Type);
 
   // "Self(...)" names the class it stands for, and the
@@ -136,7 +134,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   // attribute's type through them ("MyType[T=Str](a=g())").
   {
     const auto _meta_guard = MetaGuard(meta);
-    meta->ObjectInitType = Type;
+    ArgGroup->InitType = Type;
     ArgGroup->Stage6_PreAnalyseSemantics(sm, meta);
   }
 
@@ -172,7 +170,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   }
 
   const auto _meta_guard = MetaGuard(meta);
-  meta->ObjectInitType = Type;
+  ArgGroup->InitType = Type;
   ArgGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
@@ -180,22 +178,6 @@ auto ObjectInitializerAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the object argument group.
   ArgGroup->Stage8_CheckMemory(sm, meta);
-}
-
-auto ObjectInitializerAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner elements to compile-time values.
-  auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
-  for (auto const &elem : ArgGroup->Args) {
-    elem->Stage9_CompTimeResolve(sm, meta);
-    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
-      elem->Name, nullptr, std::move(meta->CompTimeResult));
-    cmp_elems->Args.emplace_back(std::move(cmp_arg));
-  }
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<ObjectInitializerAst>(
-    Type, std::move(cmp_elems));
 }
 
 auto ObjectInitializerAst::Stage11_CodeGen(
@@ -212,9 +194,6 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto attrs = type_members::GetAllAttrs(*type_sym);
-  const auto attr_names = attrs
-    | spp::views::tuple_nth<0>
-    | genex::to<Vec>();
 
   // A type carrying no value has no value to build, so
   // prevent any code generation (or further GEPs into it).
@@ -225,7 +204,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // compiler-known primitives (which don't even lower to
   // structs) and the fat pointer types. Also the base
   // cases for the recursive default initialization.
-  if (attr_names.empty()) { return llvm::Constant::getNullValue(llvm_type); }
+  if (attrs.empty()) { return llvm::Constant::getNullValue(llvm_type); }
 
   // A class superimposing "Gen"/"GenOnce"/a "FunXXX" gets
   // that interface's fat-pointer fields prepended ahead of
@@ -237,13 +216,12 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     *type_sym);
 
   // Where an argument's attribute sits in the type's own
-  // declaration order. Every argument names an attribute -
-  // analysis rejects a name that is not one - so the search
-  // always finds it.
-  const auto spp_attr_index_of = [&](IdentifierAst const &name) {
-    const auto index = genex::position(attr_names, [&name](auto const &attr_name) { return *attr_name == name; });
-    SPP_ASSERT(index.has_value());
-    return *index;
+  // declaration order: stage 7 records it on every argument
+  // ("ObjectInitializerArgumentAst::AttrIndex"), as two base
+  // classes may share a name.
+  const auto spp_attr_index_of = [](ObjectInitializerArgumentAst const &arg) {
+    SPP_ASSERT(arg.AttrIndex.has_value());
+    return *arg.AttrIndex;
   };
 
   // An attribute whose type carries no value ("v: T" at
@@ -275,7 +253,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
     arg_values.reserve(ArgGroup->Args.size());
     for (auto const &arg : ArgGroup->Args) {
       auto val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-      const auto attr_index = spp_attr_index_of(*arg->Name);
+      const auto attr_index = spp_attr_index_of(*arg);
       if (val == nullptr or is_valueless(attr_index)) { continue; }
 
       // An attribute whose type is a variant takes any one of
@@ -283,12 +261,8 @@ auto ObjectInitializerAst::Stage11_CodeGen(
       // widened on the way in - the same coercion a by-value
       // argument gets at a function call.
       if (auto const &attr_ref = spp::get<1>(attrs[attr_index]); attr_ref.Symbol != nullptr) {
-        val = codegen::CoerceToFnValue(
-          val, attr_ref,
-          arg->Val->InferTypeRef(sm, meta), *sm, ctx);
-        val = codegen::CoerceToVariant(
-          val, attr_ref,
-          arg->Val->InferTypeRef(sm, meta), *sm->CurrentScope, "obj_init.variant" + uid, ctx);
+        val = codegen::CoerceToSlot(
+          val, attr_ref, arg->Val->InferTypeRef(sm, meta), *sm, "obj_init.variant" + uid, ctx);
       }
 
       arg_values.emplace_back(MakePair(llvm_attr_index(attr_index), val));
@@ -339,7 +313,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   auto comp_fields = Vec<llvm::Constant*>(struct_type->getNumElements(), nullptr);
   for (auto const &arg : ArgGroup->Args) {
     const auto comp_val = arg->Val->Stage11_CodeGen(sm, meta, ctx);
-    const auto attr_index = spp_attr_index_of(*arg->Name);
+    const auto attr_index = spp_attr_index_of(*arg);
     if (comp_val == nullptr or is_valueless(attr_index)) { continue; }
     comp_fields[llvm_attr_index(attr_index)] = llvm::cast<llvm::Constant>(comp_val);
   }
@@ -358,6 +332,23 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(struct_type, comp_fields);
 }
 
+auto ObjectInitializerAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner elements to compile-time values.
+  auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
+  for (auto const &elem : ArgGroup->Args) {
+    elem->EvaluateCompTime(sm, meta);
+    auto cmp_arg = MakeUnique<ObjectInitializerArgumentKeywordAst>(
+      elem->Name, nullptr, std::move(meta->CompTimeResult));
+    cmp_arg->AttrIndex = elem->AttrIndex;
+    cmp_elems->Args.emplace_back(std::move(cmp_arg));
+  }
+
+  // Wrap the compile-time array value.
+  meta->CompTimeResult = MakeUnique<ObjectInitializerAst>(
+    Type, std::move(cmp_elems));
+}
+
 auto ObjectInitializerAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The type being initialized, held as written.
@@ -366,12 +357,13 @@ auto ObjectInitializerAst::InferTypeRef(
 
 auto ObjectInitializerAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // The initialiser names its type outright, and each
   // of its arguments is an expression in its own right.
   auto arg_group = AstClone(ArgGroup);
   for (auto const &arg : arg_group->Args) { arg->Val = AstClone(arg->Val->ReadExpr(sub)); }
   return MakeShared<ObjectInitializerAst>(
-    analyse::utils::type_resolution::ReadType(*Type, sub), std::move(arg_group));
+    type_resolution::ReadType(*Type, sub), std::move(arg_group));
 }
 
 auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {

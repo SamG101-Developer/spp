@@ -1,0 +1,179 @@
+# The test matrix _build.yaml planned, against its digest-checked
+# binaries: gtest (mode x shard), STL conformance, and on Linux
+# valgrind, the codegen checks and the differential suite when
+# asked for, each in a cell of its own or, with `pack`, beside
+# the last gtest shard.
+
+name: test
+
+on:
+  workflow_call:
+    inputs:
+      build:
+        description: "The build job's outputs, as JSON: `toJSON(needs.<build job>.outputs)`."
+        required: true
+        type: string
+      gtest-filter:
+        description: "A --gtest_filter pattern for the gtest cells; every test when empty."
+        required: false
+        type: string
+        default: ""
+      asan-options:
+        description: "ASAN_OPTIONS for the gtest cells of a sanitized build; ASan's defaults when empty."
+        required: false
+        type: string
+        default: ""
+      off:
+        description: "spp.toml keys STL conformance turns off; bare is [binary.codegen], else dotted."
+        required: false
+        type: string
+        default: ""
+
+permissions: { }
+
+# Windows otherwise defaults `run` to PowerShell.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Each cell is one suite; the planner decides which cells this
+  # lane has, so a suite that does not apply draws no job at all.
+  # Valgrind, the codegen checks and the differential suite are
+  # advisory: valgrind and the differential suite until they have
+  # run clean for a while, the codegen checks until they have on
+  # the hosted kernel, which seal and deny_wx depend on.
+  test:
+    name: ${{ matrix.label }}
+    runs-on: ${{ fromJSON(inputs.build).os }}
+    timeout-minutes: ${{ matrix.timeout }}
+    continue-on-error: ${{ matrix.advisory || fromJSON(inputs.build).advisory == 'true' }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(fromJSON(inputs.build).tests) }}
+    steps:
+      # Only valgrind needs sudo, for libc6-dbg, which valgrind
+      # reads only from /usr/lib/debug. Egress stays on audit
+      # until its endpoints are known.
+      - name: Harden Runner
+        if: runner.os == 'Linux'
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+          disable-sudo: ${{ !contains(matrix.suites, 'valgrind') }}
+
+      # The test fixtures, at the same commit the binaries were built
+      # from.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ fromJSON(inputs.build).artifact }}
+          spp-sha256: ${{ fromJSON(inputs.build)['spp-sha256'] }}
+          tests-sha256: ${{ fromJSON(inputs.build)['tests-sha256'] }}
+
+      # Valgrind's set-up runs first, so its GITHUB_PATH write has
+      # landed before the suites start. Valgrind is built into the
+      # home directory.
+      - name: Cache valgrind
+        id: valgrind-cache
+        if: contains(matrix.suites, 'valgrind')
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.tools/valgrind
+          key: valgrind-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+
+      - name: Install valgrind (cache miss)
+        if: contains(matrix.suites, 'valgrind') && steps.valgrind-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-valgrind-linux.sh
+
+      - name: Expose valgrind
+        if: contains(matrix.suites, 'valgrind')
+        run: |
+          echo "$SPP_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_VALGRIND_PREFIX/bin/valgrind" --version
+
+      - name: Install glibc debug symbols
+        if: contains(matrix.suites, 'valgrind')
+        run: bash .github/scripts/setup/install-glibc-debuginfo-linux.sh
+
+      # A merge pool: each binary's processes share 8 files rather than writing one each.
+      - name: Collect coverage profiles
+        if: fromJSON(inputs.build).coverage == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/prof"
+          echo "LLVM_PROFILE_FILE=$RUNNER_TEMP/prof/%8m.profraw" >> "$GITHUB_ENV"
+
+      # Every suite the cell holds, side by side: a packed cell
+      # (`pack`) lets the short suites finish while gtest runs on.
+      # A failure fails the job at the group's implicit wait, after
+      # the others have finished. Valgrind, the codegen checks and
+      # the differential suite sharing a cell stay advisory through
+      # their own continue-on-error; alone, the job-level one covers
+      # them.
+      - parallel:
+          - name: Run tests
+            id: tests
+            if: contains(matrix.suites, 'gtest')
+            uses: ./.github/actions/run-tests
+            env:
+              SPP_TEST_MODE: ${{ matrix.mode }}
+              ASAN_OPTIONS: ${{ inputs.asan-options }}
+            with:
+              shard-count: ${{ matrix.shards }}
+              shard-index: ${{ matrix.shard }}
+              filter: ${{ inputs.gtest-filter }}
+
+          - name: s++ STL conformance
+            if: contains(matrix.suites, 'stl')
+            env:
+              SPP_OFF: ${{ inputs.off }}
+            run: bash .github/scripts/test/stl-conformance.sh
+
+          # The compiled code's memory, over the groups that make
+          # and drop frames, environments and buffers.
+          - name: s++ test groups under valgrind
+            if: contains(matrix.suites, 'valgrind')
+            continue-on-error: ${{ matrix.suites != 'valgrind' }}
+            run: bash .github/scripts/test/valgrind-groups.sh
+
+          # What the compiler emits, built and run: canaries,
+          # sealing, W^X, scrubbing, SLS, the abort path, ffi
+          # unwinding and reproducibility, each against its key
+          # turned off. cc, c++ and objdump are on the image.
+          - name: Codegen checks
+            if: contains(matrix.suites, 'codegen')
+            continue-on-error: ${{ matrix.suites != 'codegen' }}
+            run: bash tests/codegen/run.sh build/spp
+
+          # Each program built at dev and at rel, run, and its
+          # output and exit status compared.
+          - name: Differential suite
+            if: contains(matrix.suites, 'differential')
+            continue-on-error: ${{ matrix.suites != 'differential' }}
+            run: bash tests/differential/run.sh build/spp
+
+      - name: Upload coverage profiles
+        if: ${{ !cancelled() && fromJSON(inputs.build).coverage == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: prof-${{ fromJSON(inputs.build).os }}-${{ fromJSON(inputs.build).variant }}-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/prof
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Upload test logs on failure
+        if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: testlog-${{ fromJSON(inputs.build).os }}-${{ fromJSON(inputs.build).compiler }}-${{ fromJSON(inputs.build).variant }}-${{ matrix.mode }}-shard${{ matrix.shard }}
+          path: tests/gtest-parallel-logs
+          if-no-files-found: ignore
+          retention-days: 3

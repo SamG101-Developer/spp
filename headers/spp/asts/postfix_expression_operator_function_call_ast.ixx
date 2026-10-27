@@ -24,8 +24,10 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 
@@ -55,28 +57,29 @@ SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : P
 
   ~PostfixExpressionOperatorFunctionCallAst() override;
 
+  SPP_ATTR_NODISCARD auto WalksOperand() const -> bool override;
+
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Unique<PostfixExpressionOperatorAst> override;
+    ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> override;
 
   auto MarkAsAsync(Ast *async_token) -> void;
 
   SPP_ATTR_NODISCARD auto Target() const -> FunctionPrototypeAst*;
-
-  /// The scope "Target" is declared in (the overload's own), which an error showing the target is formatted against.
-  SPP_ATTR_NODISCARD auto TargetScope() const -> Scope const*;
 
   /// Whether this is a method called on a value ("obj.m(a)"): its
   /// receiver is the "self" argument, first, and the left-hand side
@@ -118,19 +121,44 @@ private:
   /// A value called through its function type (a closure, a "FunXxx" held in
   /// a variable), resolved once at stage 7: the function type it is
   /// called through, and how the call holds it ("FunRef" borrowed,
-  /// "FunMut" borrowed mutably, "FunMov" taken).
+  /// "FunMut" borrowed mutably, "FunMov" taken). "Callee" is the
+  /// value's own type, without its borrow, which lays out its
+  /// "{ fn_ptr, env_ptr }"; "FnSup" the function type it superimposes,
+  /// whose "Out" is what the value returns.
   struct _IndirectInfo {
     Shared<TypeAst const> FnType;
     ConventionTag Conv;
+    TypeSymbol const *Callee;
+    Shared<TypeRef> FnSup;
+    bool Borrowed;
   };
 
   Opt<_IndirectInfo> _Indirect;
+
+  /// A coroutine's return type, the generator a call to it builds,
+  /// resolved at stage 7 where the overload is: its handle is
+  /// read out of it at codegen. Null for a subroutine.
+  TypeSymbol const *_CoroRetSym = nullptr;
 
   /// The borrow of the callee a "FunRef" or "FunMut" call makes, as
   /// an argument group of its own, checked against what the body
   /// already holds.
   Unique<FunctionCallArgumentGroupAst> _CalleeArgGroup;
   Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
+
+  /// The scope a fold's arguments are analysed in, as written: only
+  /// to type them and find the tuples folded over, as each folded
+  /// call analyses arguments of its own. Their scopes ("?", a block)
+  /// are kept in this one, which the later stages skip as one.
+  Scope *_FoldArgsScope = nullptr;
+
+  /// A folded tuple argument that is not a name, evaluated once into
+  /// a temporary that each folded call reads its element off.
+  Vec<Unique<LetStatementInitializedAst>> _FoldTemps;
+
+  /// Step the walk past "_FoldArgsScope", before the temporaries'
+  /// and the folded calls' scopes (it was created before them).
+  auto _SkipFoldArgsScope(ScopeManager *sm) const -> void;
 
   Ast *_IsAsync;
   bool _IsCoroAndAutoResume;

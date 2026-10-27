@@ -1,11 +1,15 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.type_ast;
+import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_resolution;
 import spp.asts.generic_argument_group_ast;
+import spp.asts.object_initializer_argument_group_ast;
+import spp.asts.object_initializer_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 
@@ -18,8 +22,23 @@ TypeAst::TypeAst() :
 TypeAst::~TypeAst() = default;
 
 auto TypeAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
-  return analyse::utils::type_resolution::ReadType(*this, sub);
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
+  return type_resolution::ReadType(*this, sub);
+}
+
+auto TypeAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  // These are always "zero_type", so return init.
+  const auto init = MakeUnique<ObjectInitializerAst>(AstCloneShared(this), nullptr);
+  return init->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto TypeAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The zero type's value, with no attributes to resolve.
+  const auto init = MakeUnique<ObjectInitializerAst>(AstCloneShared(this), nullptr);
+  init->EvaluateCompTime(sm, meta);
 }
 
 auto TypeAst::IsAllowedInDefault() const -> bool {

@@ -96,17 +96,12 @@ SPP_EXP_CLS struct spp::asts::GenericParameterAst final : Ast, mixins::Orderable
   /// "cmp n: USize = 1_uz"), or neither, which every use must give.
   SPP_ATTR_NODISCARD auto IsVariadic() const -> bool;
   SPP_ATTR_NODISCARD auto IsOptional() const -> bool;
-  SPP_ATTR_NODISCARD auto IsRequired() const -> bool;
 
   auto Stage2_GenTopLvlScopes(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage4_ResolveDeclarations(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 

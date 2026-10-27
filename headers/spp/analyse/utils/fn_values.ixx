@@ -50,12 +50,12 @@ namespace spp::analyse::utils::fn_values {
     Scope const &func_scope) -> Opt<FnValueMatch>;
 
   /// When we pass a function value into a functional type,
-  /// ie "$Type" into "FunMov[(), Void]" (arg->param, "let",
-  /// "ret", assignment) - "codegen::CoerceToFnValue"
+  /// ie "$Type" into "FunMov[(), Void]" - "codegen::CoerceToSlot"
   /// handles this at the codegen level. But if the overload
   /// it stands for is generic, it must be instantiated in
   /// the analysis engine earlier, so the overload is ready
-  /// by codegen-time.
+  /// by codegen-time. Called at every slot "CoerceToSlot" is,
+  /// and through a tuple or an array element by element.
   SPP_EXP_FUN auto InstantiateFnValue(
     TypeRef const &value, TypeRef const &target,
     ScopeManager *sm, meta::CompilerMetaData *meta) -> void;

@@ -62,7 +62,7 @@ auto spp::analyse::utils::packs::TypePackElements(
 
 auto spp::analyse::utils::packs::CompPackElements(
   ExpressionAst const &pack) -> Vec<ExpressionAst*> {
-  return pack.ToUnchecked<asts::TupleLiteralAst>()->Elems
+  return pack.As<asts::TupleLiteralAst>()->Elems
     | genex::views::transform([](auto const &elem) { return elem.get(); })
     | genex::to<Vec>();
 }

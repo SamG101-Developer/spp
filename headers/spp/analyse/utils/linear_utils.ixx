@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.linear_utils;
+import spp.utils.interner;
 import spp.utils.types;
 import std;
 
@@ -10,9 +11,18 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::linear_utils {
+  /// A value a coroutine still owns at a suspension: the symbol's
+  /// name, and the paths of the parts already moved out of it
+  /// (field names, outermost first), none for a whole value.
+  SPP_EXP_CLS struct OwnedValue {
+    Shared<IdentifierAst> Name;
+    Vec<Vec<spp::utils::InternedId>> Moved;
+  };
+
   /// Check and record what the deferred statements for this
   /// scope do when they run. A defer does nothing when written,
   /// because by definition it is being deferred to the end of
@@ -39,6 +49,22 @@ namespace spp::analyse::utils::linear_utils {
   SPP_EXP_FUN auto CheckLiveUpToFn(
     Ast const &exit_point, StrView exit_what,
     ScopeManager &sm, CompilerMetaData *meta) -> void;
+
+  /// What a coroutine abandoned at "suspend_point" (a "gen") still
+  /// owns there, for its frame's destruction to drop: for each
+  /// scope from the current one out to the coroutine's own, the
+  /// symbols still holding a value nothing consumed, newest first,
+  /// once the "defer"s that destroying it there runs have taken
+  /// theirs (checked as at any exit). One partly moved is listed
+  /// with what was moved out of it, so only the rest is dropped,
+  /// and must not be missing a part of a value with its own
+  /// "drop" (E106, as at a scope's end); one consumed on only some paths cannot reach a valid end
+  /// anyway. Every borrow has ended there: the frame's holders go
+  /// with it, and the caller gave up whatever was lent out to it
+  /// before it could destroy the frame.
+  SPP_EXP_FUN auto OwnedAtSuspend(
+    Ast const &suspend_point, ScopeManager &sm,
+    CompilerMetaData *meta) -> Vec<Vec<OwnedValue>>;
 
   /// The loop control flow includes "skip" and "exit". The
   /// "exit" breaks out of n loops, so for all these scopes,

@@ -168,6 +168,63 @@ auto spp::analyse::utils::linear_utils::CheckLiveUpToFn(
   memory_state::RestoreSnapshot(saved);
 }
 
+auto spp::analyse::utils::linear_utils::OwnedAtSuspend(
+  Ast const &suspend_point, ScopeManager &sm,
+  CompilerMetaData *meta) -> Vec<Vec<OwnedValue>> {
+  // As an exit is checked, on a snapshot put back afterwards: the
+  // "defer"s destroying the frame here runs take what they take,
+  // and whatever is still owned after them is the frame's to drop.
+  // The path itself goes on past the suspension untouched.
+  auto owned = Vec<Vec<OwnedValue>>();
+  if (meta->EnclosingFnScope == nullptr) { return owned; }
+  const auto saved = memory_state::SnapshotFlow(*sm.CurrentScope);
+
+  // Destroying the frame ends every borrow there is: what holds one in the frame goes with it, and the caller gave up
+  // whatever was lent out to it (a yield) before the frame could be destroyed. What the "defer"s run and drop is
+  // checked against what is moved and initialised, not against borrows that no longer exist.
+  memory_state::LoansOf(*sm.CurrentScope).clear();
+
+  for (auto const *scope = sm.CurrentScope; scope != nullptr; scope = scope->Parent) {
+    CheckDeferredForScope(*scope, suspend_point, "is destroyed at this \"gen\"", sm, meta);
+    auto values = Vec<Pair<VariableSymbol*, Vec<Vec<spp::utils::InternedId>>>>();
+    for (auto *const sym : scope->GetAllVarSymbols(true)) {
+      if (not IsLive(*sym, sm)) { continue; }
+
+      // Consumed on only some of the paths here, a value has no valid way on - not used ("inconsistently
+      // initialised"), not given a new value, not left at its scope's end (E94) - so no program reaching this keeps
+      // it.
+      auto const &state = memory_state::StateOf(*sm.CurrentScope, *sym);
+      if (state.MaybeInit.has_value() or not state.MaybePartialMoves.empty()) { continue; }
+
+      // A part moved out is named by the fields walked to it. Todo: one taken through a method's result (an
+      // opaque step) names no field, so the value it came out of is not dropped at all yet.
+      auto moved = Vec<Vec<spp::utils::InternedId>>();
+      auto opaque = false;
+      for (auto const &move : state.PartialMoves) {
+        auto &path = moved.emplace_back();
+        for (auto const &step : move.Of->Steps) {
+          opaque = opaque or step.Opaque;
+          path.emplace_back(step.Name);
+        }
+      }
+      if (opaque) { continue; }
+
+      // Destroying the frame destroys what is left of it, which a part's own "drop" cannot be run on (E106 here,
+      // as at a scope's end): putting the part back later does not reach a destruction at this suspension.
+      drop_utils::CheckDestructorStillReachable(*sym, suspend_point, sm, meta);
+      values.emplace_back(sym, std::move(moved));
+    }
+
+    // Newest first, as a type drops its fields: by where each is declared, a table having no order of its own.
+    genex::actions::sort(values, std::greater{}, [](auto const &value) { return value.first->Name->PosStart(); });
+    auto &scope_owned = owned.emplace_back();
+    for (auto &[sym, moved] : values) { scope_owned.push_back({.Name = sym->Name, .Moved = std::move(moved)}); }
+    if (scope == meta->EnclosingFnScope) { break; }
+  }
+  memory_state::RestoreSnapshot(saved);
+  return owned;
+}
+
 auto spp::analyse::utils::linear_utils::CheckLiveUpToLoop(
   Ast const &exit_point, const StrView exit_what, const std::size_t num_exits,
   const bool has_skip, ScopeManager &sm, CompilerMetaData *meta) -> void {

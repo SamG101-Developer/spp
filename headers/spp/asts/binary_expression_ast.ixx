@@ -68,15 +68,15 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// we could be doing "a.b or c", and "a" must be valid.
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Resolve the binary operator at compile time - either
-  /// moving into the mapped function (must be "cmp") or
-  /// manually computing the "and"/"or" (+ short circuiting)
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   /// Forward the codegen into the mapped function, or build
   /// an "and"/"or" IR injection that allows for short
   /// circuiting.
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  /// Resolve the binary operator at compile time - either
+  /// moving into the mapped function (must be "cmp") or
+  /// manually computing the "and"/"or" (+ short circuiting)
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// Infer the type from the mapped function, or use Bool for
   /// the logical operators.
@@ -87,8 +87,7 @@ SPP_EXP_CLS struct spp::asts::BinaryExpressionAst final : ExpressionAst {
   /// Do the substitution of the left and right side operators.
   /// Todo: Do we need to use function mapping here?
   SPP_ATTR_NODISCARD auto ReadExpr(
-    ExprSubst const &sub) const
-    -> Shared<ExpressionAst> override;
+    ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
   /// Check the left and right side are safe to use in runtime
   /// default contexts.
@@ -102,7 +101,8 @@ private:
 
   /// When we collapse comparisons with temporaries, we need
   /// to store them so they aren't cloned: "a < f() < b" needs
-  /// to materialize "f()".
+  /// to materialize "f()". A fold's tuple operand is held the
+  /// same way: ".. + f()" reads each element off one "f()".
   Vec<Unique<LetStatementInitializedAst>> _ChainTemps;
 
   /// Check whether a logical operator has been analysed - the
@@ -112,4 +112,19 @@ private:
   /// Track if this binary operation is a logic "and"/"or"
   /// operation or not.
   bool _IsLogical;
+
+  /// Analyse a fold's tuple operand, once: anything but a name is
+  /// bound to a temporary (see "_ChainTemps"), which @p operand
+  /// then names, as the fold reads an element off it per element.
+  auto _BindFoldOperand(
+    Unique<ExpressionAst> &operand, ScopeManager *sm,
+    CompilerMetaData *meta) -> void;
+
+  /// A fold's tuple operand ("t" in ".. + t" or "t + ..") bound
+  /// and checked, and each of its elements read off it in order
+  /// ("t.0", "t.1", ...), analysed. It must be a tuple of at least
+  /// two elements; "fold" (the "..") is named in the error too.
+  auto _FoldElements(
+    Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm,
+    CompilerMetaData *meta) -> Vec<Unique<PostfixExpressionAst>>;
 };

@@ -55,17 +55,19 @@ SPP_EXP_CLS struct spp::asts::BooleanLiteralAst final : LiteralAst {
   /// value it represents.
   SPP_ATTR_NODISCARD auto CppVal() const -> bool;
 
-  /// Resolve the boolean literal at compile time, producing a
-  /// compile time value of either "true" or "false".
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   /// Generate an LLVM constant integer value of 1 for "true"
   /// and 0 for "false".
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
+  /// Resolve the boolean literal at compile time, producing a
+  /// compile time value of either "true" or "false".
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
+
   /// The boolean literal's type is always "std::boolean::Bool",
   /// the compiler known boolean type.
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::BooleanLiteralAst)

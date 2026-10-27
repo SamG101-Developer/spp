@@ -65,7 +65,7 @@ namespace spp::asts::generate::common_types_precompiled {
   /// ("TypeRef::IsA"), found on first query and kept for the
   /// compile, with the type it was found for held alive so its
   /// address is not reused. Cleared with the types.
-  SPP_EXP_CMP Map<TypeAst const*, Pair<Shared<TypeAst const>, TypeSymbol*>> TEMPLATE_SYMBOLS = {};
+  SPP_EXP_FUN extern Map<TypeAst const*, Pair<Shared<TypeAst const>, TypeSymbol*>> TEMPLATE_SYMBOLS;
 
   /// Initialize the precompiled common types. This must be
   /// called before using any of the precompiled types.

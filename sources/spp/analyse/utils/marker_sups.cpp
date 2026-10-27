@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.aliases;
+import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
@@ -18,6 +19,9 @@ import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
+import spp.asts.function_parameter_group_ast;
+import spp.asts.function_parameter_self_ast;
+import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.postfix_expression_ast;
@@ -55,7 +59,51 @@ namespace spp::analyse::utils::marker_sups {
       }
       return found;
     }
+
+    /**
+     * Whether a member reached through a forward needs the forwarded-to value borrowed mutably: a method every
+     * overload of which takes "&mut self" ("index_mut", reached by "v[mut i]"). A field, or a method with any other
+     * overload, is reached through an immutable borrow.
+     * @param member The member reached through the forward, or @c nullptr when the forward is not a member access.
+     * @param target The type "FwdMut" forwards to.
+     * @param sm The scope manager, for the overload lookup.
+     * @param meta The compiler meta data, for the overload lookup.
+     * @return Whether the member needs "fwd_mut".
+     */
+    auto MemberNeedsMut(
+      IdentifierAst const *member,
+      TypeRef const &target,
+      ScopeManager *sm,
+      meta::CompilerMetaData *meta)
+      -> bool {
+      if (member == nullptr or target.Symbol == nullptr or target.Symbol->LinkedScope == nullptr) { return false; }
+      auto any_self = false;
+      for (auto const &overload : overload_resolution::GetAllFnScopes(*member, target.Symbol->LinkedScope, *sm, meta)) {
+        auto const *const self_param = overload.Proto->FnParamGroup->GetSelfParam();
+        if (self_param == nullptr) { continue; }
+        if (self_param->Conv == nullptr or *self_param->Conv != ConventionTag::MUT) { return false; }
+        any_self = true;
+      }
+      return any_self;
+    }
   }
+}
+
+auto spp::analyse::utils::marker_sups::IsCopyMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  return kind.IsA(*asts::generate::common_types_precompiled::COPY, scope);
+}
+
+auto spp::analyse::utils::marker_sups::IsDropMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  return kind.IsA(*asts::generate::common_types_precompiled::DROP, scope);
+}
+
+auto spp::analyse::utils::marker_sups::IsFwdMarker(
+  TypeRef const &kind, Scope const &scope) -> bool {
+  using asts::generate::common_types_precompiled::FWD_MUT;
+  using asts::generate::common_types_precompiled::FWD_REF;
+  return kind.IsA(*FWD_REF, scope) or kind.IsA(*FWD_MUT, scope);
 }
 
 auto spp::analyse::utils::marker_sups::FindFnSup(
@@ -115,9 +163,14 @@ auto spp::analyse::utils::marker_sups::FindGenSup(
     return TypeRef();
   }
 
-  // Search the type itself, then its super classes by symbol, for a direct generator type.
+  // Search the type itself, then its super classes by symbol,
+  // for a direct generator type. A borrow of one is a generator
+  // too ("g.res()" on a "&mut Gen[S32]"): whether it may be
+  // resumed is the "send" call's "&mut self" to check, so the
+  // kind checks, which match no borrow, are given the type itself.
   const auto generator_candidates = FindMarkerSups(
-    ref, scope, [&](TypeRef const &t) { return type_predicates::IsTypeGenerator(t, scope); });
+    ref.WithoutConvention(), scope,
+    [&](TypeRef const &t) { return type_predicates::IsTypeGenerator(t, scope); });
 
   // If there are no Gen or GenOnce super types, then the
   // generator and yield type cannot be obtained, so either
@@ -255,19 +308,21 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ExpressionAst const &receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta)
+  meta::CompilerMetaData *meta,
+  IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
-  // The receiver is analysed a second time in the built call (it is a clone of an already analysed expression), which
-  // is what the other operators that map themselves onto a method call do too.
+  // The built call is over a clone of the analysed receiver, which
+  // carries its analysis.
   if (not CanForward(receiver_ref, *sm->CurrentScope)) { return nullptr; }
-  return BuildFwdCall(AstClone(&receiver), receiver_ref, sm, meta);
+  return BuildFwdCall(AstClone(&receiver), receiver_ref, sm, meta, member);
 }
 
 auto spp::analyse::utils::marker_sups::BuildFwdCall(
   Unique<ExpressionAst> &&receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta)
+  meta::CompilerMetaData *meta,
+  IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
   // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".
   if (not CanForward(receiver_ref, *sm->CurrentScope)) { return nullptr; }
@@ -277,18 +332,27 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
 
   // Which of the two is taken follows the receiver's own convention: a value borrowed mutably forwards to a mutable
   // borrow of what it points at. Preferring the immutable one unconditionally turned a "&mut" receiver into a "&"
-  // yield, which is what a mutable forward was for in the first place. Fall back to whichever exists when the
-  // preferred one does not.
-  const auto wants_mut = receiver_ref.Conv == ConventionTag::MUT and fwd_mut_target.Symbol != nullptr;
+  // yield, which is what a mutable forward was for in the first place. So does what is reached through it: a method
+  // every overload of which takes "&mut self" ("v[mut i]", "index_mut") needs a mutable borrow of the forwarded-to
+  // value, whatever holds the receiver; whether that may be borrowed mutably is then the "fwd_mut" call's to check.
+  // Fall back to whichever exists when the preferred one does not.
+  const auto wants_mut = fwd_mut_target.Symbol != nullptr
+    and (receiver_ref.Conv == ConventionTag::MUT or MemberNeedsMut(member, fwd_mut_target, sm, meta));
 
   // Build "<receiver>.fwd_ref()". The forwarding coroutines return a "GenOnce", so the call resumes itself and the
   // expression evaluates to the borrow of the forwarded-to value.
   auto field_name = MakeUnique<IdentifierAst>(
     receiver->PosStart(), wants_mut or fwd_ref_target.Symbol == nullptr ? "fwd_mut" : "fwd_ref");
-  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field_name));
-  auto member_access = MakeUnique<PostfixExpressionAst>(std::move(receiver), std::move(field));
-  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(nullptr, nullptr, nullptr);
-  auto fwd_call = MakeUnique<PostfixExpressionAst>(std::move(member_access), std::move(func_call));
+  auto field = MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(
+    nullptr, std::move(field_name));
+
+  // The receiver is analysed already, so the call does not analyse it again (that would open its scopes twice).
+  auto member_access = PostfixExpressionAst::NewOverAnalysedLhs(
+    std::move(receiver), std::move(field));
+  auto func_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
+    nullptr, nullptr, nullptr);
+  auto fwd_call = MakeUnique<PostfixExpressionAst>(
+    std::move(member_access), std::move(func_call));
 
   // Analyse the built call, so that it can be inferred from and generated like any other analysed expression.
   fwd_call->Stage7_AnalyseSemantics(sm, meta);

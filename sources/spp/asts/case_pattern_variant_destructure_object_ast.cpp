@@ -8,34 +8,20 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.case_utils;
-import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
-import spp.asts.boolean_literal_ast;
-import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
-import spp.asts.case_pattern_variant_literal_ast;
-import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
-import spp.asts.fold_expression_ast;
-import spp.asts.function_call_argument_group_ast;
-import spp.asts.function_call_argument_positional_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
-import spp.asts.literal_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_destructure_object_ast;
-import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_deref_ast;
-import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -155,12 +141,6 @@ auto CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto CasePatternVariantDestructureObjectAst::NarrowsTo() const -> TypeAst const* {
-  // The type on this destructure. For example, it could be
-  // Some, when the condition is Opt.
-  return Type.get();
-}
-
 auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -178,11 +158,10 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   }
 
   // Flow-type the case condition (when it's a simple
-  // identifier) so that both the eq-check expressions generated
-  // by CreateAndAnalysePatternEqFns* and the member-access
-  // bindings inside _MappedLet resolve against the narrowed
-  // variant type (Pass[T] rather than the outer declared
-  // type Res[T,E] for example).
+  // identifier) so that the member-access bindings inside
+  // _MappedLet, and the branch's body, resolve against the
+  // narrowed variant type (Pass[T] rather than the outer
+  // declared type Res[T,E] for example).
   const auto cond_as_id = mapped_cond->To<IdentifierAst>();
   auto *const cond_sym = cond_as_id != nullptr ? sm->CurrentScope->FindVarSymbol(cond_as_id) : nullptr;
   _CondSymbol = cond_sym != nullptr ? cond_sym->SharedFromThis<VariableSymbol>() : nullptr;
@@ -230,21 +209,12 @@ auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureObjectAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // TODO: Do a non-variant type comparison first.
-  // TODO: Do not allow if the condition type is variant.
-  // Match when every element does.
-  _DeclareFlowSymbol(*sm);
-  CompTimeResolveDestructure(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
-}
-
 auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // Stupidly complex method but I think all parts are
-  // covered now. Heavy documentation *READ IT ALL* when
-  // making changes to this class.
+  // Whether the subject holds what this pattern names is the
+  // "case"'s plan's to check ("PatternSolver"); this points the
+  // narrowed subject at the member's payload, where the bindings
+  // read from, and introduces the bindings.
   IMPORT_UTILS_AND_UID;
 
   // A flow symbol only exists for a variant condition, whose
@@ -252,7 +222,6 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   // bindings index from the payload buffer rather than from
   // the variant's base address.
   const auto uid = "." + Uid();
-  auto llvm_tag_check = static_cast<llvm::Value*>(nullptr);
   if (_FlowSymbol and _CondSymbol) {
     // The subject's storage is read through the symbol the
     // scope holds now, not the one captured during analysis.
@@ -274,29 +243,19 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     }
     SPP_ASSERT(_CondSymbol->LlvmInfo->Alloca != nullptr);
 
-    // Find the index in the variant's member types, of the
-    // member type being flowed into. A variant can hold a borrow
-    // as a member in its own right ("&S32 or GenDone", which is what
-    // resuming a "Gen[&S32]" gives), and then the convention is
-    // part of what identifies the member rather than something
-    // attached to the pattern, so the exact type is tried first.
-    // Next, get the actual tag value from the variant that is
-    // telling us which member type is active in the variant.
+    // A borrowed subject's storage holds the address of the
+    // variant rather than the variant.
     auto variant_ptr = _CondSymbol->LlvmInfo->Alloca;
     if (_CondSymbol->Type->GetConvention() != nullptr) {
       variant_ptr = ctx->Builder.CreateLoad(
         llvm::PointerType::get(*ctx->Context, 0), variant_ptr, "case.pattern.subject" + uid);
     }
 
-    // Each level of the pattern is checked in turn: its
-    // discriminant against the subject it applies to, then the
-    // payload that selected becomes the subject of the level
-    // below. Checking only the outermost took every inner claim
-    // on trust, so a "Some(None())" matched "Some[Some[T]]" and
-    // the binding read the inner discriminant as if it were the
-    // inner value. The walk also lands "current_ptr" on the
-    // innermost payload, which is where the narrowed bindings
-    // actually live.
+    // Each level of the pattern selects a member of the subject
+    // it applies to, whose payload is the subject of the level
+    // below ("Some[Some[T]]" on "Opt[Opt[T]]"). The walk lands on
+    // the innermost payload, which is where the narrowed bindings
+    // live.
     auto subject_type = _CondSymbol->Type;
     auto pattern_type = Type;
     auto current_ptr = variant_ptr;
@@ -329,27 +288,15 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
 
       // A pattern naming several of the subject's members at once
       // ("is Opt[S32](..)" on "Some[S32] or None or GenDone") is
-      // not one member, so it matches any of them, and binds the
-      // value re-tagged as that narrower variant.
+      // not one member, so it binds the value re-tagged as that
+      // narrower variant.
       if (not tag.has_value()) {
         const auto [is_member, narrowed] = codegen::NarrowVariant(
           current_ptr, TypeRef::Of(*subject_type->WithoutConvention(), *sm->CurrentScope),
           pattern_ref.WithoutConvention(), *sm->CurrentScope, "case.pattern.narrow" + level_uid, ctx);
-        if (is_member != nullptr) {
-          llvm_tag_check = llvm_tag_check == nullptr
-            ? is_member
-            : ctx->Builder.CreateAnd(llvm_tag_check, is_member, "case.pattern.is.all" + level_uid);
-          current_ptr = narrowed;
-        }
+        if (is_member != nullptr) { current_ptr = narrowed; }
         break;
       }
-
-      const auto check = ctx->Builder.CreateICmpEQ(
-        codegen::LoadVariantTag(current_ptr, llvm_subject_ty, "case.pattern.tag" + level_uid, ctx),
-        llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag), "case.pattern.is" + level_uid);
-      llvm_tag_check = llvm_tag_check == nullptr
-        ? check
-        : ctx->Builder.CreateAnd(llvm_tag_check, check, "case.pattern.is.all" + level_uid);
 
       current_ptr = codegen::GetVariantPayloadPtr(
         current_ptr, llvm_subject_ty, "case.pattern.payload" + level_uid, ctx);
@@ -375,91 +322,32 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
     _DeclareFlowSymbol(*sm);
   }
 
-  // A condition that is not a plain identifier has no symbol to
-  // flow-type - "self@" is a deref, not a name - but its
-  // discriminant still has to be checked.
-  else if (meta->CaseCondition != nullptr and meta->LlvmCaseCondition != nullptr) {
-    const auto cond_type = meta->CaseCondition->InferType(sm, meta);
-    const auto bare_cond_type = cond_type != nullptr ? cond_type->WithoutConvention() : nullptr;
-
-    if (bare_cond_type != nullptr
-      and type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*bare_cond_type, *sm->CurrentScope), *sm->CurrentScope)) {
-      const auto cond_ref = TypeRef::Of(*bare_cond_type, *sm->CurrentScope);
-      const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope);
-      auto tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref, *sm->CurrentScope);
-      if (not tag.has_value()) {
-        tag = codegen::GetVariantIndexOfMember(cond_ref, type_ref.WithoutConvention(), *sm->CurrentScope);
-      }
-
-      // The condition was generated once by the enclosing "case",
-      // so it is read rather than rebuilt: it may be the variant
-      // value itself, or a pointer to it when the condition was
-      // reached through a borrow.
-      const auto llvm_variant_ty = codegen::GetLlvmType(*cond_ref.Symbol, ctx);
-
-      // A pattern naming several of the subject's members at once
-      // is not one member, so it matches any of them. Without this
-      // no check was emitted at all, and the branch was taken
-      // whatever the subject held.
-      if (not tag.has_value() and llvm_variant_ty != nullptr) {
-        auto cond_ptr = meta->LlvmCaseCondition;
-        if (not cond_ptr->getType()->isPointerTy()) {
-          cond_ptr = codegen::LlvmEntryAlloca(llvm_variant_ty, "case.pattern.subject.slot" + uid, ctx);
-          ctx->Builder.CreateStore(meta->LlvmCaseCondition, cond_ptr);
-        }
-        const auto [is_member, _] = codegen::NarrowVariant(
-          cond_ptr, cond_ref, type_ref.WithoutConvention(), *sm->CurrentScope,
-          "case.pattern.narrow" + uid, ctx);
-        if (is_member != nullptr) { llvm_tag_check = is_member; }
-      }
-
-      auto llvm_tag = static_cast<llvm::Value*>(nullptr);
-      if (tag.has_value() and meta->LlvmCaseCondition->getType()->isPointerTy()) {
-        llvm_tag = codegen::LoadVariantTag(
-          meta->LlvmCaseCondition, llvm_variant_ty, "case.pattern.tag" + uid, ctx);
-      }
-      else if (tag.has_value() and meta->LlvmCaseCondition->getType() == llvm_variant_ty) {
-        llvm_tag = ctx->Builder.CreateExtractValue(
-          meta->LlvmCaseCondition, 0, "case.pattern.tag" + uid);
-      }
-
-      if (llvm_tag != nullptr and llvm_tag->getType() == codegen::GetVariantTagType(ctx)) {
-        llvm_tag_check = ctx->Builder.CreateICmpEQ(
-          llvm_tag, llvm::ConstantInt::get(codegen::GetVariantTagType(ctx), *tag),
-          "case.pattern.is" + uid);
-      }
-    }
-  }
-
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function.
   if (_MappedLet != nullptr) {
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
-      _MappedLet->Stage11_CodeGen(sm, meta, ctx);
-    }
+    const auto _meta_guard = MetaGuard(meta);
+    meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
+    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+  }
+  return llvm::ConstantInt::getTrue(*ctx->Context);
+}
+
+auto CasePatternVariantDestructureObjectAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The narrowed subject holds the subject's comptime value: it
+  // was copied at stage 7, before the subject had one, and the
+  // bindings read through it. The subject is read where it was
+  // declared, as this branch's scope holds the narrowed one.
+  if (_FlowSymbol != nullptr and _CondSymbol != nullptr and _CondSymbol->ScopeDefinedIn != nullptr) {
+    const auto live_sym = _CondSymbol->ScopeDefinedIn->FindVarSymbol(_CondSymbol->Name.get());
+    const auto &value = live_sym != nullptr ? live_sym->CompTimeValue : _CondSymbol->CompTimeValue;
+    _FlowSymbol->CompTimeValue = AstClone(value);
   }
 
-  // Combine all the generated transforms into a single "AND"ed
-  // expression.
-  auto llvm_transforms = case_utils::CreateAndAnalysePatternEqFnsLlvm(
-    Elems | genex::views::ptr | genex::to<Vec>(), sm, meta, ctx);
-
-  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
-  auto llvm_master_transform = llvm_transforms.empty()
-    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(AND));
-
-  // Combine the potential variant check, should it exist, into
-  // the type check. Place the tag check first (short-circuits
-  // on the type check and prevents bad value comparisons).
-  if (llvm_tag_check != nullptr) {
-    llvm_master_transform = ctx->Builder.CreateAnd(
-      llvm_tag_check, llvm_master_transform, "case.pattern.match" + uid);
-  }
-
-  return llvm_master_transform;
+  // Resolve the mapped "let"; the "case"'s plan checks the tags
+  // and the literals.
+  _DeclareFlowSymbol(*sm);
+  EvaluateCompTimeDestructure(sm, meta);
 }
 
 auto CasePatternVariantDestructureObjectAst::ConvToVar(

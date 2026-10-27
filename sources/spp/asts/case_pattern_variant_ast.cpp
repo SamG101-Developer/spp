@@ -5,14 +5,15 @@ module;
 module spp.asts.case_pattern_variant_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.utils.case_utils;
 import spp.analyse.utils.type_resolution;
 import spp.asts.boolean_literal_ast;
 import spp.asts.case_pattern_variant_destructure_array_ast;
 import spp.asts.case_pattern_variant_destructure_attribute_binding_ast;
 import spp.asts.case_pattern_variant_destructure_object_ast;
 import spp.asts.case_pattern_variant_destructure_tuple_ast;
+import spp.asts.expression_ast;
 import spp.asts.let_statement_initialized_ast;
+import spp.asts.local_variable_ast;
 import spp.asts.local_variable_ast;
 import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -30,9 +31,10 @@ namespace {
   auto AnalyseNestedWrittenTypes(
     CasePatternVariantAst &pattern, ScopeManager &sm,
     CompilerMetaData &meta) -> void {
+    IMPORT_UTILS;
     using namespace spp::asts;
     if (auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
-      obj->Type = spp::analyse::utils::type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
+      obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
       for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
     else if (auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
@@ -53,7 +55,9 @@ CasePatternVariantAst::CasePatternVariantAst() :
   _MappedLet(nullptr) {
 }
 
-auto CasePatternVariantAst::Stage9_CompTimeResolve(
+CasePatternVariantAst::~CasePatternVariantAst() = default;
+
+auto CasePatternVariantAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   // No behaviour but c++ module issues require this be
   // defined here (maybe GCC bug).
@@ -63,11 +67,6 @@ auto CasePatternVariantAst::BindsByMove() const -> bool {
   // Only the patterns that name something take anything;
   // every other kind is a test.
   return false;
-}
-
-auto CasePatternVariantAst::NarrowsTo() const -> TypeAst const* {
-  // Only a destructure naming a type selects one.
-  return nullptr;
 }
 
 auto CasePatternVariantAst::ConvToVar(
@@ -81,64 +80,37 @@ auto CasePatternVariantAst::AnalyseDestructure(
   ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
+
   // The nested destructures name their types resolved, as the
   // mapped "let" reads them.
   for (auto *const elem : elems) { AnalyseNestedWrittenTypes(*elem, *sm, *meta); }
 
   // Create the new variable from the pattern, in the
-  // pattern's scope.
+  // pattern's scope. The literals it tests are the "case"'s
+  // plan's ("PatternSolver").
   auto var = ConvToVar(meta);
   _MappedLet = MakeUnique<LetStatementInitializedAst>(
     nullptr, std::move(var), nullptr, nullptr, AstClone(cond));
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-  case_utils::CreateAndAnalysePatternEqFnsDummyCore(
-    elems, sm, meta);
 }
 
-auto CasePatternVariantAst::CompTimeResolveDestructure(
-  Vec<CasePatternVariantAst*> const &elems,
+auto CasePatternVariantAst::EvaluateCompTimeDestructure(
   ScopeManager *sm, CompilerMetaData *meta) const -> void {
-  IMPORT_UTILS;
-  // Transform the pattern into comptime values: all of them
-  // must be true for it to match.
-  const auto comptime_transforms = case_utils::CreateAndAnalysePatternEqCompTime(
-    elems, sm, meta);
-  const auto all_true = genex::all_of(
-    comptime_transforms, [](auto const &x) { return x->template To<BooleanLiteralAst>()->IsTrue(); });
-
-  // Resolve the "let" statement introducing the symbols,
-  // then give the result.
-  _MappedLet->Stage9_CompTimeResolve(sm, meta);
-  const auto p = PosStart();
-  meta->CompTimeResult = all_true ? BooleanLiteralAst::True(p) : BooleanLiteralAst::False(p);
+  // Resolve the "let" statement introducing the symbols. The
+  // literals the pattern tests are the "case"'s plan's.
+  _MappedLet->EvaluateCompTime(sm, meta);
+  meta->CompTimeResult = BooleanLiteralAst::True(PosStart());
 }
 
 auto CasePatternVariantAst::CodeGenDestructure(
-  Vec<CasePatternVariantAst*> const &elems, ScopeManager *sm,
-  CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
-  IMPORT_UTILS;
-
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
   // Run the codegen on the transformed "let" ast to introduce
-  // symbols into the llvm function.
-  if (_MappedLet != nullptr) {
-    const auto _meta_guard = MetaGuard(meta);
-    meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
-    _MappedLet->Stage11_CodeGen(sm, meta, ctx);
-  }
-
-  // Combine all the generated transforms into a single "AND"ed
-  // expression.
-  auto llvm_transforms = case_utils::CreateAndAnalysePatternEqFnsLlvm(
-    elems, sm, meta, ctx);
-
-  const auto AND = [&ctx](auto a, auto b) { return ctx->Builder.CreateAnd(a, b); };
-  const auto llvm_master_transform = llvm_transforms.empty()
-    ? llvm::cast<llvm::Value>(llvm::ConstantInt::getTrue(*ctx->Context))
-    : genex::fold_left_first(llvm_transforms, std::move(AND));
-
-  // Return the combined expression back to the branch who owns
-  // this pattern.
-  return llvm_master_transform;
+  // symbols into the llvm function. The literals the pattern
+  // tests are the "case"'s plan's, so the shape always matches.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->LetStatementPrecomputedValue = meta->LlvmCaseCondition;
+  _MappedLet->Stage11_CodeGen(sm, meta, ctx);
+  return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 
 SPP_MOD_END

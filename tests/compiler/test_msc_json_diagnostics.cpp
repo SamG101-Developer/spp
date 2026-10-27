@@ -680,6 +680,38 @@ fun probe() -> Void {
   EXPECT_TRUE(vec->Definition.File.ends_with("vector.spp")) << "file: " << vec->Definition.File;
 }
 
+TEST(MscJsonDiagnostics, test_the_index_says_what_cfg_left_out) {
+  const auto indexed = IndexedCompile();
+
+  build_temp_project(R"(
+!cfg(mode="!dev|rel")
+fun gone() -> Void {
+    no_such_function()
+}
+
+cls Holder {
+    kept: S32
+    !cfg(mode="!dev|rel")
+    dropped: S32
+}
+
+!cfg(mode="dev|rel")
+fun kept() -> Void { }
+)");
+
+  // Each member left out is one region, from its "!cfg" to its end, body included; a member kept is not one. The
+  // members std leaves out (the other width's "USize") are in "vcs", which is not indexed.
+  auto const &regions = spp::lsp::resolution_index::GetAllInactive();
+  ASSERT_EQ(regions.size(), 2uz);
+  for (auto const &region : regions) {
+    EXPECT_FALSE(genex::contains(spp::Path(region.Where.File), spp::Path("vcs"))) << region.Where.File;
+  }
+  EXPECT_EQ(regions[0].Where.StartLine, 2uz);
+  EXPECT_EQ(regions[0].Where.EndLine, 5uz) << "the function's body was left out of its region";
+  EXPECT_EQ(regions[1].Where.StartLine, 9uz);
+  EXPECT_EQ(regions[1].Where.EndLine, 10uz);
+}
+
 TEST(MscJsonDiagnostics, test_the_index_says_what_a_comptime_constant_came_to) {
   const auto indexed = IndexedCompile();
 

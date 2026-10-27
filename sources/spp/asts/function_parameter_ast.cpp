@@ -74,7 +74,7 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   const auto conv = Type->GetConvention();
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
-    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
+    memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
     sym->MemInfo->AstBorrowed = conv;
     sym->IsVariadic = To<FunctionParameterVariadicAst>() != nullptr;
   }
@@ -82,10 +82,11 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
 
 auto FunctionParameterAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   // Check the memory of each name.
   for (auto const &name : ExtractNames()) {
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
-    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
+    memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
   }
 }
 

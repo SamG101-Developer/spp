@@ -64,12 +64,6 @@ SPP_EXP_CLS struct spp::asts::mixins::CompilerStages {
   /// law of exclusivity, drop semantics, linear enforcement etc.
   virtual auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-  /// Full compile time resolution for cmp statements, allowing
-  /// cmp methods, conditional, literals, etc. Includes support
-  /// for complex operations like the 10th Fibonacci number at
-  /// compile time.
-  virtual auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void;
-
   /// The pre-code-gen step is needed for order agnostic behaviour
   /// - write out the declarations (types, functions), with no
   /// definitions. This IR is then built upon, for full definition

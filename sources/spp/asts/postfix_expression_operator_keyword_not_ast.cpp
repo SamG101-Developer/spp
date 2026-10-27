@@ -59,21 +59,10 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
 
   // Check the left-hand-side is an owned boolean expression.
-  if (not type_predicates::IsTypeBool(meta->PostfixExpressionLhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
-    const auto lhs_ty = meta->PostfixExpressionLhs->InferType(sm, meta);
-    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*meta->PostfixExpressionLhs, *lhs_ty, "not expression"));
+  if (not type_predicates::IsTypeBool(Lhs->InferTypeRef(sm, meta), *sm->CurrentScope)) {
+    const auto lhs_ty = Lhs->InferType(sm, meta);
+    Raise<SppExpressionNotBooleanError>(ERR_ARGS(*Lhs, *lhs_ty, "not expression"));
   }
-}
-
-auto PostfixExpressionOperatorKeywordNotAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The "lhs" will be boolean based on previous analysis.
-  meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
-  const auto cmp_lhs_bool = meta->CompTimeResult->To<BooleanLiteralAst>();
-
-  // Extract the value inside the boolean and invert it.
-  const auto p = PosStart();
-  meta->CompTimeResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
@@ -82,7 +71,7 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   // Generate the left-hand-side expression, which analysis has
   // guaranteed is a boolean, owned or borrowed.
   const auto uid = "." + Uid();
-  const auto lhs_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  const auto lhs_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(lhs_val != nullptr);
 
   // Analysis has required an owned boolean, so this generates
@@ -92,6 +81,17 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
 
   // Use a "not" instruction to invert the expression on the lhs.
   return ctx->Builder.CreateNot(lhs_val, "not" + uid);
+}
+
+auto PostfixExpressionOperatorKeywordNotAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The "lhs" will be boolean based on previous analysis.
+  Lhs->EvaluateCompTime(sm, meta);
+  const auto cmp_lhs_bool = meta->CompTimeResult->To<BooleanLiteralAst>();
+
+  // Extract the value inside the boolean and invert it.
+  const auto p = PosStart();
+  meta->CompTimeResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
 auto PostfixExpressionOperatorKeywordNotAst::InferTypeRef(

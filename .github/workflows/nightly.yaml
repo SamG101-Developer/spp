@@ -43,8 +43,9 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    uses: ./.github/workflows/_codeql.yaml
+    uses: ./.github/workflows/_analysis.yaml
     with:
+      codeql: true
       full-scan: true
 
   # The compiler under ASan, UBSan and LSan, over the suites
@@ -60,15 +61,12 @@ jobs:
       contents: read
     uses: ./.github/workflows/_lane.yaml
     with:
-      os: ubuntu-24.04
-      compiler: gcc
       variant: sanitizers
       cmake-flags: "-DSPP_SANITIZER=address,undefined,leak"
+      stl-conformance: false
+      shard-count: 4
       gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
       asan-options: "malloc_context_size=0:quarantine_size_mb=0"
-      stl-conformance: false
-      modes: rel
-      shard-count: 4
 
   # Grades what cannot be seen from inside a workflow: token
   # permissions, action pinning, branch protection.
@@ -82,13 +80,13 @@ jobs:
       id-token: write         # only used when publish_results is turned on
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
           disable-sudo: true
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -97,7 +95,7 @@ jobs:
       # the public OpenSSF API, which is what backs the
       # README badge. Todo: Flip this when badge is ready.
       - name: Run Scorecard
-        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
         with:
           results_file: scorecard.sarif
           results_format: sarif
@@ -105,7 +103,7 @@ jobs:
 
       - name: Upload Scorecard results
         if: always() && hashFiles('scorecard.sarif') != ''
-        uses: github/codeql-action/upload-sarif@e58424170fb0262c8d7ed60a2e84b9bffe205c67
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: scorecard.sarif
           category: scorecard
@@ -123,7 +121,7 @@ jobs:
       actions: write  # delete the repository's Actions caches
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -135,7 +133,7 @@ jobs:
             release-assets.githubusercontent.com:443
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -158,7 +156,7 @@ jobs:
       actions: write  # list and delete the repository's workflow runs
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true

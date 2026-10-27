@@ -12,6 +12,7 @@ module;
   #include <sys/file.h>
   #include <unistd.h>
 #endif
+#include <stdlib.h>  // setenv, unsetenv; _dupenv_s, _putenv_s
 
 module spp.utils.files;
 import genex;
@@ -160,4 +161,103 @@ auto spp::utils::files::SharedLibraryName(
   -> Str {
   const auto prefix = extension == "dll" ? "" : "lib";
   return prefix + Str(package) + "." + Str(extension);
+}
+
+namespace {
+  /// The directories on PATH, in order.
+  auto PathDirectories() -> spp::Vec<spp::Path> {
+    auto dirs = spp::Vec<spp::Path>();
+    const auto raw = spp::utils::files::GetEnv("PATH");
+    if (not raw.has_value()) { return dirs; }
+    auto rest = spp::StrView(*raw);
+    while (not rest.empty()) {
+      const auto end = rest.find(spp::utils::files::PathListSeparator);
+      const auto dir = rest.substr(0, end);
+      if (not dir.empty()) { dirs.emplace_back(dir); }
+      rest = end == spp::StrView::npos ? spp::StrView() : rest.substr(end + 1);
+    }
+    return dirs;
+  }
+
+  /// Whether "path" is a file this process may run.
+  auto IsExecutable(spp::Path const &path) -> bool {
+    auto ec = std::error_code();
+    if (not std::filesystem::is_regular_file(path, ec)) { return false; }
+#if SPP_PLATFORM_WINDOWS
+    return true;
+#else
+    return access(path.c_str(), X_OK) == 0;
+#endif
+  }
+}
+
+auto spp::utils::files::FindProgram(
+  const StrView name)
+  -> Opt<Path> {
+  for (auto const &dir : PathDirectories()) {
+    if (const auto candidate = dir / name; IsExecutable(candidate)) { return candidate; }
+  }
+  return Nullopt;
+}
+
+auto spp::utils::files::FindNewestVersion(
+  const StrView name)
+  -> Opt<Path> {
+  const auto prefix = Str(name) + "-";
+  auto best = Opt<Path>();
+  auto best_version = 0UL;
+  for (auto const &dir : PathDirectories()) {
+    auto ec = std::error_code();
+    for (auto it = std::filesystem::directory_iterator(dir, ec); not ec and it != std::filesystem::directory_iterator();
+         it.increment(ec)) {
+      const auto file = NativeString(it->path().filename());
+      if (not file.starts_with(prefix) or file.size() == prefix.size()) { continue; }
+      const auto digits = StrView(file).substr(prefix.size());
+      if (not genex::all_of(digits, [](const char c) { return c >= '0' and c <= '9'; })) { continue; }
+      const auto version = std::stoul(Str(digits));
+      if ((best.has_value() and version <= best_version) or not IsExecutable(it->path())) { continue; }
+      best = it->path();
+      best_version = version;
+    }
+  }
+  return best;
+}
+
+auto spp::utils::files::GetEnv(
+  const StrView name)
+  -> Opt<Str> {
+#if SPP_PLATFORM_WINDOWS
+  // MSVC deprecates getenv for its shared static buffer.
+  char *raw = nullptr;
+  auto size = std::size_t{0};
+  if (_dupenv_s(&raw, &size, Str(name).c_str()) != 0 or raw == nullptr) { return Nullopt; }
+  auto value = Str(raw);
+  std::free(raw);
+  return value;
+#else
+  auto const *const raw = std::getenv(Str(name).c_str());
+  if (raw == nullptr) { return Nullopt; }
+  return Str(raw);
+#endif
+}
+
+auto spp::utils::files::SetEnv(
+  const StrView name,
+  const StrView value)
+  -> void {
+#if SPP_PLATFORM_WINDOWS
+  _putenv_s(Str(name).c_str(), Str(value).c_str());
+#else
+  setenv(Str(name).c_str(), Str(value).c_str(), 1);
+#endif
+}
+
+auto spp::utils::files::UnsetEnv(
+  const StrView name)
+  -> void {
+#if SPP_PLATFORM_WINDOWS
+  _putenv_s(Str(name).c_str(), "");
+#else
+  unsetenv(Str(name).c_str());
+#endif
 }

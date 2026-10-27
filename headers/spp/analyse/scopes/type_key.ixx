@@ -316,7 +316,7 @@ namespace spp::analyse::scopes {
     TypeId Args = nullptr;
 
     /// "Variant": the members, in their canonical order.
-    Vec<TypeId> Members;
+    Vec<TypeId> VariantMembers;
 
     /// "Ptr" as the symbol it is: the class ("Symbol"), the
     /// template ("Inst") or the variant template ("Variant").

@@ -156,15 +156,6 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   return out.empty() ? nullptr : out[0];
 }
 
-auto FunctionParameterGroupAst::GetRequiredParams() const -> Vec<FunctionParameterRequiredAst*> {
-  // Filter by casting.
-  auto out = Vec<FunctionParameterRequiredAst*>();
-  for (auto const &param : Params) {
-    if (auto *req_param = param->To<FunctionParameterRequiredAst>()) { out.push_back(req_param); }
-  }
-  return out;
-}
-
 auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();
@@ -185,9 +176,10 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
 
 auto FunctionParameterGroupAst::IsVoidParam(
   FunctionParameterAst const &param, Scope const &scope) -> bool {
+  IMPORT_UTILS;
   // Build a type-ref to the parameters type, and run a simple
   // comparison against the "Void" type.
-  return analyse::utils::type_predicates::IsTypeVoid(
+  return type_predicates::IsTypeVoid(
     TypeRef::ForKindCheck(*param.Type, scope), scope);
 }
 

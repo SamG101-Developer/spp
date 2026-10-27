@@ -117,9 +117,9 @@ auto spp::analyse::utils::type_predicates::IsOrExtendsTemplate(
   // Check for a template match; is the template of symbol
   // equal to "tmpl"?
   if (TypeRef::ForKindCheck(sym, scope).Template() == tmpl) { return true; }
-  return sym.LinkedScope != nullptr and genex::any_of(sym.LinkedScope->GetSupScopes(), [tmpl](auto const *sup_scope) {
-    return sup_scope->LinkedTypeSymbol != nullptr and TypeRef::ForKindCheck(*sup_scope).Template() == tmpl;
-  });
+  return sym.LinkedScope != nullptr and genex::any_of(
+    type_members::SuperClsScopes(sym.LinkedScope->GetSupScopes()),
+    [tmpl](auto const *cls_scope) { return TypeRef::ForKindCheck(*cls_scope).Template() == tmpl; });
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeGenerator(
@@ -192,6 +192,15 @@ namespace {
     return sym.IsBareTemplate() and not genex::all_of(
       sym.Type->GnParamGroup->Params, [](auto const &param) { return param->IsVariadic(); });
   }
+}
+
+auto spp::analyse::utils::type_predicates::IsTypeSignedInteger(
+  TypeAst const &type,
+  Scope const &scope) -> bool {
+  auto const *const sym = scope.FindTypeSymbol(&type);
+  const auto signed_id = sym != nullptr ? sym->CompArgId("signed") : nullptr;
+  auto const *const is_signed = signed_id != nullptr ? signed_id->AsBool() : nullptr;
+  return is_signed != nullptr and *is_signed;
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeConcrete(

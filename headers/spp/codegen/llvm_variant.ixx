@@ -45,22 +45,6 @@ namespace spp::codegen {
     LlvmCtx *ctx)
     -> llvm::Value*;
 
-  /// Coerce a value into the variant it is being assigned to,
-  /// which is the single entry point every site storing into
-  /// a variant slot should go though - like "ret", "let", etc.
-  /// This covers the two ways that a variant can be supplied
-  /// a value: either placing a "S32" into a "S32 or Str"; or
-  /// placing a "S32 or Str" into a "S32 or Str or Bool" (a
-  /// guaranteed subset).
-  SPP_EXP_FUN auto CoerceToVariant(
-    llvm::Value *llvm_val,
-    TypeRef const &target,
-    TypeRef const &source,
-    Scope const &scope,
-    Str const &name,
-    LlvmCtx *ctx)
-    -> llvm::Value*;
-
   /// The reverse of widening: read the variant at "source_ptr" as
   /// "target", a variant made of some of its members ("Opt[S32]"
   /// out of "Some[S32] or None or GenDone"). Gives the check that

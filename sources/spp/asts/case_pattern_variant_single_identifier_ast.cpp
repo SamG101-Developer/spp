@@ -65,31 +65,6 @@ auto CasePatternVariantSingleIdentifierAst::BindsByMove() const -> bool {
   return Conv == nullptr;
 }
 
-auto CasePatternVariantSingleIdentifierAst::Stage7_AnalyseSemantics(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Get the variable name.
-  auto var = ConvToVar(meta);
-
-  // Forward analysis into the name and alias.
-  _MappedLet = MakeUnique<LetStatementInitializedAst>(
-    nullptr, std::move(var), nullptr, nullptr, AstClone(meta->CaseCondition));
-  _MappedLet->Stage7_AnalyseSemantics(sm, meta);
-}
-
-auto CasePatternVariantSingleIdentifierAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward memory checks into the name and alias.
-  _MappedLet->Stage8_CheckMemory(sm, meta);
-}
-
-auto CasePatternVariantSingleIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
-  // Emit the binding, then report a constant "true" match so
-  // the branch is always taken.
-  _MappedLet->Stage11_CodeGen(sm, meta, ctx);
-  return llvm::ConstantInt::getTrue(*ctx->Context);
-}
-
 auto CasePatternVariantSingleIdentifierAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Create the local variable single identifier binding AST.

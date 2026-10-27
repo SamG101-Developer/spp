@@ -35,7 +35,7 @@ runs:
   steps:
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to satisfy cmake_minimum_required.
     - name: Install CMake & Ninja
-      uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
+      uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9 # v4.4.4
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
         ninjaVersion: ${{ env.NINJA_VERSION }}
@@ -69,7 +69,7 @@ runs:
 
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
 
     - name: Select Windows compiler
       if: runner.os == 'Windows'
@@ -78,21 +78,28 @@ runs:
         COMPILER: ${{ inputs.compiler }}
       run: bash .github/scripts/setup/select-windows-compiler.sh
 
-    - name: Install compiler cache
+    - name: Locate compiler cache
       if: inputs.compiler-cache == 'true'
       shell: bash
       run: bash .github/scripts/setup/compiler-cache.sh on
 
-    - name: Cache compiler cache
+    # The pinned release, not the action's own: apt's ccache predates hashing C++20 module BMIs.
+    - name: Install compiler cache
       if: inputs.compiler-cache == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      shell: bash
+      run: bash .github/scripts/setup/install-compiler-cache.sh
+
+    # Windows gets sccache, which can drive cl and clang-cl; ccache cannot. The action appends a timestamp to the
+    # key and restores the newest entry under it, so its key carries no sha.
+    - name: Set up compiler cache
+      if: inputs.compiler-cache == 'true'
+      uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
       with:
-        path: |
-          ~/.ccache
-          ~/.cache/sccache
-        key: cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-${{ github.sha }}
-        restore-keys: |
-          cc-${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}-
+        install: "no"
+        variant: ${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
+        key: ${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}
+        restore-keys: ${{ inputs.runner-image }}-${{ inputs.compiler }}-${{ inputs.version }}-${{ inputs.cache-key-suffix }}
+        max-size: 500M
 
     - name: Disable compiler cache
       if: inputs.compiler-cache != 'true'
@@ -113,7 +120,7 @@ runs:
     - name: Cache LLVM dev libraries (Windows)
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
       id: llvm-win-cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm
         key: llvm-win-${{ env.LLVM_WIN_SHA256 }}
@@ -126,7 +133,7 @@ runs:
     - name: Cache the Windows-only dependencies
       if: inputs.dependencies == 'true' && runner.os == 'Windows'
       id: llvm-deps-win-cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm-deps
         key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-llvm-deps-windows.sh') }}
@@ -142,7 +149,7 @@ runs:
     - name: Cache LLVM toolchain (macOS)
       if: inputs.dependencies == 'true' && runner.os == 'macOS'
       id: llvm-mac-cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm
         key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}-${{ hashFiles('.github/scripts/setup/install-llvm-macos.sh') }}
@@ -164,7 +171,7 @@ runs:
     - name: Restore small libraries
       if: inputs.dependencies == 'true'
       id: libs-cache
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local
         key: spp-libs-v2-${{ inputs.runner-image }}-${{ inputs.compiler }}${{ inputs.version }}-${{ hashFiles('.github/scripts/setup/install-small-libs.sh', '.github/scripts/lib/pins.py') }}-${{ hashFiles('.github/dependencies.toml') }}
@@ -189,7 +196,7 @@ runs:
     - name: Save small libraries
       if: inputs.dependencies == 'true' && steps.libs-cache.outputs.cache-hit != 'true'
       continue-on-error: true
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local
         key: ${{ steps.libs-cache.outputs.cache-primary-key }}

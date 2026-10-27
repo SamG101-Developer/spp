@@ -1,8 +1,9 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.ffi;
+import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_target;
 import spp.utils.files;
 import genex;
 import std;
@@ -151,4 +152,51 @@ auto spp::compiler::ffi::Libraries(
     return Nullopt;
   }
   return libraries;
+}
+
+auto spp::compiler::ffi::CheckFortified(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto plain = codegen::UnfortifiedImport(utils::files::NativeString(library).c_str());
+    if (not plain.has_value()) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " calls '" << *plain << "' unchecked: it was built without "
+      << "_FORTIFY_SOURCE.\n"
+      << "  Rebuild it with -O2 -D_FORTIFY_SOURCE=3, or set 'fortified_ffi = false' under [binary.link] in "
+      << "spp.toml.\n";
+    return false;
+  }
+  return true;
+}
+
+auto spp::compiler::ffi::CheckRelro(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto missing = codegen::UnhardenedLink(utils::files::NativeString(library).c_str());
+    if (not missing.has_value()) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " was linked without " << *missing << ": its relocated data stays "
+      << "writable after startup.\n"
+      << "  Relink it with -Wl,-z,relro,-z,now, or set 'relro_ffi = false' under [binary.link] in spp.toml.\n";
+    return false;
+  }
+  return true;
+}
+
+auto spp::compiler::ffi::CheckSegments(
+  Path const &root, Vec<Path> const &libraries) -> bool {
+  for (auto const &library : libraries) {
+    const auto fault = codegen::UnhardenedSegments(utils::files::NativeString(library).c_str());
+    if (not fault) {
+      std::cerr << "Error: cannot read " << Shown(root, library) << ": " << fault.error() << "\n";
+      return false;
+    }
+    if (not fault->has_value()) { continue; }
+    std::cerr
+      << "Error: " << Shown(root, library) << " was linked with " << **fault << ".\n"
+      << "  Relink it with -Wl,-z,separate-code (binutils 2.31 or newer), or set 'segments_ffi = false' under "
+      << "[binary.link] in spp.toml.\n";
+    return false;
+  }
+  return true;
 }

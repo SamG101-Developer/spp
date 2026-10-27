@@ -93,7 +93,7 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
   if (_MappedFn != nullptr) { return; }
 
-  operator_desugaring::CheckIndexable(*this, sm, meta);
+  operator_desugaring::CheckIndexable(*this, *Lhs, sm, meta);
 
   // Decide the function variation based upon if the lhs/rhs are nullptr or not.
   const auto prefix = ExprLBound == nullptr and ExprRBound == nullptr
@@ -111,7 +111,7 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   auto args = Vec<Unique<ExpressionAst>>();
   if (ExprLBound != nullptr) { args.emplace_back(std::move(ExprLBound)); }
   if (ExprRBound != nullptr) { args.emplace_back(std::move(ExprRBound)); }
-  _MappedFn = operator_desugaring::MapToMethodCall(*this, PosStart(), func_name, std::move(args), sm, meta);
+  _MappedFn = operator_desugaring::MapToMethodCall(*this, *Lhs, PosStart(), func_name, std::move(args), sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
@@ -119,16 +119,16 @@ auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Forward to the mapped function.
-  _MappedFn->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
+}
+
+auto PostfixExpressionOperatorSliceAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Forward to the mapped function.
+  _MappedFn->EvaluateCompTime(sm, meta);
 }
 
 auto PostfixExpressionOperatorSliceAst::InferType(
@@ -143,7 +143,7 @@ auto PostfixExpressionOperatorSliceAst::InferTypeRef(
 }
 
 auto PostfixExpressionOperatorSliceAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
+  ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens.
   return MakeUnique<PostfixExpressionOperatorSliceAst>(
@@ -161,6 +161,11 @@ auto PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
   return
     (ExprLBound == nullptr or ExprLBound->IsAllowedInDefault()) and
     (ExprRBound == nullptr or ExprRBound->IsAllowedInDefault());
+}
+
+auto PostfixExpressionOperatorSliceAst::WalksOperand() const -> bool {
+  // Checked through "slice_ref"/"slice_mut", over the operand.
+  return true;
 }
 
 SPP_MOD_END

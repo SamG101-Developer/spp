@@ -2,7 +2,6 @@ module;
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 #define SPP_VALIDATE_STRUCTURE(is_exe) \
   if (not HandleValidate(is_exe)) { std::exit(1); }
@@ -18,6 +17,8 @@ import spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
+import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_target;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
 import spp.compiler.ffi;
@@ -105,13 +106,36 @@ namespace spp::cli {
 #endif
     }
 
+    /// Refuse a measure the target cannot have, on by default or
+    /// not: building without it would quietly harden less.
+    auto CheckTargetSupport(Vec<Str> &errors) -> bool {
+      if (utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit) and not codegen::TargetHasSafeStack()) {
+        errors.emplace_back(
+          Str("'split' in [memory.stack] cannot be applied: LLVM has no unsafe stack pointer for ")
+          + codegen::TargetFolderName() + "; set 'split = false'");
+        return false;
+      }
+      // Todo: drop once LLVM's safestack checks a canary the target's own way; .triages/upstream-watch.md U15.
+      if (utils::features::Enabled(utils::features::ConfigKey::MemoryStackProtect)
+        and utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit)
+        and not codegen::TargetHasSafeStackCanary()) {
+        errors.emplace_back(
+          Str("'protect' and 'split' in [memory.stack] cannot both be applied: LLVM's split stack checks its canary ")
+          + "with __stack_chk_fail, which " + codegen::TargetFolderName() + " does not have; set one to false");
+        return false;
+      }
+      return true;
+    }
+
     /// Adopt this project's feature settings. Only this one: how
     /// a dependency configured itself is a property of that
     /// dependency's own build, and what comes out of here is
     /// one program, generated once.
     auto LoadProjectFeatures() -> bool {
       auto config_errors = Vec<Str>();
-      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)) { return true; }
+      if (utils::features::Load(std::filesystem::current_path() / CONFIG_FILE, config_errors)
+        and utils::features::CheckFloor(codegen::TargetIsLinux(), config_errors)
+        and CheckTargetSupport(config_errors)) { return true; }
       for (auto const &e : config_errors) { std::cerr << "Error in spp.toml: " << e << "\n"; }
       return false;
     }
@@ -125,8 +149,8 @@ namespace spp::cli {
       return command;
 #else
       constexpr auto default_kb = 16ull * 1024 * 1024;
-      const auto env = std::getenv("SPP_MEMORY_LIMIT_KB");
-      const auto limit_kb = env != nullptr ? std::strtoull(env, nullptr, 10) : default_kb;
+      const auto env = utils::files::GetEnv("SPP_MEMORY_LIMIT_KB");
+      const auto limit_kb = env.has_value() ? std::strtoull(env->c_str(), nullptr, 10) : default_kb;
       return limit_kb == 0 ? command : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
 #endif
     }
@@ -157,7 +181,7 @@ namespace spp::cli {
     }
 
     auto IsRemoteReachable(Str const &url) -> bool {
-      if (url.empty() or std::getenv("SPP_NO_NETWORK_CHECK") != nullptr) { return true; }
+      if (url.empty() or utils::files::GetEnv("SPP_NO_NETWORK_CHECK").has_value()) { return true; }
       const auto args =
         " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
         + url;
@@ -281,6 +305,7 @@ auto spp::cli::RunCli(
   auto test_libs = Vec<Str>();
   auto test_all_libs = false;
   auto test_runner = Str();
+  auto test_target = Str();
   const auto test_cmd = app.add_subcommand("test", "Test the project")->fallthrough();
   test_cmd->add_option(
     "-f,--filter", test_name_filter,
@@ -297,11 +322,15 @@ auto spp::cli::RunCli(
   test_cmd->add_option(
     "--runner", test_runner,
     "Run the test executable under this command, e.g. \"valgrind --error-exitcode=9\" (lifts the memory cap)");
+  test_cmd->add_option(
+    "-t,--target", test_target,
+    "Target triple to build the tests for; the host by default. Another target's tests run only under a '--runner' "
+    "that can execute them, e.g. \"qemu-aarch64 -L /usr/aarch64-linux-gnu\"");
 
-  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner] {
+  test_cmd->callback([&test_name_filter, &test_group_filter, &test_libs, &test_all_libs, &test_runner, &test_target] {
     HandleTest(
       test_name_filter, test_group_filter,
-      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner);
+      Vec<Str>(test_libs.begin(), test_libs.end()), test_all_libs, test_runner, test_target);
   });
 
   app.add_subcommand("validate", "Validate the project")
@@ -595,9 +624,21 @@ auto spp::cli::HandleClean(
 auto spp::cli::HandleTest(
   Str const &name_filter, Str const &group_filter,
   Vec<Str> const &libs, const bool all_libs,
-  Str const &runner) -> void {
+  Str const &runner, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
+
+  // Choose the target before anything is compiled, as a build
+  // does. Nothing this machine can execute comes out of a cross
+  // build, so one is only tested under a runner that can - and
+  // that is known before compiling, not after.
+  if (not codegen::SelectTarget(target.c_str())) { std::exit(1); }
+  if (not codegen::TargetIsHost() and runner.empty()) {
+    std::cerr
+      << "Error: Cannot run tests built for '" << codegen::TargetFolderName()
+      << "' here; give a '--runner' that can, e.g. \"qemu-<arch> -L <sysroot>\".\n";
+    std::exit(1);
+  }
 
   // Fetch the dependencies, as an ordinary build does: a
   // test build compiles the same sources plus the "tst"
@@ -787,19 +828,18 @@ auto spp::cli::HandleAudit(
   Str const &path) -> bool {
   // The record is written by every build ("EmitHardeningRecord");
   // a program without one predates it or was not built by spp.
-  auto error = static_cast<char const*>(nullptr);
-  const auto record = codegen::ReadHardeningRecord(path.c_str(), &error);
-  if (record == nullptr) {
-    std::cerr << "Error: '" << path << "' cannot be read as a program: " << error << "\n";
+  const auto record = codegen::ReadHardeningRecord(path.c_str());
+  if (not record.has_value()) {
+    std::cerr << "Error: '" << path << "' cannot be read as a program: " << record.error() << "\n";
     return false;
   }
-  if (*record == '\0') {
+  if (not record->has_value()) {
     std::cerr
       << "Error: '" << path << "' has no hardening record.\n"
       << "  It was not built by spp, or by an spp from before records were written.\n";
     return false;
   }
-  std::cout << record;
+  std::cout << **record;
   return true;
 }
 

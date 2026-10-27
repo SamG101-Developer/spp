@@ -34,6 +34,40 @@ namespace spp::analyse::utils::visibility_utils {
       }
     }
 
+    /// Whether a symbol is something a package declares, rather
+    /// than a generic standing in one of its declarations (an
+    /// alias's parameter), read wherever the compiler resolves it.
+    auto IsPackageMember(VariableSymbol const &sym) -> bool {
+      return sym.Kind != scopes::VariableKind::GnCompParam and sym.Kind != scopes::VariableKind::GnCompArg;
+    }
+
+    auto IsPackageMember(TypeSymbol const &sym) -> bool {
+      return not sym.IsGn();
+    }
+
+    /// The ffi package a module member is in, when the module
+    /// naming it is not its owner's: a dependency's package is
+    /// for the dependency's own modules, which is how it is
+    /// linked, not for the project's or another dependency's.
+    template <typename Symbol>
+    auto ForeignFfiPackage(
+      Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm) -> scopes::NamespaceSymbol const* {
+      if (not IsPackageMember(sym)) { return nullptr; }
+      auto const *const package_scope = definition_scope.GetTopLevelParentModule();
+      auto const *const accessing_scope = sm.CurrentScope->GetTopLevelParentModule();
+      if (package_scope == nullptr or accessing_scope == nullptr) { return nullptr; }
+
+      auto const *const package = package_scope->LinkedNamespaceSymbol.get();
+      auto const *const accessing = accessing_scope->LinkedNamespaceSymbol.get();
+      if (package == nullptr or accessing == nullptr or not package->IsFfiPackage) { return nullptr; }
+      return package->Owner == accessing->Owner ? nullptr : package;
+    }
+
+    /// Who an owner is, for an error: the project or a dependency.
+    auto OwnerText(Opt<Str> const &owner) -> Str {
+      return owner.has_value() ? "the dependency '" + *owner + "'" : Str("this project");
+    }
+
     /// [CHECKED]
     /// Module-level visibility, which is one rule whatever the
     /// symbol is. Each level widens the one above it, so the
@@ -50,6 +84,7 @@ namespace spp::analyse::utils::visibility_utils {
       // visibility.
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
+      if (ForeignFfiPackage(sym, definition_scope, sm) != nullptr) { return false; }
       if (sym.Visibility == V::kPublic) { return true; }
 
       // Get the module owning the access, and the module owning
@@ -200,6 +235,7 @@ auto spp::analyse::utils::visibility_utils::IsModuleMemberVisible(
 auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
   VariableSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+  CheckFfiPackageOwner(sym, definition_scope, access_ast, sm, meta);
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
       sym, definition_scope, sm, meta), sym, access_ast, "symbol");
@@ -215,7 +251,42 @@ auto spp::analyse::utils::visibility_utils::IsModuleTypeVisible(
 auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
   TypeSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+  CheckFfiPackageOwner(sym, definition_scope, access_ast, sm, meta);
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
       sym, definition_scope, sm, meta), sym, access_ast, "type");
+}
+
+namespace spp::analyse::utils::visibility_utils {
+  namespace {
+    /// Raises "SppFfiPackageNotOwnedError" for "CheckFfiPackageOwner".
+    template <typename Symbol>
+    auto CheckFfiPackageOwnerImpl(
+      Symbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+      ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+      if (meta.IgnoreAccessModifierViolations) { return; }
+      auto const *const package = ForeignFfiPackage(sym, definition_scope, sm);
+      if (package == nullptr) { return; }
+
+      // Held in locals so the views handed to the error outlive them.
+      const auto package_name = package->Name->Val;
+      const auto package_owner = OwnerText(package->Owner);
+      const auto accessing_owner = OwnerText(
+        sm.CurrentScope->GetTopLevelParentModule()->LinkedNamespaceSymbol->Owner);
+      Raise<errors::SppFfiPackageNotOwnedError>(ERR_ARGS(
+        access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
+    }
+  }
+}
+
+auto spp::analyse::utils::visibility_utils::CheckFfiPackageOwner(
+  VariableSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+  CheckFfiPackageOwnerImpl(sym, definition_scope, access_ast, sm, meta);
+}
+
+auto spp::analyse::utils::visibility_utils::CheckFfiPackageOwner(
+  TypeSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+  ScopeManager const &sm, CompilerMetaData const &meta) -> void {
+  CheckFfiPackageOwnerImpl(sym, definition_scope, access_ast, sm, meta);
 }

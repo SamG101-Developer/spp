@@ -17,6 +17,20 @@ use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TypeAst);
 
 namespace spp::analyse::utils::marker_sups {
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Copy" marker, which makes a type's values
+  /// copied rather than moved.
+  SPP_EXP_FUN auto IsCopyMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Drop" marker, which gives a type a destructor.
+  SPP_EXP_FUN auto IsDropMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
+  /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is a forwarding marker ("FwdRef" / "FwdMut"), which
+  /// makes a call find the methods of the type forwarded to.
+  SPP_EXP_FUN auto IsFwdMarker(
+    TypeRef const &kind, Scope const &scope) -> bool;
+
   /// The function type ("FunRef" / "FunMut" / "FunMov") the type is or superimposes, looked at through an alias;
   /// none for a type that is not callable. A generic's constraint is considered first: a "FunRef" constrained to be a
   /// "FunMov" is treated as the "FunMov" would be, for consistent behaviour.
@@ -71,16 +85,20 @@ namespace spp::analyse::utils::marker_sups {
   /// Manually build the hidden forwarding call that is
   /// abstracted over for things like member access, assignment,
   /// returning etc. This is needed to the llvm codegen can
-  /// access the forwarded object.
+  /// access the forwarded object. "member" is what is reached
+  /// through it, when it is a member access: a method taking
+  /// "&mut self" is reached through "fwd_mut".
   SPP_EXP_FUN auto BuildFwdCall(
     ExpressionAst const &receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> Unique<PostfixExpressionAst>;
+    ScopeManager *sm, meta::CompilerMetaData *meta,
+    IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// As above, taking the receiver itself rather than a copy, for
   /// an argument whose analysed value becomes the forwarding call's.
   SPP_EXP_FUN auto BuildFwdCall(
     Unique<ExpressionAst> &&receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> Unique<PostfixExpressionAst>;
+    ScopeManager *sm, meta::CompilerMetaData *meta,
+    IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// Whether a value of this type forwards at all ("FwdRef" or
   /// "FwdMut"), which is when "BuildFwdCall" builds a call.

@@ -22,7 +22,7 @@ std_groups=(
 # inside the program's own process, so W^X (MDWE) refuses its
 # later mappings, and it does not know mseal. Both are off here.
 scratch_project "$exe" valgrind
-printf '\n[memory.map]\ndeny_wx = false\nseal = false\n' >> spp.toml
+features_off "memory.map.deny_wx memory.map.seal"
 failed=()
 for group in "${std_groups[@]}"; do
   echo "::group::${group}"

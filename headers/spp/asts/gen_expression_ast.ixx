@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.asts.gen_expression_ast;
+import spp.analyse.utils.linear_utils;
 import spp.asts.ast_kind;
 import spp.asts.primary_expression_ast;
 import spp.codegen.llvm_ctx;
@@ -52,7 +53,33 @@ SPP_EXP_CLS struct spp::asts::GenExpressionAst final : PrimaryExpressionAst {
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
+  /// The rest of the analysis once the generator type is known: the
+  /// yield type read off it, the value forwarded and checked against
+  /// it. Run straight away, or, in a coroutine closure with no
+  /// written return type, by the closure once its "gen"s have agreed
+  /// on the yield type ("CompilerMetaData::ClosureRetJoin"), with
+  /// "sm" where this is written and the type this "gen" gave.
+  auto ResolveYield(
+    Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
+    -> void;
+
+  /// A "gen" diverges where it reads as the return: in a "GenOnce"
+  /// lowered to a subroutine ("CoroutinePrototypeAst::_LowerGenOnce"),
+  /// which is generated with the enclosing flavour "fun". In a
+  /// coroutine it suspends, and control comes back to it.
+  SPP_ATTR_NODISCARD auto Diverges(ScopeManager *sm, CompilerMetaData *meta) -> bool override;
+
 private:
   Shared<TypeAst> _GenType;
   bool _IsOnce;
+
+  /// The enclosing generator's "Yield", resolved at stage 7: what a
+  /// yielded value is coerced into at codegen.
+  Shared<TypeRef> _YieldRef;
+
+  /// What the coroutine still owns here, for destroying its frame
+  /// at this suspension to drop: per scope, from this one out to
+  /// the coroutine's own, newest first ("OwnedAtSuspend"). Names,
+  /// read where this is generated, so an instance finds its own.
+  Vec<Vec<analyse::utils::linear_utils::OwnedValue>> _OwnedAtSuspend;
 };

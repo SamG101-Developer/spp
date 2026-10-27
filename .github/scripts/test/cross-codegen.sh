@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Emit the standard library for one target and check that what
 # came out describes that target, rather than the host's object
-# under a different folder name. Emitting is the whole test:
-# linking a foreign object needs a cross linker and a cross-built
-# sppc runtime, neither of which exists, so the compiler stops at
-# the object for a non-host target.
+# under a different folder name. A Linux target is then linked,
+# with its cross gcc, against the sppc the STL ships for it;
+# where either is missing the link fails and only the object is
+# checked, and where it succeeds the executable is checked too.
+# Given a qemu arch and sysroot, it must link, and then run;
+# given "alpine" (musl), it must link and run in Alpine.
 #
 # The corpus is a fresh `spp init` project - the STL, which its
 # [vcs] section clones, plus the entry point an object needs.
@@ -15,6 +17,9 @@ TRIPLE="$1"
 EXPECT_ARCH="$2"
 EXPECT_LAYOUT="$3"
 CODEGEN_OFF="${4:-}"
+QEMU="${5:-}"
+SYSROOT="${6:-}"
+RUN_IN="${7:-}"
 
 SPP="${PWD}/build/spp"
 if ! [ -x "$SPP" ]; then
@@ -28,10 +33,7 @@ scratch_project "$SPP" cross
 
 # Hardening the target's backend cannot emit fails the build, so
 # those keys are switched off rather than skipped.
-if [ -n "$CODEGEN_OFF" ]; then
-  printf '\n[binary.codegen]\n' >> spp.toml
-  for key in $CODEGEN_OFF; do printf '%s = false\n' "$key" >> spp.toml; done
-fi
+features_off "$CODEGEN_OFF"
 
 echo "::group::spp build --target ${TRIPLE}"
 LOG="$("$SPP" build -m rel --target "$TRIPLE" 2>&1 | tr '\r' '\n' || true)"
@@ -80,6 +82,39 @@ echo "layout: ${LAYOUT}"
 if ! grep -q -- "$EXPECT_LAYOUT" <<< "$LAYOUT"; then
   echo "::error::datalayout for ${TRIPLE} does not contain '${EXPECT_LAYOUT}': ${LAYOUT}"
   exit 1
+fi
+
+# Linked: the executable is checked as the object was.
+EXE="${OUT}/cross"
+if grep -q '^Built executable:' <<< "$LOG"; then
+  EXE_DESC="$(file -b "$EXE")"
+  echo "executable: ${EXE_DESC}"
+  if ! grep -qiE -- "$EXPECT_ARCH" <<< "$EXE_DESC"; then
+    echo "::error::${EXE} is not ${EXPECT_ARCH}: ${EXE_DESC}"
+    exit 1
+  fi
+elif [ -n "${QEMU}${RUN_IN}" ]; then
+  echo "::error::${TRIPLE} was to be run but did not link"
+  exit 1
+else
+  echo "not linked (no cross linker or shipped sppc for ${FOLDER})"
+fi
+
+# Run: the scratch project's entry point prints one line.
+RUN=()
+if [ -n "$QEMU" ]; then
+  RUN=("qemu-${QEMU}" -L "${SPP_QEMU_SYSROOT:-/usr/${SYSROOT}}" "$EXE")
+elif [ "$RUN_IN" = alpine ]; then
+  RUN=(docker run --rm -v "${PWD}:${PWD}" "$SPP_MUSL_RUN_IMAGE" "${PWD}/${EXE}")
+fi
+if [ "${#RUN[@]}" -gt 0 ]; then
+  STATUS=0
+  OUTPUT="$(timeout 120 "${RUN[@]}" 2>&1)" || STATUS=$?
+  echo "run: ${OUTPUT} (exit ${STATUS})"
+  if [ "$STATUS" -ne 0 ] || [ "$OUTPUT" != "Hello world!" ]; then
+    echo "::error::${EXE} under ${RUN[0]} exited ${STATUS}: ${OUTPUT}"
+    exit 1
+  fi
 fi
 
 echo "ok: ${TRIPLE}"

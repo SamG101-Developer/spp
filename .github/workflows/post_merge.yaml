@@ -32,7 +32,7 @@ jobs:
       version: ${{ steps.filter.outputs.version }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -45,7 +45,7 @@ jobs:
 
       # Full history so the before..sha diff can be resolved.
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -80,31 +80,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
           disable-sudo: true
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
-
-  # Doubles as the master health check and as the cache warmer,
-  # which is why it is the same lane the PR pipeline runs: a
-  # lane missing here is a lane that compiles from cold on every
-  # PR. A release runs it too, for linux-x64.
-  linux:
-    name: Linux gcc
-    needs: [ changes, release-gate ]
-    if: |
-      !cancelled()
-      && needs.changes.result == 'success'
-      && (needs.changes.outputs.compile == 'true' || needs.release-gate.outputs.release == 'true')
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_lane.yaml
-    with:
-      codegen: true
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   # Only a push that bumped VERSION, or a manual dispatch, is a
   # release candidate. Without this an unpublished version is
@@ -124,7 +107,7 @@ jobs:
       version: ${{ steps.gate.outputs.version }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -136,7 +119,7 @@ jobs:
             release-assets.githubusercontent.com:443
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -148,52 +131,85 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: bash .github/scripts/release/resolve-version.sh
 
-  # One lane per release platform: separate jobs, since a matrix of
-  # workflow calls keeps one cell's outputs.
-  release-linux-arm64:
-    name: Release · linux-arm64
-    needs: [ release-gate ]
-    if: needs.release-gate.outputs.release == 'true'
-    permissions:
+  # Doubles as the master health check and as the cache warmer,
+  # which is why it is the same lane the PR pipeline runs: a
+  # lane missing here is a lane that compiles from cold on every
+  # PR. A release runs it too, for linux-x64.
+  linux-gcc:
+    name: Linux GCC
+    needs: [ changes, release-gate ]
+    if: |
+      !cancelled()
+      && needs.changes.result == 'success'
+      && (needs.changes.outputs.compile == 'true' || needs.release-gate.outputs.release == 'true')
+    permissions: &read
       contents: read
     uses: ./.github/workflows/_lane.yaml
     with:
-      os: ubuntu-24.04-arm
-      compiler: gcc
-      modes: rel
-      shard-count: 1
+      modes: rel dev
+      shard-count: 2
+      pack: false
+      codegen: true
+      differential: true
+      check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
-  release-macos-arm64:
-    name: Release · macos-arm64
+  # The coverage lane, for Sonar below: build, suites and report in
+  # one box. Too slow for a pull request. It waits on the release
+  # gate only to start beside the Linux GCC build.
+  coverage:
+    name: Linux Clang Coverage
+    needs: [ changes, release-gate ]
+    if: |
+      !cancelled()
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.compile == 'true'
+    permissions: *read
+    uses: ./.github/workflows/_coverage.yaml
+
+  # One lane per release platform: separate jobs, since a matrix of
+  # workflow calls keeps one cell's outputs.
+  release-linux-arm64:
+    name: Release · Linux ARM64
     needs: [ release-gate ]
-    if: needs.release-gate.outputs.release == 'true'
-    permissions:
-      contents: read
+    if: &release needs.release-gate.outputs.release == 'true'
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: ubuntu-24.04-arm
+      check-floor: true
+
+  # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
+  release-macos-arm64:
+    name: Release · macOS ARM64
+    needs: [ release-gate ]
+    if: *release
+    permissions: *read
     uses: ./.github/workflows/_lane.yaml
     with:
       os: macos-15
       compiler: clang
-      modes: rel
-      shard-count: 1
+      check-floor: true
+      off: sls
 
+  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   release-windows-x64:
-    name: Release · windows-x64
+    name: Release · Windows x64
     needs: [ release-gate ]
-    if: needs.release-gate.outputs.release == 'true'
-    permissions:
-      contents: read
+    if: *release
+    permissions: *read
     uses: ./.github/workflows/_lane.yaml
     with:
       os: windows-2025
       compiler: msvc
-      modes: rel
-      shard-count: 1
+      check-floor: true
+      off: memory.stack.split
 
   # Read-only: verifies each lane's tested spp against that lane's
-  # digests and names it for the release.
+  # digests and names it for the release. A lane that failed,
+  # build or tests, skips it.
   collect-release:
     name: Collect Release
-    needs: [ release-gate, linux, release-linux-arm64, release-macos-arm64, release-windows-x64 ]
+    needs: [ release-gate, linux-gcc, release-linux-arm64, release-macos-arm64, release-windows-x64 ]
     if: needs.release-gate.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -203,7 +219,7 @@ jobs:
       checksums: ${{ steps.seal.outputs.checksums }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -226,7 +242,7 @@ jobs:
             productionresultssa9.blob.core.windows.net:443
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -235,7 +251,7 @@ jobs:
       - name: Download linux-x64
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          name: ${{ needs.linux.outputs.artifact }}
+          name: ${{ needs.linux-gcc.outputs.artifact }}
           path: bins/linux-x64
 
       - name: Download linux-arm64
@@ -259,8 +275,8 @@ jobs:
       - name: Collect linux-x64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.linux.outputs.spp-sha256 }}
-          TESTS_SHA256: ${{ needs.linux.outputs.tests-sha256 }}
+          SPP_SHA256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+          TESTS_SHA256: ${{ needs.linux-gcc.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add linux-x64 ""
 
       - name: Collect linux-arm64
@@ -291,7 +307,7 @@ jobs:
         run: bash .github/scripts/release/collect.sh seal
 
       - name: Upload release files
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-dist
           path: dist
@@ -312,7 +328,7 @@ jobs:
       # Audit until the run insights have named the Sigstore
       # and attestation endpoints.
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
           disable-sudo: true
@@ -342,7 +358,7 @@ jobs:
       contents: write  # create the tag, the release and its assets
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -367,7 +383,7 @@ jobs:
 
       # The changelog entry for this version is the release body.
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -390,19 +406,23 @@ jobs:
           VERSION: ${{ needs.release-gate.outputs.version }}
         run: bash .github/scripts/release/publish.sh
 
-  # Ordered after `linux` so it restores that run's exact-sha
-  # tree and only has to re-run the configure step, rather than
-  # racing it and falling back to the previous commit's.
+  # Ordered after the Linux GCC lane so it restores that run's
+  # exact-sha tree and only has to re-run the configure step,
+  # rather than racing it and falling back to the previous
+  # commit's. Skipped when that lane's build did not stage, but
+  # not when only its tests failed. Scans without coverage if the
+  # coverage lane did not report.
   sonar:
     name: Sonar
-    needs: [ changes, linux ]
+    needs: [ changes, linux-gcc, coverage ]
     if: |
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
-      && needs.linux.result != 'failure'
-      && needs.linux.result != 'cancelled'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_sonar.yaml
+      && (needs.linux-gcc.result == 'skipped' || needs.linux-gcc.outputs.artifact != '')
+    permissions: *read
+    uses: ./.github/workflows/_analysis.yaml
+    with:
+      sonar: true
+      coverage-artifact: ${{ needs.coverage.outputs.artifact }}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -65,6 +65,4 @@ SPP_EXP_CLS struct spp::asts::ClassAttributeAst final : Ast, ClassMemberAst, mix
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 };

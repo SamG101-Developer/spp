@@ -1,17 +1,18 @@
 module;
 #include <spp/macros.hpp>
 
-#define INVOKE_PATTERN(...)                                                                           \
-  if constexpr (std::is_same_v<Ret, void>) {                                                          \
-    fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...);          \
-    return nullptr;                                                                                   \
-  }                                                                                                   \
-  else {                                                                                              \
-    auto v = fn(__VA_OPT__(__VA_ARGS__, ) dynamic_cast<std::remove_reference_t<Args>&>(*args[I])...); \
-    return v;                                                                                         \
+#define INVOKE_PATTERN(...)                                          \
+  if constexpr (std::is_same_v<Ret, void>) {                         \
+    fn(__VA_OPT__(__VA_ARGS__, ) ArgAs<Args>(*args[I])...);          \
+    return nullptr;                                                  \
+  }                                                                  \
+  else {                                                             \
+    auto v = fn(__VA_OPT__(__VA_ARGS__, ) ArgAs<Args>(*args[I])...); \
+    return v;                                                        \
   }
 
 export module spp.analyse.utils.comp_time_intrinsics;
+import spp.analyse.scopes.comp_key;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.types;
 import std;
@@ -27,6 +28,14 @@ use(spp::asts, struct IntegerLiteralAst);
 use(spp::asts, struct ObjectInitializerAst);
 
 namespace spp {
+  /// An argument as the intrinsic's parameter type. Analysis
+  /// has checked the call, so any other kind is an internal
+  /// compiler error ("As").
+  template <typename Param, typename Arg>
+  auto ArgAs(Arg &arg) -> std::remove_reference_t<Param>& {
+    return *arg.template As<std::remove_cvref_t<Param>>();
+  }
+
   template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_ {
     using Type = void;
@@ -36,7 +45,7 @@ namespace spp {
   struct DetermineCompTimeFnSig_<true, false, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -44,7 +53,7 @@ namespace spp {
   struct DetermineCompTimeFnSig_<false, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -52,8 +61,8 @@ namespace spp {
   struct DetermineCompTimeFnSig_<true, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
-      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -69,8 +78,8 @@ namespace spp {
 
 namespace spp::analyse::utils::comp_time_intrinsics {
   SPP_EXP_CLS struct CompTimeFn {
-    decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) GnTypeArgs;
-    decltype(meta::CompilerMetaData::CompTimeGnCompArgs) GnCompArgs;
+    decltype(meta::CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
+    decltype(meta::CompTimeCallArgs::GnCompArgs) GnCompArgs;
     ScopeManager *Sm;
 
     virtual ~CompTimeFn() = default;
@@ -81,8 +90,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
 
     auto PreloadGns(
       ScopeManager *sm,
-      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) gn_type_args,
-      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) gn_comp_args)
+      decltype(meta::CompTimeCallArgs::GnTypeArgs) gn_type_args,
+      decltype(meta::CompTimeCallArgs::GnCompArgs) gn_comp_args)
       -> CompTimeFn& {
       Sm = sm;
       GnTypeArgs = std::move(gn_type_args);
@@ -144,7 +153,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, false, Ret, Args...>>(fn);
@@ -155,7 +164,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<false, true, Ret, Args...>>(fn);
@@ -166,12 +175,53 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(meta::CompilerMetaData::CompTimeGnTypeArgs) const &,
-      decltype(meta::CompilerMetaData::CompTimeGnCompArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, true, Ret, Args...>>(fn);
   }
+
+  /// Whether a divisor is zero: an integer or float literal, as "/" and "%" cannot fold over. The call raises it
+  /// (E90); a key leaves the operation unfolded.
+  SPP_EXP_FUN auto IsZeroDivisor(
+    ExpressionAst const &divisor)
+    -> bool;
+
+  /// The width in bits of an integer type, by its suffix ("s32" is 32); the pointer-sized ones are as wide as a pointer
+  /// here.
+  SPP_EXP_FUN auto IntegerWidth(
+    StrView type)
+    -> std::int64_t;
+
+  /// Whether a shift amount is as wide as the type it shifts, or wider: a shift cannot fold over one. The call raises
+  /// it (E91); a key leaves the operation unfolded.
+  SPP_EXP_FUN auto IsShiftTooWide(
+    IntegerLiteralAst const &value,
+    IntegerLiteralAst const &amount)
+    -> bool;
+
+  /// A literal's value key, which "A[1 + 2]" and "A[3]" both key as: one value however it is spelled ("0x10_uz" and
+  /// "16_uz"), a float as its value in its type's format. None for a float its type cannot hold (an infinity, a NaN),
+  /// or anything but a literal.
+  SPP_EXP_FUN auto ValueKeyOf(
+    ExpressionAst const &lit)
+    -> Opt<scopes::CompKey>;
+
+  /// A value key as the literal it is; null for any other part.
+  SPP_EXP_FUN auto LiteralOf(
+    scopes::CompKey const &key)
+    -> Unique<ExpressionAst>;
+
+  /// Fold a binary operator over two literal operands as its std method does: "+" over integers is "add", whose body
+  /// calls "std::intrinsics::sadd" or "uadd", which fold by "StdIntrinsicsAdd". "and" and "or" are the language's own,
+  /// not methods. Null when the operator has no intrinsic over those operands, or the intrinsic cannot fold them (a
+  /// zero divisor, a shift too wide), so a comp key and a folded call agree on every value.
+  SPP_EXP_FUN auto FoldBinaryOp(
+    StrView op,
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsAdd(
     IntegerLiteralAst const &lhs,
@@ -248,9 +298,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitIor(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitIorAssign(
     IntegerLiteralAst &lhs,
@@ -258,9 +308,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitAnd(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitAndAssign(
     IntegerLiteralAst &lhs,
@@ -268,9 +318,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitXor(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitXorAssign(
     IntegerLiteralAst &lhs,
@@ -278,20 +328,16 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> void;
 
   SPP_EXP_FUN auto StdIntrinsicsBitNot(
-    IntegerLiteralAst const &val)
-    -> Unique<IntegerLiteralAst>;
+    ExpressionAst const &val)
+    -> Unique<ExpressionAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitNotAssign(
     IntegerLiteralAst &lhs)
     -> void;
 
-  SPP_EXP_FUN auto StdIntrinsicsAbs(
-    IntegerLiteralAst const &val)
-    -> Unique<IntegerLiteralAst>;
-
   SPP_EXP_FUN auto StdIntrinsicsEq(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsOeq(
@@ -300,8 +346,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsNe(
-    IntegerLiteralAst const &lhs,
-    IntegerLiteralAst const &rhs)
+    ExpressionAst const &lhs,
+    ExpressionAst const &rhs)
     -> Unique<BooleanLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsOne(
@@ -468,25 +514,39 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     FloatLiteralAst const &val)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatNegOne()
+  SPP_EXP_FUN auto StdNumFloatNegOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatZero()
+  SPP_EXP_FUN auto StdNumFloatZero(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumFloatOne()
+  SPP_EXP_FUN auto StdNumFloatOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<FloatLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntNegOne()
+  SPP_EXP_FUN auto StdNumIntNegOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntZero()
+  SPP_EXP_FUN auto StdNumIntZero(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntOne()
+  SPP_EXP_FUN auto StdNumIntOne(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
-  SPP_EXP_FUN auto StdNumIntTwo()
+  SPP_EXP_FUN auto StdNumIntTwo(
+    ScopeManager const &sm,
+    Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
   SPP_EXP_FUN auto StdMemOpsSizeOf(

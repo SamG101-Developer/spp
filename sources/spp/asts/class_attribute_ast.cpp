@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
@@ -129,9 +130,7 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   sm->CurrentScope->FindVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*Type, *sm),
-    ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
+  common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
 }
 
 auto ClassAttributeAst::Stage7_AnalyseSemantics(
@@ -147,9 +146,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
   const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
   if (not Type->IsSelfType()) {
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      type_predicates::IsTypeBorrowed(*Type, *sm),
-      ERR_ARGS(*Source.OriginalType, *Type, "class field type"));
+    common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
   }
   var_sym->Type = Type;
 
@@ -175,12 +172,6 @@ auto ClassAttributeAst::Stage8_CheckMemory(
   DefaultVal->Stage8_CheckMemory(sm, meta);
   mem_utils::ValidateSymbolMemory(
     *DefaultVal, *DefaultVal, *sm, meta);
-}
-
-auto ClassAttributeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
 }
 
 SPP_MOD_END

@@ -1,0 +1,27 @@
+# Binary folds over an operand that is not a name (ported from codegen's check-fold-operand): ".. + make()",
+# "make() * .." and "id(make()).." give the fold of the tuple "make" returns, and "make" runs once per fold.
+
+fun show(what: &StrView, text: Str) -> Void {
+  std::console::print(what)
+  std::console::print(" = ")
+  std::console::println(&text)
+  std::mem::ops::drop(text)
+}
+
+fun make() -> (S32, S32, S32) {
+  std::console::println("make")
+  ret (2, 3, 4)
+}
+
+fun id(a: S32) -> S32 {
+  ret a
+}
+
+fun main() -> Void {
+  let sum = .. + make()
+  show("lhs fold", Str::from(sum))
+  let product = make() * ..
+  show("rhs fold", Str::from(product))
+  let ids = id(make())..
+  show("call fold", Str::from(ids.0 + ids.1 + ids.2))
+}

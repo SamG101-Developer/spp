@@ -134,13 +134,6 @@ public:
   /// scope runs them in reverse.
   Vec<DeferStatementAst*> Deferred;
 
-  /// The list of deferred statements that the stage 11 run has
-  /// actually walked past, in the order they were reached. This
-  /// is so that if the LLVM returns part way through a function,
-  /// it would run defer statements that were declared below the
-  /// actual exit point.
-  Vec<DeferStatementAst*> DeferredReached;
-
   /// The memory state of the body this is the outermost scope of
   /// (a function's or a closure's), while Stage 8 walks it
   /// ("memory_state::BodyFlow").

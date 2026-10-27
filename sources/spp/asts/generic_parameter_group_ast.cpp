@@ -15,8 +15,10 @@ import spp.analyse.utils.type_resolution;
 import spp.asts.generic_parameter_ast;
 import spp.asts.generic_parameter_type_constraints_ast;
 import spp.asts.token_ast;
+import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
@@ -222,28 +224,6 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
 
   // Run the semantic analysis steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }
-}
-
-auto GenericParameterGroupAst::Stage8_CheckMemory(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Run the memory checks on each parameter in the group.
-  for (auto const &p : Params) { p->Stage8_CheckMemory(sm, meta); }
-}
-
-auto GenericParameterGroupAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Fold each comp default, to prove it is a constant even if
-  // nothing ever uses it. The result is thrown away - a use
-  // site folds its own copy. One naming another parameter
-  // ("m = n + 1_uz") is no constant until instantiated, where
-  // it is folded as bound.
-  for (auto const &p : Params) {
-    if (not p->IsCompParam() or not p->IsOptional()) { continue; }
-    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*p->WrittenCompDefault))) { continue; }
-    auto tm = sm->NewManagerAt(sm->CurrentScope);
-    p->CompDefault->Stage9_CompTimeResolve(&tm, meta);
-    meta->CompTimeResult = nullptr;
-  }
 }
 
 auto GenericParameterGroupAst::Stage11_CodeGen(

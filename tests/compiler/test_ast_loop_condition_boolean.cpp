@@ -52,3 +52,61 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let x = loop false { exit "hello" } else { 123 }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_valid_else_block_after_iterations, R"(
+    fun f() -> U32 {
+        let mut i = 0_u32
+        ret loop i < 10_u32 {
+            case i == 20_u32 { exit i }
+            i += 1_u32
+        } else { 999_u32 }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_invalid_value_loop_missing_else,
+    SppLoopMissingElseError, R"(
+    fun f() -> U32 {
+        let mut i = 0_u32
+        ret loop i < 10_u32 {
+            case i == 5_u32 { exit i }
+            i += 1_u32
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_valid_value_loop_true_without_else, R"(
+    fun f() -> U32 {
+        ret loop true { exit 5_u32 }
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_valid_void_loop_without_else, R"(
+    fun f() -> Void {
+        let mut i = 0_u32
+        loop i < 10_u32 {
+            case i == 5_u32 { exit }
+            i += 1_u32
+        }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    LoopConditionBooleanAst,
+    test_invalid_value_loop_statement_discarded,
+    SppDiscardedValueError, R"(
+    fun f() -> Void {
+        let mut i = 0_u32
+        loop i < 10_u32 {
+            case i == 5_u32 { exit i }
+            i += 1_u32
+        }
+    }
+)");

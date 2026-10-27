@@ -201,3 +201,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         fun f() -> Void { }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  FunctionPrototypeAst,
+  test_valid_method_with_destructuring_parameter, R"(
+    cls Point {
+        !public x: S32
+        !public y: S32
+    }
+
+    cls Calc { }
+
+    sup Calc {
+        !public fun sum(&self, Point(x, y): Point) -> S32 {
+            ret x + y
+        }
+    }
+
+    fun f() -> S32 {
+        let c = Calc()
+        let s = c.sum(Point(x=1, y=2))
+        let Calc() = c
+        ret s
+    }
+)");

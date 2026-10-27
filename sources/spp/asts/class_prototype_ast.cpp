@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
@@ -128,13 +129,14 @@ auto ClassPrototypeAst::Stage2_GenTopLvlScopes(
 
 auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   // Register "Self" before any alias in the body is resolved,
   // so that one naming it has something to resolve to. A class's
   // "Self" is its own scope, which is the scope just moved into.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   if (not Name->IsCompilerGeneratedType()) {
-    analyse::utils::self_type::AddSelfTypeSymbol(*sm->CurrentScope, sm->CurrentScope, Name->PosStart());
+    self_type::AddSelfTypeSymbol(*sm->CurrentScope, sm->CurrentScope, Name->PosStart());
   }
   sm->MoveOutOfCurrentScope();
 }
@@ -175,7 +177,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   // Mark the "Copy" class itself as copyable. Minimise
   // `TypeEq` calls.
   if (_ClsSymbol != nullptr and Name->LastTypePart()->Name == COPY->LastTypePart()->Name) {
-    if (TypeRef::ForKindCheck(*_ClsSymbol, *sm->CurrentScope).IsA(*COPY, *sm->CurrentScope)) {
+    if (marker_sups::IsCopyMarker(TypeRef::ForKindCheck(*_ClsSymbol, *sm->CurrentScope), *sm->CurrentScope)) {
       sm->CurrentScope->FindHeadSymbol(*Name)->IsDirectlyCopyable = true;
       _ClsSymbol->IsDirectlyCopyable = true;
     }
@@ -246,17 +248,6 @@ auto ClassPrototypeAst::Stage8_CheckMemory(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   Impl->Stage8_CheckMemory(sm, meta);
-  sm->MoveOutOfCurrentScope();
-}
-
-auto ClassPrototypeAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Skip the class body.
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  GnParamGroup->Stage9_CompTimeResolve(sm, meta);
-  Impl->Stage9_CompTimeResolve(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 

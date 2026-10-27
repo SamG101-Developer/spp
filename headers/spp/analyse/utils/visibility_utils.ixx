@@ -72,4 +72,17 @@ namespace spp::analyse::utils::visibility_utils {
   SPP_EXP_FUN auto CheckModuleTypeVisibility(
     TypeSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> void;
+
+  /// Check a module member named from where it is being named
+  /// is not in an ffi package another owner ships: a dependency's
+  /// package is for the dependency's own modules (E120). Part of
+  /// the module checks above, and needs no visibility, so a
+  /// written type checks it from the stage its name is read.
+  SPP_EXP_FUN auto CheckFfiPackageOwner(
+    VariableSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+    ScopeManager const &sm, CompilerMetaData const &meta) -> void;
+
+  SPP_EXP_FUN auto CheckFfiPackageOwner(
+    TypeSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
+    ScopeManager const &sm, CompilerMetaData const &meta) -> void;
 }

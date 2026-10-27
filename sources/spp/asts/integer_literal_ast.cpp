@@ -80,8 +80,12 @@ auto IntegerLiteralAst::ToString() const -> Str {
 auto IntegerLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
-  Type = Type.empty() ? "s32" : Type;
+  Type = TypeOrDefault();
   ValidateBounds(*this);
+}
+
+auto IntegerLiteralAst::TypeOrDefault() const -> Str {
+  return Type.empty() ? "s32" : Type;
 }
 
 auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
@@ -104,7 +108,9 @@ auto IntegerLiteralAst::ValidateBounds(
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time maths.
-  auto const &[lower, upper] = kBounds.at(Type);
+  // Read when used, not kept from start-up: "uz" and "sz" are a
+  // pointer wide on the target, which is chosen after that.
+  auto const &[lower, upper] = utils::numbers::IntegerBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value < lower or value > upper,
@@ -124,19 +130,6 @@ auto IntegerLiteralAst::FromBigVal(
     : nullptr;
   auto val_tok = MakeUnique<TokenAst>(0uz, lex::SppTokenType::LX_NUMBER, magnitude.ToString());
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
-}
-
-auto IntegerLiteralAst::FromWrappedBigVal(
-  numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
-  // An unknown type throws, as reading its bounds does.
-  return FromBigVal(utils::numbers::WrapToInteger(value, type).value(), type);
-}
-
-auto IntegerLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the float literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
 }
 
 auto IntegerLiteralAst::Stage11_CodeGen(
@@ -170,6 +163,13 @@ auto IntegerLiteralAst::Stage11_CodeGen(
   const auto ap_int = llvm::APInt(bit_width, mapped_val.ToString(), 10);
   const auto co_int = llvm::ConstantInt::get(*ctx->Context, ap_int);
   return co_int;
+}
+
+auto IntegerLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the integer literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto IntegerLiteralAst::_PrecompiledType(

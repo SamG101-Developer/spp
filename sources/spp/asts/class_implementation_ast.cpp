@@ -94,12 +94,6 @@ auto ClassImplementationAst::Stage8_CheckMemory(
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Compile-time resolution for each member.
-  for (auto const &m : Members) { m->Stage9_CompTimeResolve(sm, meta); }
-}
-
 auto ClassImplementationAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for each member.

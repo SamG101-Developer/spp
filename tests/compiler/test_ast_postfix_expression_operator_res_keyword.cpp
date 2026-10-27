@@ -222,7 +222,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
     AstPostfixExpressionOperatorResumeCoroutineAst,
     test_invalid_coroutine_yielding_gen_done,
-    SppYieldTypeContainsGenDoneError, "Gen", R"(
+    SppYieldTypeContainsGenDoneError, "Gen[S32 or std::generator::GenDone]", R"(
     cor g() -> Gen[S32 or std::generator::GenDone] {
         gen 1
     }
@@ -237,6 +237,96 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
     sup MyGen ext Gen[S32 or std::generator::GenDone] { }
 
     fun f(g: MyGen) -> Void {
+        loop x in g { }
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_on_an_early_return,
+    SppLinearValueNotConsumedError, R"(
+    fun f(o: Opt[Gen[S32]]) -> Opt[S32] {
+        let x = o?.res()
+        ret None
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_on_a_block,
+    SppLinearValueNotConsumedError, R"(
+    cor g() -> Gen[S32] {
+        gen 1
+    }
+
+    fun f() -> Void {
+        let mut a = g()
+        let x = { a }.res()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_private_field_in_send_argument,
+    SppAccessViolationError, R"(
+    cls A {
+        !private a: S32
+    }
+
+    cor g() -> Gen[S32, S32] {
+        let s = gen 1
+    }
+
+    fun f(a: A) -> Void {
+        let mut c = g()
+        let x = c.res(a.a)
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_direct_send_call,
+    SppAccessViolationError, R"(
+    cor g() -> Gen[S32, S32] {
+        let s = gen 1
+    }
+
+    fun f() -> Void {
+        let mut c = g()
+        let x = c.send(1)
+    }
+)");
+
+// Resuming needs only a "&mut" of the generator, so a "&mut" borrow of one can be resumed; a "&" borrow cannot.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_res_through_a_mut_borrow, R"(
+    fun f(g: &mut Gen[S32]) -> Void {
+        let x = g.res()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_invalid_res_through_an_immutable_borrow,
+    SppInvalidMutationError, R"(
+    fun f(g: &Gen[S32]) -> Void {
+        let x = g.res()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_res_sending_through_a_mut_borrow, R"(
+    fun f(g: &mut Gen[S32, Bool]) -> Void {
+        let x = g.res(true)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    AstPostfixExpressionOperatorResumeCoroutineAst,
+    test_valid_loop_over_a_mut_borrowed_generator, R"(
+    fun f(g: &mut Gen[S32]) -> Void {
         loop x in g { }
     }
 )");

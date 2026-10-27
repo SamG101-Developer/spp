@@ -11,7 +11,9 @@ namespace spp::utils::strings {
   SPP_EXP_FUN auto IsAlNum(char c) -> bool;
 
   /// Find the closest match to "query" among "choices", or
-  /// "Nullopt" if nothing matches.
+  /// "Nullopt" if none is at least half alike ("SimilarityRatio"
+  /// 0.5): a suggestion that shares less is no help. A choice the
+  /// compiler generated ("$...") is never suggested.
   SPP_EXP_FUN SPP_ATTR_COLD auto ClosestMatch(StrView query, Vec<Str> const &choices) -> Opt<Str>;
 
   auto Levenshtein(StrView s1, StrView s2) -> std::size_t;

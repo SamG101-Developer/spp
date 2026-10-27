@@ -131,6 +131,34 @@ else
   echo "        CI scan run the same rules"
 fi
 
+# CCACHE
+echo
+echo "ccache (${MANIFEST})"
+ccache_tag="$(latest_tag ccache/ccache)"
+if [ -z "$ccache_tag" ]; then
+  echo "::error::could not read the latest ccache release"
+  status=1
+else
+  set_pin pin.ccache.version "${ccache_tag#v}"
+  for platform in linux-x86_64-musl-static:linux-x86-64 linux-aarch64-musl-static:linux-aarch64 darwin:darwin; do
+    set_pin "pin.ccache.sha256-${platform#*:}" \
+      "$(asset_digest ccache/ccache "$ccache_tag" "ccache-${ccache_tag#v}-${platform%%:*}.tar.gz")"
+  done
+fi
+
+# SCCACHE
+echo
+echo "sccache (${MANIFEST})"
+sccache_tag="$(latest_tag mozilla/sccache)"
+if [ -z "$sccache_tag" ]; then
+  echo "::error::could not read the latest sccache release"
+  status=1
+else
+  set_pin pin.sccache.version "${sccache_tag#v}"
+  set_pin pin.sccache.sha256 \
+    "$(asset_digest mozilla/sccache "$sccache_tag" "sccache-${sccache_tag}-x86_64-pc-windows-msvc.tar.gz")"
+fi
+
 # CPPCHECK
 echo
 echo "cppcheck (${MANIFEST})"
@@ -157,6 +185,56 @@ else
   fetch -o "$tmp/valgrind.tar.bz2" "https://sourceware.org/pub/valgrind/valgrind-${valgrind_version}.tar.bz2"
   set_pin pin.valgrind.version "$valgrind_version"
   set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
+fi
+
+# QEMU (our fork's newest release; upstream-watch U17-U19)
+echo
+echo "qemu (${MANIFEST})"
+qemu_repo="SamG101-Developer/qemu"
+qemu_tag="$(fetch "${auth[@]}" "https://api.github.com/repos/${qemu_repo}/releases/latest" \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin).get("tag_name", ""))')"
+qemu_digest=""
+if [ -n "$qemu_tag" ]; then
+  qemu_digest="$(asset_digest "$qemu_repo" "$qemu_tag" "qemu-user-static-${qemu_tag}-x86_64.tar.xz")"
+fi
+if [ -z "$qemu_digest" ]; then
+  echo "::error::could not read the latest qemu-user release of ${qemu_repo}"
+  status=1
+else
+  set_pin pin.qemu-user.tag "$qemu_tag"
+  set_pin pin.qemu-user.sha256 "$qemu_digest"
+fi
+
+# ALPINE
+echo
+echo "alpine (${MANIFEST})"
+alpine_latest="$(fetch 'https://hub.docker.com/v2/repositories/library/alpine/tags?page_size=100' \
+  | python3 -c 'import json, re, sys
+tags = [t for t in json.load(sys.stdin)["results"] if re.fullmatch(r"\d+\.\d+\.\d+", t["name"])]
+tags.sort(key=lambda t: [int(p) for p in t["name"].split(".")])
+print(tags[-1]["name"], tags[-1]["digest"].removeprefix("sha256:")) if tags else None')"
+if [ -z "$alpine_latest" ]; then
+  echo "::error::could not read the latest alpine image"
+  status=1
+else
+  set_pin pin.alpine.version "${alpine_latest% *}"
+  set_pin pin.alpine.sha256 "${alpine_latest#* }"
+fi
+
+# ARM GNU TOOLCHAIN
+echo
+echo "arm-gnu (${MANIFEST})"
+arm_api="https://gitlab.arm.com/api/v4/projects/tooling%2Fgnu-toolchains-for-arm"
+arm_version="$(fetch "${arm_api}/repository/files/README.md/raw?ref=main" \
+  | grep -oE 'Arm GNU Toolchain [0-9]+\.[0-9]+\.rel[0-9]+' | sed 's/^Arm GNU Toolchain //' | sort -uV | tail -1)"
+if [ -z "$arm_version" ]; then
+  echo "::error::could not read the latest Arm GNU Toolchain release"
+  status=1
+else
+  arm_tar="arm-gnu-toolchain-${arm_version}-x86_64-aarch64_be-none-linux-gnu.tar.xz"
+  set_pin pin.arm-gnu.version "$arm_version"
+  set_pin pin.arm-gnu.sha256-aarch64-be \
+    "$(fetch "${arm_api}/packages/generic/gnu-toolchain/${arm_version}/${arm_tar}.sha256asc" | cut -d ' ' -f 1)"
 fi
 
 # LLVM (WINDOWS)

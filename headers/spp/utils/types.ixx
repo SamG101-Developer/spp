@@ -21,11 +21,14 @@ namespace spp {
   SPP_EXP_CLS template <typename T, typename A = std::allocator<T>>
   using Vec = std::vector<T, A>;
 
-  /// Holds up to "N" elements inline and allocates only past them: for hot, short-lived vectors that are usually
-  /// small. "N" defaults to what fits gch's default buffer.
+#if SPP_COMPILER_MSVC
+  SPP_EXP_CLS template <typename T, unsigned N = 0, typename A = std::allocator<T>>
+  using SmallVec = std::vector<T, A>;
+#else
   SPP_EXP_CLS template <typename T, unsigned N = gch::default_buffer_size_v<std::allocator<T>>,
     typename A = std::allocator<T>>
   using SmallVec = gch::small_vector<T, N, A>;
+#endif
 
   SPP_EXP_CLS template <typename T, std::size_t N>
   using Arr = std::array<T, N>;

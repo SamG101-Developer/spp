@@ -13,6 +13,7 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::utils::type_join, class TypeJoin);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
@@ -26,6 +27,7 @@ use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
 use(spp::asts::meta, enum class SubjectOnMatch : std::uint8_t);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
+use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
 use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
@@ -41,8 +43,7 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
   kPreAnalyseSemantics, // stage 6
   kAnalyseSemantics, // stage 7
   kCheckMemory, // stage 8
-  kCompTimeResolve, // stage 9
-  kMonomorphise, // between stages 9 and 10
+  kMonomorphise, // between stages 8 and 10
   kPreCodeGen, // stage 10
   kCodeGen, // stage 11
 };
@@ -74,17 +75,49 @@ SPP_EXP_CLS struct spp::asts::meta::LlvmLoopInfo {
   /// exiting with a value.
   llvm::PHINode *Phi = nullptr;
 
-  /// Whether the loop has run its body at least once or not,
-  /// so we know whether to take the "else" block under the
-  /// loop or not.
-  llvm::Value *EnteredFlag = nullptr;
+  /// The loop's own scope, where its condition is evaluated. An
+  /// "exit" or a "skip" leaves every scope inside it without
+  /// reaching their ends, so what they deferred runs at the
+  /// jump ("EmitScopeExit"); an "exit" leaves this one too.
+  Scope const *LoopScope = nullptr;
 
-  /// The scope that a loop statement is written in; were we
-  /// to break out of this loop, this is the scope we'd end
-  /// up in. All the scopes between the jump, and this one,
-  /// are being left without reaching the end, so their drops
-  /// need to be emitted here instead.
-  Scope const *ScopeContainingLoop = nullptr;
+  /// The loop's own type, which each value reaching the phi node
+  /// is coerced into; null when the loop yields no value.
+  Shared<TypeRef> Type = nullptr;
+};
+
+/// What a "cmp" call binds for its callee when evaluated: its
+/// parameters' values and its generic arguments. The call sets
+/// them and runs the callee's body, which reads them, and writes
+/// each parameter's final value back for a "&mut" argument. A
+/// guard starts with none (the call's own guard included), so a
+/// nested scope or call never reads an outer call's; recursion
+/// is why they are here rather than on the callee.
+SPP_EXP_CLS struct spp::asts::meta::CompTimeCallArgs {
+  /// The function arguments: each parameter's value, by name.
+  Map<
+    Shared<IdentifierAst>, Unique<ExpressionAst>,
+    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
+    utils::ptr::ptr_eq<Shared<IdentifierAst>>> FnArgs;
+
+  /// The call's generic arguments, each as it resolves at the
+  /// call site: a type's "TypeRef", a comp value's identity.
+  /// What "Self" stands for at the call, if anything, follows
+  /// the type arguments.
+  Vec<Shared<TypeRef>> GnTypeArgs;
+  Vec<analyse::scopes::CompId> GnCompArgs;
+
+  /// The call's comp generic arguments by the parameter each
+  /// binds ("n" for "get[5]()"), which the body of a "cmp fun"
+  /// reads its comp parameters as.
+  Vec<Pair<Shared<IdentifierAst>, analyse::scopes::CompId>> GnCompValues;
+
+  /// Exchange contents with "other", each container keeping its
+  /// buffers (a guard's slot is reused, see "Save").
+  auto Swap(CompTimeCallArgs &other) -> void;
+
+  /// Empty every container, keeping its buffers.
+  auto Clear() -> void;
 };
 
 /// The master meta context used for additional information
@@ -187,12 +220,20 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   TokenAst *EnclosingFnFlavour;
 
   /// The return type of the enclosing function type. Again needed
-  /// for "ret" and "gen" type checking.
-  Vec<Shared<TypeAst>> EnclosingFnRetType;
+  /// for "ret" and "gen" type checking. Null in a closure with no
+  /// written return type: its "ret"s, or a coroutine closure's
+  /// "gen"s, agree on one ("ClosureRetJoin").
+  Shared<TypeAst> EnclosingFnRetType;
 
   /// The "source" return type of the enclosing function type.
   /// Needed for "ret" and "gen" type checking error reporting.
-  Vec<Shared<TypeAst>> EnclosingFnSourceRetType;
+  Shared<TypeAst> EnclosingFnSourceRetType;
+
+  /// In a closure with no written return type, the join its "ret"s
+  /// agree on its return type in, or a coroutine closure's "gen"s
+  /// on its yield type ("type_join::TypeJoin"), as a "case"'s
+  /// branches do; null anywhere else.
+  analyse::utils::type_join::TypeJoin *ClosureRetJoin;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
@@ -236,26 +277,19 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// reporting with incompatible "exit" levels.
   LoopExpressionAst *LoopCurrentAst;
 
-  /// Loop return type tracking over multiple levels, ensuring
-  /// good type checking against "exit" statements at any
-  /// level, targeting any level.
-  Shared<Map<std::size_t, Tup<ExpressionAst*, Shared<TypeAst>, Scope*>>> LoopReturnTypes;
-
-  /// The object initializer type, because the object initializer
-  /// group needs it for generic inference.
-  Shared<TypeAst> ObjectInitType;
-
-  /// Track the left-hand-side of a postfix expression so that
-  /// the operator being applied to it can read from it.
-  ExpressionAst *PostfixExpressionLhs;
-
-  /// Track the right-hand-side of a unary expression so that
-  /// the operator being applied to it can reach from it.
-  ExpressionAst *UnaryExpressionRhs;
+  /// The join each loop's "exit"s agree on their type in, by
+  /// depth ("type_join::TypeJoin"): onto what the loop is assigned
+  /// to, if anything, as a "case"'s branches do. An "exit" at any
+  /// level gives its value to the loop it targets; each loop owns
+  /// its own join while its body is analysed.
+  Vec<analyse::utils::type_join::TypeJoin*> LoopJoins;
 
   /// There are some instances where we want to analyse a type
-  /// but not the generics attached to it, so allow that.
-  /// Todo: Remove and use ->WithoutGns()->Stage7...()?
+  /// but not the generics attached to it, so allow that. Both
+  /// callers analyse "WithoutGns()" already; this also stops the
+  /// type solving the arguments not written, which an object
+  /// initializer infers later from its attributes, at any depth
+  /// of a namespaced type ("ns::Vec").
   bool SkipTypeAnalysisGnChecks;
 
   /// The overriding type scope to analyse a type in. This is
@@ -299,15 +333,8 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// loops and control flow.
   Vec<LlvmLoopInfo> LlvmLoopStack;
 
-  /// A collection of "cmp" compile-time information, typically
-  /// used in stage 9, to compute instructions at compile time.
-  Map<
-    Shared<IdentifierAst>, Unique<ExpressionAst>,
-    utils::ptr::ptr_hash<Shared<IdentifierAst>>,
-    utils::ptr::ptr_eq<Shared<IdentifierAst>>> CompTimeArgs; // Todo: struct
-  /// The call's generic arguments, each as it resolves at the call site: a type's "TypeRef", a comp value's identity.
-  Vec<Shared<TypeRef>> CompTimeGnTypeArgs;
-  Vec<analyse::scopes::CompId> CompTimeGnCompArgs;
+  /// The arguments of the "cmp" call being evaluated.
+  CompTimeCallArgs CompTimeCall;
   Unique<ExpressionAst> CompTimeResult;
 
   /// Whether a comp-time "ret" has run, so the blocks and loops
@@ -379,20 +406,24 @@ public:
   /// kept. Pair it with a heavy "MetaGuard".
   auto ResetContext() -> void;
 
-  /// Snapshot all the current values into the history, making
-  /// them "restorable".
-  SPP_ATTR_HOT auto Save() -> void;
+  /// Clear the assignment target and its type: what is analysed
+  /// next is not what the enclosing expression is assigned to.
+  /// Pair it with a "MetaGuard", which puts them back.
+  auto ClearAssignmentTarget() -> void;
 
-  /// Restore all the light values (everything except function
-  /// context, which we want to persist upwards). Set "heavy"
-  /// to true to clear those too.
-  SPP_ATTR_HOT auto Restore(bool heavy = false) -> void;
+private:
+  friend struct MetaGuard;
 
-  /// Getter for the internal depth. This is used when an catchable
-  /// error might have raised in between a "Save" and "Restore",
-  /// and we want to manually sync the meta context depth (unlikely
-  /// with the new guard though).
-  SPP_ATTR_NODISCARD auto Depth() const -> std::size_t;
+  /// Snapshot the current values into the history, making them
+  /// "restorable": the light ones, and with "heavy" the function
+  /// context too ("EnclosingFn*", "ClosureRetJoin"). Only through
+  /// a "MetaGuard", so a raised error unwinds it, and the same
+  /// "heavy" reaches both.
+  SPP_ATTR_HOT auto Save(bool heavy) -> void;
+
+  /// Restore what "Save" took: the light values, and with "heavy"
+  /// the function context, which otherwise persists upwards.
+  SPP_ATTR_HOT auto Restore(bool heavy) -> void;
 };
 
 /// A scoped guard to prevent the desync of "Save"/"Restore"

@@ -224,3 +224,36 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         f[4_uz]()
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_repeated_element_as_a_receiver, R"(
+    fun f() -> USize {
+        ret [1_u64; 1_uz + 1_uz].len()
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_case_size_against_an_annotated_let, R"(
+    fun f() -> Void {
+        let a: [S32; 3_uz] = [1; case true { 3_uz } else { 4_uz }]
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_valid_case_size_against_a_return_type, R"(
+    fun f() -> [S32; 4_uz] {
+        ret [1; case false { 3_uz } else { 4_uz }]
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  ArrayLiteralRepeatedElementAst,
+  test_invalid_case_size_mismatching_an_annotated_let,
+  SppTypeMismatchError, R"(
+    fun f() -> Void {
+        let a: [S32; 4_uz] = [1; case true { 3_uz } else { 4_uz }]
+    }
+)");

@@ -69,16 +69,16 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// check it.
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  /// Resolve the array literal at compile-time. This can
-  /// only be done if the element within the array is
-  /// compile-time evaluatable itself.
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   /// Use the internal LLVM array type, which is what the
   /// standard library's "Arr" type lowers to anyway, and
   /// create the array of values. Comptime and runtime
   /// paths (create with values vs GEP).
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+
+  /// Resolve the array literal at compile-time. This can
+  /// only be done if the element within the array is
+  /// compile-time evaluatable itself.
+  auto EvaluateCompTime(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
   /// Create the "Arr[T, n]" type based off the element's
   /// type, and the provided size; and then analyse the
@@ -91,8 +91,7 @@ SPP_EXP_CLS struct spp::asts::ArrayLiteralRepeatedElementAst final : ArrayLitera
   /// generics in as they might contain postfix ops that
   /// need to be checked.
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Shared<ExpressionAst> override;
+    ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
   /// Arrays can be used ina runtime default context, only
   /// if all the element and size are allowed to be used in

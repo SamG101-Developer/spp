@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
@@ -20,6 +21,7 @@ import spp.asts.literal_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types;
+import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
 import spp.lex.tokens;
@@ -76,13 +78,16 @@ auto ArrayLiteralRepeatedElementAst::PosEnd() const -> std::size_t {
 }
 
 auto ArrayLiteralRepeatedElementAst::Clone() const -> Unique<Ast> {
-  // Clone all the members of the ast.
-  return MakeUnique<ArrayLiteralRepeatedElementAst>(
+  auto ast = MakeUnique<ArrayLiteralRepeatedElementAst>(
     AstClone(TokL),
     AstClone(Elem),
     AstClone(TokSemicolon),
     AstClone(Size),
     AstClone(TokR));
+  ast->_SizeScope = _SizeScope;
+  ast->_AnalysedSize = AstClone(_AnalysedSize);
+  ast->_ArrayType = _ArrayType;
+  return ast;
 }
 
 auto ArrayLiteralRepeatedElementAst::ToString() const -> Str {
@@ -109,11 +114,14 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   IMPORT_UTILS;
   using generate::common_types::ArrayType;
 
+  // What a clone carried over is this analysis's to remake.
+  _SizeScope = nullptr;
+  _AnalysedSize = nullptr;
+  _ArrayType = nullptr;
+
   // Analyse the repeated element.
   Elem->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Elem, *sm),
-    ERR_ARGS(*Elem));
+  common_errors::RequirePrimary(*Elem, *sm);
   const auto elem_type = Elem->InferType(sm, meta);
   const auto elem_type_sym = Elem->InferTypeRef(sm, meta).Symbol;
 
@@ -125,9 +133,8 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
 
   // Ensure the element's type is not a borrow type, as array
   // elements cannot be borrows.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*elem_type, *sm),
-    ERR_ARGS(*Elem, *elem_type, "repeated array element type"));
+  common_errors::RequireNotBorrowed(
+    *elem_type, *Elem, "repeated array element type", *sm);
 
   // A literal size is the array's size as it is.
   if (Size->To<LiteralAst>() != nullptr) {
@@ -143,10 +150,18 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
   _SizeScope = sm->CurrentScope;
   _AnalysedSize = AstClone(Size);
-  _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*_AnalysedSize, *sm),
-    ERR_ARGS(*_AnalysedSize));
+
+  // The size is an expression of its own: what the enclosing one
+  // set up - the "let" type the array is assigned to, the return
+  // type a "ret" resolves overloads against - is not its target,
+  // and a "case" in it would hold its branches to that type.
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->ReturnTypeOverloadResolverType = nullptr;
+    meta->ClearAssignmentTarget();
+    _AnalysedSize->Stage7_AnalyseSemantics(sm, meta);
+  }
+  common_errors::RequirePrimary(*_AnalysedSize, *sm);
 
   // In a template, the size may depend on a generic that has no
   // value yet ("n + 1_uz", or a "case" reading "n"), so it is not
@@ -166,7 +181,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   // own walk over the size's scope, as a "cmp" statement's value
   // is, and becomes the literal it folds to.
   auto tm = sm->NewManagerAt(_SizeScope);
-  _AnalysedSize->Stage9_CompTimeResolve(&tm, meta);
+  _AnalysedSize->EvaluateCompTime(&tm, meta);
   RaiseIf<SppCompTimeConstantError>(
     meta->CompTimeResult == nullptr,
     ERR_ARGS(*_AnalysedSize));
@@ -199,18 +214,6 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
     ignore = sm->SkipSubtree(sm->CurrentScope);
     sm->MoveOutOfCurrentScope();
   }
-}
-
-auto ArrayLiteralRepeatedElementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Convert the inner element to a compile-time value.
-  Elem->Stage9_CompTimeResolve(sm, meta);
-  Elem = AstClone(meta->CompTimeResult);
-  SkipSizeScope(sm);
-
-  // Wrap the compile-time array value.
-  meta->CompTimeResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
-    nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
 }
 
 auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
@@ -313,6 +316,18 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   }
 }
 
+auto ArrayLiteralRepeatedElementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Convert the inner element to a compile-time value. It is only
+  // read, as an explicit array literal's elements are.
+  Elem->EvaluateCompTime(sm, meta);
+  SkipSizeScope(sm);
+
+  // Wrap the compile-time array value.
+  meta->CompTimeResult = MakeUnique<ArrayLiteralRepeatedElementAst>(
+    nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
+}
+
 auto ArrayLiteralRepeatedElementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::ArrayType;
@@ -333,7 +348,7 @@ auto ArrayLiteralRepeatedElementAst::InferTypeRef(
 }
 
 auto ArrayLiteralRepeatedElementAst::ReadExpr(
-  analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both the repeated element and the count are expressions;
   // the count is the one that names a comp parameter.
   return MakeShared<ArrayLiteralRepeatedElementAst>(

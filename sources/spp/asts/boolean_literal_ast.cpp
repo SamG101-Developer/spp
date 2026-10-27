@@ -91,13 +91,6 @@ auto BooleanLiteralAst::CppVal() const -> bool {
   return IsTrue();
 }
 
-auto BooleanLiteralAst::Stage9_CompTimeResolve(
-  ScopeManager *, CompilerMetaData *meta) -> void {
-  // Clone and return the boolean literal as is for compile-time
-  // resolution.
-  meta->CompTimeResult = AstClone(this);
-}
-
 auto BooleanLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using lex::SppTokenType;
@@ -120,6 +113,13 @@ auto BooleanLiteralAst::Stage11_CodeGen(
     ? 1ul
     : 0ul;
   return llvm::ConstantInt::get(llvm_type, value);
+}
+
+auto BooleanLiteralAst::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *meta) -> void {
+  // Clone and return the boolean literal as is for compile-time
+  // resolution.
+  meta->CompTimeResult = AstClone(this);
 }
 
 auto BooleanLiteralAst::InferTypeRef(

@@ -11,7 +11,10 @@ import llvm;
 import std;
 
 SPP_AST_COMMON_FWD_DECL(TypeIdentifierAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ConventionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
@@ -55,8 +58,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
 
@@ -131,7 +132,38 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
     Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> &&equations)
     -> void;
 
+  /// Run the visibility checks that names written in a signature
+  /// or an attribute type deferred (see "_CheckVisibility"), now
+  /// every class's visibility is on its symbol. Called once stage 5
+  /// has finished for every module.
+  static auto CheckPendingVisibility(ScopeManager *sm) -> void;
+
+  /// Forget every deferred check, as a compile starts: one that
+  /// stopped early would leave scopes behind that are gone.
+  static auto ClearPendingVisibility() -> void;
+
 private:
+  /// A written name's visibility check, deferred: a copy of the
+  /// name (for the error's position, the node read may be a
+  /// temporary), what it named, and where it was named from.
+  struct PendingVisibility {
+    Shared<TypeIdentifierAst> Written;
+    TypeSymbol const *Sym;
+    Scope *From;
+  };
+
+  /// A class's visibility reaches its symbol only in stage 5 (from
+  /// its annotation, read in stage 4), so a name read before then
+  /// is checked once stage 5 is done for every module.
+  inline static Vec<PendingVisibility> _PendingVisibility = {};
+
+  /// Check this written name can be named where "sm" is: a type
+  /// declared in a "sup" block by the type-level rule, anything
+  /// else by the module-level one.
+  auto _CheckVisibility(
+    TypeSymbol const &type_sym, ScopeManager *sm, CompilerMetaData *meta) const
+    -> void;
+
   /// What "InferFromAttributes" was given, consumed by the next analysis.
   Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> _AttributeEquations;
 

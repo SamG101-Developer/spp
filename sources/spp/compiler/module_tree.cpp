@@ -1,9 +1,9 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
+import spp.codegen.llvm_target;
 import spp.compiler.ffi;
 import spp.utils.files;
 import genex;
@@ -78,7 +78,9 @@ spp::compiler::ModuleTree::ModuleTree(
   // The ffi packages, the project's and its dependencies', read where they are.
   auto ffi_modules = decltype(src_modules)();
   for (auto const &package : ffi::Packages(_Root)) {
-    for (auto const &p : spp::utils::files::GlobSpp(package)) { ffi_modules.emplace_back(Module::FromPath(p)); }
+    for (auto const &p : spp::utils::files::GlobSpp(package)) {
+      ffi_modules.emplace_back(Module::FromPath(p))->IsFfi = true;
+    }
   }
 
   // The project's own tests, and only when they were asked for - see "TestScope".
@@ -109,6 +111,7 @@ spp::compiler::ModuleTree::ModuleTree(
     const auto keep_tst = tests.WantsLib(lib_name) and inner_path != Path("tst/main.spp");
 
     if (inner_path != Path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
+      m->IsStd = lib_name == "std" and top == "src";
       filtered_vcs_modules.emplace_back(std::move(m));
     }
   }
@@ -132,9 +135,10 @@ spp::compiler::ModuleTree::ModuleTree(
   _Modules = std::move(all_modules);
 
   // Measure every module's namespace now that all the roots
-  // are known.
+  // are known, and note whose it is.
   for (auto const &m : _Modules) {
     m->NsParts = m->IsTestHarness ? Vec{Str("main")} : NamespaceOf(m->Path);
+    m->Owner = m->IsTestHarness ? Nullopt : OwnerOf(m->Path);
   }
 
   Lock();
@@ -176,6 +180,14 @@ auto spp::compiler::ModuleTree::NamespaceOf(
   parts.back().erase(parts.back().length() - 4);
   if (best_is_tst) { parts.insert(parts.begin() + (parts.empty() ? 0z : 1z), Str("tst")); }
   return parts;
+}
+
+auto spp::compiler::ModuleTree::OwnerOf(
+  Path const &module_path) const
+  -> Opt<Str> {
+  const auto rel = module_path.lexically_relative(_VcsPath);
+  if (rel.empty() or *rel.begin() == "..") { return Nullopt; }
+  return spp::utils::files::NativeString(*rel.begin());
 }
 
 auto spp::compiler::ModuleTree::ForCppGoogleTest(

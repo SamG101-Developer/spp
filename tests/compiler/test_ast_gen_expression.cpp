@@ -173,3 +173,124 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(elem)
     }
 )");
+
+// A generator destroyed at a "gen" drops what its frame still owns there, innermost scope and newest first, after the
+// "defer"s destroying it runs ("OwnedAtSuspend"); "tests/codegen/check-drops.sh" checks what runs.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenExpressionAst,
+    test_valid_owned_values_at_a_gen, R"(
+    cls Noisy {
+        !public n: S32
+    }
+
+    sup Noisy ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Noisy(..) = self
+        }
+    }
+
+    cor g(x: Noisy) -> Gen[S32] {
+        let a = Noisy(n=1)
+        {
+            let b = Noisy(n=2)
+            gen 1
+            std::mem::ops::drop(b)
+        }
+        let c = Noisy(n=3)
+        gen 2
+        std::mem::ops::drop(a)
+        std::mem::ops::drop(c)
+        std::mem::ops::drop(x)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenExpressionAst,
+    test_valid_owned_values_at_a_gen_in_a_loop_and_a_generic, R"(
+    cor g[T](x: T) -> Gen[U64] {
+        let mut i = 0_u64
+        loop i < 3_u64 {
+            let s = Str::from(i)
+            gen i
+            std::mem::ops::drop(s)
+            i += 1_u64
+        }
+        std::mem::ops::drop(x)
+    }
+
+    fun f() -> Void {
+        let mut c = g(Str::from("a"))
+        let r = c.res()
+        std::mem::ops::drop(c)
+    }
+)");
+
+// The "defer"s run where a generator is destroyed, so one taking a value already moved there would take it twice.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    GenExpressionAst,
+    test_invalid_defer_consuming_a_value_moved_before_a_gen,
+    SppDeferConsumesMovedValueError, R"(
+    cor g(x: Str) -> Gen[U64] {
+        defer std::mem::ops::drop(x)
+        let y = x
+        gen 1_u64
+        std::mem::ops::drop(y)
+    }
+)");
+
+// A borrow a loop's generator yields is handed on by the "gen", and the loop's "defer" drops the generator: the frame
+// being destroyed ends every borrow, so that drop is not a move of borrowed memory.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenExpressionAst,
+    test_valid_gen_of_a_borrow_yielded_by_a_loop_over_a_generator, R"(
+    cor g(v: &mut std::vector::Vec[S32]) -> Gen[&mut S32] {
+        loop x in v.iter_mut() {
+            gen x
+        }
+    }
+)");
+
+// A value partly moved out at a "gen" loses only what is left of it when the frame is destroyed there.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenExpressionAst,
+    test_valid_partly_moved_value_at_a_gen, R"(
+    cls Pair2 {
+        !public a: Str
+        !public b: Str
+    }
+
+    cor g() -> Gen[U64] {
+        let p = Pair2(a=Str::from("a"), b=Str::from("b"))
+        std::mem::ops::drop(p.a)
+        gen 1_u64
+        std::mem::ops::drop(p.b)
+    }
+)");
+
+// A frame destroyed at a "gen" destroys a value missing a part there, which a "drop" of its own cannot run on: putting
+// the part back after the "gen" does not reach that destruction.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    GenExpressionAst,
+    test_invalid_destructible_value_partly_moved_at_a_gen,
+    SppPartialMoveOfDestructibleValueError, R"(
+    cls Holder {
+        !public a: Str
+        !public b: Str
+    }
+
+    sup Holder ext std::ops::drop::Drop {
+        fun drop(self) -> Void {
+            let Holder(a, b) = self
+            std::mem::ops::drop(a)
+            std::mem::ops::drop(b)
+        }
+    }
+
+    cor g() -> Gen[U64] {
+        let mut h = Holder(a=Str::from("a"), b=Str::from("b"))
+        std::mem::ops::drop(h.a)
+        gen 1_u64
+        h.a = Str::from("c")
+        std::mem::ops::drop(h)
+    }
+)");

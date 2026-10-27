@@ -39,6 +39,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_keyword_not_ast;
 import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.postfix_expression_operator_static_member_access_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -59,8 +60,10 @@ import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.ice;
 import spp.utils.interner;
+import spp.utils.numbers;
 import spp.utils.ptr;
 import genex;
+import llvm;
 import numex.big_dec;
 import numex.big_int;
 
@@ -103,6 +106,40 @@ namespace spp::analyse::scopes {
       return nullptr;
     }
 
+    /// Every symbol in one of "scope"'s tables ("table"), then its ancestors' unless "exclusive", and with
+    /// "sup_scope_search" each super scope's own (exclusively, as "FindInSupScopesByName" does): what the
+    /// "Scope::GetAll*Symbols" collect.
+    template <typename Symbol, typename Table>
+    auto AllSymbols(
+      Scope const &scope, Table SymbolTable::*table, const bool exclusive, const bool sup_scope_search)
+      -> Vec<Symbol*> {
+      auto syms = (scope.InternalTable.*table).GetAll();
+      if (not exclusive and scope.Parent != nullptr) {
+        syms.append_range(AllSymbols<Symbol>(*scope.Parent, table, exclusive, sup_scope_search));
+      }
+      if (sup_scope_search) {
+        for (auto const *sup_scope : scope.GetSupScopes()) {
+          syms.append_range(AllSymbols<Symbol>(*sup_scope, table, true, false));
+        }
+      }
+      return syms;
+    }
+
+    /// Raise "sym" as a duplicate of "existing" ("what" names the kind) unless "allowed" (a function's mock, met
+    /// once per block declaring it; a declaration shadowing an import). The prelude is appended behind the author's
+    /// code, so a name it imports is reported through the author's side alone.
+    template <typename Symbol>
+    auto RaiseIfDuplicate(
+      Scope const &scope, Symbol const &existing, Symbol const &sym, const bool allowed, const StrView what)
+      -> void {
+      const auto existing_from_prelude = scope.IsFromPrelude(*existing.Name);
+      if (existing_from_prelude != scope.IsFromPrelude(*sym.Name)) {
+        auto const &mine = existing_from_prelude ? sym : existing;
+        RaiseIf<errors::SppIdentifierDuplicateError>(not allowed, ERR_ARGS(*mine.Name, what, mine.IsImport()));
+      }
+      RaiseIf<errors::SppIdentifierDuplicateError>(not allowed, ERR_ARGS(*existing.Name, *sym.Name, what));
+    }
+
     /// The symbol "scope"'s super scopes file for a parameter identity, searched as a name is
     /// ("FindInSupScopesByName"): each direct super scope, then its own.
     template <typename Symbol, typename ByParam>
@@ -118,23 +155,6 @@ namespace spp::analyse::scopes {
     /// nothing unresolved. Parameters are allowed: a stamp is read through the bindings where it is read.
     auto IsStampableTypeId(const TypeId id) -> bool {
       return id != nullptr and not id->HasSelf and not id->HasUnresolved;
-    }
-
-    /// The decimal places "value" needs to print exactly, or none when its decimal does not terminate: its denominator
-    /// (in lowest terms) has a prime factor other than 2 and 5.
-    auto ExactDecimalPlaces(numex::BigDec const &value) -> Opt<std::uint64_t> {
-      auto den = value.GetDenominator();
-      auto twos = static_cast<std::uint64_t>(0);
-      auto fives = static_cast<std::uint64_t>(0);
-      while (den % numex::BigInt(2) == numex::BigInt(0)) {
-        den /= numex::BigInt(2);
-        ++twos;
-      }
-      while (den % numex::BigInt(5) == numex::BigInt(0)) {
-        den /= numex::BigInt(5);
-        ++fives;
-      }
-      return den == numex::BigInt(1) ? Opt(std::max(twos, fives)) : Nullopt;
     }
 
     /// The binding a scope gives a generic parameter, by the parameter's identity
@@ -162,7 +182,7 @@ namespace spp::analyse::scopes {
 
         // Do a search in the class of the "Self" scope.
         if (const auto self_sym = scope->InternalTable.TypeTable.Find(
-            SELF_TYPE->ToUnchecked<TypeIdentifierAst>());
+            SELF_TYPE->As<TypeIdentifierAst>());
           self_sym != nullptr
           and self_sym->IsSelf()
           and self_sym->LinkedScope != nullptr
@@ -272,7 +292,7 @@ namespace {
            SppTokenType::TK_ADD, SppTokenType::TK_SUB, SppTokenType::TK_MUL, SppTokenType::TK_DIV, SppTokenType::TK_REM,
            SppTokenType::TK_BIT_IOR, SppTokenType::TK_BIT_AND, SppTokenType::TK_BIT_XOR, SppTokenType::TK_BIT_SHL,
            SppTokenType::TK_BIT_SHR, SppTokenType::TK_EQ, SppTokenType::TK_NE, SppTokenType::TK_LT, SppTokenType::TK_LE,
-           SppTokenType::TK_GT, SppTokenType::TK_GE
+           SppTokenType::TK_GT, SppTokenType::TK_GE, SppTokenType::KW_AND, SppTokenType::KW_OR
          }) {
       if (spp::lex::TokToString(tok) == op) { return tok; }
     }
@@ -302,7 +322,7 @@ namespace {
   /// flattened into it.
   struct TypeKeyParts {
     TypeKey Key;
-    Vec<TypeKey> Members;
+    Vec<TypeKey> VariantMembers;
   };
 
   /// The aliases being keyed through their targets: a target that names its own alias (directly or down a chain) is keyed
@@ -343,7 +363,7 @@ namespace spp::analyse::scopes {
       out.Key.PushSpliced(*id);
       auto const &head = HeadOf(id);
       if (head.Kind == TypeKey::Tag::Variant and head.Conv == 0) {
-        for (const auto m : head.Members) { out.Members.emplace_back(TypeKey(*m)); }
+        for (const auto m : head.VariantMembers) { out.VariantMembers.emplace_back(TypeKey(*m)); }
       }
     }
 
@@ -560,15 +580,32 @@ namespace spp::analyse::scopes {
       auto out = TypeKeyParts();
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
-        auto flat = parts.Members.empty() ? spp::Vec<TypeKey>{std::move(parts.Key)} : std::move(parts.Members);
+        auto flat = parts.VariantMembers.empty()
+          ? spp::Vec<TypeKey>{std::move(parts.Key)}
+          : std::move(parts.VariantMembers);
+
+        // A pack bound to its tuple ("Bool or Rest" with "Rest" bound to "(S32, Str)") is the tuple's elements, as
+        // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str". Only a bare name can be a pack.
+        auto const *const named = member->To<spp::asts::TypeIdentifierAst>();
+        const auto elements = named != nullptr and named->GnArgGroup->Args.empty()
+          ? spp::analyse::utils::packs::BoundTypePackElements(*member, read_in)
+          : spp::Nullopt;
+        if (elements.has_value()) {
+          flat.clear();
+          for (auto const &element : *elements) {
+            auto element_parts = RawTypeKey(element.get(), nullptr, read_in);
+            if (element_parts.VariantMembers.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
+            else { for (auto &m : element_parts.VariantMembers) { flat.emplace_back(std::move(m)); } }
+          }
+        }
         for (auto &m : flat) {
-          if (not genex::contains(out.Members, m)) { out.Members.emplace_back(std::move(m)); }
+          if (not genex::contains(out.VariantMembers, m)) { out.VariantMembers.emplace_back(std::move(m)); }
         }
       }
-      out.Members |= genex::actions::sort([](auto const &a, auto const &b) { return StableKeyLess(a, b); });
+      out.VariantMembers |= genex::actions::sort([](auto const &a, auto const &b) { return StableKeyLess(a, b); });
       out.Key.Push(TypeKey::Tag::Variant);
       out.Key.PushSymbol(&tmpl);
-      for (auto const &m : out.Members) { out.Key.PushTypePart(InternTypeKey(TypeKey(m))); }
+      for (auto const &m : out.VariantMembers) { out.Key.PushTypePart(InternTypeKey(TypeKey(m))); }
       return out;
     }
 
@@ -638,6 +675,51 @@ namespace spp::analyse::scopes {
       return *id;
     }
 
+    auto RawCompKey(ExpressionAst const &expr, Scope const &scope) -> CompKey;
+
+    /// The "cmp" constant "expr" names, by name or through its namespace ("k", "ns::k"), followed through a "use" to
+    /// its target; none for anything else.
+    auto ConstantNamedBy(ExpressionAst const &expr, Scope const &scope) -> VariableSymbol const* {
+      const auto is_ns_access = IsStaticMemberAccess(&expr)
+        and expr.As<spp::asts::PostfixExpressionAst>()->Lhs->To<spp::asts::TypeAst>() == nullptr;
+      if (expr.To<spp::asts::IdentifierAst>() == nullptr and not is_ns_access) { return nullptr; }
+      auto const *var = scope.FindVarSymbolOutermost(expr).first;
+      if (var != nullptr) { var = var->UseTarget(); }
+      return var != nullptr and var->Kind == VariableKind::Constant ? var : nullptr;
+    }
+
+    /// A "cmp" constant named by "expr", keyed as its value where it is declared. One whose value names itself again
+    /// ("cmp a = b", "cmp b = a") is its spelling, left for the constant's own checks to report.
+    auto ConstantCompKey(ExpressionAst const &expr, VariableSymbol const &constant, Scope const &scope) -> CompKey {
+      thread_local auto keying = Set<VariableSymbol const*>();
+      auto const *const value = constant.CompTimeValue != nullptr
+        ? constant.CompTimeValue->To<ExpressionAst>()
+        : nullptr;
+      if (value == nullptr or constant.ScopeDefinedIn == nullptr or keying.contains(&constant)) {
+        return RecordedOpaque(expr, scope);
+      }
+      keying.insert(&constant);
+      auto key = RawCompKey(*value, *constant.ScopeDefinedIn);
+      keying.erase(&constant);
+      return key;
+    }
+
+    /// Whether "expr", keyed as "key", is a "Bool": a bool value,
+    /// a comparison or "and"/"or" (which always make one), or a
+    /// comp parameter declared "Bool".
+    auto IsBoolOperand(ExpressionAst const &expr, CompKey const &key, Scope const &scope) -> bool {
+      using Part = CompKey::Part;
+      if (key.AsBool() != nullptr) { return true; }
+      if (key.Kind == Part::Op) {
+        return genex::contains(Vec<StrView>{"==", "!=", "<", "<=", ">", ">=", "and", "or"}, StrView(key.Text));
+      }
+      if (key.Kind != Part::Param) { return false; }
+      const auto id = expr.To<spp::asts::IdentifierAst>();
+      auto const *const var = id != nullptr ? scope.FindVarSymbol(id) : nullptr;
+      return var != nullptr and var->Type != nullptr
+        and spp::analyse::utils::type_predicates::IsTypeBool(TypeRef::Of(*var->Type, scope), scope);
+    }
+
     /// [CHECKED]
     /// An expression's identity, as a comp key: folded as it is
     /// built, as a type's key is normalised as it is built
@@ -648,17 +730,22 @@ namespace spp::analyse::scopes {
 
       // A literal is its own value, however it is spelled:
       // "0x10_uz" and "16_uz" are one value, as are "1.5_f64"
-      // and "1.50_f64" (a float as its exact rational).
+      // and "1.50_f64". A float is its value in its type's format,
+      // as a folded one is ("FoldCompValues"), so "0.1_f32" and
+      // "0.05_f32 + 0.05_f32" are one value too. One the type
+      // cannot hold is kept as written, for E16.
+      if (auto key = spp::analyse::utils::comp_time_intrinsics::ValueKeyOf(expr); key.has_value()) {
+        return std::move(*key);
+      }
       if (const auto lit = expr.To<FloatLiteralAst>(); lit != nullptr) {
-        return CompKey::OfFloat(lit->BigVal(), lit->Type);
+        return CompKey::OfFloat(lit->BigVal(), lit->TypeOrDefault());
       }
 
-      if (const auto lit = expr.To<IntegerLiteralAst>(); lit != nullptr) {
-        return CompKey::OfInt(lit->BigVal(), lit->Type);
-      }
-
-      if (const auto lit = expr.To<BooleanLiteralAst>(); lit != nullptr) {
-        return CompKey::OfBool(lit->CppVal());
+      // A "cmp" constant ("k", "ns::k") is its value, keyed where
+      // it is declared, as a literal is: "f[k]" and "f[5]" with
+      // "cmp k: S32 = 5" are one instantiation.
+      if (auto const *const constant = ConstantNamedBy(expr, scope); constant != nullptr) {
+        return ConstantCompKey(expr, *constant, scope);
       }
 
       // Create a pack from a tuple of elements, recursively
@@ -703,6 +790,20 @@ namespace spp::analyse::scopes {
           }
           return CompKey::OfOp(op, InternCompKey(std::move(lhs_key)), InternCompKey(std::move(rhs_key)));
         }
+      }
+
+      // "b.not" on a "Bool" is "b == false": the same value, keyed as
+      // an operation comp keys already fold, rewrite and spell back.
+      // A "not" of anything else is its spelling, as a call is.
+      if (const auto pf = expr.To<PostfixExpressionAst>();
+        pf != nullptr and pf->Op->To<PostfixExpressionOperatorKeywordNotAst>() != nullptr) {
+        auto operand = RawCompKey(*pf->Lhs, scope);
+        if (not IsBoolOperand(*pf->Lhs, operand, scope)) { return RecordedOpaque(expr, scope); }
+        auto false_key = CompKey::OfBool(false);
+        if (operand.Kind == CompKey::Part::Value) {
+          if (auto folded = FoldCompValues("==", operand, false_key); folded.has_value()) { return std::move(*folded); }
+        }
+        return CompKey::OfOp("==", InternCompKey(std::move(operand)), InternCompKey(std::move(false_key)));
       }
 
       // A constant named through a type ("Self::mo_seq_cst",
@@ -902,26 +1003,12 @@ auto Scope::AddVarSymbolCheckConflict(
   // declared here may shadow an import.
   const auto existing_sym = FindVarSymbol(sym->Name.get(), false);
   if (existing_sym != nullptr) {
-    // Detect function and "use" (different target) variable
-    // symbol declaration.
+    // A function's mock, and a "use" (different target) shadowed
+    // by a declaration, are not duplicates.
     const auto is_functional = existing_sym->Kind == VariableKind::FnMock;
     const auto is_shadowed_import = existing_sym->IsImport() and not sym->IsImport();
-
-    // The prelude is appended behind the author's code, so a
-    // name it imports is reported through the author's side
-    // alone.
-    const auto existing_from_prelude = IsFromPrelude(*existing_sym->Name);
-    if (existing_from_prelude != IsFromPrelude(*sym->Name)) {
-      auto const &mine = existing_from_prelude ? *sym : *existing_sym;
-      RaiseIf<errors::SppIdentifierDuplicateError>(
-        not is_functional and not is_shadowed_import,
-        ERR_ARGS(*mine.Name, "comptime variable identifier", mine.IsImport()));
-    }
-
-    // Standard raise for non-functional symbols.
-    RaiseIf<errors::SppIdentifierDuplicateError>(
-      not is_functional and not is_shadowed_import,
-      ERR_ARGS(*existing_sym->Name, *sym->Name, "comptime variable identifier"));
+    RaiseIfDuplicate(
+      *this, *existing_sym, *sym, is_functional or is_shadowed_import, "comptime variable identifier");
   }
 
   // Add a variable symbol to the corresponding symbol table.
@@ -948,23 +1035,8 @@ auto Scope::AddTypeSymbolCheckConflict(
     // A function's mock class ("$F") is made once per block
     // that declares the function, so another block's is met
     // here; it is the same mock, not a redefinition.
-    const auto is_functional = existing_sym->IsMock();
-
-    // The prelude is appended behind the author's code, so a
-    // name it imports is reported through the author's side
-    // alone.
-    const auto existing_from_prelude = IsFromPrelude(*existing_sym->Name);
-    if (existing_from_prelude != IsFromPrelude(*sym->Name)) {
-      auto const &mine = existing_from_prelude ? *sym : *existing_sym;
-      RaiseIf<errors::SppIdentifierDuplicateError>(
-        not is_functional,
-        ERR_ARGS(*mine.Name, "type identifier", mine.IsImport()));
-    }
-
-    // Standard raise for non-functional symbols.
-    RaiseIf<errors::SppIdentifierDuplicateError>(
-      not is_functional,
-      ERR_ARGS(*existing_sym->Name, *sym->Name, "type identifier"));
+    RaiseIfDuplicate(
+      *this, *existing_sym, *sym, existing_sym->IsMock(), "type identifier");
   }
 
   // Add a type symbol to the corresponding symbol table.
@@ -1021,13 +1093,17 @@ auto Scope::HideLetBindings() -> void {
 auto Scope::RevealLetBindings() -> void {
   // Replenish the bindings, from the last binding back, so
   // a name ends up meaning the last binding of it (and only
-  // the last binding is put back, subsequent duplicates are
-  // skipped).
-  // Todo: A name still held by an earlier "let" of this scope (a
-  //  walk that left between two shadows of it) counts as taken,
-  //  so the earlier binding stays. See next-steps N6.15.
+  // the last binding is put back, earlier ones of the same
+  // name are skipped). A name is free when it is empty or held
+  // by one of this scope's own bindings: a walk that left
+  // between two shadows of it filed the earlier one.
+  const auto own = [this](VariableSymbol const *held) {
+    return genex::any_of(LetBindings, [held](auto const &b) { return b.get() == held; });
+  };
+  auto placed = Set<spp::utils::InternedId>();
   for (auto const &sym : LetBindings | genex::views::reverse) {
-    if (InternalTable.VarTable.Find(sym->Name.get()) == nullptr) {
+    if (not placed.insert(sym->Name->NameId()).second) { continue; }
+    if (const auto held = InternalTable.VarTable.Find(sym->Name.get()); held == nullptr or own(held)) {
       InternalTable.VarTable.Add(sym->Name.get(), sym);
     }
   }
@@ -1068,61 +1144,23 @@ auto Scope::RemNsSymbol(
 /// [CHECKED]
 auto Scope::GetAllVarSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<VariableSymbol*> {
-  // Get all the variable symbols from this scope.
-  auto syms = InternalTable.VarTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the variable symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllVarSymbols(exclusive, sup_scope_search));
-  }
-
-  // For sup-allowed searches, for each sup scope get the,
-  // variable symbols from the sup scopes too.
-  if (sup_scope_search) {
-    for (auto const *sup_scope : GetSupScopes()) {
-      syms.append_range(sup_scope->GetAllVarSymbols(true, false));
-    }
-  }
-
-  return syms;
+  return AllSymbols<VariableSymbol>(
+    *this, &SymbolTable::VarTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
 auto Scope::GetAllTypeSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<TypeSymbol*> {
-  // Get all the type symbols from this scope.
-  auto syms = InternalTable.TypeTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the type symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllTypeSymbols(exclusive, sup_scope_search));
-  }
-
-  // For sup-allowed searches, for each sup scope get the,
-  // type symbols from the sup scopes too.
-  if (sup_scope_search) {
-    for (const auto sup_scope : GetSupScopes()) {
-      syms.append_range(sup_scope->GetAllTypeSymbols(true, false));
-    }
-  }
-
-  return syms;
+  return AllSymbols<TypeSymbol>(
+    *this, &SymbolTable::TypeTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
 auto Scope::GetAllNsSymbols(
   const bool exclusive) const -> Vec<NamespaceSymbol*> {
-  // Get all the namespace symbols from this scope.
-  auto syms = InternalTable.NsTable.GetAll();
-
-  // For non-exclusive searches where a parent is present,
-  // get the namespace symbols from the parent scope too.
-  if (not exclusive and Parent != nullptr) {
-    syms.append_range(Parent->GetAllNsSymbols(exclusive));
-  }
-  return syms;
+  // A namespace has no super scopes to search.
+  return AllSymbols<NamespaceSymbol>(
+    *this, &SymbolTable::NsTable, exclusive, false);
 }
 
 /// [CHECKED]
@@ -1209,8 +1247,8 @@ auto Scope::FindVarSymbolOutermost(
   if (IsStaticMemberAccess(&expr)) {
     // This is possible with a left-hand-side type or
     // namespace.
-    const auto postfix_expr = expr.ToUnchecked<PostfixExpressionAst>();
-    const auto postfix_op = postfix_expr->Op->ToUnchecked<PostfixExpressionOperatorStaticMemberAccessAst>();
+    const auto postfix_expr = expr.As<PostfixExpressionAst>();
+    const auto postfix_op = postfix_expr->Op->As<PostfixExpressionOperatorStaticMemberAccessAst>();
 
     // Type based left-hand-side, such as
     // "some_namespace::Type::static_member()"
@@ -1255,7 +1293,7 @@ auto Scope::FindTypeSymbol(
   auto scope = this;
   auto sym_name_extracted = static_cast<TypeIdentifierAst const*>(nullptr);
   if (sym_name->IsTypeIdentifier()) {
-    sym_name_extracted = sym_name->ToUnchecked<TypeIdentifierAst>();
+    sym_name_extracted = sym_name->As<TypeIdentifierAst>();
   }
   else {
     auto [scope_, sym_name_extracted_] = ShiftForNamespacedType(*this, *sym_name);
@@ -1441,7 +1479,7 @@ auto Scope::ArgsIdOf(
     }
     if (params == nullptr) { return Nullopt; }
     for (auto const *param : params->GetAllParams()) {
-      if (param->ParamId() != 0 and param->Name->ToUnchecked<TypeIdentifierAst>()->ToView() == name.ToView()) {
+      if (param->ParamId() != 0 and param->Name->As<TypeIdentifierAst>()->ToView() == name.ToView()) {
         return param->ParamId();
       }
     }
@@ -1454,7 +1492,7 @@ auto Scope::ArgsIdOf(
 
     // A keyword: the parameter it names, "Self" as 0.
     if (arg->KeywordName() != nullptr) {
-      auto const &name = *arg->KeywordName()->ToUnchecked<TypeIdentifierAst>();
+      auto const &name = *arg->KeywordName()->As<TypeIdentifierAst>();
       if (const auto id = param_named(name); id.has_value()) { key.Push(TypeKey::Tag::Arg, *id); }
       else { Ice(name, *this, "generic argument names no parameter"); }
     }
@@ -1647,7 +1685,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
       // type and insert the type arguments.
       case TypeKey::Tag::Variant: {
         auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
-        for (const auto member : head.Members) {
+        for (const auto member : head.VariantMembers) {
           auto type = TypeAstOf(member);
           if (type == nullptr) { return nullptr; }
           unordered.emplace_back(std::move(type), FindTypeSymbolById(BareOf(member)));
@@ -1690,32 +1728,10 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
   auto const &node = *id;
   switch (node.Kind) {
     // A value is its literal ("2_uz", "-3_s32", "true"). A float
-    // whose decimal terminates is its literal, exactly; one that
-    // does not ("1.0 / 3.0") has no literal, so it is its numerator
-    // over its denominator, which folds back to the same value
-    // ("FoldCompValues"): a literal cut short would be another
-    // value, so another type.
+    // is a value of its type's format, whose decimal terminates,
+    // so its literal is exact.
     case CompKey::Part::Value: {
-      if (auto const *const val = node.AsBool(); val != nullptr) {
-        return BooleanLiteralAst::FromCppVal(*val);
-      }
-
-      if (auto const *const val = node.AsInt(); val != nullptr) {
-        return IntegerLiteralAst::FromBigVal(*val, node.Text);
-      }
-
-      if (auto const *const val = node.AsFloat(); val != nullptr) {
-        if (const auto places = ExactDecimalPlaces(*val); places.has_value()) {
-          return FloatLiteralAst::FromBigVal(*val, node.Text, *places);
-        }
-        auto num = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetNumerator(), numex::BigInt(1)), node.Text, 0uz);
-        auto den = FloatLiteralAst::FromBigVal(numex::BigDec(val->GetDenominator(), numex::BigInt(1)), node.Text, 0uz);
-        return MakeUnique<BinaryExpressionAst>(
-          std::move(num),
-          MakeUnique<TokenAst>(0uz, lex::SppTokenType::TK_DIV, lex::TokToString(lex::SppTokenType::TK_DIV)),
-          std::move(den));
-      }
-      return nullptr;
+      return utils::comp_time_intrinsics::LiteralOf(node);
     }
 
     // For a generic comp parameter, get the corresponding
@@ -1813,7 +1829,7 @@ auto Scope::CompIdOf(ExpressionAst const &value) const -> CompId {
 /// [CHECKED]
 auto Scope::TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId {
   // Key the type symbol into the scope, and read off the "Key"
-  // field (ignore unused variant "Members".
+  // field (ignore unused "VariantMembers".
   auto key = RawTypeKey(nullptr, &sym, *this).Key;
   return key.HasUnresolved ? nullptr : InternTypeKey(std::move(key));
 }

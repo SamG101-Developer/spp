@@ -21,9 +21,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_fn;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.utils.ice;
 import spp.utils.uid;
 
@@ -75,6 +74,7 @@ auto LocalVariableSingleIdentifierAst::BindsByMove() const -> bool {
 
 auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   // Get the value and its type from the "meta" information.
   const auto val = meta->LetStatementFromUninitialized
     ? nullptr
@@ -99,8 +99,8 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   }
 
   // Set the initialization AST (for errors).
-  analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization = Name.get();
-  analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstInitializationOrigin = Name.get();
+  memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization = Name.get();
+  memory_state::StateOf(*sm->CurrentScope, *sym).AstInitializationOrigin = Name.get();
 
   if (val != nullptr) {
     // Set borrow asts based on the value's type's convention.
@@ -111,7 +111,7 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
 
   else {
     // Mark an uninitialized variable as "moved"
-    analyse::utils::memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved = this;
+    memory_state::StateOf(*sm->CurrentScope, *sym).AstMoved = this;
   }
 
   // Add the symbol to the current scope, and record it as
@@ -137,10 +137,11 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   // anything. What the value hands a borrow to (a coroutine handle, a closure) finds this binding through
   // "AssignmentTargetSymbol". A binding written with a borrow convention borrows its value rather than taking it:
   // "is Some[T](&val)" looks at the payload, it does not move it off the subject.
-  const auto saved_target = meta->AssignmentTargetSymbol;
-  meta->AssignmentTargetSymbol = _Symbol.get();
-  meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
-  meta->AssignmentTargetSymbol = saved_target;
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->AssignmentTargetSymbol = _Symbol.get();
+    meta->LetStatementValue->Stage8_CheckMemory(sm, meta);
+  }
 
   const auto borrows = Conv != nullptr;
   mem_utils::ValidateSymbolMemory(
@@ -175,18 +176,6 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
     sym->MemInfo->AstBorrowed = Conv.get();
     loans.emplace_back(memory_state::MakeLoan(
       regions::PlaceAtOf(*meta->LetStatementValue, *sm->CurrentScope), *Conv == ConventionTag::MUT, sym));
-  }
-}
-
-auto LocalVariableSingleIdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // The value is resolved before this binding is declared, then assigned into it.
-  const auto _meta_guard = MetaGuard(meta);
-  meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
-  meta->LetStatementValue->Stage9_CompTimeResolve(sm, meta);
-  if (const auto sym = _Declare(sm); sym != nullptr) {
-    // Can be nullptr for the materialization into $ symbols.
-    sym->CompTimeValue = std::move(meta->CompTimeResult);
   }
 }
 
@@ -249,11 +238,9 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
     // there is nothing to coerce or store.
     const auto diverged = llvm_val == nullptr;
     if (not is_void and not borrows and not diverged and meta->LetStatementExplicitType != nullptr) {
-      llvm_val = codegen::CoerceToFnValue(
-        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm, ctx);
-      llvm_val = codegen::CoerceToVariant(
-        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope),
-        value_ref, *sm->CurrentScope, "local.variant" + uid, ctx);
+      llvm_val = codegen::CoerceToSlot(
+        llvm_val, TypeRef::Of(*meta->LetStatementExplicitType, *sm->CurrentScope), value_ref, *sm,
+        "local.variant" + uid, ctx);
     }
 
     // Skip storing Void (created via generic implementation
@@ -266,6 +253,18 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
 
   // Alloca already added; return nullptr.
   return nullptr;
+}
+
+auto LocalVariableSingleIdentifierAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // The value is resolved before this binding is declared, then assigned into it.
+  const auto _meta_guard = MetaGuard(meta);
+  meta->AssignmentTarget = Alias != nullptr ? Alias->Name : Name;
+  meta->LetStatementValue->EvaluateCompTime(sm, meta);
+  if (const auto sym = _Declare(sm); sym != nullptr) {
+    // Can be nullptr for the materialization into $ symbols.
+    sym->CompTimeValue = std::move(meta->CompTimeResult);
+  }
 }
 
 auto LocalVariableSingleIdentifierAst::_Own(

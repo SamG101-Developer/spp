@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.asts.expression_ast;
@@ -32,9 +33,7 @@ auto ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
 
   // Forward analysis into the value expression.
   Val->Stage7_AnalyseSemantics(sm, meta);
-  RaiseIf<SppInvalidPrimaryExpressionError>(
-    not expr_utils::IsPrimaryExprTypeValid(*Val, *sm),
-    ERR_ARGS(*Val));
+  common_errors::RequirePrimary(*Val, *sm);
 }
 
 auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
@@ -45,10 +44,10 @@ auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Val, *this, *sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::Stage9_CompTimeResolve(
+auto ObjectInitializerArgumentAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve the value expression.
-  Val->Stage9_CompTimeResolve(sm, meta);
+  Val->EvaluateCompTime(sm, meta);
 }
 
 auto ObjectInitializerArgumentAst::InferType(

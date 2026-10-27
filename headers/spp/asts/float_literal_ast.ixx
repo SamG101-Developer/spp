@@ -6,7 +6,6 @@ export module spp.asts.float_literal_ast;
 import spp.asts.ast_kind;
 import spp.asts.literal_ast;
 import spp.codegen.llvm_ctx;
-import spp.utils.numbers;
 import spp.utils.types;
 import llvm;
 import std;
@@ -25,24 +24,6 @@ use(spp::analyse::scopes, struct TypeSymbol);
 /// given with a postfix type annotation, such as "_f32" or
 /// "_f64"; no postfix defaults the type to "std::BigDec".
 SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
-  /// The lowest and highest value of each float type, by suffix: one table, kept with the integer one
-  /// ("utils::numbers::FloatBounds").
-  inline static utils::numbers::FloatLimitMap const &kBounds = utils::numbers::FloatBounds();
-
-  /// How many fractional digits it takes to write any value of
-  /// each type exactly, which is the exponent of its smallest
-  /// subnormal: every representable value is a multiple of that,
-  /// so its decimal expansion terminates by then. A comp-time
-  /// division can still produce a recurring value, and this is
-  /// where that one gets cut short.
-  inline static const auto kDecimalPlaces = Map<Str, std::uint64_t>{
-    {Str("f8"), 16},
-    {Str("f16"), 32},
-    {Str("f32"), 160},
-    {Str("f64"), 1100},
-    {Str("f128"), 16500}
-  };
-
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(FloatLiteralAst);
 
@@ -80,40 +61,54 @@ SPP_EXP_CLS struct spp::asts::FloatLiteralAst final : LiteralAst {
 
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage9_CompTimeResolve(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
   auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
-  auto InferType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+  auto EvaluateCompTime(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
+  auto InferType(
+    ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> override;
+
+  auto InferTypeRef(
+    ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   /// The exact value of this literal. Comp-time arithmetic works
   /// in this rather than in a fixed-width C++ float, so that a
   /// result the type cannot hold arrives as a value the compiler
-  /// can reject rather than as an infinity.
+  /// can reject rather than as an infinity. An "f32" or "f64" is
+  /// folded on its IEEE value instead ("utils::numbers"), read
+  /// from its text.
   SPP_ATTR_NODISCARD auto BigVal() const -> numex::BigDec;
+
+  /// The type's suffix, "f32" for one written without: what
+  /// analysis gives it, and what it is keyed by before then.
+  SPP_ATTR_NODISCARD auto TypeOrDefault() const -> Str;
+
+  /// A literal of "type" from "text" ("[-]digits[.digits]"), with
+  /// the sign as its own token, kept on a zero too.
+  static auto FromText(
+    Str const &text, Str const &type) -> Unique<FloatLiteralAst>;
 
   /// Build a literal of the given type carrying an exact value,
   /// with the sign as its own token. The value is not range
   /// checked here - what produced it has no scope to report an
   /// error against - so a caller that can compute an out of range
-  /// value pairs this with "ValidateBounds". Printed to "places"
-  /// decimal places when given (enough for an exact value), else
-  /// to the type's own precision.
+  /// value pairs this with "ValidateBounds". Printed to as many
+  /// places as an exact value of the type can need.
   static auto FromBigVal(
-    numex::BigDec const &value, Str const &type,
-    Opt<std::uint64_t> places = Nullopt) -> Unique<FloatLiteralAst>;
+    numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst>;
 
   /// Raise if this literal's value is one its type cannot hold. A
   /// written literal is checked when it is analysed; one that
   /// comp-time arithmetic produced is checked where that
   /// arithmetic is invoked from.
-  auto ValidateBounds(Ast const &owner) const -> void;
+  auto ValidateBounds(
+    Ast const &owner) const -> void;
 
 private:
   /// The precompiled type this literal's suffix names ("S32" for "1", "U8" for "1_u8").
-  auto _PrecompiledType(ScopeManager *sm) const -> TypeAst const&;
+  auto _PrecompiledType(
+    ScopeManager *sm) const -> TypeAst const&;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::FloatLiteralAst)

@@ -10,10 +10,13 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.scope_tree;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.common_errors;
+import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.type_join;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
@@ -25,21 +28,25 @@ import spp.asts.closure_expression_parameter_and_capture_group_ast;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
+import spp.asts.gen_expression_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.inner_scope_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
+import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_coerce;
+import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
-import spp.codegen.llvm_variant;
 import spp.lex.tokens;
 import spp.utils.ice;
 import spp.utils.uid;
@@ -145,9 +152,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     const auto inherited_self = sm->CurrentScope->FindSelfSymbol();
 
     // Update the meta args with the closure information for
-    // body analysis. The closure-wide save/restore allows for
-    // the "ret" to match the closure's inferred return type.
-    meta->Save();
+    // body analysis; the heavy guard above puts the enclosing
+    // function's back.
     meta->EnclosingFnScope = sm->CurrentScope; // this will be the closure-outer scope
 
     // Everything the closure inherits goes in before anything is analysed against it. The scope is re-parented to the
@@ -169,8 +175,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
       "closure-inner", {}, PosStart());
     sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
     meta->EnclosingFnFlavour = Tok.get();
-    meta->EnclosingFnRetType = {};
-    meta->EnclosingFnSourceRetType = {};
+    meta->EnclosingFnRetType = nullptr;
+    meta->EnclosingFnSourceRetType = nullptr;
 
     // A declared return type is seeded here, so that a "ret"
     // in the body is checked against it and coerced into it -
@@ -179,9 +185,8 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     if (ReturnType != nullptr) {
       const auto written_ret = ReturnType;
       ReturnType = type_resolution::AnalyseWrittenType(*ReturnType, *sm, *meta);
-
-      meta->EnclosingFnRetType.emplace_back(ReturnType);
-      meta->EnclosingFnSourceRetType.emplace_back(written_ret);
+      meta->EnclosingFnRetType = ReturnType;
+      meta->EnclosingFnSourceRetType = written_ret;
     }
 
     // A "ret" or "?" in the body leaves the closure rather
@@ -195,24 +200,67 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
     // in the loop. Prevent this by clearing loop info.
     meta->LoopCurrentDepth = 0;
     meta->LoopCurrentAst = nullptr;
-    meta->LoopReturnTypes = MakeShared<decltype(meta->LoopReturnTypes)::element_type>();
+    meta->LoopJoins.clear();
+
+    // With no written return type, the "ret"s agree on one, as a
+    // "case"'s branches do ("type_join::TypeJoin"), and so does the
+    // body's own value when it can finish without one. A coroutine
+    // closure's "gen"s agree on its yield type the same way.
+    auto ret_join = type_join::TypeJoin();
+    const auto infers_ret = ReturnType == nullptr;
+    const auto is_cor = Tok->TokenType == lex::SppTokenType::KW_COR;
+    meta->ClosureRetJoin = infers_ret ? &ret_join : nullptr;
 
     // Analyse the body of the closure.
     Body->Stage7_AnalyseSemantics(sm, meta);
-    _TrueRetType = not meta->EnclosingFnRetType.empty()
-      ? meta->EnclosingFnRetType[0]
+    if (infers_ret and is_cor and not ret_join.Empty()) {
+      // The generator yields the agreed type, and each "gen" is
+      // resolved against it where it is written.
+      const auto agreed = ret_join.Solve();
+      auto gen_type = generate::common_types::GenType(PosStart(), agreed.Type);
+      gen_type->Stage7_AnalyseSemantics(sm, meta);
+      meta->EnclosingFnRetType = gen_type;
+      meta->EnclosingFnSourceRetType = agreed.Type;
+      for (auto const &value : ret_join.Values()) {
+        auto tm = sm->NewManagerAt(const_cast<Scope*>(value.TypeScope));
+        const_cast<GenExpressionAst*>(value.Site->To<GenExpressionAst>())->ResolveYield(
+          gen_type, value.Type, &tm, meta);
+      }
+    }
+    else if (infers_ret and not ret_join.Empty()) {
+      if (not Body->Diverges(sm, meta)) {
+        auto const *const block = Body->To<InnerScopeExpressionAst>();
+        auto const *const final_member = block != nullptr ? block->FinalMember() : nullptr;
+        ret_join.Give(
+          final_member != nullptr ? *static_cast<Ast const*>(final_member) : *static_cast<Ast const*>(Body.get()),
+          Body->InferType(sm, meta), *sm->CurrentScope, false);
+      }
+      const auto agreed = ret_join.Solve();
+      ret_join.InstantiateFnValues(agreed, sm, meta);
+      meta->EnclosingFnRetType = agreed.Diverges
+        ? generate::common_types_precompiled::NeverAt(PosStart())
+        : agreed.Type;
+    }
+    _TrueRetType = meta->EnclosingFnRetType != nullptr
+      ? meta->EnclosingFnRetType
       : Body->InferType(sm, meta);
     _TrueRetType->Stage7_AnalyseSemantics(sm, meta);
     Source._OriginalRetType = _TrueRetType;
 
+    // A function named as the body's value stands for the
+    // overload the declared return type asks for.
+    if (ReturnType != nullptr) {
+      fn_values::InstantiateFnValue(
+        Body->InferTypeRef(sm, meta), TypeRef::Of(*ReturnType, *sm->CurrentScope), sm, meta);
+    }
+
     // The return type is inferred rather than declared, so it
     // never passes through the function prototype's return type
     // borrow check.
-    RaiseIf<SppSecondClassBorrowViolationError>(
-      Tok->TokenType == lex::SppTokenType::KW_FUN and type_predicates::IsTypeBorrowed(*_TrueRetType, *sm),
-      ERR_ARGS(*this, *_TrueRetType, "function return type"));
+    if (Tok->TokenType == lex::SppTokenType::KW_FUN) {
+      common_errors::RequireNotBorrowed(*_TrueRetType, *this, "function return type", *sm);
+    }
   }
-  meta->Restore();
 
   // Set the scope back.
   sm->CurrentScope = parent_scope;
@@ -228,7 +276,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
   // Save the current scope for later resetting.
   const auto parent_scope = sm->CurrentScope;
   {
-    const auto _meta_guard = MetaGuard(meta);
+    const auto _meta_guard = MetaGuard(meta, true);
     PcGroup->Stage8_CheckMemory(sm, meta);
 
     // The parameters and captures are in the scope the group
@@ -242,8 +290,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
     const auto _flow = memory_state::BodyFlow(*outer_scope);
 
     // Prevent the body inheriting external assignments.
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
 
     // Check the memory of the body of the closure. A "ret" inside
     // it leaves the closure, not the function the closure is written
@@ -253,7 +300,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
 
     // A body that falls off its end discharges its parameters there,
     // as a function's does.
-    if (not expr_utils::Diverges(*Body, sm, meta)) {
+    if (not Body->Diverges(sm, meta)) {
       linear_utils::CheckScopeExit(
         *outer_scope, *Body, "Closure end", *sm, meta);
     }
@@ -264,6 +311,43 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
     outer_scope->RevealNestedLetBindings();
   }
   sm->CurrentScope = parent_scope;
+}
+
+auto ClosureExpressionAst::_BuildDropCaptures(
+  llvm::Function &closure_fn, llvm::StructType *env_ty,
+  ScopeManager *sm, CompilerMetaData *meta,
+  codegen::LlvmCtx *ctx) const -> llvm::Function* {
+  IMPORT_UTILS;
+  // Only what is captured by value is owned by the environment; a borrow
+  // owns nothing, and a value needing no drop leaves nothing to do. So a
+  // closure with neither has no destructor at all.
+  auto owned = Vec<Pair<unsigned, TypeRef>>();
+  for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
+    if (capture->Conv != nullptr) { continue; }
+    const auto cap_ref = TypeRef::Of(*capture->InferType(sm, meta), *sm->CurrentScope);
+    if (drop_utils::NeedsDrop(cap_ref, *sm, meta)) { owned.emplace_back(codegen::ClosureEnvCaptureIndex(i), cap_ref); }
+  }
+  if (owned.empty()) { return nullptr; }
+
+  // "void(ptr env)", beside the closure in its module, dropping the
+  // owned captures in reverse order, as a type drops its fields. A
+  // closure is dropped through its function type, which says nothing
+  // of what it captured, so its environment's header points here.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto drop_fn = llvm::Function::Create(
+    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false), llvm::Function::InternalLinkage,
+    closure_fn.getName() + ".drop_captures", closure_fn.getParent());
+  codegen::StampCfiClosureEnvDrop(*drop_fn);
+
+  const auto saved_bb = ctx->Builder.GetInsertBlock();
+  ctx->Builder.SetInsertPoint(llvm::BasicBlock::Create(*ctx->Context, "entry", drop_fn));
+  for (auto const &[index, cap_ref] : owned | genex::views::reverse) {
+    const auto field = ctx->Builder.CreateStructGEP(env_ty, drop_fn->getArg(0), index, "closure.drop.capture");
+    codegen::EmitDrop(cap_ref, field, sm, meta, ctx);
+  }
+  ctx->Builder.CreateRetVoid();
+  ctx->Builder.SetInsertPoint(saved_bb);
+  return drop_fn;
 }
 
 auto ClosureExpressionAst::Stage11_CodeGen(
@@ -329,82 +413,71 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   const auto entry_bb = llvm::BasicBlock::Create(*ctx->Context, "entry", llvm_fn);
 
   const auto saved_bb = ctx->Builder.GetInsertBlock();
-  const auto saved_fn_scope = meta->EnclosingFnScope;
-  const auto saved_ret_ty = meta->EnclosingFnRetType;
-  const auto saved_src_ret_ty = meta->EnclosingFnSourceRetType;
-  const auto saved_flavour = meta->EnclosingFnFlavour;
   const auto saved_current_closure_type = ctx->CurrentClosureType;
-
-  ctx->Builder.SetInsertPoint(entry_bb);
-  sm->CurrentScope->AstNode = this;
-  _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
-  meta->EnclosingFnScope = sm->CurrentScope;
-  meta->EnclosingFnRetType = {_TrueRetType};
-  meta->EnclosingFnSourceRetType = {Source._OriginalRetType};
-  meta->EnclosingFnFlavour = Tok.get();
-  ctx->CurrentClosureType = closure_env_ty;
-  ctx->CurrentClosureScope = sm->CurrentScope;
-
-  // For now, just skip scopes and return a nullptr.
-  const auto parent_scope = sm->CurrentScope;
   {
-    const auto _meta_guard = MetaGuard(meta);
+    // The body is generated as its own function: the enclosing one's context is put back after.
+    const auto _fn_guard = MetaGuard(meta, true);
+    ctx->Builder.SetInsertPoint(entry_bb);
+    sm->CurrentScope->AstNode = this;
+    _LlvmFn = MakeShared<codegen::LlvmFnWrapper>(llvm_fn);
+    meta->EnclosingFnScope = sm->CurrentScope;
+    meta->EnclosingFnRetType = _TrueRetType;
+    meta->EnclosingFnSourceRetType = Source._OriginalRetType;
+    meta->EnclosingFnFlavour = Tok.get();
+    ctx->CurrentClosureType = closure_env_ty;
+    ctx->CurrentClosureScope = sm->CurrentScope;
 
-    // Copy stage 8 meta reset changes to prevent leakage between
-    // info from outside the closure and inside the closure.
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
-    meta->LlvmAssignmentTarget = nullptr;
+    // For now, just skip scopes and return a nullptr.
+    const auto parent_scope = sm->CurrentScope;
+    {
+      const auto _meta_guard = MetaGuard(meta);
 
-    PcGroup->Stage11_CodeGen(sm, meta, ctx);
-    const auto outer_scope = sm->CurrentScope;
-    sm->MoveToNextScope();
-    auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
+      // Copy stage 8 meta reset changes to prevent leakage between
+      // info from outside the closure and inside the closure.
+      meta->ClearAssignmentTarget();
+      meta->LlvmAssignmentTarget = nullptr;
 
-    // Terminate the closure function with a return of the body's
-    // value (closures return their body implicitly). A borrow
-    // returned as the value it points at - a copyable capture
-    // like "(caps &a) -> S32 { a }" - is read through first,
-    // the way a borrowed argument is for a by-value parameter.
-    // Todo: Not convinced this is right. Temp workaround.
-    if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
-      if (body_val != nullptr and body_val->getType()->isPointerTy() and not llvm_ret_ty->isPointerTy()
-        and not llvm_ret_ty->isVoidTy()) {
-        body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
-      }
+      PcGroup->Stage11_CodeGen(sm, meta, ctx);
+      const auto outer_scope = sm->CurrentScope;
+      sm->MoveToNextScope();
+      auto body_val = Body->Stage11_CodeGen(sm, meta, ctx);
 
-      // The body's value is returned as a "ret" would return it,
-      // so it is coerced the same way: a member into a variant
-      // return type, and a named function into a function type.
-      if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
-        const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
+      // Terminate the closure function with a return of the body's
+      // value (closures return their body implicitly). A borrow
+      // returned as the value it points at - a copyable capture
+      // like "(caps &a) -> S32 { a }" - is read through first,
+      // the way a borrowed argument is for a by-value parameter.
+      // A closure never returns a borrow (second class), so a
+      // borrowed body is always one of these.
+      if (not ctx->Builder.GetInsertBlock()->hasTerminator()) {
         const auto body_ref = Body->InferTypeRef(sm, meta);
-        body_val = codegen::CoerceToFnValue(body_val, ret_ref, body_ref, *sm, ctx);
-        body_val = codegen::CoerceToVariant(
-          body_val, ret_ref, body_ref, *sm->CurrentScope, "closure.ret.variant" + uid, ctx);
-      }
-      if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
-      else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
-      else { ctx->Builder.CreateUnreachable(); }
-    }
+        if (body_val != nullptr and body_ref.IsBorrowed() and not llvm_ret_ty->isVoidTy()) {
+          body_val = ctx->Builder.CreateLoad(llvm_ret_ty, body_val, "closure.ret.copy" + uid);
+        }
 
-    // Leave both closure scopes reading as Stage 7 left them
-    // (see Stage 8).
-    outer_scope->RevealNestedLetBindings();
+        // The body's value is returned as a "ret" would return it,
+        // so it is coerced the same way: a member into a variant
+        // return type, and a named function into a function type.
+        if (body_val != nullptr and not llvm_ret_ty->isVoidTy() and _TrueRetType != nullptr) {
+          const auto ret_ref = TypeRef::Of(*_TrueRetType, *sm->CurrentScope);
+          body_val = codegen::CoerceToSlot(body_val, ret_ref, body_ref, *sm, "closure.ret.variant" + uid, ctx);
+        }
+        if (llvm_ret_ty->isVoidTy()) { ctx->Builder.CreateRetVoid(); }
+        else if (body_val != nullptr) { ctx->Builder.CreateRet(body_val); }
+        else { ctx->Builder.CreateUnreachable(); }
+      }
+
+      // Leave both closure scopes reading as Stage 7 left them
+      // (see Stage 8).
+      outer_scope->RevealNestedLetBindings();
+    }
+    sm->CurrentScope = parent_scope;
   }
-  sm->CurrentScope = parent_scope;
 
   // Restore the previous context.
   ctx->Builder.SetInsertPoint(saved_bb);
-  meta->EnclosingFnScope = saved_fn_scope;
-  meta->EnclosingFnRetType = saved_ret_ty;
-  meta->EnclosingFnSourceRetType = saved_src_ret_ty;
-  meta->EnclosingFnFlavour = saved_flavour;
   ctx->CurrentClosureType = saved_current_closure_type;
 
-  // Todo: Manage the moved captures' destruction properly,
-  // currently they all leak. The env pointer is freed, but
-  // not its contents. Check this more carefully.
   // An environment holding a capture by value or by "&mut" may
   // outlive this frame (the closure is moved out of it), so it
   // goes on the heap; one holding only "&" borrows cannot outlive
@@ -413,9 +486,10 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   const auto on_heap = genex::any_of(
     PcGroup->CaptureGroup->Captures,
     [](auto const &c) { return c->Conv == nullptr or *c->Conv == ConventionTag::MUT; });
+  const auto drop_captures = _BuildDropCaptures(*llvm_fn, closure_env_ty, sm, meta, ctx);
   const auto env = PcGroup->CaptureGroup->Captures.empty()
     ? static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(llvm::PointerType::get(*ctx->Context, 0)))
-    : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, "closure.env" + uid, ctx);
+    : codegen::EmitNewClosureEnv(closure_env_ty, on_heap, drop_captures, "closure.env" + uid, ctx);
 
   for (auto const &[i, capture] : PcGroup->CaptureGroup->Captures | genex::views::ptr | genex::views::enumerate) {
     const auto field_ptr = ctx->Builder.CreateStructGEP(

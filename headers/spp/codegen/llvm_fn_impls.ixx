@@ -131,9 +131,12 @@ export namespace spp::codegen::fn_impls {
   /// "(T, T) -> T": call a two-operand LLVM intrinsic directly
   /// (e.g. "llvm.smax") and return its result as-is - for
   /// intrinsics whose result type genuinely is "T" (unlike,
-  /// say, the "with.overflow" family below).
+  /// say, the "with.overflow" family below). "rhs_ty" is the
+  /// second operand's type when it is not "T" ("(T, S32) -> T"
+  /// for "llvm.powi").
   auto SimpleBinaryIntrinsicCall(
-    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
+    SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Intrinsic::IndependentIntrinsics intrinsic,
+    llvm::Type *rhs_ty = nullptr) -> void;
 
   /// "(T, T) -> (T, Bool)": call a two-operand "with.overflow"-
   /// shaped LLVM intrinsic (e.g. "llvm.sadd.with.overflow"),
@@ -208,100 +211,10 @@ export namespace spp::codegen::fn_impls {
   auto SimpleCoroViewSlice(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void;
 
   /// ======================================================
-  /// Layer 3: individual builtin implementations, grouped by
-  /// which Layer 2 builder (if any) they use.
+  /// Layer 3: the builtins with a lowering of their own. One
+  /// that is a single call to a Layer 2 builder is bound to it
+  /// where it is registered ("builtins.cpp") instead.
   /// ======================================================
-
-  // BinOp (SimpleIntrinsicBinop)
-  auto StdIntrinsicsSadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSsub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUsub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSmul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSdiv(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUdiv(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSrem(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUrem(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitShl(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitShr(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitIor(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitAnd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitXor(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsEq(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOeq(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsNe(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOne(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSlt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUlt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOlt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSle(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUle(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOle(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSgt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUgt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOgt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSge(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUge(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsOge(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFsub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFmul(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFdiv(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFrem(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSaddWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUaddWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSsubWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUsubWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSmulWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmulWrapping(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  // BinOp (SimpleIntrinsicBinopAssign)
-  auto StdIntrinsicsSaddAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUaddAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSsubAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUsubAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSmulAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmulAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSdivAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUdivAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSremAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUremAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitShlAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitShrAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitIorAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitAndAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitXorAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFaddAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFsubAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFmulAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFdivAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFremAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  // UnOp (SimpleIntrinsicUnop / SimpleIntrinsicUnopAssign)
-  auto StdIntrinsicsSneg(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFneg(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitNot(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitNotAssign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  // ConvOp (SimpleIntrinsicConv)
-  auto StdIntrinsicsSitofp(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUitofp(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFptrunc(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsStrunc(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUtrunc(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSzext(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUzext(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFpext(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitCast(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFptosi(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFptoui(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  // "is this constant" (SimpleIntrinsicIsConst)
-  auto StdNumFloatIsZero(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNumFloatIsOne(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNumIntIsZero(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNumIntIsOne(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // Fixed values (SimpleGetValue)
   auto StdArrayNew(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -317,56 +230,12 @@ export namespace spp::codegen::fn_impls {
   auto StdIntrinsicsFminVal(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsFmaxVal(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  // Raw LLVM intrinsic calls, "(T, T) -> T" (SimpleBinaryIntrinsicCall)
-  auto StdIntrinsicsSmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  // Two-operand intrinsics with a shape of their own
   auto StdIntrinsicsFpowi(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFpowf(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFatan2(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFcopysign(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSaddSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUaddSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSsubSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUsubSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsSshlSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdIntrinsicsUshlSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  // Raw LLVM intrinsic calls, "(T, T) -> (T, Bool)" (SimpleBinaryIntrinsicCallOverflow)
-  auto StdIntrinsicsSaddOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUaddOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSsubOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUsubOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsSmulOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsUmulOverflow(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  // Raw LLVM intrinsic calls, "(T) -> T" (SimpleUnaryIntrinsicCall)
-  auto StdIntrinsicsAbs(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFsqrt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFsin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFcos(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFtan(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFasin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFacos(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFatan(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFsinh(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFcosh(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFtanh(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFexp(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFexp2(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFexp10(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFlog(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFlog2(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFlog10(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFabs(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFfloor(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFceil(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFtrunc(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsFround(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdIntrinsicsBitreverse(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  // One-operand intrinsics with a shape of their own
   auto StdIntrinsicsCtlz(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdDebugBreakpointInternal(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
@@ -378,29 +247,11 @@ export namespace spp::codegen::fn_impls {
   auto StdIntrinsicsFpclass(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // Bespoke: coroutines / arrays / vectors / slots / futures / memory / atomics (Layer 1, or a Layer 2b helper)
-  auto StdArrayIterMov(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdArrayReverseIterMov(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdArrayFwdRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdArrayFwdMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdVectorFwdRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdVectorFwdMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdGeneratorSend(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdGeneratorDrop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdGeneratorOnceSend(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  auto StdStringViewSliceRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdStringViewSliceMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-
-  auto StdViewIndexRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewIndexMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewSliceRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewSliceMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewIterRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewIterMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewReverseIterRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdViewReverseIterMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdFunctionFunMovDrop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdCffiCClosureFrom(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -410,15 +261,11 @@ export namespace spp::codegen::fn_impls {
   auto StdNonNullEraseType(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdNonNullCast(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdNonNullFromPtrInner(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNonNullFwdMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdNonNullFwdRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdVolRead(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdVolWrite(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdVolReplace(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  auto StdRawBufIndexRef(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdRawBufIndexMut(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdRawBufTakeAt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdRawBufPlaceAt(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdRawBufShift(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
@@ -440,20 +287,5 @@ export namespace spp::codegen::fn_impls {
   auto StdThreadingAtomicCompexInner(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdThreadingAtomicCompexWeakInner(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
-  auto StdThreadingAtomicFetchExchange(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchAnd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchNand(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchOr(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchXor(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdThreadingAtomicFetchNot(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchAdd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchSub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchFadd(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchFsub(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchFmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchFmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchSmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchUmax(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchSmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdThreadingAtomicFetchUmin(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 }

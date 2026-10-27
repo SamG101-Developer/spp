@@ -1,15 +1,29 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/analyse/macros.hpp>
 
 module spp.asts.ast;
+import spp.analyse.errors.semantic_error;
+import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.utils.ice;
 import std;
 
 SPP_MOD_BEGIN
 Ast::Ast() = default;
 
 Ast::~Ast() = default;
+
+auto Ast::_AsFailed(
+  Ast const *self,
+  const std::source_location raised_at)
+  -> void {
+  // Quote the node when there is one: its kind is what the
+  // casting site got wrong.
+  if (self == nullptr) { Ice("a null ast cast as a kind it must be", raised_at); }
+  Ice(*self, "an ast cast as a kind it is not", raised_at);
+}
 
 auto Ast::Size() const -> std::size_t {
   // The size is the difference between the two positions.
@@ -58,6 +72,14 @@ auto Ast::SetAstScope(
 auto Ast::IsAllowedInDefault() const -> bool {
   // Default implementation is to prevent it.
   return false;
+}
+
+auto Ast::EvaluateCompTime(
+  ScopeManager *, CompilerMetaData *) -> void {
+  // Default behaviour: this AST does not support
+  // comptime resolution, so throw an error.
+  using namespace spp::analyse::errors;
+  Raise<SppInvalidCompTimeOperationError>(ERR_ARGS(*this));
 }
 
 SPP_MOD_END

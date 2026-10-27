@@ -213,3 +213,23 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         }
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    SupTypeStatementAst,
+    test_valid_nested_zero_type_alias_as_a_value, R"(
+    !zero_type
+    cls Marker { }
+
+    sup Marker ext Copy { }
+
+    cls Holder { }
+
+    sup Holder {
+        !public
+        type Inner = Marker
+    }
+
+    fun f() -> Marker {
+        ret Holder::Inner
+    }
+)");

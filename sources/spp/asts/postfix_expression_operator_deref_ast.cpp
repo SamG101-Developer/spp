@@ -59,7 +59,7 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
 
   // Get the right-hand-side expression's type for constraint
   // checks.
-  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs = Lhs;
   const auto lhs_type = lhs->InferType(sm, meta);
   const auto lhs_ref = TypeRef::Of(*lhs_type, *sm->CurrentScope);
   const auto is_view =
@@ -81,18 +81,12 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorDerefAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // As this is cmp context, just return the "lhs" generation.
-  meta->PostfixExpressionLhs->Stage9_CompTimeResolve(sm, meta);
-}
-
 auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Get the value underlying the borrow.
   const auto uid = "." + Uid();
-  const auto borrow_val = meta->PostfixExpressionLhs->Stage11_CodeGen(sm, meta, ctx);
+  const auto borrow_val = Lhs->Stage11_CodeGen(sm, meta, ctx);
   SPP_ASSERT(borrow_val != nullptr);
 
   // Load through the pointee's own type, never the borrow
@@ -100,7 +94,7 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   // "ptr", so the pointee is unrecoverable from it and has
   // to come from the symbol table instead.
   const auto llvm_type = codegen::GetLlvmTypeOf(
-    meta->PostfixExpressionLhs->InferTypeRef(sm, meta).WithoutConvention(), ctx);
+    Lhs->InferTypeRef(sm, meta).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // Dereference the borrow to get the underlying value.
@@ -109,10 +103,16 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   return deref_val;
 }
 
+auto PostfixExpressionOperatorDerefAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // As this is cmp context, just return the "lhs" generation.
+  Lhs->EvaluateCompTime(sm, meta);
+}
+
 auto PostfixExpressionOperatorDerefAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Get the right-hand-side expression's type.
-  const auto lhs = meta->PostfixExpressionLhs;
+  const auto lhs = Lhs;
   const auto lhs_type = lhs->InferType(sm, meta);
 
   // Return the dereferenced type.
@@ -121,7 +121,7 @@ auto PostfixExpressionOperatorDerefAst::InferType(
 
 auto PostfixExpressionOperatorDerefAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  auto ref = meta->PostfixExpressionLhs->InferTypeRef(sm, meta);
+  auto ref = Lhs->InferTypeRef(sm, meta);
   ref.Conv = ConventionTag::MOV;
   return ref;
 }

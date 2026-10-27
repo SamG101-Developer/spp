@@ -36,7 +36,7 @@ jobs:
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -51,7 +51,7 @@ jobs:
       # allows for the detect-changes action to mark which groups
       # of files have changed.
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -76,7 +76,7 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true
@@ -91,7 +91,7 @@ jobs:
       # that is already released, and a tag lookup that failed
       # open would let one through.
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -128,76 +128,116 @@ jobs:
       security-events: write
     uses: ./.github/workflows/_cppcheck.yaml
 
-  # The `if` opts out of the implicit success() over `needs`,
-  # because cppcheck has its own filter and can be skipped
-  # while this runs; a skipped need would otherwise skip this
-  # too. Red cppcheck still stops the build.
-  linux:
+  # One box per lane, its build and then its tests. Every lane
+  # needs cppcheck, so they all sit in one column of the job
+  # graph. The `if` opts out of the implicit success() over
+  # `needs`, because cppcheck has its own filter and can be
+  # skipped while this runs; a skipped need would otherwise skip
+  # the lane too. Red cppcheck still stops it. The anchors here
+  # are reused by every lane.
+  linux-gcc:
     name: Linux GCC
-    needs: [ changes, cppcheck ]
-    if: |
+    needs: &lane-needs [ changes, cppcheck ]
+    if: &lane-gate |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.compile == 'true'
-    permissions:
+    permissions: &read
       contents: read
     uses: ./.github/workflows/_lane.yaml
     with:
+      modes: rel dev
+      shard-count: 2
+      pack: false
       valgrind: true
       codegen: true
+      differential: true
 
-  # Aspirational toolchains: they run and report red on
-  # failure, but are deliberately omitted from ci-success,
-  # so they never block a merge.
-  platforms:
-    name: Platforms (advisory) · ${{ matrix.os }} ${{ matrix.compiler }}
-    needs: [ changes, cppcheck ]
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.compile == 'true'
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-24.04-arm, compiler: gcc }
-          - { os: ubuntu-24.04-arm, compiler: clang }
-          - { os: ubuntu-24.04, compiler: clang }
-          - { os: macos-15, compiler: clang }
-          - { os: windows-2025, compiler: msvc }
-          - { os: windows-2025, compiler: clang-cl }
+  linux-clang:
+    name: Linux Clang
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
     uses: ./.github/workflows/_lane.yaml
     with:
-      os: ${{ matrix.os }}
-      compiler: ${{ matrix.compiler }}
-      modes: rel
-      shard-count: 1
+      compiler: clang
 
-  # Emit for architectures unlike the host - 32-bit, big-endian,
-  # non-x86 - and check the object and the datalayout that came
-  # out. Todo: Add to ci-success once more stable.
+  linux-arm-gcc:
+    name: Linux ARM GCC
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: ubuntu-24.04-arm
+
+  linux-arm-clang:
+    name: Linux ARM Clang
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: ubuntu-24.04-arm
+      compiler: clang
+
+  # Not in ci-success until its spp_tests abort is fixed.
+  # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
+  macos-clang:
+    name: macOS Clang
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: macos-15
+      compiler: clang
+      off: sls
+
+  # Not in ci-success until sppc builds for Windows.
+  # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
+  windows-msvc:
+    name: Windows MSVC
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: windows-2025
+      compiler: msvc
+      off: &msvc-off memory.stack.split
+
+  # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
+  windows-clang-cl:
+    name: Windows clang-cl (Advisory)
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: windows-2025
+      compiler: clang-cl
+      advisory: true
+      off: *msvc-off
+
+  # Todo: Add to ci-success once more stable.
   cross-codegen:
-    name: Cross codegen (advisory)
-    needs: [ changes, cppcheck ]
+    name: Cross Codegen (Advisory)
+    needs: *lane-needs
     if: |
       !cancelled()
       && needs.cppcheck.result != 'failure'
       && needs.cppcheck.result != 'cancelled'
       && needs.changes.outputs.cross_codegen == 'true'
-    permissions:
-      contents: read
+    permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
 
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
   docs:
     name: Docs
-    permissions:
-      contents: read
+    permissions: *read
     uses: ./.github/workflows/_docs.yaml
 
   # Ungated by cppcheck: these read the tree and the dependency
@@ -214,49 +254,35 @@ jobs:
       actions: read
     uses: ./.github/workflows/_security.yaml
 
-  # Behind cppcheck for the same reason as the builds: CodeQL
-  # builds the whole project under its extractor, and cppcheck
-  # rejects the same code in well under a minute.
-  codeql:
-    name: CodeQL
-    needs: [ changes, cppcheck ]
+  # CodeQL and Sonar each build the whole project. Not behind
+  # cppcheck, so the build column holds only builds; on a red
+  # cppcheck they still run. Sonar is advisory inside the call,
+  # so only CodeQL can fail it.
+  analysis:
+    name: Analysis
+    needs: [ changes ]
     if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.security == 'true'
-      && needs.changes.outputs.ci_pins_only != 'true'
+      (needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
+      || needs.changes.outputs.sonar == 'true'
     permissions:
       contents: read
       security-events: write
       actions: read
-    uses: ./.github/workflows/_codeql.yaml
-
-  # Advisory: Sonar's scanner wraps a full build, so it sits
-  # behind cppcheck like the builds, and a red quality gate
-  # does not block a merge. Todo: Add it to the ci-success.
-  sonar:
-    name: Sonar (advisory)
-    needs: [ changes, cppcheck ]
-    if: |
-      !cancelled()
-      && needs.cppcheck.result != 'failure'
-      && needs.cppcheck.result != 'cancelled'
-      && needs.changes.outputs.sonar == 'true'
-      && (github.event_name != 'pull_request'
-        || github.event.pull_request.head.repo.full_name == github.repository)
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_sonar.yaml
+    uses: ./.github/workflows/_analysis.yaml
+    with:
+      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      sonar: >-
+        ${{ needs.changes.outputs.sonar == 'true'
+        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Advisory, like Sonar. There is nothing to review in a pin
-  # bump, so it sits behind `changes` to skip those rather than
-  # spend a review on a pair of SHAs
+  # Advisory. There is nothing to review in a pin bump, so it
+  # sits behind `changes` to skip those rather than spend a
+  # review on a pair of SHAs.
   # Todo: Require all conversations to be resolved before merging.
   claude-review:
-    name: Claude review (advisory)
+    name: Claude Review (Advisory)
     needs: [ changes ]
     if: |
       github.event_name == 'pull_request'
@@ -274,18 +300,29 @@ jobs:
 
   # One of the two required status checks for branch protection,
   # the other being "PR Title Format" from pr_title.yaml. Fails
-  # if any needed job failed or was cancelled; passes when they
-  # all succeeded or were skipped.
+  # if any needed job failed or was cancelled; a lane whose build
+  # failed has failed, not skipped.
   ci-success:
     name: CI Success
     if: ${{ always() }}
-    needs: [ changes, lint, version, cppcheck, linux, docs, security, codeql ] # sonar, claude-review
+    needs:
+      - changes
+      - lint
+      - version
+      - cppcheck
+      - docs
+      - security
+      - linux-gcc
+      - linux-clang
+      - linux-arm-gcc
+      - linux-arm-clang
+      - analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: { }
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           disable-sudo: true

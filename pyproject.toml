@@ -17,7 +17,31 @@ line-length = 120
 extend-exclude = ["tests/gtest-parallel"]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+select = [
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "ANN",
+  "RUF",
+  "SIM",
+  "PERF",
+  "PTH",
+  "C4",
+  "RET",
+]
+
+[tool.ty.src]
+exclude = ["tests/gtest-parallel"]
+
+[tool.ty.environment]
+extra-paths = [".github/scripts/lib"]
+
+[tool.typos.default]
+extend-ignore-re = ["(?Rm)^.*spellchecker:disable-line$"]
 
 [tool.typos.default.extend-words]
 compex = "compex" # Compare exchange (atomics)
@@ -28,5 +52,6 @@ Cpy = "Cpy"       # Part of "MemCpy"
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF"
+ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics"
 skip = "./.vale,./tests/gtest-parallel,*.svg"
+ignore-regex = ".*spellchecker:disable-line"

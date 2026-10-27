@@ -10,6 +10,7 @@ import spp.analyse.scopes.scope_block_name;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.aliases;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.fn_values;
 import spp.analyse.utils.generic_inference;
 import spp.analyse.utils.self_type;
@@ -114,9 +115,7 @@ auto TypeStatementAst::Stage2_GenTopLvlScopes(
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
   // Check there are no conventions on the new type. Todo: Move to later stage? nothing is loaded in atm
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*NewType, *sm, false),
-    ERR_ARGS(*this, *NewType, "type statement new type"));
+  common_errors::RequireNotBorrowed(*NewType, *this, "type statement new type", *sm, false);
 
   // Create the type symbol for this type, that will point to the old type.
   _AliasSymbol = MakeShared<TypeSymbol>(
@@ -172,9 +171,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   // stands for any more than it can be an attribute or a variant member. The new type is checked at stage 2, where
   // nothing is loaded yet; the old type has to wait until here, because it is a type expression to resolve rather
   // than a name to declare.
-  RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*OldType, *sm, false),
-    ERR_ARGS(*this, *OldType, "type statement old type"));
+  common_errors::RequireNotBorrowed(*OldType, *this, "type statement old type", *sm, false);
 
   // Check the "old type" exists (non-generic).
   {
@@ -376,14 +373,6 @@ auto TypeStatementAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  sm->MoveOutOfCurrentScope();
-}
-
 auto TypeStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   sm->MoveToNextScope();
@@ -400,12 +389,17 @@ auto TypeStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto TypeStatementAst::MarkFromUseStatement() -> void {
-  _FromUseStatement = true;
+auto TypeStatementAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *) -> void {
+  // A "type" statement in a "cmp" function's body has a scope of
+  // its own, which the walk of the body steps over.
+  sm->MoveToNextScope();
+  SPP_ASSERT(sm->CurrentScope == _Scope);
+  sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::IsFromUseStatement() const -> bool {
-  return _FromUseStatement;
+auto TypeStatementAst::MarkFromUseStatement() -> void {
+  _FromUseStatement = true;
 }
 
 SPP_MOD_END

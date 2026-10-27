@@ -3,6 +3,11 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 
+// Defined here, not inline in the interface: MSVC emits no definition
+// for an exported inline variable with a dynamic initialiser.
+spp::Map<spp::asts::TypeAst const*, spp::Pair<spp::Shared<spp::asts::TypeAst const>, spp::analyse::scopes::TypeSymbol*>>
+spp::asts::generate::common_types_precompiled::TEMPLATE_SYMBOLS;
+
 namespace {
   /// "fresh" recording what "like", its precompiled constant,
   /// records.

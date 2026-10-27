@@ -73,10 +73,12 @@
 
 #define SPP_STRING_APPEND_RAW(x) raw_string.append(x)
 
-#define SPP_STRING_EXTEND(x, j)                \
-  for (auto const& y: x) {                     \
-    raw_string.append(y ? y->ToString() : ""); \
-    raw_string.append(Str(j));                 \
+// Each element's string, with "j" between them (not after the last).
+#define SPP_STRING_EXTEND(x, j)                     \
+  for (auto first = true; auto const &y : x) {      \
+    if (not first) { raw_string.append(Str(j)); }   \
+    first = false;                                  \
+    raw_string.append(y ? y->ToString() : "");      \
   }
 
 #define SPP_STRING_END return raw_string

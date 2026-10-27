@@ -83,3 +83,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         b.g[Box(v=2)]()
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    GenericParameterCompAst,
+    test_invalid_unused_default_dividing_by_zero,
+    SppDivisionByZeroError, R"(
+    cls B[cmp n: USize = 7_uz / 0_uz] { }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    GenericParameterCompAst,
+    test_valid_unused_default_reading_a_constant_written_after_it, R"(
+    cls B[cmp n: USize = k * 2_uz] { }
+    cmp k: USize = 1_uz + 2_uz
+)");

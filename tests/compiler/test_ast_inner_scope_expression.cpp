@@ -49,3 +49,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         ret c
     }
 )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    InnerScopeExpressionAst,
+    test_valid_empty_block_as_statement, R"(
+    fun f() -> Void {
+        { }
+        let x = 1
+    }
+)");

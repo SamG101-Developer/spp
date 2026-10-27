@@ -18,6 +18,7 @@ import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
+import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.identifier_ast;
 import spp.asts.local_variable_single_identifier_ast;
@@ -26,6 +27,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
@@ -109,6 +111,7 @@ auto CmpStatementAst::Stage1_PreProcess(
 
 auto CmpStatementAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
   //
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
 
@@ -125,9 +128,10 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
     : VariableKind::Constant;
   _AliasSymbol = MakeShared<VariableSymbol>(
     Name, Type, sm->CurrentScope, kind, false, Visibility.first);
-  analyse::utils::memory_state::StateOf(
+  memory_state::StateOf(
     *sm->CurrentScope, *_AliasSymbol).InitializedBy(*this);
   _AliasSymbol->CompTimeValue = AstClone(Value);
+  _AliasSymbol->Stmt = this;
   sm->CurrentScope->AddVarSymbolCheckConflict(_AliasSymbol);
 
   // Create a scope for the value. This provides a space for
@@ -206,12 +210,55 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
+  // The scopes "AnalyseAhead" built are where this walk would
+  // have built them, so it only has to step past them.
+  if (_Stage7 == _Stage7Progress::kAnalysedAhead) {
+    ignore = sm->SkipSubtree(sm->CurrentScope);
+    _Stage7 = _Stage7Progress::kDone;
+  }
+  else {
+    _AnalyseValue(sm, meta);
+  }
+  sm->MoveOutOfCurrentScope();
+}
+
+auto CmpStatementAst::AnalyseAhead(
+  Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
+  IMPORT_UTILS;
+  // Analysed already, by the walk or ahead of it; before stage 6
+  // ends, a value's types cannot be analysed yet.
+  if (_Stage7 == _Stage7Progress::kAnalysedAhead or _Stage7 == _Stage7Progress::kDone) { return; }
+  if (meta->CurrentStage < CompilerStage::kPreAnalyseSemantics) { return; }
+  RaiseIf<SppCompTimeConstantError>(
+    _Stage7 == _Stage7Progress::kAnalysing,
+    ERR_ARGS(site));
+
+  // The statement's scope is its own, so a walk standing on it is
+  // where the stage 7 walk is once it has stepped in. Nothing of the
+  // reader's metadata applies here.
+  auto tm = sm->NewManagerAt(_Scope);
+  auto own_meta = CompilerMetaData();
+  own_meta.CurrentStage = CompilerStage::kAnalyseSemantics;
+  own_meta.IsTestHarness = meta->IsTestHarness;
+  _AnalyseValue(&tm, &own_meta);
+  _Stage7 = _Stage7Progress::kAnalysedAhead;
+}
+
+auto CmpStatementAst::_AnalyseValue(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  _Stage7 = _Stage7Progress::kAnalysing;
+
   // Analyse the type and value.
   {
     const auto _meta_guard = MetaGuard(meta);
     // Todo: Add this to unit tests.
     meta->ReturnTypeOverloadResolverType = MakeShared<TypeRef>(
       TypeRef::Of(*Type, *sm->CurrentScope));
+
+    // The declared type is the value's target, as a "let"'s is: an
+    // array literal takes its element type from it.
+    meta->AssignmentTargetType = Type;
     Value->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -223,7 +270,38 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
     const auto inferred_type = Value->InferType(sm, meta);
     Raise<SppTypeMismatchError>(ERR_ARGS(*Type, *Type, *Value, *inferred_type));
   }
-  sm->MoveOutOfCurrentScope();
+
+  // The value is folded, and its symbol takes the result, for any
+  // fold reading the constant from here on. One naming a parameter
+  // of a generic "sup" block it is declared in ("cmp n: USize = k +
+  // 1_uz") has no value until an instantiation binds it: it is kept
+  // as written, and read where it is used ("comp_generics::
+  // FindCompMemberId", the folded static access).
+  if (not Type->IsCompilerGeneratedType()) {
+    const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
+    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value))) {
+      var_sym->CompTimeValue = AstClone(Value);
+    }
+    else {
+      // The resolution takes the first "case" branch that matches,
+      // leaving the others' scopes unwalked, so it walks a manager
+      // of its own.
+      auto tm = sm->NewManagerAt(sm->CurrentScope);
+      {
+        const auto _meta_guard = MetaGuard(meta);
+        meta->CompTimeResult = nullptr;
+        Value->EvaluateCompTime(&tm, meta);
+        _FoldedValue = std::move(meta->CompTimeResult);
+      }
+      var_sym->CompTimeValue = AstClone(_FoldedValue);
+
+      // Use the hook to record information for the resolution and
+      // completion plugin.
+      lsp::resolution_index::RecordCompTimeValue(
+        *Name, *sm, *meta, _FoldedValue != nullptr ? _FoldedValue->ToString() : Str());
+    }
+  }
+  _Stage7 = _Stage7Progress::kDone;
 }
 
 auto CmpStatementAst::Stage8_CheckMemory(
@@ -241,50 +319,13 @@ auto CmpStatementAst::Stage8_CheckMemory(
   }
   mem_utils::ValidateSymbolMemory(*Value, *Value, *sm, meta);
 
-  //
+  // The value is checked as it was analysed, and is the folded one
+  // from here on.
+  if (_FoldedValue != nullptr) { Value = std::move(_FoldedValue); }
   if (not _FromUseStatement) {
     const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
     var_sym->CompTimeValue = AstClone(Value);
   }
-  sm->MoveOutOfCurrentScope();
-}
-
-auto CmpStatementAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  //
-  IMPORT_UTILS;
-  for (auto const &a : Annotations) { a->Stage9_CompTimeResolve(sm, meta); }
-  sm->MoveToNextScope();
-  SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Generate the value and assign it to the variable symbol's compile-time value. One naming a parameter of a generic
-  // "sup" block it is declared in ("cmp n: USize = k + 1_uz") has no value until an instantiation binds it: it is kept
-  // as written, and read where it is used ("comp_generics::FindCompMemberId", the folded static access).
-  if (not Type->IsCompilerGeneratedType()) {
-    const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
-    if (not analyse::scopes::IsClosedCompId(sm->CurrentScope->CompIdOf(*Value))) {
-      var_sym->CompTimeValue = AstClone(Value);
-      ignore = sm->SkipSubtree(sm->CurrentScope);
-      sm->MoveOutOfCurrentScope();
-      return;
-    }
-
-    // Because the comp-time resolution takes the first branch
-    // that matches, it leaves the resulting "case" branches'
-    // scopes as unwalked, meaning that the tree becomes non-synced.
-    // Use a new scope manager to unsync, then exhaust the scope
-    // in the main manager afterwards.
-    auto tm = sm->NewManagerAt(sm->CurrentScope);
-    Value->Stage9_CompTimeResolve(&tm, meta);
-    Value = AstClone(meta->CompTimeResult);
-    var_sym->CompTimeValue = std::move(meta->CompTimeResult);
-
-    // Use the hook to record information for the resolution and
-    // completion plugin.
-    lsp::resolution_index::RecordCompTimeValue(
-      *Name, *sm, *meta, Value != nullptr ? Value->ToString() : Str());
-  }
-  ignore = sm->SkipSubtree(sm->CurrentScope);
   sm->MoveOutOfCurrentScope();
 }
 
@@ -309,7 +350,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
   // template) has no constant to emit, and neither has one only
   // written in terms of such a parameter ("Unit[T]"): its llvm
   // struct is an unsized placeholder, not the instance's. Nor
-  // has a value naming such a parameter ("k + 1_uz", Stage 9).
+  // has a value naming such a parameter ("k + 1_uz", Stage 7).
   // The use site folds the value instead.
   if (llvm_type == nullptr
     or not type_predicates::IsTypeConcrete(*Type, *sm->CurrentScope)
@@ -340,7 +381,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
 
   // The true val derived for the cmp statement, for stage 11 LLVM
   // IR, is based off a few different flags. Either the cmp generic
-  // needs resolving though another stage9 call, or we can just use
+  // needs evaluating again ("EvaluateCompTime"), or we can just use
   // the current "bound" value.
   const auto val = [&]() -> llvm::Value* {
     if (bound_val == nullptr) { return llvm::Constant::getNullValue(llvm_type); }
@@ -350,7 +391,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     // with no storage at all - so it is folded, not generated.
     if (generic_val != nullptr or bound_val->To<IdentifierAst>() != nullptr) {
       auto tm = sm->NewManagerAt(sm->CurrentScope);
-      bound_val->Stage9_CompTimeResolve(&tm, meta);
+      bound_val->EvaluateCompTime(&tm, meta);
       if (const auto folded = std::move(meta->CompTimeResult); folded != nullptr and folded->To<IdentifierAst>() ==
         nullptr) {
         return folded->Stage11_CodeGen(sm, meta, ctx);
@@ -362,13 +403,31 @@ auto CmpStatementAst::Stage10_PreCodeGen(
     }
     return bound_val->Stage11_CodeGen(sm, meta, ctx);
   }();
+
+  // The value goes into the declared type as any slot's does
+  // ("cmp x: Opt[S32] = Some(val=1)"). A constant variant comes
+  // back laid out as the variant in another shape, so the global
+  // takes that shape, and is read as the declared type.
+  // The source is what was generated, the comp-time value, whose
+  // type is settled; the value as written may not have been given
+  // its target when it was first analysed.
+  const auto generated = Value != nullptr and bound_val != nullptr ? bound_val->To<ExpressionAst>() : nullptr;
+  const auto coerced_val = generated != nullptr
+    ? codegen::CoerceToSlot(
+      val, TypeRef::Of(*Type, *sm->CurrentScope), generated->InferTypeRef(sm, meta), *sm, "cmp.coerce", ctx)
+    : val;
   ctx->InConstantContext = false;
 
   // Create the global variable for the constant.
   const auto llvm_global_var = new llvm::GlobalVariable(
-    *ctx->Module, llvm_type, true, llvm::GlobalValue::ExternalLinkage,
-    llvm::cast<llvm::Constant>(val),
+    *ctx->Module, coerced_val->getType(), true, llvm::GlobalValue::ExternalLinkage,
+    llvm::cast<llvm::Constant>(coerced_val),
     codegen::mangle::MangleCmpName(*sm->CurrentScope, *this));
+
+  if (coerced_val->getType() != llvm_type) {
+    llvm_global_var->setAlignment(ctx->Module->getDataLayout().getABITypeAlign(llvm_type));
+    var_sym->LlvmInfo->ValueType = llvm_type;
+  }
 
   // Register in the llvm info. Nothing here descends into
   // the value - the constant is emitted from what comp-time

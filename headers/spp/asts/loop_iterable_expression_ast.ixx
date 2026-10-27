@@ -72,16 +72,9 @@ private:
 
   Unique<LoopConditionalExpressionAst> _TransformedLoop;
 
-  /// "defer std::mem::ops::drop($_iter_...)", registered in the
-  /// enclosing scope only while the loop runs: every way out of
-  /// the loop that also leaves that scope ("ret", "exit exit")
-  /// drops the iterator.
-  Unique<DeferStatementAst> _IterDefer;
-
-  /// "std::mem::ops::drop($_iter_...)" after the loop, on every
-  /// other way out of it (its condition, its "else", an "exit" of
-  /// this loop). It ends the iterator's loans there.
-  Unique<ExpressionAst> _IterDrop;
+  /// Where the iterable ended, kept as the lowering moves it out,
+  /// so the loop still spans what was written ("PosEnd").
+  std::size_t _IterablePosEnd = 0;
 
   /// The name of the desugared iterator variable ("$_iter_...").
   Shared<IdentifierAst> _IterableName;

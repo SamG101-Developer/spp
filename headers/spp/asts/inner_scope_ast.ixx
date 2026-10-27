@@ -42,11 +42,9 @@ struct spp::asts::InnerScopeAst : Ast {
 
   ~InnerScopeAst() override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
-
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  // Qualified: MSVC drops this module's "using namespace" when another module instantiates the template.
+  auto Stage11_CodeGen(analyse::scopes::ScopeManager *sm, meta::CompilerMetaData *meta, codegen::LlvmCtx *ctx)
+    -> llvm::Value* override;
 
   SPP_ATTR_NODISCARD auto FinalMember() const -> Ast*;
 

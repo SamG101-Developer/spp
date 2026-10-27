@@ -6,7 +6,8 @@ stated once instead of once per consumer.
 
 Subcommands:
     env         NAME=value lines for GITHUB_ENV (pins and install prefixes)
-    libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags
+    libraries   one tab-separated record per small CMake library: name, repo, commit, space-joined cmake flags;
+                with --os Windows, the flags include the library's cmake-flags-windows
     runners     one tab-separated record per canonical runner image
     caches      one tab-separated record per build-tree cache family: name, generation, key prefix
     get NAME    print one exported value, for scripts that want a single pin without loading the lot
@@ -17,10 +18,12 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import re
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 try:
     import tomllib
@@ -40,7 +43,7 @@ VALUE = re.compile(r"^[A-Za-z0-9._:/+-]+$")
 NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-TABLES = {"pin", "prefix", "library", "runner", "cache"}
+TABLES = {"pin", "prefix", "library", "runner", "cache", "floor"}
 
 # A cache family names the first segment of a key and a generation the second, so neither may contain the "-" that
 # separates the segments: prune-caches.sh splits on it to tell a family apart from the rest of the key.
@@ -51,8 +54,12 @@ GENERATION = re.compile(r"^v[1-9][0-9]*$")
 # manifest is the canonical list; .github/scripts/ci/check-workflows.py holds the YAML to it.
 IMAGE = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.-]+$")
 
+# The oldest system a release must run on. Exported as SPP_FLOOR_<KEY> and read by check-floor.sh.
+FLOOR_KEYS = {"glibc", "linux", "binutils", "macos"}
+FLOOR_VERSION = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
-def fail(message: str) -> None:
+
+def fail(message: str) -> NoReturn:
     print(f"::error::{message}", file=sys.stderr)
     sys.exit(1)
 
@@ -104,6 +111,9 @@ def exports(data: dict) -> dict[str, str]:
             fail(f"prefix.{key} contains a newline")
         out[f"SPP_{key}_PREFIX".upper().replace("-", "_")] = path
 
+    for key, value in floor(data).items():
+        out[f"SPP_FLOOR_{key}".upper()] = value
+
     for name in out:
         if not NAME.match(name):
             fail(f"{name} is not a usable environment variable name")
@@ -124,11 +134,12 @@ def libraries(data: dict) -> list[dict]:
             fail(f"[[library]] {name} repo must be an https .git URL: {repo!r}")
         if not HEX40.match(commit):
             fail(f"[[library]] {name} commit is not a full 40-character commit: {commit!r}")
-        for flag in entry.get("cmake-flags", []):
-            if not isinstance(flag, str) or not flag.startswith("-"):
-                fail(f"[[library]] {name} has a cmake flag that is not a flag: {flag!r}")
-            if any(c.isspace() for c in flag):
-                fail(f"[[library]] {name} cmake flag contains whitespace, which would split on read: {flag!r}")
+        for key in ("cmake-flags", "cmake-flags-windows"):
+            for flag in entry.get(key, []):
+                if not isinstance(flag, str) or not flag.startswith("-"):
+                    fail(f"[[library]] {name} has a {key} entry that is not a flag: {flag!r}")
+                if any(c.isspace() for c in flag):
+                    fail(f"[[library]] {name} {key} entry contains whitespace, which would split on read: {flag!r}")
     return list(data.get("library", []))
 
 
@@ -141,6 +152,17 @@ def runners(data: dict) -> dict[str, str]:
             fail(f"runner.{key} is a floating image: {value!r}; name the version")
         out[key] = value
     return out
+
+
+def floor(data: dict) -> dict[str, str]:
+    table = data.get("floor", {})
+    unknown = set(table) - FLOOR_KEYS
+    if unknown:
+        fail(f"[floor] has unexpected key(s): {', '.join(sorted(unknown))}")
+    for key, value in table.items():
+        if not isinstance(value, str) or not FLOOR_VERSION.match(value):
+            fail(f"floor.{key} is not a dotted version like '2.28': {value!r}")
+    return dict(table)
 
 
 def caches(data: dict) -> dict[str, str]:
@@ -177,10 +199,12 @@ def cmd_env(data: dict) -> None:
         print(f"{name}={value}")
 
 
-def cmd_libraries(data: dict) -> None:
+def cmd_libraries(data: dict, os_name: str) -> None:
     for entry in libraries(data):
-        flags = " ".join(entry.get("cmake-flags", []))
-        print(f"{entry['name']}\t{entry['repo']}\t{entry['commit']}\t{flags}")
+        flags = entry.get("cmake-flags", [])
+        if os_name == "Windows":
+            flags = flags + entry.get("cmake-flags-windows", [])
+        print(f"{entry['name']}\t{entry['repo']}\t{entry['commit']}\t{' '.join(flags)}")
 
 
 def cmd_get(data: dict, name: str) -> None:
@@ -253,7 +277,7 @@ def cmd_set(path: str, value: str) -> None:
     else:
         fail(f"unsupported path {path!r}; expected pin.<name>.<key> or library.<name>.<key>")
 
-    text = MANIFEST.read_text()
+    text = MANIFEST.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
 
     start = next((i for i, line in enumerate(lines) if line.strip() == header), None)
@@ -274,7 +298,7 @@ def cmd_set(path: str, value: str) -> None:
             old = lines[i]
             lines[i] = f'{match.group(1)}"{value}"{match.group(2)}'
             if lines[i] != old:
-                MANIFEST.write_text("".join(lines))
+                MANIFEST.write_text("".join(lines), encoding="utf-8", newline="\n")
             return
     fail(f"{header} has no '{key}' key to rewrite")
 
@@ -283,7 +307,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("env")
-    sub.add_parser("libraries")
+    libs = sub.add_parser("libraries")
+    libs.add_argument("--os", default="", help="the runner OS, as RUNNER_OS names it")
     sub.add_parser("runners")
     sub.add_parser("caches")
     check = sub.add_parser("check")
@@ -294,6 +319,11 @@ def main() -> None:
     setter.add_argument("path")
     setter.add_argument("value")
 
+    # Every subcommand is read by bash, which keeps the "\r" a
+    # Windows Python would otherwise end each line with.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(newline="\n")
+
     args = parser.parse_args()
     if args.command == "set":
         cmd_set(args.path, args.value)
@@ -303,7 +333,7 @@ def main() -> None:
     if args.command == "env":
         cmd_env(data)
     elif args.command == "libraries":
-        cmd_libraries(data)
+        cmd_libraries(data, args.os)
     elif args.command == "runners":
         cmd_runners(data)
     elif args.command == "caches":

@@ -16,6 +16,7 @@ import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
+import spp.asts.cmp_statement_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -31,30 +32,6 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
-namespace {
-  /// List of the symbols those comp-time values are in the
-  /// process of being resolved. A "cmp" constant is resolved by
-  /// walking the identifiers its value names, so a constant
-  /// that reaches itself is a cycle => error.
-  thread_local spp::Vec<VariableSymbol const*> _ResolvingCompTimeSymbols;
-
-  /// Push a symbol onto the resolution stack for as long as
-  /// the enclosing block runs, including when it is left by a
-  /// thrown semantic error. A caught error must not leave the
-  /// stack claiming a resolution is still in progress.
-  struct ResolvingCompTimeSymbolGuard {
-    explicit ResolvingCompTimeSymbolGuard(
-      VariableSymbol const *const sym) { _ResolvingCompTimeSymbols.emplace_back(sym); }
-
-    ~ResolvingCompTimeSymbolGuard() { _ResolvingCompTimeSymbols.pop_back(); }
-
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard const &) = delete;
-    ResolvingCompTimeSymbolGuard(ResolvingCompTimeSymbolGuard &&) = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard const &) -> ResolvingCompTimeSymbolGuard& = delete;
-    auto operator=(ResolvingCompTimeSymbolGuard &&) -> ResolvingCompTimeSymbolGuard& = delete;
-  };
-}
-
 SPP_MOD_BEGIN
 auto IdentifierAst::FromType(
   TypeAst const &val) -> Unique<IdentifierAst> {
@@ -66,13 +43,13 @@ IdentifierAst::IdentifierAst(
   decltype(Val) val) :
   Val(std::move(val)),
   _Pos(pos),
-  _NameId(utils::Intern(Val)) {
+  _NameId(spp::utils::Intern(Val)) {
 }
 
 IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val,
-  const utils::InternedId name_id) :
+  const spp::utils::InternedId name_id) :
   Val(std::move(val)),
   _Pos(pos),
   _NameId(name_id) {
@@ -202,48 +179,13 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
 
 auto IdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
+  IMPORT_UTILS;
   // A name evaluated as a value uses what it names: a holder
   // used again after a conflict with one of its loans means the
   // loan was live then.
   if (const auto sym = sm->CurrentScope->FindVarSymbol(this); sym != nullptr) {
-    analyse::utils::borrows::RaiseIfConflictedUse(*sym, *sm->CurrentScope);
+    borrows::RaiseIfConflictedUse(*sym, *sm->CurrentScope);
   }
-}
-
-auto IdentifierAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  IMPORT_UTILS;
-
-  // Extract the value from the symbol table and return
-  // it.
-  const auto var_sym = sm->CurrentScope->FindVarSymbol(this);
-  auto tm = sm->NewManagerAt(var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
-
-  // An unbound comp generic has no value yet, and stands for
-  // itself - as it does in a template's signature.
-  if (var_sym != nullptr and var_sym->Kind == VariableKind::GnCompParam) {
-    meta->CompTimeResult = AstClone(this);
-    return;
-  }
-
-  // Anything else resolves through its value, and having none
-  // is an error.
-  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
-  RaiseIf<SppCompTimeConstantError>(
-    var_sym != nullptr and value == nullptr,
-    ERR_ARGS(*this));
-
-  // A constant whose value reaches its own symbol again has
-  // no value to resolve to: the walk below would re-enter
-  // here for the same symbol and never terminate.
-  RaiseIf<SppCompTimeConstantError>(
-    genex::contains(_ResolvingCompTimeSymbols, var_sym),
-    ERR_ARGS(*this));
-
-  // Call the inner resolution on the provided value for
-  // "walking" the comptime resolution.
-  const auto guard = ResolvingCompTimeSymbolGuard(var_sym);
-  value->Stage9_CompTimeResolve(&tm, meta);
 }
 
 auto IdentifierAst::Stage11_CodeGen(
@@ -289,10 +231,7 @@ auto IdentifierAst::Stage11_CodeGen(
   // with the normal stack alloca instruction, rather with
   // llvm's "ConstantXXX" method, wrapped into a global.
   if (llvm::isa<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca)) {
-    const auto defined_global = llvm::cast<llvm::GlobalVariable>(var_sym->LlvmInfo->Alloca);
-    const auto global_var = codegen::GetOrAddGlobalIntoCurrentModule(
-      *defined_global, *codegen::GetEmissionModule(*ctx));
-    return ctx->Builder.CreateLoad(global_var->getValueType(), global_var, "load.global" + uid);
+    return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.global" + uid, ctx);
   }
 
   // Handle any other address the symbol was pointed at, such
@@ -301,15 +240,51 @@ auto IdentifierAst::Stage11_CodeGen(
   // own under opaque pointers, so the load goes through the
   // symbol's own type instead of through the instruction that
   // produced the address.
-  if (var_sym->LlvmInfo->Alloca->getType()->isPointerTy()) {
-    const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
-    SPP_ASSERT(llvm_type != nullptr);
-    return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
+  const auto llvm_type = codegen::GetLlvmTypeOf(var_sym->TypeRefIn(*sm->CurrentScope), ctx);
+  SPP_ASSERT(llvm_type != nullptr);
+  return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
+}
+
+auto IdentifierAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+
+  // Extract the value from the symbol table and return
+  // it.
+  const auto var_sym = sm->CurrentScope->FindVarSymbol(this);
+  auto tm = sm->NewManagerAt(var_sym->ScopeDefinedIn ? var_sym->ScopeDefinedIn : sm->CurrentScope);
+
+  // An unbound comp generic has no value yet, and stands for
+  // itself - as it does in a template's signature.
+  if (var_sym != nullptr
+    and var_sym->Kind == VariableKind::GnCompParam
+    and var_sym->CompTimeValue == nullptr) {
+    meta->CompTimeResult = AstClone(this);
+    return;
   }
 
-  // If the variable is neither local nor global, this is an
-  // internal compiler error.
-  Ice(*this, *sm->CurrentScope, "Target identifier ie neither local nor global");
+  // A constant stage 7 has not reached yet holds its value as
+  // written, which is analysed and folded first.
+  if (var_sym != nullptr and var_sym->Stmt != nullptr) { var_sym->Stmt->AnalyseAhead(*this, sm, meta); }
+
+  // Anything else resolves through its value, and having none
+  // is an error.
+  auto *const value = var_sym != nullptr ? var_sym->CompTimeValue.get() : nullptr;
+  RaiseIf<SppCompTimeConstantError>(
+    var_sym != nullptr and value == nullptr,
+    ERR_ARGS(*this));
+
+  // A constant whose value reaches its own symbol again has
+  // no value to resolve to: the walk below would re-enter
+  // here for the same symbol and never terminate.
+  RaiseIf<SppCompTimeConstantError>(
+    comp_generics::CompTimeResolutionGuard::IsResolving(var_sym),
+    ERR_ARGS(*this));
+
+  // Call the inner resolution on the provided value for
+  // "walking" the comptime resolution.
+  const auto guard = comp_generics::CompTimeResolutionGuard(var_sym);
+  value->EvaluateCompTime(&tm, meta);
 }
 
 auto IdentifierAst::InferType(
@@ -340,7 +315,7 @@ auto IdentifierAst::AnkerlHash() const -> std::size_t {
   // Consistent with "EqualsIdentifier", which decides
   // equality on the id, and a multiply rather than a
   // pass over the string.
-  return Hash<utils::InternedId>()(_NameId);
+  return Hash<spp::utils::InternedId>()(_NameId);
 }
 
 auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
@@ -349,9 +324,10 @@ auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
 
 auto IdentifierAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
+  IMPORT_UTILS;
   // A comp parameter (or a binding of one) is read by its identity where it was written, with the bindings applied
   // ("type_resolution::ReadComp"). Any other name - a local, a constant, a function - is opaque, and kept.
-  return analyse::utils::type_resolution::ReadComp(*this, sub);
+  return type_resolution::ReadComp(*this, sub);
 }
 
 auto IdentifierAst::ToView() const noexcept -> StrView {

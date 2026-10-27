@@ -295,3 +295,13 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         m = Marker
     }
 )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstObjectInitializerAst,
+    test_invalid_generator_initialized,
+    SppObjectInitializerGeneratorError, R"(
+    fun f() -> Void {
+        let g = std::generator::Gen[S32]()
+        std::mem::ops::drop(g)
+    }
+)");

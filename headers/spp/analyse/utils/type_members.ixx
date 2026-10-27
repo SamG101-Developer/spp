@@ -57,11 +57,18 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto GetAllAttrs(
     TypeSymbol const &cls_sym) -> Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>>;
 
-  /// Similar to the "GetAllAttrs", but in ast form, so that
-  /// the default values can be extracted for object initializers,
-  /// if required.
-  SPP_EXP_FUN auto GetAllAttrAsts(
-    TypeSymbol const &cls_sym) -> Vec<ClassAttributeAst*>;
+  /// The attribute "name" as written in the class "attr_scope"
+  /// is ("GetAllAttrs" gives each attribute's), or nullptr for a
+  /// symbol with no written attribute (a generic's).
+  SPP_EXP_FUN auto AttrAstOf(
+    Scope const &attr_scope, IdentifierAst const &name) -> ClassAttributeAst*;
+
+  /// The positions in "attrs" ("GetAllAttrs") of every attribute
+  /// named "name", in order: more than one where two base classes
+  /// each declare it, which naming it makes ambiguous.
+  SPP_EXP_FUN auto AttrIndicesOf(
+    Vec<Tup<Shared<IdentifierAst>, TypeRef, Scope*>> const &attrs, IdentifierAst const &name)
+    -> Vec<std::size_t>;
 
   /// Check that all the instances of a "cmp" constant, in a
   /// type and its super types it is extending, have a consistent
@@ -114,6 +121,14 @@ namespace spp::analyse::utils::type_members {
   /// Ord[Rhs=Self]") only that scope has a symbol for.
   SPP_EXP_FUN auto SuperClsScopes(
     Vec<Scope*> const &sup_scopes) -> Vec<Scope const*>;
+
+  /// The classes among "sup_scopes" ("SuperClsScopes"), each read
+  /// where its own sup scope reads it, with that scope: what a type
+  /// is matched as beside itself (a constraint, a call's receiver,
+  /// a generic argument's shape). Read anywhere else, a "Self" in
+  /// a sup type's name ("S32 ext Ord[Rhs=Self]") has no symbol.
+  SPP_EXP_FUN auto SuperClsReads(
+    Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
 
   /// Get the number of synthetic fat-pointer fields on this
   /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr

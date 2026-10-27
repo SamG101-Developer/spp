@@ -1,15 +1,13 @@
 module;
-#include <spp/codegen/llvm_passes.hpp>
 
 module spp.codegen.llvm_fn;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
-import spp.analyse.utils.fn_values;
-import spp.analyse.utils.marker_sups;
-import spp.asts.function_prototype_ast;
 import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_sym_info;
+import spp.codegen.llvm_target;
 import spp.utils.features;
 import spp.utils.types;
 import std;
@@ -58,6 +56,19 @@ namespace spp::codegen {
       return Fnv32(which + mangle::MangleTypeName(*gen_sup.Symbol));
     }
 
+    /// The control-flow-integrity type of a closure's capture
+    /// destructor ("void(ptr env)"), which every closure shares.
+    auto CfiClosureEnvDropType() -> std::uint32_t {
+      return Fnv32("closure env drop");
+    }
+
+    /// The header every closure's environment starts with: "owns"
+    /// and "drop_captures" ("ClosureEnvType").
+    auto ClosureEnvHeaderType(LlvmCtx const *ctx) -> llvm::StructType* {
+      return llvm::StructType::get(
+        *ctx->Context, {llvm::Type::getInt8Ty(*ctx->Context), llvm::PointerType::get(*ctx->Context, 0)});
+    }
+
     /// The "kcfi" operand bundle checking for "type"; none when
     /// the feature is off.
     auto KcfiBundles(
@@ -101,6 +112,122 @@ auto spp::codegen::GetOrAddTargetIntoCurrentModule(
   return mirror;
 }
 
+namespace {
+  /// Whether @p type is a C struct, as a by-value "!ffi"
+  /// parameter: a struct of two or more fields. One of a single
+  /// field is the scalar inside it, however deeply wrapped.
+  auto IsCStruct(llvm::Type const *type) -> bool {
+    while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+      if (st->getNumElements() != 1) { return st->getNumElements() > 1; }
+      type = st->getElementType(0);
+    }
+    return false;
+  }
+}
+
+auto spp::codegen::CAbiExtendOf(
+  llvm::Type const *type,
+  const bool is_signed)
+  -> llvm::Attribute::AttrKind {
+  // As clang marks a C prototype's integers for each target.
+  const auto integer = llvm::dyn_cast<llvm::IntegerType>(type);
+  if (integer == nullptr) { return llvm::Attribute::None; }
+  const auto by_sign = is_signed ? llvm::Attribute::SExt : llvm::Attribute::ZExt;
+  const auto width = integer->getBitWidth();
+  if (width == 1) { return llvm::Attribute::ZExt; }
+  if (width < 32) { return by_sign; }
+  if (width > 32) { return llvm::Attribute::None; }
+
+  switch (TargetTriple().getArch()) {
+    case llvm::Triple::ppc64:
+    case llvm::Triple::ppc64le:
+    case llvm::Triple::systemz:
+    case llvm::Triple::sparcv9:
+      return by_sign;
+    case llvm::Triple::riscv64:
+    case llvm::Triple::loongarch64:
+    case llvm::Triple::mips:
+    case llvm::Triple::mipsel:
+    case llvm::Triple::mips64:
+    case llvm::Triple::mips64el:
+      return llvm::Attribute::SExt;
+    default:
+      return llvm::Attribute::None;
+  }
+}
+
+auto spp::codegen::CAbiParamsOf(
+  Vec<llvm::Type*> const &value_types,
+  Vec<bool> const &is_signed,
+  llvm::Module const &module)
+  -> Vec<CAbiParam> {
+  // Each target's rule, as clang lowers a C struct parameter for
+  // it (checked against "clang --target=<t> -S -emit-llvm").
+  const auto &triple = TargetTriple();
+  const auto arch = triple.getArch();
+  const auto by_val = arch == llvm::Triple::ppc or arch == llvm::Triple::ppcle or arch == llvm::Triple::m68k;
+  const auto s390x = arch == llvm::Triple::systemz;
+  const auto &layout = module.getDataLayout();
+
+  auto params = Vec<CAbiParam>();
+  params.reserve(value_types.size());
+  for (auto i = 0uz; i < value_types.size(); ++i) {
+    const auto type = value_types[i];
+    auto param = CAbiParam{
+      .How = CAbiParam::Kind::Direct, .Value = type, .Declared = type,
+      .Extend = CAbiExtendOf(type, i < is_signed.size() and is_signed[i])
+    };
+    if (IsCStruct(type) and (by_val or s390x)) {
+      const auto size = layout.getTypeAllocSize(type).getFixedValue();
+      if (s390x and (size == 1 or size == 2 or size == 4 or size == 8)) {
+        param.How = CAbiParam::Kind::Coerce;
+        param.Declared = llvm::IntegerType::get(type->getContext(), static_cast<unsigned>(size * 8));
+      }
+      else {
+        param.How = by_val ? CAbiParam::Kind::ByVal : CAbiParam::Kind::Indirect;
+        param.Declared = llvm::PointerType::get(type->getContext(), 0);
+      }
+    }
+    params.emplace_back(param);
+  }
+  return params;
+}
+
+auto spp::codegen::CAbiAddParamAttrs(
+  llvm::Function &fn,
+  Vec<CAbiParam> const &params)
+  -> void {
+  const auto &layout = fn.getParent()->getDataLayout();
+  for (auto i = 0u; i < params.size(); ++i) {
+    if (params[i].Extend != llvm::Attribute::None) { fn.addParamAttr(i, params[i].Extend); }
+    if (params[i].How != CAbiParam::Kind::ByVal) { continue; }
+    fn.addParamAttr(i, llvm::Attribute::getWithByValType(fn.getContext(), params[i].Value));
+    fn.addParamAttr(i, llvm::Attribute::getWithAlignment(fn.getContext(), layout.getABITypeAlign(params[i].Value)));
+  }
+}
+
+auto spp::codegen::CAbiAdaptArgs(
+  llvm::Function const &callee,
+  Vec<llvm::Value*> &args,
+  LlvmCtx *ctx)
+  -> void {
+  if (not callee.hasFnAttribute(kFfiFnAttr)) { return; }
+  const auto fn_type = callee.getFunctionType();
+  for (auto i = 0u; i < args.size() and i < fn_type->getNumParams(); ++i) {
+    const auto declared = fn_type->getParamType(i);
+    const auto value = args[i];
+    if (value->getType() == declared or not IsCStruct(value->getType())) { continue; }
+
+    // The copy is the caller's, made for this call: "byval" lets
+    // the callee write it, and s390x's pointer is to a copy the
+    // callee owns.
+    const auto slot = LlvmEntryAlloca(value->getType(), "cabi.arg", ctx);
+    ctx->Builder.CreateStore(value, slot);
+    args[i] = declared->isPointerTy() ? static_cast<llvm::Value*>(slot)
+      : ctx->Builder.CreateLoad(declared, slot, "cabi.arg.int");
+  }
+}
+
 auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   llvm::GlobalVariable const &target,
   llvm::Module &current_module)
@@ -121,6 +248,16 @@ auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
     nullptr, name);
   declaration->setAlignment(target.getAlign());
   return declaration;
+}
+
+auto spp::codegen::LoadGlobalConstant(
+  LlvmVarSymbolInfo const &info, Str const &name, LlvmCtx *ctx) -> llvm::Value* {
+  // Declared here if it was defined in another module, and read
+  // as its symbol's type when its initializer has another shape.
+  const auto global_var = GetOrAddGlobalIntoCurrentModule(
+    *llvm::cast<llvm::GlobalVariable>(info.Alloca), *GetEmissionModule(*ctx));
+  const auto value_type = info.ValueType != nullptr ? info.ValueType : global_var->getValueType();
+  return ctx->Builder.CreateLoad(value_type, global_var, name);
 }
 
 /// [CHECKED]
@@ -192,20 +329,6 @@ auto spp::codegen::BuildFnValue(
   return llvm::ConstantStruct::get(llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty}), fields);
 }
 
-auto spp::codegen::CoerceToFnValue(
-  llvm::Value *llvm_val, TypeRef const &target,
-  TypeRef const &source, ScopeManager const &sm,
-  LlvmCtx const *ctx) -> llvm::Value* {
-  // A named function carries nothing at runtime, so whatever was
-  // loaded for it is dropped and the chosen overload built.
-  const auto fn = llvm_val != nullptr
-    ? analyse::utils::fn_values::FindFnValue(source, target, sm)
-    : nullptr;
-  if (fn == nullptr or fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) { return llvm_val; }
-  const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
-  return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
-}
-
 auto spp::codegen::GetEmissionModule(
   LlvmCtx const &ctx) -> llvm::Module* {
   // Outside a function body (a "cmp" initializer, say) there is
@@ -219,14 +342,14 @@ auto spp::codegen::GetEmissionModule(
 auto spp::codegen::ClosureEnvType(
   Vec<llvm::Type*> const &capture_tys, const StrView name,
   LlvmCtx const *ctx) -> llvm::StructType* {
-  // The ownership header first, then the captures in order.
-  auto fields = Vec<llvm::Type*>{llvm::Type::getInt8Ty(*ctx->Context)};
+  // The header first ("owns", "drop_captures"), then the captures in order.
+  auto fields = Vec<llvm::Type*>{llvm::Type::getInt8Ty(*ctx->Context), llvm::PointerType::get(*ctx->Context, 0)};
   fields.append_range(capture_tys);
   return llvm::StructType::create(*ctx->Context, fields, name, false);
 }
 
 auto spp::codegen::EmitNewClosureEnv(
-  llvm::StructType *const env_ty, const bool on_heap,
+  llvm::StructType *const env_ty, const bool on_heap, llvm::Function *const drop_captures,
   const StrView name, LlvmCtx *ctx) -> llvm::Value* {
   // The stack, unless the environment may outlive this frame.
   auto env = static_cast<llvm::Value*>(nullptr);
@@ -234,23 +357,30 @@ auto spp::codegen::EmitNewClosureEnv(
     env = LlvmEntryAlloca(env_ty, Str(name) + ".alloca", ctx);
   }
   else {
-    const auto size_ty = llvm::Type::getInt64Ty(*ctx->Context);
+    const auto size_ty = TargetSizeType(*ctx->Context);
     const auto malloc_fn = GetEmissionModule(*ctx)->getOrInsertFunction(
       "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {size_ty}, false));
     const auto size = GetEmissionModule(*ctx)->getDataLayout().getTypeAllocSize(env_ty).getFixedValue();
     env = ctx->Builder.CreateCall(malloc_fn, {llvm::ConstantInt::get(size_ty, size)}, Str(name) + ".heap");
   }
 
-  // Record where it lives, once: whatever frees a closure's
-  // environment reads it there ("EmitReleaseClosureEnv").
+  // Record where it lives, and what drops its captures, once:
+  // whatever frees or drops a closure's environment reads them
+  // there ("EmitReleaseClosureEnv", "EmitDropClosureEnv").
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   ctx->Builder.CreateStore(llvm::ConstantInt::get(llvm::Type::getInt8Ty(*ctx->Context), on_heap ? 1 : 0), env);
+  ctx->Builder.CreateStore(
+    drop_captures != nullptr
+      ? static_cast<llvm::Value*>(drop_captures)
+      : static_cast<llvm::Value*>(llvm::ConstantPointerNull::get(ptr_ty)),
+    ctx->Builder.CreateStructGEP(ClosureEnvHeaderType(ctx), env, 1, Str(name) + ".drop_captures"));
   return env;
 }
 
 auto spp::codegen::ClosureEnvCaptureIndex(
   const std::size_t i) -> unsigned {
-  // Past the ownership header.
-  return static_cast<unsigned>(i + 1);
+  // Past the header ("owns", "drop_captures").
+  return static_cast<unsigned>(i + 2);
 }
 
 auto spp::codegen::EmitReleaseClosureEnv(
@@ -278,4 +408,38 @@ auto spp::codegen::EmitReleaseClosureEnv(
   builder.CreateBr(done_bb);
 
   builder.SetInsertPoint(done_bb);
+}
+
+auto spp::codegen::StampCfiClosureEnvDrop(
+  llvm::Function &fn) -> void {
+  // Every capture destructor has the one type, so one checks as another.
+  fn.setMetadata(kCfiMd, CfiMd(fn.getContext(), {CfiClosureEnvDropType()}));
+}
+
+auto spp::codegen::EmitDropClosureEnv(
+  llvm::Value *const env, LlvmCtx *ctx) -> void {
+  // A closure capturing nothing has no environment, and one
+  // whose captures need nothing has no destructor in its header.
+  // The rest have their captures dropped before the storage holding them is freed.
+  auto &builder = ctx->Builder;
+  const auto fn = builder.GetInsertBlock()->getParent();
+  const auto read_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.drop.read", fn);
+  const auto call_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.drop.call", fn);
+  const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "closure.env.drop.done", fn);
+  builder.CreateCondBr(builder.CreateIsNull(env), done_bb, read_bb);
+
+  builder.SetInsertPoint(read_bb);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto drop_captures = builder.CreateLoad(
+    ptr_ty, builder.CreateStructGEP(ClosureEnvHeaderType(ctx), env, 1), "closure.env.drop_captures");
+  builder.CreateCondBr(builder.CreateIsNotNull(drop_captures), call_bb, done_bb);
+
+  builder.SetInsertPoint(call_bb);
+  builder.CreateCall(
+    llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false), drop_captures, {env},
+    KcfiBundles(CfiClosureEnvDropType(), ctx));
+  builder.CreateBr(done_bb);
+
+  builder.SetInsertPoint(done_bb);
+  EmitReleaseClosureEnv(env, ctx);
 }

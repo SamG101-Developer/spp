@@ -2,10 +2,11 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.utils.annotation_utils;
+import spp.utils.types;
 import std;
 
 use(spp::analyse::utils::annotation_utils, struct AnnotationInfo);
-use(spp::analyse::utils::annotation_utils, struct BuiltinAnnotations);
+use(spp::analyse::utils::annotation_utils, enum class BuiltinAnnotation : std::uint8_t);
 use(spp::asts, struct AnnotationAst);
 
 /// The AnnotationInfo holds a small set of metadata about an
@@ -29,26 +30,65 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
   ~AnnotationInfo() = default;
 };
 
-/// A list of the fully qualified builtin annotation names,
-/// used for binding specific behaviour to functions or types
-/// etc. Checked against as a lexical comparison.
-SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::BuiltinAnnotations {
-  constexpr static auto kIntrinsic = "std::annotations::intrinsic";
-  constexpr static auto kPublic = "std::annotations::public";
-  constexpr static auto kPackage = "std::annotations::package";
-  constexpr static auto kProtected = "std::annotations::protected";
-  constexpr static auto kPrivate = "std::annotations::private";
-  constexpr static auto kVirtualMethod = "std::annotations::virtual_method";
-  constexpr static auto kAbstractMethod = "std::annotations::abstract_method";
-  constexpr static auto kFfi = "std::annotations::ffi";
-  constexpr static auto kZeroType = "std::annotations::zero_type";
-  constexpr static auto kThreadHazard = "std::annotations::thread_hazard";
-  constexpr static auto kTest = "std::annotations::test";
-  constexpr static auto kCfg = "std::annotations::cfg"; // TODO: HANDLE
-  constexpr static auto kVersioned = "std::annotations::versioned"; // TODO: HANDLE
-  constexpr static auto kLlvmInline = "std::llvm::inline";
-  constexpr static auto kLlvmAlwaysInline = "std::llvm::always_inline";
-  constexpr static auto kLlvmNoInline = "std::llvm::no_inline";
-  constexpr static auto kLlvmHot = "std::llvm::hot";
-  constexpr static auto kLlvmCold = "std::llvm::cold";
+/// The builtin annotations: each binds behaviour to what it
+/// annotates (a function, a class, a visibility), so the compiler
+/// acts on it. Anything else is "kNone" (a custom annotation).
+/// "kCfg" is acted on before analysis, by its written name
+/// ("compiler/cfg.cpp"), and "kVersioned" is documentation only.
+SPP_EXP_CLS enum class spp::analyse::utils::annotation_utils::BuiltinAnnotation : std::uint8_t {
+  kNone,
+  kAnnotation,
+  kIntrinsic,
+  kPublic,
+  kPackage,
+  kProtected,
+  kPrivate,
+  kVirtualMethod,
+  kAbstractMethod,
+  kFfi,
+  kZeroType,
+  kThreadHazard,
+  kTest,
+  kCfg,
+  kVersioned,
+  kLlvmInline,
+  kLlvmAlwaysInline,
+  kLlvmNoInline,
+  kLlvmHot,
+  kLlvmCold,
 };
+
+namespace spp::analyse::utils::annotation_utils {
+  /// Each builtin annotation's function by its fully qualified
+  /// name: the one place an annotation is told apart by spelling.
+  SPP_EXP_CMP constexpr auto kBuiltinAnnotationNames = std::to_array<Pair<StrView, BuiltinAnnotation>>({
+    {"std::annotations::annotation", BuiltinAnnotation::kAnnotation},
+    {"std::annotations::intrinsic", BuiltinAnnotation::kIntrinsic},
+    {"std::annotations::public", BuiltinAnnotation::kPublic},
+    {"std::annotations::package", BuiltinAnnotation::kPackage},
+    {"std::annotations::protected", BuiltinAnnotation::kProtected},
+    {"std::annotations::private", BuiltinAnnotation::kPrivate},
+    {"std::annotations::virtual_method", BuiltinAnnotation::kVirtualMethod},
+    {"std::annotations::abstract_method", BuiltinAnnotation::kAbstractMethod},
+    {"std::annotations::ffi", BuiltinAnnotation::kFfi},
+    {"std::annotations::zero_type", BuiltinAnnotation::kZeroType},
+    {"std::annotations::thread_hazard", BuiltinAnnotation::kThreadHazard},
+    {"std::annotations::test", BuiltinAnnotation::kTest},
+    {"std::annotations::cfg", BuiltinAnnotation::kCfg},
+    {"std::annotations::versioned", BuiltinAnnotation::kVersioned},
+    {"std::llvm::inline", BuiltinAnnotation::kLlvmInline},
+    {"std::llvm::always_inline", BuiltinAnnotation::kLlvmAlwaysInline},
+    {"std::llvm::no_inline", BuiltinAnnotation::kLlvmNoInline},
+    {"std::llvm::hot", BuiltinAnnotation::kLlvmHot},
+    {"std::llvm::cold", BuiltinAnnotation::kLlvmCold},
+  });
+
+  /// Which builtin the annotation function "fq_name" (its fully
+  /// qualified name) is, or "kNone".
+  SPP_EXP_FUN inline auto BuiltinAnnotationOf(const StrView fq_name) -> BuiltinAnnotation {
+    for (auto const &[name, builtin] : kBuiltinAnnotationNames) {
+      if (name == fq_name) { return builtin; }
+    }
+    return BuiltinAnnotation::kNone;
+  }
+}

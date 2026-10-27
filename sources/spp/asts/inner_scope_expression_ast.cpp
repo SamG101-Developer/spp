@@ -116,15 +116,14 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     x->Stage7_AnalyseSemantics(sm, meta);
     expire_is_bindings();
 
     // Nothing may follow a statement that never finishes. Checked
     // before the next statement is analysed, so the dead code is
     // reported rather than whatever else is wrong with it.
-    RaiseIf<SppUnreachableCodeError>(expr_utils::Diverges(*x, sm, meta), ERR_ARGS(*x, *Members[i + 1]));
+    RaiseIf<SppUnreachableCodeError>(x->Diverges(sm, meta), ERR_ARGS(*x, *Members[i + 1]));
   }
 
   // Every statement but the last has its value discarded; the last
@@ -190,7 +189,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   // because releasing them is what clears the very state the
   // check reads to tell that a symbol holding borrows is not
   // something this scope owes.
-  if (not expr_utils::Diverges(*this, sm, meta)) {
+  if (not Diverges(sm, meta)) {
     linear_utils::CheckDeferredForScope(
       *sm->CurrentScope, TokR != nullptr ? *static_cast<Ast const*>(TokR.get()) : *this,
       "Scope end", *sm, meta);
@@ -212,30 +211,18 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto InnerScopeExpressionAst::Stage9_CompTimeResolve(
-  ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // Comptime resolve each member of the inner scope.
-  sm->MoveToNextScope();
-  for (auto const &m : this->Members) {
-    m->Stage9_CompTimeResolve(sm, meta);
-    if (meta->CompTimeReturned) { break; }
-  }
-
-  // Exit the scope.
-  sm->MoveOutOfCurrentScope();
-}
-
 auto InnerScopeExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Nothing has been reached in this scope yet. Cleared on entry
+  // Nothing has been reached in this scope yet. Reset on entry
   // rather than left from a previous walk, because a generic
   // base and its instantiations share this scope object across
-  // separate codegen passes.
-  sm->CurrentScope->DeferredReached.clear();
+  // separate codegen passes, and a deferred block is generated
+  // once for each exit that runs it.
+  codegen::EnterDeferScope(*sm->CurrentScope, ctx);
 
   // A statement's value is either bound or "Void", and a local
   // is either moved on or taken apart, because stage 8 rejects
@@ -251,15 +238,24 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
       continue;
     }
     const auto _meta_guard = MetaGuard(meta);
-    meta->AssignmentTarget = nullptr;
-    meta->AssignmentTargetType = nullptr;
+    meta->ClearAssignmentTarget();
     meta->LlvmAssignmentTarget = nullptr;
-    ret_val = m->Stage11_CodeGen(sm, meta, ctx);
+    m->Stage11_CodeGen(sm, meta, ctx);
+
+    // Nothing after a member that never finishes is reachable,
+    // so none of it is generated, and the walk steps over the
+    // scopes it holds. Stage 7 rejects such code as written
+    // (E28), so this is only met where codegen reads a member
+    // differently: a "gen" in a lowered "GenOnce" is its return.
+    if (m->Diverges(sm, meta)) {
+      ignore = sm->SkipSubtree(sm->CurrentScope);
+      break;
+    }
   }
 
   // Whatever this scope deferred runs as it is left, after
   // the value it hands out has been produced.
-  codegen::EmitDeferredScope(*sm->CurrentScope, sm, meta, ctx);
+  codegen::EmitScopeExit(sm->CurrentScope->Parent, sm, meta, ctx);
 
   // Exit the scope.
   sm->MoveOutOfCurrentScope();
@@ -269,6 +265,19 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
     return ret_val;
   }
   return ret_val;
+}
+
+auto InnerScopeExpressionAst::EvaluateCompTime(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  // Comptime resolve each member of the inner scope.
+  sm->MoveToNextScope();
+  for (auto const &m : this->Members) {
+    m->EvaluateCompTime(sm, meta);
+    if (meta->CompTimeReturned) { break; }
+  }
+
+  // Exit the scope.
+  sm->MoveOutOfCurrentScope();
 }
 
 auto InnerScopeExpressionAst::InferType(
@@ -293,11 +302,13 @@ auto InnerScopeExpressionAst::InferTypeRef(
   return TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope);
 }
 
-auto InnerScopeExpressionAst::Terminates() const -> bool {
-  // The inner scope expression only terminates if the
-  // last member terminates.
-  if (this->Members.empty()) { return false; }
-  return this->Members.back()->Terminates();
+auto InnerScopeExpressionAst::Diverges(
+  ScopeManager *sm, CompilerMetaData *meta) -> bool {
+  // Read in the block's own scope. Its type alone misses a
+  // trailing "let" bound to a "!" value, which is typed "Void".
+  if (Members.empty()) { return false; }
+  auto tm = sm->NewManagerAt(GetAstScope());
+  return Members.back()->Diverges(&tm, meta);
 }
 
 auto InnerScopeExpressionAst::FinalMember() const -> Ast* {

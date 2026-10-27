@@ -17,7 +17,7 @@ CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestruc
   decltype(TokEllipsis) &&tok_ellipsis,
   Unique<CasePatternVariantAst> &&binding) :
   TokEllipsis(std::move(tok_ellipsis)),
-  Binding(dynamic_unique_cast<CasePatternVariantSingleIdentifierAst>(std::move(binding))) {
+  Binding(unique_cast<CasePatternVariantSingleIdentifierAst>(std::move(binding))) {
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
