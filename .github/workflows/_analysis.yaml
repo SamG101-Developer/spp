@@ -29,7 +29,7 @@ on:
         type: string
         default: "ubuntu-24.04"
       sonar-variant:
-        description: "Build variant whose tree Sonar restores. Must be one _build.yaml actually builds on that os."
+        description: "Build variant whose tree Sonar restores. Must be one a lane actually builds on that os."
         required: false
         type: string
         default: "release"

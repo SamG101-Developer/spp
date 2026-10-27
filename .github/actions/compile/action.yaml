@@ -1,7 +1,7 @@
 name: compile
 description: "Configure, build and optionally stage the compiler for one toolchain/variant."
 
-# Build only; the tests run in _test.yaml.
+# Build only; the tests run in the lane workflows' test jobs.
 #
 # Every input arrives as a string, so flags are compared against a literal rather than tested for truthiness:
 # `if: inputs.stage` is true for the string "false".
