@@ -44,7 +44,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@e4a6faad497d33dbc7144135c75e41f82f0bf6c0 # v1.0.255
+        uses: anthropics/claude-code-action@aa8a7738e48bf30a40ee499ce818bef081c5ab5e # v1.0.257
         env:
           CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
