@@ -32,6 +32,7 @@ module;
 #else
 #include <dlfcn.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -64,6 +65,8 @@ module;
 #undef RTLD_LAZY
 #undef RTLD_NOLOAD
 #undef X_OK
+#undef WEXITSTATUS
+#undef WIFEXITED
 
 export module sys;
 
@@ -83,9 +86,17 @@ export namespace sys {
     return ::_putenv_s(name, value);
   }
 
-  inline auto unsetenv(
-    const char *const name) -> int {
+  inline auto unsetenv(const char *const name) -> int {
     return ::_putenv_s(name, "");
+  }
+
+  // "system" returns the exit code itself, not a wait status.
+  inline auto WIFEXITED(const int) -> bool {
+    return true;
+  }
+
+  inline auto WEXITSTATUS(const int status) -> int {
+    return status;
   }
 
   // No execute bit, and _waccess rejects any mode but 0/2/4/6.
@@ -125,6 +136,16 @@ export namespace sys {
   using ::dlclose;
   using ::dlopen;
   using ::flock;
+
+  inline auto WIFEXITED(
+    const int status) -> bool {
+    return spp_sys_legacy::IfExited(status);
+  }
+
+  inline auto WEXITSTATUS(
+    const int status) -> int {
+    return spp_sys_legacy::ExitStatus(status);
+  }
 
   constexpr auto LOCK_EX = spp_sys_legacy::kLockEx;
   constexpr auto LOCK_SH = spp_sys_legacy::kLockSh;

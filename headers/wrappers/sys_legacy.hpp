@@ -18,6 +18,7 @@
 #else
 #include <dlfcn.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -55,6 +56,9 @@ namespace spp_sys_legacy {
   inline constexpr auto kMaxDword = DWORD{MAXDWORD};
   inline constexpr auto kOpenAlways = DWORD{OPEN_ALWAYS};
 #else
+  inline auto IfExited(int status) -> bool { return WIFEXITED(status); }
+  inline auto ExitStatus(int status) -> int { return WEXITSTATUS(status); }
+
   inline constexpr auto kLockEx = LOCK_EX;
   inline constexpr auto kLockSh = LOCK_SH;
   inline constexpr auto kLockUn = LOCK_UN;
