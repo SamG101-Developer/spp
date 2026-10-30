@@ -159,3 +159,5 @@
 #define use_ns(ns) \
   namespace ns {} \
   using namespace ns
+
+#define SPP_INTERNAL namespace

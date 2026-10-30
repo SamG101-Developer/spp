@@ -7,26 +7,14 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  /// The triple every module is built for, normalised once:
-  /// the selected target, or the host when none was asked for.
-  /// Being different from the host is a "cross compilation".
-  /// For the code generation that decides by target.
+  /// The target triple is the triple for the platform that s++ is compiling
+  /// for. It gets normalized, and cones from the "selected target". If it
+  /// doesn't match the host triple, then we are cross compiling.
   SPP_EXP_FUN auto TargetTriple() -> llvm::Triple const&;
 
-  /// Choose the triple every module is built for. Must be
-  /// called before any code generation: the target machine,
-  /// the triple and the data layout are each resolved once, on
-  /// first use, and a selection made after that is ignored
-  /// rather than honoured - which would leave modules
-  /// describing one target and the object describing another.
-  ///
-  /// The triple is normalised, so a short name ("riscv64",
-  /// "aarch64") is accepted like a full triple; null or empty
-  /// means the host. A target whose backend this llvm was not
-  /// built with is rejected here, listing the ones it does
-  /// have, rather than when an object cannot be emitted for
-  /// it. Answers whether the target was registered and
-  /// selected.
+  /// Choose the triple for the build. This is checked against a currently
+  /// selected triple, if present, otherwise this triple becomes the master
+  /// check. Normalized for short names too.
   SPP_EXP_FUN auto SelectTarget(char const *triple) -> bool;
 
   /// Whether the selected target is the machine this compiler
@@ -92,13 +80,9 @@ namespace spp::codegen {
   /// one that never holds.
   SPP_EXP_FUN auto IsCfgValueValid(StrView key, StrView value) -> bool;
 
-  /// The selected target as a folder name: "<arch>-<os>[-<env>]",
-  /// such as "x86_64-linux-gnu", "aarch64-macos" or
-  /// "x86_64-windows-msvc". It names the target's folder in the
-  /// "out" tree, and the folder an ffi package ships its library
-  /// for the target in. One spelling per target, however the
-  /// target was asked for. Fixes the target to the host if read
-  /// before "SelectTarget".
+  /// The selected target as a folder name, formatted as "<arch>-<os>[-<env>]",
+  /// ie "x86_64-linux-gnu", "aarch64-macos" or "x64_64-windows-msvc". This is
+  /// the target's folder in the "out" directory.
   SPP_EXP_FUN auto TargetFolderName() -> char const*;
 
   /// The host's folder name, in the same spelling. Safe to read
@@ -126,23 +110,8 @@ namespace spp::codegen {
   /// file was written.
   SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
 
-  /// Check that llvm can still spell an overloaded intrinsic's
-  /// name, and stop if it cannot.
-  ///
-  /// The names come from "Intrinsic::getName" as a
-  /// "std::string", and a libstdc++ incompatibility (GCC bug
-  /// 127228) makes that come back padded with uninitialised
-  /// bytes; "-fvisibility-inlines-hidden" (CMakeLists.txt)
-  /// keeps this compiler clear of it. While it bites, no
-  /// overloaded intrinsic can be named correctly and every
-  /// module holding one is rejected - by the verifier, whose
-  /// complaint is about the name and says nothing about why it
-  /// is wrong. This asks for one name and compares it, so the
-  /// failure is reported where the cause is rather than
-  /// several layers downstream.
-  ///
-  /// Runs its check once per process, so it costs nothing to
-  /// call wherever it is convenient. The diagnosis is printed,
-  /// and the build stopped, in any build.
+  /// Check that all the intrinsic names are sound, ie spelled correctly and
+  /// non-corrupted. This is because of some LLVM and GCC bugs causing mangled
+  /// intrinsic names. GCC bug 127228 has been patched, keeping as failsafe.
   SPP_EXP_FUN auto AssertIntrinsicNamingIsSound() -> void;
 }

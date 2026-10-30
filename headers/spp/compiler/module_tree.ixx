@@ -20,21 +20,22 @@ namespace spp::compiler {
   SPP_EXP_CLS struct TestScope;
 }
 
-/**
- * Which "tst" folders a build picks up. Empty means an ordinary build, which compiles none of them.
- */
+/// Which "tst" folders a build picks up. Empty means an ordinary build, which
+/// compiles none of them. The "spp test" flags can limit to specific libraries
+/// or include all of them etc.
 SPP_EXP_CLS struct spp::compiler::TestScope {
-  /** Include the Project's own "tst" folder. */
-  bool Project = false;
+  bool Project = false; /// Include the Project's own "tst" folder.
+  bool AllLibs = false; /// Include the "tst" folder of every "vcs" library.
+  Vec<Str> Libs; /// Include the "tst" folder of these specific libraries.
 
-  /** Include the "tst" folder of every library under "vcs". */
-  bool AllLibs = false;
+  /// Check if any test folder has been chosen to run. This will be false for a
+  /// normal build/run. Only "spp test" can fill this.
+  SPP_ATTR_NODISCARD auto Any() const -> bool {
+    return Project or AllLibs or not Libs.empty();
+  }
 
-  /** Include the "tst" folder of these libraries, named as their folder under "vcs". */
-  Vec<Str> Libs;
-
-  SPP_ATTR_NODISCARD auto Any() const -> bool { return Project or AllLibs or not Libs.empty(); }
-
+  /// Check if a specific library is to be tested; either it is contained in the
+  /// specific library list, or all libraries are being tested.
   SPP_ATTR_NODISCARD auto WantsLib(Str const &lib) const -> bool {
     return AllLibs or genex::contains(Libs, lib);
   }

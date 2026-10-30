@@ -6,98 +6,73 @@ import spp.utils.types;
 import std;
 
 namespace spp::cli {
+  /// Build the command line tool, that allows for the different commands and
+  /// subcommands, with their allowed arguments. This forms the overall "spp"
+  /// command line tool. Arguments received from "main".
   SPP_EXP_FUN auto RunCli(std::int32_t argc, char **argv) -> std::int32_t;
 
-  /// Initialise the current directory as a new S++ project,
-  /// creating the default files and directories needed to
-  /// build and run it. Answers false when the directory is
-  /// not empty.
-  SPP_EXP_FUN auto HandleInit() -> bool;
+  /// Initialise the current directory as a new S++ project, creating the
+  /// default files and folders needed to build and run a project. It executes
+  /// in the current directory, returning false if it isn't empty. The "force"
+  /// flag skips the emptiness check, but won't overwrite existing root files.
+  SPP_EXP_FUN auto HandleInit(bool force = false) -> bool;
 
-  /// Clone or update every repository in the project's [vcs]
-  /// section into the "vcs" folder. Answers false when any git
-  /// invocation failed or a repository is missing afterwards.
-  /// A caller compiling against these sources must not go on
-  /// after false: an empty "vcs" folder still passes
-  /// "HandleValidate", and only shows up as every imported
-  /// symbol being undefined.
+  /// Clone or update every repository in the project's [vcs] section into the
+  /// "vcs" folder. This operation returns false when any git invocation failed,
+  /// or a repository/branch is unreachable, enforcing full vcs correctness.
   SPP_EXP_FUN auto HandleVcs() -> bool;
 
-  /// Compile the project. "mode" is "dev" or "rel", selecting
-  /// the optimisation pipeline and naming the folder built
-  /// into. "target" is a target triple, or empty for the host;
-  /// a foreign target is compiled and an object emitted, but
-  /// not linked - the linker driver is the host's, and the ffi
-  /// runtimes a project ships are host objects, so there is
-  /// nothing to link a foreign object against. "skip_vcs"
-  /// skips fetching the [vcs] dependencies first.
+  /// Compile the project, under "dev" or "rel" mode, an optional non-host
+  /// target (empty for host), and a number of other possible flags for things
+  /// such as index-only, or skip VCS checks.
   SPP_EXP_FUN auto HandleBuild(
-    Str const &mode, Str const &target = "", bool skip_vcs = false,
+    Str const &build_mode, Str const &target = "", bool skip_vcs = false,
     Str const &message_format = "human", bool analyse_only = false,
     Vec<Str> const &index_files = {}, bool index_project = false) -> bool;
 
-  /// Compile the project and run what it produced. Only a host
-  /// build can be run. "mode" is "dev" or "rel", and "target"
-  /// a target triple, or empty for the host. Only ever answers
-  /// false, and only when there was nothing to run: once the
-  /// program runs, its own status is what this exits with, so
-  /// returning at all means the run did not happen.
-  SPP_EXP_FUN auto HandleRun(
-    Str const &mode,
-    Str const &target = "")
-    -> bool;
+  /// Compile the project and run what it produced. Only a host build can be
+  /// run. "mode" is "dev" or "rel", and "target" a target triple, or empty for
+  /// the host. Only ever returns false, and only when there was nothing to run.
+  /// Once the program runs, it exits with its own status.
+  SPP_EXP_FUN auto HandleRun(Str const &mode, Str const &target = "") -> bool;
 
-  /// Remove built artifacts. "mode" is "dev", "rel" or "all".
-  /// "target" limits the clean to that target's tree; empty
-  /// cleans every target that has been built here.
+  /// Remove built artifacts. "mode" is "dev", "rel" or "all". "target" limits
+  /// the clean to that target's tree. If the target is empty, then it cleans
+  /// every target that has been built here.
   SPP_EXP_FUN auto HandleClean(
     Str const &mode, Str const &target = "") -> void;
 
-  /// Build the project together with its "tst" folder and run
-  /// the unit tests it declares. "name_filter" keeps tests
-  /// whose fully qualified name contains it, and
-  /// "group_filter" keeps one group; empty runs all. "libs"
-  /// also runs the tests of those [vcs] libraries, named by
-  /// their folder under "vcs", and "all_libs" runs every [vcs]
-  /// library's tests. "runner", when given, is a command the
-  /// test executable is run under ("valgrind ..."), with the
-  /// memory cap lifted, since a runner reserves far more
-  /// address space than the program it runs. "target" is a
-  /// target triple, or empty for the host; any other target
-  /// needs a runner that can execute it ("qemu-aarch64 -L
-  /// /usr/aarch64-linux-gnu").
+  /// Build the project together with its "tst" folder and run the unit tests it
+  /// declares. There are filter flags for the test name or group, library
+  /// constraints, and a "runner" (ie test in Valgrind or QEMU).
   SPP_EXP_FUN auto HandleTest(
     Str const &name_filter = "", Str const &group_filter = "",
-    Vec<Str> const &libs = {}, bool all_libs = false,
-    Str const &runner = "", Str const &target = "") -> void;
+    Vec<Str> const &libs = {}, bool all_libs = false, Str const &runner = "",
+    Str const &target = "") -> void;
 
-  /// Check the current directory has the structure a project
-  /// needs, reporting anything missing, and answer whether it
-  /// is sound. "is_exe" is whether the project is entered
-  /// through a "src/main.spp" (a library is not).
-  /// "create_missing" creates the optional folders ("out",
-  /// "vcs", "ffi", "tst") that are absent; it is false when
-  /// checking someone else's project, because a dependency's
-  /// checkout is not this build's to write into.
+  /// Check the current directory has the structure a project needs, reporting
+  /// anything missing, and return whether it is sound. It has a couple of flags
+  /// for tuning the checks (main.spp needed for executables, don't create
+  /// missing items in VCS folders being checked.
   SPP_EXP_FUN auto HandleValidate(
     bool is_exe, bool create_missing = true) -> bool;
 
+  /// Print the hardening record of a program spp built: what it was built with,
+  /// read back out of the executable. Reports a file that is not an executable,
+  /// or one with no record.
+  SPP_EXP_FUN auto HandleAudit(Str const &path) -> bool;
+
+  /// Print the version of the compiler to the console. This is read out of a
+  /// c++ file generated by the "VERSION" file.
   SPP_EXP_FUN auto HandleVersion() -> void;
 
-  /// Print the hardening record of a program spp built: what it
-  /// was built with, read back out of the executable. Reports a
-  /// file that is not an executable, or one with no record.
-  SPP_EXP_FUN auto HandleAudit(
-    Str const &path) -> bool;
+  /// Create the default "spp.toml" config for a project, placing its name into
+  /// the config file.
+  SPP_EXP_FUN auto CreateDefaultConfigFor(Str const &project_name) -> Str;
 
-  SPP_EXP_FUN auto CreateDefaultConfigFor(
-    Str const &project_name) -> Str;
-
-  /// Compile a single module of code as a throwaway project,
-  /// for the test suite, in build mode "dev" or "rel". Answers
-  /// the values the module's compile-time constants resolved
-  /// to, by name (see "Compiler::CompTimeConstants"); empty
-  /// when the module declares none.
+  /// Compile a single module of code as a throwaway project, for the c++ test
+  /// suite, in build mode "dev" or "rel". Returns the values the module's
+  /// compile-time constants resolved to, by name (can be empty).
   SPP_EXP_FUN auto RunCppGoogleTest(
     Str const &mode, Str &&main_code) -> Map<Str, Str>;
 
