@@ -8,12 +8,6 @@ import spp.utils.types;
 import genex;
 import std;
 
-namespace spp::utils::algorithms {
-  SPP_EXP_FUN
-  template <typename InputIt, typename T, typename BinOp>
-  auto move_accumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init);
-}
-
 namespace spp::views {
   SPP_EXP_CLS template <typename To>
   struct cast_unique_fn;
@@ -32,17 +26,6 @@ namespace spp::views {
 
   export template <std::size_t N>
   inline constexpr tuple_nth_fn<N> tuple_nth{};
-}
-
-/// A custom accumulation function for moving unique pointers
-/// whilst accumulating. The GenEx equivalent has a forwarding
-/// issue I think. Todo: Check.
-SPP_EXP_FUN template <typename InputIt, typename T, typename BinOp>
-auto spp::utils::algorithms::move_accumulate(InputIt first, InputIt last, T &&init, BinOp &&op) -> decltype(init) {
-  for (; first != last; ++first) {
-    init = std::forward<BinOp>(op)(std::forward<T>(init), std::move(*first));
-  }
-  return init;
 }
 
 /// The unique pointer casting view. Defined as a custom view

@@ -12,7 +12,6 @@ import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
-import spp.utils.algorithms;
 import spp.utils.ptr;
 import genex;
 import std;
@@ -611,8 +610,8 @@ auto spp::parse::ParserSpp::ParseUnaryExpression()
   -> Unique<asts::ExpressionAst> {
   PARSE_ZERO_OR_MORE(p1, ParseUnaryExpressionOp, ParseNothing);
   PARSE_ONCE(p2, ParsePostfixExpression);
-  return utils::algorithms::move_accumulate(
-    p1.rbegin(), p1.rend(), std::move(p2),
+  return genex::fold_left(
+    p1 | genex::views::move_reverse, std::move(p2),
     [](Unique<asts::ExpressionAst> &&acc, Unique<asts::UnaryExpressionOperatorAst> &&x) {
       return _CreateAst<asts::UnaryExpressionAst>(std::move(x), std::move(acc));
     });
@@ -635,8 +634,8 @@ auto spp::parse::ParserSpp::ParsePostfixExpression()
   -> Unique<asts::ExpressionAst> {
   PARSE_ONCE(p1, ParsePrimaryExpression);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixExpressionOp, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
       return _CreateAst<asts::PostfixExpressionAst>(std::move(acc), std::move(x));
     });
@@ -738,8 +737,8 @@ auto spp::parse::ParserSpp::ParsePostfixExpressionStrictlyStaticAccessZero()
   -> Unique<asts::ExpressionAst> {
   PARSE_ONCE(p1, ParseIdentifierAsExpression);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixExpressionOpStaticMemberAccess, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
       return _CreateAst<asts::PostfixExpressionAst>(std::move(acc), std::move(x));
     });
@@ -749,8 +748,8 @@ auto spp::parse::ParserSpp::ParsePostfixExpressionStrictlyStaticAccessOne()
   -> Unique<asts::ExpressionAst> {
   PARSE_ONCE(p1, ParseIdentifierAsExpression);
   PARSE_ONE_OR_MORE(p2, ParsePostfixExpressionOpStaticMemberAccess, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorStaticMemberAccessAst> &&x) {
       return _CreateAst<asts::PostfixExpressionAst>(std::move(acc), std::move(x));
     });
@@ -1134,8 +1133,8 @@ auto spp::parse::ParserSpp::ParseAssignmentTargetPostfixExpression()
   -> Unique<asts::ExpressionAst> {
   PARSE_ONCE(p1, ParseAssignmentTargetPrimaryExpression);
   PARSE_ZERO_OR_MORE(p2, ParseAssignmentTargetPostfixExpressionOp, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::ExpressionAst> &&acc, Unique<asts::PostfixExpressionOperatorAst> &&x) {
       return _CreateAst<asts::PostfixExpressionAst>(std::move(acc), std::move(x));
     });
@@ -1603,8 +1602,8 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpression()
   if (p1 != nullptr) {
     p2.insert(p2.begin(), unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
-  return utils::algorithms::move_accumulate(
-    p2.rbegin(), p2.rend(), std::move(p3),
+  return genex::fold_left(
+    p2 | genex::views::move_reverse, std::move(p3),
     [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
       return _CreateAst<asts::TypeUnaryExpressionAst>(x, std::move(acc));
     });
@@ -1635,8 +1634,8 @@ auto spp::parse::ParserSpp::ParsePostfixTypeExpression()
   -> Unique<asts::TypeAst> {
   PARSE_ONCE(p1, ParseUnaryTypeExpression);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixTypeExpressionOp, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
       return _CreateAst<asts::TypePostfixExpressionAst>(std::move(acc), x);
     });
@@ -1681,8 +1680,8 @@ auto spp::parse::ParserSpp::ParsePostfixTypeExpressionSimple()
   -> Unique<asts::TypeAst> {
   PARSE_ONCE(p1, ParseUnaryTypeExpressionSimple);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixTypeExpressionOp, ParseNothing);
-  return utils::algorithms::move_accumulate(
-    p2.begin(), p2.end(), std::move(p1),
+  return genex::fold_left(
+    p2 | genex::views::move, std::move(p1),
     [](Unique<asts::TypeAst> &&acc, Unique<asts::TypePostfixExpressionOperatorAst> &&x) {
       return _CreateAst<asts::TypePostfixExpressionAst>(std::move(acc), x);
     });
@@ -1696,8 +1695,8 @@ auto spp::parse::ParserSpp::ParseUnaryTypeExpressionSimple()
   if (p1 != nullptr) {
     p2.insert(p2.begin(), unique_cast<asts::TypeUnaryExpressionOperatorAst>(std::move(p1)));
   }
-  return utils::algorithms::move_accumulate(
-    p2.rbegin(), p2.rend(), std::move(p3),
+  return genex::fold_left(
+    p2 | genex::views::move_reverse, std::move(p3),
     [](Unique<asts::TypeAst> &&acc, Unique<asts::TypeUnaryExpressionOperatorAst> &&x) {
       return _CreateAst<asts::TypeUnaryExpressionAst>(x, std::move(acc));
     });
