@@ -59,7 +59,7 @@ jobs:
         run: bash .github/scripts/setup/install-cppcheck.sh
 
       - name: Expose cppcheck
-        run: echo "$SPP_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
+        run: echo "$SPP_CI_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
 
       # Findings fail the job. The rule selection lives in the
       # script and in .cppcheck-suppressions.

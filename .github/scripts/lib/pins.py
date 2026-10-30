@@ -54,7 +54,7 @@ GENERATION = re.compile(r"^v[1-9][0-9]*$")
 # manifest is the canonical list; .github/scripts/ci/check-workflows.py holds the YAML to it.
 IMAGE = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.-]+$")
 
-# The oldest system a release must run on. Exported as SPP_FLOOR_<KEY> and read by check-floor.sh.
+# The oldest system a release must run on. Exported as SPP_CI_FLOOR_<KEY> and read by check-floor.sh.
 FLOOR_KEYS = {"glibc", "linux", "binutils", "macos"}
 FLOOR_VERSION = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
@@ -109,10 +109,10 @@ def exports(data: dict) -> dict[str, str]:
         path = value.replace("{home}", home)
         if "\n" in path or "\r" in path:
             fail(f"prefix.{key} contains a newline")
-        out[f"SPP_{key}_PREFIX".upper().replace("-", "_")] = path
+        out[f"SPP_CI_{key}_PREFIX".upper().replace("-", "_")] = path
 
     for key, value in floor(data).items():
-        out[f"SPP_FLOOR_{key}".upper()] = value
+        out[f"SPP_CI_FLOOR_{key}".upper()] = value
 
     for name in out:
         if not NAME.match(name):

@@ -64,7 +64,7 @@ runs:
       if: runner.os == 'macOS'
       shell: bash
       env:
-        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
+        SPP_CI_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup/select-xcode-macos.sh
 
     - name: Set up MSVC / clang-cl (Windows)

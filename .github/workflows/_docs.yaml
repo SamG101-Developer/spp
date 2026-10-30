@@ -70,7 +70,7 @@ jobs:
       # Push the Doxygen prefix to the GITHUB_PATH, so that the Doxygen
       # binary is available to the rest of the workflow.
       - name: Expose Doxygen
-        run: echo "$SPP_DOXYGEN_PREFIX/bin" >> "$GITHUB_PATH"
+        run: echo "$SPP_CI_DOXYGEN_PREFIX/bin" >> "$GITHUB_PATH"
 
       # Check the versions of the tools we use.
       - name: Check versions

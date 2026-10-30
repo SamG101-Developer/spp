@@ -1,6 +1,7 @@
 #include "test_macros.hpp"
 
 import spp.codegen.llvm_target;
+import spp.utils.env;
 import spp.utils.features;
 import spp.utils.files;
 
@@ -32,11 +33,11 @@ namespace {
 
   /// PATH set to "value" for one scope, then put back.
   struct PathAs {
-    spp::Opt<spp::Str> Saved = spp::utils::files::GetEnv("PATH");
-    explicit PathAs(spp::Str const &value) { spp::utils::files::SetEnv("PATH", value); }
+    spp::Opt<spp::Str> Saved = spp::utils::env::Get(spp::utils::env::Var::Path);
+    explicit PathAs(spp::Str const &value) { spp::utils::env::Set(spp::utils::env::Var::Path, value); }
     ~PathAs() {
-      if (Saved.has_value()) { spp::utils::files::SetEnv("PATH", *Saved); }
-      else { spp::utils::files::UnsetEnv("PATH"); }
+      if (Saved.has_value()) { spp::utils::env::Set(spp::utils::env::Var::Path, *Saved); }
+      else { spp::utils::env::Unset(spp::utils::env::Var::Path); }
     }
   };
 }

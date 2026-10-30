@@ -88,6 +88,13 @@ repos:
         pass_filenames: false
         files: '^(\.github/workflows/_cross_codegen\.yaml|\.github/scripts/ci/check-suggested-triples\.py|sources/spp/codegen/llvm_target\.cpp)$'
 
+      - id: env-vars
+        name: check environment variables are registered
+        entry: python3 .github/scripts/ci/check-env-vars.py
+        language: python
+        pass_filenames: false
+        files: '^(\.github/|\.tools/|tests/|sources/|headers/|cmake/|CMakeLists\.txt$)'
+
   # PYTHON CHECKS
 
   - repo: https://github.com/astral-sh/ruff-pre-commit

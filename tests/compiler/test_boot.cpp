@@ -7,6 +7,7 @@ import spp.cli;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
+import spp.utils.env;
 import spp.utils.files;
 import spp.utils.types;
 import std;
@@ -72,12 +73,12 @@ auto EnsureTempProject(const bool refresh) -> bool {
 namespace {
   auto TestBuildMode() -> spp::Str const& {
     static const auto mode = [] {
-      auto value = spp::utils::files::GetEnv("SPP_TEST_MODE").value_or("rel");
-      if (value != "dev" and value != "rel") {
-        std::cerr << "SPP_TEST_MODE must be 'dev' or 'rel', not '" << value << "'\n";
+      auto errors = spp::Vec<spp::Str>();
+      if (not spp::utils::env::Check(errors)) {
+        for (auto const &e : errors) { std::cerr << e << "\n"; }
         std::abort();
       }
-      return value;
+      return spp::utils::env::Get(spp::utils::env::Var::TestMode).value_or("rel");
     }();
     return mode;
   }

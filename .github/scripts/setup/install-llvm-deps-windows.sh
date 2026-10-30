@@ -5,7 +5,7 @@ set -euo pipefail
 source .github/scripts/lib/pinned-checkout.sh
 source .github/scripts/lib/cmake-install.sh
 
-prefix="$(cygpath -m "$SPP_LLVM_DEPS_WIN_PREFIX")"
+prefix="$(cygpath -m "$SPP_CI_LLVM_DEPS_WIN_PREFIX")"
 work="${RUNNER_TEMP}/llvm-deps"
 
 rm -rf "$work"

@@ -5,8 +5,13 @@
 #include <cerrno>
 #include <cstdio>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#if SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
+#include <crt_externs.h>
+#endif
 
 #if SPP_PLATFORM_WINDOWS
 #include <windows.h>
@@ -22,6 +27,16 @@ namespace spp_sys_legacy {
   inline auto Stdout() -> FILE* { return stdout; }
   inline auto Errno() -> int& { return errno; }
   inline auto IsDir(const unsigned int mode) -> int { return S_ISDIR(mode); }
+
+  inline auto Environ() -> char** {
+#if SPP_PLATFORM_WINDOWS
+    return _environ;
+#elif SPP_PLATFORM_MACOS || SPP_PLATFORM_IOS
+    return *_NSGetEnviron();
+#else
+    return environ;
+#endif
+  }
 
   inline constexpr auto kOCreat = O_CREAT;
   inline constexpr auto kORdonly = O_RDONLY;

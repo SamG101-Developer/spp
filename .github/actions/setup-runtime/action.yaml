@@ -36,6 +36,6 @@ runs:
     - name: Verify binaries
       shell: bash
       env:
-        SPP_SHA256: ${{ inputs.spp-sha256 }}
+        SPP_CI_SHA256: ${{ inputs.spp-sha256 }}
         TESTS_SHA256: ${{ inputs.tests-sha256 }}
       run: bash .github/scripts/lib/verify-binaries.sh

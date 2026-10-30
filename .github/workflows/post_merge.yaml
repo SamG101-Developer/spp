@@ -275,28 +275,28 @@ jobs:
       - name: Collect linux-x64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.linux-gcc.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add linux-x64 ""
 
       - name: Collect linux-arm64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-linux-arm64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-linux-arm64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-linux-arm64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add linux-arm64 ""
 
       - name: Collect macos-arm64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-macos-arm64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-macos-arm64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-macos-arm64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add macos-arm64 ""
 
       - name: Collect windows-x64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-windows-x64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-windows-x64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-windows-x64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add windows-x64 .exe
 

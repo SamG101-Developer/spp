@@ -24,6 +24,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [genex, not std::ranges](conventions/genex-not-std-ranges.md) — range algorithms via genex; add `import genex;`
 - [CI name casing](conventions/ci-name-casing.md) — Title Case workflows/jobs/matrix labels, sentence-case steps, kebab ids
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
+- [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
 
 ## Build, test, verify
 - [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills

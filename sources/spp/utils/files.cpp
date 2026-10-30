@@ -4,6 +4,7 @@ module;
 #include <version>  // _GLIBCXX_RELEASE
 
 module spp.utils.files;
+import spp.utils.env;
 import genex;
 import std;
 import sys;
@@ -20,7 +21,7 @@ namespace spp::utils::files {
       // Get the PATH from the environment. If it is empty, then no extra
       // processing needs to happen. Return early.
       auto dirs = spp::Vec<Path>();
-      const auto raw = GetEnv("PATH");
+      const auto raw = env::Get(env::Var::Path);
       if (not raw.has_value()) { return dirs; }
 
       // Move through the "rest" which is a view over the "raw" PATH value, and
@@ -160,32 +161,6 @@ auto spp::utils::files::FindNewestVersion(const StrView name) -> Opt<Path> {
     }
   }
   return best;
-}
-
-/// [CHECKED]
-auto spp::utils::files::GetEnv(
-  const StrView name) -> Opt<Str> {
-  // Get the value from the environment, returning Nullopt if the key doesn't
-  // exist.
-  const auto raw = sys::getenv(Str(name).c_str());
-  if (raw == nullptr) { return Nullopt; }
-  return Str(raw);
-}
-
-/// [CHECKED]
-auto spp::utils::files::SetEnv(
-  const StrView name, const StrView value) -> void {
-  // Set the value against the key in the environment, overwriting an existing
-  // value if present.
-  sys::setenv(Str(name).c_str(), Str(value).c_str(), 1);
-}
-
-/// [CHECKED]
-auto spp::utils::files::UnsetEnv(
-  const StrView name) -> void {
-  // Unset the key in the environment, typically used in the test suite for
-  // temporary PATH values.
-  sys::unsetenv(Str(name).c_str());
 }
 
 SPP_MOD_BEGIN

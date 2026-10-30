@@ -5,11 +5,11 @@
 # runs it under valgrind with the memory cap lifted. The compiler's own `project/` is not in the repository, so the
 # groups come from the standard library, in a scratch project `spp init` writes.
 #
-# SPP_EXE overrides the compiler (the lane's verified `build/spp` by default), so this also runs locally.
+# SPP_CI_EXE overrides the compiler (the lane's verified `build/spp` by default), so this also runs locally.
 set -euo pipefail
 source .github/scripts/lib/scratch-project.sh
 
-exe="${SPP_EXE:-${PWD}/build/spp}"
+exe="${SPP_CI_EXE:-${PWD}/build/spp}"
 supp="${PWD}/.github/scripts/test/valgrind.supp"
 runner="valgrind --quiet --leak-check=full --errors-for-leak-kinds=definite --error-exitcode=9 --suppressions=${supp}"
 

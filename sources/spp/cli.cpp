@@ -31,6 +31,7 @@ import spp.lex.tokens;
 import spp.lsp.diagnostic;
 import spp.lsp.resolution_index;
 import spp.parse.errors.parser_error;
+import spp.utils.env;
 import spp.utils.error_formatter;
 import spp.utils.errors;
 import spp.utils.features;
@@ -170,10 +171,8 @@ namespace spp::cli {
       // For UNIX systems, get the limit from the environment variable if
       // provided, otherwise 16GB. As long as the limit > 0, then run the
       // program inside "ulimit".
-      const auto env = utils::files::GetEnv("SPP_MEMORY_LIMIT_KB");
-      const auto limit_kb = env.has_value()
-        ? std::strtoull(env->c_str(), nullptr, 10)
-        : 16ull * 1024 * 1024;
+      const auto limit_kb = utils::env::GetCount(utils::env::Var::MemoryLimitKb)
+        .value_or(16ull * 1024 * 1024);
       return limit_kb == 0
         ? command
         : "ulimit -v " + std::to_string(limit_kb) + " && " + command;
@@ -223,7 +222,7 @@ namespace spp::cli {
       // Bypass the check when there is no url being checked (failsafe), or the
       // env var has been provided to bypass network checks.
       if (url.empty()
-        or utils::files::GetEnv("SPP_NO_NETWORK_CHECK").has_value()) {
+        or utils::env::IsEnabled(utils::env::Var::NoNetworkCheck)) {
         return true;
       }
 
@@ -246,6 +245,16 @@ namespace spp::cli {
 /// [CHECKED]
 auto spp::cli::RunCli(
   const std::int32_t argc, char **argv) -> std::int32_t {
+  // Refuse an unknown or malformed "SPP_" variable before anything reads it: a
+  // typo would otherwise silently do nothing.
+  auto env_errors = Vec<Str>();
+  if (not utils::env::Check(env_errors)) {
+    for (auto const &e : env_errors) {
+      std::cerr << "Error in the environment: " << e << "\n";
+    }
+    return 1;
+  }
+
   // Create the CLI object and require that a subcommand is provided.
   auto app = CLI::App("SPP build tool", "spp");
   app.require_subcommand(1);
@@ -434,11 +443,16 @@ auto spp::cli::RunCli(
   });
 
   // The "spp config" command lists all the possible keys available for the
-  // "spp.toml" configuration file. The compiler will error on invalid keys too.
+  // "spp.toml" configuration file, and the environment variables. The compiler
+  // will error on invalid keys and variables too.
   const auto config_cmd = app.add_subcommand(
-    "config", "List every section and key 'spp.toml' accepts");
+    "config",
+    "List every section and key 'spp.toml' accepts,"
+    "and the environment variables");
   config_cmd->fallthrough();
-  config_cmd->callback([] { std::cout << utils::features::HelpText(); });
+  config_cmd->callback([] {
+    std::cout << utils::features::HelpText() << utils::env::HelpText();
+  });
 
   // The "spp audit" command displays the memory/linking configuration keys that
   // a program was built with. The path to the executable needs to be passed in.
@@ -886,7 +900,8 @@ auto spp::cli::HandleTest(
     const auto target = runner.empty() ? exe : runner + " " + exe;
     const auto command = only.empty()
       ? target
-      : "SPP_TEST_ONLY=" + only + " " + target;
+      : Str(utils::env::NameOf(utils::env::Var::TestOnly))
+      + "=" + only + " " + target;
 
     // Invoke the command (adding the memory limit for a raw executable). Do the
     // normal status checks and return the parsed exit code.

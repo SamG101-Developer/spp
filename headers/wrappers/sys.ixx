@@ -41,6 +41,7 @@ module;
 #undef stdin
 #undef stdout
 #undef errno
+#undef environ
 #undef S_ISDIR
 #undef O_CREAT
 #undef O_RDONLY
@@ -161,6 +162,10 @@ export namespace sys {
   constexpr auto SEEK_SET = spp_sys_legacy::kSeekSet;
 
   thread_local auto &errno = spp_sys_legacy::Errno();
+
+  inline auto environ() -> char** {
+    return spp_sys_legacy::Environ();
+  }
 
   inline auto S_ISDIR(const mode_t mode) -> int {
     return spp_sys_legacy::IsDir(mode);

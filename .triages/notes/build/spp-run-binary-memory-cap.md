@@ -1,7 +1,7 @@
 ---
 name: spp-run-binary-memory-cap
 description: "Why running the compiled S++ binary used to kill WSL, and the ulimit guard that stops it"
-updated: 2026-09-12
+updated: 2026-10-30
 ---
 
 Repeated "WSL crashed" events during 2026-08-31 were **not** the harness: the kernel OOM-killer was
@@ -15,7 +15,7 @@ unreachable by default**: overcommit hands out address space, `malloc` succeeds,
 when it touches the pages. The allocator cannot defend the machine on its own.
 
 Fix: `WithMemoryLimit()` in `sources/spp/cli.cpp` prefixes `ulimit -v <kb> && ` onto the `std::system`
-command in both `HandleRun` and `HandleTest`. Default 4 GiB, overridable with `SPP_MEMORY_LIMIT_KB`
+command in both `HandleRun` and `HandleTest`. Default 16 GiB, overridable with `SPP_MEMORY_LIMIT_KB`
 (0 disables). This makes `malloc` genuinely return null at the cap, so `AllocOomErr` fires as designed
 and a runaway reports itself instead of killing the box. Verified not to affect a normal run.
 

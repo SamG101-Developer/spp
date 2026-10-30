@@ -5,7 +5,7 @@
 # builds resolve it.
 set -euo pipefail
 
-prefix="$SPP_LLVM_MAC_PREFIX"
+prefix="$SPP_CI_LLVM_MAC_PREFIX"
 
 # There is nothing to install a different version from: the compiler
 # is whichever one [pin.llvm-mac] names.

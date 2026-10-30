@@ -118,3 +118,16 @@ enabled = false
 pattern = '\bconst\s+(?:(?:typename|struct|class|enum)\s+)?[\w:]+(?:<[^;{}]*>)?(?:::\w+)*\s*(?:\bconst\b\s*)?[&*]'
 message = "use east const: \"Type const&\" / \"Type const*\", not \"const Type&\" / \"const Type*\""
 files = '\.(?:cpp|ixx|hpp)$'
+
+[[rule]]
+id = "no-raw-env-access"
+enabled = true
+pattern = '\b(?:secure_getenv|getenv|setenv|unsetenv|_?putenv(?:_s)?|_dupenv_s|_wgetenv|_?environ)\s*\(|\b_?environ\b'
+message = "register the variable in sources/spp/utils/env.cpp and use spp::utils::env"
+files = '\.(?:cpp|ixx|hpp)$'
+allow = [
+  "headers/wrappers/sys.ixx",
+  "headers/wrappers/sys_legacy.hpp",
+  "sources/spp/utils/env.cpp",
+]
+skip-comments = true

@@ -47,6 +47,7 @@ import spp.lsp.resolution_index;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
+import spp.utils.env;
 import spp.utils.error_formatter;
 import spp.utils.features;
 import spp.utils.files;
@@ -704,7 +705,8 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
 
   out_count = count;
   return Str("fun main() -> Void {\n")
-    + "  let only = std::process::get_env(\"SPP_TEST_ONLY\").unwrap_or(Str::from(\"\"))\n"
+    + "  let only = std::process::get_env(\"" + Str(utils::env::NameOf(utils::env::Var::TestOnly))
+    + "\").unwrap_or(Str::from(\"\"))\n"
     + "  let run_all = only.len() == 0_uz\n"
     + body
     + "  std::console::println(\"[ DONE ]\")\n"

@@ -13,5 +13,5 @@ case "$COMPILER" in
   *) version="" ;;
 esac
 
-echo "SPP_TOOLCHAIN_VERSION=${version}" >> "$GITHUB_ENV"
+echo "SPP_CI_TOOLCHAIN_VERSION=${version}" >> "$GITHUB_ENV"
 echo "${COMPILER} ${version:-(image default)}"

@@ -6,7 +6,7 @@ source .github/scripts/lib/verified-fetch.sh
 
 root="${LLVM_MAC_ASSET%.tar.xz}"
 tarball="${RUNNER_TEMP}/llvm.tar.xz"
-prefix="$SPP_LLVM_MAC_PREFIX"
+prefix="$SPP_CI_LLVM_MAC_PREFIX"
 listing="${RUNNER_TEMP}/llvm-listing.txt"
 exported="${RUNNER_TEMP}/llvm-exported.txt"
 files="${RUNNER_TEMP}/llvm-files.txt"

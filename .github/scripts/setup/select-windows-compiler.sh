@@ -6,7 +6,7 @@ set -euo pipefail
 
 cc=cl
 if [ "$COMPILER" = "clang-cl" ]; then
-  cc="$(cygpath -m "$SPP_LLVM_WIN_PREFIX")/bin/clang-cl.exe"
+  cc="$(cygpath -m "$SPP_CI_LLVM_WIN_PREFIX")/bin/clang-cl.exe"
 fi
 {
   echo "CC=$cc"
