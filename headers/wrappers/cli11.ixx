@@ -2,7 +2,10 @@ module;
 #define CLI11_COMPILE
 #include <CLI/CLI.hpp>
 
-export module cli11;
+/// The CLI11 module is used for argument parsing to form the spp tool. The
+/// module name contains a postfix underscore soa s not to conflict with CLI11's
+/// own module logic.
+export module cli11_;
 
 export namespace CLI {
   using ::CLI::App;

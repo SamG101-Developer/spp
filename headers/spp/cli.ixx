@@ -75,7 +75,4 @@ namespace spp::cli {
   /// compile-time constants resolved to, by name (can be empty).
   SPP_EXP_FUN auto RunCppGoogleTest(
     Str const &mode, Str &&main_code) -> Map<Str, Str>;
-
-  auto FormatDefaultFileContents(
-    StrView contents) -> Str;
 }
