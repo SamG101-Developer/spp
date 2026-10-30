@@ -81,6 +81,13 @@ repos:
         pass_filenames: false
         files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/ci/check-workflows\.py|scripts/lib/pins\.py)'
 
+      - id: suggested-triples
+        name: check suggested triples match ci
+        entry: python3 .github/scripts/ci/check-suggested-triples.py
+        language: python
+        pass_filenames: false
+        files: '^(\.github/workflows/_cross_codegen\.yaml|\.github/scripts/ci/check-suggested-triples\.py|sources/spp/codegen/llvm_target\.cpp)$'
+
   # PYTHON CHECKS
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
