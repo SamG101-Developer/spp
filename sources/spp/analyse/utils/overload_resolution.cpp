@@ -63,7 +63,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -326,10 +325,10 @@ namespace spp::analyse::utils::overload_resolution {
 
       auto ret_ty = out_arg->TypeVal;
       auto p_tys = args_arg->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()
-        | genex::views::transform([](auto *g) {
+        | genex::views::transform([](auto *g) -> Unique<FunctionParameterAst> {
           return MakeUnique<FunctionParameterRequiredAst>(nullptr, nullptr, g->TypeVal);
         })
-        | spp::views::cast_unique<FunctionParameterAst>();
+        | genex::to<Vec>();
 
       // Create a function prototype based off of the parameter
       // and return type.

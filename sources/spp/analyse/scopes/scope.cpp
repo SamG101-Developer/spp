@@ -56,7 +56,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
-import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.ice;
 import spp.utils.interner;

@@ -37,7 +37,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
-import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
@@ -97,7 +96,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*InitType);
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
-    | spp::views::tuple_nth<0>
+    | genex::views::tuple_nth<0>
     | genex::to<Vec>();
 
   // Use the hook to record information for the resolution and
