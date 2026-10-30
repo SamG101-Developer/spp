@@ -37,9 +37,11 @@ import spp.utils.errors;
 import spp.utils.features;
 import spp.utils.files;
 import spp.utils.ice;
+import spp.utils.shell;
 import cli11_;
 import genex;
 import magic_enum;
+import sys;
 import tomlpp;
 
 inline constexpr spp::Str OUT_FOLDER = "out";
@@ -186,7 +188,7 @@ namespace spp::cli {
       // Form the full command by prepending the "git" part, and then run the
       // command though the local system. Record the returned status.
       const auto command = "git " + args;
-      const auto status = std::system(command.c_str());
+      const auto status = utils::shell::Run(command);
 
       // If the status is not 0, it errored, so print that to terminal, and
       // return "false" from this function.
@@ -230,14 +232,14 @@ namespace spp::cli {
       // host.
       const auto args =
         " -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 ls-remote --exit-code --heads "
-        + url;
+        + utils::shell::Quote(url);
 
 #if SPP_PLATFORM_WINDOWS
       const auto command = "set GIT_TERMINAL_PROMPT=0&& git" + args + " >NUL 2>&1";
 #else
       const auto command = "GIT_TERMINAL_PROMPT=0 git" + args + " >/dev/null 2>&1";
 #endif
-      return std::system(command.c_str()) == 0;
+      return utils::shell::Run(command) == 0;
     }
   }
 }
@@ -562,7 +564,8 @@ auto spp::cli::HandleVcs() -> bool {
       (*info.as_table())["branch"].value<Str>().value_or("master");
 
     auto repo_folder = cwd / VCS_FOLDER / repo_name;
-    auto repo_target = utils::files::NativeString(repo_folder);
+    const auto quoted_target = utils::shell::Quote(utils::files::NativeString(repo_folder));
+    const auto quoted_branch = utils::shell::Quote(repo_branch);
 
     // Ping the host before handing it to git, and cache per host, so that later
     // repositories on the same host reuse the answer.
@@ -577,7 +580,7 @@ auto spp::cli::HandleVcs() -> bool {
     // If the clone fails, check if the host is up or not, and report the error.
     if (not std::filesystem::exists(repo_folder)) {
       if (not RunGit(
-        "clone --branch " + repo_branch + " " + repo_url + " " + repo_target)) {
+        "clone --branch " + quoted_branch + " " + utils::shell::Quote(repo_url) + " " + quoted_target)) {
         if (not host_is_up()) {
           std::cerr
             << "Error: '"s << host << "' is unreachable, and "
@@ -594,8 +597,8 @@ auto spp::cli::HandleVcs() -> bool {
     // Otherwise, update the branch (for mutating tags like "master"). Same
     // error system as above; attempt, then check if host is up etc.
     else if (
-      not RunGit("-C " + repo_target + " checkout " + repo_branch) or
-      not RunGit("-C " + repo_target + " pull origin " + repo_branch)) {
+      not RunGit("-C " + quoted_target + " checkout " + quoted_branch) or
+      not RunGit("-C " + quoted_target + " pull origin " + quoted_branch)) {
       if (host_is_up()) {
         ok = false;
         continue;
@@ -729,11 +732,11 @@ auto spp::cli::HandleRun(
 
   // Use the memory bound until the stl is stable; todo: also wire to a flag?
   // There have been instances where allocation issues mangled the WSL instance.
-  const auto status = std::system(
-    WithMemoryLimit(utils::files::NativeString(exe_file)).c_str());
-  const auto exited_normally = (status & 0x7F) == 0;
+  const auto status = utils::shell::Run(
+    WithMemoryLimit(utils::shell::Quote(utils::files::NativeString(exe_file))));
+  const auto exited_normally = sys::WIFEXITED(status);
   const auto exit_code = exited_normally
-    ? (status >> 8) & 0xFF
+    ? sys::WEXITSTATUS(status)
     : status;
 
   // Print the information about the program termination, and exit with the
@@ -889,7 +892,7 @@ auto spp::cli::HandleTest(
   // ran. Generate the exe path from the file too.
   std::cout << "Running " << c.TestCount() << " test(s)." << std::endl;
   std::cout.flush();
-  const auto exe = utils::files::NativeString(exe_file);
+  const auto exe = utils::shell::Quote(utils::files::NativeString(exe_file));
 
   // The selector is set on the command rather than in this process, so nothing
   // has to be unset afterwards and the whole-suite run is plain. A runner
@@ -898,17 +901,17 @@ auto spp::cli::HandleTest(
     // The target is the raw executable file for no special runner, otherwise
     // it's the runner followed by the exe.
     const auto target = runner.empty() ? exe : runner + " " + exe;
-    const auto command = only.empty()
-      ? target
-      : Str(utils::env::NameOf(utils::env::Var::TestOnly))
-      + "=" + only + " " + target;
+    const auto name = Str(utils::env::NameOf(utils::env::Var::TestOnly));
+#if SPP_PLATFORM_WINDOWS
+    const auto command = only.empty() ? target : "set \"" + name + "=" + only + "\"&& " + target;
+#else
+    const auto command = only.empty() ? target : name + "=" + utils::shell::Quote(only) + " " + target;
+#endif
 
     // Invoke the command (adding the memory limit for a raw executable). Do the
     // normal status checks and return the parsed exit code.
-    const auto status = std::system(
-      (runner.empty() ? WithMemoryLimit(command) : command).c_str());
-    const auto exited_normally = (status & 0x7F) == 0;
-    return exited_normally ? (status >> 8) & 0xFF : -1;
+    const auto status = utils::shell::Run(runner.empty() ? WithMemoryLimit(command) : command);
+    return sys::WIFEXITED(status) ? sys::WEXITSTATUS(status) : -1;
   };
 
   // Run the tests, and check for a exit status of 0 (this can include failed

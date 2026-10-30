@@ -131,3 +131,12 @@ allow = [
   "sources/spp/utils/env.cpp",
 ]
 skip-comments = true
+
+[[rule]]
+id = "no-raw-shell"
+enabled = true
+pattern = '(?<![\w.>])(?:std::|::)?(?:_?w?system|_?popen)\s*\('
+message = "use spp::utils::shell::Run, and spp::utils::shell::Quote for any path or value in the command"
+files = '^(?:sources|headers)/.*\.(?:cpp|ixx|hpp)$'
+allow = ["sources/spp/utils/shell.cpp"]
+skip-comments = true

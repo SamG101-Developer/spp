@@ -52,6 +52,7 @@ import spp.utils.error_formatter;
 import spp.utils.features;
 import spp.utils.files;
 import spp.utils.ice;
+import spp.utils.shell;
 import genex;
 import llvm;
 
@@ -511,15 +512,15 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   }
 
   auto command = *linker
-    + " -o " + utils::files::NativeString(exe_file)
-    + " " + utils::files::NativeString(object_file);
+    + " -o " + utils::shell::Quote(utils::files::NativeString(exe_file))
+    + " " + utils::shell::Quote(utils::files::NativeString(object_file));
   for (auto const &lib : *libraries) {
     // Staged beside the executable rather than linked where it
     // sits, so that what the loader needs travels with what
     // was built and the path baked into it is a relative one.
     const auto staged = lib_dir / lib.filename();
     std::filesystem::copy_file(lib, staged, std::filesystem::copy_options::overwrite_existing);
-    command += " " + utils::files::NativeString(staged);
+    command += " " + utils::shell::Quote(utils::files::NativeString(staged));
   }
 
   // The flags below are per object format, keyed on the target
@@ -568,7 +569,7 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   // got.
 
   std::cout << "Linking: " << exe_file << std::endl;
-  if (const auto status = std::system(command.c_str()); status != 0) {
+  if (const auto status = utils::shell::Run(command); status != 0) {
     llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
     return false;
   }
