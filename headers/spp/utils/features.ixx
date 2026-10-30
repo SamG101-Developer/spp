@@ -6,8 +6,14 @@ import spp.utils.types;
 import std;
 
 namespace spp::utils::features {
+  /// What kind a value on a key is. The booleans are for "flags" - is xyz
+  /// enabled; the strings are for options - the linker is "xyz"; the tables are
+  /// for example the vcs entries; the version is just for the package version.
   SPP_EXP_CLS enum class ValueKind { Bool, String, Version, Table };
 
+  /// The available config keys where their value tunes some area in the
+  /// compiler - for example, reading the memory hardening flags to enable
+  /// certain features in LLVM etc.
   SPP_EXP_CLS enum class ConfigKey {
     ProjectName,
     ProjectVersion,
@@ -29,100 +35,93 @@ namespace spp::utils::features {
     TargetFloorLinux,
   };
 
+  /// A key specification contains the metadata of a key within a section,
+  /// describing its expected type, default value, if it is required, help text,
+  /// etc. Importantly, the "minimum linux" which is a floor for the key.
   SPP_EXP_CLS struct KeySpec {
     ConfigKey Key;
-
     StrView Name;
-
     ValueKind Kind;
-
     bool Required;
-
-    /// Default for bool values (feature enabled or not).
-    bool Default;
-
+    bool Default; /// Default for bool values (feature enabled or not).
+    StrView DefaultText = {}; /// Default for string and version values.
     StrView Help;
-
-    /// Default for string and version values.
-    StrView DefaultText = {};
-
-    /// The oldest Linux kernel a run-time measure works on; empty
-    /// for one that needs nothing of the kernel. A measure with
-    /// one is Linux-only, and left out on any other target.
-    StrView MinLinux = {};
+    StrView MinLinux = {}; /// Empty for one that needs nothing of the kernel.
   };
 
+  /// A section specification contains the metadata of a section within the
+  /// schema, including its name, list of keys (as key specifications) and if
+  /// the section is "free form" (ie [vcs] can have free form entries).
   SPP_EXP_CLS struct SectionSpec {
-    /// Example name: "[memory.stack]"
     StrView Name;
-
     StrView Help;
-
     Vec<KeySpec> Keys;
-
-    /// Allow "any" key? like in [vcs], the lib names cannot be pre-known.
     bool FreeForm;
   };
 
-  /// Every section and the key the compiler knows, which is
-  /// what an unrecognised one is reported against.
+  /// What the selected target can do, read from codegen by the caller. Features
+  /// sits below codegen, so it is handed these rather than asking for them.
+  SPP_EXP_CLS struct TargetFacts {
+    bool SafeStack;
+    bool SafeStackCanary;
+    bool IsLinux;
+    StrView Folder;
+  };
+
+  /// Every section and the key the compiler knows, which is what an
+  /// unrecognised one is reported against.
   SPP_EXP_FUN auto Schema() -> Vec<SectionSpec> const&;
 
-  /// Check the config against the schema, reporting anything
-  /// unrecognised or missing. If an invalid section name is
-  /// found, all the valid section names are reported. If,
-  /// within a valid section, an invalid key is found, then all
-  /// the valid keys for that section are reported.
+  /// Check the config against the schema, reporting anything unrecognised or
+  /// missing. If an invalid section name is found, all the valid section names
+  /// are reported. If, within a valid section, an invalid key is found, then
+  /// all the valid keys for that section are reported.
   SPP_EXP_FUN auto Validate(Path const &config, Vec<Str> &errors) -> bool;
 
-  /// Load a config and load the values from the toml settings
-  /// into the feature system within C++. This is a single
-  /// place to dynamically set all the feature values.
+  /// Load a config and load the values from the toml settings into the feature
+  /// system within C++. This is a single place to dynamically set all the
+  /// feature values.
   SPP_EXP_FUN auto Load(Path const &config, Vec<Str> &errors) -> bool;
 
-  /// Check whether a feature is enabled, either from the
-  /// defaults, or the config overrides.
-  SPP_EXP_FUN auto Enabled(ConfigKey key) -> bool;
+  /// Check whether a feature is enabled, either from the defaults or the config
+  /// overrides.
+  SPP_EXP_FUN auto IsEnabled(ConfigKey key) -> bool;
+
+  /// Whether a measure goes into the program: turned on, and not left out
+  /// because of incompatibilities.
+  SPP_EXP_FUN auto IsApplied(ConfigKey key, bool target_linux) -> bool;
 
   /// The value of a string or version key, set or defaulted.
   SPP_EXP_FUN auto Text(ConfigKey key) -> Str;
 
-  /// Whether the loaded config sets the key itself, rather than
-  /// leaving it to its default.
-  SPP_EXP_FUN auto IsSet(ConfigKey key) -> bool;
+  /// Report every flag that the config has been manually set that trips the
+  /// "IsFlagIncompatibleWithSystem" function, with error wrapping. Asking for a
+  /// feature the floor or the target cannot have is an error, not ignores or
+  /// quietly downgraded.
+  SPP_EXP_FUN auto CheckFloor(
+    TargetFacts const &target, Vec<Str> &errors) -> bool;
 
-  /// Why a run-time measure that is turned on is left out of the
-  /// program: it needs a newer Linux than "[target.floor] linux",
-  /// or the target is not Linux. Empty when it goes in, or is
-  /// turned off.
-  SPP_EXP_FUN auto LeftOut(ConfigKey key, bool target_linux) -> Str;
+  /// Refuse a measure the target cannot have, on by default or not. Building
+  /// without it would quietly revert hardening.
+  SPP_EXP_FUN auto CheckTargetSupport(
+    TargetFacts const &target, Vec<Str> &errors) -> bool;
 
-  /// Whether a measure goes into the program: turned on, and not
-  /// left out.
-  SPP_EXP_FUN auto Applied(ConfigKey key, bool target_linux) -> bool;
-
-  /// Report every measure the config turns on itself that
-  /// "LeftOut" would leave out: asking for one the floor or the
-  /// target cannot have is a mistake, not a quiet downgrade.
-  SPP_EXP_FUN auto CheckFloor(bool target_linux, Vec<Str> &errors) -> bool;
-
-  /// The linker "[target.linkers]" names for a target folder, if
-  /// it names one: a command, run with the link's arguments after
-  /// it.
+  /// The linker "[target.linkers]" names for a target folder, if it names one:
+  /// a command, run with the link's arguments after it.
+  SPP_LEGACY
   SPP_EXP_FUN auto Linker(StrView target_folder) -> Opt<Str>;
 
-  /// Reset every feature to its default - as if the compiler
-  /// never read the config file for overrides at all.
+  /// Reset every feature to its default - as if the compiler never read the
+  /// config file for overrides at all.
   SPP_EXP_FUN auto Reset() -> void;
 
-  /// The entire schema as a listing, for the command "spp
-  /// config", and for the tail of a validation failure.
+  /// The entire schema as a listing, for the command "spp config", and for the
+  /// tail of a validation failure.
   SPP_EXP_FUN auto HelpText() -> Str;
 
-  /// Every on/off and version key and the value it has for this
-  /// build, default or set, as "section.key = value" lines in
-  /// schema order: what a built program records about itself, so
-  /// a key added to the schema is recorded with no more work. A
-  /// measure that is on but left out reads "left out (why)".
+  /// Every on/off and version key and the value it has for this build, default
+  /// or set, as "section.key = value" lines in schema order: what a built
+  /// program records about itself. A measure that is on but left out reads
+  /// "left out (why)".
   SPP_EXP_FUN auto EffectiveSettings(bool target_linux) -> Str;
 }

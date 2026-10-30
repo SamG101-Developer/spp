@@ -423,9 +423,9 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (has_entry_point) {
     codegen::EmitCEntryPoint(
       lto_module.get(), entry.c_str(),
-      utils::features::Enabled(utils::features::ConfigKey::MemoryStackSplit),
-      utils::features::Applied(utils::features::ConfigKey::MemoryMapDenyWx, codegen::TargetIsLinux()),
-      utils::features::Applied(utils::features::ConfigKey::MemoryMapSeal, codegen::TargetIsLinux()));
+      utils::features::IsEnabled(utils::features::ConfigKey::MemoryStackSplit),
+      utils::features::IsApplied(utils::features::ConfigKey::MemoryMapDenyWx, codegen::TargetIsLinux()),
+      utils::features::IsApplied(utils::features::ConfigKey::MemoryMapSeal, codegen::TargetIsLinux()));
     constexpr auto preserved = "main";
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }

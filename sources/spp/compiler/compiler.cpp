@@ -32,13 +32,13 @@ import std;
 
 SPP_MOD_BEGIN
 auto spp::compiler::Compiler::ModeName(
-  const Mode mode)
+  const BuildMode mode)
   -> Str {
-  return mode == Mode::REL ? "rel" : "dev";
+  return mode == BuildMode::REL ? "rel" : "dev";
 }
 
 spp::compiler::Compiler::Compiler(
-  const Mode mode,
+  const BuildMode mode,
   const BuildType build_type,
   TestScope const &tests) :
   _Modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), ModeName(mode), tests)),
@@ -50,7 +50,7 @@ spp::compiler::Compiler::Compiler(
 }
 
 auto spp::compiler::Compiler::ForCppGoogleTest(
-  const Mode mode,
+  const BuildMode mode,
   Str &&main_code)
   -> Unique<Compiler> {
   auto c = Unique<Compiler>(new Compiler());
@@ -153,7 +153,7 @@ auto spp::compiler::Compiler::Compile() -> bool {
     else {
       _Boot->Stage9_5_Monomorphise(next_bar(), *_Modules, _ScopeManager.get());
       _Boot->Stage10_PreCodeGen(next_bar(), *_Modules, _ScopeManager.get());
-      built = _Boot->Stage11_CodeGen(next_bar(), *_Modules, _ScopeManager.get(), _Mode == Mode::REL ? 3u : 0u);
+      built = _Boot->Stage11_CodeGen(next_bar(), *_Modules, _ScopeManager.get(), _Mode == BuildMode::REL ? 3u : 0u);
     }
 #if !SPP_DEBUG
   }

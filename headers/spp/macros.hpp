@@ -161,3 +161,5 @@
   using namespace ns
 
 #define SPP_INTERNAL namespace
+
+#define SPP_LEGACY _Pragma("GCC warning \"NOT REFACTORED YET\"")

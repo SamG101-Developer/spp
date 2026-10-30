@@ -4,4 +4,4 @@
 // memory stack protection is only applied if [memory.stack]
 // contains "protect=true". Braces needed after the macro use.
 #define FEATURE_GATE(_What) \
-  if (utils::features::Enabled(utils::features::ConfigKey::_What))
+  if (utils::features::IsEnabled(utils::features::ConfigKey::_What))

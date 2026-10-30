@@ -35,18 +35,17 @@ inline constexpr auto kCompilerStageNames = spp::Arr{
 
 SPP_EXP_CLS class spp::compiler::Compiler {
 public:
-  enum class Mode { DEV, REL };
-
+  enum class BuildMode { DEV, REL };
   enum class BuildType { EXE, LIB };
 
-  SPP_ATTR_NODISCARD static auto ModeName(Mode mode) -> Str;
+  SPP_ATTR_NODISCARD static auto ModeName(BuildMode mode) -> Str;
 
 private:
   Path _Path;
 
   Unique<ModuleTree> _Modules;
 
-  Mode _Mode = Mode::DEV;
+  BuildMode _Mode = BuildMode::DEV;
 
   BuildType _BuildType = BuildType::EXE;
 
@@ -95,9 +94,9 @@ public:
    * @param[in] build_type Whether the project produces an executable or a library.
    * @param[in] tests Which "tst" folders to compile alongside the sources. Empty for an ordinary build.
    */
-  explicit Compiler(Mode mode, BuildType build_type, TestScope const &tests = {});
+  explicit Compiler(BuildMode mode, BuildType build_type, TestScope const &tests = {});
 
-  static auto ForCppGoogleTest(Mode mode, Str &&main_code) -> Unique<Compiler>;
+  static auto ForCppGoogleTest(BuildMode mode, Str &&main_code) -> Unique<Compiler>;
 
   ~Compiler();
 
