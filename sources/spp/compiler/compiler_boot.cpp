@@ -784,8 +784,8 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
     return written.empty() ? fallback : written;
   };
 
-  auto has_name = not name_filter.empty();
-  auto has_group = not group_filter.empty();
+  const auto has_name = not name_filter.empty();
+  const auto has_group = not group_filter.empty();
   auto body = Str();
   TestNames.clear();
   for (auto const &mod : tree) {
