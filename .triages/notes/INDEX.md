@@ -57,4 +57,4 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (23)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (24)
 - [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (22)
-- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (4)
+- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (5)
