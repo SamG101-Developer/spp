@@ -1,19 +1,33 @@
 ---
 name: vcs-dependencies-one-level
-description: "vcs dependencies are one level deep throughout: a dependency's own [vcs] is never fetched, and a nested vcs folder is half-seen"
+description: "spp.compiler.dependencies is the one list of dependencies, flat under vcs/; a package names only what it declares (E121), std included; one namespace is one package"
 updated: 2026-11-01
 ---
 
-Only the project's own `[vcs]` table is fetched (`cli::HandleVcs`), and each dependency's `spp.toml` is not read for
-more. Everything else assumes a dependency is a direct child of `vcs/`: `ffi.cpp`'s `FfiFolders`, `ModuleTree`'s
-`_SourceRoots`, `OwnerOf`, and `PackageOfScope` in `sup_prototype_extension_ast.cpp`. So a project has to list every
-transitive dependency itself.
+`spp.compiler.dependencies` is the only reader of `[vcs]`: `Declared` (one file's records, safe before a fetch),
+`Fetch` (the walk, with the git work handed in by `HandleVcs`), `Resolve` (the fetched ones, every level) and `Validate`.
+The last three share one walk, so they cannot disagree about the tree. The cli, `ModuleTree` and `ffi` all ask it.
 
-**Why:** a `vcs/a/vcs/b` that exists on disk is not ignored. `GlobSpp(_VcsPath)` is recursive, so its modules are read,
-but the `main.spp`, `tst` and `ffi` filters only compare against the top of `vcs/a`. Its `main.spp`, tests and ffi stubs
-are therefore kept as ordinary modules, under no source root, namespaced by their parent folder, and its libraries are
-never linked. Read from the code on 2026-11-01, not run.
+The rules, each a hard error:
 
-**How to apply:** do not make `FfiFolders` alone recursive. Support transitive dependencies by having `HandleVcs` walk
-each dependency's `[vcs]` and flatten into one `vcs/` folder, deciding what a name clash means: `ffi::Validate` already
-rejects the same ffi package name twice.
+- Everything lands flat in `<root>/vcs/<name>`. One name declared with a different `git` or `branch` names both
+  requesters. URLs compare as written.
+- A module can only name its own package and what its `spp.toml` declares (E121, `visibility_utils::CheckPackageAccess`,
+  beside ffi's E120). It is not a lookup rule: a value of an undeclared dependency's type can be held and used, and
+  `meta.IsTestHarness` and `IgnoreAccessModifierViolations` are exempt.
+- Every package declares `std` unless it is `std` (`Validate`), since the prelude names it. `std` can be pinned, but one
+  pin has to hold across the whole project.
+- A top-level namespace is one package (`ModuleTree::CheckNamespaces`, before parsing), and not both an ffi package and
+  source. So `NamespaceSymbol::Owner` and `Declares`, which are per top-level namespace, are always the module's own.
+
+See `.triages/vcs-dependency-model.md` for why, and what is out of scope (`ns`, lockfiles).
+
+**Why:** the compiler used to have no such list. Each reader worked dependencies out from folders and paths, at different
+depths, so removed dependencies still compiled, stray `.spp` files compiled, and a project under a folder named `vcs`
+was misread as a dependency.
+
+**How to apply:** never list `vcs/` or look for `vcs` in a path; ask `Resolve`, or read `Module::Owner`
+(`ModulePrototypeAst::Owner` on the AST). Before a fetch, validate with `ValidateProject` only: `HandleValidate` also
+requires every dependency to be fetched and sound, and a broken checkout must still be able to reach the fetch that
+repairs it. Test the walk through `Fetch` with a fake `fetch_one` (`test_msc_dependencies.cpp`), and anything needing
+real packages in `tests/codegen/check-transitive-deps.sh`, as the gtest fixture has only `std`.
