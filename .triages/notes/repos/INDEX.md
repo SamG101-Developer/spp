@@ -1,3 +1,4 @@
 - [Project std + prelude imports](spp-project-std-and-prelude.md) — a project's vcs/std is its own clone; no prelude re-imports
 - [Library checks live in the compiler](library-checks-live-in-compiler.md) — ffi::Check* at link, *_ffi keys; no post-build scripts in sppc etc.
 - [sppc sibling repo](sppc-sibling-repo.md) — ../sppc C shim; edit → tell the maintainer; their push auto-PRs SPP-STL
+- [Sibling libs install Release](sibling-libs-install-release.md) — NumEx's code comes from its install; an untyped build is -O0 and cost a third of compile time

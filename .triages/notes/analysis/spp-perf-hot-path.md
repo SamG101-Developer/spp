@@ -1,7 +1,7 @@
 ---
 name: spp-perf-hot-path
 description: "spp compiler time has moved from type analysis to monomorphization; what's already optimised"
-updated: 2026-10-16
+updated: 2026-11-01
 ---
 
 Updated 2026-08-22 after a round of optimisation. Profile with a debug-build flamegraph over ./project;
@@ -45,6 +45,8 @@ to 0.5 s. LLVM has no frame pointers, so its stacks don't reach our frames: comp
 Frontend (108-test run): stage 7 23% (overload resolution 16%, of which every candidate's instance 5.5%), stage 5.5
 sup attach 16% (`MakeSupInstance` 11%), drain 11% (body analysis 9%); allocation ~10% plus AST clone/destroy ~6%;
 `InternTypeKey` 3.4% self (from `Scope::TypeIdOf`); symbol-table `Find` 2.9% (most from `FindNsSymbol`).
+
+**2026-11-01 sup attachment (`./project`, about 3 s, `build -m dev`):** 27% of the run, of which `MakeSupInstance` 17% from 27,289 instances at about 20 us each: count, not cost per call. The memo above is gone from `MakeSupInstance`, and what replaces it is `Scope::SupsAttached`. Read through the door, 72% of instances belong to types analysis reads, 22% only to the attach machinery, 6% to nothing, so attaching whole types lazily is worth at most about 5%. Two things that do nothing, measured over 40 pairs: keying a mock's own block lazily (0.6% in the profile, not timeable), and skipping `ReadVarSymbolTypes` and the super class for instances their constraints reject (1,812 of them, all cheap). Time such changes in alternating pairs: differences of a few percent vanish between runs otherwise. NumEx was 23% of the run until 2026-11-01: [[sibling-libs-install-release]].
 
 Next candidates: shared_ptr traffic is now the largest cross-cutting cost (~23%), much of it the
 `WithoutGns` cluster (~5.4%, gated behind a "using the cache breaks" Todo in

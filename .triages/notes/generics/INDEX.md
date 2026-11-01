@@ -8,6 +8,7 @@
 - [Defaults copied to use sites](spp-defaults-copied-to-use-sites.md) — no scopes in defaults (E108)
 - [Generic sup cmp + Void params](spp-generic-sup-cmp-and-void-params.md) — `cmp n: T` folded at the use
 - [Sup attach is lazy + memoised](sup-attach-fixed-point.md) — attach once on first read
+- [Module-order failures](module-order-failures.md) — 5-10% of shuffled orders crash or fail; a use-after-free holding a reference into NormalSupBlocks; GlobSpp's sort hides it
 - [Lazy attach needs a clean context](lazy-attach-clean-context.md) — ResetContext under a heavy MetaGuard
 - [GetSupScopes is a snapshot](getsupscopes-snapshot.md) — SupScopeList; old const& was a UAF
 - [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — bind blanket/pack sups off the receiver
