@@ -53,51 +53,46 @@ SPP_EXP_CLS struct spp::compiler::Module {
   Unique<asts::ModulePrototypeAst> ModuleAst;
   Shared<utils::errors::ErrorFormatter> Formatter;
 
-  /**
-   * Whether this is the entry point the test build generates. Its source is not read from disk: it is written once the
-   * other modules have been parsed and the unit tests among them are known, which is why it is parsed after the rest.
-   */
+  /// Whether this is the entry point the test build generates. Its source is
+  /// not read from disk, it is written once the other modules have been parsed
+  /// and the unit tests among them are known, which is why it is parsed after
+  /// the rest.
   bool IsTestHarness = false;
 
-  /**
-   * The namespace this module's contents live in, as the parts of a "::" chain. Worked out once, by the tree, which is
-   * the only thing that knows where the real source roots are - the path alone cannot say, because a module is free to
-   * have directories of its own named "src" or "tst".
-   */
+  /// The namespace this module's contents live in, as the parts of a "::"
+  /// chain. Worked out once, by the tree, which is the only thing that knows
+  /// where the real source roots are - the path alone cannot say, because a
+  /// module is free to have directories of its own named "src" or "tst".
   Vec<Str> NsParts;
 
-  /**
-   * Who shipped this module: the "vcs" dependency it was read from, by its folder name, or none for the project's own
-   * (its "src", "tst" and "ffi", and the test harness). An ffi package can only be named by its owner's modules.
-   */
+  /// Who shipped this module: the "vcs" dependency it was read from, by its
+  /// folder name, or none for the project's own (its "src", "tst" and "ffi",
+  /// and the test harness). An ffi package can only be named by its owner's
+  /// modules.
   Opt<Str> Owner;
 
-  /** Whether this module is a stub of an ffi package, from its owner's "ffi" folder. */
+  /// Whether this module is a stub of an ffi package, from its owner's "ffi"
+  /// folder.
   bool IsFfi = false;
 
-  /**
-   * Whether this module is one of the standard library's own sources, from "vcs/std/src". These import what they use
-   * themselves, so the prelude is not appended to them.
-   */
+  /// Whether this module is one of the standard library's own sources, from
+  /// "vcs/std/src". These import what they use themselves, so the prelude is
+  /// not appended to them.
   bool IsStd = false;
 
   Module(
-    spp::Path path,
-    Str code,
-    Vec<lex::RawToken> tokens,
+    spp::Path path, Str code, Vec<lex::RawToken> tokens,
     Unique<asts::ModulePrototypeAst> module_ast,
     Shared<utils::errors::ErrorFormatter> error_formatter);
 
-  static auto FromPath(
-    spp::Path const &path);
+  /// Build a module from a path. This doesn't fill its information in, so will
+  /// be done externally after this method is called.
+  static auto FromPath(spp::Path const &path);
 
-  /**
-   * The empty entry-point module a test build fills in later. Reserves the "tst/main.spp" name, so a real file there
-   * is not globbed - the harness owns that namespace.
-   */
-  static auto TestHarness(
-    spp::Path const &tst_root)
-    -> Unique<Module>;
+  /// The empty entry-point module a test build fills in later. Reserves the
+  /// "tst/main.spp" name, so a real file there is not globbed - the harness
+  /// owns that namespace.
+  static auto TestHarness(spp::Path const &tst_root) -> Unique<Module>;
 };
 
 SPP_EXP_CLS struct spp::compiler::ModuleTree {
