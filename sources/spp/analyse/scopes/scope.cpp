@@ -1848,7 +1848,7 @@ auto Scope::DepthDiff(const Scope *scope) const -> sys::ssize_t {
   // a counter.
   auto func = [](this auto &&self, Scope const *source, Scope const *target, const sys::ssize_t depth) -> sys::ssize_t {
     if (source == target) { return depth; }
-    for (auto const *sup_scope : source->DirectSupScopes) {
+    for (auto const *sup_scope : source->GetDirectSupScopes()) {
       if (const auto result = self(sup_scope, target, depth + 1z); result >= 0z) {
         return result;
       }

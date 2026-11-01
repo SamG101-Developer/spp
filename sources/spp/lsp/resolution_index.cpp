@@ -85,7 +85,7 @@ namespace spp::lsp::resolution_index {
       const auto mock = scope.FindTypeSymbol(sym.Type.get());
       if (mock == nullptr or mock->LinkedScope == nullptr) { return signatures; }
 
-      for (const auto overload : mock->LinkedScope->DirectSupScopes) {
+      for (const auto overload : mock->LinkedScope->GetDirectSupScopes()) {
         // Get the "sup-ext" asts, which are the superimpositions
         // of the "FunXXX" family of types. Extract the function
         // prototype from the "sup-ext".
@@ -410,7 +410,7 @@ namespace spp::lsp::resolution_index {
       CompilerMetaData const &meta) -> void {
       // Get the members of a type and create a member list containing
       // them, assigned against the owner type (pre-serialized).
-      if (owner.empty() or not WantsMembersYet(meta) or not type_scope.SupsAttached) { return; }
+      if (owner.empty() or not WantsMembersYet(meta) or not (type_scope.SupsAttached or type_scope.SupsDeferred)) { return; }
       if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
       auto members = MembersOfTypeScope(type_scope, sm, meta);
       Current().Members.emplace_back(MemberList{

@@ -55,7 +55,7 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
   // extracting the function prototype out of it. Return
   // a match. Always only 1 sup-ext for the $Types, so
   // the name and scope are always correct here.
-  for (auto const *ext_scope : mock_sym->LinkedScope->DirectSupScopes) {
+  for (auto const *ext_scope : mock_sym->LinkedScope->GetDirectSupScopes()) {
     const auto proto = FnBlockOf(*ext_scope).second;
     if (proto == nullptr) { continue; }
 
@@ -101,7 +101,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
   // block to the mock. Its function type is compared along with the
   // ones above it, as a "FunRef" is also a "FunMut" and a "FunMov".
   auto match = Opt<FnValueMatch>();
-  for (auto const *ext_scope : mock_sym->LinkedScope->DirectSupScopes) {
+  for (auto const *ext_scope : mock_sym->LinkedScope->GetDirectSupScopes()) {
     const auto [ext, proto] = FnBlockOf(*ext_scope);
     const auto kind_sym = proto != nullptr
       ? ext_scope->FindHeadSymbol(*ext->SuperCls)

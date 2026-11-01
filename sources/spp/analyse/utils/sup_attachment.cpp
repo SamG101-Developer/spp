@@ -394,26 +394,18 @@ auto spp::analyse::utils::sup_attachment::AttachSpecificSuperScopes(
   if (scope.LinkedTypeSymbol == nullptr or scope.SupsAttached) { return false; }
   if (scope.LinkedTypeSymbol->Kind == TypeKind::GnTypeParam) { return false; }
   scope.SupsAttached = true;
+  scope.SupsDeferred = false;
   const auto non_generic_sym = TypeRef::ForKindCheck(scope).Template();
 
-  // Get the sup blocks for the type if there are any.
+  // Get the sup blocks for the type if there are any. A copy, as
+  // attaching registers each instantiated mock's blocks in this same
+  // map, which moves its values as it grows. A pure generic block
+  // ("sup [T] T") names no type, so it applies to every one of them
+  // and has to be merged in.
   const auto it = sm.Tree().NormalSupBlocks.find(non_generic_sym);
-  const auto normal = it != sm.Tree().NormalSupBlocks.end()
-    ? &it->second
-    : nullptr;
-
-  // A pure generic block ("sup [T] T") names no type, so it
-  // applies to every one of them and has to be merged in.
-  // There are usually none at all, and then the stored list
-  // is handed over as it stands.
-  if (sm.Tree().GnSupBlocks.empty()) {
-    if (normal != nullptr) { AttachSpecificSuperScopesImpl(scope, *normal, sm, meta); }
-  }
-  else {
-    auto scopes = normal != nullptr ? *normal : Vec<Scope*>();
-    scopes.append_range(sm.Tree().GnSupBlocks);
-    AttachSpecificSuperScopesImpl(scope, scopes, sm, meta);
-  }
+  auto scopes = it != sm.Tree().NormalSupBlocks.end() ? it->second : Vec<Scope*>();
+  scopes.append_range(sm.Tree().GnSupBlocks);
+  AttachSpecificSuperScopesImpl(scope, scopes, sm, meta);
 
   // Merge the overloads that appear in different sup-blocks
   // into one (shared) $MockType.
@@ -421,41 +413,70 @@ auto spp::analyse::utils::sup_attachment::AttachSpecificSuperScopes(
   return true;
 }
 
-auto spp::analyse::utils::sup_attachment::AttachAllSuperScopes(
-  ScopeManager &sm, CompilerMetaData *meta) -> void {
-  // Attach every type's super scopes, checking each generic
-  // constraint as it is attached. A constraint is checked
-  // against the constrained type's own super scopes, which
-  // critically may not be attached yet - so while this runs,
-  // reading a scope's super scopes attaches them first, and
-  // no check reads a half-built graph.
-  struct HookReset {
-    ~HookReset() { Scope::OnSupScopesRead = nullptr; }
-  } const _hook_reset;
+namespace spp::analyse::utils::sup_attachment {
+  namespace {
+    /// Attach every type's super scopes but the "$" mocks', checking
+    /// each generic constraint as it is attached. A constraint is
+    /// checked against the constrained type's own super scopes, which
+    /// critically may not be attached yet - so while this runs,
+    /// reading a scope's super scopes attaches them first, and no
+    /// check reads a half-built graph.
+    auto SweepSuperScopes(ScopeManager &sm, CompilerMetaData *meta) -> void {
+      struct HookReset {
+        ~HookReset() { Scope::OnSupScopesRead = nullptr; }
+      } const _hook_reset;
 
-  // The recursive analysis technique. This avoids the double
-  // sweep of attach all (ignoring constraints), and then
-  // check the deferred constraints and prune.
-  // A read can come from the middle of any analysis (keying a type, a lookup inside a qualified name), and the attach
-  // is not part of it: it starts from a clean context, not the reader's ("TypeAnalysisTypeScope" pointing elsewhere).
-  Scope::OnSupScopesRead = [&sm, meta](Scope const &read) {
-    if (read.SupsAttached or read.LinkedTypeSymbol == nullptr) { return; }
-    const auto _meta_guard = asts::meta::MetaGuard(meta, true);
-    meta->ResetContext();
-    ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), sm, meta);
-  };
+      // The recursive analysis technique. This avoids the double
+      // sweep of attach all (ignoring constraints), and then
+      // check the deferred constraints and prune.
+      // A read can come from the middle of any analysis (keying a type, a lookup inside a qualified name), and the attach
+      // is not part of it: it starts from a clean context, not the reader's ("TypeAnalysisTypeScope" pointing elsewhere).
+      Scope::OnSupScopesRead = [&sm, meta](Scope const &read) {
+        if (read.SupsAttached or read.LinkedTypeSymbol == nullptr) { return; }
+        const auto _meta_guard = asts::meta::MetaGuard(meta, true);
+        meta->ResetContext();
+        ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), sm, meta);
+      };
 
-  // The sweep creates scopes as it runs - attaching a
-  // constrained sup instantiates the substituted type - so
-  // it repeats until a pass attaches nothing new.
-  for (auto found_new = true; found_new;) {
-    found_new = false;
-    sm.RestartWalk();
-    for (auto it = ScopeIterator(sm.CurrentScope); it != ScopeIterator(); ++it) {
-      if (AttachSpecificSuperScopes(**it, sm, meta)) { found_new = true; }
+      // The sweep creates scopes as it runs - attaching a
+      // constrained sup instantiates the substituted type - so
+      // it repeats until a pass attaches nothing new.
+      for (auto found_new = true; found_new;) {
+        found_new = false;
+        sm.RestartWalk();
+        for (auto it = ScopeIterator(sm.CurrentScope); it != ScopeIterator(); ++it) {
+          // A "$" mock's blocks make nothing and are not matched, and
+          // almost no mock is ever read, so it waits until one is.
+          auto &swept = **it;
+          if (swept.LinkedTypeSymbol != nullptr and swept.LinkedTypeSymbol->IsMock() and not swept.SupsAttached) {
+            swept.SupsDeferred = true;
+            continue;
+          }
+          if (AttachSpecificSuperScopes(swept, sm, meta)) { found_new = true; }
+        }
+      }
+      sm.RestartWalk();
     }
   }
-  sm.RestartWalk();
+}
+
+auto spp::analyse::utils::sup_attachment::AttachAllSuperScopes(
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  SweepSuperScopes(sm, meta);
+
+  // What the sweep put off is attached on its first read, from
+  // wherever that is. The stage's own manager and meta data are gone
+  // by then, so it has its own, as the stage it belongs to.
+  Scope::OnDeferredSupsRead = [tree = &sm.Tree()](Scope const &read) {
+    auto attach_sm = ScopeManager::ForTree(*tree);
+    auto attach_meta = CompilerMetaData();
+    attach_meta.CurrentStage = asts::meta::CompilerStage::kAttachSupScopes;
+    ignore = AttachSpecificSuperScopes(const_cast<Scope&>(read), attach_sm, &attach_meta);
+  };
+}
+
+auto spp::analyse::utils::sup_attachment::StopAttachingDeferredSups() -> void {
+  Scope::OnDeferredSupsRead = nullptr;
 }
 
 auto spp::analyse::utils::sup_attachment::ClearSupStatementsCache() -> void {
