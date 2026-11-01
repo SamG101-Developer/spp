@@ -1,7 +1,7 @@
 ---
 name: spp-naming-abbreviations
 description: "the maintainer's naming rules from cleanup 4.2/4.3: Gn/Fn/Cls/Symbol/Table/CompTime/Id-Key, the Get/Find/Read/Of verbs, PascalCase but locals, and the exceptions"
-updated: 2026-10-25
+updated: 2026-10-30
 ---
 
 Settled by the maintainer on 2026-10-02 (.triages/analyse-cleanup-review.md 4.2) and applied tree-wide:
@@ -27,8 +27,7 @@ Settled by the maintainer on 2026-10-02 (.triages/analyse-cleanup-review.md 4.2)
   `DoesArgNameAPack`); a thing's own state is `Is*` (`IsClosedTypeId`); every bool field is `Is*`. Ast / ref pairs are
   `X` / `XRefs` (`VariantMembers` / `VariantMemberRefs`, as `TypeArg` / `TypeArgRef`).
 - PascalCase for every function, method and field (private: `_Pascal`); locals and params stay snake_case;
-  `PascalCase_WithUnderscore` is left as is. Exception: utils/algorithms.ixx (a genex extension: `move_accumulate`,
-  the `cast_unique` / `cast_shared` / `tuple_nth` views and their `*_fn` structs) and utils/ptr.ixx's casts
+  `PascalCase_WithUnderscore` is left as is. Exception: utils/ptr.ixx's casts
   (`shared_cast`, `unique_cast`, `static_shared_cast`, ...) are snake_case, matching genex / `std::*_pointer_cast`.
 
 **Why:** one form per concept; the maintainer chose each rule explicitly, including the exceptions.

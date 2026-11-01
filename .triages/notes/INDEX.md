@@ -25,6 +25,8 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [CI name casing](conventions/ci-name-casing.md) — Title Case workflows/jobs/matrix labels, sentence-case steps, kebab ids
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
 - [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
+- [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
+- [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
 
 ## Build, test, verify
 - [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills
@@ -47,7 +49,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test is rel+LTO; virtual base, no prior call
 
 ## Areas (open the area's INDEX.md when the work touches it)
-- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (13)
+- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (14)
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (19)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (12)
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (20)

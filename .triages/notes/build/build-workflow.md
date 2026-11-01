@@ -1,7 +1,7 @@
 ---
 name: build-workflow
 description: "Building, the fast loop, and running and reading the gtest suite without being fooled by stale or killed runs"
-updated: 2026-10-25
+updated: 2026-10-30
 ---
 
 Default to the release build; use debug only when debug info is needed (its LLVM verifier output, "Verification
@@ -32,7 +32,9 @@ sources (three fixed tests once read as a fresh regression).
 - **Some tests are red on HEAD itself.** Attribute a failure by re-running it serially against a build with the change
   stashed before blaming the change.
 - **Never overlap two suite runs**: they share `tests/gtest-parallel-logs`. When chaining background jobs, wait on a
-  marker only that job's own phase writes, or on the job's completion.
+  marker only that job's own phase writes, or on the job's completion. A `FileExistsError` from `move_to`, with logs
+  of tests outside the filter in `passed/`, is this collision. If another run may start, `run.sh --output_dir=<dir>`
+  isolates the logs (the directory must already exist); `tests/test_outputs` stays shared.
 
 **Run the suite binary from `<build-dir>/tests/`, never the build dir itself.** `build_temp_project` resolves the
 scratch project as `<cwd>/../../tests/test_outputs`, so the cwd silently picks which one is used. The wrong one fails
