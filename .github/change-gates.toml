@@ -97,6 +97,15 @@ paths = [
 include = ["toolchain"]
 pinnable = true
 
+[gate.codeql_python]
+paths = [
+  "*.py",
+  ".github/codeql-config.yaml",
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_analysis.yaml",
+]
+code = false
+
 [gate.sonar]
 paths = [
   ".github/workflows/pr.yaml",

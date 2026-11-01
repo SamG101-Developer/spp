@@ -40,6 +40,9 @@ outputs:
   security:
     description: "'true' when the security jobs have to run."
     value: ${{ steps.classify.outputs.security }}
+  codeql_python:
+    description: "'true' when the Python CodeQL job has to run."
+    value: ${{ steps.classify.outputs.codeql_python }}
   sonar:
     description: "'true' when the Sonar job has to run."
     value: ${{ steps.classify.outputs.sonar }}

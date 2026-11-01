@@ -33,6 +33,7 @@ jobs:
       compile: ${{ steps.filter.outputs.compile }}
       cross_codegen: ${{ steps.filter.outputs.cross_codegen }}
       security: ${{ steps.filter.outputs.security }}
+      codeql_python: ${{ steps.filter.outputs.codeql_python }}
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       - name: Harden Runner
@@ -263,6 +264,7 @@ jobs:
     needs: [ changes ]
     if: |
       (needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
+      || needs.changes.outputs.codeql_python == 'true'
       || needs.changes.outputs.sonar == 'true'
     permissions:
       contents: read
@@ -270,7 +272,8 @@ jobs:
       actions: read
     uses: ./.github/workflows/_analysis.yaml
     with:
-      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      codeql-cpp: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      codeql-python: ${{ needs.changes.outputs.codeql_python == 'true' }}
       sonar: >-
         ${{ needs.changes.outputs.sonar == 'true'
         && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
