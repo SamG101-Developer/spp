@@ -130,9 +130,8 @@ auto spp::compiler::ffi::Validate(
   return true;
 }
 
-auto spp::compiler::ffi::Libraries(
-  Path const &root) -> Opt<Vec<Path>> {
-  const auto target = Str(spp::codegen::TargetFolderName());
+auto spp::compiler::ffi::Libraries(Path const &root) -> Opt<Vec<Path>> {
+  const auto target = Str(codegen::TargetFolderName());
   auto libraries = Vec<Path>();
   for (auto const &package : Packages(root)) {
     const auto library = package / target / LibraryName(package, target);

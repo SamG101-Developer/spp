@@ -779,10 +779,13 @@ auto spp::utils::features::CheckTargetSupport(
   return true;
 }
 
-auto spp::utils::features::Linker(
-  const StrView target_folder) -> Opt<Str> {
-  const auto it = CurrentLinkers().find(Str(target_folder));
-  return it != CurrentLinkers().end() ? Opt<Str>(it->second) : Nullopt;
+/// [CHECKED]
+auto spp::utils::features::Linker(const StrView target_folder) -> Opt<Str> {
+  // From the current linkers, find the target's one (key), and return the
+  // associated value.
+  const auto it = CurrentLinkers().find(
+    Str(target_folder));
+  return it != CurrentLinkers().end() ? Opt(it->second) : Nullopt;
 }
 
 /// [CHECKED]

@@ -108,7 +108,6 @@ namespace spp::utils::features {
 
   /// The linker "[target.linkers]" names for a target folder, if it names one:
   /// a command, run with the link's arguments after it.
-  SPP_LEGACY
   SPP_EXP_FUN auto Linker(StrView target_folder) -> Opt<Str>;
 
   /// Reset every feature to its default - as if the compiler never read the

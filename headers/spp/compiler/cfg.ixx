@@ -18,6 +18,7 @@ namespace spp::compiler::cfg {
 
   /// Whether a "!cfg" value matches what the build has: one of its
   /// alternatives, separated by "|", or, after a leading "!", none of them.
+  /// Todo: This is a hacky workaround until enums are supported.
   SPP_EXP_FUN auto CfgValueMatches(StrView condition, StrView actual) -> bool;
 
   /// Drop every member of the module, and of the classes and sup blocks in it,
