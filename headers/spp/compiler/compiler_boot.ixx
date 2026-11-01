@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.compiler_boot;
+import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_ctx;
 import spp.compiler.out_layout;
 import spp.utils.progress;
@@ -11,11 +12,6 @@ import std;
 
 namespace spp::analyse::scopes {
   SPP_EXP_CLS class ScopeManager;
-}
-
-namespace spp::asts::meta {
-  SPP_EXP_CLS struct CompilerMetaData;
-  SPP_EXP_CLS enum class CompilerStage : std::uint8_t;
 }
 
 namespace spp::asts {
