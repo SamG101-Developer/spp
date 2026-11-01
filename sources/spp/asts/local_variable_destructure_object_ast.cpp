@@ -114,12 +114,12 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     : Vec<Ast*>{};
 
   const auto attributes = cls_attrs
-    | genex::views::cast_dynamic<ClassAttributeAst*>()
+    | genex::views::cast_dynamic<ClassAttributeAst*>
     | genex::to<Vec>();
 
   const auto multi_arg_skips = Elems
     | genex::views::ptr
-    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
     | genex::to<Vec>();
 
   const auto assigned_attributes = Elems

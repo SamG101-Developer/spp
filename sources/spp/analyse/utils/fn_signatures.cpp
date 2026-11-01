@@ -269,7 +269,7 @@ auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
       params_new | genex::views::ptr,
       params_old | genex::views::ptr) | genex::to<Vec>();
     if (genex::operations::empty(tmp
-      | genex::views::cast_dynamic<FunctionParameterRequiredAst*>()
+      | genex::views::cast_dynamic<FunctionParameterRequiredAst*>
       | genex::to<Vec>())) {
       return {old_fn, old_scope};
     }

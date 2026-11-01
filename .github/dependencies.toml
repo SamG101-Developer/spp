@@ -165,14 +165,14 @@ commit = "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5"
 [[library]]
 name = "mimalloc"
 repo = "https://github.com/microsoft/mimalloc.git"
-commit = "8b08dbb8f9c8db7f01e9abe5b1a981d985e1fa46"
+commit = "dcd6f09b1d878e06d62949dabea3417eec98c89a"
 cmake-flags = ["-DMI_SECURE=OFF", "-DMI_BUILD_TESTS=OFF"]
 cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "94fe31eb9b94debcae52bc0d493a2232c11dbeaf"
+commit = "9c349b1d7c393c6bc6dbbe4191e332e3bb4100b8"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
@@ -183,7 +183,7 @@ commit = "1e8829b793b66ad17011732a146b8077d379b011"
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "5de969c9005938a27a34d3af3ea5923d18679ad8"
+commit = "7c58a87f7785720cfe3a9fc38115a175b5433394"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",
@@ -192,7 +192,7 @@ cmake-flags = [
 [[library]]
 name = "stringzilla"
 repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "3cd0f9bcab97912dd36ca4ca4253f1f46b33ef8e"
+commit = "d0c8deaac40eeabeacd948c7cd0d976004018d6c"
 cmake-flags = [
   "-DSTRINGZILLA_INSTALL=ON",
   "-DSTRINGZILLA_BUILD_TEST=OFF",
@@ -240,7 +240,7 @@ commit = "badae2b5e668084412cef496283a345bd8bd9744"
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "3a267d801cb7a2b647256ffa93bd203c7083dae0"
+commit = "b5c0fc1038479e29dd7cc0067ac68158ecfca463"
 
 [[library]]
 name = "NumEx"

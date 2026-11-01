@@ -126,7 +126,7 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // Check the arguments are in the correct order.
   const auto unordered_args = order_utils::DoOrderArgs(Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(

@@ -1019,7 +1019,8 @@ auto spp::cli::HandleValidate(
   // Check the build type is a known one.
   const auto build_type = project->at("build").value<Str>().value_or("");
   if (not compiler::TypeFromName(build_type).has_value()) {
-    const auto type_names = compiler::TypeNames()
+    auto type_names_list = compiler::TypeNames();
+    const auto type_names = type_names_list
       | genex::views::join_with(',')
       | genex::to<Str>();
     std::cerr

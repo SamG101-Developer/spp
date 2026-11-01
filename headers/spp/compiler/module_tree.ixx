@@ -47,7 +47,7 @@ SPP_EXP_CLS struct spp::compiler::TestScope {
 };
 
 SPP_EXP_CLS struct spp::compiler::Module {
-  Path Path = "";
+  spp::Path Path = "";
   Str Code;
   Vec<lex::RawToken> Tokens = {};
   Unique<asts::ModulePrototypeAst> ModuleAst;

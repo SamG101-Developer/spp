@@ -301,7 +301,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // Only 1 "multi-skip" allowed in a destructure.
   const auto multi_arg_skips = elems
     | genex::views::ptr
-    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
     | genex::to<Vec>();
   RaiseIf<errors::SppMultipleRestPatternsError>(
     multi_arg_skips.size() > 1,

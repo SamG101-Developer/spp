@@ -144,7 +144,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   if (not base_cls_sym->IsGn()) {
     for (const auto attr : base_cls_sym->Type->Impl->Members
          | genex::views::ptr
-         | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+         | genex::views::cast_dynamic<ClassAttributeAst*>) {
       const auto attr_sym = base_cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
       if (attr_sym == nullptr) { continue; }
       for (auto const &arg : ArgGroup->Args) {

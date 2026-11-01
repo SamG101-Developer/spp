@@ -234,11 +234,12 @@ auto spp::codegen::mangle::MangleModName(
   -> Str {
   // Generate the module name by joining the ancestor
   // scope names with '#'.
-  return mod_scope.GetAncestors()
+  auto names = mod_scope.GetAncestors()
     | genex::views::reverse
     | genex::views::filter([](auto *scope) { return not scope->NameAsString().contains("<"); })
     | genex::views::transform([](auto *scope) { return scope->NameAsString(); })
-    | genex::to<Vec>()
+    | genex::to<Vec>();
+  return names
     | genex::views::join_with('#')
     | genex::to<Str>();
 }
@@ -289,11 +290,12 @@ auto spp::codegen::mangle::MangleFnName(
 
   // Convert the mangled type names into a single function
   // name.
-  const auto fun_sig = types
+  auto mangled_types = types
     | genex::views::transform([&](auto const &type_sym) {
       return MangleTypeNameResolvingSelf(*type_sym);
     })
-    | genex::to<Vec>()
+    | genex::to<Vec>();
+  const auto fun_sig = mangled_types
     | genex::views::join_with('#')
     | genex::to<Str>();
 

@@ -71,12 +71,12 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   // Create sets of parameters based on conditions.
   const auto self_params = Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
+    | genex::views::cast_dynamic<FunctionParameterSelfAst*>
     | genex::to<Vec>();
 
   const auto variadic_params = Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
+    | genex::views::cast_dynamic<FunctionParameterVariadicAst*>
     | genex::to<Vec>();
 
   const auto param_names = Params
@@ -88,7 +88,7 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 
   const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   // Check there is only 1 "self" parameter.

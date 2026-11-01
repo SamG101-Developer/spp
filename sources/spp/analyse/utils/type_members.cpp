@@ -466,7 +466,7 @@ auto spp::analyse::utils::type_members::FindRecursiveAttrType(
   const auto is_self = [&](TypeRef const &held) { return held.Template() == self_template; };
   for (auto const *attr : type.Impl->Members
        | genex::views::ptr
-       | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+       | genex::views::cast_dynamic<ClassAttributeAst*>) {
     if (FindHeldByValue(TypeRef::Of(*attr->Type, scope), scope, is_self).Symbol != nullptr) {
       return attr->Source.OriginalType;
     }

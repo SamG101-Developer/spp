@@ -340,7 +340,7 @@ auto ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArg
   // Get the first shorthand argument tagged with the ".." token.
   const auto filtered = Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
     | genex::views::filter([](auto const &x) { return x != nullptr and x->TokEllipsis != nullptr; })
     | genex::to<Vec>();
   return filtered.empty() ? nullptr : filtered[0];
@@ -358,7 +358,7 @@ auto ObjectInitializerArgumentGroupAst::GetShorthandArgs() -> Vec<ObjectInitiali
   // Get all shorthand arguments tagged with the ".." token.
   return Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
     | genex::to<Vec>();
 }
 
@@ -366,7 +366,7 @@ auto ObjectInitializerArgumentGroupAst::GetKeywordArgs() -> Vec<ObjectInitialize
   // Get all keyword arguments.
   return Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>
     | genex::to<Vec>();
 }
 

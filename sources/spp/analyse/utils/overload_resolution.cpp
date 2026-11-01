@@ -635,7 +635,7 @@ namespace spp::analyse::utils::overload_resolution {
         // positional argument, and pop it from the list.
         const auto param = positional.front();
         auto name = MakeShared<IdentifierAst>(arg->PosStart(), Str(param->ExtractName()->Val));
-        positional |= genex::actions::pop_front();
+        positional |= genex::actions::pop_front;
 
         // If this is the last parameter left to match positional
         // arguments, but it is a variadic parameter, swallow the
@@ -1571,7 +1571,7 @@ auto spp::analyse::utils::overload_resolution::MethodsOf(
     // Within a type's sup scopes, they will each carry a number
     // of sup-asts, which are pre-processed functions, each in
     // turn containing the actual function.
-    for (const auto sup_ast : AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<SupPrototypeExtensionAst*>()) {
+    for (const auto sup_ast : AstBody(sup_scope->AstNode) | genex::views::cast_dynamic<SupPrototypeExtensionAst*>) {
       if (sup_ast->Name->As<TypeIdentifierAst>()->Name != mock->Val) { continue; }
 
       // Now we know the name is correct for the target function

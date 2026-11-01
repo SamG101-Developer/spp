@@ -1110,7 +1110,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   if (meta->CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
     for (const auto attr : new_ast_ptr->Impl->Members
          | genex::views::ptr
-         | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+         | genex::views::cast_dynamic<ClassAttributeAst*>) {
       // An attribute holds a value, so is never abstract, even
       // when the instantiation is reached from somewhere that
       // allows naming one ("B[C[A]]" instantiates "C[A]" while
