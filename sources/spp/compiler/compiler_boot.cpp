@@ -109,7 +109,7 @@ auto spp::compiler::CompilerBoot::Parse(
 
     // What "!cfg" leaves out of this build goes before any scope
     // is made, so it never names anything; an editor greys it out.
-    for (auto const &[start, end] : cfg::ApplyCfg(*mod->ModuleAst, BuildMode)) {
+    for (auto const &[start, end] : cfg::ApplyCfg(*mod->ModuleAst, Mode)) {
       lsp::resolution_index::RecordInactive(*mod->Formatter, start, end);
     }
     _Modules.emplace_back(mod->ModuleAst.get());
@@ -118,7 +118,7 @@ auto spp::compiler::CompilerBoot::Parse(
 
   for (auto const &mod : tree) {
     if (not mod->IsTestHarness) { continue; }
-    mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter, TestCount);
+    mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter);
     auto lexer = lex::Lexer(mod->Code, true);
     mod->Tokens = lexer.Lex();
     mod->Formatter = utils::errors::ErrorFormatter::ForFile(
@@ -463,7 +463,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // What the program was built with, for "spp audit" to read
   // back out of it: every on/off key, set or defaulted.
   const auto record = std::format(
-    "spp {}\ntarget {}\nmode {}\n{}", SPP_VERSION, codegen::TargetFolderName(), out.Mode,
+    "spp {}\ntarget {}\nmode {}\n{}", SPP_VERSION, codegen::TargetFolderName(), ModeName(out.Mode),
     utils::features::EffectiveSettings(codegen::TargetIsLinux()));
   codegen::EmitHardeningRecord(lto_module.get(), record.c_str());
   if (not codegen::EmitObjectFile(lto_module.get(), utils::files::NativeString(object_file).c_str())) { return false; }
@@ -641,8 +641,7 @@ auto spp::compiler::CompilerBoot::_ValidateEntryPoint(
 auto spp::compiler::CompilerBoot::_GenerateTestHarness(
   ModuleTree &tree,
   const StrView name_filter,
-  const StrView group_filter,
-  std::size_t &out_count)
+  const StrView group_filter)
   -> Str {
   // The annotation is matched on its written name rather than
   // on a resolved symbol, because this runs before anything
@@ -672,7 +671,6 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
   };
 
   auto body = Str();
-  auto count = 0uz;
   TestNames.clear();
   for (auto const &mod : tree) {
     if (mod->IsTestHarness or mod->ModuleAst == nullptr) { continue; }
@@ -700,11 +698,9 @@ auto spp::compiler::CompilerBoot::_GenerateTestHarness(
       body += "    std::console::println(\"[  OK ] " + group + " :: " + fq_name + "\")\n";
       body += "  }\n";
       TestNames.emplace_back(fq_name);
-      ++count;
     }
   }
 
-  out_count = count;
   return Str("fun main() -> Void {\n")
     + "  let only = std::process::get_env(\"" + Str(utils::env::NameOf(utils::env::Var::TestOnly))
     + "\").unwrap_or(Str::from(\"\"))\n"

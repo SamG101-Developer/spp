@@ -6,7 +6,37 @@ import spp.utils.types;
 import std;
 
 namespace spp::compiler {
+  /// The modes a project can be built in. Every list of them is derived from
+  /// this, so a new mode is added here and nowhere else.
+  SPP_EXP_CLS enum class BuildMode { DEV, REL };
+
+  /// The types a project can be built as. Every list of them is derived from
+  /// this, so a new type is added here and nowhere else.
+  SPP_EXP_CLS enum class BuildType { EXE, LIB };
+
   SPP_EXP_CLS struct OutLayout;
+
+  /// The name of a mode, as it is written on the command line, in a "!cfg", and
+  /// as the folder under "out". For example, "BuildMode::DEV" is "dev".
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto ModeName(BuildMode mode) -> Str;
+
+  /// The name of every mode, in the order they are declared.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto ModeNames() -> Vec<Str>;
+
+  /// The mode a name written by the user means, in any case, or nothing if it
+  /// is not the name of a mode.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto ModeFromName(StrView name) -> Opt<BuildMode>;
+
+  /// The name of a type, as it is written in "spp.toml". For example,
+  /// "BuildType::EXE" is "exe".
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto TypeName(BuildType type) -> Str;
+
+  /// The name of every type, in the order they are declared.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto TypeNames() -> Vec<Str>;
+
+  /// The type a name written by the user means, in any case, or nothing if it
+  /// is not the name of a type.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto TypeFromName(StrView name) -> Opt<BuildType>;
 }
 
 /// Utility class for the layout that an s++ compilation writes to. This class
@@ -19,9 +49,8 @@ SPP_EXP_CLS struct spp::compiler::OutLayout {
   /// The normalised target triple, which names the folder each mode sits under.
   Str Target;
 
-  /// The build mode, "dev" or "rel", which names the folder everything below is
-  /// written into.
-  Str Mode;
+  /// The build mode, whose name is the folder everything below is written into.
+  BuildMode Mode = BuildMode::DEV;
 
   /// "<root>/out" : Every target's tree, which is what a "clean" with no target
   /// named has to sweep.
@@ -53,8 +82,4 @@ SPP_EXP_CLS struct spp::compiler::OutLayout {
   /// The name the linked executable is given: the project's own folder name, so
   /// a project in "foo/" builds "foo".
   SPP_ATTR_NODISCARD auto ExecutableName() const -> Str;
-
-  /// The modes a project can be built in, which is what "clean --mode all" has
-  /// to sweep.
-  SPP_ATTR_NODISCARD static auto AllModes() -> Vec<Str>;
 };

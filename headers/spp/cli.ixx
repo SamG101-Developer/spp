@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.cli;
+import spp.compiler.out_layout;
 import spp.utils.types;
 import std;
 
@@ -22,25 +23,27 @@ namespace spp::cli {
   /// or a repository/branch is unreachable, enforcing full vcs correctness.
   SPP_EXP_FUN auto HandleVcs() -> bool;
 
-  /// Compile the project, under "dev" or "rel" mode, an optional non-host
-  /// target (empty for host), and a number of other possible flags for things
-  /// such as index-only, or skip VCS checks.
+  /// Compile the project, under a build mode, an optional non-host target
+  /// (empty for host), and a number of other possible flags for things such as
+  /// index-only, or skip VCS checks.
   SPP_EXP_FUN auto HandleBuild(
-    Str const &build_mode, Str const &target = "", bool skip_vcs = false,
-    Str const &message_format = "human", bool analyse_only = false,
-    Vec<Str> const &index_files = {}, bool index_project = false) -> bool;
+    compiler::BuildMode build_mode, Str const &target = "",
+    bool skip_vcs = false, Str const &message_format = "human",
+    bool analyse_only = false, Vec<Str> const &index_files = {},
+    bool index_project = false) -> bool;
 
   /// Compile the project and run what it produced. Only a host build can be
-  /// run. "mode" is "dev" or "rel", and "target" a target triple, or empty for
-  /// the host. Only ever returns false, and only when there was nothing to run.
-  /// Once the program runs, it exits with its own status.
-  SPP_EXP_FUN auto HandleRun(Str const &mode, Str const &target = "") -> bool;
+  /// run. "target" is a target triple, or empty for the host. Only ever returns
+  /// false, and only when there was nothing to run. Once the program runs, it
+  /// exits with its own status.
+  SPP_EXP_FUN auto HandleRun(
+    compiler::BuildMode mode, Str const &target = "") -> bool;
 
-  /// Remove built artifacts. "mode" is "dev", "rel" or "all". "target" limits
-  /// the clean to that target's tree. If the target is empty, then it cleans
-  /// every target that has been built here.
+  /// Remove built artifacts: those of "mode", or of every mode if it is empty.
+  /// "target" limits the clean to that target's tree. If the target is empty,
+  /// then it cleans every target that has been built here.
   SPP_EXP_FUN auto HandleClean(
-    Str const &mode, Str const &target = "") -> void;
+    Opt<compiler::BuildMode> mode, Str const &target = "") -> void;
 
   /// Build the project together with its "tst" folder and run the unit tests it
   /// declares. There are filter flags for the test name or group, library
@@ -71,8 +74,8 @@ namespace spp::cli {
   SPP_EXP_FUN auto CreateDefaultConfigFor(Str const &project_name) -> Str;
 
   /// Compile a single module of code as a throwaway project, for the c++ test
-  /// suite, in build mode "dev" or "rel". Returns the values the module's
-  /// compile-time constants resolved to, by name (can be empty).
+  /// suite, in a build mode. Returns the values the module's compile-time
+  /// constants resolved to, by name (can be empty).
   SPP_EXP_FUN auto RunCppGoogleTest(
-    Str const &mode, Str &&main_code) -> Map<Str, Str>;
+    compiler::BuildMode mode, Str &&main_code) -> Map<Str, Str>;
 }

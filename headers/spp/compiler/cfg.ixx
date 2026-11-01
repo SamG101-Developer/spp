@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.compiler.cfg;
+import spp.compiler.out_layout;
 import spp.utils.types;
 import std;
 
@@ -26,5 +27,5 @@ namespace spp::compiler::cfg {
   /// its first annotation to its end, as source positions, for
   /// an editor to grey out. A condition with an unknown key or
   /// value is an error, raised here.
-  SPP_EXP_FUN auto ApplyCfg(asts::ModulePrototypeAst &mod, StrView mode) -> Vec<Pair<std::size_t, std::size_t>>;
+  SPP_EXP_FUN auto ApplyCfg(asts::ModulePrototypeAst &mod, BuildMode mode) -> Vec<Pair<std::size_t, std::size_t>>;
 }

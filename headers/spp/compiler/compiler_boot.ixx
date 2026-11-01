@@ -31,28 +31,27 @@ namespace spp::compiler {
 }
 
 SPP_EXP_CLS struct spp::compiler::CompilerBoot {
-  /** Only tests whose fully qualified name contains this are built into the harness; empty builds all. */
+  /// Only tests whose fully qualified name contains this are built into the
+  /// harness; empty builds all.
   Str TestNameFilter;
 
-  /** Only tests in this group are built into the harness; empty builds all. */
+  /// Only tests in this group are built into the harness; empty builds all. Can
+  /// be used with the test name filter too (double filter application).
   Str TestGroupFilter;
 
-  /** How many tests the generated harness ended up running. */
-  std::size_t TestCount = 0;
-
-  /** The fully qualified name of each test the harness runs, in the order it runs them. */
+  /// The fully qualified name of each test the harness runs, in the order it
+  /// runs them.
   Vec<Str> TestNames;
 
-  /**
-   * For the c++ unit tests: code generation stops once every module has been verified and the modules link together
-   * into one. Nothing is optimised, written or linked, and an invalid module throws rather than aborting the process,
-   * so a "should pass" test fails on the code it generates as well as on its analysis.
-   */
+  /// For the C++ unit tests: code generation stops once every module has been
+  /// verified and the modules link together into one. Nothing is optimised,
+  /// written or linked, and an invalid module throws rather than aborting the
+  /// process, so a "should pass" test fails on the code it generates as well as
+  /// on its analysis.
   bool VerifyOnly = false;
 
-  /// The build mode, "dev" or "rel", that a "!cfg(mode=...)"
-  /// condition is checked against.
-  Str BuildMode = "dev";
+  /// The build mode that a "!cfg(mode=...)" condition is checked against.
+  BuildMode Mode = BuildMode::DEV;
 
   auto Lex(
     utils::ProgressBar &bar, ModuleTree &tree) -> void;
@@ -104,12 +103,6 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
     utils::ProgressBar &bar, ModuleTree &tree,
     analyse::scopes::ScopeManager *sm) -> void;
 
-  /**
-   * Generate, optimise, emit and link. Unlike the stages above it, this one has a back end under it that can fail
-   * without an error to throw - a module llvm rejects, an object it cannot write, a linker that returns non-zero -
-   * so it answers whether the build actually produced what it set out to.
-   * @return @c true when the build produced its artefact, @c false when the back end failed.
-   */
   SPP_ATTR_NODISCARD auto Stage11_CodeGen(
     utils::ProgressBar &bar, ModuleTree &tree,
     analyse::scopes::ScopeManager *sm,
@@ -118,70 +111,59 @@ SPP_EXP_CLS struct spp::compiler::CompilerBoot {
 private:
   Vec<asts::ModulePrototypeAst*> _Modules;
 
-  /**
-   * The LLVM context every module of this compile is built into, so they can be linked. Owned by the compile, not the
-   * process: a named struct type lives in its context, and a later compile reusing it would be handed this one's
-   * layout for a same-named class. Declared before @c _LlvmCtxs , so it outlives the modules in it.
-   */
+  /// The LLVM context every module of this compile is built into, so they can
+  /// be linked. Owned by the compile, not the process: a named struct type
+  /// lives in its context, and a later compile reusing it would be handed this
+  /// one's layout for a same-named class. Declared before "_LlvmCtxs", so it
+  /// outlives the modules in it.
   Unique<llvm::LLVMContext> _LlvmContext;
 
+  /// Store each broad/custom LLVM context for each module, so the vector can be
+  /// iterated and reused for multiple stages.
   Vec<Unique<codegen::LlvmCtx>> _LlvmCtxs;
 
-  /**
-   * The prototype the program is entered through, as resolved by @c _ValidateEntryPoint . Null for a library build,
-   * which has no single way in.
-   */
+  /// The prototype the program is entered through, resolved by stage 7 through
+  /// "_ValidateEntryPoint". Nullptr for a library, which has no single way in.
   asts::FunctionPrototypeAst *_EntryPoint = nullptr;
 
-  /**
-   * The linkage name of @c _EntryPoint , or an empty string if there is no entry point or it never reached code
-   * generation.
-   */
+  /// The linkage name of "_EntryPoint" , or an empty string if there is no
+  /// entry point or it never reached code generation.
   SPP_ATTR_NODISCARD auto _EntryPointLlvmName() const -> Str;
 
-  auto _ValidateEntryPoint(
-    analyse::scopes::ScopeManager *sm) -> void;
+  /// Run the validation specific to the entry point (is it present and callable
+  /// etc.), and only for exes. For libraries it could be present, but would be
+  /// meaningless. Todo: Enforce no main.spp for LIB builds?
+  auto _ValidateEntryPoint(analyse::scopes::ScopeManager *sm) -> void;
 
-  /**
-   * Copy every module into one and run the optimization pipeline over that, so the optimizer can see across the file
-   * boundaries the per-module walk leaves in place. Written beside the per-module ir as @c lto.ll rather than
-   * replacing it.
-   * @param[in] out Where this build writes; the combined ir and the object come off it.
-   * @return @c true when there is nothing left to do or the executable was produced, @c false when a step failed.
-   */
+  /// Copy every module into one and run the optimization pipeline over that, so
+  /// the optimizer can see across the file boundaries the per-module walk
+  /// leaves in place. Written beside the per-module ir as "lto.ll" rather than
+  /// replacing it. Return true for a successful link.
   SPP_ATTR_NODISCARD auto _LinkTimeOptimize(
     OutLayout const &out, unsigned opt_level) -> bool;
 
-  /**
-   * Link the emitted object against the ffi runtimes the project's packages ship, producing the executable.
-   * @param[in] out Where this build writes; the object, the staged library folder and the executable all come off it.
-   * @return @c true when the linker produced the executable, @c false when it returned non-zero.
-   */
-  SPP_ATTR_NODISCARD auto _LinkExecutable(
-    OutLayout const &out) -> bool;
+  /// Link the emitted object against the ffi runtimes the project's packages
+  /// ship, producing the executable. Return for a successful link.
+  SPP_ATTR_NODISCARD auto _LinkExecutable(OutLayout const &out) -> bool;
 
-  /**
-   * The source of the entry point a test build is run through: a "main" that calls every discovered unit test in turn,
-   * naming each one before it runs so that a test which takes the process down with it is still identifiable.
-   * @param[in] tree The modules already parsed, searched for functions carrying the "unit_test" annotation.
-   * @param[in] name_filter Only tests whose fully qualified name contains this are included; empty includes all.
-   * @param[in] group_filter Only tests whose group equals this are included; empty includes all.
-   * @param[out] out_count How many tests the generated harness runs.
-   */
+  /// The source of the entry point a test build is run through: a "main" that
+  /// calls every discovered unit test in turn, naming each one before it runs
+  /// so that a test which takes the process down with it is still identifiable.
   auto _GenerateTestHarness(
-    ModuleTree &tree, StrView name_filter, StrView group_filter,
-    std::size_t &out_count) -> Str;
+    ModuleTree &tree, StrView name_filter, StrView group_filter) -> Str;
 
+  /// When the module tree is first converted into the scope tree, namespace
+  /// scopes either have to be created, or moved into.
   static auto _MoveScopeManagerToNs(
     analyse::scopes::ScopeManager *sm, Module const &mod) -> void;
 
-  /**
-   * Run one stage over every module, in order: each with the scope manager moved into its namespace and a fresh
-   * "meta" for the stage, its walk restarted after, and "bar" advanced (when given; the caller finishes it). An
-   * analysis stage (6-9) also makes the instantiations lookups read as they need them, for itself.
-   * @param[in] body What the stage does with the module at an index ("_Modules", and "_LlvmCtxs" from stage 10).
-   */
+  /// Run one stage over every module in order, each with the scope manager
+  /// moved into its namespace and a fresh "meta" for the stage, its walk
+  /// restarted after, and the progress bar" advanced (if given). An analysis
+  /// stage (6-9) also makes the instantiations lookups read as they need them,
+  /// for itself.
   auto _EachModule(
-    ModuleTree &tree, analyse::scopes::ScopeManager *sm, asts::meta::CompilerStage stage, utils::ProgressBar *bar,
+    ModuleTree &tree, analyse::scopes::ScopeManager *sm,
+    asts::meta::CompilerStage stage, utils::ProgressBar *bar,
     FuncRef<void(std::size_t, asts::meta::CompilerMetaData &)> body) -> void;
 };

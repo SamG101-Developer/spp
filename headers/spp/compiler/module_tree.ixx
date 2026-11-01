@@ -24,9 +24,14 @@ namespace spp::compiler {
 /// compiles none of them. The "spp test" flags can limit to specific libraries
 /// or include all of them etc.
 SPP_EXP_CLS struct spp::compiler::TestScope {
-  bool Project = false; /// Include the Project's own "tst" folder.
-  bool AllLibs = false; /// Include the "tst" folder of every "vcs" library.
-  Vec<Str> Libs; /// Include the "tst" folder of these specific libraries.
+  /// Include the Project's own "tst" folder.
+  bool Project = false;
+
+  /// Include the "tst" folder of every "vcs" library.
+  bool AllLibs = false;
+
+  /// Include the "tst" folder of these specific libraries.
+  Vec<Str> Libs;
 
   /// Check if any test folder has been chosen to run. This will be false for a
   /// normal build/run. Only "spp test" can fill this.
@@ -42,7 +47,7 @@ SPP_EXP_CLS struct spp::compiler::TestScope {
 };
 
 SPP_EXP_CLS struct spp::compiler::Module {
-  spp::Path Path = "";
+  Path Path = "";
   Str Code;
   Vec<lex::RawToken> Tokens = {};
   Unique<asts::ModulePrototypeAst> ModuleAst;
@@ -115,17 +120,17 @@ private:
 public:
   /**
    * @param[in] path The project root.
-   * @param[in] mode The build mode, "dev" or "rel". Only the out tree depends on it; which modules are picked up does
-   * not, so this is carried rather than acted on until code generation writes something.
+   * @param[in] mode The build mode. Only the out tree depends on it; which modules are picked up does not, so this is
+   * carried rather than acted on until code generation writes something.
    */
   explicit ModuleTree(
     Path path,
-    Str mode = "dev",
+    BuildMode mode = BuildMode::DEV,
     TestScope const &tests = {});
 
   static auto ForCppGoogleTest(
     Path path,
-    Str mode,
+    BuildMode mode,
     Str &&main_code)
     -> Unique<ModuleTree>;
 

@@ -298,8 +298,8 @@ auto spp::cli::RunCli(
 
   auto build_mode = Str("dev");
   const auto build_cmd_mode_option = build_cmd->add_option(
-    "-m,--mode", build_mode, "Build mode (dev or rel)");
-  build_cmd_mode_option->check(CLI::IsMember({"dev", "rel"}));
+    "-m,--mode", build_mode, "Build mode");
+  build_cmd_mode_option->check(CLI::IsMember(compiler::ModeNames()));
   build_cmd_mode_option->default_val("dev");
 
   auto build_target = Str();
@@ -339,7 +339,7 @@ auto spp::cli::RunCli(
 
   build_cmd->callback([&] {
     if (not HandleBuild(
-      build_mode, build_target, build_skip_vcs, build_message_format,
+      *compiler::ModeFromName(build_mode), build_target, build_skip_vcs, build_message_format,
       build_analyse_only, build_index_files, build_index_project)) {
       throw CLI_ERR;
     }
@@ -354,8 +354,8 @@ auto spp::cli::RunCli(
 
   const auto run_cmd_mode_option = run_cmd->add_option(
     "-m,--mode", run_mode,
-    "Run mode (dev or rel)");
-  run_cmd_mode_option->check(CLI::IsMember({"dev", "rel"}));
+    "Run mode");
+  run_cmd_mode_option->check(CLI::IsMember(compiler::ModeNames()));
   run_cmd_mode_option->default_val("dev");
 
   auto run_target = Str();
@@ -364,7 +364,7 @@ auto spp::cli::RunCli(
     CMD_HELP_TEXT_BUILD_TARGET);
 
   run_cmd->callback([&] {
-    if (not HandleRun(run_mode, run_target)) { throw CLI_ERR; }
+    if (not HandleRun(*compiler::ModeFromName(run_mode), run_target)) { throw CLI_ERR; }
   });
 
   // The "spp clean" command, which deletes artefacts created by the build (such
@@ -375,8 +375,10 @@ auto spp::cli::RunCli(
 
   const auto clean_cmd_mode_option = clean_cmd->add_option(
     "-m,--mode", clean_mode,
-    "Clean mode (dev or rel)");
-  clean_cmd_mode_option->check(CLI::IsMember({"dev", "rel", "all"}));
+    "Clean mode");
+  auto clean_modes = compiler::ModeNames();
+  clean_modes.emplace_back("all");
+  clean_cmd_mode_option->check(CLI::IsMember(clean_modes));
   clean_cmd_mode_option->default_val("all");
 
   const auto clean_cmd_target_option = clean_cmd->add_option(
@@ -384,7 +386,8 @@ auto spp::cli::RunCli(
     "Only clean this target's tree; every target's by default");
 
   clean_cmd->callback([&] {
-    HandleClean(clean_mode, clean_target);
+    // "all" is the one accepted value that isn't a mode, so it names none.
+    HandleClean(compiler::ModeFromName(clean_mode), clean_target);
   });
 
   // The "spp test" command, which runs the unit tests from the "tests" folder.
@@ -624,11 +627,9 @@ auto spp::cli::HandleVcs() -> bool {
 
 /// [CHECKED]
 auto spp::cli::HandleBuild(
-  Str const &build_mode, Str const &target, const bool skip_vcs,
+  const compiler::BuildMode build_mode, Str const &target, const bool skip_vcs,
   Str const &message_format, const bool analyse_only,
   Vec<Str> const &index_files, const bool index_project) -> bool {
-  using BuildMode = compiler::Compiler::BuildMode;
-  using BuildType = compiler::Compiler::BuildType;
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors. Select the LLVM target, and perform a failsafe assertion
   // on intrinsic names.
@@ -676,8 +677,7 @@ auto spp::cli::HandleBuild(
   // Compile the code. Call the resolution index hooks depending on what is
   // being indexed (project, specific files, etc).
   auto c = compiler::Compiler(
-    *magic_enum::enum_cast<BuildMode>(build_mode, magic_enum::case_insensitive),
-    *magic_enum::enum_cast<BuildType>(build_type, magic_enum::case_insensitive));
+    build_mode, *compiler::TypeFromName(build_type));
 
   // If this is an analysis-only build, mark the compiler as that, to restrict
   // the stages, otherwise enable indexing for the marked files.
@@ -689,7 +689,7 @@ auto spp::cli::HandleBuild(
 
 /// [CHECKED]
 auto spp::cli::HandleRun(
-  Str const &mode, Str const &target) -> bool {
+  const compiler::BuildMode mode, Str const &target) -> bool {
   // Build the project first (skip VCS). Don't run the old binary when the
   // current code causes an error.
   if (not HandleBuild(mode, target, false)) { return false; }
@@ -754,7 +754,7 @@ auto spp::cli::HandleRun(
 
 /// [CHECKED]
 auto spp::cli::HandleClean(
-  Str const &mode, Str const &target) -> void {
+  const Opt<compiler::BuildMode> mode, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE(false);
 
@@ -781,8 +781,8 @@ auto spp::cli::HandleClean(
   // target and mode folder, so removing that is the whole of the clean - there
   // is nothing left outside it.
   for (auto const &t : targets) {
-    for (auto const &known : compiler::OutLayout::AllModes()) {
-      if (mode != "all" and mode != known) { continue; }
+    for (const auto known : magic_enum::enum_values<compiler::BuildMode>()) {
+      if (mode.has_value() and *mode != known) { continue; }
       std::filesystem::remove_all(
         compiler::OutLayout{.Root = cwd, .Target = t, .Mode = known}.OutRoot());
     }
@@ -836,7 +836,7 @@ auto spp::cli::HandleTest(
   // too - see the Compiler constructed below.
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = "rel"
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = compiler::BuildMode::REL
   };
   std::filesystem::create_directories(out.OutRoot());
 
@@ -862,8 +862,8 @@ auto spp::cli::HandleTest(
     .Project = true, .AllLibs = all_libs, .Libs = libs
   };
   auto c = compiler::Compiler(
-    compiler::Compiler::BuildMode::REL,
-    compiler::Compiler::BuildType::EXE,
+    compiler::BuildMode::REL,
+    compiler::BuildType::EXE,
     scope);
   c.SetTestFilters(name_filter, group_filter);
   if (not CompileReportingErrors(c)) { std::exit(1); }
@@ -959,7 +959,6 @@ auto spp::cli::HandleTest(
 auto spp::cli::HandleValidate(
   const bool is_exe, const bool create_missing) -> bool {
   using namespace std::string_literals;
-  using BuildType = compiler::Compiler::BuildType;
 
   // Check for the key folders/files. The "src" folder holds all s++ code, the
   // main.spp is the required entry point for executables, and the spp.toml is
@@ -1017,13 +1016,15 @@ auto spp::cli::HandleValidate(
     return false;
   }
 
-  // Check the build type is either "exe" or "lib".
+  // Check the build type is a known one.
   const auto build_type = project->at("build").value<Str>().value_or("");
-  if (!magic_enum::enum_cast<BuildType>(
-    build_type, magic_enum::case_insensitive).has_value()) {
+  if (not compiler::TypeFromName(build_type).has_value()) {
+    const auto type_names = compiler::TypeNames()
+      | genex::views::join_with(',')
+      | genex::to<Str>();
     std::cerr
       << "Error: Invalid build type in spp.toml. "
-      << "Build type must be 'exe' or 'lib'.\n";
+      << "Build type must be one of {" << type_names << "}.\n";
     return false;
   }
 
@@ -1090,10 +1091,9 @@ auto spp::cli::CreateDefaultConfigFor(Str const &project_name) -> Str {
 
 /// [CHECKED]
 auto spp::cli::RunCppGoogleTest(
-  Str const &mode, Str &&main_code) -> Map<Str, Str> {
+  const compiler::BuildMode mode, Str &&main_code) -> Map<Str, Str> {
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, {});
-  using BuildMode = compiler::Compiler::BuildMode;
 
   // Create the inner directory (rel or dev).
   const auto cwd = std::filesystem::current_path();
@@ -1104,8 +1104,7 @@ auto spp::cli::RunCppGoogleTest(
 
   // Compile the code.
   const auto c = compiler::Compiler::ForCppGoogleTest(
-    *magic_enum::enum_cast<BuildMode>(mode, magic_enum::case_insensitive),
-    std::move(main_code));
+    mode, std::move(main_code));
   ignore = c->Compile();
   return c->CompTimeConstants();
 }

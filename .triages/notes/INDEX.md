@@ -27,6 +27,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
 - [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
 - [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
+- [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
 
 ## Build, test, verify
 - [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills

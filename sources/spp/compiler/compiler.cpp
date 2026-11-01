@@ -31,21 +31,15 @@ import genex;
 import std;
 
 SPP_MOD_BEGIN
-auto spp::compiler::Compiler::ModeName(
-  const BuildMode mode)
-  -> Str {
-  return mode == BuildMode::REL ? "rel" : "dev";
-}
-
 spp::compiler::Compiler::Compiler(
   const BuildMode mode,
   const BuildType build_type,
   TestScope const &tests) :
-  _Modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), ModeName(mode), tests)),
+  _Modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), mode, tests)),
   _Mode(mode),
   _BuildType(build_type) {
   _Boot = MakeUnique<CompilerBoot>();
-  _Boot->BuildMode = ModeName(mode);
+  _Boot->Mode = mode;
 }
 
 auto spp::compiler::Compiler::ForCppGoogleTest(
@@ -54,12 +48,12 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
   -> Unique<Compiler> {
   auto c = Unique<Compiler>(new Compiler());
   c->_Modules = ModuleTree::ForCppGoogleTest(
-    std::filesystem::current_path(), ModeName(mode), std::move(main_code));
+    std::filesystem::current_path(), mode, std::move(main_code));
   c->_Mode = mode;
   c->_BuildType = BuildType::EXE; // Tests for "main" in the test suite.
   c->_Boot = MakeUnique<CompilerBoot>();
   c->_Boot->VerifyOnly = true;
-  c->_Boot->BuildMode = ModeName(mode);
+  c->_Boot->Mode = mode;
   c->_ForCppGoogleTest = true;
   return c;
 }
@@ -121,7 +115,6 @@ auto spp::compiler::Compiler::Compile() -> bool {
 
     _Boot->Lex(next_bar(), *_Modules);
     _Boot->Parse(next_bar(), *_Modules);
-    _TestCount = _Boot->TestCount;
     _TestNames = _Boot->TestNames;
     _ScopeManager = nullptr;
     _ScopeTree = MakeUnique<analyse::scopes::ScopeTree>(
@@ -183,7 +176,7 @@ auto spp::compiler::Compiler::SetAnalyseOnly(
 
 auto spp::compiler::Compiler::TestCount() const
   -> std::size_t {
-  return _TestCount;
+  return _TestNames.size();
 }
 
 auto spp::compiler::Compiler::TestNames() const

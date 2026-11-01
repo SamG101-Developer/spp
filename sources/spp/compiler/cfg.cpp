@@ -28,6 +28,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.use_statement_ast;
 import spp.asts.use_statement_variable_ast;
 import spp.codegen.llvm_target;
+import spp.compiler.out_layout;
 import genex;
 import std;
 
@@ -79,7 +80,7 @@ namespace {
         const auto bar = rest.find('|');
         const auto alternative = rest.substr(0, bar);
         const auto known = key == "mode"
-          ? alternative == "dev" or alternative == "rel"
+          ? genex::contains(spp::compiler::ModeNames(), alternative)
           : codegen::IsCfgValueValid(key, alternative);
         if (not known) {
           const auto why = "names '" + Str(alternative) + "', which no build has";
@@ -173,8 +174,8 @@ auto spp::compiler::cfg::CfgValueMatches(
 }
 
 auto spp::compiler::cfg::ApplyCfg(
-  asts::ModulePrototypeAst &mod, const StrView mode) -> Vec<Pair<std::size_t, std::size_t>> {
+  asts::ModulePrototypeAst &mod, const BuildMode mode) -> Vec<Pair<std::size_t, std::size_t>> {
   auto dropped = Vec<Pair<std::size_t, std::size_t>>();
-  if (mod.Impl != nullptr) { Filter(mod.Impl->Members, mode, dropped); }
+  if (mod.Impl != nullptr) { Filter(mod.Impl->Members, ModeName(mode), dropped); }
   return dropped;
 }

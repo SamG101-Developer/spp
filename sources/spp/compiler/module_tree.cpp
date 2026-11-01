@@ -36,7 +36,7 @@ auto spp::compiler::Module::TestHarness(
 
 spp::compiler::ModuleTree::ModuleTree(
   spp::Path path,
-  Str mode,
+  const BuildMode mode,
   TestScope const &tests) {
   // Get all the spp module files from the src path.
   _Root = std::move(path);
@@ -45,7 +45,7 @@ spp::compiler::ModuleTree::ModuleTree(
   // before anything is compiled, so it is asked for here rather
   // than threaded through every constructor between the two.
   _Out = OutLayout{
-    .Root = _Root, .Target = codegen::TargetFolderName(), .Mode = std::move(mode)};
+    .Root = _Root, .Target = codegen::TargetFolderName(), .Mode = mode};
   _SrcPath = _Root / "src";
   _VcsPath = _Root / "vcs";
   _FfiPath = _Root / "ffi";
@@ -192,12 +192,12 @@ auto spp::compiler::ModuleTree::OwnerOf(
 
 auto spp::compiler::ModuleTree::ForCppGoogleTest(
   spp::Path path,
-  Str mode,
+  const BuildMode mode,
   Str &&main_code)
   -> Unique<ModuleTree> {
   // Create a new ModuleTree with a single module containing the
   // main_code.
-  auto c = MakeUnique<ModuleTree>(std::move(path), std::move(mode));
+  auto c = MakeUnique<ModuleTree>(std::move(path), mode);
   c->_Modules[0]->Code = std::move(main_code);
   return c;
 }

@@ -8,4 +8,5 @@ export namespace magic_enum {
   using ::magic_enum::enum_cast;
   using ::magic_enum::enum_entries;
   using ::magic_enum::enum_name;
+  using ::magic_enum::enum_values;
 }
