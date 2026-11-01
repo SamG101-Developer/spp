@@ -14,6 +14,7 @@ namespace spp {
     In *ptr)
     -> Out* {
     //
+    if (ptr == nullptr) { return nullptr; }
     if constexpr (std::derived_from<In, Out>) { return ptr; }
     else if constexpr (requires { ptr->template To<Out>(); }) { return ptr->template To<Out>(); }
     else { return dynamic_cast<Out*>(ptr); }
