@@ -41,8 +41,6 @@ public:
   SPP_ATTR_NODISCARD static auto ModeName(BuildMode mode) -> Str;
 
 private:
-  Path _Path;
-
   Unique<ModuleTree> _Modules;
 
   BuildMode _Mode = BuildMode::DEV;

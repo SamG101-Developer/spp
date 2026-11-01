@@ -44,7 +44,6 @@ spp::compiler::Compiler::Compiler(
   _Modules(MakeUnique<ModuleTree>(std::filesystem::current_path(), ModeName(mode), tests)),
   _Mode(mode),
   _BuildType(build_type) {
-  _Path = std::filesystem::current_path() / "src";
   _Boot = MakeUnique<CompilerBoot>();
   _Boot->BuildMode = ModeName(mode);
 }
@@ -58,7 +57,6 @@ auto spp::compiler::Compiler::ForCppGoogleTest(
     std::filesystem::current_path(), ModeName(mode), std::move(main_code));
   c->_Mode = mode;
   c->_BuildType = BuildType::EXE; // Tests for "main" in the test suite.
-  c->_Path = std::filesystem::current_path() / "src";
   c->_Boot = MakeUnique<CompilerBoot>();
   c->_Boot->VerifyOnly = true;
   c->_Boot->BuildMode = ModeName(mode);
