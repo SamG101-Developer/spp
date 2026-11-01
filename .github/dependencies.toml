@@ -235,15 +235,15 @@ commit = "2dc53710d79c49d58bc3d7bdbfc5c0e09cef1361"
 [[library]]
 name = "ColEx"
 repo = "https://github.com/SamG101-Developer/ColEx.git"
-commit = "badae2b5e668084412cef496283a345bd8bd9744"
+commit = "9ad6bafe4d9fe9e2d588a3e620299b81ce8814c2"
 
 [[library]]
 name = "GenEx"
 repo = "https://github.com/SamG101-Developer/GenEx.git"
-commit = "b5c0fc1038479e29dd7cc0067ac68158ecfca463"
+commit = "7b303cdf7f3fe816437398ea1db869ecad20ead6"
 
 [[library]]
 name = "NumEx"
 repo = "https://github.com/SamG101-Developer/NumEx.git"
-commit = "6e20c779c7508456afc5e928005b1f687109ac2a"
+commit = "5509b40314d8569a707aa7b03ca27eb23081f47d"
 cmake-flags = ["-DNUMEX_BUILD_TESTS=OFF", "-DNUMEX_BUILD_BENCHMARKS=OFF"]
