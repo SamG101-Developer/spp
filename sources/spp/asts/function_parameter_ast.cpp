@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_variadic_ast;
@@ -19,6 +20,7 @@ import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -56,9 +58,22 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   using type_resolution::SelfPolicy;
   Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
+  // A template's variadic parameter over a type pack ("..b: Ts")
+  // holds, as a whole, a tuple of the pack: "Tup[Ts]", of a length
+  // only an instance knows. Its elements ("b.0") are each a "Ts"
+  // ("type_compare::OpenTupleElement"). In an instance "Ts" is
+  // bound to the tuple itself, and the parameter is typed by it.
+  auto var_type = Type;
+  if (To<FunctionParameterVariadicAst>() != nullptr
+    and packs::DoesTypeNameAnUnboundPack(*Type, *sm->CurrentScope)) {
+    var_type = generate::common_types::TupleType(Type->PosStart(), {Type});
+    var_type->Stage7_AnalyseSemantics(sm, meta);
+  }
+
   // Create the variable for the parameter (use temp copies
   // and put them back).
-  const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);
+  const auto ast = MakeUnique<LetStatementUninitializedAst>(
+    nullptr, std::move(Var), nullptr, var_type);
   ast->Stage7_AnalyseSemantics(sm, meta);
   Var = std::move(ast->Var);
 

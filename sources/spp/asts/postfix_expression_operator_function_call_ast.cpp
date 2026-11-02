@@ -134,6 +134,9 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   ast->_FoldArgsScope = _FoldArgsScope;
   ast->_FoldTemps = AstCloneVec(_FoldTemps);
   ast->_IsCoroAndAutoResume = _IsCoroAndAutoResume;
+  ast->_OpenSpreadAsts = AstCloneVec(_OpenSpreadAsts);
+  ast->_OpenSpreadType = _OpenSpreadType;
+  ast->_IsOpenSpreadRemainder = _IsOpenSpreadRemainder;
   return ast;
 }
 
@@ -155,7 +158,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   // A call is resolved once. There are some instances where we
   // are getting double analysis, and re-analysing is a waste.
   // Todo: Why is this occurring?
-  if (_OverloadInfo.has_value()) { return; }
+  if (_OverloadInfo.has_value() or _OpenSpreadType != nullptr) { return; }
 
   // Analyse the generic arguments, find what is called and its
   // candidates once, and analyse the function call arguments
@@ -192,6 +195,19 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
       ast->Stage7_AnalyseSemantics(sm, meta);
     }
     return;
+  }
+
+  // A spread the argument group left in place is of an open tuple
+  // (a template's variadic parameter), whose length decides the
+  // overload: resolved per length instead. The remainder call
+  // "_ResolveOpenSpread" builds resolves its spread as written.
+  if (not _IsOpenSpreadRemainder) {
+    for (auto i = 0uz; i < FnArgGroup->Args.size(); ++i) {
+      auto const *const pos = FnArgGroup->Args[i]->To<FunctionCallArgumentPositionalAst>();
+      if (pos == nullptr or pos->TokUnpack == nullptr) { continue; }
+      _ResolveOpenSpread(i, solver->MaxParams(), sm, meta);
+      return;
+    }
   }
 
   // Resolve the overload for this function call.
@@ -320,6 +336,18 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
     return;
   }
 
+  // A call resolved per pack length ("_ResolveOpenSpread") uses its
+  // arguments as written: the spread pack is moved into it once,
+  // whatever length it turns out to be. The per-length calls only
+  // decided the overloads, and take nothing.
+  if (_OpenSpreadType != nullptr) {
+    GnArgGroup->Stage8_CheckMemory(sm, meta);
+    const auto _meta_guard = MetaGuard(meta);
+    meta->TargetCall = this;
+    FnArgGroup->Stage8_CheckMemory(sm, meta);
+    return;
+  }
+
   // An indirect callee is used by the call: taken by a "FunMov" call, borrowed by the others.
   if (_Indirect.has_value() and _Indirect->Conv == ConventionTag::MOV) {
     // Calling a "FunMov" consumes it where it stands, so what it
@@ -346,6 +374,13 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   IMPORT_UTILS_AND_UID;
+
+  // Only a template spreads an open tuple, and a template with a
+  // pack is never emitted: each instance has a tuple and resolved
+  // the call as written.
+  if (_OpenSpreadType != nullptr) {
+    Ice(*this, *sm->CurrentScope, "a call spreading a pack of unknown length reached codegen");
+  }
 
   // For folding, generate the code for the folded
   // transformations and combine into single block.
@@ -780,6 +815,9 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   // they are given.
   if (_Inferred != nullptr and _InferredIn == sm->CurrentScope) { return AstCloneShared(_Inferred); }
 
+  // A call resolved per pack length has the type those calls agreed on.
+  if (_OpenSpreadType != nullptr) { return AstCloneShared(_OpenSpreadType); }
+
   // Get the function return type from the overload.
   auto const &proto = *_OverloadInfo->Proto;
   auto ret_type = proto.ReturnType;
@@ -828,6 +866,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
 auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   IMPORT_UTILS;
+  if (_OpenSpreadType != nullptr) { return TypeRef::Of(*_OpenSpreadType, *sm->CurrentScope); }
   // The plain case answers from the return type's identity read once where the call is ("Scope::ReadIn"), as
   // "InferType"'s name resolves from here, without building and analysing a copy of the name every time; the call's
   // own analysis has already made sure the instantiation exists. A folded call, a coroutine auto-resumed, and a return
@@ -1005,6 +1044,58 @@ auto PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const -> boo
 auto PostfixExpressionOperatorFunctionCallAst::WalksOperand() const -> bool {
   // A method call checks its receiver as its "self" argument.
   return HasReceiver();
+}
+
+auto PostfixExpressionOperatorFunctionCallAst::_ResolveOpenSpread(
+  const std::size_t spread_index, const std::size_t max_params,
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  auto const &spread = *FnArgGroup->Args[spread_index]->As<FunctionCallArgumentPositionalAst>();
+
+  // Past "max_params" arguments only a variadic parameter takes
+  // more, so every length up to there is a call of its own, and the
+  // rest are one call: those elements and the remainder, still open.
+  const auto lengths = max_params > spread_index ? max_params - spread_index : 0uz;
+  const auto make = [&](const std::size_t length, const bool keep_rest) {
+    auto args = Vec<Unique<FunctionCallArgumentAst>>();
+    for (auto i = 0uz; i < spread_index; ++i) { args.emplace_back(AstClone(FnArgGroup->Args[i])); }
+    for (auto n = 0uz; n < length; ++n) {
+      auto field = MakeUnique<IdentifierAst>(spread.Val->PosStart(), std::to_string(n));
+      auto elem = MakeUnique<PostfixExpressionAst>(
+        AstClone(spread.Val), MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
+      args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(AstClone(spread.Conv), nullptr, std::move(elem)));
+    }
+    if (keep_rest) { args.emplace_back(AstClone(FnArgGroup->Args[spread_index])); }
+    for (auto i = spread_index + 1; i < FnArgGroup->Args.size(); ++i) {
+      args.emplace_back(AstClone(FnArgGroup->Args[i]));
+    }
+
+    // The group keeps the written one's parentheses, so an error in
+    // a length's call (no overload for the empty pack) points at the
+    // call as written.
+    auto group = AstClone(FnArgGroup);
+    group->Args = std::move(args);
+    auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(AstClone(GnArgGroup), std::move(group), nullptr);
+    call->_IsOpenSpreadRemainder = keep_rest;
+    call->Lhs = Lhs;
+    call->Stage7_AnalyseSemantics(sm, meta);
+    return call;
+  };
+  for (auto n = 0uz; n < lengths; ++n) { _OpenSpreadAsts.emplace_back(make(n, false)); }
+  _OpenSpreadAsts.emplace_back(make(lengths, true));
+
+  // Every length is the same call to whoever uses its value, so the
+  // overloads chosen must agree on what it returns.
+  const auto ret_type = _OpenSpreadAsts.front()->InferType(sm, meta);
+  for (auto i = 1uz; i < _OpenSpreadAsts.size(); ++i) {
+    const auto other = _OpenSpreadAsts[i]->InferType(sm, meta);
+    if (not type_compare::TypeEq(
+      TypeRef::Of(*ret_type, *sm->CurrentScope), TypeRef::Of(*other, *sm->CurrentScope),
+      *sm->CurrentScope, *sm->CurrentScope)) {
+      Raise<SppTypeMismatchError>(ERR_ARGS(*this, *ret_type, *FnArgGroup, *other));
+    }
+  }
+  _OpenSpreadType = ret_type;
 }
 
 SPP_MOD_END

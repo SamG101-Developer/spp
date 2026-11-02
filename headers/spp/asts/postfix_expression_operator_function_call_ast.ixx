@@ -167,4 +167,31 @@ private:
     ScopeManager *sm,
     CompilerMetaData *meta)
     -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
+
+  /// A call spreading an open tuple ("f(..b)" in a template, "b" a
+  /// variadic parameter) is not resolved itself: one call per pack
+  /// length is, each with that many of the pack's elements ("b.0",
+  /// ...), and one more with the pack's remainder still open, which
+  /// only a variadic parameter takes. Every one must resolve, to one
+  /// return type, which is this call's. Each instance, where the pack
+  /// is a tuple, resolves the call as written.
+  Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _OpenSpreadAsts;
+
+  /// The return type the calls in "_OpenSpreadAsts" agree on.
+  Shared<TypeAst> _OpenSpreadType;
+
+  /// Set on the last call "_ResolveOpenSpread" builds, whose open
+  /// remainder must reach a variadic parameter rather than being
+  /// split per length again.
+  bool _IsOpenSpreadRemainder = false;
+
+  /// Resolve a call spreading an open tuple, as "_OpenSpreadAsts"
+  /// describes. "max_params" is the most parameters (not "self", not
+  /// variadic) any candidate has, which bounds the lengths tried.
+  auto _ResolveOpenSpread(
+    std::size_t spread_index,
+    std::size_t max_params,
+    ScopeManager *sm,
+    CompilerMetaData *meta)
+    -> void;
 };

@@ -64,6 +64,9 @@ namespace spp::analyse::utils::type_compare {
     auto SameType(
       TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope) -> bool;
 
+    auto IsPackAsItsTuple(TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope)
+      -> bool;
+
     /// [CHECKED]
     /// Do a variant check - this checks if the type fits in the
     /// variant, either as a single element of it, or a subset
@@ -209,6 +212,7 @@ namespace spp::analyse::utils::type_compare {
       // symbol lookups.
       if (lhs.IsNever or rhs.IsNever) { return lhs.IsNever and rhs.IsNever; }
       if (lhs.Symbol == nullptr or rhs.Symbol == nullptr or lhs.Conv != rhs.Conv) { return false; }
+      if (IsPackAsItsTuple(lhs, rhs, lhs_scope, rhs_scope)) { return true; }
 
       // Do the "Self" resolution for the two types, and if they
       // are both "Self" types, return true.
@@ -228,6 +232,7 @@ namespace spp::analyse::utils::type_compare {
       // it (except never, which is pre-checked).
       if (value.IsNever) { return true; }
       if (target.IsNever) { return false; }
+      if (target.Conv == value.Conv and IsPackAsItsTuple(target, value, target_scope, value_scope)) { return true; }
       if (target.Symbol == nullptr or value.Symbol == nullptr) { return false; }
 
       // Run the "Self" check; if both types are "Self" then
@@ -311,6 +316,23 @@ namespace spp::analyse::utils::type_compare {
         ? FindGnCompParamById(node->ParamId)
         : nullptr;
       return param != nullptr and param->IsVariadic;
+    }
+
+    /// Whether one side is a pack nothing has bound yet, written as a
+    /// type on its own ("-> Ts"), and the other the tuple of exactly
+    /// that pack ("Tup[Ts]", a template's variadic parameter as a
+    /// whole). A pack used as a type is its tuple: an instance binds
+    /// "Ts" to the tuple itself. So the two are one type, spelled
+    /// two ways.
+    auto IsPackAsItsTuple(TypeRef const &lhs, TypeRef const &rhs, Scope const &lhs_scope, Scope const &rhs_scope)
+      -> bool {
+      const auto pack_and_tuple = [](TypeRef const &pack, TypeRef const &tuple, Scope const &tuple_scope) {
+        if (pack.Id == nullptr or not IsUnboundPackArg(TypeIdArg{.TypeVal = pack.Id})) { return false; }
+        if (not type_predicates::IsTypeTuple(tuple, tuple_scope)) { return false; }
+        const auto args = IdArgs(tuple.Id);
+        return args.size() == 1 and args[0].TypeVal == pack.Id;
+      };
+      return pack_and_tuple(lhs, rhs, rhs_scope) or pack_and_tuple(rhs, lhs, lhs_scope);
     }
 
     /// [CHECKED]
@@ -450,4 +472,22 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
 
   // All constraints are satisfied.
   return nullptr;
+}
+
+auto spp::analyse::utils::type_compare::IsOpenTuple(
+  TypeRef const &type, Scope const &scope) -> bool {
+  // Read off the identity, not the spelling: inside an instance a
+  // caller's pack can be bound to a parameter of another name.
+  if (type.Symbol == nullptr or not type_predicates::IsTypeTuple(type, scope)) { return false; }
+  const auto args = IdArgs(type.Id);
+  return not args.empty() and IsUnboundPackArg(args.back());
+}
+
+auto spp::analyse::utils::type_compare::OpenTupleElement(
+  TypeRef const &type, const std::size_t n, Scope const &scope) -> TypeRef {
+  // The elements before the pack are written one by one; every
+  // element from the pack on is one of the pack's.
+  const auto args = IdArgs(type.Id);
+  auto const &arg = n + 1 < args.size() ? args[n] : args.back();
+  return TypeRef::Of(arg.TypeVal, scope);
 }

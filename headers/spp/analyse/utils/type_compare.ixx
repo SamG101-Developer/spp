@@ -59,4 +59,16 @@ namespace spp::analyse::utils::type_compare {
     Vec<Shared<TypeAst>> const &constraints, TypeRef const &concrete,
     bool is_self, Scope const &constraints_owner_scope, Scope const &concrete_scope)
     -> TypeAst const*;
+
+  /// Whether "type" is a tuple whose last element is a pack nothing
+  /// has bound yet ("Tup[Ts]" for a template's "..Ts", or
+  /// "Tup[A, Ts]"): a tuple of unknown length. A template's
+  /// variadic parameter "..b: Ts" has this type as a whole.
+  SPP_EXP_FUN auto IsOpenTuple(TypeRef const &type, Scope const &scope) -> bool;
+
+  /// The type of element "n" of an open tuple ("IsOpenTuple"): the
+  /// element written there, or, from the pack on, the pack's own
+  /// element type, which any number of elements share. No bounds
+  /// check, as the length is only known per instance.
+  SPP_EXP_FUN auto OpenTupleElement(TypeRef const &type, std::size_t n, Scope const &scope) -> TypeRef;
 }

@@ -31,6 +31,7 @@ import spp.asts.convention_mut_ast;
 import spp.asts.convention_ref_ast;
 import spp.asts.expression_ast;
 import spp.asts.fold_expression_ast;
+import spp.asts.function_call_argument_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_positional_ast;
@@ -567,6 +568,30 @@ namespace spp::analyse::utils::overload_resolution {
       return val;
     }
 
+    /// Whether an argument spreads an open tuple ("..b", a template's
+    /// variadic parameter, of unknown length). The argument group
+    /// expands every other spread into its elements, so a spread left
+    /// is one of these.
+    auto IsOpenSpread(FunctionCallArgumentAst const &arg) -> bool {
+      auto const *const pos = arg.To<FunctionCallArgumentPositionalAst>();
+      return pos != nullptr and pos->TokUnpack != nullptr;
+    }
+
+    /// The tuple a variadic parameter receives when its last argument
+    /// is an open spread: the elements before it, then the spread
+    /// tuple's own ("Tup[A, Ts]" for "x, ..b" with "b: Tup[Ts]"), so it
+    /// stays open.
+    auto OpenPackType(
+      Vec<ExpressionAst*> const &vals, ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst> {
+      auto elems = Vec<Shared<TypeAst>>();
+      for (auto i = 0uz; i + 1 < vals.size(); ++i) { elems.emplace_back(vals[i]->InferType(sm, meta)); }
+      const auto open = vals.back()->InferType(sm, meta);
+      for (auto const *const arg : open->LastTypePart()->GnArgGroup->GetTypeArgs()) { elems.emplace_back(arg->TypeVal); }
+      auto type = generate::common_types::TupleType(vals.front()->PosStart(), std::move(elems));
+      type->Stage7_AnalyseSemantics(sm, meta);
+      return type;
+    }
+
     /// Create a list of "param slots", which bind each argument
     /// to the correct corresponding parameter, by keyword,
     /// then positionals left over. A variadic parameter swallows
@@ -686,7 +711,9 @@ namespace spp::analyse::utils::overload_resolution {
           const auto vals = slot.Args
             | genex::views::transform([&](auto i) { return fn_args.Args[i]->Val.get(); })
             | genex::to<Vec>();
-          slot.Type = TupleLiteralAst::TypeOfElements(vals, vals.empty() ? 0uz : vals[0]->PosStart(), sm, meta);
+          slot.Type = not slot.Args.empty() and IsOpenSpread(*fn_args.Args[slot.Args.back()])
+            ? OpenPackType(vals, sm, meta)
+            : TupleLiteralAst::TypeOfElements(vals, vals.empty() ? 0uz : vals[0]->PosStart(), sm, meta);
         }
         else { slot.Type = fn_args.Args[slot.Args[0]]->InferType(sm, meta); }
       }
@@ -1171,6 +1198,32 @@ namespace spp::analyse::utils::overload_resolution {
         fn_args.Args.size() > fn_proto->FnParamGroup->Params.size() and not is_variadic_fn,
         ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.size(), fn_call, fn_args.Args.size()));
 
+      // An open spread ("..b", a pack of unknown length) is only ever
+      // taken whole by a variadic parameter, as the last positional
+      // argument, once every fixed positional parameter has its own:
+      // landing on a fixed parameter would give it a whole pack. The
+      // call it is in stands for every length past the fixed
+      // parameters ("_ResolveOpenSpread"), which only a variadic
+      // candidate accepts.
+      const auto spread = genex::find_if(fn_args.Args, [](auto const &arg) { return IsOpenSpread(*arg); });
+      if (spread != fn_args.Args.end()) {
+        const auto spread_at = static_cast<std::size_t>(spread - fn_args.Args.begin());
+        const auto positional_before = static_cast<std::size_t>(genex::count_if(
+          fn_args.Args.begin(), spread, [](auto const &arg) { return arg->template To<FunctionCallArgumentPositionalAst>() != nullptr; }));
+        const auto named = fn_args.GetKeywordArgs();
+        const auto fixed_positional = static_cast<std::size_t>(genex::count_if(
+          fn_proto->FnParamGroup->GetAllParams(), [&](auto const *param) {
+            return param->template To<FunctionParameterVariadicAst>() == nullptr
+              and genex::none_of(named, [&](auto const *kw) { return *kw->Name == *param->ExtractName(); });
+          }));
+        const auto last_positional = genex::none_of(
+          fn_args.Args.begin() + static_cast<std::ptrdiff_t>(spread_at) + 1, fn_args.Args.end(),
+          [](auto const &arg) { return arg->template To<FunctionCallArgumentPositionalAst>() != nullptr; });
+        RaiseIf<SppFunctionCallTooManyArgumentsError>(
+          not is_variadic_fn or not last_positional or positional_before < fixed_positional,
+          ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.size(), fn_call, fn_args.Args.size()));
+      }
+
       // Add a generic solver for the function generics. The order
       // of precedence is that the call wrote explicitly, then the
       // "sup" enclosed generics on the receiver, then the pre-bound
@@ -1463,6 +1516,18 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   return {std::move(pass_overloads[0]), candidates.IndirectFnType};
 }
 
+auto OverloadSolver::MaxParams() const -> std::size_t {
+  auto most = 0uz;
+  for (auto const &candidate : _Candidates.Overloads) {
+    auto const &group = *candidate.Proto->FnParamGroup;
+    const auto fixed = genex::count_if(group.GetNonSelfParams(), [](auto const *param) {
+      return param->template To<FunctionParameterVariadicAst>() == nullptr;
+    });
+    most = std::max(most, static_cast<std::size_t>(fixed));
+  }
+  return most;
+}
+
 auto OverloadSolver::_Check(
   FnOverload &candidate)
   -> Expected<PassedOverload, FailedOverload> {
@@ -1494,7 +1559,15 @@ auto spp::analyse::utils::overload_resolution::ElaborateCall(
     auto conv = Unique<ConventionAst>(nullptr);
     auto val = Unique<ExpressionAst>(nullptr);
     if (slot.Default != nullptr) { val = std::move(slot.Default); }
+    else if (slot.IsPack and slot.Args.size() == 1 and IsOpenSpread(*written[slot.Args[0]])) {
+      // An open spread taken whole is the pack itself, not a tuple
+      // holding it.
+      val = std::move(written[slot.Args[0]]->Val);
+    }
     else if (slot.IsPack) {
+      // Elements and an open spread together are only typed, as
+      // "OpenPackType" builds, for a template that is never emitted;
+      // the value only has to hold them.
       auto elems = slot.Args
         | genex::views::transform([&](auto i) { return std::move(written[i]->Val); })
         | genex::to<Vec>();

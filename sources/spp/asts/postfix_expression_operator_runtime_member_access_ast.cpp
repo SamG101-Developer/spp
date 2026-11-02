@@ -15,6 +15,7 @@ import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.packs;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -147,8 +148,11 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   if (std::isdigit(Name->Val[0])) {
     if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
 
-    // The lhs's type is only spelled out for the errors.
+    // The lhs's type is only spelled out for the errors. An open
+    // tuple ("Tup[Ts]", a variadic parameter as a whole) has no
+    // length here either.
     const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
@@ -489,12 +493,14 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // pack not yet bound to its tuple, which is typed as its
   // element.
   if (std::isdigit(Name->Val[0])) {
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) {
+      return type_compare::OpenTupleElement(lhs_ref, std::stoul(Name->Val), *sm->CurrentScope);
+    }
     if (auto const *const pack = UnboundPack(*Lhs, *sm); pack != nullptr) {
       return TypeRef::Of(*sm->CurrentScope->FindTypeSymbol(pack->Type.get()), *sm->CurrentScope);
     }
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    return type_members::GetNthTypeOfIndexableType(
-      std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
+    return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope);
   }
 
   // Read where the field is declared for this instance: its

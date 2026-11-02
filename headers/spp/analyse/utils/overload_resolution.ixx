@@ -235,6 +235,12 @@ public:
   /// for a call of a named function.
   auto Resolve() -> Pair<PassedOverload, Shared<TypeAst const>>;
 
+  /// The most parameters any candidate has, not counting "self" or
+  /// a variadic one: past that many arguments, only a variadic
+  /// parameter takes more. Bounds the pack lengths a call spreading
+  /// an open tuple is resolved for.
+  SPP_ATTR_NODISCARD auto MaxParams() const -> std::size_t;
+
 private:
   /// Check one candidate against the call, without editing the
   /// call: what it is as it matched, or why it does not. An

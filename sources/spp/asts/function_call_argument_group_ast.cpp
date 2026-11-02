@@ -14,6 +14,7 @@ import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.regions;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
@@ -141,8 +142,15 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
     const auto pos_arg = arg->To<FunctionCallArgumentPositionalAst>();
     if (pos_arg == nullptr or pos_arg->TokUnpack == nullptr) { continue; }
 
-    // Check the argument value is a tuple expression.
+    // An open tuple (a template's variadic parameter, "..b") has
+    // no length to expand to, so it stays a spread: the call
+    // resolves it per pack length ("PostfixExpressionOperator
+    // FunctionCallAst::_ResolveOpenSpread"), and each instance,
+    // where it is a tuple, expands it here.
     const auto arg_ref = arg->InferTypeRef(sm, meta);
+    if (type_compare::IsOpenTuple(arg_ref.WithoutConvention(), *sm->CurrentScope)) { continue; }
+
+    // Check the argument value is a tuple expression.
     if (not type_predicates::IsTypeTuple(arg_ref, *sm->CurrentScope)) {
       const auto arg_type = arg->InferType(sm, meta);
       Raise<SppExpansionOfNonTupleError>(ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
