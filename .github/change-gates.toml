@@ -59,6 +59,8 @@ paths = [
   ".github/workflows/_test.yaml",
   ".github/workflows/_lane.yaml",
   ".github/workflows/_coverage.yaml",
+  ".github/workflows/_benchmarks.yaml",
+  ".github/scripts/bench/*",
   ".github/actions/compile/*",
   ".github/actions/setup-runtime/*",
   ".github/actions/restore-mtimes/*",
