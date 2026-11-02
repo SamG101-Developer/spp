@@ -149,6 +149,109 @@ TEST(Dependencies, test_invalid_branch_that_is_not_a_string) {
   EXPECT_TRUE(IsRejected("[vcs]\na = { git = \"https://example.com/a\", branch = 1 }\n"));
 }
 
+namespace {
+  constexpr auto kRev = "0123456789abcdef0123456789abcdef01234567";
+  constexpr auto kOtherRev = "89abcdef0123456789abcdef0123456789abcdef";
+
+  auto PinnedRecord(spp::Str const &name, spp::Str const &rev = kRev) -> spp::Str {
+    return name + " = { git = \"https://example.com/" + name + "\", rev = \"" + rev + "\" }\n";
+  }
+}
+
+TEST(Dependencies, test_declared_reads_a_pinned_record) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + PinnedRecord("a"));
+  const auto declared = spp::compiler::dependencies::Declared(project.Root);
+  ASSERT_TRUE(declared.has_value());
+  ASSERT_EQ(declared->size(), 1uz);
+  EXPECT_EQ((*declared)[0].Rev, spp::Opt<spp::Str>(kRev));
+  EXPECT_EQ((*declared)[0].Branch, "");
+}
+
+TEST(Dependencies, test_declared_lowers_a_rev) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + PinnedRecord("a", "0123456789ABCDEF0123456789ABCDEF01234567"));
+  const auto declared = spp::compiler::dependencies::Declared(project.Root);
+  ASSERT_TRUE(declared.has_value());
+  EXPECT_EQ((*declared)[0].Rev, spp::Opt<spp::Str>(kRev));
+}
+
+TEST(Dependencies, test_declared_reads_a_sha256_rev) {
+  const auto project = ScratchProject();
+  const auto rev = spp::Str(kRev) + "0123456789abcdef01234567";
+  project.Config("[vcs]\n" + PinnedRecord("a", rev));
+  const auto declared = spp::compiler::dependencies::Declared(project.Root);
+  ASSERT_TRUE(declared.has_value());
+  EXPECT_EQ((*declared)[0].Rev, spp::Opt<spp::Str>(rev));
+}
+
+TEST(Dependencies, test_declared_leaves_a_branch_record_unpinned) {
+  const auto project = ScratchProject();
+  project.Config(kDepRecord);
+  const auto declared = spp::compiler::dependencies::Declared(project.Root);
+  ASSERT_TRUE(declared.has_value());
+  EXPECT_FALSE((*declared)[0].Rev.has_value());
+}
+
+TEST(Dependencies, test_invalid_record_with_both_branch_and_rev) {
+  EXPECT_TRUE(IsRejected(
+    spp::Str("[vcs]\na = { git = \"https://example.com/a\", branch = \"dev\", rev = \"") + kRev + "\" }\n"));
+}
+
+TEST(Dependencies, test_invalid_rev_that_is_short) {
+  EXPECT_TRUE(IsRejected("[vcs]\n" + PinnedRecord("a", "0123456")));
+}
+
+TEST(Dependencies, test_invalid_rev_that_is_not_hex) {
+  EXPECT_TRUE(IsRejected("[vcs]\n" + PinnedRecord("a", "g123456789abcdef0123456789abcdef01234567")));
+}
+
+TEST(Dependencies, test_invalid_rev_that_reads_as_a_git_option) {
+  EXPECT_TRUE(IsRejected("[vcs]\n" + PinnedRecord("a", "--upload-pack=touch-x-0123456789abcdef0")));
+}
+
+TEST(Dependencies, test_invalid_rev_that_is_not_a_string) {
+  EXPECT_TRUE(IsRejected("[vcs]\na = { git = \"https://example.com/a\", rev = 1 }\n"));
+}
+
+TEST(Dependencies, test_find_checked_out_rev_reads_a_detached_head) {
+  const auto project = ScratchProject();
+  project.Write("vcs/a/.git/HEAD", "0123456789ABCDEF0123456789ABCDEF01234567\n");
+  EXPECT_EQ(spp::compiler::dependencies::FindCheckedOutRev(project.Root / "vcs" / "a"), spp::Opt<spp::Str>(kRev));
+}
+
+TEST(Dependencies, test_find_checked_out_rev_is_empty_on_a_branch) {
+  const auto project = ScratchProject();
+  project.Write("vcs/a/.git/HEAD", "ref: refs/heads/master\n");
+  EXPECT_FALSE(spp::compiler::dependencies::FindCheckedOutRev(project.Root / "vcs" / "a").has_value());
+}
+
+TEST(Dependencies, test_find_checked_out_rev_is_empty_without_a_checkout) {
+  const auto project = ScratchProject();
+  project.Fetched("a");
+  EXPECT_FALSE(spp::compiler::dependencies::FindCheckedOutRev(project.Root / "vcs" / "a").has_value());
+}
+
+TEST(Dependencies, test_validate_accepts_a_dependency_at_its_pin) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + spp::Str(kStdRecord) + PinnedRecord("a"));
+  project.Fetched("std");
+  project.Fetched("a");
+  project.Write("vcs/a/.git/HEAD", spp::Str(kRev) + "\n");
+  EXPECT_TRUE(spp::compiler::dependencies::Validate(project.Root));
+}
+
+TEST(Dependencies, test_validate_reports_a_dependency_away_from_its_pin) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + spp::Str(kStdRecord) + PinnedRecord("a"));
+  project.Fetched("std");
+  project.Fetched("a");
+  project.Write("vcs/a/.git/HEAD", spp::Str(kOtherRev) + "\n");
+  EXPECT_FALSE(spp::compiler::dependencies::Validate(project.Root));
+  project.Write("vcs/a/.git/HEAD", "ref: refs/heads/master\n");
+  EXPECT_FALSE(spp::compiler::dependencies::Validate(project.Root));
+}
+
 TEST(Dependencies, test_resolve_ignores_a_folder_that_is_not_declared) {
   const auto project = ScratchProject();
   project.Config(kDepRecord);
@@ -321,6 +424,28 @@ TEST(Dependencies, test_invalid_fetch_of_a_dependency_on_two_branches) {
   project.Config("[vcs]\n" + Record("a") + Record("b"));
   auto remotes = FakeRemotes{
     .Project = project, .Vcs = {{"a", "[vcs]\n" + Record("c", "one")}, {"b", "[vcs]\n" + Record("c", "two")}}};
+  EXPECT_FALSE(remotes.Fetch());
+}
+
+TEST(Dependencies, test_fetch_shares_one_copy_of_a_dependency_pinned_twice_alike) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + Record("a") + PinnedRecord("c"));
+  auto remotes = FakeRemotes{.Project = project, .Vcs = {{"a", "[vcs]\n" + PinnedRecord("c")}}};
+  EXPECT_TRUE(remotes.Fetch());
+  EXPECT_EQ(remotes.Fetched, (spp::Vec<spp::Str>{"a", "c"}));
+}
+
+TEST(Dependencies, test_invalid_fetch_of_a_dependency_at_two_revs) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + Record("a") + PinnedRecord("c"));
+  auto remotes = FakeRemotes{.Project = project, .Vcs = {{"a", "[vcs]\n" + PinnedRecord("c", kOtherRev)}}};
+  EXPECT_FALSE(remotes.Fetch());
+}
+
+TEST(Dependencies, test_invalid_fetch_of_a_dependency_pinned_and_on_a_branch) {
+  const auto project = ScratchProject();
+  project.Config("[vcs]\n" + Record("a") + PinnedRecord("c"));
+  auto remotes = FakeRemotes{.Project = project, .Vcs = {{"a", "[vcs]\n" + Record("c")}}};
   EXPECT_FALSE(remotes.Fetch());
 }
 
