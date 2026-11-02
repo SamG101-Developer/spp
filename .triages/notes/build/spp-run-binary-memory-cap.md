@@ -1,7 +1,7 @@
 ---
 name: spp-run-binary-memory-cap
 description: "Why running the compiled S++ binary used to kill WSL, and the ulimit guard that stops it"
-updated: 2026-10-30
+updated: 2026-11-02
 ---
 
 Repeated "WSL crashed" events during 2026-08-31 were **not** the harness: the kernel OOM-killer was
@@ -18,6 +18,10 @@ Fix: `WithMemoryLimit()` in `sources/spp/cli.cpp` prefixes `ulimit -v <kb> && ` 
 command in both `HandleRun` and `HandleTest`. Default 16 GiB, overridable with `SPP_MEMORY_LIMIT_KB`
 (0 disables). This makes `malloc` genuinely return null at the cap, so `AllocOomErr` fires as designed
 and a runaway reports itself instead of killing the box. Verified not to affect a normal run.
+
+**No cap on macOS or Windows (2026-11-02):** `WithMemoryLimit` returns the command unchanged on both. macOS's
+`ulimit -v` fails with `cannot modify limit: Invalid argument`, and the `&&` then skipped the binary, so `spp test`
+reported 0/554 in the STL conformance step. Keep the `&&` elsewhere: `;` would run uncapped whenever `ulimit` fails.
 
 **Harness trap (2026-09-13):** never launch `spp test`/`spp run` from a shell that already ran `ulimit -v` (as the
 gtest runs do). bash's `ulimit -v` sets the hard limit too, so the per-test `ulimit -v <kb>` cannot raise it: every
