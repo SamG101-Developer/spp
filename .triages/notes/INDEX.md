@@ -43,6 +43,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
+- [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
 - [ASAN for LLVM crashes](build/asan-build-for-llvm-crashes.md) — gdb can't unwind LLVM; -DSPP_SANITIZER=address
 - [heaptrack needs mimalloc removed](build/heaptrack-needs-mimalloc-removed.md) — -DSPP_NO_MIMALLOC build + patchelf out libmimalloc
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
