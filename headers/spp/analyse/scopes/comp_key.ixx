@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 export module spp.analyse.scopes.comp_key;
+import spp.utils.stats;
 import spp.utils.types;
 import genex;
 import std;
@@ -169,7 +170,7 @@ namespace spp::analyse::scopes {
 
   /// Every comp key interned so far: a "CompId" is the address
   /// of one. Kept until "ClearCompIds".
-  inline auto InternedCompKeys() -> StableSet<CompKey, CompKeyHash>& {
+  SPP_EXP_FUN inline auto InternedCompKeys() -> StableSet<CompKey, CompKeyHash>& {
     static auto interned = StableSet<CompKey, CompKeyHash>();
     return interned;
   }
@@ -179,6 +180,7 @@ namespace spp::analyse::scopes {
   /// comp key, if an interned one is already equal, use
   /// this interned version".
   SPP_EXP_FUN inline auto InternCompKey(CompKey &&node) -> CompId {
+    spp::utils::stats::Bump(spp::utils::stats::Counter::CompKeyInterns);
     auto &interned = InternedCompKeys();
     if (const auto hit = interned.find(node); hit != interned.end()) { return &*hit; }
     return &*interned.emplace(std::move(node)).first;

@@ -49,6 +49,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.utils.ice;
 import spp.utils.ptr;
+import spp.utils.stats;
 import spp.utils.types;
 import genex;
 import std;
@@ -100,7 +101,7 @@ namespace spp::analyse::utils::monomorphization {
       if (pinned_self != nullptr) {
         for (auto const &param : new_fn_proto.FnParamGroup->Params) {
           if (param.get() == self_param) {
-            auto substituted_self = AstCloneShared(pinned_self);
+            const auto substituted_self = AstCloneShared(pinned_self);
             substituted_self->Stage7_AnalyseSemantics(&tm, meta);
             param->Type = substituted_self;
             if (auto *const sym = symbol_of(*param->ExtractName()); sym != nullptr) {
@@ -935,6 +936,8 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
     }
   }
 
+  spp::utils::stats::Bump(spp::utils::stats::Counter::ClsInstancesMade);
+
   // 0. Stamp the arguments with what they mean where they are
   // written, before anything below copies them.
   for (auto const *arg : type_part.GnArgGroup->GetTypeArgs()) {
@@ -1127,6 +1130,8 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
 auto spp::analyse::utils::monomorphization::MakeSupInstance(
   Scope &old_sup_scope, Scope &new_cls_scope, const TypeId args_id,
   ScopeManager const *sm, meta::CompilerMetaData *meta) -> Tup<Scope*, Scope*> {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::SupInstancesMade);
+
   // 1. Clone the template's scope, two levels down: each member function's mock "sup $M ext FunXxx" block, and the
   // function's own scope below it, so each member has a copy under the instantiation, resolving through its bindings;
   // but only the block's own symbols are made its own. Not the members' bodies: the members are functions, each
@@ -1240,6 +1245,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     // Clone the function prototype's signature (not body),
     // set the non generic pointer, and detach the llvm
     // slot (sets it to nullptr).
+    spp::utils::stats::Bump(spp::utils::stats::Counter::FnInstancesMade);
     auto new_fn_proto = fn_proto->CloneSignature();
     new_fn_proto->SetNonGnImpl(fn_proto);
     new_fn_proto->DetachLlvmFnSlot();

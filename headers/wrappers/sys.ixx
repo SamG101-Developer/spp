@@ -25,6 +25,7 @@ module;
 #if SPP_PLATFORM_WINDOWS
 #include <direct.h>
 #include <io.h>
+#include <psapi.h>
 #include <stddef.h>
 #include <windows.h>
 
@@ -32,6 +33,7 @@ module;
 #else
 #include <dlfcn.h>
 #include <sys/file.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
@@ -190,5 +192,23 @@ export namespace sys {
 
   inline auto S_ISDIR(const mode_t mode) -> int {
     return spp_sys_legacy::IsDir(mode);
+  }
+
+  // The most memory this process has held, in bytes (0 if unknown).
+  inline auto peak_rss_bytes() -> unsigned long long {
+#if SPP_PLATFORM_WINDOWS
+    auto counters = ::PROCESS_MEMORY_COUNTERS{};
+    if (::K32GetProcessMemoryInfo(
+      ::GetCurrentProcess(), &counters, sizeof(counters)) == 0) { return 0; }
+    return counters.PeakWorkingSetSize;
+#else
+    auto usage = ::rusage{};
+    if (::getrusage(RUSAGE_SELF, &usage) != 0) { return 0; }
+#if SPP_PLATFORM_MACOS or SPP_PLATFORM_IOS
+    return static_cast<unsigned long long>(usage.ru_maxrss);
+#else
+    return static_cast<unsigned long long>(usage.ru_maxrss) * 1024ull;
+#endif
+#endif
   }
 }

@@ -1,4 +1,5 @@
 module;
+#include <llvm/Config/llvm-config.h>
 #include <spp/macros-platforms.hpp>
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
@@ -45,6 +46,7 @@ import spp.utils.features;
 import spp.utils.files;
 import spp.utils.ice;
 import spp.utils.shell;
+import spp.utils.stats;
 import cli11_;
 import genex;
 import magic_enum;
@@ -429,10 +431,17 @@ auto spp::cli::RunCli(
     "Report what every name in the project's own files resolved to. Needs"
     "'--message-format=json'");
 
+  auto build_stats_file = Str();
+  build_cmd->add_option(
+    "--emit-stats", build_stats_file,
+    "Write a json report of the work each stage did, its time and peak memory, "
+    "to this file");
+
   build_cmd->callback([&] {
     if (not HandleBuild(
-      *compiler::ModeFromName(build_mode), build_target, build_skip_vcs, build_message_format,
-      build_analyse_only, build_index_files, build_index_project)) {
+      *compiler::ModeFromName(build_mode), build_target, build_skip_vcs,
+      build_message_format, build_analyse_only, build_index_files,
+      build_index_project, build_stats_file)) {
       throw CLI_ERR;
     }
   });
@@ -698,7 +707,8 @@ auto spp::cli::HandleVcs() -> bool {
 auto spp::cli::HandleBuild(
   const compiler::BuildMode build_mode, Str const &target, const bool skip_vcs,
   Str const &message_format, const bool analyse_only,
-  Vec<Str> const &index_files, const bool index_project) -> bool {
+  Vec<Str> const &index_files, const bool index_project,
+  Str const &stats_file) -> bool {
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors. Select the LLVM target, and perform a failsafe assertion
   // on intrinsic names.
@@ -753,7 +763,15 @@ auto spp::cli::HandleBuild(
   c.SetAnalyseOnly(analyse_only);
   if (index_project) { lsp::resolution_index::EnableProject(); }
   else { lsp::resolution_index::EnableFiles(index_files); }
-  return CompileReportingErrors(c, message_format);
+
+  // The report is written whether or not the build succeeded: how long a
+  // project full of errors takes to reject is worth measuring too.
+  if (stats_file.empty()) { return CompileReportingErrors(c, message_format); }
+  utils::stats::Enable(std::filesystem::absolute(stats_file));
+  const auto built = CompileReportingErrors(c, message_format);
+  const auto written = utils::stats::Finish(
+    compiler::ModeName(build_mode), codegen::TargetFolderName(), built);
+  return built and written;
 }
 
 /// [CHECKED]
@@ -1080,8 +1098,10 @@ auto spp::cli::HandleAudit(Str const &path) -> bool {
 /// [CHECKED]
 auto spp::cli::HandleVersion() -> void {
   // Print the version information. This is from a generated file, parsed from
-  // VERSION file (always consistent).
+  // VERSION file (always consistent). The LLVM is the one built in, which a
+  // benchmark record needs: the same pin can mean different minor versions.
   std::cout << "SPP version " << SPP_VERSION << "\n";
+  std::cout << "LLVM version " << LLVM_VERSION_STRING << "\n";
 }
 
 /// [CHECKED]

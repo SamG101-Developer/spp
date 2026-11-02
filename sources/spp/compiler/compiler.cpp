@@ -27,10 +27,40 @@ import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
 import spp.utils.progress;
+import spp.utils.stats;
 import genex;
 import std;
 
 SPP_MOD_BEGIN
+namespace {
+  /// A stage's progress label as a phase name for the stats report: "Generating
+  /// Code (2)....... " is "generating-code-2".
+  auto PhaseName(const spp::StrView label) -> spp::Str {
+    auto out = spp::Str();
+    for (const auto c : label) {
+      if (c == '.' or c == '(' or c == ')') { continue; }
+      if (c == ' ') {
+        if (not out.empty() and out.back() != '-') { out += '-'; }
+        continue;
+      }
+      out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    while (not out.empty() and out.back() == '-') { out.pop_back(); }
+    return out;
+  }
+
+  /// The counters that mirror what the analysis keeps itself: how many
+  /// identities are interned, and how often each cache generation has moved.
+  auto SampleAnalysisCounters() -> void {
+    using spp::utils::stats::Counter;
+    using spp::utils::stats::Set;
+    Set(Counter::TypeKeysDistinct, spp::analyse::scopes::InternedTypeKeys().size());
+    Set(Counter::CompKeysDistinct, spp::analyse::scopes::InternedCompKeys().size());
+    Set(Counter::ScopeLinkageGeneration, spp::analyse::scopes::ScopeLinkageGeneration());
+    Set(Counter::TypeStructureGeneration, spp::analyse::scopes::TypeStructureGeneration());
+  }
+}
+
 /// [CHECKED]
 spp::compiler::Compiler::Compiler(
   const BuildMode mode, const BuildType build_type, TestScope const &tests) :
@@ -107,7 +137,9 @@ auto spp::compiler::Compiler::Compile() -> bool {
   // can own the terminal line.
   auto stage_name = kCompilerStageNames.begin();
   auto bar = Unique<utils::ProgressBar>();
+  utils::stats::SetSampler(SampleAnalysisCounters);
   const auto next_bar = [&]() -> utils::ProgressBar& {
+    utils::stats::BeginPhase(PhaseName(*stage_name));
     bar = MakeUnique<utils::ProgressBar>(
       *stage_name++, num_modules, not _ForCppGoogleTest);
     return *bar;

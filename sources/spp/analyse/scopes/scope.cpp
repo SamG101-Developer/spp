@@ -61,6 +61,7 @@ import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.numbers;
 import spp.utils.ptr;
+import spp.utils.stats;
 import genex;
 import llvm;
 import numex.big_dec;
@@ -843,6 +844,7 @@ Scope::Scope(
   LinkedNamespaceSymbol(nullptr),
   NonGnScope(this),
   _ErrorFormatter(error_formatter) {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCreated);
 }
 
 Scope::Scope(Scope const &other) :
@@ -858,6 +860,7 @@ Scope::Scope(Scope const &other, const std::size_t depth) :
   NonGnScope(other.NonGnScope),
   Deferred(other.Deferred),
   _ErrorFormatter(nullptr) {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCopied);
   InternalTable.ShallowCopyFrom(other.InternalTable);
 
   // Copy the children recursively, as far down as asked.
@@ -1188,6 +1191,7 @@ auto Scope::FindVarSymbol(
   IdentifierAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> VariableSymbol* {
   if (sym_name == nullptr) { return nullptr; }
+  spp::utils::stats::Bump(spp::utils::stats::Counter::VarSymbolLookups);
 
   // If an identifier has been stamped with an identity, then
   // lookup the symbol by the stamped id. If found, return it.
@@ -1276,12 +1280,14 @@ auto Scope::FindTypeSymbol(
   TypeAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> TypeSymbol* {
   if (sym_name == nullptr) { return nullptr; }
+  spp::utils::stats::Bump(spp::utils::stats::Counter::TypeSymbolLookups);
 
   // If a type has been stamped with an identity, then lookup
   // the symbol by the stamped id. If found, return it.
   if (not exclusive) {
     if (const auto type_id = sym_name->StampedTypeId(); type_id != nullptr) {
       if (const auto found = FindBoundTypeSymbolById(type_id); found != nullptr) {
+        spp::utils::stats::Bump(spp::utils::stats::Counter::TypeSymbolLookupsByStamp);
         return found;
       }
     }
@@ -1966,8 +1972,10 @@ auto Scope::GetSupScopes() const -> SupScopeList {
   // Get all super scopes, recursively, yielding each one once.
   // Use the cache if available, saving on a massive number of
   // allocations.
+  spp::utils::stats::Bump(spp::utils::stats::Counter::SupScopeWalks);
   const auto generation = TypeStructureGeneration();
   if (_SupScopesCache != nullptr and _SupScopesGen == generation) {
+    spp::utils::stats::Bump(spp::utils::stats::Counter::SupScopeWalksCached);
     return SupScopeList(_SupScopesCache);
   }
 

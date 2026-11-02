@@ -8,10 +8,13 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.utils.ice;
+import spp.utils.stats;
 import std;
 
 SPP_MOD_BEGIN
-Ast::Ast() = default;
+Ast::Ast() {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::AstNodesCreated);
+}
 
 Ast::~Ast() = default;
 

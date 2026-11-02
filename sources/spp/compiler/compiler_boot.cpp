@@ -53,11 +53,31 @@ import spp.utils.features;
 import spp.utils.files;
 import spp.utils.ice;
 import spp.utils.shell;
+import spp.utils.stats;
 import genex;
 import llvm;
 
 namespace spp::compiler {
   namespace {
+    /// Record the size of "module" for the stats report, under "when": its
+    /// functions with bodies, their basic blocks, and their instructions.
+    auto RecordIrSize(llvm::Module const &module, const StrView when) -> void {
+      if (not utils::stats::Enabled()) { return; }
+      auto functions = 0ull;
+      auto blocks = 0ull;
+      auto instructions = 0ull;
+      for (auto const &fn : module) {
+        if (fn.isDeclaration()) { continue; }
+        ++functions;
+        blocks += fn.size();
+        instructions += fn.getInstructionCount();
+      }
+      const auto prefix = Str("llvm.") + Str(when) + ".";
+      utils::stats::Record(prefix + "functions", functions);
+      utils::stats::Record(prefix + "blocks", blocks);
+      utils::stats::Record(prefix + "instructions", instructions);
+    }
+
     /// [CHECKED]
     /// The command the link runs, followed by the arguments after it. Either
     /// the one "[target.linkers]" names for the target, otherwise "cc" for the
@@ -369,6 +389,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
       _Modules[i]->Stage11_CodeGen(sm, &meta, _LlvmCtxs[i].get());
     });
   bar.Finish();
+  utils::stats::BeginPhase("verify-and-lower-coroutines");
 
   // Write the llvm modules to file. The unit tests only verify IR, not linking;
   // the unit tests' parallel processes share one project directory, and nothing
@@ -503,6 +524,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // Failsafe guard; this should never trigger, as there must always be one s++
   // module present for the compiler to build/run.
   if (_LlvmCtxs.empty()) { return true; }
+  utils::stats::BeginPhase("lto-link");
 
   // Create the single, final, IR module. It will house the entire LTO-linked
   // module code inside.
@@ -553,7 +575,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 
   // Run the standard optimization pipeline across the LTO module, using the
   // optimization level from "rel" (O3) vs "dev" (O0).
+  RecordIrSize(*lto_module, "before_opt");
+  utils::stats::BeginPhase("optimise");
   codegen::RunOptimizationPipeline(lto_module.get(), opt_level);
+  RecordIrSize(*lto_module, "after_opt");
+  utils::stats::BeginPhase("write-ir-and-harden");
 
   // Dump the LLVM LTO IR into the LTO file for manual inspection. This is just
   // for the "out" artefact.
@@ -607,8 +633,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   codegen::EmitHardeningRecord(lto_module.get(), record.c_str());
 
   const auto obj_file_name = utils::files::NativeString(object_file);
+  utils::stats::BeginPhase("emit-object");
   if (not codegen::EmitObjectFile(lto_module.get(), obj_file_name.c_str())) {
     return false;
+  }
+  if (utils::stats::Enabled()) {
+    auto ec = std::error_code();
+    const auto size = std::filesystem::file_size(object_file, ec);
+    if (not ec) { utils::stats::Record("object.bytes", size); }
   }
 
   // A cross build names its object first, as "spp build --target" has always
@@ -628,7 +660,14 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 
   // Now that all the LTO logic has been successfully applies, Link the
   // executable up.
-  return _LinkExecutable(out);
+  utils::stats::BeginPhase("link");
+  const auto linked = _LinkExecutable(out);
+  if (linked and utils::stats::Enabled()) {
+    auto ec = std::error_code();
+    const auto size = std::filesystem::file_size(out.ExecutablePath(), ec);
+    if (not ec) { utils::stats::Record("executable.bytes", size); }
+  }
+  return linked;
 }
 
 /// [CHECKED]

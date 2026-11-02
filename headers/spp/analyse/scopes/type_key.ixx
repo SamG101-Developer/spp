@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.scopes.type_key;
 import spp.utils.interner;
+import spp.utils.stats;
 import spp.utils.types;
 import gch;
 import std;
@@ -238,13 +239,14 @@ namespace spp::analyse::scopes {
 
   /// Every type key interned so far: a "TypeId" is the address
   /// of one. Kept until "ClearTypeIds".
-  inline auto InternedTypeKeys() -> StableSet<TypeKey, TypeKeyHash>& {
+  SPP_EXP_FUN inline auto InternedTypeKeys() -> StableSet<TypeKey, TypeKeyHash>& {
     static auto interned = StableSet<TypeKey, TypeKeyHash>();
     return interned;
   }
 
   /// Produce a "type id" from an "instance key".
   SPP_EXP_FUN SPP_ATTR_HOT inline auto InternTypeKey(TypeKey &&key) -> TypeId {
+    spp::utils::stats::Bump(spp::utils::stats::Counter::TypeKeyInterns);
     auto &interned = InternedTypeKeys();
     if (const auto hit = interned.find(key); hit != interned.end()) { return &*hit; }
     return &*interned.emplace(std::move(key)).first;

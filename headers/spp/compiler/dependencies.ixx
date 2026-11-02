@@ -26,9 +26,15 @@ namespace spp::compiler::dependencies {
   SPP_EXP_FUN auto Fetch(Path const &root, FuncRef<bool(Dependency const&)> fetch_one) -> bool;
 
   /// Check every record is well formed, no dependency is declared two ways,
-  /// every dependency has been fetched, and every package declares "std" (or is
-  /// it). Reports what is wrong and answers false.
+  /// every dependency has been fetched (a pinned one at its "rev"), and every
+  /// package declares "std" (or is it). Reports what is wrong and answers
+  /// false.
   SPP_EXP_FUN auto Validate(Path const &root) -> bool;
+
+  /// The commit a checkout at "folder" is detached at, in lower case, read from
+  /// its ".git/HEAD" with no git call. None when it is on a branch, or is not a
+  /// checkout of its own.
+  SPP_EXP_FUN auto FindCheckedOutRev(Path const &folder) -> Opt<Str>;
 }
 
 /// One record of a "[vcs]" table.
@@ -39,8 +45,12 @@ SPP_EXP_CLS struct spp::compiler::dependencies::Dependency {
   /// Where it is fetched from.
   Str Git;
 
-  /// The branch or tag it is fetched at.
+  /// The branch or tag it is fetched at. Empty when it is pinned to "Rev".
   Str Branch;
+
+  /// The commit it is pinned to, a full hash in lower case. A pinned
+  /// dependency is checked out at exactly this commit and never pulled.
+  Opt<Str> Rev;
 
   /// Where it is fetched to: "<root>/vcs/<name>".
   Path Folder;
