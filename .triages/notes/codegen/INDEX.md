@@ -6,6 +6,7 @@
 - [NonNull lowers to ptr](nonnull-lowers-to-ptr.md) — needs the is(*NON_NULL) special case
 - [noalias unsound on &mut params](noalias-unsound-on-mut-params.md) — plan is M7; index/slice borrows the blocker
 - [GetAllParams includes self](getallparams-includes-self.md) — [0] on a method is `self`
+- [llvm.expect lowered before inlining](expect-lowered-before-inlining.md) — likely/unlikely can't be wrapper bodies; emit at the call site
 - [rel miscompiles with intrinsics](rel-profile-miscompiles-with-intrinsics.md) — strip inliner lifetime markers
 - [Symbol mangling](spp-symbol-mangling.md) — path + $h<fnv64>; closures {closure#N}
 - [Stack protector heuristics](stack-protector-heuristics.md) — canaries everywhere; sspstrong = all

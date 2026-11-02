@@ -1,6 +1,6 @@
 - [Generic inference engine](generic-inference-engine-shape.md) — GenericSolver: Give, Unify, worklist
 - [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
-- [Variadic pack model](variadic-pack-model.md) — IsVariadic; element-typed in templates, tuple in instances
+- [Variadic pack model](variadic-pack-model.md) — IsVariadic; open tuple Tup[Ts] for a whole pack in templates; spreads resolved per length; tuple in instances
 - [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
 - [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope
 - [Generic param syms link a dummy scope](generic-param-sym-links-dummy-scope.md) — use Kind==GenericParam
@@ -14,6 +14,7 @@
 - [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — bind blanket/pack sups off the receiver
 - [E60 is order-dependent](e60-double-extension-order-dependent.md) — CI-only from unsorted module glob order
 - [Tuple sup matching](tuple-sup-matching-broken.md) — tuple args positional; 2 deliberately-red tests
+- [Constraint failure on a call is E51](constraint-failure-on-a-call-is-e51.md) — E78 only for class/alias/sup constraints; a call wraps it in E51
 - [Overload arg matching order](overload-arg-matching-order.md) — exact, relaxed, forwarding; don't reorder
 - [Return-type overloading contexts](return-type-overloading-contexts.md) — where an overload gets its target
 - [Abstract types by value](abstract-types-by-value.md) — E45 only if held by value (FindHeldByValue)
