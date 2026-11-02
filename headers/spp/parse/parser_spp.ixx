@@ -415,29 +415,13 @@ public:
   auto ParseIntegerSuffixType() -> Unique<TokenAst>;
   auto ParseBytePrefixType() -> Unique<TokenAst>;
 
-  auto ParseLiteralTuple1Element(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<TupleLiteralAst>;
+  auto ParseLiteralTuple1Element(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+  auto ParseLiteralTupleNElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+  auto ParseLiteralArrayRepeatedElement(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralRepeatedElementAst>;
+  auto ParseLiteralArrayExplicitElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralExplicitElementsAst>;
 
-  auto ParseLiteralTupleNElements(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<TupleLiteralAst>;
-
-  auto ParseLiteralArrayRepeatedElement(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<ArrayLiteralRepeatedElementAst>;
-
-  auto ParseLiteralArrayExplicitElements(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<ArrayLiteralExplicitElementsAst>;
-
-  auto ParseSpecificCharacters(
-    Str &&s)
-    -> Unique<TokenAst>;
-
-  auto ParseSpecificCharacter(
-    char16_t c)
-    -> Unique<TokenAst>;
+  auto ParseSpecificCharacters(Str &&s) -> Unique<TokenAst>;
+  auto ParseSpecificCharacter(char16_t c)-> Unique<TokenAst>;
 
   auto ParseLexemeCharacter() -> Unique<TokenAst>;
   auto ParseLexemeDigit() -> Unique<TokenAst>;
@@ -545,29 +529,26 @@ public:
   auto ParseTokenRaw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> Unique<TokenAst>;
 
 private:
-  /// Store error information about a discovered failure in
-  /// the parsing.
+  /// Store error information about a discovered failure in the parsing.
   auto _StoreError(std::size_t pos, Str &&err_str) const -> bool;
 
-  /// Store an error that says more than which tokens were
-  /// expected (a construct the language does not have): kept
-  /// unless an error lies further on, and over an expected-token
-  /// one at the same position.
+  /// Store an error that says more than which tokens were expected (a construct
+  /// the language does not have): kept unless an error lies further on, and
+  /// over an expected-token one at the same position.
   auto _StoreSpecificError(std::size_t pos, Str &&err_str) const -> void;
 
-  /// Check if a line feed sits between the token just parsed
-  /// and the next one. Tokens usually skip line feeds freely,
-  /// so the postfix operators that open with a bracket use
-  /// this to stay on the line of they apply to. A "(" or "["
-  /// starting a line begins a statement of its own (tuple or
-  /// array), and reading it as a call or index would swallow
-  /// the statement into the one above it. "something\n[1]"
-  /// should be identifier then array, not an index operation etc.
+  /// Check if a line feed sits between the token just parsed and the next one.
+  /// Tokens usually skip line feeds freely, so the postfix operators that open
+  /// with a bracket use this to stay on the line of they apply to. A "(" or "["
+  /// starting a line begins a statement of its own (tuple or array), and
+  /// reading it as a call or index would swallow the statement into the one
+  /// above it. "something\n[1]" should be identifier then array, not an index
+  /// operation etc.
   auto _LineFeedAhead() const -> bool;
 
-  /// Build a T from the parsed parts, moving every argument in:
-  /// the parts are locals that are discarded once the node is
-  /// made, so the call sites need no std::move of their own.
+  /// Build a T from the parsed parts, moving every argument in: the parts are
+  /// locals that are discarded once the node is made, so the call sites need no
+  /// "std::move" of their own.
   template <typename T>
   static auto _CreateAst(auto &&... args) -> Unique<T> {
     return MakeUnique<T>(std::move(args)...);
