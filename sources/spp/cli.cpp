@@ -664,6 +664,43 @@ auto spp::cli::HandleVcs() -> bool {
       return cached->second;
     };
 
+    // A pinned dependency is checked out at its commit, detached, and never
+    // pulled. One already at it needs no git and no network, so a build with an
+    // unchanged pin works offline.
+    if (dependency.Rev.has_value()) {
+      auto const &rev = *dependency.Rev;
+      if (compiler::dependencies::FindCheckedOutRev(repo_folder) == rev) { return true; }
+
+      if (not std::filesystem::exists(repo_folder)) {
+        if (not RunGit("clone --no-checkout " + utils::shell::Quote(repo_url) + " " + quoted_target)) {
+          if (not host_is_up()) {
+            std::cerr
+              << "Error: '"s << host << "' is unreachable, and "
+              << repo_name << " has not been cloned yet.\n";
+          }
+          return false;
+        }
+      }
+
+      // The pinned commit may be newer than the checkout, so fetch first. A
+      // host that is down only matters if the commit is not here already,
+      // which the checkout then reports.
+      else if (not RunGit("-C " + quoted_target + " fetch origin")) {
+        if (host_is_up()) { return false; }
+        std::cerr
+          << "Warning: '"s << host << "' is unreachable; looking for "
+          << rev << " in the existing checkout of " << repo_name << ".\n";
+      }
+
+      if (not RunGit("-C " + quoted_target + " checkout --quiet --detach " + utils::shell::Quote(rev))) {
+        return false;
+      }
+      std::cout
+        << "Checked out "s << repo_name << " from " << repo_url
+        << " at " << rev << "\n";
+      return true;
+    }
+
     // If the repo doesn't exist locally, then clone it on the correct branch.
     // If the clone fails, check if the host is up or not, and report the error.
     if (not std::filesystem::exists(repo_folder)) {
