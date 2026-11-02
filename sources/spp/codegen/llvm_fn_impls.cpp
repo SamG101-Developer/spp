@@ -2270,6 +2270,35 @@ auto fn_impls::StdMemOpsDropInPlace(
   ctx->Builder.CreateRetVoid();
 }
 
+auto fn_impls::StdHintsBlackBox(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // An empty asm that takes an address and clobbers memory: llvm must assume the asm read and rewrote what is there.
+  // Being an instruction, not a call, it survives the wrapper being inlined. The owned form hides "value"'s own slot
+  // and reloads the value from it; the borrowed form ("&T -> Void") hides the referent, whose address the slot holds.
+  // A Void generic arg removes the parameter, leaving nothing to hide.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.empty()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  const auto value_sym = sm->CurrentScope->FindVarSymbol(params[0]->ExtractName().get());
+  const auto slot = value_sym->LlvmInfo->Alloca;
+  const auto borrowed = value_sym->TypeRefIn(*sm->CurrentScope).IsBorrowed();
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto hidden = borrowed
+    ? static_cast<llvm::Value*>(ctx->Builder.CreateLoad(ptr_ty, slot, "hint.black_box.ref"))
+    : static_cast<llvm::Value*>(slot);
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+  const auto asm_ty = llvm::FunctionType::get(void_ty, {hidden->getType()}, false);
+  const auto barrier = llvm::InlineAsm::get(asm_ty, "", "r,~{memory}", true);
+  ctx->Builder.CreateCall(asm_ty, barrier, {hidden});
+  if (borrowed) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.black_box"));
+}
+
 auto fn_impls::StdThreadingAtomicIsLockFree(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //

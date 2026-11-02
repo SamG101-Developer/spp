@@ -1273,6 +1273,7 @@ EXCLUDED: dict[str, str] = {
     "std.single.": "a singleton",
     "std.allocator.": "allocation",
     "std.abort.": "aborting",
+    "std.hints.black_box": "an optimisation barrier with no compile-time form",
 }
 
 # -- Known failures ---------------------------------------------------------------------------------------------------

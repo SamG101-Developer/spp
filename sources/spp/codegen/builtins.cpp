@@ -172,6 +172,9 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   Register(map, "std.mem.ops.drop", fn_impls::StdMemOpsDrop, nullptr, "T");
   Register(map, "std.mem.ops.drop_in_place", fn_impls::StdMemOpsDropInPlace, nullptr, "T");
 
+  Register(map, "std.hints.black_box", fn_impls::StdHintsBlackBox);
+  Register(map, "std.hints.black_box_ref", fn_impls::StdHintsBlackBox);
+
   Register(
     map, "std.intrinsics.sadd", Binop(BinOp::SAddChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsAdd));
   Register(
