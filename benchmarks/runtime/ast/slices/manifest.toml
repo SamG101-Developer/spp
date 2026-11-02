@@ -1,0 +1,4 @@
+description = "A sliding window over a Vec: a slice taken per step (about 100M of them) and summed by index"
+layer = "std"
+output = "exact"
+covers = ["ast:postfix_expression_operator_slice"]

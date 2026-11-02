@@ -1,0 +1,4 @@
+description = "A defer in a scope entered 100M times; the C and Rust equivalents run the same statement at the scope's end, so the gap is what defer costs"
+layer = "core"
+output = "exact"
+covers = ["ast:defer_statement", "codegen:llvm_defer"]

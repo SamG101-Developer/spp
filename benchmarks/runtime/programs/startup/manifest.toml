@@ -1,0 +1,4 @@
+description = "An empty program: process start-up, the runtime's initialisation and exit. Its time is mostly the loader's; its instruction count is the part that is the language's"
+layer = "core"
+output = "exact"
+covers = ["codegen:llvm_entry"]

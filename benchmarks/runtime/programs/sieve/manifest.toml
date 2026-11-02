@@ -1,0 +1,3 @@
+description = "Sieve of Eratosthenes to 20M: a Vec[Bool], nested counted loops, indexed reads and writes"
+layer = "std"
+output = "exact"

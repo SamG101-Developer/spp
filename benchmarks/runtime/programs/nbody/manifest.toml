@@ -1,0 +1,3 @@
+description = "N-body simulation of 5 bodies for 5M steps: F64 in fixed arrays, sqrt, nested loops"
+layer = "core"
+output = "exact"

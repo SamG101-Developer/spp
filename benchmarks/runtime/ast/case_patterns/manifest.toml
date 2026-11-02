@@ -1,0 +1,12 @@
+description = "Case on tuples, arrays and objects with destructuring patterns, guards and else branches, and the is expression, on LCG values in a hot loop"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:case_expression_branch",
+  "ast:case_pattern_variant_destructure_tuple",
+  "ast:case_pattern_variant_destructure_array",
+  "ast:case_pattern_variant_destructure_object",
+  "ast:case_pattern_variant_else",
+  "ast:pattern_guard",
+  "ast:is_expression",
+]
