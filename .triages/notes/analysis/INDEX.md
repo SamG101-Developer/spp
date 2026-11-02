@@ -21,4 +21,5 @@
 - [Type source-span override](type-source-span-override.md) — WithSourceSpanOf(written) last; error locations
 - [IDE recovery sectioning](ide-recovery-sectioning.md) — sink-mode recovery per member, stages 6-9
 - [Perf hot path](spp-perf-hot-path.md) — where compile time goes, what's already optimised; gtest per-stage profile; pruning std saves little
+- [APFloat toString isn't rounded](apfloat-tostring-not-rounded.md) — full exact digits whatever the precision, then truncated; WriteFloat calls it once and rounds
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons
