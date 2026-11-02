@@ -20,5 +20,5 @@
 - [Errors quote each AST from its own file](error-scope-per-block.md) — N8.7: positions name their file; Raise takes no scopes
 - [Type source-span override](type-source-span-override.md) — WithSourceSpanOf(written) last; error locations
 - [IDE recovery sectioning](ide-recovery-sectioning.md) — sink-mode recovery per member, stages 6-9
-- [Perf hot path](spp-perf-hot-path.md) — time is in type-symbol lookup, not scope cloning
+- [Perf hot path](spp-perf-hot-path.md) — where compile time goes, what's already optimised; gtest per-stage profile; pruning std saves little
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons

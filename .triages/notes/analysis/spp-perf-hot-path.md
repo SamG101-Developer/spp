@@ -1,7 +1,7 @@
 ---
 name: spp-perf-hot-path
 description: "spp compiler time has moved from type analysis to monomorphization; what's already optimised"
-updated: 2026-11-01
+updated: 2026-11-02
 ---
 
 Updated 2026-08-22 after a round of optimisation. Profile with a debug-build flamegraph over ./project;
@@ -47,6 +47,8 @@ sup attach 16% (`MakeSupInstance` 11%), drain 11% (body analysis 9%); allocation
 `InternTypeKey` 3.4% self (from `Scope::TypeIdOf`); symbol-table `Find` 2.9% (most from `FindNsSymbol`).
 
 **2026-11-01 sup attachment (`./project`, about 3 s, `build -m dev`):** 27% of the run, of which `MakeSupInstance` 17% from 27,289 instances at about 20 us each: count, not cost per call. The memo above is gone from `MakeSupInstance`, and what replaces it is `Scope::SupsAttached`. Read through the door, 72% of instances belong to types analysis reads, 22% only to the attach machinery, 6% to nothing, so attaching whole types lazily is worth at most about 5%. Two things that do nothing, measured over 40 pairs: keying a mock's own block lazily (0.6% in the profile, not timeable), and skipping `ReadVarSymbolTypes` and the super class for instances their constraints reject (1,812 of them, all cheap). Time such changes in alternating pairs: differences of a few percent vanish between runs otherwise. NumEx was 23% of the run until 2026-11-01: [[sibling-libs-install-release]].
+
+**2026-11-02 one gtest process (`ClosureExpressionAst.test_valid_closure_correct_return_type`, release, 1.8 s idle, 840 MB peak, one `perf --call-graph dwarf` sample):** every test compiles all of std. Stage 7 28.5%, 5.5 24.1%, 9.5 6.6%, 6 6.6%, 11 6.4% (LTO link 3.4%), 5 5.1%, 10 4.2%, lex + parse 4.8%, `~Compiler` 7.7%, allocator 14% across all of them. `APInt` arithmetic is about 4%, reached from `ValueKeyOf` under `CmpStatementAst`. Deleting every std module that test can lose removes 15% of the lines but saves only 12% (1.8 to 1.59 s), so pruning std is no route to a cheap test. CI's sibling libs are Release (`cmake_install` passes it; `.cold` clones in the binary).
 
 Next candidates: shared_ptr traffic is now the largest cross-cutting cost (~23%), much of it the
 `WithoutGns` cluster (~5.4%, gated behind a "using the cache breaks" Todo in
