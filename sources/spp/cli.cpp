@@ -1097,6 +1097,16 @@ auto spp::cli::CreateDefaultConfigFor(Str const &project_name) -> Str {
 /// [CHECKED]
 auto spp::cli::RunCppGoogleTest(
   const compiler::BuildMode mode, Str &&main_code) -> Map<Str, Str> {
+#if !defined(SPP_TEST_TEARDOWN)
+  // A test process almost always compiles once and exits, and freeing a compile
+  // is about 7% of its run. So the last compile is freed only when another one
+  // is about to start, and otherwise left to the OS: never destroyed, as a
+  // static would be at exit. Builds that exist to see destructors run define
+  // SPP_TEST_TEARDOWN.
+  static auto &previous = *new Unique<compiler::Compiler>();
+  previous.reset();
+#endif
+
   // Validate the project structure first.
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
@@ -1107,9 +1117,16 @@ auto spp::cli::RunCppGoogleTest(
     compiler::OutLayout{.Root = cwd, .Target = target, .Mode = mode}.OutRoot());
   SPP_VALIDATE_STRUCTURE_OR(false, {});
 
-  // Compile the code.
+  // Compile the code. It is held before it runs, as a rejected program throws.
+#if defined(SPP_TEST_TEARDOWN)
   const auto c = compiler::Compiler::ForCppGoogleTest(
     mode, std::move(main_code));
   ignore = c->Compile();
   return c->CompTimeConstants();
+#else
+  previous = compiler::Compiler::ForCppGoogleTest(
+    mode, std::move(main_code));
+  ignore = previous->Compile();
+  return previous->CompTimeConstants();
+#endif
 }
