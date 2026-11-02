@@ -671,6 +671,15 @@ SPP_TEST_CMP_VALUES(
   cmp al: USize = std::mem::ops::align_of[U32]()
 )", {"sz", "8_uz"}, {"al", "4_uz"});
 
+// Which of std's constants the target's "!cfg" selects.
+#if SPP_PLATFORM_WINDOWS
+constexpr auto kPathMax = "260_uz";
+#elif SPP_PLATFORM_MACOS
+constexpr auto kPathMax = "1024_uz";
+#else
+constexpr auto kPathMax = "4096_uz";
+#endif
+
 SPP_TEST_CMP_VALUES(
   TestCompTimeValues,
   test_reassignment_namespace_constant_chains_and_pointer_sized_shift, R"(
@@ -687,7 +696,7 @@ SPP_TEST_CMP_VALUES(
   cmp and_short: Bool = 2 < 1 and 1 < 2
   cmp or_short: Bool = 1 < 2 or 2 < 1
   cmp shl: USize = 1_uz << 4_u32
-)", {"a", "42_s32"}, {"p", "4096_uz"}, {"chained", "true"}, {"chained_false", "false"}, {"and_short", "false"},
+)", {"a", "42_s32"}, {"p", kPathMax}, {"chained", "true"}, {"chained_false", "false"}, {"and_short", "false"},
   {"or_short", "true"}, {"shl", "16_uz"});
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(

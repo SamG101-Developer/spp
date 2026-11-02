@@ -561,7 +561,8 @@ TEST(Dependencies, test_google_test_code_replaces_main_when_it_is_not_the_first_
 TEST(Dependencies, test_indexing_a_project_inside_a_folder_named_vcs) {
   const auto project = ScratchProject("vcs/p");
   const auto wants = [&](spp::Path const &path) {
-    return spp::lsp::resolution_index::Wants(spp::utils::files::DisplayString(project.Root / path));
+    // Native separators throughout, as the paths the module tree globs have.
+    return spp::lsp::resolution_index::Wants(spp::utils::files::DisplayString((project.Root / path).make_preferred()));
   };
   spp::lsp::resolution_index::EnableProject();
   EXPECT_TRUE(wants("src/main.spp"));
