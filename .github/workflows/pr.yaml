@@ -234,6 +234,24 @@ jobs:
     permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
 
+  # Report-only until its gate is switched on, so it stays out of
+  # ci-success. It needs the whole Linux GCC lane, as a called
+  # workflow's jobs cannot be needed one by one, and runs once that
+  # lane's build has staged, whatever its tests did.
+  benchmarks:
+    name: Benchmarks (Advisory)
+    needs: [ changes, linux-gcc ]
+    if: |
+      !cancelled()
+      && needs.changes.outputs.compile == 'true'
+      && needs.linux-gcc.outputs.artifact != ''
+    permissions: *read
+    uses: ./.github/workflows/_benchmarks.yaml
+    with:
+      artifact: ${{ needs.linux-gcc.outputs.artifact }}
+      spp-sha256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+      base: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
   docs:

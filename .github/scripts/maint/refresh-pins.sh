@@ -187,6 +187,24 @@ else
   set_pin pin.valgrind.sha256 "$(sha256sum "$tmp/valgrind.tar.bz2" | cut -d ' ' -f 1)"
 fi
 
+# RUST (stable; the run-time benchmarks' rustc). Hashed here rather
+# than read from the .sha256 files beside them, like every other pin.
+echo
+echo "rust (${MANIFEST})"
+rust_version="$(fetch https://static.rust-lang.org/dist/channel-rust-stable.toml \
+  | python3 -c 'import sys, tomllib; print(tomllib.load(sys.stdin.buffer)["pkg"]["rust"]["version"].split()[0])')"
+if [ -z "$rust_version" ]; then
+  echo "::error::could not read the latest stable Rust release"
+  status=1
+else
+  set_pin pin.rust.version "$rust_version"
+  for component in rustc rust-std; do
+    fetch -o "$tmp/${component}.tar.xz" \
+      "https://static.rust-lang.org/dist/${component}-${rust_version}-x86_64-unknown-linux-gnu.tar.xz"
+    set_pin "pin.rust.sha256-${component}" "$(sha256sum "$tmp/${component}.tar.xz" | cut -d ' ' -f 1)"
+  done
+fi
+
 # QEMU (our fork's newest release; upstream-watch U17-U19)
 echo
 echo "qemu (${MANIFEST})"

@@ -69,6 +69,15 @@ sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
 developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
 developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
+# Rust for the run-time benchmarks' comparison programs: the standalone
+# rustc and rust-std component tarballs, so the version is ours rather
+# than rustup's. Its LLVM major should match [pin.llvm-lib], as the
+# comparison is of the IR each frontend hands the same LLVM.
+[pin.rust]
+version = "1.99.1"
+sha256-rustc = "2ff05ff9c08a90861e7f6e4065b40a8b87463b4576186fd613871c3e37f2091f"
+sha256-rust-std = "109b074225bf5b9ea3820890876bfdf4ed161adbfaf94b2b4b5984c85ee5d958"
+
 [pin.doxygen]
 version = "1.17.0"
 sha256 = "75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2"
@@ -146,6 +155,7 @@ macos = "11.0"
 local = "{home}/.local"
 doxygen = "{home}/.tools/doxygen"
 valgrind = "{home}/.tools/valgrind"
+rust = "{home}/.tools/rust"
 qemu = "{home}/.tools/qemu"
 llvm-win = "{home}/llvm"
 llvm-mac = "{home}/llvm"
