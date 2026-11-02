@@ -256,8 +256,9 @@ namespace spp::cli {
     /// needed until the s++ std allocation API is ironed out and stable.
     auto WithMemoryLimit(Str const &command) -> Str {
       // Nothing can be done for windows. Todo: There is possible scope to use
-      // windows.h "CreateJobObjectW" and related APIs.
-      #if SPP_PLATFORM_WINDOWS
+      // windows.h "CreateJobObjectW" and related APIs. On macOS, "ulimit -v"
+      // fails with EINVAL, and the "&&" below would then skip the command.
+      #if SPP_PLATFORM_WINDOWS or SPP_PLATFORM_MACOS
       return command;
       #else
 
