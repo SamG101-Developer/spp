@@ -30,6 +30,12 @@ namespace spp::codegen {
   /// libraries have no fortified (glibc "_chk") calls to check.
   SPP_EXP_FUN auto TargetIsMusl() -> bool;
 
+  /// Whether the selected target's code is position independent, and so its
+  /// executables PIE. Every target but m68k, whose backend reaches calls and
+  /// the GOT from PIC code through 16-bit offsets, so past about 32 KB of code
+  /// the program cannot link.
+  SPP_EXP_FUN auto TargetIsPositionIndependent() -> bool;
+
   /// A target folder as a GNU toolchain names the target, the
   /// prefix of its cross tools ("s390x-linux-gnu" for
   /// "s390x-linux-gnu-gcc"): the folder name, but for the

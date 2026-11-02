@@ -165,9 +165,15 @@ namespace spp::codegen {
         // there, V9, as LLVM itself picks when given no CPU.
         const auto cpu = triple.isSPARC64() ? "v9" : "generic";
 
-        // "Position independent" because the runtime the program
-        // links against is a shared library, and a non-pic object
-        // cannot be linked against one on this target.
+        // Fixed addresses need a code model that reaches the whole
+        // program: the small one still uses 16-bit offsets.
+        if (not TargetIsPositionIndependent()) {
+          return target->createTargetMachine(
+            triple, cpu, features, options, llvm::Reloc::Static, llvm::CodeModel::Large);
+        }
+
+        // "Position independent" because the program is linked as
+        // a PIE, with the runtime as a shared library.
         return target->createTargetMachine(
           triple, cpu, features, options, llvm::Reloc::PIC_);
       }();
@@ -278,6 +284,10 @@ auto spp::codegen::TargetIsLinux() -> bool {
 
 auto spp::codegen::TargetIsMusl() -> bool {
   return TargetTriple().isMusl();
+}
+
+auto spp::codegen::TargetIsPositionIndependent() -> bool {
+  return TargetTriple().getArch() != llvm::Triple::m68k;
 }
 
 auto spp::codegen::GnuTripleOf(
@@ -429,6 +439,7 @@ auto spp::codegen::ApplyTargetToModule(
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   llvm_mod.setTargetTriple(machine->getTargetTriple());
   llvm_mod.setDataLayout(machine->createDataLayout());
+  if (not TargetIsPositionIndependent()) { return; }
 
   // The machine's PIC relocation model is not enough on its own:
   // a module with no PIC level counts as non-PIC, so an external

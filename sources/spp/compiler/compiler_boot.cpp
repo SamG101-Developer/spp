@@ -706,8 +706,13 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   // Binary hardening, done by attaching flags to the linker. ELF only: ld64
   // already does each by default.
   if (triple.isOSBinFormatELF()) {
+    // Asked for whether or not hardening is on: a gcc configured to default to
+    // PIE would otherwise link a fixed-address object as one.
+    if (not codegen::TargetIsPositionIndependent()) { command += " -no-pie"; }
     FEATURE_GATE(BinaryLinkHarden) {
-      command += " -pie"; // No fixed load address to write an exploit against.
+      if (codegen::TargetIsPositionIndependent()) {
+        command += " -pie"; // No fixed load address to write an exploit against.
+      }
       command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
       command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
       command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.

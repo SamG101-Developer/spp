@@ -177,6 +177,11 @@ export namespace llvm {
 
   namespace Reloc {
     using ::llvm::Reloc::PIC_;
+    using ::llvm::Reloc::Static;
+  }
+
+  namespace CodeModel {
+    using ::llvm::CodeModel::Large;
   }
 
   namespace Intrinsic {
