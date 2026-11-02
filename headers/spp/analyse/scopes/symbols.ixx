@@ -286,6 +286,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
   /// project ("Module::Owner").
   Opt<Str> Owner;
 
+  /// For a top-level namespace, the dependencies its owner declares
+  /// ("Module::Declares"), which are the ones its modules can name.
+  Vec<Str> Declares;
+
   /// Whether this top-level namespace is an ffi package, which
   /// only its owner's modules can name what is in.
   bool IsFfiPackage = false;

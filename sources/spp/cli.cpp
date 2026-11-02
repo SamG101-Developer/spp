@@ -9,6 +9,12 @@ module;
 #define SPP_VALIDATE_STRUCTURE_OR(is_exe, ...) \
   if (not HandleValidate(is_exe)) { return __VA_ARGS__; }
 
+#define SPP_VALIDATE_PROJECT(is_exe) \
+  if (not ValidateProject(is_exe, true)) { std::exit(1); }
+
+#define SPP_VALIDATE_PROJECT_OR(is_exe, ...) \
+  if (not ValidateProject(is_exe, true)) { return __VA_ARGS__; }
+
 #define SPP_CLI_NULL \
   bp::v1::std_out > bp::v1::null
 
@@ -24,6 +30,7 @@ import spp.codegen.llvm_artefact;
 import spp.codegen.llvm_target;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
+import spp.compiler.dependencies;
 import spp.compiler.ffi;
 import spp.compiler.module_tree;
 import spp.compiler.out_layout;
@@ -79,6 +86,90 @@ std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" 
 
 namespace spp::cli {
   SPP_INTERNAL {
+    /// Check the current directory has the structure a project needs, without
+    /// looking at its dependencies. This is all that can be asked before a
+    /// fetch: a dependency's checkout may be missing, or broken in a way the
+    /// fetch is about to repair. "create_missing" is for the project itself, as
+    /// filling a dependency's checkout with empty folders makes it dirty.
+    auto ValidateProject(
+      const bool is_exe, const bool create_missing) -> bool {
+      using namespace std::string_literals;
+
+      // Check for the key folders/files. The "src" folder holds all s++ code,
+      // the main.spp is the required entry point for executables, and the
+      // spp.toml is required for the project config.
+      const auto cwd = std::filesystem::current_path();
+      if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
+        std::cerr << "Error: Missing 'src' folder.\n";
+        return false;
+      }
+      const auto main_file = cwd / SRC_FOLDER / MAIN_FILE;
+      if (not std::filesystem::exists(main_file) and is_exe) {
+        std::cerr << "Error: Missing 'src/main.spp' file.\n";
+        return false;
+      }
+      if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
+        std::cerr << "Error: Missing 'spp.toml' file.\n";
+        return false;
+      }
+
+      // Create the other folders if they don't exist, but only in this project
+      // - a dependency's checkout is a fetched artifact, and filling it with
+      // empty folders makes its working tree dirty.
+      if (create_missing) {
+        std::filesystem::create_directory(cwd / OUT_FOLDER);
+        std::filesystem::create_directory(cwd / VCS_FOLDER);
+        std::filesystem::create_directory(cwd / FFI_FOLDER);
+        std::filesystem::create_directory(cwd / TST_FOLDER);
+      }
+
+      // Check the config file against the schema: every section and key it
+      // holds has to be one the compiler knows, and every required one has to
+      // be there. An unrecognised key is reported rather than ignored, because
+      // a mistyped one that silently does nothing is worse than no key - a
+      // protection turned off by a typo turns off nothing.
+      auto config_errors = Vec<Str>();
+      if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
+        for (auto const &e : config_errors) {
+          std::cerr << "Error in spp.toml: " << e << "\n";
+        }
+        std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
+        return false;
+      }
+
+      // Parse the TOML file and extract the project section, guaranteed to be
+      // present. This contains the key project metadata.
+      const auto toml = toml::parse_file(CONFIG_FILE);
+      const auto project = toml["project"].as_table();
+
+      // Check the version follows the "major.minor.patch" format.
+      const auto version = project->at("version").value<Str>().value_or("");
+      const auto version_part_count = genex::count(version, '.') + 1;
+      if (version_part_count != 3) {
+        std::cerr
+          << "Error: Invalid version format in spp.toml. "
+          << "Version must follow 'major.minor.patch' format.\n";
+        return false;
+      }
+
+      // Check the build type is a known one.
+      const auto build_type = project->at("build").value<Str>().value_or("");
+      if (not compiler::TypeFromName(build_type).has_value()) {
+        auto type_names_list = compiler::TypeNames();
+        const auto type_names = type_names_list
+          | genex::views::join_with(',')
+          | genex::to<Str>();
+        std::cerr
+          << "Error: Invalid build type in spp.toml. "
+          << "Build type must be one of {" << type_names << "}.\n";
+        return false;
+      }
+
+      // Check the dependency records, with the rest of this config file's
+      // checks. All checks passed otherwise.
+      return compiler::dependencies::Declared(cwd).has_value();
+    }
+
     /// Iterate a directory that may not be there. The optional
     /// folders are only created inside this project, so a
     /// dependency legitimately has none of them and walking one
@@ -541,32 +632,16 @@ auto spp::cli::HandleVcs() -> bool {
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors.
   using namespace std::string_literals;
-  SPP_VALIDATE_STRUCTURE_OR(false, false);
+  SPP_VALIDATE_PROJECT_OR(false, false);
 
-  // Parse the spp.toml config file and get the optional "vcs" section. A
-  // project with no dependencies has nothing to fetch, which is a successful
-  // outcome, not a failure.
-  const auto toml = toml::parse_file(CONFIG_FILE);
-  if (not toml["vcs"]) { return true; }
-
-  // Move into the VCS folder. All future file operations of the function are
-  // done relative to the VCS folder.
-  const auto cwd = std::filesystem::current_path();
-  std::filesystem::current_path(cwd / VCS_FOLDER);
-
-  // Iterate over the vcs section and clone or update the repositories.
-  auto ok = true;
+  // Clone or update each dependency, and each of theirs. A project with none
+  // has nothing to fetch, which is a successful outcome, not a failure.
   auto reachable = Map<Str, bool>();
-  auto vcs = toml["vcs"].as_table();
-  for (auto [key, info] : *vcs) {
-    // Get the url from the key, and the branch if present, defaulting to the
-    // master branch. Determine the vcs subfolder for the entry.
-    auto repo_name = Str(key);
-    auto repo_url = (*info.as_table())["git"].value<Str>().value();
-    auto repo_branch =
-      (*info.as_table())["branch"].value<Str>().value_or("master");
-
-    auto repo_folder = cwd / VCS_FOLDER / repo_name;
+  const auto fetch_one = [&](compiler::dependencies::Dependency const &dependency) -> bool {
+    auto const &repo_name = dependency.Name;
+    auto const &repo_url = dependency.Git;
+    auto const &repo_branch = dependency.Branch;
+    auto const &repo_folder = dependency.Folder;
     const auto quoted_target = utils::shell::Quote(utils::files::NativeString(repo_folder));
     const auto quoted_branch = utils::shell::Quote(repo_branch);
 
@@ -589,8 +664,7 @@ auto spp::cli::HandleVcs() -> bool {
             << "Error: '"s << host << "' is unreachable, and "
             << repo_name << " has not been cloned yet.\n";
         }
-        ok = false;
-        continue;
+        return false;
       }
       std::cout
         << "Cloned "s << repo_name << " from "
@@ -602,10 +676,7 @@ auto spp::cli::HandleVcs() -> bool {
     else if (
       not RunGit("-C " + quoted_target + " checkout " + quoted_branch) or
       not RunGit("-C " + quoted_target + " pull origin " + quoted_branch)) {
-      if (host_is_up()) {
-        ok = false;
-        continue;
-      }
+      if (host_is_up()) { return false; }
       std::cerr
         << "Warning: '"s << host
         << "' is unreachable; using the existing checkout of "
@@ -616,13 +687,10 @@ auto spp::cli::HandleVcs() -> bool {
         << "Updated "s << repo_name << " from " << repo_url
         << " (" << repo_branch << ")" << "\n";
     }
-
-  }
-
-  // Move back into the original working directory, for future directory work
-  // outside of this function.
-  std::filesystem::current_path(cwd);
-  return ok;
+    return true;
+  };
+  return compiler::dependencies::Fetch(
+    std::filesystem::current_path(), fetch_one);
 }
 
 /// [CHECKED]
@@ -633,7 +701,7 @@ auto spp::cli::HandleBuild(
   // Validate the project structure first. This is a failsafe to prevent
   // downstream errors. Select the LLVM target, and perform a failsafe assertion
   // on intrinsic names.
-  SPP_VALIDATE_STRUCTURE_OR(false, false);
+  SPP_VALIDATE_PROJECT_OR(false, false);
   if (not codegen::SelectTarget(target.c_str())) { return false; }
   codegen::AssertIntrinsicNamingIsSound();
 
@@ -756,7 +824,7 @@ auto spp::cli::HandleRun(
 auto spp::cli::HandleClean(
   const Opt<compiler::BuildMode> mode, Str const &target) -> void {
   // Validate the project structure first.
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_PROJECT(false);
 
   // If a target was explicitly provided, select it via the codegen module, and
   // record the folder name.
@@ -803,7 +871,7 @@ auto spp::cli::HandleTest(
   Str const &name_filter, Str const &group_filter, Vec<Str> const &libs,
   const bool all_libs, Str const &runner, Str const &target) -> void {
   // Validate the project structure first.
-  SPP_VALIDATE_STRUCTURE(false);
+  SPP_VALIDATE_PROJECT(false);
 
   // Choose the target before anything is compiled, as a build does. Nothing
   // this machine can execute comes out of a cross build, so one is only tested
@@ -847,11 +915,12 @@ auto spp::cli::HandleTest(
 
   /// Manually validate the selected libraries to test. The test command fails
   /// completely if an invalid library is included.
+  const auto dependencies = compiler::dependencies::Resolve(cwd);
   for (auto const &lib : libs) {
-    if (std::filesystem::is_directory(cwd / VCS_FOLDER / lib)) { continue; }
+    if (genex::any_of(dependencies, [&](auto const &d) { return d.Name == lib; })) { continue; }
     std::cerr
       << "Error: No library named '" << lib
-      << "' under '" << VCS_FOLDER << "'.\n";
+      << "' in the project's [" << VCS_FOLDER << "].\n";
     std::exit(1);
   }
 
@@ -955,91 +1024,25 @@ auto spp::cli::HandleTest(
   std::exit(1);
 }
 
-/// [CHECKED]
 auto spp::cli::HandleValidate(
-  const bool is_exe, const bool create_missing) -> bool {
-  using namespace std::string_literals;
-
-  // Check for the key folders/files. The "src" folder holds all s++ code, the
-  // main.spp is the required entry point for executables, and the spp.toml is
-  // required for the project config.
+  const bool is_exe) -> bool {
+  // The project, then that each dependency is well declared and fetched, then
+  // each dependency's own structure. A dependency that fails stops the build,
+  // as compiling against it reports errors far from their cause.
+  if (not ValidateProject(is_exe, true)) { return false; }
   const auto cwd = std::filesystem::current_path();
-  if (not std::filesystem::exists(cwd / SRC_FOLDER)) {
-    std::cerr << "Error: Missing 'src' folder.\n";
-    return false;
-  }
-  if (not std::filesystem::exists(cwd / SRC_FOLDER / MAIN_FILE) and is_exe) {
-    std::cerr << "Error: Missing 'src/main.spp' file.\n";
-    return false;
-  }
-  if (not std::filesystem::exists(cwd / CONFIG_FILE)) {
-    std::cerr << "Error: Missing 'spp.toml' file.\n";
-    return false;
-  }
+  if (not compiler::dependencies::Validate(cwd)) { return false; }
 
-  // Create the other folders if they don't exist, but only in this project - a
-  // dependency's checkout is a fetched artifact, and filling it with empty
-  // folders makes its working tree dirty.
-  if (create_missing) {
-    std::filesystem::create_directory(cwd / OUT_FOLDER);
-    std::filesystem::create_directory(cwd / VCS_FOLDER);
-    std::filesystem::create_directory(cwd / FFI_FOLDER);
-    std::filesystem::create_directory(cwd / TST_FOLDER);
-  }
-
-  // Check the config file against the schema: every section and key it holds
-  // has to be one the compiler knows, and every required one has to be there.
-  // An unrecognised key is reported rather than ignored, because a mistyped one
-  // that silently does nothing is worse than no key - a protection turned off
-  // by a typo turns off nothing.
-  auto config_errors = Vec<Str>();
-  if (not utils::features::Validate(cwd / CONFIG_FILE, config_errors)) {
-    for (auto const &e : config_errors) {
-      std::cerr << "Error in spp.toml: " << e << "\n";
-    }
-    std::cerr << "\nRun 'spp config' for everything spp.toml accepts.\n";
-    return false;
-  }
-
-  // Parse the TOML file and extract the project section, guaranteed to be
-  // present. This contains the key project metadata.
-  const auto toml = toml::parse_file(CONFIG_FILE);
-  const auto project = toml["project"].as_table();
-
-  // Check the version follows the "major.minor.patch" format.
-  const auto version = project->at("version").value<Str>().value_or("");
-  const auto version_part_count = genex::count(version, '.') + 1;
-  if (version_part_count != 3) {
-    std::cerr
-      << "Error: Invalid version format in spp.toml. "
-      << "Version must follow 'major.minor.patch' format.\n";
-    return false;
-  }
-
-  // Check the build type is a known one.
-  const auto build_type = project->at("build").value<Str>().value_or("");
-  if (not compiler::TypeFromName(build_type).has_value()) {
-    auto type_names_list = compiler::TypeNames();
-    const auto type_names = type_names_list
-      | genex::views::join_with(',')
-      | genex::to<Str>();
-    std::cerr
-      << "Error: Invalid build type in spp.toml. "
-      << "Build type must be one of {" << type_names << "}.\n";
-    return false;
-  }
-
-  // For the VCS folders, validate each VCS entry (if it exists). This is
-  // recursive into the vcs of vcs etc. VCS entries will be libraries.
-  // Todo: enforce this.
-  for (auto const &vcs_dir : SafeDirectoryIterator(cwd / VCS_FOLDER)) {
-    if (not vcs_dir.is_directory()) { continue; }
-    std::filesystem::current_path(vcs_dir.path());
-    HandleValidate(false, false);
+  for (auto const &dependency : compiler::dependencies::Resolve(cwd)) {
+    std::filesystem::current_path(dependency.Folder);
+    const auto valid = ValidateProject(false, false);
     std::filesystem::current_path(cwd);
+    if (valid) { continue; }
+    std::cerr
+      << "Error: the dependency '" << dependency.Name
+      << "' is not valid.\n";
+    return false;
   }
-
-  // All checks passed.
   return true;
 }
 

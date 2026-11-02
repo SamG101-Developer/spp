@@ -4,6 +4,7 @@ module;
 module spp.compiler.ffi;
 import spp.codegen.llvm_artefact;
 import spp.codegen.llvm_target;
+import spp.compiler.dependencies;
 import spp.utils.files;
 import genex;
 import std;
@@ -26,8 +27,8 @@ namespace spp::compiler::ffi {
     /// folder, then each dependency's.
     auto FfiFolders(Path const &root) -> Vec<Path> {
       auto folders = Vec{root / "ffi"};
-      for (auto const &dep : Entries(root / "vcs")) {
-        if (dep.is_directory()) { folders.emplace_back(dep.path() / "ffi"); }
+      for (auto const &dep : dependencies::Resolve(root)) {
+        folders.emplace_back(dep.Folder / "ffi");
       }
       return folders;
     }

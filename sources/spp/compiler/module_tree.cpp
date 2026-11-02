@@ -4,16 +4,17 @@ module;
 module spp.compiler.module_tree;
 import spp.asts.module_prototype_ast;
 import spp.codegen.llvm_target;
+import spp.compiler.dependencies;
 import spp.compiler.ffi;
 import spp.utils.files;
+import spp.utils.ice;
 import genex;
 import std;
 
 SPP_MOD_BEGIN
+/// [CHECKED]
 spp::compiler::Module::Module(
-  spp::Path path,
-  Str code,
-  Vec<lex::RawToken> tokens,
+  spp::Path path, Str code, Vec<lex::RawToken> tokens,
   Unique<asts::ModulePrototypeAst> module_ast,
   Shared<utils::errors::ErrorFormatter> error_formatter) :
   Path(std::move(path)),
@@ -22,28 +23,32 @@ spp::compiler::Module::Module(
   ModuleAst(std::move(module_ast)),
   Formatter(std::move(error_formatter)) {}
 
+/// [CHECKED]
 auto spp::compiler::Module::FromPath(spp::Path const &path) {
-  return MakeUnique<Module>(path, "", Vec<lex::RawToken>{}, nullptr, nullptr);
+  // Build an empty module for a path. The lexing and parsing stages will then
+  // fill the tokens and module asts.
+  return MakeUnique<Module>(
+    path, "", Vec<lex::RawToken>{}, nullptr, nullptr);
 }
 
+/// [CHECKED]
 auto spp::compiler::Module::TestHarness(
-  spp::Path const &tst_root)
-  -> Unique<Module> {
-  auto mod = MakeUnique<Module>(tst_root / "main.spp", "", Vec<lex::RawToken>{}, nullptr, nullptr);
+  spp::Path const &tst_root) -> Unique<Module> {
+  // Build an empty module for a test hardness. This is the entry for the test
+  // harness and has a custom "main.spp" to call the test functions.
+  auto mod = MakeUnique<Module>(
+    tst_root / "main.spp", "", Vec<lex::RawToken>{}, nullptr, nullptr);
   mod->IsTestHarness = true;
   return mod;
 }
 
+/// [CHECKED]
 spp::compiler::ModuleTree::ModuleTree(
-  spp::Path path,
-  const BuildMode mode,
-  TestScope const &tests) {
-  // Get all the spp module files from the src path.
+  spp::Path path, const BuildMode mode, TestScope const &tests) {
+  // The target is a property of the whole build, set by the cli before anything
+  // is compiled, so it is asked for here rather than threaded through every
+  // constructor between the two.
   _Root = std::move(path);
-
-  // The target is a property of the whole build, set by the cli
-  // before anything is compiled, so it is asked for here rather
-  // than threaded through every constructor between the two.
   _Out = OutLayout{
     .Root = _Root, .Target = codegen::TargetFolderName(), .Mode = mode};
   _SrcPath = _Root / "src";
@@ -51,29 +56,39 @@ spp::compiler::ModuleTree::ModuleTree(
   _FfiPath = _Root / "ffi";
   _TstPath = _Root / "tst";
 
-  // The libraries under "vcs", by folder name, and the source roots every module is measured against.
-  auto vcs_libs = Vec<Pair<Str, Path>>();
-  if (std::filesystem::exists(_VcsPath)) {
-    for (auto const &entry : std::filesystem::directory_iterator(_VcsPath)) {
-      if (not entry.is_directory()) { continue; }
-      vcs_libs.emplace_back(spp::utils::files::NativeString(entry.path().filename()), entry.path());
-    }
-  }
-
+  // The dependencies, and the source roots every module is measured against.
+  const auto deps = dependencies::Resolve(_Root);
   _SourceRoots = Vec{_SrcPath, _TstPath};
-  for (auto const &[_, lib_path] : vcs_libs) {
-    _SourceRoots.emplace_back(lib_path / "src");
-    _SourceRoots.emplace_back(lib_path / "tst");
+  for (auto const &dependency : deps) {
+    _SourceRoots.emplace_back(dependency.Folder / "src");
+    _SourceRoots.emplace_back(dependency.Folder / "tst");
   }
 
-  // Get all the modules from the src and vcs path.
+  // Get all the modules from the src path.
   auto src_modules = spp::utils::files::GlobSpp(_SrcPath)
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>();
 
-  auto vcs_modules = spp::utils::files::GlobSpp(_VcsPath)
-    | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
-    | genex::to<Vec>();
+  // Each dependency's "src", without its "main.spp", and its "tst" only when
+  // asked for. Nothing else in a dependency is compiled: its "ffi" stubs come
+  // through "ffi::Packages", and any other folder is its own business.
+  auto vcs_modules = decltype(src_modules)();
+  for (auto const &dependency : deps) {
+    const auto src_path = dependency.Folder / "src";
+    if (std::filesystem::is_directory(src_path)) {
+      for (auto const &p : spp::utils::files::GlobSpp(src_path)) {
+        if (p == src_path / "main.spp") { continue; }
+        vcs_modules.emplace_back(Module::FromPath(p))->IsStd = dependency.Name == "std";
+      }
+    }
+
+    const auto tst_path = dependency.Folder / "tst";
+    if (tests.WantsLib(dependency.Name) and std::filesystem::is_directory(tst_path)) {
+      for (auto const &p : spp::utils::files::GlobSpp(tst_path)) {
+        if (p != tst_path / "main.spp") { vcs_modules.emplace_back(Module::FromPath(p)); }
+      }
+    }
+  }
 
   // The ffi packages, the project's and its dependencies', read where they are.
   auto ffi_modules = decltype(src_modules)();
@@ -90,32 +105,6 @@ spp::compiler::ModuleTree::ModuleTree(
     | genex::views::transform([](auto const &p) { return Module::FromPath(p); })
     | genex::to<Vec>()
     : decltype(ffi_modules)();
-
-  // Remove the "main.spp" files from the vcs modules, and their ffi stubs, which came through "ffi::Packages".
-  auto filtered_vcs_modules = decltype(vcs_modules)();
-  for (auto &&m : vcs_modules) {
-    auto relative_path = std::filesystem::relative(m->Path, _VcsPath);
-    const auto lib_name = spp::utils::files::NativeString(*relative_path.begin());
-    auto inner_path = Path();
-
-    relative_path = relative_path.lexically_relative(*relative_path.begin()); // strip first component.
-    for (auto const &part : relative_path) {
-      inner_path /= part;
-    }
-
-    // Compare the leading component rather than a string prefix: the native
-    // separator is a wchar_t on Windows, so it cannot be spliced onto a Str.
-    const auto top = inner_path.empty() ? Path() : *inner_path.begin();
-    const auto is_ffi = top == "ffi";
-    const auto is_tst = top == "tst";
-    const auto keep_tst = tests.WantsLib(lib_name) and inner_path != Path("tst/main.spp");
-
-    if (inner_path != Path("src/main.spp") and not is_ffi and (not is_tst or keep_tst)) {
-      m->IsStd = lib_name == "std" and top == "src";
-      filtered_vcs_modules.emplace_back(std::move(m));
-    }
-  }
-  vcs_modules = std::move(filtered_vcs_modules);
 
   // A test build is entered through the generated harness,
   // not through the project's own "main", so the latter is
@@ -134,11 +123,24 @@ spp::compiler::ModuleTree::ModuleTree(
   all_modules.append_range(genex::views::move(tst_modules));
   _Modules = std::move(all_modules);
 
+  // What each package declares, which the modules it owns can name.
+  const auto names_declared_by = [](Path const &package) {
+    auto names = Vec<Str>();
+    for (auto const &d : dependencies::Declared(package).value_or(Vec<dependencies::Dependency>())) {
+      names.emplace_back(d.Name);
+    }
+    return names;
+  };
+  const auto project_declares = names_declared_by(_Root);
+  auto dep_declares = Map<Str, Vec<Str>>();
+  for (auto const &dependency : deps) { dep_declares[dependency.Name] = names_declared_by(dependency.Folder); }
+
   // Measure every module's namespace now that all the roots
   // are known, and note whose it is.
   for (auto const &m : _Modules) {
     m->NsParts = m->IsTestHarness ? Vec{Str("main")} : NamespaceOf(m->Path);
     m->Owner = m->IsTestHarness ? Nullopt : OwnerOf(m->Path);
+    m->Declares = m->Owner.has_value() ? dep_declares[*m->Owner] : project_declares;
   }
 
   Lock();
@@ -182,6 +184,51 @@ auto spp::compiler::ModuleTree::NamespaceOf(
   return parts;
 }
 
+/// [CHECKED]
+auto spp::compiler::ModuleTree::CheckNamespaces() const -> bool {
+  // Modules are in a fixed order, so the first of a namespace's is reported
+  // first, and each namespace once however many modules it has.
+  struct Claim {
+    Opt<Str> Owner;
+    bool IsFfi;
+    bool Reported = false;
+  };
+
+  // Helper for error messages concerning "who" owns a namespace (root, ffi
+  // package, etc).
+  const auto who = [](Opt<Str> const &owner, const bool is_ffi) {
+    const auto package = owner.has_value()
+      ? "the dependency '" + *owner + "'"
+      : Str("this project");
+    return (is_ffi ? "an ffi package of " : "") + package;
+  };
+
+  auto claims = Map<Str, Claim>();
+  auto ok = true;
+  for (auto const &m : _Modules) {
+    auto const &root = m->NsParts.front();
+    // Try to inject the new claim into the "claims" list, with the known owner
+    // and ffi flag.
+    auto &[owner, is_ffi, reported] = claims.try_emplace(
+      root, Claim{.Owner = m->Owner, .IsFfi = m->IsFfi}).first->second;
+
+    // If we have already reported an error on this namespace, or there is an
+    // existing entry with the same owner and ffi flag, skip.
+    if (reported or (owner == m->Owner and is_ffi == m->IsFfi)) { continue; }
+
+    // Otherwise, we have a conflict, so report to the error console, and mark
+    // the namespace as "reported".
+    std::cerr
+      << "Error: the top-level namespace '" << root << "' is both "
+      << who(owner, is_ffi) << " and "
+      << who(m->Owner, m->IsFfi) << ".\n"
+      << "  A top-level namespace belongs to one package.\n";
+    reported = true;
+    ok = false;
+  }
+  return ok;
+}
+
 auto spp::compiler::ModuleTree::OwnerOf(
   Path const &module_path) const
   -> Opt<Str> {
@@ -195,10 +242,16 @@ auto spp::compiler::ModuleTree::ForCppGoogleTest(
   const BuildMode mode,
   Str &&main_code)
   -> Unique<ModuleTree> {
-  // Create a new ModuleTree with a single module containing the
-  // main_code.
+  // Replace the source of the project's "main.spp" with the test's code, found
+  // by its path as the modules are sorted, so it need not be the first.
   auto c = MakeUnique<ModuleTree>(std::move(path), mode);
-  c->_Modules[0]->Code = std::move(main_code);
+  const auto main_path = c->_SrcPath / "main.spp";
+  const auto main_module = genex::find_if(
+    c->_Modules, [&](auto const &m) { return m->Path == main_path; });
+  if (main_module == c->_Modules.end()) {
+    Ice("a google test project has no '" + utils::files::DisplayString(main_path) + "'");
+  }
+  (*main_module)->Code = std::move(main_code);
   return c;
 }
 

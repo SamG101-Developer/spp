@@ -159,6 +159,7 @@ auto spp::compiler::CompilerBoot::Stage1_PreProcess(
     auto const &mod_in_tree = *genex::find_if(
       tree, [&](auto &m) { return m->ModuleAst.get() == mod; });
     mod->FilePath = mod_in_tree->Path;
+    mod->Owner = mod_in_tree->Owner;
     mod->Stage1_PreProcess(ctx);
     bar.Next();
   }
@@ -869,13 +870,17 @@ auto spp::compiler::CompilerBoot::_MoveScopeManagerToNs(
       ns_sym->LinkedScope = ns_scope;
       ns_sym->LinkedScope->LinkedNamespaceSymbol = ns_sym;
       ns_sym->LinkedScope->AstNode = mod.ModuleAst.get();
-      if (is_top_level) { ns_sym->Owner = mod.Owner; }
+      if (is_top_level) {
+        ns_sym->Owner = mod.Owner;
+        ns_sym->Declares = mod.Declares;
+      }
     }
 
     // A package's stubs mark its namespace as theirs, whichever module made it.
     if (is_top_level and mod.IsFfi) {
       sm->CurrentScope->LinkedNamespaceSymbol->IsFfiPackage = true;
       sm->CurrentScope->LinkedNamespaceSymbol->Owner = mod.Owner;
+      sm->CurrentScope->LinkedNamespaceSymbol->Declares = mod.Declares;
     }
   }
 }

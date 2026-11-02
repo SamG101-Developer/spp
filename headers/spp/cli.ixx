@@ -18,8 +18,9 @@ namespace spp::cli {
   /// flag skips the emptiness check, but won't overwrite existing root files.
   SPP_EXP_FUN auto HandleInit(bool force = false) -> bool;
 
-  /// Clone or update every repository in the project's [vcs] section into the
-  /// "vcs" folder. This operation returns false when any git invocation failed,
+  /// Clone or update every repository in the project's [vcs] section, and in
+  /// those repositories' own, into the "vcs" folder. This operation returns
+  /// false when a dependency is declared two ways, any git invocation failed,
   /// or a repository/branch is unreachable, enforcing full vcs correctness.
   SPP_EXP_FUN auto HandleVcs() -> bool;
 
@@ -53,12 +54,11 @@ namespace spp::cli {
     Vec<Str> const &libs = {}, bool all_libs = false, Str const &runner = "",
     Str const &target = "") -> void;
 
-  /// Check the current directory has the structure a project needs, reporting
-  /// anything missing, and return whether it is sound. It has a couple of flags
-  /// for tuning the checks (main.spp needed for executables, don't create
-  /// missing items in VCS folders being checked.
-  SPP_EXP_FUN auto HandleValidate(
-    bool is_exe, bool create_missing = true) -> bool;
+  /// Check the current directory has the structure a project needs, and that
+  /// each of its dependencies has been fetched and is itself sound, reporting
+  /// anything wrong, and return whether it all is. "is_exe" asks for the
+  /// "main.spp" an executable needs.
+  SPP_EXP_FUN auto HandleValidate(bool is_exe) -> bool;
 
   /// Print the hardening record of a program spp built: what it was built with,
   /// read back out of the executable. Reports a file that is not an executable,

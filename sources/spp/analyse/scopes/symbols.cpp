@@ -260,6 +260,7 @@ NamespaceSymbol::NamespaceSymbol(
   Name(that.Name),
   LinkedScope(that.LinkedScope),
   Owner(that.Owner),
+  Declares(that.Declares),
   IsFfiPackage(that.IsFfiPackage) {
 }
 

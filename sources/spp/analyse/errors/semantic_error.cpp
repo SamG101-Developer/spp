@@ -1556,4 +1556,14 @@ SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
     "'s own functions.");
 }
 
+SppDependencyNotDeclaredError::SppDependencyNotDeclaredError(
+  Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
+  AddHeader(121, "Dependency Not Declared Error");
+  AddErr(&access_site, "Use of the package " + INLINE_INFO(package) + " here");
+  AddFooter(
+    "The package '" + INLINE_NOTE(package) + "' is shipped by " + Str(package_owner) + ", which " +
+    Str(accessing_owner) + " does not declare.",
+    "Declare it under [vcs] in the 'spp.toml' of " + Str(accessing_owner) + " to use it directly.");
+}
+
 SPP_MOD_END

@@ -254,9 +254,9 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   // "use".
   if (not type_sym->IsGn()) { _StampedTemplateId = NameTypeIdOf(*type_sym->InstanceTemplate()); }
 
-  // Which owner's modules can name an ffi package is known from the start, unlike visibility.
+  // Which modules can name a package is known from the start, unlike visibility.
   if (_IsSourceWritten and type_sym->ScopeDefinedIn != nullptr and type_sym->Name->Name == Name) {
-    visibility_utils::CheckFfiPackageOwner(*type_sym, *type_sym->ScopeDefinedIn, *this, *sm, *meta);
+    visibility_utils::CheckPackageAccess(*type_sym, *type_sym->ScopeDefinedIn, *this, *sm, *meta);
   }
 
   // Visibility is on a class's symbol from stage 5, so a name read before then (a signature's or an attribute's type)

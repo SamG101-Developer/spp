@@ -42,27 +42,19 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import spp.utils.files;
 import spp.utils.ice;
 import genex;
 import std;
 
 namespace spp::asts {
   namespace {
-    /// The package a scope belongs to. This is the library folder
-    /// that is a direct child of the "vcs" folder, or "" for the
-    /// project's modules.
+    /// The package a scope belongs to: its module's owner, or "" for
+    /// the project's modules.
     auto PackageOfScope(Scope const *const scope) -> Opt<Str> {
       const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
       const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
       if (mod_ast == nullptr) { return Nullopt; }
-
-      auto const &path = mod_ast->FilePath;
-      for (auto it = path.begin(); it != path.end(); ++it) {
-        if (*it != "vcs") { continue; }
-        if (const auto lib = std::next(it); lib != path.end()) { return spp::utils::files::NativeString(*lib); }
-      }
-      return Str();
+      return mod_ast->Owner.value_or(Str());
     }
 
     /// The first block in "scopes" extending a type matching

@@ -92,6 +92,9 @@ auto spp::compiler::Compiler::Compile() -> bool {
     return false;
   }
 
+  // Before anything is read: a namespace is what says whose a module is.
+  if (not _Modules->CheckNamespaces()) { return false; }
+
   // Determine some useful variables for progress bar visuals and if this
   // compilation is an exe or library; stage 7 has extra analysis for exe entry
   // points.

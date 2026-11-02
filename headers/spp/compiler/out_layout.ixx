@@ -25,7 +25,8 @@ namespace spp::compiler {
 
   /// The mode a name written by the user means, in any case, or nothing if it
   /// is not the name of a mode.
-  SPP_EXP_FUN SPP_ATTR_NODISCARD auto ModeFromName(StrView name) -> Opt<BuildMode>;
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto ModeFromName(
+    StrView name) -> Opt<BuildMode>;
 
   /// The name of a type, as it is written in "spp.toml". For example,
   /// "BuildType::EXE" is "exe".
@@ -36,7 +37,8 @@ namespace spp::compiler {
 
   /// The type a name written by the user means, in any case, or nothing if it
   /// is not the name of a type.
-  SPP_EXP_FUN SPP_ATTR_NODISCARD auto TypeFromName(StrView name) -> Opt<BuildType>;
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto TypeFromName(
+    StrView name) -> Opt<BuildType>;
 }
 
 /// Utility class for the layout that an s++ compilation writes to. This class

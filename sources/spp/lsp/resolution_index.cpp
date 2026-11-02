@@ -40,6 +40,10 @@ namespace spp::lsp::resolution_index {
       Kept Where = Kept::None;
       Vec<Str> Files;
 
+      /// How a dependency's file starts, for the project's indexing. Read on
+      /// first use, in the directory the compile runs in.
+      Str VcsPrefix;
+
       /// The entries provide the "hover" and "goto"-navigation
       /// data. They store the span encompassing the definition,
       /// against where it was used, and additional metadata.
@@ -491,6 +495,7 @@ auto spp::lsp::resolution_index::EnableProject()
   // Tell the state to maintain indexes for the current
   // project (no vcs dependencies).
   Current().Where = Kept::Project;
+  Current().VcsPrefix.clear();
 }
 
 auto spp::lsp::resolution_index::Disable()
@@ -516,7 +521,13 @@ auto spp::lsp::resolution_index::Wants(
   // that contains this file. Otherwise, it is not wanted.
   switch (Current().Where) {
     case Kept::Files: return genex::contains(Current().Files, file);
-    case Kept::Project: return not file.contains("/vcs/") and not file.contains("\\vcs\\");
+    case Kept::Project: {
+      auto &prefix = Current().VcsPrefix;
+      if (prefix.empty()) {
+        prefix = utils::files::DisplayString(std::filesystem::current_path() / "vcs" / "");
+      }
+      return not file.starts_with(prefix);
+    }
     case Kept::None:
     default: return false;
   }
