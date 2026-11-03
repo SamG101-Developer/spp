@@ -4,7 +4,8 @@
 # read back as the member it was, and a named function must call that function, at every slot a value can land in:
 # "let", "ret", an assignment, an argument, a default argument, an attribute, an attribute assignment, a "gen", a send
 # value, a "case" branch (assigned and as an argument), a closure's body and its "ret"s, a loop's "exit" and "else", an
-# array element (written out and repeated), a tuple element, and a "cmp" (a constant). gtest builds and verifies these;
+# array element (written out and repeated), a tuple element, a "cmp" (a constant), and a "gen self" forwarded through
+# "FwdRef" to a borrow of a variant (open-bugs #54). gtest builds and verifies these;
 # only running them shows a value copied into the slot untagged, or a call through a function value that was never
 # built.
 #
@@ -405,6 +406,41 @@ fun main() -> Void {
     let a: [FunRef[(U64,), U64]; 1_uz] = [ident]
     show(call_ref(a[0_uz]) + 2_u64)
 }'
+
+# A "gen self" forwarded through "FwdRef" yields a borrow of the variant, a pointer: nothing to coerce. Through a
+# wrapper of the test's own, and through std's "Single::get_ref". The return type was read without its convention, so
+# the pointer was coerced into the variant by value, an ICE (open-bugs #54).
+read -r -d '' FWD_VARIANT <<'BODY'
+cls Holder { !public inner: Opt[U64] }
+
+sup Holder ext std::ops::fwd::FwdRef[Opt[U64]] {
+    cor fwd_ref(&self) -> std::generator::GenOnce[&Opt[U64]] {
+        gen &self.inner
+    }
+}
+
+sup Holder {
+    !public cor get(&self) -> std::generator::GenOnce[&Opt[U64]] {
+        gen self
+    }
+}
+
+fun main() -> Void {
+    let h = Holder(inner=Some(val=37_u64))
+    showo(h.get()@)
+    std::mem::ops::drop(h)
+    let s = std::single::Single[Opt[U64]]::new(Some(val=38_u64))
+    showo(s.get_ref()@)
+    std::mem::ops::drop(s)
+    let n = std::single::Single[Opt[U64]]::new(None)
+    showo(n.get_ref()@)
+    std::mem::ops::drop(n)
+}
+BODY
+
+for mode in dev rel; do
+    check_program "gen-fwd-ref-variant" "${mode}" "${FWD_VARIANT}" "$(printf '37\n38\nnone')"
+done
 
 fn_case "distinct-fns-in-array" '
 fun main() -> Void {
