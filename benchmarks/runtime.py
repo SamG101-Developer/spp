@@ -3,8 +3,8 @@
 
 Each benchmark is a folder under runtime/<tier>/ (ast, codegen or programs) holding main.spp, main.c and main.rs, and a
 manifest.toml. The three programs do the same work and print the same output, which is checked: it proves they agree,
-it stops the optimiser deleting the work, and it makes the corpus a test of "-m rel". Each reads its input through a
-volatile (hide() in S++, volatile in C, black_box in Rust), so nothing is folded at compile time.
+it stops the optimiser deleting the work, and it makes the corpus a test of "-m rel". Each hides its input from the
+optimiser (black_box in S++ and Rust, volatile in C), so nothing is folded at compile time.
 
 The C and Rust programs are built to match S++'s checks (the plan's "matched" column): the same baseline x86-64 CPU,
 signed overflow trapping in C and overflow checks on in Rust, a stack protector, CET and fortify in C, and panic=abort
