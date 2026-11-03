@@ -40,7 +40,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Test harness std refresh](build/spp-test-harness-stale-std.md) — SppBootstrap.Fixture pulls once per run; hand runs without it compile a stale std
 - [Codegen checks suite](build/codegen-checks-suite.md) — tests/codegen/run.sh, ~6 min with check-intrinsics (KNOWN list in intrinsics.py); new checks on lib.sh
 - [Test group bugs](build/spp-test-group-filter-bugs.md) — novel !test group segfaults; --group filter misbehaves
-- [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus; benchmark idioms (Arr type, closures, hide)
+- [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus; benchmark idioms (Arr type, closures, black_box, formatted println)
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
 - [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable

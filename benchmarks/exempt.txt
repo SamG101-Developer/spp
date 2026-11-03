@@ -13,6 +13,7 @@ ast:generic_parameter_group           # resolved before codegen: emits no code
 ast:class_prototype                   # declares a layout: emits no code
 ast:sup_implementation                # walks into its members; emits no code that runs
 ast:function_parameter                # part of the prototype; its code is the call's (function_parameter_group)
+ast:spread_expression                 # expanded into its tuple's elements before codegen (tuple_literal)
 ast:cmp_statement                     # a compile-time constant: emits a global, read like any other value
 ast:postfix_expression                # dispatches to its operator, each benchmarked on its own
 
