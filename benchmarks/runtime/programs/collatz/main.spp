@@ -1,0 +1,26 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let limit = black_box(1000000_u64)
+  let mut best = 0_u64
+  let mut best_n = 0_u64
+  let mut total = 0_u64
+  let mut n = 1_u64
+  loop n < limit {
+    let mut x = n
+    let mut steps = 0_u64
+    loop x != 1_u64 {
+      case x.is_even() { x = x / 2_u64 }
+      else { x = x * 3_u64 + 1_u64 }
+      steps += 1_u64
+    }
+    total += steps
+    case steps > best {
+      best = steps
+      best_n = n
+    }
+    n += 1_u64
+  }
+  println("{}\n{}\n{}", best_n, best, total)
+}

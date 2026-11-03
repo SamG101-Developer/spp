@@ -1,0 +1,15 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(200000000_u64)
+  let mut state = black_box(12345_u64)
+  let mut hash = 0xcbf29ce484222325_u64
+  let mut i = 0_u64
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    hash = (hash ^ (state >> 56_u32)).mul_wrapping(0x100000001b3_u64)
+    i += 1_u64
+  }
+  println("{}", hash)
+}

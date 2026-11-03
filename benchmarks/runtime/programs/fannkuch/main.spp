@@ -1,0 +1,65 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(10_uz)
+  let mut perm = [0_s64; 16_uz]
+  let mut perm1 = [0_s64; 16_uz]
+  let mut count = [0_s64; 16_uz]
+  let mut max_flips = 0_s64
+  let mut checksum = 0_s64
+  let mut perm_count = 0_s64
+  let mut r = n
+  let mut i = 0_uz
+  loop i < n {
+    perm1[mut i]@ = S64::from(i)
+    i += 1_uz
+  }
+  loop true {
+    loop r != 1_uz {
+      count[mut r - 1_uz]@ = S64::from(r)
+      r -= 1_uz
+    }
+    i = 0_uz
+    loop i < n {
+      perm[mut i]@ = perm1[i]@
+      i += 1_uz
+    }
+    let mut flips = 0_s64
+    let mut k = USize::from(perm[0_uz]@)
+    loop k != 0_uz {
+      let mut lo = 0_uz
+      let mut hi = k
+      loop lo < hi {
+        let t = perm[lo]@
+        perm[mut lo]@ = perm[hi]@
+        perm[mut hi]@ = t
+        lo += 1_uz
+        hi -= 1_uz
+      }
+      flips += 1_s64
+      k = USize::from(perm[0_uz]@)
+    }
+    case flips > max_flips { max_flips = flips }
+    case perm_count % 2_s64 == 0_s64 { checksum += flips }
+    else { checksum -= flips }
+
+    loop true {
+      case r == n {
+        println("{}\n{}", checksum, max_flips)
+        ret
+      }
+      let perm0 = perm1[0_uz]@
+      i = 0_uz
+      loop i < r {
+        perm1[mut i]@ = perm1[i + 1_uz]@
+        i += 1_uz
+      }
+      perm1[mut r]@ = perm0
+      count[mut r]@ = count[r]@ - 1_s64
+      case count[r]@ > 0_s64 { exit }
+      r += 1_uz
+    }
+    perm_count += 1_s64
+  }
+}

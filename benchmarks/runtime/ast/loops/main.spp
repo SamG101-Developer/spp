@@ -1,0 +1,16 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(250000_u64)
+  let mut acc = 0_u64
+  loop i in std::range::Range[U64]::between(0_u64, n) {
+    let found = loop j in std::range::Range[U64]::between(0_u64, 2000_u64) {
+      case (i + j) % 977_u64 == 0_u64 { exit j }
+      case j % 3_u64 == 0_u64 { skip }
+      acc += 1_u64
+    } else { 5000_u64 }
+    acc = acc + found
+  }
+  println("{}", acc)
+}

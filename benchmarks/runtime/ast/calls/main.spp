@@ -1,0 +1,47 @@
+use std::console::println
+use std::hints::black_box
+use std::llvm::no_inline
+
+cls Shape { }
+
+sup Shape {
+  !virtual_method
+  !public
+  fun area(&self, k: U64) -> U64 { ret k }
+}
+
+cls Square {
+  !public side: U64
+}
+
+sup Square ext Shape {
+  fun area(&self, k: U64) -> U64 { ret self.side * self.side + k }
+}
+
+!no_inline
+fun apply(f: FunRef[(U64,), U64], x: U64) -> U64 {
+  ret f(x)
+}
+
+fun triple(x: U64) -> U64 {
+  ret (x * 3_u64 + 1_u64) % 1000003_u64
+}
+
+fun halve(x: U64) -> U64 {
+  ret x / 2_u64 + 7_u64
+}
+
+fun main() -> Void {
+  let n = black_box(50000000_u64)
+  let mut acc = black_box(1_u64)
+  let mut i = 0_u64
+  loop i < n {
+    acc = apply(triple, acc)
+    acc = apply(f=halve, x=acc)
+    let sq = Square(side=i % 100_u64)
+    acc = (acc + sq.area(k=3_u64)) % 1000003_u64
+    drop(sq)
+    i += 1_u64
+  }
+  println("{}", acc)
+}

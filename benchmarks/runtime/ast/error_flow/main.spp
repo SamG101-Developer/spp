@@ -1,0 +1,28 @@
+use std::console::println
+use std::hints::black_box
+
+fun check(x: U64) -> Res[U64, U64] {
+  case (x % 97_u64 != 0_u64).not { ret Fail(err=x) }
+  ret Pass(val=x * 3_u64 % 1000003_u64)
+}
+
+fun chain(x: U64) -> Res[U64, U64] {
+  let a = check(x)?
+  let b = check(a + 1_u64)?
+  ret Pass(val=a + b)
+}
+
+fun main() -> Void {
+  let n = black_box(50000000_u64)
+  let mut ok = 0_u64
+  let mut failed = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    case chain(i) of {
+      is Pass[U64](val) { ok = (ok + val) % 1000000007_u64 }
+      else { failed += 1_u64 }
+    }
+    i += 1_u64
+  }
+  println("{}\n{}", ok, failed)
+}

@@ -1,0 +1,62 @@
+use std::console::println
+use std::hints::black_box
+
+fun a(i: U64, j: U64) -> F64 {
+  ret 1.0_f64 / F64::from((i + j) * (i + j + 1_u64) / 2_u64 + i + 1_u64)
+}
+
+fun mul_av(v: &Vec[F64], out: &mut Vec[F64], n: U64) -> Void {
+  let mut i = 0_u64
+  loop i < n {
+    let mut sum = 0.0_f64
+    let mut j = 0_u64
+    loop j < n {
+      sum = sum + a(i, j) * v[USize::from(j)]@
+      j += 1_u64
+    }
+    out[mut USize::from(i)]@ = sum
+    i += 1_u64
+  }
+}
+
+fun mul_atv(v: &Vec[F64], out: &mut Vec[F64], n: U64) -> Void {
+  let mut i = 0_u64
+  loop i < n {
+    let mut sum = 0.0_f64
+    let mut j = 0_u64
+    loop j < n {
+      sum = sum + a(j, i) * v[USize::from(j)]@
+      j += 1_u64
+    }
+    out[mut USize::from(i)]@ = sum
+    i += 1_u64
+  }
+}
+
+fun main() -> Void {
+  let n = black_box(2000_u64)
+  let len = USize::from(n)
+  let mut u = Vec[F64]::new_filled(len, 1.0_f64)
+  let mut v = Vec[F64]::new_filled(len, 0.0_f64)
+  let mut tmp = Vec[F64]::new_filled(len, 0.0_f64)
+  let mut round = 0_u64
+  loop round < 10_u64 {
+    mul_av(&u, &mut tmp, n)
+    mul_atv(&tmp, &mut v, n)
+    mul_av(&v, &mut tmp, n)
+    mul_atv(&tmp, &mut u, n)
+    round += 1_u64
+  }
+  let mut vbv = 0.0_f64
+  let mut vv = 0.0_f64
+  let mut i = 0_uz
+  loop i < len {
+    vbv = vbv + u[i]@ * v[i]@
+    vv = vv + v[i]@ * v[i]@
+    i += 1_uz
+  }
+  drop(u)
+  drop(v)
+  drop(tmp)
+  println("{}", S64::from((vbv / vv).sqrt() * 1000000000.0_f64))
+}

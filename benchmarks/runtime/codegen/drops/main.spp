@@ -1,0 +1,17 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(50000000_u64)
+  let mut acc = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    let mut v = Vec[U64]::new_with_capacity(8_uz)
+    v.append(i)
+    v.append(i % 13_u64)
+    acc = (acc + v[0_uz]@ + v[1_uz]@) % 1000000007_u64
+    drop(v)
+    i += 1_u64
+  }
+  println("{}", acc)
+}
