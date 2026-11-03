@@ -19,7 +19,8 @@
 - [ERR_ARGS holds references](err-args-hold-references.md) — fresh ASTs inline in ERR_ARGS dangle; hold in a local
 - [Errors quote each AST from its own file](error-scope-per-block.md) — N8.7: positions name their file; Raise takes no scopes
 - [Type source-span override](type-source-span-override.md) — WithSourceSpanOf(written) last; error locations
+- [InstantiatedFrom error site](instantiated-from-error-site.md) — outermost site an instantiation was asked for; "Instantiated here" block; field borrows reported there
 - [IDE recovery sectioning](ide-recovery-sectioning.md) — sink-mode recovery per member, stages 6-9
-- [Perf hot path](spp-perf-hot-path.md) — where compile time goes, what's already optimised; gtest per-stage profile; pruning std saves little
+- [Perf hot path](spp-perf-hot-path.md) — where compile time goes, what's optimised; per-written-type checks are hot; counter bisecting
 - [APFloat toString isn't rounded](apfloat-tostring-not-rounded.md) — full exact digits whatever the precision, then truncated; WriteFloat calls it once and rounds
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons

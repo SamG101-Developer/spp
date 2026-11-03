@@ -3,3 +3,4 @@
 - [sppc sibling repo](sppc-sibling-repo.md) — ../sppc C shim; edit → tell the maintainer; their push auto-PRs SPP-STL
 - [One dependency list](vcs-dependencies-one-level.md) — spp.compiler.dependencies is the only [vcs] reader, flat in vcs/; name only what you declare (E121); one namespace, one package; `rev` pins detached
 - [Sibling libs install Release](sibling-libs-install-release.md) — NumEx's code comes from its install; an untyped build is -O0 and cost a third of compile time
+- [Merge spp before SPP-STL](merge-spp-before-stl-for-new-features.md) — fixture/CI compile SPP-STL master; std needing a new compiler feature pushes after the spp merge; how to test it first

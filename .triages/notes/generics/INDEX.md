@@ -1,6 +1,6 @@
 - [Generic inference engine](generic-inference-engine-shape.md) — GenericSolver: Give, Unify, worklist
 - [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
-- [Variadic pack model](variadic-pack-model.md) — IsVariadic; open tuple Tup[Ts] for a whole pack in templates; spreads resolved per length; tuple in instances
+- [Variadic pack model](variadic-pack-model.md) — pack is a list (PackInfo, E123/E124); open Tup[Ts] in templates; elements in instances; spreads, folds
 - [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
 - [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope
 - [Generic param syms link a dummy scope](generic-param-sym-links-dummy-scope.md) — use Kind==GenericParam
@@ -20,3 +20,4 @@
 - [Abstract types by value](abstract-types-by-value.md) — E45 only if held by value (FindHeldByValue)
 - [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; no FunXxx at attach
 - [Comp args target their param type](comp-args-target-their-param-type.md) — ExpectedCompType, set in NamedGnArgs + ExpectedCompArgTypes; AnalyseCompExpr
+- [Pack constraints pairwise](pack-constraints-pairwise.md) — ..Ts: C per element; ..Ts: Add[Ts] every pair (Self = element); constraint inference skips packs

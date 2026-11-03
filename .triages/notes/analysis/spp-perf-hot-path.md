@@ -1,7 +1,7 @@
 ---
 name: spp-perf-hot-path
 description: "spp compiler time has moved from type analysis to monomorphization; what's already optimised"
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 Updated 2026-08-22 after a round of optimisation. Profile with a debug-build flamegraph over ./project;
@@ -54,3 +54,16 @@ Next candidates: shared_ptr traffic is now the largest cross-cutting cost (~23%)
 `WithoutGns` cluster (~5.4%, gated behind a "using the cache breaks" Todo in
 type_unary_expression_ast.cpp that needs root-causing); AST `Clone` in monomorphization (~13%);
 `dynamic_cast` (~4.3%, the `To<T>()` helper, would need an LLVM-style kind tag).
+
+**Per-written-type checks are hot (2026-11-04).** Anything `TypeIdentifierAst::Stage7` does for every written type
+shows in the compile counters (`benchmarks/run.py`, deterministic, so a before/after of `hello` and `generic-depth` at
+one round settles it). Three such costs found after the pack redesign, each fixed without changing behaviour:
+- a check doing its own `FindTypeSymbol`: reuse the symbol the main path found (E124's check, -34k lookups). Keep
+  what it found on the node (`_TypePack`) for the early-return paths: a signature's types are first resolved while
+  sups are attached, before most checks apply, and every later analysis returns early, so a main-path-only check
+  never fires;
+- a sup walk asked per type (`marker_sups::HoldsNoValueOfItsArgs`, P0's exemption): cached on the `TypeSymbol`
+  (`HoldsNoValueOfArgs`) once sups are attached (-63k type-key interns);
+- `type_compare::UnmetConstraint`'s `Self` fallback substituted every sup eagerly: only on a miss, and only sups of the
+  constraint's own template (`HeadOf(...).Ptr`), -643 distinct keys.
+To find a new increase: per-phase counter diffs first, then switch one suspect off per run.

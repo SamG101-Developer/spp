@@ -52,11 +52,11 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test is rel+LTO; virtual base, no prior call
 
 ## Areas (open the area's INDEX.md when the work touches it)
-- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (15)
+- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (16)
 - [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (22)
 - [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (12)
-- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (22)
-- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (23)
-- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (24)
+- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
+- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (24)
+- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (25)
 - [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (24)
-- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (5)
+- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (6)
