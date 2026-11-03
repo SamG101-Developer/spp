@@ -17,7 +17,7 @@ arguments of a type that is, or superimposes, `Gen`/`GenOnce` or `FunRef`/`FunMu
 - The check lives in `TypeIdentifierAst::Stage7` (`check_borrowed_args`), and an explicit function argument is checked
   in the call AST. It only runs from stage 6, once sups are attached, and is re-checked on the `_HasAnalysed` path.
 - Only a type the parser built (`_IsSourceWritten`) is judged. Types the compiler builds (a variant's
-  `Var[Variants=Tup[&A, B]]`, a variadic's `Tup[Ts]`, a closure's `FunRef`) hold borrows legitimately: `&StrView or U64`
+  `Var[&A, B]`, a variadic's `Tup[Ts]`, a closure's `FunRef`) hold borrows legitimately: `&StrView or U64`
   as a parameter is a supported variant.
 - An argument counts as borrowed by `type_predicates::IsTypeBorrowed` (deep), so a variant holding one counts too
   (`Vec[&Str or None]`). A borrow inside an exempt argument (`Vec[FunRef[(&Str,), Bool]]`) does not.
