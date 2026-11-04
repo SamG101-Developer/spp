@@ -279,21 +279,21 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// A variant's identity reads its members off its one argument ("Variants", or a lone tuple), so an argument beside
-// "Variants" never reaches it: it is refused by name, in either order. The parameter is shown in its own file (std's
+// A variant's members are its pack, given positionally, so a named argument beside them names no parameter: it is
+// refused by name, in either order. The parameter is shown in its own file (std's
 // "variant.spp"), not past the end of the test's.
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_invalid_extra_named_argument_beside_variants,
     SppArgumentNameInvalidError, R"(
-    fun f(x: std::variant::Var[Variants=(S32, Str), Extra=Bool]) -> Void { std::mem::ops::drop(x) }
+    fun f(x: std::variant::Var[S32, Str, Extra=Bool]) -> Void { std::mem::ops::drop(x) }
 )");
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestVariantTypes,
     test_invalid_extra_named_argument_before_variants,
     SppArgumentNameInvalidError, R"(
-    fun f(x: std::variant::Var[Extra=Bool, Variants=(S32, Str)]) -> Void { std::mem::ops::drop(x) }
+    fun f(x: std::variant::Var[Extra=Bool, S32, Str]) -> Void { std::mem::ops::drop(x) }
 )");
 
 // Two positional arguments are two members, the first a tuple: not a tuple of members beside an extra argument. In

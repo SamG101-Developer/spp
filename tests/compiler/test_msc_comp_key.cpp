@@ -38,33 +38,37 @@ namespace {
 
   auto Param(const std::uint64_t id) -> CompKey { return CompKey::OfParam(id); }
 
-  /// A pack and an operation, their parts interned as a node's are.
+  /// A comp pack's list, a tuple value and an operation, their parts interned as a node's are.
   auto Pack(spp::Vec<CompKey> const &elems) -> CompKey {
     auto kids = spp::Vec<CompId>();
     for (auto const &elem : elems) { kids.push_back(InternCompKey(CompKey(elem))); }
     return CompKey::OfPack(std::move(kids));
   }
 
+  auto Tuple(spp::Vec<CompKey> const &elems) -> CompKey {
+    auto kids = spp::Vec<CompId>();
+    for (auto const &elem : elems) { kids.push_back(InternCompKey(CompKey(elem))); }
+    return CompKey::OfTuple(std::move(kids));
+  }
+
   auto Op(CompKey const &lhs, spp::Str const &op, CompKey const &rhs) -> CompKey {
     return CompKey::OfOp(op, InternCompKey(CompKey(lhs)), InternCompKey(CompKey(rhs)));
   }
 
-  /// A substitution binding each comp parameter in "bound" ("CompParams"), the ones in "packs" as packs.
-  auto Subst(spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {}) -> GenericSubst {
+  /// A substitution binding each comp parameter in "bound" ("CompParams"); one bound to a pack's list is a pack.
+  auto Subst(spp::Map<std::uint64_t, CompKey> const &bound) -> GenericSubst {
     auto subst = GenericSubst();
     for (auto const &[id, value] : bound) { subst.CompParams.emplace_back(id, InternCompKey(CompKey(value))); }
-    subst.CompPackParams = std::move(packs);
     return subst;
   }
 
   /// "node"'s identity ("InternCompKey").
   auto Id(CompKey const &node) -> CompId { return InternCompKey(CompKey(node)); }
 
-  /// "node"'s identity with each parameter in "bound" replaced ("SubstituteCompId"), those in "packs" spread.
+  /// "node"'s identity with each parameter in "bound" replaced ("SubstituteCompId"), one bound to a list spread.
   auto Rewrite(
-    CompKey const &node, spp::Map<std::uint64_t, CompKey> const &bound, spp::Vec<std::uint64_t> packs = {})
-    -> CompId {
-    return SubstituteCompId(Id(node), Subst(bound, std::move(packs)));
+    CompKey const &node, spp::Map<std::uint64_t, CompKey> const &bound) -> CompId {
+    return SubstituteCompId(Id(node), Subst(bound));
   }
 }
 
@@ -189,8 +193,16 @@ TEST(TestCompKey, test_rewrite_inside_an_operation) {
 
 TEST(TestCompKey, test_rewrite_spreads_a_pack) {
   EXPECT_EQ(
-    Rewrite(Pack({Int(0, "uz"), Param(7)}), {{7, Pack({Int(1, "uz"), Int(2, "uz")})}}, {7}),
+    Rewrite(Pack({Int(0, "uz"), Param(7)}), {{7, Pack({Int(1, "uz"), Int(2, "uz")})}}),
     Id(Pack({Int(0, "uz"), Int(1, "uz"), Int(2, "uz")})));
+}
+
+// A parameter bound to a tuple value is one element: only a pack's list is spread (the comp identity split).
+TEST(TestCompKey, test_rewrite_keeps_a_tuple_value_whole) {
+  EXPECT_EQ(
+    Rewrite(Pack({Int(0, "uz"), Param(7)}), {{7, Tuple({Int(1, "uz"), Int(2, "uz")})}}),
+    Id(Pack({Int(0, "uz"), Tuple({Int(1, "uz"), Int(2, "uz")})})));
+  EXPECT_NE(Id(Pack({Int(1, "uz")})), Id(Tuple({Int(1, "uz")})));
 }
 
 // An operation over a comp parameter, nested, in a return type: each instantiation reads it with its own binding.

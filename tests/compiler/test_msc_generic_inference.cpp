@@ -408,7 +408,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variadic,
   test_valid_infer_type_from_variadic_function_parameter, R"(
     fun f[T](..a: T) -> Void {
-        std::mem::ops::drop(a)
+        std::mem::ops::drop(..a)
     }
 
     fun g() -> Void {

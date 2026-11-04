@@ -414,7 +414,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_single_generic_type, R"(
     fun g[T](a: &StrView, ..b: T) -> Void {
-            std::mem::ops::drop(b)
+            std::mem::ops::drop(..b)
         ret
     }
 
@@ -427,12 +427,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_mixed_generic_type, R"(
     fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
-            std::mem::ops::drop(b)
+            std::mem::ops::drop(..b)
         ret
     }
 
     fun f() -> Void {
-        g("hello", 1, true, "world")
+        g("hello", 1, true, Str::from("world"))
     }
 )");
 
@@ -440,12 +440,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_mixed_generic_type_no_leading_param, R"(
     fun h[..Ts](..a: Ts) -> Void {
-            std::mem::ops::drop(a)
+            std::mem::ops::drop(..a)
         ret
     }
 
     fun f() -> Void {
-        h(1, true, "world")
+        h(1, true, Str::from("world"))
     }
 )");
 
@@ -453,7 +453,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_ordinary_generic_with_leading_param, R"(
     fun g[U](a: &StrView, ..b: U) -> Void {
-            std::mem::ops::drop(b)
+            std::mem::ops::drop(..b)
         ret
     }
 
@@ -466,7 +466,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_two_leading_params_single_arg, R"(
     fun g[..V](a: S32, b: S32, ..c: V) -> S32 {
-        std::mem::ops::drop(c)
+        std::mem::ops::drop(..c)
         ret a
     }
 
@@ -479,7 +479,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_single_arg_no_leading_param, R"(
     fun g[..Ts](..a: Ts) -> Void {
-        std::mem::ops::drop(a)
+        std::mem::ops::drop(..a)
         ret
     }
 
@@ -491,8 +491,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_used_and_returned, R"(
-    fun pass_through[..Ts](..a: Ts) -> Ts {
-        ret a
+    fun pass_through[..Ts](..a: Ts) -> Tup[Ts] {
+        ret (..a)
     }
 
     fun f() -> Void {
@@ -519,7 +519,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_given_no_args, R"(
     fun g[..Ts](a: &StrView, ..b: Ts) -> Void {
-            std::mem::ops::drop(b)
+            std::mem::ops::drop(..b)
         ret
     }
 
@@ -531,8 +531,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorFunctionCallAst,
   test_valid_variadic_generic_given_no_args_resolves_to_empty_tuple, R"(
-    fun g[..Ts](a: &StrView, ..b: Ts) -> Ts {
-        ret b
+    fun g[..Ts](a: &StrView, ..b: Ts) -> Tup[Ts] {
+        ret (..b)
     }
 
     fun f() -> Void {
@@ -548,7 +548,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_variadic_pack_reuses_moved_argument,
   SppUninitializedMemoryUseError, R"(
     fun g[..Ts](..a: Ts) -> Void {
-        std::mem::ops::drop(a)
+        std::mem::ops::drop(..a)
         ret
     }
 
@@ -569,7 +569,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 
     fun f() -> Void {
-        g("hello", 1, true, "world")
+        g("hello", 1, true, Str::from("world"))
     }
 )");
 
