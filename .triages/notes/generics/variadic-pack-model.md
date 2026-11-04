@@ -1,74 +1,64 @@
 ---
 name: variadic-pack-model
-description: "Packs after the 2026-11 redesign: a function pack is a list of values (PackInfo, E123), a type pack a list of types (E124); templates reason about an open Tup[Ts], instances give each element a parameter; spreads, folds, comp packs, helpers"
+description: "Packs after the 2026-11 redesign: every pack (type, comp, function) is a list, never a tuple and never named; a function pack is no value (E123), a type pack no type (E124); tuples and variants are classes over a pack; helpers"
 updated: 2026-11-04
 ---
 
 Three kinds of pack: a type pack (`..Ts`), a comp pack (`cmp ..n`) and a function pack (`..xs: Ts`, `..xs: T`,
-`..xs: &Ts`). Since the redesign (`.triages/docs_open/pack-design.md`, phases 1-9, 2026-11-04) a function pack is not a
-tuple and not a value; a comp pack still is a tuple (D5).
+`..xs: &Ts`). Since `../../docs_closed/pack-design.md` (phases 1-11, 2026-11-04) each is a **list**: no pack is bound
+to a tuple, and a tuple or a variant is just a class over a pack (`cls Tup[..Items]`, `cls Var[..Variants]`).
 
-- **Markers.** `TypeSymbol::IsVariadic` for `..Ts`, `VariableSymbol::IsVariadic` for `cmp ..n`. A function pack is
-  marked by `VariableSymbol::Pack` (`PackInfo`: `Element`, `Open`, `Elements`) alone, set in
-  `FunctionParameterAst::Stage7`. Bindings copy them (`RegisterGnSymbols`, the symbol copy constructor).
-- **A function pack is not a value (E123).** Only a spread (`..xs`), an element (`xs.N`), a collection (`(..xs)`) and a
-  fold may name it whole; those set `AllowPackWhole` (`AllowPackWholeGuard`) while the identifier is analysed.
-- **A type pack is not a type (E124).** Only the positions the parser marks (`TypeIdentifierAst::MarkPackPosition`)
-  may name an unbound `Ts` written in source: a generic argument, a tuple shorthand's element, a variant's member
-  (`Bool or Rest`), a variadic parameter's element type and the `..Ts` declaration. A meta flag set around analysis did
-  not work: a parameter's type is analysed again elsewhere without it. A new list-like type syntax needs the mark in
-  its parser rule, or its packs become E124.
-- **In a template** a function pack is reasoned about as an **open tuple**, kept by design:
-  - `..b: Ts` gives `b: Tup[Ts]`. A pack of one element type (`..xs: S32`, `..xs: T`) gets a **hidden type pack**,
-    `Tup[VariadicPackOfxs]` (`packs::DeclareHiddenPack`, named by `packs::FnVariadicParamName`), which derives from
-    the element (`DerivesFromSymbol`) and takes its constraints. The instance key binds it to the pack's
-    convention-free tuple.
-  - `type_compare::IsOpenTuple` recognises an open tuple by identity; `OpenTupleElement` types `b.N` (the derived type
-    for a hidden pack). An element is typed from `PackInfo::Element` through its binding (`AsBound()`, so `Self` is
-    the owner), never off the tuple. `UnboundPack` (member access) reads `PackInfo` first.
-  - A constraint on `Tup[Ts]` is checked strictly: one every length meets holds, one only some meet (`IsPair`) fails
-    (E51 with E78 inside).
-- **In an instance** a function pack is **its elements**: `monomorphization::ExpandClosedPack` replaces the parameter
-  with `xs#0`, `xs#1`, ... (`packs::PackElementName`), each with the pack's convention. The pack's symbol stays, closed
-  (`PackInfo::Elements`), typed as the tuple so an out-of-range `xs.N` is E11, but owns nothing (`IsLive`). `..xs`
-  expands to the element names (`ExpandTupleSpread`); `xs.N` is cloned as `xs#N` (`PackElementCloneGuard`). Codegen
-  and mangling see ordinary parameters. A comp pack's instance value is still its tuple.
-- **Calls.** `BindSlots` types a pack slot as the tuple of its arguments' types, conventions stripped, and inference
-  unifies it with the parameter minus its convention (`..xs: &Ts` given `&a, &b` binds `Ts = (Str, S32)`). After
-  instantiation `SplitPackSlot` gives each element its own slot: checked with its convention (an owned pack given `&a`
-  is E51), ranked against the template's parameter, passed as its own argument.
-  - An open spread in a template (`f(..b)`) is resolved once per length (`_ResolveOpenSpread`): calls with 0, 1, ...
-    elements up to the most fixed parameters, then one with the open remainder, which only a variadic parameter takes
-    whole. All must resolve to one return type, so head/tail recursion needs its empty overload. The remainder's slot
-    is `OpenPackType`, conventions stripped too: keeping them typed a forwarded `..t: &Ts` as `Tup[&Ts]`, and `Ts`
-    bound one element (the whole tuple).
-  - Open forwards keep the tuple paths in `ElaborateCall` and `ValidateArgsMatchParams`, and a function with a
-    variadic parameter left is `_IsPureGn`, never emitted (all kept by design).
-  - A spread that is not the last positional argument is E122, the call's own error.
-- **Spreads.** In a call or a tuple literal (`(a, ..t)`, a `SpreadExpressionAst`), via `expr_utils::ExpandTupleSpread`.
-  A value that is no place (`..g()`) is hoisted into a `$spread` temporary, evaluated once (open-bugs #52). The written
-  convention is given to every element (`&..t` is `&t.0, &t.1`); a plain `..t` moves out of an owned tuple, copies out
-  of a borrowed one, and is E7 for a non-`Copy` element out of a borrow.
-- **Folds.** `.. + xs`, `xs + ..` and `j(xs)..` fold a pack. A template checks a binary fold by induction (a fold of two
-  and of three agree) and a call fold as one call on an element; an instance folds its element parameters
-  (`BinaryExpressionAst::_FoldElements`, `_HandleFnFolding`). E125 is a spread in a fold, E126 packs of different
-  lengths. Constraints: [[pack-constraints-pairwise]].
-- **Comp packs** keep the tuple model: one element's type in a template (`..n` there is E19, #51), a tuple in an
-  instance (`DoesCompNameAnUnboundPack`, `UnboundPack`'s `GnCompParam` branch).
-- **Type packs as arguments.** `NameTypeArgs` spreads an argument naming a bound type pack into its elements
-  (`A[S32, Ts]` with `Ts = Tup[Bool, U8]` is `A[S32, Bool, U8]`); an empty pack spreads into nothing. Sup attachment
-  erases a block's pack binding, as the block stands for every element set. Making a type pack an argument list
-  rather than a `Tup` is pack-design phase 11.
-- **Helpers.** `packs::TypePackElements`, `CompPackElements` (and the `Bound...` forms), `DoesTypeNameAnUnboundPack`,
-  `DoesCompNameAnUnboundPack`, `DoesArgNameAPack`, `DeclareHiddenPack`, `PackElementName`, `FnVariadicParamName`.
+- **Identity.** A type pack's binding is a `TypeKey` headed `Pack` (`scopes::PackIdOf`, `IsPackId`,
+  `TypeIdHead::PackElements`); a comp pack's a `CompKey` of `Part::Pack`. A tuple value in a comp argument is
+  `Part::Tuple`, so the two never meet. An instance files a pack under its parameter like any argument
+  (`Tup[S32, Bool]` is `Inst(Tup, Items = Pack(S32, Bool))`), always present, empty too. A class of only packs, all
+  empty, is keyed as its template (`InstanceIdOfArgs`): `()` is `Tup`, so the empty instance has one identity.
+- **No pack is named (maintainer).** The variadic parameter is last and takes the trailing positionals; `Ts=...` or
+  `ns=...` is E46. Positionals may follow keywords only as that tail, as in Python (`P[A=S32, Bool, U8]`,
+  `f(a=1, ..xs)`); one landing on a fixed parameter is E18 (`NameArgs`, `BindSlots`; `DoOrderArgs` leaves the
+  tail). In the AST a pack's elements stay positional after the named arguments, and are written back that way
+  (`TypeAstOf`, the solver's `TakeArgs`, `FromParams`, mangling).
+- **Binding.** A type pack's binding symbol holds its list (`TypeSymbol::BoundPack`, no scope; `KeyBinding` keys it as
+  the list); a comp pack's keeps its list identity (`BoundCompId`) while its value is spelled as its tuple (D5).
+  `GenericSubst` is only `TypeParams` and `CompParams`: a binding that is a list is a pack. `BindType`/`BindComp`
+  bind a pack to a list and nothing else.
+- **Splicing.** An element naming a bound pack is spliced into the list it is in, wherever a list is keyed or
+  substituted (`Scope::ArgsIdOf`, `PackIdOfElements`, `RewriteTypeId`/`RewriteCompId` on a `Pack`), so `Tup[A, Ts]`
+  with `Ts` bound to `B, C` is `Tup[A, B, C]`. Reading an instance's arguments (`IdArgs`, `TypeArgRefs`) splices its
+  lists into elements, which is what tuple layout, destructuring and assignability see.
+- **Unification.** Two lists match element by element, a trailing pack in the pattern taking the rest
+  (`UnifyType`'s `Pack` case, `UnifyCompIds`). A variant pattern's pack takes the members the others leave.
+- **A function pack is no value (E123)**, only spread, indexed, collected (`(..xs)`) or folded (`AllowPackWhole`).
+  **A type pack is no type (E124)** outside the positions the parser marks (`MarkPackPosition`; checked once with
+  the symbol the main path found, kept as `_TypePack` for the early-return paths).
+- **In a template** a function pack is reasoned about as an open tuple: `..b: Ts` is `Tup[Ts]`; one of a single
+  element type gets a hidden pack (`VariadicPackOf<xs>`, `packs::DeclareHiddenPack`), deriving from the element.
+  An open tuple is a `Tup` whose list ends in an unbound pack (`IsOpenTuple`, reading `IdArgs`).
+- **Calls.** A pack slot is typed as the tuple of its arguments (conventions stripped; `OpenPackType` for a forward).
+  `InferAllGns` unifies it against `Tup[Ts]` for a type pack, element by element for one of a single type;
+  `ValidateArgsMatchParams` expects `Tup[Ts]`. The instance's hidden pack is bound to the slot's list (`CallArgsId`).
+  In an instance a closed pack is its elements (`ExpandClosedPack`, `xs#0`, ...); see also [[pack-constraints-pairwise]].
+- **Variants** are their positional members (`Var[S32, Bool]`), normalised, flattened and ordered where written
+  (`TypeIdentifierAst`) and keyed as members (`VariantKey`). Reading a written type's members off its arguments
+  (`type_members::VariantMembers`) is only for `Var` itself: check the written name's own symbol
+  (`FindHeadSymbol(...)->UseTarget()->Alias`), not `ForKindCheck`, which resolves an alias (`Opt[T=Opt[S32]]`) to `Var`
+  and made its `T` look like members (a refined pattern then bound the inner tag, 2026-11-04).
+- **Spreads and folds**: `expr_utils::ExpandTupleSpread` (a temporary hoisted once, #52); binary and call folds over a
+  function pack (E125 spread in a fold, E126 lengths differ). A call fold is the tuple of its calls' results, or
+  `Void` when the callee returns `Void` (`_FoldIsVoid`), so `drop(xs)..` is a statement.
+- **Helpers.** `packs::TupleTypeElements` (a tuple type's written elements), `CompPackElements`,
+  `BoundCompPackElements`, `DoesTypeNameAnUnboundPack` (a pack bound to a list counts as bound),
+  `DoesCompNameAnUnboundPack`, `DeclareHiddenPack`, `PackElementName`, `FnVariadicParamName`.
 
 **Parser rule.** A closure's expression body must start on its parameter list's line (`_LineFeedAhead`, like a call's
 `(`). Before this, `let t = ()` followed by a statement on the next line parsed as the closure `() <statement>`.
 
-**Why:** the tuple model (2026-09-28, #14) let a pack be used whole, which needed band-aids for borrowed packs, nested
-tuple naming and per-element checks; the redesign removed them.
+**Why:** a pack bound to a tuple made `Tup`'s own pack recursive (`Tup[Items=Tup[...]]`), so tuples were special-cased
+everywhere (positional keys, no bindings, no solver), and the comp side needed side lists to tell a pack from a
+tuple value. As lists, every class over a pack is handled alike.
 
-**How to apply:** treat a function pack as a list in analysis code: ask `PackInfo`, never the pack's type. In a
-template, the open tuple is how a pack is reasoned about, not a value.
+**How to apply:** ask the identity whether something is a pack (`IsPackId`, `Part::Pack`), never a side list or a
+`Tup`. A new list-like type syntax needs `MarkPackPosition` in its parser rule. Anything that reads an instance's
+arguments as a flat list should go through `IdArgs`/`TypeArgRefs` (lists spliced).
 
 Related: [[generic-inference-engine-shape]], [[pack-constraints-pairwise]], [[borrow-not-a-generic-argument]].
