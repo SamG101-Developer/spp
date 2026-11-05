@@ -279,8 +279,17 @@ auto GenExpressionAst::Stage11_CodeGen(
   IMPORT_UTILS_AND_UID;
   // In a lowered "GenOnce", the "gen" is the return.
   if (Diverges(sm, meta)) {
+    // A borrow yielded is its address, coerced into the yield type as any
+    // yielded value is: a variant holding the borrow as a member ("&S32 or
+    // None") wraps it, tagged (open-bugs #49).
     if (Conv != nullptr) {
-      ctx->Builder.CreateRet(codegen::LlvmAddrOf(*Expr, sm, meta, ctx));
+      auto llvm_addr = codegen::LlvmAddrOf(*Expr, sm, meta, ctx);
+      if (_YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
+        const auto borrow_ref = TypeRef::Of(
+          *Expr->InferType(sm, meta)->WithoutConvention()->WithConvention(AstClone(Conv)), *sm->CurrentScope);
+        llvm_addr = codegen::CoerceToSlot(llvm_addr, *_YieldRef, borrow_ref, *sm, "gen.yield.coerce", ctx);
+      }
+      ctx->Builder.CreateRet(llvm_addr);
       return nullptr;
     }
 
