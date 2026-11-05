@@ -159,6 +159,13 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {});
   }
 
+  // A pack cannot be used as a normal identifier unless under specific usage
+  // such as a spread. This would be from a variadic cmp pack for example.
+  RaiseIf<SppPackNotValueError>(
+    sym != nullptr and sym->Pack.has_value() and
+    not sym->Pack->IsValue and not meta->AllowPackWhole,
+    ERR_ARGS(*this, *sym->Name));
+
   // A parameter's default is analysed where the parameters are
   // in scope, but it is copied into the calls, where this name
   // would mean whatever the caller has under it.
