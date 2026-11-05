@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
@@ -351,21 +352,10 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     }
 
     else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
-      const auto is_sym_mutable = sym->IsMutable or (
-        sym->Type->GetConvention() and *sym->Type->GetConvention() == ConventionTag::MUT);
-
-      // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
-      RaiseIf<SppInvalidMutationError>(
-        not is_sym_mutable,
-        ERR_ARGS(
-          *sym->Name, *arg->Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
-          "immutable symbol"));
-
-      // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed. An argument that is itself a
-      // "&" borrow, a symbol's or not, was rejected above.
-      RaiseIf<SppInvalidMutationError>(
-        sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-        ERR_ARGS(*sym->Name, *arg->Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
+      // Immutable symbols, and immutable borrows even if their symbol is mutable, cannot be mutably borrowed. This
+      // also catches "&mut self" method calls. An argument that is itself a "&" borrow, a symbol's or not, was rejected
+      // above.
+      common_errors::RequireMutablyBorrowable(*sym, *arg->Conv, *sm);
 
       // A mutable borrow cannot overlap any other borrow.
       const auto borrowed = regions::PlaceAtOf(*arg->Val, *sm->CurrentScope);

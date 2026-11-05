@@ -107,9 +107,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: an instance's default is read from the template's ("ReadExpr", monomorphization.cpp), and a slice's "ReadExpr"
-// reads both bounds unconditionally (postfix_expression_operator_slice_ast.cpp), so an open-ended one dereferences the
-// missing bound and the compiler segfaults. open-bugs.md #58.
+// An instance's default is read from the template's ("ReadExpr", monomorphization.cpp), and an open-ended slice's
+// has a bound missing, which stays missing. open-bugs.md #58.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorSliceAst,
   test_valid_open_ended_slice_as_a_generic_function_default, R"(

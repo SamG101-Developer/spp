@@ -117,9 +117,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red: a "&mut" parameter can be lent on mutably, as a call accepts ("h(&mut x)"), but "gen" checks only that the
-// symbol is "mut", not that its type is a mutable borrow (gen_expression_ast.cpp; the argument group checks both), so
-// this is E4. open-bugs.md #57.
+// A "&mut" parameter can be lent on mutably by "gen", as a call accepts ("h(&mut x)"): one shared check
+// ("RequireMutablyBorrowable"). open-bugs.md #57.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     GenExpressionAst,
     test_valid_gen_mut_borrow_of_a_mut_borrow_parameter,

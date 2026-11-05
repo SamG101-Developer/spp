@@ -14,7 +14,6 @@ import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.memory_state;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_join;
@@ -250,20 +249,9 @@ auto GenExpressionAst::Stage8_CheckMemory(
   }
 
   else if (*Conv == ConventionTag::MUT) {
-    // Immutable symbols cannot be mutated.
-    // Todo: a "&mut" parameter ("x: &mut S32") is lent on mutably by a call, which also accepts a symbol whose type
-    //  is a mutable borrow; this is E4 (open-bugs.md #57; one shared check, N14.35).
-    RaiseIf<SppInvalidMutationError>(
-      not sym->IsMutable,
-      ERR_ARGS(
-        *sym->Name, *Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
-        "immutable symbol"));
-
-    // Immutable borrows, even if their symbol is mutable,
-    // cannot be mutated.
-    RaiseIf<SppInvalidMutationError>(
-      sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-      ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
+    // Lent on mutably as a call's argument is: a "&mut" parameter
+    // ("x: &mut S32") can be ("RequireMutablyBorrowable").
+    common_errors::RequireMutablyBorrowable(*sym, *Conv, *sm);
   }
 
   record_owned();

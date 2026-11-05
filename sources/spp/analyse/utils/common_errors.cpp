@@ -4,11 +4,16 @@ module;
 module spp.analyse.utils.common_errors;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
+import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.symbols;
 import spp.analyse.utils.expr_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import std;
 
@@ -34,4 +39,24 @@ auto spp::analyse::utils::common_errors::RequireNotBorrowed(
   TypeAst const &type, Ast const &at, const StrView what, ScopeManager const &sm, const bool deep)
   -> void {
   RequireNotBorrowed(type, at, type, what, sm, deep);
+}
+
+auto spp::analyse::utils::common_errors::RequireMutablyBorrowable(
+  VariableSymbol const &sym, Ast const &mutator, ScopeManager const &sm)
+  -> void {
+  using errors::SppInvalidMutationError;
+  auto const *const conv = sym.Type != nullptr ? sym.Type->GetConvention() : nullptr;
+
+  // An immutable symbol cannot be lent on mutably, unless what it
+  // holds is itself a mutable borrow.
+  RaiseIf<SppInvalidMutationError>(
+    not sym.IsMutable and not (conv != nullptr and *conv == asts::ConventionTag::MUT),
+    ERR_ARGS(
+      *sym.Name, mutator, *memory_state::StateOf(*sm.CurrentScope, sym).AstInitialization, "immutable symbol"));
+
+  // Immutable borrows, even if their symbol is mutable, cannot be
+  // lent on mutably.
+  RaiseIf<SppInvalidMutationError>(
+    sym.MemInfo->AstBorrowed and conv != nullptr and *conv == asts::ConventionTag::REF,
+    ERR_ARGS(*sym.Name, mutator, *sym.MemInfo->AstBorrowed, "immutable borrow"));
 }
