@@ -114,7 +114,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   elems.reserve(Elems.size());
   for (auto &elem : Elems) {
     const auto spr = elem->To<SpreadExpressionAst>();
-    const auto exp = spr != nullptr
+    auto exp = spr != nullptr
       ? expr_utils::ExpandTupleSpread(*spr->Expr, *spr->TokUnpack, sm, meta)
       : Nullopt;
 
