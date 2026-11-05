@@ -74,6 +74,7 @@ use(spp::asts, struct ArrayLiteralAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct StringLiteralAst);
+use(spp::asts, struct SpreadExpressionAst);
 use(spp::asts, struct TupleLiteralAst);
 use(spp::asts, struct BinaryExpressionAst);
 use(spp::asts, struct IsExpressionAst);
@@ -124,7 +125,6 @@ use(spp::asts, struct RetStatementAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts, struct TypeBinaryExpressionAst);
 use(spp::asts, struct TypePostfixExpressionAst);
 use(spp::asts, struct TypeUnaryExpressionAst);
 use(spp::asts, struct TypeIdentifierAst);
@@ -133,9 +133,6 @@ use(spp::asts, struct TypePostfixExpressionOperatorNestedTypeAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorBorrowAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorNamespaceAst);
-use(spp::asts, struct TypeParenthesisedExpressionAst);
-use(spp::asts, struct TypeArrayShorthandAst);
-use(spp::asts, struct TypeTupleShorthandAst);
 use(spp::asts, struct UseStatementAst);
 use(spp::asts, struct UseStatementVariableAst);
 use(spp::asts, struct TypeStatementAst);
@@ -248,6 +245,8 @@ public:
   auto ParseParenthesisedExpression() -> Unique<ParenthesisedExpressionAst>;
 
   auto ParseFoldExpression() -> Unique<FoldExpressionAst>;
+
+  auto ParseSpreadExpression() -> Unique<SpreadExpressionAst>;
 
   auto ParseCaseExpression() -> Unique<CaseExpressionAst>;
   auto ParseCaseExpressionBranch() -> Unique<CaseExpressionBranchAst>;
@@ -417,6 +416,12 @@ public:
 
   auto ParseLiteralTuple1Element(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
   auto ParseLiteralTupleNElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+
+  /// A tuple literal's element: an expression, or a spread of a tuple or a pack into it ("..t").
+  auto ParseLiteralTupleElement() -> Unique<ExpressionAst>;
+
+  /// A tuple literal of one spread element, which needs no trailing comma: "(..t)" is no parenthesised expression.
+  auto ParseLiteralTupleSpread() -> Unique<TupleLiteralAst>;
   auto ParseLiteralArrayRepeatedElement(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralRepeatedElementAst>;
   auto ParseLiteralArrayExplicitElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralExplicitElementsAst>;
 

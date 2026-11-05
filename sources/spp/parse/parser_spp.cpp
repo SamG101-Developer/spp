@@ -278,6 +278,7 @@ auto ParserSpp::ParseFunctionParameterVariadic()
   PARSE_ONCE(p2, ParseLocalVariable);
   PARSE_ONCE(p3, ParseTokenColon);
   PARSE_ONCE(p4, ParseTypeExpression);
+  p4->LastTypePart()->MarkPackPosition();
   return _CreateAst<FunctionParameterVariadicAst>(p1, p2, p3, p4);
 }
 
@@ -405,6 +406,7 @@ auto ParserSpp::ParseGenericParameterTypeVariadic()
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_ONCE(p2, ParseTypeIdentifier);
   PARSE_OPTIONAL(p3, ParseGenericParameterTypeConstraints);
+  p2->MarkPackPosition();
   return _CreateAst<GenericParameterAst>(
     nullptr, p1, p2, p3, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
@@ -469,6 +471,7 @@ auto ParserSpp::ParseGenericArgumentTypePositional()
   -> Unique<GenericArgumentAst> {
   // 1964
   PARSE_ONCE(p1, ParseTypeExpression);
+  p1->LastTypePart()->MarkPackPosition();
   return GenericArgumentAst::NewType(nullptr, AstClone(p1));
 }
 
@@ -477,6 +480,7 @@ auto ParserSpp::ParseGenericArgumentTypeKeyword()
   PARSE_ONCE(p1, ParseUpperIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
   PARSE_ONCE(p3, ParseTypeExpression);
+  p3->LastTypePart()->MarkPackPosition();
   return _CreateAst<GenericArgumentAst>(
     TypeIdentifierAst::FromIdentifier(*p1), p2, p3, nullptr);
 }
@@ -810,6 +814,13 @@ auto ParserSpp::ParseFoldExpression()
   -> Unique<FoldExpressionAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   return _CreateAst<FoldExpressionAst>(p1);
+}
+
+auto ParserSpp::ParseSpreadExpression()
+  -> Unique<SpreadExpressionAst> {
+  PARSE_ONCE(p1, ParseTokenDoubleDot);
+  PARSE_ONCE(p2, ParseExpression);
+  return _CreateAst<SpreadExpressionAst>(p1, p2);
 }
 
 auto ParserSpp::ParseCaseExpression()
@@ -1727,7 +1738,7 @@ auto ParserSpp::ParseTypeParenthesisedExpression()
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseTypeExpression);
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
-  return _CreateAst<TypeParenthesisedExpressionAst>(p1, p2, p3)->Convert();
+  return FORWARD_AST(p2);
 }
 
 auto ParserSpp::ParseTypeNever()
@@ -1812,6 +1823,7 @@ auto ParserSpp::ParseTypeTuple1Types()
   PARSE_ONCE(p4, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<TypeAst>>();
+  p2->LastTypePart()->MarkPackPosition();
   temp.emplace_back(shared_cast<TypeAst>(std::move(p2)));
   return AstClone(generate::common_types::TupleType(p1->PosStart(), std::move(temp)));
 }
@@ -1867,7 +1879,8 @@ auto ParserSpp::ParseLiteral()
   PARSE_ALTERNATE(
     p1, LiteralAst, ParseLiteralChar, ParseLiteralString, ParseLiteralFloat, ParseLiteralInteger,
     ParseLiteralBoolean,
-    [this] { return ParseLiteralTuple([this] { return ParseExpression(); }); },
+    ParseLiteralTupleSpread,
+    [this] { return ParseLiteralTuple([this] { return ParseLiteralTupleElement(); }); },
     [this] { return ParseLiteralArray([this] { return ParseExpression(); }); });
   return FORWARD_AST(p1);
 }
@@ -2034,6 +2047,22 @@ auto ParserSpp::ParseLiteralTupleNElements(
   PARSE_TWO_OR_MORE(p2, elem_parser, ParseTokenComma);
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
   return _CreateAst<TupleLiteralAst>(p1, p2, p3);
+}
+
+auto ParserSpp::ParseLiteralTupleElement()
+  -> Unique<ExpressionAst> {
+  PARSE_ALTERNATE(p1, ExpressionAst, ParseSpreadExpression, ParseExpression);
+  return FORWARD_AST(p1);
+}
+
+auto ParserSpp::ParseLiteralTupleSpread()
+  -> Unique<TupleLiteralAst> {
+  PARSE_ONCE(p1, ParseTokenLeftParenthesis);
+  PARSE_ONCE(p2, ParseSpreadExpression);
+  PARSE_ONCE(p3, ParseTokenRightParenthesis);
+  auto temp = Vec<Unique<ExpressionAst>>();
+  temp.emplace_back(std::move(p2));
+  return _CreateAst<TupleLiteralAst>(p1, temp, p3);
 }
 
 auto ParserSpp::ParseLiteralArrayRepeatedElement(
