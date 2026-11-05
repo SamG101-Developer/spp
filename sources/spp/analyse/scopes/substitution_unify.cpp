@@ -7,7 +7,6 @@ import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
 import spp.asts.generic_parameter_group_ast;
 import spp.asts.type_ast;
-import spp.asts.generate.common_types_precompiled;
 import spp.utils.ice;
 import genex;
 import std;
@@ -51,44 +50,38 @@ namespace {
   /// but what it bound is still read ("GenericSolver::_Match" on a bare parameter, whose constraints are reported
   /// later, once everything is bound).
   auto BindType(const std::uint64_t param_id, const sc::TypeId given, Ctx &ctx) -> bool {
-    // Nothing that does not key can be bound: a pack's tuple where the program has no visible "Tup" ("TupleIdOf")
-    // does not unify, rather than counting as bound to no type.
+    // Nothing that does not key can be bound. A type pack is bound to its list, and nothing else.
     if (given == nullptr) { return false; }
     for (auto const &[p, bound] : ctx.Bindings.TypeParams) { if (p == param_id) { return bound == given; } }
     auto const *const param = sc::FindGnTypeParamById(param_id);
+    if (param != nullptr and param->IsVariadic != sc::IsPackId(given)) { return false; }
     ctx.Bindings.TypeParams.emplace_back(param_id, given);
-    if (param != nullptr and param->IsVariadic) { ctx.Bindings.TypePackParams.push_back(param_id); }
     if (not ctx.CheckConstraints or param == nullptr or param->TypeConstraints.empty()) { return true; }
 
-    // A pack's constraints hold for each of its elements, not for the tuple they are gathered into
-    // ("type_compare::PackConstraintsSatisfied"): an empty pack has none to check.
+    // A pack's constraints hold for each of its elements: an empty pack has none to check.
     const auto holds = [&](const sc::TypeId type) {
       const auto ref = sc::TypeRef::Of(type, ctx.Given);
       return ref.Symbol == nullptr or spp::analyse::utils::type_compare::UnmetConstraint(
         param->TypeConstraints, ref, false, ctx.Declared, ctx.Given) == nullptr;
     };
     if (not param->IsVariadic) { return holds(given); }
-    auto const &head = sc::HeadOf(given);
-    if (head.Args == nullptr) { return true; }
-    return genex::all_of(sc::ArgsOf(head.Args), [&](auto const &arg) {
-      return arg.TypeVal == nullptr or holds(arg.TypeVal);
-    });
+    return genex::all_of(sc::HeaderOf(given).PackElements, holds);
   }
 
-  /// "BindType" for a comp parameter: the same value each time it is named ("P2[n, n]").
+  /// "BindType" for a comp parameter: the same value each time it is named ("P2[n, n]"). A comp pack is bound to its
+  /// list, and nothing else.
   auto BindComp(const std::uint64_t param_id, const sc::CompId given, sc::GenericSubst &bindings) -> bool {
     for (auto const &[p, bound] : bindings.CompParams) { if (p == param_id) { return bound == given; } }
+    auto const *const param = sc::FindGnCompParamById(param_id);
+    if (param != nullptr and param->IsVariadic != (given->Kind == sc::CompKey::Part::Pack)) { return false; }
     bindings.CompParams.emplace_back(param_id, given);
-    if (auto const *const param = sc::FindGnCompParamById(param_id); param != nullptr and param->IsVariadic) {
-      bindings.CompPackParams.push_back(param_id);
-    }
     return true;
   }
 
   /// The variadic type parameter a declared argument is, if it is one: a pack the rest is gathered into.
   auto TypePackParamOf(sc::TypeId declared) -> std::uint64_t {
     if (declared == nullptr) { return 0; }
-    auto const &head = sc::HeadOf(declared);
+    auto const &head = sc::HeaderOf(declared);
     if (head.Kind != sc::TypeKey::Tag::TypeParam or head.Conv != 0 or head.TypeParamId == 0) { return 0; }
     auto const *const param = sc::FindGnTypeParamById(head.TypeParamId);
     return param != nullptr and param->IsVariadic ? head.TypeParamId : 0;
@@ -101,27 +94,13 @@ namespace {
     return param != nullptr and param->IsVariadic ? declared->ParamId : 0;
   }
 
-  /// The tuple a gathered type pack is bound to: "Tup" over the types, by position.
-  auto TupleIdOf(spp::Vec<sc::TypeId> const &elems, sc::Scope const &scope) -> sc::TypeId {
-    auto *const tup = scope.FindTypeSymbol(spp::asts::generate::common_types_precompiled::TUP.get());
-    if (tup == nullptr) { return nullptr; }
-    if (elems.empty()) { return sc::TypeRef::Of(*tup, scope).Id; }
-    auto key = sc::TypeKey();
-    for (auto i = 0uz; i < elems.size(); ++i) {
-      if (elems[i] == nullptr) { spp::Ice("tuple element identity is null while gathering a type pack"); }
-      key.Push(sc::TypeKey::Tag::Pos, i);
-      key.PushTypePart(elems[i]);
-    }
-    return sc::InstanceIdOfArgs(*tup, sc::InternTypeKey(std::move(key)));
-  }
-
   auto UnifyType(sc::TypeId given, sc::TypeId declared, Ctx &ctx) -> bool;
 
-  /// The arguments of two instances of one template: each declared one against the given one for the same parameter,
-  /// or at the same position; a trailing variadic parameter takes what is left, as a tuple (or comp pack). A bare
-  /// template given ("Vec" in its own body) stands for its own parameters.
+  /// The arguments of two instances of one template: each declared one against the given one for the same parameter
+  /// (a pack's list against the given list, "UnifyType", "UnifyCompIds"), or at the same position. A bare template
+  /// given ("Vec" in its own body) stands for its own parameters.
   auto UnifyArgs(
-    sc::TypeIdHead const &given, sc::TypeIdHead const &declared, sc::TypeSymbol const &tmpl, Ctx &ctx) -> bool {
+    sc::TypeKeyHeader const &given, sc::TypeKeyHeader const &declared, sc::TypeSymbol const &tmpl, Ctx &ctx) -> bool {
     const auto declared_args = declared.Args != nullptr ? sc::ArgsOf(declared.Args) : spp::Vec<sc::TypeIdArg>();
     const auto bare = given.Kind == sc::TypeKey::Tag::Symbol;
     const auto given_args = not bare and given.Args != nullptr ? sc::ArgsOf(given.Args) : spp::Vec<sc::TypeIdArg>();
@@ -157,26 +136,6 @@ namespace {
         rest.push_back(given_args[j]);
       }
       const auto last = i + 1 == declared_args.size();
-      if (last and d.TypeVal != nullptr) {
-        if (const auto pack = TypePackParamOf(d.TypeVal); pack != 0) {
-          auto elems = spp::Vec<sc::TypeId>();
-          for (auto j = positional; j < rest.size(); ++j) {
-            if (rest[j].TypeVal == nullptr) { return false; }
-            elems.push_back(rest[j].TypeVal);
-          }
-          return BindType(pack, TupleIdOf(elems, ctx.Given), ctx);
-        }
-      }
-      if (last and d.CompVal != nullptr) {
-        if (const auto pack = CompPackParamOf(d.CompVal); pack != 0) {
-          auto elems = spp::Vec<sc::CompKey const*>();
-          for (auto j = positional; j < rest.size(); ++j) {
-            if (rest[j].CompVal == nullptr) { return false; }
-            elems.push_back(rest[j].CompVal);
-          }
-          return BindComp(pack, sc::InternCompKey(sc::CompKey::OfPack(std::move(elems))), ctx.Bindings);
-        }
-      }
       if (positional >= rest.size()) { return false; }
       auto const &g = rest[positional++];
       if (d.TypeVal != nullptr and (g.TypeVal == nullptr or not UnifyType(g.TypeVal, d.TypeVal, ctx))) { return false; }
@@ -189,24 +148,38 @@ namespace {
 
   auto UnifyType(sc::TypeId given, sc::TypeId declared, Ctx &ctx) -> bool {
     if (given == nullptr or declared == nullptr) { return false; }
-    auto const &d = sc::HeadOf(declared);
+    auto const &d = sc::HeaderOf(declared);
 
     // A parameter of the pattern binds what is opposite it: as given ("T" opposite "&Str" is "&Str"), or, written with
     // a convention ("&T"), what that convention is over ("&T" opposite "&Str" is "Str"). "Self" (0) is not one: it is
     // the enclosing type, which the pattern does not bind.
     if ((d.Kind == sc::TypeKey::Tag::TypeParam and d.TypeParamId != 0) or d.Kind == sc::TypeKey::Tag::TypeBound) {
       if (d.Conv == 0) { return BindType(d.TypeParamId, given, ctx); }
-      return ConventionWordEq(sc::HeadOf(given).Conv, d.Conv) and BindType(d.TypeParamId, sc::BareOf(given), ctx);
+      return ConventionWordEq(sc::HeaderOf(given).Conv, d.Conv) and BindType(d.TypeParamId, sc::BareOf(given), ctx);
     }
 
     // The same type fits itself ("Self" opposite "Self", a closed type opposite itself); one naming parameters is
     // still walked, so each binds itself.
     if (given == declared and not sc::DoesTypeIdNameAnyGnParams(declared)) { return true; }
-    auto const &g = sc::HeadOf(given);
+    auto const &g = sc::HeaderOf(given);
     if (not ConventionWordEq(g.Conv, d.Conv)) { return false; }
 
+    // Two type packs' lists element by element; a trailing pack of the pattern's ("Tup[A, Ts]") takes the rest as its
+    // list, as a comp pack does ("UnifyCompIds").
+    if (d.Kind == sc::TypeKey::Tag::Pack) {
+      if (g.Kind != sc::TypeKey::Tag::Pack) { return false; }
+      auto const &de = d.PackElements;
+      auto const &ge = g.PackElements;
+      const auto pack = de.empty() ? 0 : TypePackParamOf(de.back());
+      const auto fixed = pack != 0 ? de.size() - 1 : de.size();
+      if (pack != 0 ? ge.size() < fixed : ge.size() != fixed) { return false; }
+      for (auto i = 0uz; i < fixed; ++i) { if (not UnifyType(ge[i], de[i], ctx)) { return false; } }
+      if (pack == 0) { return true; }
+      return BindType(pack, sc::PackIdOf(spp::Vec<sc::TypeId>(ge.begin() + static_cast<std::ptrdiff_t>(fixed), ge.end())), ctx);
+    }
+
     // A variant pattern takes any of its members. Not when a pack is among them and the given type is a variant too:
-    // the pack takes the members the others leave ("Bool or Rest" given "S32 or Bool" binds "Rest" to "(S32,)"), as
+    // the pack takes the members the others leave ("Bool or Rest" given "S32 or Bool" binds "Rest" to "S32"), as
     // the two are matched whole below, rather than the whole given variant as one member.
     const auto pattern_has_pack = d.Kind == sc::TypeKey::Tag::Variant
       and genex::any_of(d.VariantMembers, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
@@ -225,7 +198,7 @@ namespace {
     if (g_sym == nullptr or d_sym == nullptr or g_sym->Type != d_sym->Type) { return false; }
     if (d.Kind == sc::TypeKey::Tag::Variant and g.Kind == sc::TypeKey::Tag::Variant) {
       // A pack among the pattern's members ("Var[Variants]", "Var[None, Rest]") takes the members the others leave, as
-      // a tuple in their canonical order: members are a set, so each other one takes whichever given member fits it.
+      // its list in their canonical order: members are a set, so each other one takes whichever given member fits it.
       const auto pack = genex::find_if(d.VariantMembers, [](const sc::TypeId m) { return TypePackParamOf(m) != 0; });
       if (pack != d.VariantMembers.end()) {
         auto used = spp::Vec<bool>(g.VariantMembers.size(), false);
@@ -244,7 +217,7 @@ namespace {
         for (auto i = 0uz; i < g.VariantMembers.size(); ++i) {
           if (not used[i]) { rest.push_back(g.VariantMembers[i]); }
         }
-        return BindType(TypePackParamOf(*pack), TupleIdOf(rest, ctx.Given), ctx);
+        return BindType(TypePackParamOf(*pack), sc::PackIdOf(rest), ctx);
       }
       if (g.VariantMembers.size() != d.VariantMembers.size()) { return false; }
       for (auto i = 0uz; i < d.VariantMembers.size(); ++i) {
@@ -282,8 +255,17 @@ namespace spp::analyse::scopes {
       if (given == nullptr or declared == nullptr) { return false; }
       if (declared->Kind == scopes::CompKey::Part::Param) { return BindComp(declared->ParamId, given, bindings); }
 
-      // Two packs element by element; a trailing variadic parameter of the pattern takes the rest as a pack of its own.
-      if (declared->Kind == scopes::CompKey::Part::Pack and given->Kind == scopes::CompKey::Part::Pack) {
+      // Two comp packs' lists (or two tuples) element by element; a trailing variadic parameter of the pattern takes the
+      // rest of a list as its own.
+      const auto both = [&](const scopes::CompKey::Part kind) { return declared->Kind == kind and given->Kind == kind; };
+      if (both(scopes::CompKey::Part::Tuple)) {
+        if (declared->Kids.size() != given->Kids.size()) { return false; }
+        for (auto i = 0uz; i < declared->Kids.size(); ++i) {
+          if (not UnifyCompIds(given->Kids[i], declared->Kids[i], bindings)) { return false; }
+        }
+        return true;
+      }
+      if (both(scopes::CompKey::Part::Pack)) {
         auto const &d = declared->Kids;
         auto const &g = given->Kids;
         const auto pack = d.empty() ? 0 : CompPackParamOf(d.back());
