@@ -145,16 +145,19 @@ auto PostfixExpressionOperatorSliceAst::InferTypeRef(
 auto PostfixExpressionOperatorSliceAst::ReadExpr(
   ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
-  // tokens.
-  // Todo: an open-ended slice has a null bound, read here unconditionally: a
-  //  generic function's default "s[to n]" segfaults when an instance reads it
-  //  (open-bugs.md #58).
+  // tokens. An open-ended slice ("s[to n]", "s[n to]") has
+  // no bound on that side, which stays absent.
+  // Todo: INLINE:
+  const auto read = [&](auto const &bound) {
+    return bound != nullptr ? AstClone(bound->ReadExpr(sub)) : nullptr;
+  };
+
   return MakeUnique<PostfixExpressionOperatorSliceAst>(
     AstClone(TokL),
     AstClone(TokMut),
-    AstClone(ExprLBound->ReadExpr(sub)),
+    read(ExprLBound),
     AstClone(TokTo),
-    AstClone(ExprRBound->ReadExpr(sub)),
+    read(ExprRBound),
     AstClone(TokR));
 }
 
