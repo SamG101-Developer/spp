@@ -308,8 +308,6 @@ namespace spp::analyse::utils::sup_attachment {
             const auto pid = pack->ParamId();
             std::erase_if(bindings.TypeParams, [pid](auto const &x) { return x.first == pid; });
             std::erase_if(bindings.CompParams, [pid](auto const &x) { return x.first == pid; });
-            std::erase(bindings.TypePackParams, pid);
-            std::erase(bindings.CompPackParams, pid);
           }
         }
         const auto scope_args_id = ArgsIdOfBindings(bindings, type_scope);
