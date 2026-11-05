@@ -14,75 +14,69 @@ use(spp::asts, struct Ast);
 use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {
-  /// Check if a type member is accessible from where it is
-  /// being named. The non-throwing core of normal type member
-  /// visibility.
+  /// Check if a type member is accessible from where it is being named. The
+  /// non-throwing core of normal type member visibility.
   SPP_EXP_FUN auto IsTypeMemberVisible(
     VariableSymbol const &sym, Scope const &type_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
 
-  /// Check if a type member is accessible from where it is
-  /// being named. Throws an error on bad visibility, uses the
-  /// type member core.
+  /// Check if a type member is accessible from where it is being named. Throws
+  /// an error on bad visibility, uses the type member core.
   SPP_EXP_FUN auto CheckTypeMemberVisibility(
     VariableSymbol const &sym, Ast const &access_ast, Scope const &type_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> void;
 
-  /// Check if a type's nested type is accessible from where it
-  /// is being named. The non-throwing core, for a caller listing
-  /// what can be reached rather than checking one name that was
-  /// written.
+  /// Check if a type's nested type is accessible from where it is being named.
+  /// The non-throwing core, for a caller listing what can be reached rather
+  /// than checking one name that was written.
   SPP_EXP_FUN auto IsTypeTypeVisible(
-    TypeSymbol const &sym, Scope const &type_scope,
-    ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
+    TypeSymbol const &sym, Scope const &type_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> bool;
 
-  /// Check if a type's nested type is accessible from where it
-  /// is being named. Throws an error on bad visibility, uses
-  /// the (internal) type member core.
+  /// Check if a type's nested type is accessible from where it is being named.
+  /// Throws an error on bad visibility, uses the (internal) type member core.
   SPP_EXP_FUN auto CheckTypeTypeVisibility(
     TypeSymbol const &sym, Ast const &access_ast, Scope const &type_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> void;
 
-  /// Check if a module member is accessible from where it is
-  /// being named. The non-throwing core of module member
-  /// visibility, for a caller listing what can be reached
-  /// rather than checking one name that was written.
+  /// Check if a module member is accessible from where it is being named. The
+  /// non-throwing core of module member visibility, for a caller listing what
+  /// can be reached rather than checking one name that was written.
   SPP_EXP_FUN auto IsModuleMemberVisible(
     VariableSymbol const &sym, Scope const &definition_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
 
-  /// Check if a module member is accessible from where it is
-  /// being named. Throws an error on bad visibility, uses the
-  /// (internal) module member core.
+  /// Check if a module member is accessible from where it is being named.
+  /// Throws an error on bad visibility, uses the (internal) module member core.
   SPP_EXP_FUN auto CheckModuleMemberVisibility(
-    VariableSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
-    ScopeManager const &sm, CompilerMetaData const &meta) -> void;
+    VariableSymbol const &sym, Ast const &access_ast,
+    Scope const &definition_scope, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> void;
 
-  /// Check if a module type member is accessible from where it
-  /// is being named. The non-throwing core, for a caller listing
-  /// what can be reached rather than checking one name that was
-  /// written.
+  /// Check if a module type member is accessible from where it is being named.
+  /// The non-throwing core, for a caller listing what can be reached rather
+  /// than checking one name that was written.
   SPP_EXP_FUN auto IsModuleTypeVisible(
     TypeSymbol const &sym, Scope const &definition_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> bool;
 
-  /// Check if a module type member is accessible from where it
-  /// is being named. Throws an error on bad visibility, uses
-  /// the (internal) module member core.
+  /// Check if a module type member is accessible from where it is being named.
+  /// Throws an error on bad visibility, uses the (internal) module member core.
   SPP_EXP_FUN auto CheckModuleTypeVisibility(
     TypeSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
     ScopeManager const &sm, CompilerMetaData const &meta) -> void;
 
-  /// Check a module member named from where it is being named is
-  /// in a package that module can name: not an ffi package another
-  /// owner ships (E120), and otherwise its own or one its owner's
-  /// "spp.toml" declares (E121). Part of the module checks above,
-  /// and needs no visibility, so a written type checks it from the
-  /// stage its name is read.
+  /// Check a module member named from where it is being named is in a package
+  /// that module can name: not an ffi package another owner ships (E120), and
+  /// otherwise its own or one its owner's "spp.toml" declares (E121).
   SPP_EXP_FUN auto CheckPackageAccess(
-    VariableSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
-    ScopeManager const &sm, CompilerMetaData const &meta) -> void;
+    VariableSymbol const &sym, Scope const &definition_scope,
+    Ast const &access_ast, ScopeManager const &sm,
+    CompilerMetaData const &meta) -> void;
 
+  /// Check a module member named from where it is being named is in a package
+  /// that module can name: not an ffi package another owner ships (E120), and
+  /// otherwise its own or one its owner's "spp.toml" declares (E121).
   SPP_EXP_FUN auto CheckPackageAccess(
     TypeSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
     ScopeManager const &sm, CompilerMetaData const &meta) -> void;
