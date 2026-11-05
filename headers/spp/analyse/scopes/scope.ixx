@@ -402,6 +402,13 @@ public:
   SPP_ATTR_NODISCARD auto ArgsIdOf(
     Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
 
+  /// The identity of a type pack's list ("PackIdOf") from the types
+  /// written as its elements, read from this scope: an element that
+  /// is itself a bound pack ("Ts" where "Ts" is "S32, Bool") is
+  /// spliced in. An unresolved element is keyed by its spelling.
+  SPP_ATTR_NODISCARD auto PackIdOfElements(
+    Vec<TypeAst const*> const &elems) const -> TypeId;
+
   /// Create a type id for a type and its arguments, handling
   /// the variant case specially too. This builds an "instantiation"
   /// for a type, as a type id.
