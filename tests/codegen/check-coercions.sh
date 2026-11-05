@@ -531,7 +531,7 @@ done
 # variant's identity order ("GetVariantIndexOfMember"), but the next level was read off the members in their written
 # order ("type_members::VariantMembers", sorted by qualified name), and the two orders differ when a type's module sorts
 # before another's but its name after ("a::Zed" and "b::Apple"): the walk took the other member and bound the wrong
-# bytes. Red: open-bugs.md #56.
+# bytes (open-bugs.md #56, fixed: the identity alone orders a variant's members, N14.8).
 read -r -d '' TAG_ORDER_A <<'BODY'
 !public
 cls Zed[T] {
