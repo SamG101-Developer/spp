@@ -101,6 +101,27 @@ namespace spp::codegen::mangle {
       return id != nullptr ? MangleCompKey(*id) : Str();
     }
 
+    /// A type pack's list ("IsPackTypeId") as its elements, positionally, as it is written.
+    auto ManglePackTypeId(
+      analyse::scopes::Scope const &scope,
+      const analyse::scopes::TypeId id,
+      analyse::scopes::TypeSymbol const *naming)
+      -> Vec<Str> {
+      return analyse::scopes::HeaderOf(id).PackElements
+        | genex::views::transform([&](const analyse::scopes::TypeId elem) { return MangleTypeId(scope, elem, naming); })
+        | genex::to<Vec>();
+    }
+
+    /// "ManglePackTypeId" for a comp pack's list ("IsPackCompId").
+    auto ManglePackCompId(
+      analyse::scopes::Scope const &scope,
+      const analyse::scopes::CompId id)
+      -> Vec<Str> {
+      return id->Kids
+        | genex::views::transform([&](const analyse::scopes::CompId elem) { return MangleCompId(scope, elem); })
+        | genex::to<Vec>();
+    }
+
     /// "MangleTypeArg" for a written comp argument.
     auto MangleCompArg(
       asts::ExpressionAst const &value,
@@ -199,17 +220,26 @@ auto spp::codegen::mangle::MangleTypeName(
   // bindings, which can name the parameters they bind ("Args" bound to "Tup[FunMov[Args, Out], Args]") and grow.
   using analyse::scopes::TypeKey;
   if (type_sym.Id != nullptr and type_sym.LinkedScope != nullptr
-    and analyse::scopes::HeadOf(type_sym.Id).Kind == TypeKey::Tag::Inst) {
+    and analyse::scopes::HeaderOf(type_sym.Id).Kind == TypeKey::Tag::Inst) {
     auto const &scope = *type_sym.LinkedScope;
-    auto const *const tmpl = analyse::scopes::HeadOf(type_sym.Id).Symbol();
-    auto out = tmpl->FqName()->WithoutGns()->ToString() + "[";
-    auto first = true;
-    for (auto const &arg : analyse::scopes::ArgsOf(analyse::scopes::HeadOf(type_sym.Id).Args)) {
-      if (not first) { out += ", "; }
-      first = false;
-      if (arg.Named) { out += analyse::scopes::ArgNameOf(arg) + "="; }
-      out += arg.TypeVal != nullptr ? MangleTypeId(scope, arg.TypeVal, &type_sym) : MangleCompId(scope, arg.CompVal);
+    auto const *const tmpl = analyse::scopes::HeaderOf(type_sym.Id).Symbol();
+    auto parts = Vec<Str>();
+    for (auto const &arg : analyse::scopes::ArgsOf(analyse::scopes::HeaderOf(type_sym.Id).Args)) {
+      if (analyse::scopes::IsPackTypeId(arg.TypeVal)) {
+        parts.append_range(ManglePackTypeId(scope, arg.TypeVal, &type_sym));
+      }
+      else if (analyse::scopes::IsPackCompId(arg.CompVal)) {
+        parts.append_range(ManglePackCompId(scope, arg.CompVal));
+      }
+      else {
+        const auto name = arg.Named ? analyse::scopes::ArgNameOf(arg) + "=" : Str();
+        parts.push_back(name + (arg.TypeVal != nullptr
+          ? MangleTypeId(scope, arg.TypeVal, &type_sym)
+          : MangleCompId(scope, arg.CompVal)));
+      }
     }
+    auto out = tmpl->FqName()->WithoutGns()->ToString() + "[";
+    for (auto i = 0uz; i < parts.size(); ++i) { out += (i != 0 ? ", " : "") + parts[i]; }
     return out + "]";
   }
 
@@ -264,21 +294,11 @@ auto spp::codegen::mangle::MangleFnName(
   // Get the return and parameter types of the function.
   const auto return_type_sym = owner_scope.FindTypeSymbol(fun_proto.ReturnType.get());
 
-  // The variadic parameter is mangled from the tuple it
-  // actually receives, not from the single element it
-  // declares - otherwise two instantiations differing only
-  // in argument count mangle to one name, and llvm quietly
-  // uniques the second, leaving callers pointing at
-  // whichever one won.
-  const auto variadic_param = fun_proto.FnParamGroup->GetVariadicParam();
+  // An instantiation of a variadic function has a parameter per
+  // element ("monomorphization::ExpandClosedPack"), so two differing
+  // only in argument count differ in their parameters.
   const auto param_type_syms = fun_proto.FnParamGroup->Params
-    | genex::views::transform([&](auto const &param) {
-      auto const &param_type = (fun_proto.VariadicPackType != nullptr
-          and param.get() == static_cast<asts::FunctionParameterAst const*>(variadic_param))
-        ? fun_proto.VariadicPackType
-        : param->Type;
-      return owner_scope.FindTypeSymbol(param_type.get());
-    })
+    | genex::views::transform([&](auto const &param) { return owner_scope.FindTypeSymbol(param->Type.get()); })
     | genex::to<Vec>();
 
   // Save the type symbols into a vector.
