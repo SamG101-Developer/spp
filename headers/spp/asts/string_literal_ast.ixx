@@ -47,6 +47,12 @@ SPP_EXP_CLS struct spp::asts::StringLiteralAst final : LiteralAst {
     ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 
   SPP_ATTR_NODISCARD auto CppVal() const -> Str;
+
+private:
+  /// The literal's type ("&StrView", or "&View[U8]" for a byte string),
+  /// analysed the first time it is asked: the same wherever it is read, so
+  /// built once. Handed out as a copy, as callers modify what they are given.
+  Shared<TypeAst> _Type;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::StringLiteralAst)
