@@ -72,8 +72,8 @@ namespace spp::analyse::scopes {
     /// A large set of possible types of a type, which might
     /// require certain behaviour and handling.
     enum class Tag : std::uint8_t {
-      Pos, Conv, Unresolved, TypeBound, TypeParam,
-      Symbol, CompId, Inst, Variant, Len, TypeId, CompParam,
+      Pos, Conv, Unresolved, TypeParam,
+      Symbol, CompId, Inst, Variant, Len, TypeId,
       Arg, Pack
     };
 
@@ -306,8 +306,8 @@ namespace spp::analyse::scopes {
   /// as an "&" "Inst" of "Vec" with the arguments "[Str]", and
   /// "Str" as a "Symbol" of "Str".
   SPP_EXP_CLS struct TypeKeyHeader {
-    /// "Self", "TypeParam", "TypeBound", "Symbol" (a closed
-    /// class), "Inst", "Variant" or "Unresolved".
+    /// "TypeParam" (0 being "Self"), "Symbol" (a closed class),
+    /// "Inst", "Variant", "Pack" or "Unresolved".
     TypeKey::Tag Kind = TypeKey::Tag::Unresolved;
 
     /// The convention tag, 0 for none.
@@ -317,8 +317,7 @@ namespace spp::analyse::scopes {
     /// the variant template.
     void const *Ptr = nullptr;
 
-    /// "TypeParam" and "TypeBound": the type parameter's
-    /// "ParamId".
+    /// "TypeParam": the type parameter's "ParamId".
     std::uint64_t TypeParamId = 0;
 
     /// "Inst": the arguments' key, interned as the template's

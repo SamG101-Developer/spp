@@ -163,8 +163,7 @@ namespace spp::analyse::scopes {
         // text if they are both spellable, otherwise the original
         // number comparison.
         if (lhs[i] != rhs[i]) {
-          const auto spelled = tag == TypeKey::Tag::Unresolved or tag == TypeKey::Tag::TypeBound;
-          if (spelled and TagOf(rhs[i]) == tag) {
+          if (tag == TypeKey::Tag::Unresolved and TagOf(rhs[i]) == tag) {
             return TextOfWord(PayloadOf(lhs[i])) <=> TextOfWord(PayloadOf(rhs[i]));
           }
           // An argument's parameter is ordered by its name, as it was when keys spelled it: a "ParamId" is minted in
@@ -253,7 +252,6 @@ auto spp::analyse::scopes::HeaderOf(
     // and assign it as the type param id property on the
     // head.
     case TypeKey::Tag::TypeParam:
-    case TypeKey::Tag::TypeBound:
       head.TypeParamId = PayloadOf(words[0]);
       break;
 
@@ -364,13 +362,6 @@ auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const&
         if (PayloadOf(words[i]) != 0) { add(out.TypeParams, PayloadOf(words[i])); }
         break;
 
-      // For type bound, do the same as a type param, but skip
-      // the second part of it, which is not needed (spelling).
-      case TypeKey::Tag::TypeBound:
-        add(out.TypeParams, PayloadOf(words[i]));
-        ++i;
-        break;
-
       // Skip the symbol parts, and the symbol itself, as this
       // is not needed for getting the params.
       case TypeKey::Tag::Symbol:
@@ -388,10 +379,9 @@ auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const&
         break;
       }
 
-      // Slightly special because this is why we don't need to
-      // have CompParam here. Both "n" and "1" come into here,
-      // like "T" and "Str" go to TypeId, but the ParamsNamedBy
-      // overload for the comp id, extracts the actual params.
+      // A comp value is one part whatever it is: both "n" and "1"
+      // come into here, as "T" and "Str" go to "TypeId", and the
+      // comp id's own "ParamsNamedBy" finds the parameters in it.
       case TypeKey::Tag::CompId: {
         const auto node = CompIdOfWord(words[i + 1]);
         ++i;
