@@ -1,7 +1,7 @@
 ---
 name: spp-naming-abbreviations
-description: "the maintainer's naming rules from cleanup 4.2/4.3: Gn/Fn/Cls/Symbol/Table/CompTime/Id-Key, the Get/Find/Read/Of verbs, PascalCase but locals, and the exceptions"
-updated: 2026-10-30
+description: "the maintainer's naming rules from cleanup 4.2/4.3: Gn/Fn/Cls/Symbol/Table/CompTime/Id-Key, the Get/Find/Read/Of/View verbs, PascalCase but locals, and the exceptions"
+updated: 2026-11-05
 ---
 
 Settled by the maintainer on 2026-10-02 (.triages/analyse-cleanup-review.md 4.2) and applied tree-wide:
@@ -20,8 +20,9 @@ Settled by the maintainer on 2026-10-02 (.triages/analyse-cleanup-review.md 4.2)
   "Identity" in names.
 - **IsType*** spelled out (`IsTypeGenerator`, `IsTypeArray`, `IsTypeTuple`).
 - **Verbs** (4.3): `Get` = accessor or filter; `Find` = search that may be empty and makes nothing; `FindOrMake` =
-  makes what it does not find; `Read` = identity under bindings; `...Of` = pure identity function; `Substitute` =
-  explicit substitution. No `Search` / `Lookup` / `Resolve` verbs. Aliases *link* (`LinkTo`), bindings *bind*
+  makes what it does not find; `Read` = identity under bindings; `...Of` = pure identity function; `View` = a
+  read-only view of a member, owning nothing (`ViewWords` -> `Span`, `ViewName` -> `StrView`; added 2026-11-05);
+  `Substitute` = explicit substitution. No `Search` / `Lookup` / `Resolve` verbs. Aliases *link* (`LinkTo`), bindings *bind*
   (`BindTo`, `Rebind`).
 - **Predicates** (4.4): containment is `Does<Subject>Name<What>`, a singular What taking "A" / "An" (`DoesArgNameAnUnboundPack`, `DoesTypeNameAGnParam`; plural or proper names take none: `DoesTypeIdNameParams`, `DoesTypeNameSelf`,
   `DoesArgNameAPack`); a thing's own state is `Is*` (`IsClosedTypeId`); every bool field is `Is*`. Ast / ref pairs are

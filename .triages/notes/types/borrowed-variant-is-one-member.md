@@ -8,8 +8,9 @@ A variant held by value is flattened into a variant containing it (`(S32 or Bool
 but a borrow of one (`&Opt[S32]`) is a single member: a pointer. `type_members::VariantMemberRefs` deliberately lists a
 borrowed variant's members too (a `case` over a `&Opt` subject narrows through them), so every place that flattens or
 compares members has to check the borrow itself: `AppendKeyId` (records members only when the variant is the whole
-key, not after a convention), `FlattenVariants` (skips a borrowed member), `VariantAccepts` (a borrowed value is no
-subset variant of an owned one), and on the identity side `VariantKey` and `RewriteTypeId` (`Conv == 0`).
+key, not after a convention), `VariantAccepts` (a borrowed value is no subset variant of an owned one), and on the
+identity side `VariantKey` and `RewriteTypeId` (`Conv == 0`). Since N14.8 (2026-11-04) a written variant is normalised
+from its identity, so the AST-side flattening (`FlattenVariants`) that also had to skip it is gone.
 
 **Why:** open-bugs #55 (2026-11-04). Three of those places missed it, so a generator's resume type `GenDone or
 &Opt[S32]` (from `iter_ref` over `Vec[Opt[S32]]`) became `GenDone or None or Some[S32]`, and the yielded pointer's tag

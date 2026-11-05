@@ -35,7 +35,7 @@ now live in other modules.
 - `ValidateInconsistentMemory`: memory_state → case_utils (beside `JoinBranches`, which replaced `ValidateInconsistentTypes` in N9.1).
 - `CheckForConflictingOverload`, `SameSignature`, `CheckForConflictingOverride`: fn_values → new `fn_signatures`.
   fn_values no longer imports overload_resolution.
-- `VariantMembers`, `VariantMemberRefs`, `OrderVariantMembers`: type_compare → type_members.
+- `VariantMembers`, `VariantMemberRefs`: type_compare → type_members (`OrderVariantMembers` removed, N14.8).
 - `ConvertIsExprToFnCall` → `operator_desugaring::ConvertIsExprToCase`.
 - `DoesTypeNameAGnParam` (from type_resolution) and `IsOrExtendsTemplate` (from type_members) → type_predicates.
 - `RegisterSelf`, `RegisterProvisionalSelf`: sup_blocks → self_type.

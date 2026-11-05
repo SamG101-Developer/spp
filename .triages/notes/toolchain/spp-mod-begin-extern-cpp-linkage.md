@@ -17,7 +17,7 @@ two fails:
 
 Hit on 2026-09-14 (build 88) adding `NextGnParamId`. See [[gcc-module-forward-decl-chain]].
 
-**Friends of an `SPP_EXP_CLS` class** (2026-10-07, `TypeKey` befriending `HeadOf` / `BareOf` /
+**Friends of an `SPP_EXP_CLS` class** (2026-10-07, `TypeKey` befriending `HeaderOf` / `BareOf` /
 `ArgsOf`): a friend declared inside the class is in its `extern "C++"` block, so it attaches to the global module. The
 befriended function must therefore be `SPP_EXP_CLS` too, not `SPP_EXP_FUN`, and defined inside `SPP_MOD_BEGIN`.
 Declare it ahead of the class, because a friend declaration first and an export later is ill-formed. Declare it there

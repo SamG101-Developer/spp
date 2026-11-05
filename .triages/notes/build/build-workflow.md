@@ -1,7 +1,7 @@
 ---
 name: build-workflow
 description: "Building, the fast loop, and running and reading the gtest suite without being fooled by stale or killed runs"
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 
 Default to the release build; use debug only when debug info is needed (its LLVM verifier output, "Verification
@@ -35,6 +35,10 @@ sources (three fixed tests once read as a fresh regression).
   marker only that job's own phase writes, or on the job's completion. A `FileExistsError` from `move_to`, with logs
   of tests outside the filter in `passed/`, is this collision. If another run may start, `run.sh --output_dir=<dir>`
   isolates the logs (the directory must already exist); `tests/test_outputs` stays shared.
+- **Never run two `spp_tests` processes at once, either, filtered runs included**: every test writes its program to
+  `tests/test_outputs/src/main.spp`, so two overwrite each other's mid-test. The symptom (2026-11-04) is hundreds of
+  failures that each pass alone, with errors from code the failing test never wrote. Stop the old run before starting
+  a new one, and give each run its own log file.
 
 **Run the suite binary from `<build-dir>/tests/`, never the build dir itself.** `build_temp_project` resolves the
 scratch project as `<cwd>/../../tests/test_outputs`, so the cwd silently picks which one is used. The wrong one fails

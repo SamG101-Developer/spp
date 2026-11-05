@@ -34,7 +34,7 @@ rather than one per level (`ShiftForNamespacedType` 15.5% -> 8.0%, worth 7.5% of
 - **`OnSupScopesRead` must return before `MetaGuard`** when the scope is already attached. `GetSupScopes()` now uses its cache during 5.5 as well.
 - **`FindInSupScopesByParam` re-walked diamonds without a seen set.** It now uses `GetSupScopes()`.
 - **`CheckConflictingTypeOrCmpStatements`** returns early for a block with no `type`/`cmp`.
-- **`HeadOf`/`ParamsOf`/`BareTypeId` are cached on the interned `InstanceKey`**, via mutable pointer fields. A map memo was still about 6% self time.
+- **`HeaderOf`/`ParamsOf`/`BareTypeId` are cached on the interned `InstanceKey`**, via mutable pointer fields. A map memo was still about 6% self time.
 - Result: stage 5.5 went from 34% to 25% of a `./project` build, and stage 7's abstract check from 23% to about 5%. HEAD is not a buildable baseline: the index is partially staged.
 
 **2026-10-16 release profile (`.tools/generate-flamegraph-release.sh` steps by hand; `spp test --all-libs` in
@@ -65,5 +65,5 @@ one round settles it). Three such costs found after the pack redesign, each fixe
 - a sup walk asked per type (`marker_sups::HoldsNoValueOfItsArgs`, P0's exemption): cached on the `TypeSymbol`
   (`HoldsNoValueOfArgs`) once sups are attached (-63k type-key interns);
 - `type_compare::UnmetConstraint`'s `Self` fallback substituted every sup eagerly: only on a miss, and only sups of the
-  constraint's own template (`HeadOf(...).Ptr`), -643 distinct keys.
+  constraint's own template (`HeaderOf(...).Ptr`), -643 distinct keys.
 To find a new increase: per-phase counter diffs first, then switch one suspect off per run.

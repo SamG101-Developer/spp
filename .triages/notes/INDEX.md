@@ -10,7 +10,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK
-- [Naming abbreviations](conventions/spp-naming-abbreviations.md) — Gn/Fn/Cls..., Get/Find/FindOrMake/Read/Of verbs
+- [Naming abbreviations](conventions/spp-naming-abbreviations.md) — Gn/Fn/Cls..., Get/Find/FindOrMake/Read/Of/View verbs
 - [Identity renames 2026-10-06](conventions/identity-renames-2026-10-06.md) — old→new names map (TypeKey, CompKey, Stamp*, ...)
 - [Terse comments, none in config](conventions/terse-comments-in-config.md) — no comments in config; brief in scripts
 - [LF line endings only](conventions/lf-line-endings.md) — CRLF breaks git hooks; check `git ls-files --eol`

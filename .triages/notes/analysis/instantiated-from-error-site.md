@@ -1,7 +1,7 @@
 ---
 name: instantiated-from-error-site
 description: errors::InstantiatedFrom is the outermost site an instantiation was asked for; errors raised inside one get an "Instantiated here" block
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 `errors::InstantiatedFrom()` (in `semantic_error.ixx`) is the outermost site the instantiation being made or analysed
@@ -23,7 +23,7 @@ reported at the first borrow written in the site.
   So moving a block's role (error versus context) changes whether a test passes.
 - The linear-value error uses `OutermostRequest` directly, to make the call the error block.
 - A site must outlive the error that reads it. A class site is the guard's own frame's. `RequiredAt` is owned by the
-  substitution (`RequiredAtCopy`), because the requiring call can be a temporary. It is a one-node stand-in carrying
+  substitution (a `Shared<Ast const>`), because the requiring call can be a temporary. It is a one-node stand-in carrying
   the call's span (`WithSourceSpanAt`), not a copy: a full copy of a call at the end of a `.get().get()` chain holds
   the whole chain, and cost `generic-depth` 0.93M AST nodes (+5.7%, 2026-11-04). Only a call with no span (generated)
   is copied whole, to be shown as text.
