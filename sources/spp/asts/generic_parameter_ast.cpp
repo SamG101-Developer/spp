@@ -16,6 +16,7 @@ import spp.analyse.utils.common_errors;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -35,6 +36,7 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
+import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
@@ -291,11 +293,28 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
       const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
       for (auto const &constraint : TypeConstraints->Constraints) {
-        constraint->ResetCache();
         constraint->Stage7_AnalyseSemantics(sm, meta);
       }
     }
     return;
+  }
+
+  // A template's comp pack "cmp ..ns: Bool" is declared as a function pack of
+  // one element type is: as an open tuple of a hidden pack deriving from its
+  // element, minted once, so "..ns", "ns.0" and a forward of it are typed as a
+  // function pack's are, and is no value used whole ("(..ns)" is). Here, not at stage 2, as
+  // the element must resolve. An instance binds the parameter to its tuple, so
+  // has nothing to declare.
+  if (IsVariadic() and not IsInherited) {
+    auto *const sym = analyse::scopes::FindGnCompParamById(*_ParamId);
+    if (sym != nullptr and sym->Kind == VariableKind::GnCompParam and not sym->Pack.has_value()) {
+      const auto hidden = packs::DeclareHiddenPack(
+        "CompPackOf" + sym->Name->Val, *CompType, this, CompType->PosStart(), *sm->CurrentScope);
+      auto open = generate::common_types::TupleType(CompType->PosStart(), Vec<Shared<TypeAst>>{hidden});
+      open->Stage7_AnalyseSemantics(sm, meta);
+      sym->Pack = analyse::scopes::PackInfo{.Element = CompType};
+      sym->Type = std::move(open);
+    }
   }
 
   // An optional comp parameter analyses its default, and

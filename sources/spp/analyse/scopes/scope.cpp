@@ -537,10 +537,10 @@ namespace spp::analyse::scopes {
           out.Key.Push(Tag::TypeParam, 0);
           return nullptr;
         }
-        out.Key.Push(Tag::TypeBound, static_cast<std::uint64_t>(sym.BindsParamId));
-        if (sym.BoundTypeVal != nullptr) { out.Key.PushText(Tag::TypeBound, sym.BoundTypeVal->ToString()); }
-        else { out.Key.PushText(Tag::TypeBound, sym.Name->ToView()); }
-        return nullptr;
+        // Every other binding links to what it binds (an instance's argument is a symbol, a parameter or "Self"). One
+        // linking to nothing had a key of its own once ("TypeBound": the parameter and its spelling); no compile
+        // reached it (counted over std and the suite, 2026-11-05), so it is a bug here.
+        Ice(std::format("the binding \"{}\" of parameter {} links to nothing", sym.Name->ToView(), sym.BindsParamId));
       }
       return bound;
     }
@@ -588,7 +588,7 @@ namespace spp::analyse::scopes {
         // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str".
         const auto member_id = parts.VariantMembers.empty() ? InternTypeKey(TypeKey(parts.Key)) : nullptr;
         auto flat = spp::Vec<TypeKey>();
-        if (IsPackId(member_id)) {
+        if (IsPackTypeId(member_id)) {
           for (const auto elem : HeaderOf(member_id).PackElements) {
             auto const &elem_head = HeaderOf(elem);
             if (elem_head.Kind != TypeKey::Tag::Variant or elem_head.Conv != 0) { flat.emplace_back(*elem); }
@@ -1422,8 +1422,7 @@ auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
     const auto bound = TypeIdOfSymbol(*binding);
     if (bound == nullptr) { continue; }
     auto const &head = HeaderOf(bound);
-    const auto is_itself = (head.Kind == TypeKey::Tag::TypeParam or head.Kind == TypeKey::Tag::TypeBound)
-      and head.TypeParamId == gn_param_id;
+    const auto is_itself = head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == gn_param_id;
     if (is_itself) { continue; }
 
     // Record the type id -> type id substitution into the
@@ -1478,7 +1477,7 @@ auto Scope::ArgsIdOf(
   const auto param_named = [params](TypeIdentifierAst const &name) -> Opt<std::uint64_t> {
     if (const auto stamped = name.StampedTypeId(); stamped != nullptr) {
       auto const &head = HeaderOf(stamped);
-      if (head.Kind == TypeKey::Tag::TypeParam or head.Kind == TypeKey::Tag::TypeBound) { return head.TypeParamId; }
+      if (head.Kind == TypeKey::Tag::TypeParam) { return head.TypeParamId; }
     }
     if (params == nullptr) { return Nullopt; }
     for (auto const *param : params->GetAllParams()) {
@@ -1511,7 +1510,7 @@ auto Scope::ArgsIdOf(
     if (comp_pack != nullptr and param == comp_pack and arg->IsCompArg()) {
       const auto elem = CompIdOf(*arg->CompVal);
       if (elem == nullptr) { comp_pack_unkeyed = true; }
-      else if (elem->Kind == CompKey::Part::Pack) { comp_pack_elems.append_range(elem->Kids); }
+      else if (IsPackCompId(elem)) { comp_pack_elems.append_range(elem->Kids); }
       else { comp_pack_elems.push_back(elem); }
       continue;
     }
@@ -1564,7 +1563,7 @@ auto Scope::PackIdOfElements(
   auto ids = Vec<TypeId>();
   for (auto const *elem : elems) {
     const auto id = InternTypeKey(_TypeKey(*elem));
-    if (IsPackId(id)) { ids.append_range(HeaderOf(id).PackElements); }
+    if (IsPackTypeId(id)) { ids.append_range(HeaderOf(id).PackElements); }
     else { ids.push_back(id); }
   }
   return PackIdOf(ids);
@@ -1658,21 +1657,19 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
   if (sym != nullptr) { out = sym->FqName(); }
   else {
     switch (head.Kind) {
-      // For a type parameter, or a bound type parameter, get the
-      // type symbol from the parameter identity. Get the fully
-      // qualified type from it, and stamp the id into it. "Self"
-      // (0) is the "SELF" precompiled constant.
-      case TypeKey::Tag::TypeParam:
-      case TypeKey::Tag::TypeBound: {
-        if (head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == 0) {
+      // For a type parameter, get the type symbol from the
+      // parameter identity. Get the fully qualified type from it,
+      // and stamp the id into it. "Self" (0) is the "SELF"
+      // precompiled constant.
+      case TypeKey::Tag::TypeParam: {
+        if (head.TypeParamId == 0) {
           out = AstCloneShared(SELF_TYPE.get());
           break;
         }
         const auto param = FindGnTypeParamById(head.TypeParamId);
         if (param == nullptr) { return nullptr; }
         out = AstCloneShared(param->FqName().get());
-        out->LastTypePart()->StampTypeId(
-          head.Kind == TypeKey::Tag::TypeParam ? bare : NameTypeIdOf(*param));
+        out->LastTypePart()->StampTypeId(bare);
         break;
       }
 
@@ -1685,7 +1682,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
         const auto tmpl = head.Symbol();
         auto group = GenericArgumentGroupAst::NewEmpty();
         for (auto const &arg : ArgsOf(head.Args)) {
-          if (arg.TypeVal != nullptr and IsPackId(arg.TypeVal)) {
+          if (IsPackTypeId(arg.TypeVal)) {
             for (const auto elem : HeaderOf(arg.TypeVal).PackElements) {
               auto type = TypeAstOf(elem);
               if (type == nullptr) { return nullptr; }
@@ -1693,7 +1690,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
             }
             continue;
           }
-          if (arg.CompVal != nullptr and arg.CompVal->Kind == CompKey::Part::Pack) {
+          if (IsPackCompId(arg.CompVal)) {
             for (const auto elem : arg.CompVal->Kids) {
               auto value = CompAstOf(elem);
               if (value == nullptr) { return nullptr; }
@@ -1773,9 +1770,9 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
       return name;
     }
 
-    // For a tuple, or a comp pack (whose value is its tuple, D5),
-    // convert each element, and then wrap the load inside a
-    // tuple literal ast.
+    // For a tuple, or a comp pack (an instance binds one to its
+    // tuple), convert each element, and then wrap the load inside
+    // a tuple literal ast.
     case CompKey::Part::Tuple:
     case CompKey::Part::Pack: {
       auto values = Vec<Unique<ExpressionAst>>();

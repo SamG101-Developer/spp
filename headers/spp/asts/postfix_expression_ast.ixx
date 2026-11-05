@@ -14,10 +14,12 @@ use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorAst);
+use(spp::asts, struct PackElementCloneGuard);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionAst final : ExpressionAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionAst);
 
   /// The base expression the postfix operation is applied to.
@@ -70,3 +72,19 @@ private:
   /// Set by "NewOverAnalysedLhs": stage 7 does not analyse "Lhs".
   bool _LhsAnalysed = false;
 };
+
+/// While it lives, a clone of "xs.N", for "xs" a closed pack it names, is the identifier of that element's parameter
+/// ("xs#N", "analyse::utils::packs::PackElementName"): an instantiation's body is cloned from its template's under
+/// one, so each element is a name of its own to every check (pack-design.md phase 4). An index past the pack is left
+/// as written, an out-of-bounds access (E11). Keyed by the pack's name, to its element count; nests by replacing.
+SPP_EXP_CLS struct spp::asts::PackElementCloneGuard {
+  explicit PackElementCloneGuard(Map<Str, std::size_t> packs);
+  ~PackElementCloneGuard();
+  PackElementCloneGuard(PackElementCloneGuard const &) = delete;
+  auto operator=(PackElementCloneGuard const &) -> PackElementCloneGuard& = delete;
+
+private:
+  Map<Str, std::size_t> _Outer;
+};
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionAst)

@@ -447,7 +447,7 @@ namespace spp::analyse::utils::monomorphization {
       }
 
       // A type pack is bound to its list, which is no type: nothing to link to, keyed as the list ("KeyBinding").
-      if (scopes::IsPackId(value)) {
+      if (scopes::IsPackTypeId(value)) {
         auto pack = MakeShared<TypeSymbol>(
           name, nullptr, nullptr, sm.CurrentScope, TypeKind::GnTypeArg, false, asts::utils::Visibility::kPublic);
         pack->BoundPack = value;
@@ -557,9 +557,9 @@ namespace spp::analyse::utils::monomorphization {
       // binding then needs no lookup and no scope. A value naming
       // a constant that cannot be read yet keys differently once
       // it can, so it is left to be keyed where it is read. A
-      // comp pack's is its list, as given: its value is spelled as
-      // its tuple (D5), which keys as a tuple.
-      const auto bound_id = value->Kind == scopes::CompKey::Part::Pack
+      // comp pack's is its list, as given: an instance binds its
+      // value to its tuple, which keys as a tuple.
+      const auto bound_id = scopes::IsPackCompId(value)
         ? value
         : sm.CurrentScope->CompIdOf(*sym->CompTimeValue->To<ExpressionAst>());
       sym->BoundCompId = scopes::IsReadableCompId(bound_id) ? bound_id : nullptr;
@@ -1084,7 +1084,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   const auto new_cls_sym = MakeShared<TypeSymbol>(
     name_clone, AstAs<ClassPrototypeAst>(new_cls_scope->AstNode),
     new_cls_scope.get(), sm->CurrentScope, old_cls_sym->Kind,
-    old_cls_sym->IsDirectlyCopyable, old_cls_sym->Visibility);
+    old_cls_sym->IsDirectlyCopyable);
   new_cls_sym->DerivesFromSymbol = old_cls_sym;
   new_cls_sym->InstanceOf = old_cls_sym.get();
   new_cls_sym->Id = args_id;
@@ -1381,7 +1381,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
       // parameter becomes its elements ("ExpandClosedPack"), typed
       // from the call, or stays open, typed as its tuple.
       const auto substituted = declared != nullptr ? scopes::SubstituteTypeId(declared, instance_bindings) : nullptr;
-      if (scopes::IsPackId(substituted)) { continue; }
+      if (scopes::IsPackTypeId(substituted)) { continue; }
       p->InstanceTypeId = substituted;
       p->Type = type_resolution::ReadType(*p->Type, ExprSubst::In(*new_fn_scope));
       p->Type->Stage7_AnalyseSemantics(&tm, meta);

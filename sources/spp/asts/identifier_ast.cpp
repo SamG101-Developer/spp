@@ -159,11 +159,12 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {});
   }
 
-  // A pack cannot be used as a normal identifier unless under specific usage
-  // such as a spread. This would be from a variadic cmp pack for example.
+  // A pack, a function's or a comp one, is no value: it is named whole only
+  // where it is spread, folded or forwarded ("AllowPackWhole"), and "(..xs)"
+  // is its tuple.
   RaiseIf<SppPackNotValueError>(
     sym != nullptr and sym->Pack.has_value() and
-    not sym->Pack->IsValue and not meta->AllowPackWhole,
+    not meta->AllowPackWhole,
     ERR_ARGS(*this, *sym->Name));
 
   // A parameter's default is analysed where the parameters are

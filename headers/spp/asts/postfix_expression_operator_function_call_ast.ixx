@@ -144,7 +144,15 @@ private:
   /// an argument group of its own, checked against what the body
   /// already holds.
   Unique<FunctionCallArgumentGroupAst> _CalleeArgGroup;
-  Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
+
+  /// A fold's calls, one per element, each a whole call over
+  /// "_FoldCallee" ("PostfixExpressionAst::NewOverAnalysedLhs").
+  Vec<Unique<PostfixExpressionAst>> _FoldedAsts;
+
+  /// What a fold's calls call: the left-hand side, or for a method
+  /// on a receiver that is no place ("make().m(xs)..") the method on
+  /// the temporary the receiver was evaluated into, once.
+  Shared<ExpressionAst> _FoldCallee;
 
   /// The scope a fold's arguments are analysed in, as written: only
   /// to type them and find the tuples folded over, as each folded
@@ -152,9 +160,28 @@ private:
   /// are kept in this one, which the later stages skip as one.
   Scope *_FoldArgsScope = nullptr;
 
-  /// A folded tuple argument that is not a name, evaluated once into
-  /// a temporary that each folded call reads its element off.
+  /// What a fold evaluates once, in order, before its calls
+  /// ("expr_utils::HoistOnce"): a receiver, then each argument that
+  /// is no place, folded or not. Each call reads the temporaries.
   Vec<Unique<LetStatementInitializedAst>> _FoldTemps;
+
+  /// A temporary in "_FoldTemps" its calls do not consume (a
+  /// receiver or argument only borrowed, or any, when no call reads
+  /// it) is consumed by the fold after them, as a linear value must
+  /// be ("expr_utils::DropCall").
+  Vec<Unique<PostfixExpressionAst>> _FoldDrops;
+
+  /// A template's open packs this fold is over ("j(xs).."): one call is checked, on their first element, and the memory
+  /// checks take each pack whole (pack-design.md phase 7).
+  Vec<Unique<IdentifierAst>> _OpenFoldPacks;
+
+  /// The type of a fold over an open pack: the open tuple of a hidden result pack ("packs::DeclareHiddenPack"), each
+  /// element the type of the call checked, as long as the pack.
+  Shared<TypeAst> _OpenFoldType;
+
+  /// A call fold whose callee returns "Void": run for its effects, so the fold is "Void", not a tuple of "Void"s, and
+  /// can stand as a statement ("drop(xs)..").
+  bool _FoldIsVoid = false;
 
   /// Step the walk past "_FoldArgsScope", before the temporaries'
   /// and the folded calls' scopes (it was created before them).
@@ -165,8 +192,16 @@ private:
 
   auto _HandleFnFolding(
     ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
+    CompilerMetaData *meta,
+    Vec<Shared<IdentifierAst>> &unconsumed)
+    -> Vec<Unique<PostfixExpressionAst>>;
+
+  /// This call again with other arguments ("group"): a fold's call
+  /// per element, a spread's call per length. Fresh, so nothing this
+  /// call worked out (a fold, a resolved overload) is carried.
+  SPP_ATTR_NODISCARD auto _CallWith(
+    Unique<FunctionCallArgumentGroupAst> group) const
+    -> Unique<PostfixExpressionOperatorFunctionCallAst>;
 
   /// A call spreading an open tuple ("f(..b)" in a template, "b" a
   /// variadic parameter) is not resolved itself: one call per pack

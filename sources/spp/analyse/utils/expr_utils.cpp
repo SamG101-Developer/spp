@@ -47,7 +47,7 @@ auto spp::analyse::utils::expr_utils::ExpandTupleSpread(
   // place ("t", "self.items") is read where it is, as a borrowed spread of it ("&..self.items") borrows it.
   // A template's pack is open ("PackInfo"), whatever it declares its elements to be: it stays a spread. An instance's
   // is closed, and is its elements' parameters ("xs#0", "xs#1", ...), each a name of its own. A template's comp pack
-  // ("cmp ..n: Bool") is open in the same way; an instance's is its tuple (D5), expanded below.
+  // ("cmp ..n: Bool") is open in the same way; an instance's is bound to its tuple, expanded below.
   if (auto const *const name = tuple.To<asts::IdentifierAst>(); name != nullptr) {
     auto const *const sym = sm->CurrentScope->FindVarSymbol(name);
     if (sym != nullptr and sym->Pack.has_value()) {
