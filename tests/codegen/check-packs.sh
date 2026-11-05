@@ -4,7 +4,7 @@
 # parameter per element, a borrowed pack's elements are pointers, and nothing is built at the call. At dev and rel the
 # program runs and prints what each element held, and folds over packs (binary, and a call per element whose results
 # are folded in turn) give what folding the elements one by one does. A template's comp pack ("cmp ..ns: S32") folds,
-# spreads and reads whole as a function pack does (next-steps.md N14.1).
+# spreads and is collected into a tuple ("(..ns)") as a function pack does (next-steps.md N14.1).
 #
 #   tests/codegen/check-packs.sh [path/to/spp]
 
@@ -61,8 +61,8 @@ fun comp_spread[cmp ..ns: S32]() -> S32 {
     ret total(..ns)
 }
 
-fun comp_whole_second[cmp ..ns: S32]() -> S32 {
-    let t = ns
+fun comp_tuple_second[cmp ..ns: S32]() -> S32 {
+    let t = (..ns)
     ret t.1
 }
 
@@ -87,7 +87,7 @@ fun main() -> Void {
     show(comp_total[1_s32, 2_s32, 3_s32]())
     show(comp_doubled_total[1_s32, 2_s32]())
     show(comp_spread[4_s32, 5_s32]())
-    show(comp_whole_second[7_s32, 8_s32]())
+    show(comp_tuple_second[7_s32, 8_s32]())
 }
 SPP
 
