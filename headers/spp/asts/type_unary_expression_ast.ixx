@@ -79,8 +79,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
-
-  auto ResetCache() -> void override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionAst)

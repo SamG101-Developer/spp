@@ -226,12 +226,6 @@ auto TypeUnaryExpressionAst::IsCompilerGeneratedType() const -> bool {
   return Rhs->IsCompilerGeneratedType();
 }
 
-auto TypeUnaryExpressionAst::ResetCache() -> void {
-  // Forward into the RHS to reach the inner
-  // TypeIdentifierAst.
-  Rhs->ResetCache();
-}
-
 auto TypeUnaryExpressionAst::NsPartsInto(
   Vec<IdentifierAst const*> &out) const -> void {
   // Both sides append into the caller's buffer, so
