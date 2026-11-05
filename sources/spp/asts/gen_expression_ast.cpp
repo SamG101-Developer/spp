@@ -299,14 +299,21 @@ auto GenExpressionAst::Stage11_CodeGen(
   // rebuilt here, so the store cannot be wider than the
   // storage the frame reserved for it.
   const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
-  auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+  // A borrow ("gen &x") yields the address of what it borrows.
+  auto llvm_yield_val = Expr == nullptr ? nullptr
+    : Conv != nullptr ? codegen::LlvmAddrOf(*Expr, sm, meta, ctx)
+    : Expr->Stage11_CodeGen(sm, meta, ctx);
 
   // A yielded value is coerced into the yield type as "ret" and
   // "let" coerce theirs: a member into a variant ("gen None()"
   // into an "Opt[S32]"), and a named function into a function
-  // type. Otherwise the slot holds the bare member, untagged.
-  if (llvm_yield_val != nullptr and Conv == nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
-    const auto expr_ref = Expr->InferTypeRef(sm, meta);
+  // type. Otherwise the slot holds the bare member, untagged. A
+  // borrow ("gen &x") is coerced as the borrow it is, so a variant
+  // holding it ("&S32 or None") wraps it (open-bugs #49).
+  if (llvm_yield_val != nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
+    const auto expr_ref = Conv == nullptr
+      ? Expr->InferTypeRef(sm, meta)
+      : TypeRef::Of(*Expr->InferType(sm, meta)->WithoutConvention()->WithConvention(AstClone(Conv)), *sm->CurrentScope);
     llvm_yield_val = codegen::CoerceToSlot(llvm_yield_val, *_YieldRef, expr_ref, *sm, "gen.yield.coerce", ctx);
   }
 
