@@ -1645,9 +1645,10 @@ auto ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
       _Pos = saved;
       break;
     }
-    lhs = _CreateAst<TypeBinaryExpressionAst>(lhs, op, rhs)->Convert();
     // A variant's members are a list of types, so a type pack may be one of
     // them ("Bool or Rest").
+    lhs->LastTypePart()->MarkPackPosition();
+    rhs->LastTypePart()->MarkPackPosition();
     // "A or B" is "Var[A, B]" ("or" is the only binary type operator).
     const auto pos = lhs->PosStart();
     auto members = Vec<Shared<TypeAst>>();
@@ -1823,6 +1824,7 @@ auto ParserSpp::ParseTypeTupleNTypes()
 
   auto temp = Vec<Shared<TypeAst>>();
   for (auto &&x : p2) {
+    x->LastTypePart()->MarkPackPosition();
     temp.emplace_back(shared_cast<TypeAst>(std::move(x)));
   }
   return AstClone(generate::common_types::TupleType(

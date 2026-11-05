@@ -23,11 +23,15 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+/// [CHECKED]
 auto spp::analyse::utils::aliases::StatementTarget(
-  TypeStatementAst const &alias_stmt, const bool from_use_stmt, Scope *tracking_scope,
-  ScopeManager *sm, meta::CompilerMetaData *meta)
-  -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*> {
-  const auto filter_params = [](GenericParameterGroupAst const &pg, GenericArgumentGroupAst const &ag) {
+  TypeStatementAst const &alias_stmt, const bool from_use_stmt,
+  Scope const *tracking_scope, ScopeManager *sm, meta::CompilerMetaData *meta)
+  -> AliasTarget {
+  //
+  const auto filter_params = [](
+    GenericParameterGroupAst const &pg,
+    GenericArgumentGroupAst const &ag) {
     auto out = GenericParameterGroupAst::NewEmptyShared();
     const auto name_of = [](auto const *param) { return param->Name->LastTypePart()->Name.c_str(); };
     for (auto const &param : pg.Params) {
@@ -42,65 +46,62 @@ auto spp::analyse::utils::aliases::StatementTarget(
     return member_lookup::FindTypeSymbolOrError(*tracking_scope, *ty.WithoutGns());
   };
 
-  // An alias named inside its own target's arguments ("type X =
-  // Vec[X]") expands forever, just as "type X = X" does, and
-  // used to overflow the stack in the instance lookup. Compared
-  // by symbol, read where the statement is written: a part that
-  // is the alias itself.
+  // If any of the direct target's generic arguments name the new type itself,
+  // then there is a cycle. This prevents "type X = Vec[X]" or "type X = X" from
+  // infinitely expanding.
   if (not from_use_stmt) {
-    auto const *const self_sym = sm->CurrentScope->FindHeadSymbol(*alias_stmt.NewType);
-    const auto names_self = [&](TypeIdentifierAst const &part) {
-      return self_sym != nullptr and sm->CurrentScope->FindHeadSymbol(part) == self_sym;
+    const auto self_sym = sm->CurrentScope->FindHeadSymbol(*alias_stmt.NewType);
+    const auto names_self = [&](auto const &part) {
+      if (self_sym == nullptr) { return false; }
+      return sm->CurrentScope->FindHeadSymbol(part) == self_sym;
     };
-    for (auto const &arg : alias_stmt.OldType->LastTypePart()->GnArgGroup->Args) {
+
+    auto const &args = alias_stmt.OldType->LastTypePart()->GnArgGroup->Args;
+    for (auto const &arg : args) {
       RaiseIf<errors::SppTypeAliasCyclicError>(
         arg->IsTypeArg() and type_predicates::AnyTypePart(*arg->TypeVal, names_self),
         ERR_ARGS(alias_stmt, *arg));
     }
   }
 
-  // The immediate target, and its symbol: read in the statement's
-  // own scope, where its parameters are declared, so a target that
-  // is one of them ("type Id[T] = T") is found as it is in any
-  // other position.
+  // The immediate target, and its symbol, read in the statement's own scope,
+  // where its parameters are declared, so a target that is one of them
+  // ("type Id[T] = T") is found as it is in any other position.
   auto old_type = alias_stmt.OldType;
-  auto old_sym = member_lookup::FindTypeSymbolOrError(
+  const auto old_sym = member_lookup::FindTypeSymbolOrError(
     *sm->CurrentScope, *old_type->WithoutGns());
 
-  // If this is a use statement to a class, then grab its
-  // generics and return immediately. For example, use
-  // Vec::Vec => type Vec[T, A: ... = ...] = Vec::Vec[T=T, A=A]
+  // If this is a use statement to a class, then grab its generics and return
+  // immediately. For example, "use std::vector::Vec" gets "[T, A]".
   if (from_use_stmt and old_sym->Alias == nullptr) {
-    auto generic_params = old_sym->Type->GnParamGroup;
-    old_type = old_type->WithGns(GenericArgumentGroupAst::FromParams(*generic_params));
+    const auto generic_params = old_sym->Type->GnParamGroup;
+    old_type = old_type->WithGns(
+      GenericArgumentGroupAst::FromParams(*generic_params));
     return {old_type, generic_params, old_sym->LinkedScope, old_sym};
   }
 
-  // The target as written, its arguments named by the parameters of what it names. Nothing is substituted: an alias
-  // of an alias records the one it names, and is read through it by identity ("Scope::TypeIdOf" keys an alias as its
-  // target), flattened once its statement is resolved ("TypeStatementAst::Stage4_ResolveDeclarations"). Parameters of
-  // a target "type" alias that are not given here are this alias's too, passed straight on ("use std::result::Res").
-  // A "use" passes its arguments straight to what it names (whose own parameters a "use" only adopts at its own
-  // stage 3), so the arguments are named by, and only a "type" alias at the end of the uses carries, what that is.
-  auto const *const carrier = old_sym->UseTarget();
-  const auto is_tuple = type_predicates::IsTypeTuple(
-    TypeRef::ForKindCheck(*carrier, *sm->CurrentScope), *sm->CurrentScope);
+  // Shift through the "use" (not "type") aliases using "UseTarget", until a non
+  // "use" type is reached. If the next type in the chain is from a "type"
+  // statement, the generics to attach are from the "type" statement. Add the
+  // "attach" to "named" and stick them onto the old type.
+  const auto carrier = old_sym->UseTarget();
   auto named = generic_inference::NamedGnArgs(
     *old_type->LastTypePart()->GnArgGroup,
     carrier->GnParams() != nullptr ? *carrier->GnParams() : *GenericParameterGroupAst::NewEmpty(),
-    carrier->LinkedScope, *old_type, *sm, *meta, is_tuple);
-  auto attach = carrier->Alias != nullptr and not carrier->Alias->IsFromUseStmt
+    carrier->LinkedScope, *old_type, *sm, *meta);
+  const auto attach = carrier->Alias != nullptr and not carrier->Alias->IsFromUseStmt
     ? filter_params(*carrier->Alias->Params, *named)
     : GenericParameterGroupAst::NewEmptyShared();
-  for (auto &&arg : GenericArgumentGroupAst::FromParams(*attach)->Args) { named->Args.emplace_back(std::move(arg)); }
+  for (auto &&arg : GenericArgumentGroupAst::FromParams(*attach)->Args) {
+    named->Args.emplace_back(std::move(arg));
+  }
   old_type = old_type->WithGns(std::move(named));
 
-  // The chain is followed only to reject a cycle and to find the class at its end, which the alias links and whose
-  // scope its instantiations are attached in. Statements are recorded rather than symbols, because a statement is
-  // what the source wrote and so what the error can point at; the starting one is seeded so that a self-alias
-  // ("type A = A") is caught on its first step.
+  // The chain is followed only to reject a cycle and to find the class at its
+  // end, which the alias links and whose scope its instantiations are attached
+  // in. Can use pointer comparisons as types can't be declared twice.
   auto followed_aliases = Vec{&alias_stmt};
-  auto *final_sym = old_sym;
+  auto final_sym = old_sym;
   while (final_sym->Alias != nullptr) {
     RaiseIf<errors::SppTypeAliasCyclicError>(
       genex::contains(followed_aliases, final_sym->Alias->Stmt),
@@ -109,23 +110,35 @@ auto spp::analyse::utils::aliases::StatementTarget(
     tracking_scope = final_sym->ScopeDefinedIn;
     final_sym = lookup(*final_sym->Alias->Written);
   }
-  return {old_type, attach, final_sym->ScopeDefinedIn, final_sym};
+
+  // Return the old type (with the generic arguments it might need), the generic
+  // parameters to add to the new "type" statement, and some scope/symbol info.
+  return {
+    .DirectTarget = old_type,
+    .AttachGenerics = attach,
+    .TrackingScope = final_sym->ScopeDefinedIn,
+    .ResolvedSym = final_sym
+  };
 }
 
 auto spp::analyse::utils::aliases::InstanceTargetIdOf(
   TypeSymbol const &alias, const scopes::TypeId id) -> scopes::TypeId {
-  // Filed under the class it names (a "use" of the class), the identity is the target already.
-  if (id == nullptr or scopes::HeadOf(id).Kind != scopes::TypeKey::Tag::Inst) { return nullptr; }
-  if (scopes::HeadOf(id).Symbol() != &alias) { return id; }
+  // Filed under the class it names (a "use" of the class), the identity is the
+  // target already.
+  if (id == nullptr) { return nullptr; }
+  if (scopes::HeaderOf(id).Kind != scopes::TypeKey::Tag::Inst) { return nullptr; }
+  if (scopes::HeaderOf(id).Symbol() != &alias) { return id; }
 
-  // A "use" stands for what it names under the same arguments: the identity re-headed onto that. One whose name
-  // does not lead past itself is read as any alias, off its recorded target.
-  auto *const used = alias.Alias->IsFromUseStmt ? alias.UseTarget() : nullptr;
+  // A "use" stands for what it names under the same arguments: the identity
+  // re-headed onto that. One whose name does not lead past itself is read as
+  // any alias, off its recorded target.
+  const auto used = alias.Alias->IsFromUseStmt ? alias.UseTarget() : nullptr;
   if (used != nullptr and used != &alias) {
-    const auto reheaded = scopes::InstanceIdOfArgs(*used, scopes::HeadOf(id).Args);
+    const auto reheaded = scopes::InstanceIdOfArgs(*used, scopes::HeaderOf(id).Args);
     return used->Alias != nullptr ? InstanceTargetIdOf(*used, reheaded) : reheaded;
   }
 
-  // Its target, by identity, with its parameters bound to the instantiation's arguments ("AliasTargetId").
-  return alias.AliasTargetId(scopes::HeadOf(id).Args);
+  // Its target, by identity, with its parameters bound to the instantiation's
+  // arguments ("AliasTargetId").
+  return alias.AliasTargetId(scopes::HeaderOf(id).Args);
 }
