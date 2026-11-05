@@ -17,6 +17,7 @@ import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.identifier_ast;
+import spp.asts.spread_expression_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import genex;
@@ -171,6 +172,12 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     for (auto &&x : tup_literal->Elems) {
       ValidateSymbolMemory(*x, move_ast, sm, meta, {.MarkMoves = options.MarkMoves});
     }
+    return;
+  }
+
+  // A spread in a tuple literal ("(..t)") moves the tuple it spreads.
+  if (const auto spread = value_ast.To<SpreadExpressionAst>(); spread != nullptr) {
+    ValidateSymbolMemory(*spread->Expr, move_ast, sm, meta, options);
     return;
   }
 
