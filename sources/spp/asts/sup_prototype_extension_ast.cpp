@@ -426,8 +426,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
       this_method->Visibility = base_method->Visibility;
       const auto func_sym = _Scope->FindVarSymbol(this_method->Name.get(), true);
-      func_sym->Visibility = base_method->Visibility.first;
-      func_sym->VisibilityAnnotation = this_method->Visibility.second;
+      func_sym->VisibilityFrom = this_method;
     }
 
     else if (const auto type_member = member->To<TypeStatementAst>()) {
