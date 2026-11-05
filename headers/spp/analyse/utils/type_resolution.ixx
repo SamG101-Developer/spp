@@ -117,8 +117,8 @@ namespace spp::analyse::utils::type_resolution {
   /// read where the parameters are declared ("decl_scope") with
   /// what is named so far bound. What keying an instantiation
   /// not made yet reads its arguments as ("Scope::TypeKey").
-  /// Empty when the parameters are variadic, whose packing
-  /// this does not attempt, or when a default does not resolve.
+  /// A pack's elements stay positional, after the others. Empty
+  /// when a default does not resolve.
   SPP_EXP_FUN auto RecordedArgsFor(
     GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params,
     Scope const &scope, Scope const &decl_scope) -> Vec<Unique<GenericArgumentAst>>;
