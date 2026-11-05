@@ -15,14 +15,47 @@ import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
 SPP_MOD_BEGIN
+namespace {
+  /// The first borrow written in "type" or, at any depth, its generic arguments (a variant's too, once analysed into
+  /// its "Var[Variants=...]"); null for none.
+  auto FirstWrittenBorrow(TypeAst const &type) -> TypeAst const* {
+    if (type.GetConvention() != nullptr) { return &type; }
+    for (auto const *part : type.TypeParts()) {
+      for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
+        if (auto const *found = FirstWrittenBorrow(*arg->TypeVal); found != nullptr) { return found; }
+      }
+    }
+    return nullptr;
+  }
+
+  /// A field's type is never a borrow. One that is only by substitution ("val: T" in the "Some[&Str]" that
+  /// "Opt[&Str]" makes) is reported at the borrow written where the instantiation was asked for ("InstantiatedFrom"),
+  /// with the field as context: the template is not where the mistake is.
+  auto RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void {
+    using namespace spp::analyse;
+    if (not utils::type_predicates::IsTypeBorrowed(*attr.Type, *sm.CurrentScope)) { return; }
+    auto const *const site = attr.Source.OriginalType->GetConvention() == nullptr ? errors::InstantiatedFrom() : nullptr;
+    auto const *const site_type = site != nullptr ? site->To<TypeAst>() : nullptr;
+    if (auto const *const written = site_type != nullptr ? FirstWrittenBorrow(*site_type) : nullptr) {
+      utils::common_errors::RequireNotBorrowed(
+        *attr.Type, *written, *attr.Source.OriginalType, "class field type", sm);
+    }
+    utils::common_errors::RequireNotBorrowed(
+      *attr.Type, *attr.Source.OriginalType, "class field type", sm);
+  }
+}
+
 ClassAttributeAst::ClassAttributeAst(
   decltype(Annotations) &&annotations,
   decltype(Name) &&name,
@@ -91,7 +124,7 @@ auto ClassAttributeAst::Stage2_GenTopLvlScopes(
   // Create a variable symbol for this attribute in the
   // current scope (class scope).
   auto sym = MakeShared<VariableSymbol>(
-    Name, Type, sm->CurrentScope, VariableKind::Attribute, false, Visibility.first);
+    Name, Type, sm->CurrentScope, VariableKind::Attribute);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
@@ -99,9 +132,7 @@ auto ClassAttributeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
-  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.first;
-  sym->VisibilityAnnotation = Visibility.second;
+  sm->CurrentScope->FindVarSymbol(Name.get(), true)->VisibilityFrom = this;
 }
 
 auto ClassAttributeAst::Stage5_LoadSupScopes(
@@ -109,12 +140,6 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   IMPORT_UTILS;
   using type_resolution::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
-
-  // Sync the variable symbol's visibility from the AST
-  // (annotations set Visibility in Stage5).
-  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.first;
-  sym->VisibilityAnnotation = Visibility.second;
 
   // What a default may hold is limited, because it is
   // copied into every object initializer that leaves
@@ -130,7 +155,7 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   sm->CurrentScope->FindVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
-  common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
+  RequireFieldNotBorrowed(*this, *sm);
 }
 
 auto ClassAttributeAst::Stage7_AnalyseSemantics(
@@ -145,9 +170,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
 
   const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
-  if (not Type->IsSelfType()) {
-    common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
-  }
+  if (not Type->IsSelfType()) { RequireFieldNotBorrowed(*this, *sm); }
   var_sym->Type = Type;
 
   if (meta->CurrentStage != CompilerStage::kAnalyseSemantics) { return; }
