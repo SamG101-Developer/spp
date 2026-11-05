@@ -26,7 +26,7 @@ auto spp::analyse::utils::common_errors::RequireNotBorrowed(
   -> void {
   using errors::SppSecondClassBorrowViolationError;
   RaiseIf<SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(type, sm, deep),
+    type_predicates::IsTypeBorrowed(type, *sm.CurrentScope, deep),
     ERR_ARGS(at, shown, what));
 }
 
