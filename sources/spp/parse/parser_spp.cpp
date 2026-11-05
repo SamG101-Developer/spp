@@ -1646,6 +1646,14 @@ auto ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
       break;
     }
     lhs = _CreateAst<TypeBinaryExpressionAst>(lhs, op, rhs)->Convert();
+    // A variant's members are a list of types, so a type pack may be one of
+    // them ("Bool or Rest").
+    // "A or B" is "Var[A, B]" ("or" is the only binary type operator).
+    const auto pos = lhs->PosStart();
+    auto members = Vec<Shared<TypeAst>>();
+    members.emplace_back(shared_cast<TypeAst>(std::move(lhs)));
+    members.emplace_back(shared_cast<TypeAst>(std::move(rhs)));
+    lhs = AstClone(generate::common_types::VariantType(pos, std::move(members)));
   }
 
   return lhs;
@@ -1775,7 +1783,8 @@ auto ParserSpp::ParseTypeArray()
   PARSE_ONCE(p3, ParseTokenSemicolon);
   PARSE_ONCE(p4, ParseExpression);
   PARSE_ONCE(p5, ParseTokenRightSquareBracket);
-  return _CreateAst<TypeArrayShorthandAst>(p1, p2, p3, p4, p5)->Convert();
+  return AstClone(generate::common_types::ArrayType(
+    p1->PosStart(), shared_cast<TypeAst>(std::move(p2)), std::move(p4)));
 }
 
 auto ParserSpp::ParseTypeTuple()
@@ -1790,7 +1799,8 @@ auto ParserSpp::ParseTypeTuple0Types()
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   auto p2 = Vec<Shared<TypeAst>>();
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
-  return _CreateAst<TypeTupleShorthandAst>(p1, p2, p3)->Convert();
+  return AstClone(generate::common_types::TupleType(
+    p1->PosStart(), std::move(p2)));
 }
 
 auto ParserSpp::ParseTypeTuple1Types()
@@ -1802,7 +1812,7 @@ auto ParserSpp::ParseTypeTuple1Types()
 
   auto temp = Vec<Shared<TypeAst>>();
   temp.emplace_back(shared_cast<TypeAst>(std::move(p2)));
-  return _CreateAst<TypeTupleShorthandAst>(p1, temp, p4)->Convert();
+  return AstClone(generate::common_types::TupleType(p1->PosStart(), std::move(temp)));
 }
 
 auto ParserSpp::ParseTypeTupleNTypes()
@@ -1812,8 +1822,11 @@ auto ParserSpp::ParseTypeTupleNTypes()
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
 
   auto temp = Vec<Shared<TypeAst>>();
-  for (auto &&x : p2) { temp.emplace_back(shared_cast<TypeAst>(std::move(x))); }
-  return _CreateAst<TypeTupleShorthandAst>(p1, temp, p3)->Convert();
+  for (auto &&x : p2) {
+    temp.emplace_back(shared_cast<TypeAst>(std::move(x)));
+  }
+  return AstClone(generate::common_types::TupleType(
+    p1->PosStart(), std::move(temp)));
 }
 
 auto ParserSpp::ParseIdentifier()
@@ -2009,7 +2022,7 @@ auto ParserSpp::ParseLiteralTuple1Element(
 
   auto temp = Vec<decltype(p2)>();
   temp.emplace_back(std::move(p2));
-  return _CreateAst<TupleLiteralAst>(p1, temp, p3);
+  return _CreateAst<TupleLiteralAst>(p1, temp, p4);
 }
 
 auto ParserSpp::ParseLiteralTupleNElements(
