@@ -281,7 +281,7 @@ namespace spp::lsp::resolution_index {
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
           .Signatures = SignaturesOf(*sym, type_scope),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 
@@ -301,7 +301,7 @@ namespace spp::lsp::resolution_index {
           .Kind = "type",
           .Type = Str(),
           .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
       return members;
@@ -336,7 +336,7 @@ namespace spp::lsp::resolution_index {
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
           .Signatures = SignaturesOf(*sym, ns_scope),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 
@@ -356,7 +356,7 @@ namespace spp::lsp::resolution_index {
           .Kind = "type",
           .Type = Str(),
           .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 

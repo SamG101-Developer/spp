@@ -446,20 +446,20 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Ensure overloads have the same visibility by
-  // comparing to the master symbol.
-  // Todo: Tidy this?
+  // Ensure overloads have the same visibility: the mock reads
+  // the latest overload's, which this one is checked against
+  // where it was written.
   if (Name and not Name->Val.starts_with("$")) {
     if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
       if (const auto mock_sym = outer_scope->FindVarSymbol(Name.get(), true)) {
         if (mock_sym->Kind == VariableKind::FnMock) {
           // Enforce that all overloads have the same
           // visibility.
+          auto const *const prev = mock_sym->VisibilityFrom;
           RaiseIf<SppFunctionOverloadVisibilityMismatchError>(
-            mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.first,
-            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
-          mock_sym->Visibility = Visibility.first;
-          mock_sym->VisibilityAnnotation = Visibility.second;
+            prev != nullptr and prev->Visibility.second != nullptr and prev->Visibility.first != Visibility.first,
+            ERR_ARGS(*prev->Visibility.second, *this, *Visibility.second));
+          mock_sym->VisibilityFrom = this;
         }
       }
     }
