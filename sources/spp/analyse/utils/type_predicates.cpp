@@ -71,6 +71,9 @@ auto spp::analyse::utils::type_predicates::AnyCompPart(
   if (const auto paren = expr.To<ParenthesisedExpressionAst>(); paren != nullptr) {
     return AnyCompPart(*paren->Expr, name, owner, value);
   }
+  if (const auto spread = expr.To<SpreadExpressionAst>(); spread != nullptr) {
+    return AnyCompPart(*spread->Expr, name, owner, value);
+  }
   if (const auto bin = expr.To<BinaryExpressionAst>(); bin != nullptr) {
     const auto [lhs, rhs] = bin->Operands();
     return (lhs != nullptr and AnyCompPart(*lhs, name, owner, value))
