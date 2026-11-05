@@ -45,7 +45,8 @@ auto SpreadExpressionAst::ToString() const -> Str {
 auto SpreadExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A spread may name a pack whole ("(..xs)"); nothing under it may.
-  const auto _pack_guard = meta::AllowPackWholeGuard(meta, Expr->To<IdentifierAst>() != nullptr);
+  const auto _pack_guard = meta::AllowPackWholeGuard(
+    meta, Expr->To<IdentifierAst>() != nullptr);
   Expr->Stage7_AnalyseSemantics(sm, meta);
 }
 
@@ -73,7 +74,8 @@ auto SpreadExpressionAst::InferTypeRef(
 
 auto SpreadExpressionAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
-  return MakeShared<SpreadExpressionAst>(AstClone(TokUnpack), AstClone(Expr->ReadExpr(sub)));
+  return MakeShared<SpreadExpressionAst>(
+    AstClone(TokUnpack), AstClone(Expr->ReadExpr(sub)));
 }
 
 SPP_MOD_END
