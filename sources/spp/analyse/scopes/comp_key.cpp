@@ -87,6 +87,11 @@ auto spp::analyse::scopes::MembersNamedBy(
 }
 
 /// [CHECKED]
+auto spp::analyse::scopes::IsPackCompId(
+  const CompId id) -> bool {
+  return id != nullptr and id->Kind == CompKey::Part::Pack;
+}
+
 auto spp::analyse::scopes::IsValueCompId(
   const CompId id) -> bool {
   // If all the parts of a comp id are values, tuples or packs,

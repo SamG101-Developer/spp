@@ -219,6 +219,10 @@ namespace spp::analyse::scopes {
   /// not fold ("1 / 0"), is not.
   SPP_EXP_FUN auto IsValueCompId(CompId id) -> bool;
 
+  /// Whether "id" is a comp pack's list ("CompKey::OfPack"), as "IsPackTypeId" is
+  /// for a type pack's.
+  SPP_EXP_FUN auto IsPackCompId(CompId id) -> bool;
+
   /// The integer value an identity is, as a "u64" ("numbers::ToU64"): nothing
   /// for no identity, one that is not an integer value, or one out of range.
   /// How a comp argument such as "Arr"'s "n" is read as a count.
