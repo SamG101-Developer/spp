@@ -117,26 +117,25 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
 
 auto TypePostfixExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  IMPORT_UTILS;
-  // Infer the type of the left-hand-side.
-  Lhs->Stage7_AnalyseSemantics(sm, meta);
-  const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
-  const auto lhs_type_scope = lhs_type_sym->LinkedScope;
-
-  // Infer the type of the postfix operation.
-  const auto op_nested = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
-  return member_lookup::FindTypeSymbolOrError(*lhs_type_scope, *op_nested->Name)->FqName();
+  return _NestedSymbol(sm, meta)->FqName();
 }
 
 auto TypePostfixExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
-  // The nested type the left-hand side's scope declares ("A::B"), read here.
+  // Read here.
+  return TypeRef::Of(*_NestedSymbol(sm, meta), *sm->CurrentScope);
+}
+
+auto TypePostfixExpressionAst::_NestedSymbol(
+  ScopeManager *sm, CompilerMetaData *meta) -> TypeSymbol* {
+  // The nested type the left-hand side's scope declares ("A::B"). The left-hand
+  // side analysed again only checks it, once resolved.
   IMPORT_UTILS;
   Lhs->Stage7_AnalyseSemantics(sm, meta);
   const auto lhs_type_sym = Lhs->InferTypeRef(sm, meta).Symbol;
   const auto op_nested = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
-  const auto sym = member_lookup::FindTypeSymbolOrError(*lhs_type_sym->LinkedScope, *op_nested->Name);
-  return TypeRef::Of(*sym, *sm->CurrentScope);
+  return member_lookup::FindTypeSymbolOrError(
+    *lhs_type_sym->LinkedScope, *op_nested->Name);
 }
 
 auto TypePostfixExpressionAst::IsNeverType() const noexcept -> bool {
@@ -219,11 +218,6 @@ auto TypePostfixExpressionAst::IsCompilerGeneratedType() const -> bool {
   // A method's "$" mock is named through its owner
   // ("main::A::$Method"), so check the nested part.
   return LastTypePart()->IsCompilerGeneratedType();
-}
-
-auto TypePostfixExpressionAst::ResetCache() -> void {
-  // Forward into the LHS to reach the inner TypeIdentifierAst.
-  Lhs->ResetCache();
 }
 
 auto TypePostfixExpressionAst::NsPartsInto(
