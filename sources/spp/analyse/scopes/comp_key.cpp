@@ -89,10 +89,12 @@ auto spp::analyse::scopes::MembersNamedBy(
 /// [CHECKED]
 auto spp::analyse::scopes::IsValueCompId(
   const CompId id) -> bool {
-  // If all the parts of a comp id are values or packs, then
-  // the comp id can be considered a comp value.
+  // If all the parts of a comp id are values, tuples or packs,
+  // then the comp id can be considered a comp value.
   return id != nullptr and not id->Any([](CompKey const &part) {
-    return part.Kind != CompKey::Part::Value and part.Kind != CompKey::Part::Pack;
+    return part.Kind != CompKey::Part::Value
+      and part.Kind != CompKey::Part::Pack
+      and part.Kind != CompKey::Part::Tuple;
   });
 }
 

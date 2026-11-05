@@ -6,6 +6,7 @@ import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.comp_generics;
 import spp.asts.type_identifier_ast;
+import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.types;
 import genex;
@@ -197,9 +198,9 @@ namespace spp::analyse::scopes {
 
 namespace spp::analyse::scopes {
   namespace {
-    /// What "HeadOf" has read off each type id.
-    auto HeadMemo() -> StableMap<TypeId, TypeIdHead>& {
-      static auto memo = StableMap<TypeId, TypeIdHead>();
+    /// What "HeaderOf" has read off each type id.
+    auto HeadMemo() -> StableMap<TypeId, TypeKeyHeader>& {
+      static auto memo = StableMap<TypeId, TypeKeyHeader>();
       return memo;
     }
 
@@ -213,14 +214,14 @@ namespace spp::analyse::scopes {
 
 SPP_MOD_BEGIN
 /// [CHECKED]
-auto spp::analyse::scopes::HeadOf(
-  const TypeId id) -> TypeIdHead const& {
+auto spp::analyse::scopes::HeaderOf(
+  const TypeId id) -> TypeKeyHeader const& {
   // Use the internally cached head on the type id, if it
   // exists, to get the head. Define the "remember" lambda
   // that memoises the head for the type id.
   auto &memo = HeadMemo();
   if (id != nullptr and id->_CachedHead != nullptr) { return *id->_CachedHead; }
-  const auto remember = [id, &memo](TypeIdHead &&answer) -> TypeIdHead const& {
+  const auto remember = [id, &memo](TypeKeyHeader &&answer) -> TypeKeyHeader const& {
     auto const &kept = memo.emplace(id, std::move(answer)).first->second;
     if (id != nullptr) { id->_CachedHead = &kept; }
     return kept;
@@ -228,7 +229,7 @@ auto spp::analyse::scopes::HeadOf(
 
   // Define an empty head to fill, and the "words" which is
   // the pair [id-words-data, id-words-size].
-  auto head = TypeIdHead();
+  auto head = TypeKeyHeader();
   auto words = WordsOf(id);
 
   // If there is a convention present, extract it from the
@@ -286,6 +287,16 @@ auto spp::analyse::scopes::HeadOf(
           head.VariantMembers.push_back(TypeKey::_DecodePart(rest, taken));
           rest = rest.subspan(taken);
         }
+      }
+      break;
+
+    // A type pack's list: the tag (with the count), then each
+    // element as a type part.
+    case TypeKey::Tag::Pack:
+      for (auto rest = words.subspan(1); not rest.empty();) {
+        auto taken = 0uz;
+        head.PackElements.push_back(TypeKey::_DecodePart(rest, taken));
+        rest = rest.subspan(taken);
       }
       break;
 
@@ -444,10 +455,45 @@ auto spp::analyse::scopes::ParamTypeId(
   return InternTypeKey(std::move(key));
 }
 
+auto spp::analyse::scopes::PackIdOf(
+  Vec<TypeId> const &elems) -> TypeId {
+  auto key = TypeKey();
+  key.Push(TypeKey::Tag::Pack, elems.size());
+  for (const auto elem : elems) {
+    if (elem == nullptr) { spp::Ice("a type pack's element has no identity"); }
+    key.PushTypePart(elem);
+  }
+  return InternTypeKey(std::move(key));
+}
+
+auto spp::analyse::scopes::InstanceIdOfArgs(
+  TypeSymbol const &tmpl, const TypeId args) -> TypeId {
+  auto key = TypeKey();
+  const auto all_args = spp::analyse::scopes::ArgsOf(args);
+  const auto empty_packs = not all_args.empty() and genex::all_of(all_args, [](TypeIdArg const &arg) {
+    if (arg.CompVal != nullptr) { return arg.CompVal->Kind == CompKey::Part::Pack and arg.CompVal->Kids.empty(); }
+    return spp::analyse::scopes::IsPackId(arg.TypeVal)
+      and spp::analyse::scopes::HeaderOf(arg.TypeVal).PackElements.empty();
+  });
+  if (empty_packs) {
+    key.PushSymbol(&tmpl);
+    return InternTypeKey(std::move(key));
+  }
+  key.Push(TypeKey::Tag::Inst);
+  key.PushSymbol(&tmpl);
+  key.PushKey(*args);
+  return InternTypeKey(std::move(key));
+}
+
+auto spp::analyse::scopes::IsPackId(
+  const TypeId id) -> bool {
+  return id != nullptr and spp::analyse::scopes::HeaderOf(id).Kind == TypeKey::Tag::Pack;
+}
+
 auto spp::analyse::scopes::IsSelfTypeId(
   const TypeId id) -> bool {
   if (id == nullptr) { return false; }
-  auto const &head = spp::analyse::scopes::HeadOf(id);
+  auto const &head = spp::analyse::scopes::HeaderOf(id);
   return head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == 0;
 }
 
@@ -575,7 +621,7 @@ auto spp::analyse::scopes::TypeKey::_DecodePart(
 }
 
 /// [CHECKED]
-auto spp::analyse::scopes::TypeIdHead::Symbol() const -> TypeSymbol* {
+auto spp::analyse::scopes::TypeKeyHeader::Symbol() const -> TypeSymbol* {
   // If this is a symbol or instantiation or variant,
   // then return from the ptr (cast).
   const auto names_sym = Kind == TypeKey::Tag::Symbol or IsInstance();
@@ -585,7 +631,7 @@ auto spp::analyse::scopes::TypeIdHead::Symbol() const -> TypeSymbol* {
 }
 
 /// [CHECKED]
-auto spp::analyse::scopes::TypeIdHead::IsInstance() const -> bool {
+auto spp::analyse::scopes::TypeKeyHeader::IsInstance() const -> bool {
   // An instantiation or variant is an instance.
   return Kind == TypeKey::Tag::Inst or Kind == TypeKey::Tag::Variant;
 }
