@@ -146,6 +146,9 @@ auto PostfixExpressionOperatorSliceAst::ReadExpr(
   ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens.
+  // Todo: an open-ended slice has a null bound, read here unconditionally: a
+  //  generic function's default "s[to n]" segfaults when an instance reads it
+  //  (open-bugs.md #58).
   return MakeUnique<PostfixExpressionOperatorSliceAst>(
     AstClone(TokL),
     AstClone(TokMut),

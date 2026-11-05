@@ -251,6 +251,8 @@ auto GenExpressionAst::Stage8_CheckMemory(
 
   else if (*Conv == ConventionTag::MUT) {
     // Immutable symbols cannot be mutated.
+    // Todo: a "&mut" parameter ("x: &mut S32") is lent on mutably by a call, which also accepts a symbol whose type
+    //  is a mutable borrow; this is E4 (open-bugs.md #57; one shared check, N14.35).
     RaiseIf<SppInvalidMutationError>(
       not sym->IsMutable,
       ERR_ARGS(
