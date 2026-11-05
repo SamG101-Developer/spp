@@ -38,19 +38,11 @@ auto spp::analyse::scopes::BindingsOfArgs(
   // binds nothing ("ArgsOf" and "FindArgOf" find nothing in it).
   auto subst = GenericSubst();
 
-  // Bind one named argument under its parameter, marking it as a
-  // pack when its parameter is variadic.
+  // Bind one named argument under its parameter (a pack's is its
+  // list).
   const auto bind = [&subst](TypeIdArg const &arg) {
-    if (arg.TypeVal != nullptr) {
-      subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal);
-      const auto param = FindGnTypeParamById(arg.Slot);
-      if (param != nullptr and param->IsVariadic) { subst.TypePackParams.push_back(arg.Slot); }
-    }
-    else if (arg.CompVal != nullptr) {
-      subst.CompParams.emplace_back(arg.Slot, arg.CompVal);
-      const auto param = FindGnCompParamById(arg.Slot);
-      if (param != nullptr and param->IsVariadic) { subst.CompPackParams.push_back(arg.Slot); }
-    }
+    if (arg.TypeVal != nullptr) { subst.TypeParams.emplace_back(arg.Slot, arg.TypeVal); }
+    else if (arg.CompVal != nullptr) { subst.CompParams.emplace_back(arg.Slot, arg.CompVal); }
   };
 
   // Every named argument, in the order they are keyed.
@@ -97,8 +89,6 @@ auto spp::analyse::scopes::BindingsFor(
   auto out = GenericSubst();
   for (auto const &[pid, id] : bindings.TypeParams) { if (declared(pid)) { out.TypeParams.emplace_back(pid, id); } }
   for (auto const &[pid, id] : bindings.CompParams) { if (declared(pid)) { out.CompParams.emplace_back(pid, id); } }
-  for (const auto pid : bindings.TypePackParams) { if (declared(pid)) { out.TypePackParams.push_back(pid); } }
-  for (const auto pid : bindings.CompPackParams) { if (declared(pid)) { out.CompPackParams.push_back(pid); } }
   return out;
 }
 
@@ -118,9 +108,9 @@ auto spp::analyse::scopes::SubstituteSelfId(
 
 auto spp::analyse::scopes::InstanceBindings(
   TypeRef const &inst) -> GenericSubst {
-  if (inst.Id == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) { return {}; }
+  if (inst.Id == nullptr or HeaderOf(inst.Id).Kind != TypeKey::Tag::Inst) { return {}; }
   auto const *const tmpl = inst.Template();
   if (tmpl == nullptr or tmpl->GnParams() == nullptr) { return {}; }
   const auto params = ParamsDeclaredBy(*tmpl->GnParams());
-  return BindingsOfArgs(HeadOf(inst.Id).Args, &params);
+  return BindingsOfArgs(HeaderOf(inst.Id).Args, &params);
 }
