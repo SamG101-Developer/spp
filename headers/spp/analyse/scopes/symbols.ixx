@@ -24,6 +24,7 @@ use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
+use(spp::asts::mixins, struct VisibilityAst);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct ConventionAst);
@@ -452,16 +453,19 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// always uses the FunMov technique and memory analysis.
   Shared<const TypeAst> IndirectFnType;
 
-  /// The visibility that this variable has. This is only
-  /// applicable in contexts such as module/sup-level constants,
-  /// and is only queried when needed (nullptr is fine).
-  asts::utils::Visibility Visibility;
+  /// The visibility of a symbol no visibility-enabled ast declares (a generic
+  /// argument or parameter is public, a local private). Read through
+  /// "GetVisibility".
+  asts::utils::Visibility VisibilityFallback;
 
-  /// Reflecting the above "Visibility", the ast representing
-  /// the visibility is also used, for error reporting diagnostics.
-  /// This is needed to ensure there are no visibility conflicts
-  /// for all overloads of the same function.
-  AnnotationAst *VisibilityAnnotation = nullptr;
+  /// The declaration whose visibility this is, read through rather than copied:
+  /// its annotations set it in stage 4 or 5, after the symbol is made. A
+  /// function's mock reads its latest overload's ("FunctionPrototypeAst"), which
+  /// the next overload's visibility is checked against.
+  asts::mixins::VisibilityAst const *VisibilityFrom = nullptr;
+
+  /// The visibility: its declaration's ("VisibilityFrom"), else "VisibilityFallback".
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> asts::utils::Visibility;
 
   /// The memory info for this variable, unique per symbol and
   /// used extensively in stage 8 memory analysis. Holds all move,
@@ -662,10 +666,17 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// so any instantiation also needs to be.
   Shared<TypeSymbol> DerivesFromSymbol;
 
-  /// The visibility tag on the type symbol, like for the variable
-  /// symbol/ Needed for checking this type is accessible outside
-  /// it's module or type (sup-defined).
-  asts::utils::Visibility Visibility;
+  /// The visibility of a type symbol no visibility-enabled ast declares, as for
+  /// a variable symbol (a generic argument or parameter is public). Read
+  /// through "GetVisibility".
+  asts::utils::Visibility VisibilityFallback;
+
+  /// The declaration whose visibility this is, read through rather than copied, as for a variable symbol: a class's,
+  /// an alias's. An instance has none of its own, and is its template's.
+  asts::mixins::VisibilityAst const *VisibilityFrom = nullptr;
+
+  /// The visibility: its declaration's, else its template's for an instance ("InstanceOf"), else "VisibilityFallback".
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> asts::utils::Visibility;
 
   /// How a binding holds what it is bound to: the convention its
   /// argument was written with ("T=&Str" holds "Str" by "&");

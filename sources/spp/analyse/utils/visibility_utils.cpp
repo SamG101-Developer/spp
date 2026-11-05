@@ -90,7 +90,7 @@ namespace spp::analyse::utils::visibility_utils {
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
       if (ForeignPackage(sym, definition_scope, sm, meta) != nullptr) { return false; }
-      if (sym.Visibility == V::kPublic) { return true; }
+      if (sym.GetVisibility() == V::kPublic) { return true; }
 
       // Get the module owning the access, and the module owning
       // the definition, by scope, for module comparisons.
@@ -99,12 +99,12 @@ namespace spp::analyse::utils::visibility_utils {
 
       // Private: the defining module only.
       const auto good_private = accessing_module == definition_module;
-      if (sym.Visibility == V::kPrivate) { return good_private; }
+      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
 
       // Protected: and its descendant modules.
       const auto good_protected = good_private or genex::contains(
         accessing_module->GetAncestors(), definition_module);
-      if (sym.Visibility == V::kProtected) { return good_protected; }
+      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
 
       // Package: and anything sharing a top-level module with it.
       return good_protected
@@ -142,7 +142,7 @@ namespace spp::analyse::utils::visibility_utils {
       // visibility.
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
-      if (sym.Visibility == V::kPublic) { return true; }
+      if (sym.GetVisibility() == V::kPublic) { return true; }
 
       // A member declared in a "sup" block belongs to the type
       // the block is over ("Self").
@@ -171,14 +171,14 @@ namespace spp::analyse::utils::visibility_utils {
 
       // Private: only from the same type, in the same module.
       const auto good_private = enclosing_scope == owner_scope and accessing_module == definition_module;
-      if (sym.Visibility == V::kPrivate) { return good_private; }
+      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
 
       // Protected: and from its subtypes, in the module each
       // was defined in.
       const auto good_protected = good_private or (enclosing_scope
         and genex::contains(enclosing_scope->GetSupScopes(), owner_scope)
         and accessing_module == enclosing_scope->GetParentModule());
-      if (sym.Visibility == V::kProtected) { return good_protected; }
+      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
 
       // Package: and from any module in the same package.
       return good_protected
@@ -197,7 +197,7 @@ namespace spp::analyse::utils::visibility_utils {
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
         not visible,
-        ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
+        ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.GetVisibility()), what));
     }
   }
 }

@@ -35,6 +35,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.utils.ice;
@@ -289,7 +290,7 @@ VariableSymbol::VariableSymbol(
   ScopeDefinedIn(ScopeDefinedIn),
   Kind(kind),
   IsMutable(is_mutable),
-  Visibility(visibility),
+  VisibilityFallback(visibility),
   MemInfo(MakeUnique<utils::memory_state::MemoryInfo>()) {
   LlvmInfo = MakeShared<codegen::LlvmVarSymbolInfo>();
   CompTimeValue = nullptr;
@@ -308,8 +309,8 @@ VariableSymbol::VariableSymbol(
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
   IndirectFnType(that.IndirectFnType),
-  Visibility(that.Visibility),
-  VisibilityAnnotation(that.VisibilityAnnotation),
+  VisibilityFallback(that.VisibilityFallback),
+  VisibilityFrom(that.VisibilityFrom),
   MemInfo(that.MemInfo->Clone()),
   LlvmInfo(MakeShared<codegen::LlvmVarSymbolInfo>()),
   CompTimeValue(AstClone(that.CompTimeValue)),
@@ -578,7 +579,7 @@ TypeSymbol::TypeSymbol(
   ScopeDefinedIn(scope_defined_in),
   Kind(kind),
   TypeConstraints(generic_constraints),
-  Visibility(visibility),
+  VisibilityFallback(visibility),
   Convention(convention),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymbolInfo>()),
   IsDirectlyCopyable(is_directly_copyable),
@@ -600,7 +601,8 @@ TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   TypeConstraints(that.TypeConstraints),
   BoundTypeVal(that.BoundTypeVal),
   DerivesFromSymbol(that.DerivesFromSymbol),
-  Visibility(that.Visibility),
+  VisibilityFallback(that.VisibilityFallback),
+  VisibilityFrom(that.VisibilityFrom),
   Convention(that.Convention),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
@@ -1225,6 +1227,23 @@ auto TypeSymbol::InvalidateFqNameCache() const -> void {
   // Clear caches.
   _CachedFqName = nullptr;
   _CachedFqNameGen = 0;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::VariableSymbol::GetVisibility() const
+  -> asts::utils::Visibility {
+  return VisibilityFrom != nullptr
+    ? VisibilityFrom->Visibility.first
+    : VisibilityFallback;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::TypeSymbol::GetVisibility() const
+  -> asts::utils::Visibility {
+  if (VisibilityFrom != nullptr) { return VisibilityFrom->Visibility.first; }
+  return InstanceOf != nullptr
+    ? InstanceOf->GetVisibility()
+    : VisibilityFallback;
 }
 
 SPP_MOD_END
