@@ -45,6 +45,7 @@ import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -484,15 +485,9 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // analysis errors due to multiple possible prototypes.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Apply constraints in the types. Force re-analysis
-  // post sup-scope attachment, but before stage 7, to remain
-  // order agnostic.
   for (auto const &param : FnParamGroup->GetAllParams()) {
-    param->Type->ResetCache();
     param->Type->Stage7_AnalyseSemantics(sm, meta);
   }
-  ReturnType->ResetCache();
   ReturnType->Stage7_AnalyseSemantics(sm, meta);
 
   const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
@@ -758,12 +753,27 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     tm.RestartWalk(tm.CurrentScope);
 
     // The instantiation was built from the signature alone
-    // ("CloneSignature"), so it takes the template's pristine body.
-    sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
+    // ("CloneSignature"), so it takes the template's pristine body:
+    // with each element of a closed pack ("xs.0") as the name of its
+    // parameter ("xs#0", "PackElementCloneGuard").
+    auto closed_packs = Map<Str, std::size_t>();
+    if (auto const *const variadic = FnParamGroup->GetVariadicParam(); variadic != nullptr) {
+      auto const *const pack = sub.ProtoScope()->FindVarSymbol(variadic->ExtractName().get(), true);
+      if (pack != nullptr and pack->Pack.has_value() and not pack->Pack->Open) {
+        closed_packs[variadic->ExtractName()->Val] = pack->Pack->Elements.size();
+      }
+    }
+    if (closed_packs.empty()) { sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl); }
+    else {
+      const auto _elements = PackElementCloneGuard(std::move(closed_packs));
+      sub.Proto->Impl = AstClone(sub.Proto->Source.OriginalImpl);
+    }
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = MetaGuard(meta, true);
     const auto _analysing = AnalysingGnSubstitutionGuard(sub);
+    const auto _instantiated_from = analyse::errors::InstantiatedFromGuard(
+      sub.OutermostRequest()->RequiredAt.get());
     meta->ClearAssignmentTarget();
 
     // Same relaxation, and for the same reason, as the one
@@ -913,6 +923,15 @@ auto FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
   return OwnedScope->Children[0].get();
 }
 
+auto FunctionPrototypeAst::GenericSubstitution::OutermostRequest() const
+  -> GenericSubstitution const* {
+  auto const *sub = this;
+  while (sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
+    sub = sub->RequestedBy;
+  }
+  return sub;
+}
+
 auto FunctionPrototypeAst::_CloneStateInto(
   FunctionPrototypeAst &ast) const -> void {
   IMPORT_UTILS;
@@ -930,7 +949,6 @@ auto FunctionPrototypeAst::_CloneStateInto(
   ast.TestAnnotation = TestAnnotation;
   ast.InlineAnnotation = InlineAnnotation;
   ast.Visibility = Visibility;
-  ast.VariadicPackType = VariadicPackType;
   ast._LlvmFn = _LlvmFn;
   for (auto const &a : ast.Annotations) { a->SetAstCtx(&ast); }
 }
@@ -953,7 +971,13 @@ auto FunctionPrototypeAst::RequireGnSubstitution(
   const auto sub = _OwnGnSubstitution;
   if (tmpl == nullptr or sub == nullptr or sub->IsRequired) { return; }
   sub->IsRequired = true;
-  sub->RequiredAt = at;
+  // A call with no place in the source (generated) is shown as its text, so
+  // that one is copied whole.
+  static const auto stand_in = TypeIdentifierAst::FromString("$instantiated_here");
+  const auto has_span = at != nullptr and at->PosStart() != 0 and at->PosEnd() > at->PosStart();
+  sub->RequiredAt = at == nullptr ? nullptr
+    : has_span ? Shared<Ast const>(stand_in->WithSourceSpanAt(*at))
+    : Shared<Ast const>(AstClone(at));
   sub->RequiredIn = in;
 
   // The instantiation's body has not been analysed yet, and
@@ -1052,20 +1076,11 @@ auto FunctionPrototypeAst::_IsPureGn(
   // Convert the return and parameter types to LLVM types.
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(read_type(*ReturnType), ctx);
 
-  // A variadic parameter declares one element ("..b: T") but
-  // receives the whole tuple the call site collapsed its
-  // trailing arguments into, so that tuple is what it lowers as.
-  // Every argument count is its own instantiation with its own
-  // pack type.
+  // An instantiation has a parameter per element of its pack ("monomorphization::ExpandClosedPack"), so each
+  // parameter lowers as its own type.
   const auto variadic_param = FnParamGroup->GetVariadicParam();
   auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-    | genex::views::transform([&](auto const &x) {
-      auto const &source_type = VariadicPackType != nullptr and x == static_cast<FunctionParameterAst*>(variadic_param)
-        ? VariadicPackType
-        : x->Type;
-
-      return codegen::GetLlvmTypeOf(read_type(*source_type), ctx);
-    })
+    | genex::views::transform([&](auto const &x) { return codegen::GetLlvmTypeOf(read_type(*x->Type), ctx); })
     | genex::to<Vec>();
 
   // For the self param, we add the pointer for "self", if "self"
@@ -1088,10 +1103,11 @@ auto FunctionPrototypeAst::_IsPureGn(
   const auto all_types_converted = llvm_ret_type != nullptr
     and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
 
-  // A variadic parameter with no pack bound yet makes the function
-  // generic over its pack, as a generic parameter would: only the
+  // A variadic parameter left (a template's, or an instantiation
+  // forwarding a pack it has not closed) makes the function generic
+  // over its pack, as a generic parameter would: only the
   // instantiation for each argument count has code to generate.
-  const auto unbound_pack = variadic_param != nullptr and VariadicPackType == nullptr and FfiAnnotation == nullptr;
+  const auto unbound_pack = variadic_param != nullptr and FfiAnnotation == nullptr;
   const auto is_pure_generic = not GnParamGroup->Params.empty() or not all_types_converted or unbound_pack;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }

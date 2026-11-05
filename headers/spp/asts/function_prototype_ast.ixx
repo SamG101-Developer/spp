@@ -113,15 +113,6 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// when it is called.
   Unique<FunctionImplementationAst> Impl;
 
-  /// For an instantiation of a variadic function, the tuple
-  /// its call collapsed the trailing arguments into. The
-  /// variadic parameter still declares one element ("..b: T"),
-  /// which is what analysis works with, but what is actually
-  /// passed - and so what the llvm signature and the mangled
-  /// name are built from - is this tuple. Null on a
-  /// non-variadic function and on the uninstantiated template.
-  Shared<TypeAst> VariadicPackType;
-
   struct {
     Unique<FunctionImplementationAst> OriginalImpl;
   } Source;
@@ -220,9 +211,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// no instantiation made.
     GenericSubstitution const *RequestedBy = nullptr;
 
-    /// The call that first required it, and the scope it was
-    /// written in; null when it was required other than by a call.
-    Ast const *RequiredAt = nullptr;
+    /// Where the call that first required it is, and the scope it was written
+    /// in; null when it was required other than by a call.
+    Shared<Ast const> RequiredAt;
     Scope *RequiredIn = nullptr;
 
     /// How many instantiations of its template its request passed
@@ -240,6 +231,11 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
     /// over a mock type, so the block has exactly the one child
     /// scope and it is this.
     SPP_ATTR_NODISCARD auto ProtoScope() const -> Scope*;
+
+    /// The outermost instantiation whose request reaches this one through calls
+    /// ("RequestedBy" while it was "RequiredAt" a call): its call is the one
+    /// written by whoever asked for it all.
+    SPP_ATTR_NODISCARD auto OutermostRequest() const -> GenericSubstitution const*;
   };
 
   /// File a built substitution against this prototype, not yet
