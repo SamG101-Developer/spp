@@ -129,6 +129,11 @@ use(spp::analyse::errors, struct SppCfgUnknownKeyError);
 use(spp::analyse::errors, struct SppCfgInvalidValueError);
 use(spp::analyse::errors, struct SppFfiPackageNotOwnedError);
 use(spp::analyse::errors, struct SppDependencyNotDeclaredError);
+use(spp::analyse::errors, struct SppSpreadNotLastError);
+use(spp::analyse::errors, struct SppPackNotValueError);
+use(spp::analyse::errors, struct SppPackNotTypeError);
+use(spp::analyse::errors, struct SppSpreadInFoldError);
+use(spp::analyse::errors, struct SppFoldLengthMismatchError);
 use(spp::analyse::errors, struct SppDeferTerminatesError);
 use(spp::analyse::errors, struct SppDeferInCompTimeFunctionError);
 use(spp::analyse::errors, struct SppDeferConsumesMovedValueError);
@@ -137,6 +142,28 @@ use(spp::analyse::errors, struct SppFeatureNotYetSupportedError);
 use(spp::analyse::errors, enum class NotYetSupportedFeature);
 use(spp::analyse::errors, enum class ErrorInformationKind);
 use(spp::analyse::errors, struct ErrorInformation);
+use(spp::analyse::errors, struct InstantiatedFromGuard);
+
+namespace spp::analyse::errors {
+  /// The outermost site the instantiation being made or analysed was asked for: the type naming a class's instance,
+  /// or the call requiring a function's. An error raised meanwhile is also shown there ("Instantiated here") when
+  /// none of its blocks is in that file, as an error inside std's "Some[T]" otherwise names only std. Null outside
+  /// any instantiation.
+  SPP_EXP_CLS auto InstantiatedFrom() -> asts::Ast const*;
+}
+
+/// Marks "site" as where the instantiation being made was asked
+/// for, for as long as it lives, unless an outer one is marked:
+/// the outermost was written by whoever asked for it all.
+SPP_EXP_CLS struct spp::analyse::errors::InstantiatedFromGuard {
+  explicit InstantiatedFromGuard(asts::Ast const *site);
+  ~InstantiatedFromGuard();
+  InstantiatedFromGuard(InstantiatedFromGuard const &) = delete;
+  auto operator=(InstantiatedFromGuard const &) -> InstantiatedFromGuard& = delete;
+
+private:
+  bool _Marked;
+};
 
 /// A feature that can be syntactically used, but hasn't got
 /// the semantic analysis in place for yet. Easy swap-out for
@@ -784,6 +811,34 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError 
 SPP_EXP_CLS struct spp::analyse::errors::SppDependencyNotDeclaredError final : SemanticError {
   explicit SppDependencyNotDeclaredError(Ast const &access_site, StrView package, StrView package_owner,
     StrView accessing_owner);
+};
+
+/// A spread into a variadic parameter ("..xs") that is not the last positional argument: it would take every argument
+/// after it as well (pack-design.md D7).
+SPP_EXP_CLS struct spp::analyse::errors::SppSpreadNotLastError final : SemanticError {
+  explicit SppSpreadNotLastError(Ast const &spread, Ast const &after);
+};
+
+/// A function's pack ("..xs: Ts") used whole, as a value: it is a list of values, not one (pack-design.md D1).
+SPP_EXP_CLS struct spp::analyse::errors::SppPackNotValueError final : SemanticError {
+  explicit SppPackNotValueError(Ast const &use, Ast const &param);
+};
+
+/// A type pack ("..Ts") written alone as a type: it is a list of types, not one (pack-design.md D2).
+SPP_EXP_CLS struct spp::analyse::errors::SppPackNotTypeError final : SemanticError {
+  explicit SppPackNotTypeError(Ast const &use, Ast const &param);
+};
+
+/// A spread in a call fold ("j(..xs).."): a fold calls once per element of a tuple or pack it is given whole
+/// ("j(xs).."), where a spread would give every element to each call (pack-design.md phase 7).
+SPP_EXP_CLS struct spp::analyse::errors::SppSpreadInFoldError final : SemanticError {
+  explicit SppSpreadInFoldError(Ast const &spread, Ast const &fold);
+};
+
+/// A call fold over packs, or a pack and a tuple, of different lengths: each call takes one element of each, so they
+/// must have as many.
+SPP_EXP_CLS struct spp::analyse::errors::SppFoldLengthMismatchError final : SemanticError {
+  explicit SppFoldLengthMismatchError(Ast const &first, std::size_t first_length, Ast const &other, std::size_t other_length);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppFfiPackageNotOwnedError final : SemanticError {
