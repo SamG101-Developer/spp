@@ -295,10 +295,10 @@ namespace spp::analyse::utils::type_compare {
         // A type pack's list is its elements, positionally, as written ("Tup[A, Ts]" is "A", then "Ts").
         auto out = Vec<TypeIdArg>();
         for (auto const &arg : scopes::ArgsOf(head.Args)) {
-          if (scopes::IsPackId(arg.TypeVal)) {
+          if (scopes::IsPackTypeId(arg.TypeVal)) {
             for (const auto elem : scopes::HeaderOf(arg.TypeVal).PackElements) { out.push_back({.TypeVal = elem}); }
           }
-          else if (arg.CompVal != nullptr and arg.CompVal->Kind == scopes::CompKey::Part::Pack) {
+          else if (scopes::IsPackCompId(arg.CompVal)) {
             for (const auto elem : arg.CompVal->Kids) { out.push_back({.CompVal = elem}); }
           }
           else { out.push_back(arg); }
