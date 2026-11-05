@@ -21,6 +21,7 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct IdentifierAst);
+use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
 
 /// A type expression represented by a single type name; the
 /// type analogue of the expression IdentifierAst.
@@ -98,8 +99,6 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
-  auto ResetCache() -> void override;
-
   SPP_ATTR_NODISCARD auto IsTypeIdentifier() const noexcept -> bool override;
 
   auto AnkerlHash() const -> std::size_t override;
@@ -116,6 +115,10 @@ SPP_EXP_CLS struct spp::asts::TypeIdentifierAst final : TypeAst {
   auto ClearSourceWritten() -> void;
 
   auto MarkSourceWritten() -> void;
+
+  /// Mark this name as written where a type pack ("Ts") may be named on its own: a generic argument ("Tup[Ts]") or a
+  /// variadic parameter's element type ("..xs: Ts"). Anywhere else a type pack is "not a type" (E124, D2).
+  auto MarkPackPosition() -> void;
 
   /// Mark this name as the "!" type, which "TypeEq" treats as
   /// fitting any type. Set on the std "Never" class's own
@@ -173,23 +176,60 @@ private:
 
   bool _IsSelfType;
 
-  /// Whether analysis has run over this node, used to skip a
-  /// second run. Cleared by "ResetCache" so a type can be
-  /// analysed again at a different stage, which several
-  /// prototypes do to enforce generic constraints early enough
-  /// to keep error ordering sensible.
+  /// Whether analysis has resolved this node: a later analysis
+  /// resolves nothing again, and only makes the checks its stage
+  /// newly allows ("_RecheckArgs"), which is how a prototype
+  /// enforces generic constraints early enough to keep error
+  /// ordering sensible.
   bool _HasAnalysed;
 
   /// Whether this node's value has settled: its generic
-  /// arguments named, "Self" resolved, variants collapsed. Set
-  /// when analysis completes and, unlike "_HasAnalysed", never
-  /// cleared afterwards: re-analysis re-runs the stage checks,
-  /// it does not un-settle what the type is. Anything derived
-  /// from the type keys off this, so a forced re-analysis does
-  /// not retire work that is still correct.
+  /// arguments named, variants collapsed. Set when the full
+  /// analysis completes, unlike "_HasAnalysed", which the early
+  /// returns ("Self", a stamped name) set too. Anything derived
+  /// from the spelling (its cached string) keys off this.
   bool _Resolved;
 
   bool _IsSourceWritten;
+
+  bool _IsPackPosition = false;
+
+  /// The symbol the name's head resolved to (a template, alias or generic), kept for the checks a later analysis runs
+  /// without resolving again ("_RecheckArgs"). Not cloned: a clone resolves afresh.
+  TypeSymbol *_ResolvedSym = nullptr;
+
+  /// Whether the arguments have been checked against their parameters: their constraints, from the pre-analysis stage
+  /// unless a substituted type is read ("SkipSubstitutedConstraintChecks"), and comp values, once the sups are attached
+  /// ("GenericSolver::Solve"). One resolved earlier is checked by a later analysis instead ("_RecheckArgs").
+  bool _TypeArgsChecked = false;
+  bool _CompArgsChecked = false;
+
+  /// Whether the resolution was made before the sups are attached with an argument that needs them to be typed: a comp
+  /// value that is no literal or name ("Wrap[Wrap[3_uz]::doubled]"), or a type argument resolved so itself. Its
+  /// identity is then provisional, so the first analysis from the pre-analysis stage on resolves it again.
+  bool _Provisional = false;
+
+  /// "_Provisional", for this name's resolution as it was just made.
+  SPP_ATTR_NODISCARD auto _ResolvedProvisionally(CompilerMetaData const *meta) const -> bool;
+
+  /// The latest stage "_RecheckArgs" ran at: it runs once per stage, as that is when a check can newly become due.
+  meta::CompilerStage _RecheckedAt = {};
+
+  /// Analyse the (named) generic arguments: abstract types allowed, as naming one produces no value of it, and borrows
+  /// too under a type that holds no value of its arguments ("names_only").
+  auto _AnalyseArgs(bool names_only, ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// Whether "type_sym" holds no value of the arguments written here, so a borrow among them is not stored ("Gen",
+  /// "FunRef"). Only asked once the sups are attached, and only when a borrow may be written in them.
+  auto _NamesOnly(TypeSymbol &type_sym, ScopeManager *sm, CompilerMetaData *meta) const -> bool;
+
+  /// On an analysis after the one that resolved this name: the nested arguments' own checks, then the argument checks
+  /// that were not yet due when it was resolved, by solving again over the arguments it named. Nothing is resolved again.
+  auto _RecheckArgs(ScopeManager *sm, CompilerMetaData *meta) -> void;
+
+  /// The unbound type pack this name, written as a type on its own, resolved to: E124 wherever it is analysed again
+  /// ("Stage7_AnalyseSemantics"). Not cloned, as an instance binds the pack.
+  TypeSymbol const *_TypePack = nullptr;
 
   /// The identity of the template (or alias) this name's head resolved to where it was analysed with arguments ("Alloc"
   /// of "Alloc[T]"). Kept through "Clone", "SubstituteSelf" and "WithGns", and handed to "WithoutGns", so the stripped

@@ -12,6 +12,7 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
 import spp.analyse.utils.generic_inference;
+import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.monomorphization;
 import spp.analyse.utils.packs;
@@ -43,6 +44,21 @@ import spp.utils.ptr;
 import genex;
 
 SPP_MOD_BEGIN
+namespace {
+  /// Whether a borrow may be written somewhere in "type": a convention
+  /// on it or inside its generic arguments. A type spelled any other
+  /// way (a variant, a namespaced name) answers yes, so it is looked at
+  /// properly; this only spares the common case its sup lookup.
+  auto MayHoldWrittenBorrow(TypeAst const &type) -> bool {
+    if (type.GetConvention() != nullptr) { return true; }
+    auto const *const id = type.To<TypeIdentifierAst>();
+    if (id == nullptr) { return true; }
+    return genex::any_of(id->GnArgGroup->GetTypeArgs(), [](auto const *arg) {
+      return MayHoldWrittenBorrow(*arg->TypeVal);
+    });
+  }
+}
+
 auto TypeIdentifierAst::FromIdentifier(
   IdentifierAst const &identifier) -> Shared<TypeIdentifierAst> {
   return MakeShared<TypeIdentifierAst>(identifier.PosStart(), Str(identifier.Val), nullptr);
@@ -119,6 +135,7 @@ auto TypeIdentifierAst::Clone() const -> Unique<Ast> {
     AstClone(GnArgGroup));
   t->_IsNeverType = _IsNeverType;
   t->_IsSourceWritten = _IsSourceWritten;
+  t->_IsPackPosition = _IsPackPosition;
   t->_StampedTypeId = _StampedTypeId;
   t->_StampedTemplateId = _StampedTemplateId;
   CopySourceSpanTo(*t);
@@ -183,11 +200,56 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     }
   };
 
+  // A borrow is never stored in a value, so it cannot be a generic argument: "Vec[&Str]" would store one. A generator's
+  // arguments (its yield) and a function type's (its signature) name a borrow without storing it, so they, and
+  // everything inside them (the "(&T, &T)" in "FunRef[(&T, &T), Bool]"), are exempt ("AllowBorrowedTypeArgs"). Read off
+  // the sups, so judged once they are attached. Only a borrow written in source is judged: the types the compiler builds
+  // (a variant's "Var[&A, B]", a variadic's tuple, a closure's type) and the ones an instantiation
+  // substitutes name a borrow judged where it was written (an explicit function argument is judged at its call). A
+  // type with a field of the argument ("Opt[&Str]") is made, and its field judged, before stage 6: that is reported at
+  // the written borrow too ("ClassAttributeAst", "InstantiatedFrom").
+  const auto check_borrowed_args = [&](Scope const &scope, TypeSymbol *tmpl) {
+    if (not _IsSourceWritten or meta->AllowBorrowedTypeArgs) { return; }
+    if (meta->CurrentStage < CompilerStage::kPreAnalyseSemantics) { return; }
+    for (auto const *const arg : GnArgGroup->GetTypeArgs()) {
+      // A variant holding a borrow ("&Str or None") stores it as well.
+      if (not type_predicates::IsTypeBorrowed(*arg->TypeVal, scope)) { continue; }
+      if (tmpl == nullptr) { tmpl = member_lookup::FindTypeSymbolOrError(scope, *WithoutGns()->As<TypeIdentifierAst>()); }
+      if (marker_sups::HoldsNoValueOfItsArgs(*tmpl, scope)) { return; }
+      Raise<SppSecondClassBorrowViolationError>(ERR_ARGS(*arg->TypeVal, *arg->TypeVal, "generic argument"));
+    }
+  };
+
+  // A type pack ("..Ts") is a list of types, not a type (D2): only a generic argument ("Tup[Ts]") or a variadic
+  // parameter's element type ("..xs: Ts") may name it, as the parser marks ("MarkPackPosition"). An instance binds it,
+  // so only a template's written use is judged. The name is resolved once, with the symbol the main path finds, as a
+  // lookup per analysis of every written type is not free: the pack it names is kept ("_TypePack", not cloned, as an
+  // instance binds it), for the analyses after, which return early. The first is often before the check applies (a
+  // signature's types are resolved while sups are attached).
+  const auto check_type_pack = [&] {
+    if (_TypePack == nullptr or meta->CurrentStage < CompilerStage::kPreAnalyseSemantics) { return; }
+    Raise<SppPackNotTypeError>(ERR_ARGS(*this, *_TypePack->Name));
+  };
+  const auto find_type_pack = [&](TypeSymbol const &sym) {
+    if (not _IsSourceWritten or _IsPackPosition or not GnArgGroup->Args.empty()) { return; }
+    if (sym.IsGn() and sym.IsVariadic and sym.AsBound() == &sym) { _TypePack = &sym; }
+  };
+
   // An analysed node is still checked: a symbol's cached qualified name is shared, and can first be analysed where an
-  // abstract type is allowed (a function type's arguments), then reached where it is not (an attribute's type).
+  // abstract type is allowed (a function type's arguments), then reached where it is not (an attribute's type). A
+  // signature's types are first analysed before the sups are attached, so the borrow check is made on the way back.
+
+  // A provisional resolution is made again, once, now the sups are attached: as the analysis before it, from the start.
+  if (_HasAnalysed and _Provisional and meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics) {
+    _HasAnalysed = false;
+    _Provisional = false;
+  }
 
   if (_HasAnalysed) {
+    _RecheckArgs(sm, meta);
     check_abstract(meta->TypeAnalysisTypeScope ? *meta->TypeAnalysisTypeScope : *sm->CurrentScope);
+    check_borrowed_args(meta->TypeAnalysisTypeScope ? *meta->TypeAnalysisTypeScope : *sm->CurrentScope, nullptr);
+    check_type_pack();
     return;
   }
 
@@ -217,6 +279,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     and sm->CurrentScope->FindBoundTypeSymbolById(_StampedTypeId) != nullptr) {
     _HasAnalysed = true;
     check_abstract(meta->TypeAnalysisTypeScope ? *meta->TypeAnalysisTypeScope : *sm->CurrentScope);
+    check_type_pack();
     return;
   }
 
@@ -232,6 +295,10 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   const auto type_sym = member_lookup::FindTypeSymbolOrError(
     *scope, *WithoutGns()->As<TypeIdentifierAst>());
+  _ResolvedSym = type_sym;
+  _RecheckedAt = meta->CurrentStage;
+  find_type_pack(*type_sym);
+  check_type_pack();
 
   // Use the hook to record information for the resolution and
   // completion plugin.
@@ -271,20 +338,24 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   const auto no_gn_params = GenericParameterGroupAst::NewEmpty();
   auto *const gn_param_group = type_sym->GnParams() != nullptr ? type_sym->GnParams() : no_gn_params.get();
 
-  auto is_tuple = false;
   if (not type_sym->IsGn()) {
-    // An alias declaring parameters of its own ("type P[T, U] =
-    // (U, T)") binds its arguments to them, by name, even though
-    // it names a tuple: kept positional, "P[S32, Bool]" read as
-    // "(S32, Bool)", and "type P[T] = (T, T)" as a one-tuple.
-    const auto own_params_alias = type_sym->Alias != nullptr and not type_sym->Alias->IsFromUseStmt
-      and not type_sym->Alias->IsParamsFromTarget;
-    is_tuple = type_predicates::IsTypeTuple(TypeRef::ForKindCheck(*type_sym, *sm->CurrentScope), *sm->CurrentScope)
-      and not own_params_alias;
+    // An exempt type ("check_borrowed_args") makes its arguments, and
+    // everything inside them, exempt: while they are named (which
+    // analyses them) and analysed. Only asked when a borrow may be
+    // written in them, as reading the sups is not free.
+    const auto names_only = _NamesOnly(*type_sym, sm, meta);
 
     // Name all the generic arguments.
-    GnArgGroup = generic_inference::NamedGnArgs(
-      *GnArgGroup, *gn_param_group, type_sym->LinkedScope, *this, *sm, *meta, is_tuple);
+    const auto name_args = [&] {
+      GnArgGroup = generic_inference::NamedGnArgs(
+        *GnArgGroup, *gn_param_group, type_sym->LinkedScope, *this, *sm, *meta);
+    };
+    if (names_only) {
+      const auto _meta_guard = MetaGuard(meta);
+      meta->AllowBorrowedTypeArgs = true;
+      name_args();
+    }
+    else { name_args(); }
 
     // Analyse the generic arguments. Naming an abstract type as
     // one ("B[A]") produces no value of it; an instantiation that
@@ -292,15 +363,12 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     // would be.
     if (meta->SkipTypeAnalysisGnChecks) { return; }
     meta->TypeAnalysisTypeScope = nullptr;
-    {
-      const auto _meta_guard = MetaGuard(meta);
-      meta->AllowAbstractType = true;
-      GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
-    }
+    _AnalyseArgs(names_only, sm, meta);
+    if (not names_only) { check_borrowed_args(*sm->CurrentScope, type_sym); }
 
     // Solve the arguments not written: from an object initializer's
     // attributes, the constraints and the defaults.
-    if (not is_tuple and not gn_param_group->Params.empty()) {
+    if (not gn_param_group->Params.empty()) {
       // An alias's attributes are its class's, in the class's terms:
       // read through the alias's target, they name the
       // alias's own parameters.
@@ -313,6 +381,9 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
         solver.Unify(name, std::move(source), std::move(target));
       }
       solver.Solve(*type_sym->FqName());
+      _TypeArgsChecked = meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
+        and not meta->SkipSubstitutedConstraintChecks;
+      _CompArgsChecked = meta->CurrentStage >= CompilerStage::kAttachSupScopes;
 
       // The arguments are written into this name to be shown and
       // read again, recording what they mean, so they are not
@@ -334,30 +405,34 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
       ERR_ARGS(*this, *GnArgGroup));
   }
 
-  // A variant is the set of its members, so it is normalised
-  // once, here: duplicates collapse ("Str or S32 or Str" is
-  // "Str or S32"), a nested variant is flattened into its
-  // parent, and the members go in one canonical order ("Bool
-  // or S32" is "S32 or Bool"), by what each resolves to.
-  // Without this, two spellings of the same set would be two
-  // instances, each with its own tag order, that identity and
-  // codegen would disagree about.
-  if (GnArgGroup != nullptr and GnArgGroup->At("Variants") != nullptr
+  // A variant is the set of its members, so it is written as its identity has it ("VariantKey"): duplicates
+  // collapsed ("Str or S32 or Str" is "Str or S32"), a nested variant flattened into its parent, a bound pack's
+  // elements in place, and the members in the identity's one order, which is also their tags' (the identity is the
+  // only thing that orders them, so a written variant, one spelled back from an identity and the tags all agree).
+  // Each member keeps its argument as written where there is one, else is spelled from its identity.
+  if (GnArgGroup != nullptr and not GnArgGroup->GetTypeArgs().empty() and type_sym->UseTarget()->Alias == nullptr
     and type_predicates::IsTypeVariant(TypeRef::ForKindCheck(*type_sym, *sm->CurrentScope), *sm->CurrentScope)) {
-    auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
-    for (auto &member : type_members::VariantMembers(*this, *sm->CurrentScope)) {
-      auto const *const member_sym = TypeRef::Of(*member, *sm->CurrentScope).Symbol;
-      unordered.emplace_back(std::move(member), member_sym);
-    }
-    auto inner_types = type_members::OrderVariantMembers(std::move(unordered));
-    if (not inner_types.empty()) {
-      auto inner_types_as_tup = generate::common_types::TupleType(PosStart(), std::move(inner_types));
-      {
-        const auto _meta_guard = MetaGuard(meta);
-        meta->TypeAnalysisTypeScope = scope;
-        inner_types_as_tup->Stage7_AnalyseSemantics(sm, meta);
+    auto members = Vec<Shared<TypeAst>>();
+    const auto id = sm->CurrentScope->TypeIdOf(*this);
+    if (id != nullptr and analyse::scopes::HeaderOf(id).Kind == analyse::scopes::TypeKey::Tag::Variant) {
+      auto written = Vec<Pair<analyse::scopes::TypeId, Shared<TypeAst>>>();
+      for (auto const *const arg : GnArgGroup->GetTypeArgs()) {
+        written.emplace_back(sm->CurrentScope->TypeIdOf(*arg->TypeVal), arg->TypeVal);
       }
-      GnArgGroup->Args[0]->TypeVal = std::move(inner_types_as_tup);
+      for (const auto member : analyse::scopes::HeaderOf(id).VariantMembers) {
+        const auto as_written = genex::find_if(written, [member](auto const &w) { return w.first == member; });
+        members.emplace_back(as_written != written.end() ? as_written->second : sm->CurrentScope->TypeAstOf(member));
+        if (members.back() == nullptr) { members.clear(); break; }
+      }
+    }
+    if (not members.empty()) {
+      const auto _meta_guard = MetaGuard(meta);
+      meta->TypeAnalysisTypeScope = scope;
+      GnArgGroup->Args.clear();
+      for (auto &member : members) {
+        member->Stage7_AnalyseSemantics(sm, meta);
+        GnArgGroup->Args.emplace_back(GenericArgumentAst::NewType(nullptr, std::move(member)));
+      }
     }
   }
 
@@ -380,7 +455,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
     if (instance == nullptr) {
       instance = monomorphization::FindOrMakeClsInstance(
         *this, type_sym->InstanceTemplate()->SharedFromThis<TypeSymbol>(),
-        sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs()), is_tuple, sm, meta);
+        sm->CurrentScope->InstanceIdOf(*type_sym, GnArgGroup->GetAllArgs()), sm, meta);
     }
 
     // Stamped with it, so a lookup of this name from anywhere finds this instantiation, re-read through the bindings of
@@ -407,7 +482,78 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
 
   _HasAnalysed = true;
   _Resolved = true;
+  _Provisional = _ResolvedProvisionally(meta);
   _CachedStringification.clear();
+}
+
+auto TypeIdentifierAst::_ResolvedProvisionally(
+  CompilerMetaData const *meta) const -> bool {
+  IMPORT_UTILS;
+  if (meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics or GnArgGroup == nullptr) { return false; }
+  return genex::any_of(GnArgGroup->Args, [](auto const &arg) {
+    if (arg->CompVal != nullptr) { return comp_generics::NeedsSupScopesToType(*arg->CompVal); }
+    auto const *const part = arg->TypeVal != nullptr ? arg->TypeVal->LastTypePart() : nullptr;
+    return part != nullptr and part->_Provisional;
+  });
+}
+
+auto TypeIdentifierAst::_NamesOnly(
+  TypeSymbol &type_sym, ScopeManager *sm, CompilerMetaData *meta) const -> bool {
+  IMPORT_UTILS;
+  return meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
+    and genex::any_of(GnArgGroup->GetTypeArgs(), [](auto const *arg) { return MayHoldWrittenBorrow(*arg->TypeVal); })
+    and marker_sups::HoldsNoValueOfItsArgs(type_sym, *sm->CurrentScope);
+}
+
+auto TypeIdentifierAst::_AnalyseArgs(
+  const bool names_only, ScopeManager *sm, CompilerMetaData *meta) -> void {
+  const auto _meta_guard = MetaGuard(meta);
+  meta->AllowAbstractType = true;
+  if (names_only) { meta->AllowBorrowedTypeArgs = true; }
+  GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
+}
+
+auto TypeIdentifierAst::_RecheckArgs(
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
+  IMPORT_UTILS;
+  // Once per stage: a check only becomes due when the stage moves on.
+  if (_ResolvedSym == nullptr or _ResolvedSym->IsGn() or meta->CurrentStage <= _RecheckedAt) { return; }
+  if (meta->SkipTypeAnalysisGnChecks or GnArgGroup == nullptr) { return; }
+  _RecheckedAt = meta->CurrentStage;
+
+  // The nested arguments first, as the analysis that resolved this name analysed them.
+  {
+    const auto _meta_guard = MetaGuard(meta);
+    meta->TypeAnalysisTypeScope = nullptr;
+    _AnalyseArgs(_NamesOnly(*_ResolvedSym, sm, meta), sm, meta);
+  }
+
+  // Then the argument checks not yet made, by solving again over the arguments the first analysis resolved, named and
+  // analysed as the first analysis gave them to its solve (which is what stamps each name with its parameter): given
+  // every argument, it infers nothing, and only checks ("GenericSolver::Solve").
+  const auto types_due = meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
+    and not meta->SkipSubstitutedConstraintChecks;
+  const auto comps_due = meta->CurrentStage >= CompilerStage::kAttachSupScopes;
+  if ((not types_due or _TypeArgsChecked) and (not comps_due or _CompArgsChecked)) { return; }
+  auto const *const gn_params = _ResolvedSym->GnParams();
+  if (gn_params != nullptr and not gn_params->Params.empty() and not GnArgGroup->Args.empty()) {
+    auto solver = generic_inference::GenericSolver(*gn_params, *_ResolvedSym->LinkedScope, *sm, *meta);
+    if (const auto target = _ResolvedSym->AliasTargetId(); target != nullptr) {
+      solver.ReadDeclaredWith(InstanceBindings(TypeRef::Of(target, *sm->CurrentScope)));
+    }
+    auto named = generic_inference::NamedGnArgs(*GnArgGroup, *gn_params, _ResolvedSym->LinkedScope, *this, *sm, *meta);
+    {
+      const auto _meta_guard = MetaGuard(meta);
+      meta->TypeAnalysisTypeScope = nullptr;
+      meta->AllowAbstractType = true;
+      if (_NamesOnly(*_ResolvedSym, sm, meta)) { meta->AllowBorrowedTypeArgs = true; }
+      named->Stage7_AnalyseSemantics(sm, meta);
+    }
+    solver.Give(std::move(named->Args));
+    solver.Solve(*_ResolvedSym->FqName());
+  }
+  _TypeArgsChecked = _TypeArgsChecked or types_due;
+  _CompArgsChecked = _CompArgsChecked or comps_due;
 }
 
 auto TypeIdentifierAst::IsNeverType() const noexcept -> bool {
@@ -439,6 +585,10 @@ auto TypeIdentifierAst::ClearSourceWritten() -> void {
 
 auto TypeIdentifierAst::MarkSourceWritten() -> void {
   _IsSourceWritten = true;
+}
+
+auto TypeIdentifierAst::MarkPackPosition() -> void {
+  _IsPackPosition = true;
 }
 
 auto TypeIdentifierAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
@@ -510,11 +660,6 @@ auto TypeIdentifierAst::IsCompilerGeneratedType() const -> bool {
   // Types starting with "$" are compiler generated: the
   // lexer has no "$" token, so no written name has one.
   return Name[0] == '$';
-}
-
-auto TypeIdentifierAst::ResetCache() -> void {
-  // Reset the cache to allow overriding the analysis skipper instruction.
-  _HasAnalysed = false;
 }
 
 auto TypeIdentifierAst::IsTypeIdentifier() const noexcept -> bool {
