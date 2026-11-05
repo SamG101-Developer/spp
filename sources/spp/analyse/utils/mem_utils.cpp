@@ -189,9 +189,14 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // A holder used again after a conflict with one of its
   // loans means the loan was live then (M9.2).
   borrows::RaiseIfConflictedUse(*var_sym, *sm.CurrentScope);
-  const auto value_type_sym = value_ast.InferTypeRef(&sm, meta).Symbol;
+
+  // A part that is a borrow (an element of a borrowed pack, "xs.0" for
+  // "..xs: &Ts"; a field never is one) passes the borrow on, so moves nothing.
+  const auto value_ref = value_ast.InferTypeRef(&sm, meta);
+  const auto value_type_sym = value_ref.Symbol;
   const auto outer_is_copyable = var_sym->TypeRefIn(*var_scope).Symbol->IsCopyable();
-  const auto partial_is_copyable = value_type_sym != nullptr and value_type_sym->IsCopyable();
+  const auto partial_is_copyable = value_ref.IsBorrowed() or (
+    value_type_sym != nullptr and value_type_sym->IsCopyable());
 
   // A move only occurs when the value is an identifier that's
   // not copyable, or a field that's not copyable (ie overall
