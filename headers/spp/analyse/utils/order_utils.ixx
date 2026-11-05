@@ -10,9 +10,11 @@ use(spp::asts, struct Ast);
 use(spp::asts::mixins, struct OrderableAst);
 
 namespace spp::analyse::utils::order_utils {
-  /// Order arguments in the order [positional, keyword]. Return
-  /// an out-of-order ast and a string defining why, that the
-  /// error system can report with. Uses an internal core function.
+  /// Order arguments in the order [positional, keyword], then a
+  /// variadic parameter's positional tail, which the matching of
+  /// arguments to parameters checks. Return an out-of-order ast and
+  /// a string defining why, that the error system can report with.
+  /// Uses an internal core function.
   SPP_EXP_FUN auto DoOrderArgs(Vec<OrderableAst*> &&args) -> Vec<Pair<Str, Ast*>>;
 
   /// Order parameters in the order [self, required, optional, variadic].
