@@ -54,7 +54,7 @@ namespace {
     if (given == nullptr) { return false; }
     for (auto const &[p, bound] : ctx.Bindings.TypeParams) { if (p == param_id) { return bound == given; } }
     auto const *const param = sc::FindGnTypeParamById(param_id);
-    if (param != nullptr and param->IsVariadic != sc::IsPackId(given)) { return false; }
+    if (param != nullptr and param->IsVariadic != sc::IsPackTypeId(given)) { return false; }
     ctx.Bindings.TypeParams.emplace_back(param_id, given);
     if (not ctx.CheckConstraints or param == nullptr or param->TypeConstraints.empty()) { return true; }
 
@@ -73,7 +73,7 @@ namespace {
   auto BindComp(const std::uint64_t param_id, const sc::CompId given, sc::GenericSubst &bindings) -> bool {
     for (auto const &[p, bound] : bindings.CompParams) { if (p == param_id) { return bound == given; } }
     auto const *const param = sc::FindGnCompParamById(param_id);
-    if (param != nullptr and param->IsVariadic != (given->Kind == sc::CompKey::Part::Pack)) { return false; }
+    if (param != nullptr and param->IsVariadic != sc::IsPackCompId(given)) { return false; }
     bindings.CompParams.emplace_back(param_id, given);
     return true;
   }
@@ -153,7 +153,7 @@ namespace {
     // A parameter of the pattern binds what is opposite it: as given ("T" opposite "&Str" is "&Str"), or, written with
     // a convention ("&T"), what that convention is over ("&T" opposite "&Str" is "Str"). "Self" (0) is not one: it is
     // the enclosing type, which the pattern does not bind.
-    if ((d.Kind == sc::TypeKey::Tag::TypeParam and d.TypeParamId != 0) or d.Kind == sc::TypeKey::Tag::TypeBound) {
+    if (d.Kind == sc::TypeKey::Tag::TypeParam and d.TypeParamId != 0) {
       if (d.Conv == 0) { return BindType(d.TypeParamId, given, ctx); }
       return ConventionWordEq(sc::HeaderOf(given).Conv, d.Conv) and BindType(d.TypeParamId, sc::BareOf(given), ctx);
     }
