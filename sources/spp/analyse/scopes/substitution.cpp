@@ -107,8 +107,7 @@ namespace spp::analyse::scopes {
           // function so that the cache is reused (indexed with
           // interning), otherwise return the id back. Handle the
           // convention if there is one.
-          case TypeKey::Tag::TypeParam:
-          case TypeKey::Tag::TypeBound: {
+          case TypeKey::Tag::TypeParam: {
             const auto bound = BoundTypeOf(subst, head.TypeParamId);
             if (bound == nullptr) { return id; }
             if (head.Conv == 0) { return bound; }
@@ -252,13 +251,13 @@ namespace spp::analyse::scopes {
             for (const auto elem : id->Kids) {
               const auto value = RewriteCompId(elem, subst, subst_id);
               if (value == nullptr) { return nullptr; }
-              if (value->Kind == CompKey::Part::Pack) {
+              if (IsPackCompId(value)) {
                 elems.insert(elems.end(), value->Kids.begin(), value->Kids.end());
                 continue;
               }
               elems.push_back(value);
             }
-            return InternCompKey(id->Kind == CompKey::Part::Pack
+            return InternCompKey(IsPackCompId(id)
               ? CompKey::OfPack(std::move(elems))
               : CompKey::OfTuple(std::move(elems)));
           }
@@ -300,21 +299,20 @@ namespace spp::analyse::scopes {
       types |= genex::actions::sort;
       comps |= genex::actions::sort;
 
-      // Create an empty type key, and push the type
-      // parameters, and then the comp parameters, into it.
+      // Each binding as an argument, "[Arg param]" then its value:
+      // the types, then the comp values. A parameter's id is unique
+      // across both kinds, and the value's own tag ("TypeId" or
+      // "CompId") says which a binding is. Intern the result (an
+      // identity that is no type: only a memo's key).
       auto key = TypeKey();
       for (auto const &[param, type] : types) {
-        key.Push(TypeKey::Tag::TypeParam, param);
+        key.Push(TypeKey::Tag::Arg, param);
         key.PushTypeId(type);
       }
       for (auto const &[param, value] : comps) {
-        key.Push(TypeKey::Tag::CompParam, param);
+        key.Push(TypeKey::Tag::Arg, param);
         key.PushCompId(value);
       }
-
-      // Finally, push the type and comp pack parameters
-      // into it, for the variadic management. Intern
-      // the result.
       return InternTypeKey(std::move(key));
     }
   }
