@@ -58,27 +58,13 @@ namespace spp::analyse::utils::operator_desugaring {
           std::move(bin_expr.Rhs));
       }
 
-      // Non-symbolic value being reused -> put it into a variable
-      // first. Todo: Standardise materialization?
-      if (sm->CurrentScope->FindVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
-        const auto temp_var_name = [&] {
-          const auto uid = spp::utils::Uid();
-          return MakeShared<IdentifierAst>(
-            bin_lhs->Rhs->PosStart(), uid);
-        }();
-
-        auto temp_let = [&] {
-          auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
-            nullptr, temp_var_name, nullptr);
-          return MakeUnique<LetStatementInitializedAst>(
-            nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
-        }();
-
-        temp_let->Stage7_AnalyseSemantics(sm, meta);
-        bin_lhs->Rhs = AstClone(temp_var_name);
-
-        // Kept by the caller: nothing else would give it storage.
-        if (temps != nullptr) { temps->emplace_back(std::move(temp_let)); }
+      // The middle operand is read by both comparisons, so is evaluated once
+      // via hoisting. The caller keeps the hoisted "let", as nothing else would
+      // give it storage.
+      auto hoisted = expr_utils::HoistOnce(*bin_lhs->Rhs, "$cmp", sm, meta);
+      if (hoisted.Let != nullptr) {
+        bin_lhs->Rhs = AstClone(hoisted.Name);
+        if (temps != nullptr) { temps->emplace_back(std::move(hoisted.Let)); }
       }
 
       // Otherwise, re-arrange the ASTs, with an "and" combinator
