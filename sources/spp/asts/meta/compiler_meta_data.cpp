@@ -53,6 +53,8 @@ auto CompilerMetaData::ResetContext() -> void {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
+  AllowBorrowedTypeArgs = false;
+  AllowPackWhole = false;
   CompTimeCallSite = nullptr;
   ParameterDefaultScope = nullptr;
 }
@@ -134,6 +136,8 @@ auto CompilerMetaData::Save(const bool heavy) -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
+  s.AllowBorrowedTypeArgs = AllowBorrowedTypeArgs;
+  s.AllowPackWhole = AllowPackWhole;
   s.CompTimeCallSite = CompTimeCallSite;
   s.ParameterDefaultScope = ParameterDefaultScope;
   s.LlvmGenerator = LlvmGenerator;
@@ -190,6 +194,8 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
+  AllowBorrowedTypeArgs = state.AllowBorrowedTypeArgs;
+  AllowPackWhole = state.AllowPackWhole;
   CompTimeCallSite = state.CompTimeCallSite;
   ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
@@ -202,6 +208,17 @@ MetaGuard::MetaGuard(
   _Meta(meta),
   _Heavy(heavy) {
   _Meta->Save(_Heavy);
+}
+
+AllowPackWholeGuard::AllowPackWholeGuard(
+  CompilerMetaData *meta, const bool allow) :
+  _Meta(meta),
+  _Outer(meta->AllowPackWhole) {
+  _Meta->AllowPackWhole = allow;
+}
+
+AllowPackWholeGuard::~AllowPackWholeGuard() {
+  _Meta->AllowPackWhole = _Outer;
 }
 
 MetaGuard::~MetaGuard() {
