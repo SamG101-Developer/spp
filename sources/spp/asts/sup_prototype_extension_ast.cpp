@@ -275,26 +275,28 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Re-analyse the superclass type so its generic-argument
-  // constraints are enforced at this pre-analysis stage. If
+  // Analyse the superclass type again, which checks its generic
+  // arguments' constraints at this pre-analysis stage. If
   // they are done in stage 7, then we get misleading errors
   // because when something else correctly fails, a missing
   // constraint enforcement spews some inference error..
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Get the symbols.
   const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+  if (sup_sym == nullptr or sup_sym->LinkedScope == nullptr) {
+    Ice(*SuperCls, *sm->CurrentScope, "a superclass analysed again does not resolve where its block is");
+  }
 
   // We use "direct" super scopes here because it enforces
   // superimposing "Copy" on the type directly, not via an
   // extension chain.
-  auto sup_scopes = sm->CurrentScope->FindTypeSymbol(SuperCls.get())->LinkedScope->DirectSupScopes;
+  auto sup_scopes = sup_sym->LinkedScope->DirectSupScopes;
   sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
   sup_scopes |= genex::actions::remove_if([](auto const &x) {
     return AstAs<ClassPrototypeAst>(x->AstNode) == nullptr;
@@ -331,11 +333,9 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
 
-    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
 
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());

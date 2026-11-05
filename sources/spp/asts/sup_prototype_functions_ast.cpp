@@ -185,7 +185,6 @@ auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
-    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
   }
 
