@@ -20,8 +20,6 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS struct GenericSubst {
     Vec<Pair<std::uint64_t, TypeId>> TypeParams;
     Vec<Pair<std::uint64_t, CompId>> CompParams;
-    Vec<std::uint64_t> TypePackParams;
-    Vec<std::uint64_t> CompPackParams;
 
     SPP_ATTR_NODISCARD auto IsEmpty() const -> bool {
       return TypeParams.empty() and CompParams.empty();
