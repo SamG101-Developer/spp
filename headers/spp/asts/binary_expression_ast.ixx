@@ -12,6 +12,7 @@ import std;
 SPP_AST_COMMON_FWD_DECL(BinaryExpressionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TokenAst);
@@ -113,18 +114,30 @@ private:
   /// operation or not.
   bool _IsLogical;
 
-  /// Analyse a fold's tuple operand, once: anything but a name is
-  /// bound to a temporary (see "_ChainTemps"), which @p operand
-  /// then names, as the fold reads an element off it per element.
+  /// A template's open pack, or value of an open tuple, this fold is over
+  /// (".. + xs"): checked on three elements, the type holding for any length
+  /// ("_FoldElements"), and used whole by the memory checks, not element by
+  /// element.
+  Unique<IdentifierAst> _OpenPack;
+
+  /// Whether folding "_OpenPack" moves its elements: each is neither copied nor
+  /// a borrow.
+  bool _OpenPackMoves = false;
+
+  /// Analyse a fold's tuple operand, once: anything but a name is bound to a
+  /// temporary (see "_ChainTemps"), which @p operand then names, as the fold
+  /// reads an element off it per element.
   auto _BindFoldOperand(
     Unique<ExpressionAst> &operand, ScopeManager *sm,
     CompilerMetaData *meta) -> void;
 
-  /// A fold's tuple operand ("t" in ".. + t" or "t + ..") bound
-  /// and checked, and each of its elements read off it in order
-  /// ("t.0", "t.1", ...), analysed. It must be a tuple of at least
-  /// two elements; "fold" (the "..") is named in the error too.
+  /// A fold's tuple or pack operand ("t" in ".. + t" or "t + ..")
+  /// bound and checked, and each of its elements read off it in
+  /// order ("t.0", "t.1", ...; a closed pack's are its parameters,
+  /// "xs#0", ...), analysed. It must have at least two elements;
+  /// "fold" (the "..") is named in the error too. An open pack gives
+  /// three, the type each prefix folds to checked to agree.
   auto _FoldElements(
     Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm,
-    CompilerMetaData *meta) -> Vec<Unique<PostfixExpressionAst>>;
+    CompilerMetaData *meta) -> Vec<Unique<ExpressionAst>>;
 };
