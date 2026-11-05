@@ -86,7 +86,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _fn_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = this->TokFun.get();
-    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithConvention(
+      AstClone(ReturnType->GetConvention()));
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
@@ -178,7 +179,11 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   {
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    // The qualified name, with the convention written: a symbol's name has
+    // none, and a lowered "GenOnce" coroutines that yield a borrow need the
+    // convention on the subroutine return type.
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithConvention(
+      AstClone(ReturnType->GetConvention()));
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
