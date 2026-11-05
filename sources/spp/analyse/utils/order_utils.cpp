@@ -52,7 +52,17 @@ namespace spp::analyse::utils::order_utils {
 auto spp::analyse::utils::order_utils::DoOrderArgs(
   Vec<OrderableAst*> &&args)
   -> Vec<Pair<Str, Ast*>> {
-  // Call the generic order function with the argument order.
+  // Call the generic order function with the argument order. A run of
+  // positionals after the keywords is a variadic parameter's tail
+  // ("P[A=S32, Bool, U8]", "f(a=1, ..xs)"), as in Python: left to the matching
+  // of arguments to parameters, which knows whether each lands on the variadic
+  // one.
+  auto tail = args.size();
+  while (tail > 0 and args[tail - 1]->GetOrderTag() == asts::utils::OrderableTag::kPositionalArg) { --tail; }
+  const auto after_keyword = genex::any_of(args | genex::views::take(tail), [](auto const *x) {
+    return x->GetOrderTag() == asts::utils::OrderableTag::kKeywordArg;
+  });
+  if (after_keyword) { args.resize(tail); }
   return DoOrder(std::move(args), kArgOrderArr);
 }
 
