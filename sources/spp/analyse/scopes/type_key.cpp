@@ -42,11 +42,6 @@ namespace spp::analyse::scopes {
     }
 
     /// [CHECKED]
-    auto WordsOf(const TypeId id) -> Words {
-      return {id->Words.data(), id->Words.size()};
-    }
-
-    /// [CHECKED]
     /// Whether raw key words name a "Self" anywhere. Check
     /// the different type key tags, and perform the required
     /// behaviour.
@@ -100,7 +95,7 @@ namespace spp::analyse::scopes {
       const TypeId lhs, const TypeId rhs) -> Ordering {
       return lhs == rhs
         ? Ordering::equal
-        : StableCompare(WordsOf(lhs), WordsOf(rhs));
+        : StableCompare(lhs->ViewWords(), rhs->ViewWords());
     }
 
     /// [CHECKED]
@@ -192,11 +187,7 @@ namespace spp::analyse::scopes {
       if (const auto c = lhs.size() <=> rhs.size(); std::is_neq(c)) { return c; }
       return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
-  }
-}
 
-namespace spp::analyse::scopes {
-  namespace {
     /// What "HeaderOf" has read off each type id.
     auto HeadMemo() -> StableMap<TypeId, TypeKeyHeader>& {
       static auto memo = StableMap<TypeId, TypeKeyHeader>();
@@ -211,75 +202,79 @@ namespace spp::analyse::scopes {
   }
 }
 
+#define WORD_CAST(x) \
+  reinterpret_cast<void const*>(static_cast<std::uintptr_t>(x)
+
 SPP_MOD_BEGIN
 /// [CHECKED]
 auto spp::analyse::scopes::HeaderOf(
   const TypeId id) -> TypeKeyHeader const& {
-  // Use the internally cached head on the type id, if it
-  // exists, to get the head. Define the "remember" lambda
-  // that memoises the head for the type id.
+  // Use the internally cached head on the type id if it exists. Define the
+  // "remember" lambda that memoises the head for the type id.
   auto &memo = HeadMemo();
   if (id != nullptr and id->_CachedHead != nullptr) { return *id->_CachedHead; }
-  const auto remember = [id, &memo](TypeKeyHeader &&answer) -> TypeKeyHeader const& {
+  const auto remember = [id, &memo](
+    TypeKeyHeader &&answer) -> TypeKeyHeader const& {
     auto const &kept = memo.emplace(id, std::move(answer)).first->second;
     if (id != nullptr) { id->_CachedHead = &kept; }
     return kept;
   };
 
-  // Define an empty head to fill, and the "words" which is
-  // the pair [id-words-data, id-words-size].
+  // Define an empty header to fill, and the "words" which is the pair
+  // [id-words-data, id-words-size].
   auto head = TypeKeyHeader();
-  auto words = WordsOf(id);
+  auto words = id->ViewWords();
 
-  // If there is a convention present, extract it from the
-  // words and copy it into the head. The convention is part
-  // of the head: "&Vec[Str]" heads as an "&" "Inst" of "Vec".
+  // If there is a convention present, extract it from the words and copy it
+  // into the head. The convention is part of the head: "&Vec[Str]" heads as an
+  // "&" "Inst" of "Vec".
   if (not words.empty() and TagOf(words[0]) == TypeKey::Tag::Conv) {
     head.Conv = PayloadOf(words[0]);
     words = words.subspan(1);
   }
 
-  // If there are no words, then return the empty head at
-  // this point. Still "remember" it, for the symbol.
+  // If there are no words, then return the empty head at this point. Still
+  // "remember" it, for the symbol.
   if (words.empty()) { return remember(std::move(head)); }
 
-  // The potential convention has been removed, so the 0th
-  // words value is the "kind". Save and bind it, then switch
-  // on it.
+  // The potential convention has been removed, so the 0th words value is the
+  // "kind". Save and bind it, then switch on it.
   head.Kind = TagOf(words[0]);
   switch (head.Kind) {
-    // For a type parameter, just get the payload of the word
-    // and assign it as the type param id property on the
-    // head.
+    // For a type parameter, just get the payload of the word and assign it as
+    // the type param id property on the head.
     case TypeKey::Tag::TypeParam:
       head.TypeParamId = PayloadOf(words[0]);
       break;
 
-    // If a symbol was interned into the slot, then assign to
-    // the pointer field, via some reinterpret casts. The two
-    // fields are the tag and the symbol pointer following it.
+    // If a symbol was interned into the slot, then assign to the pointer field,
+    // via some reinterpret casts. The two fields are the tag and the symbol
+    // pointer following it.
     case TypeKey::Tag::Symbol:
-      if (words.size() >= 2) { head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[1])); }
+      if (words.size() >= 2) {
+        head.Ptr = WORD_CAST(words[1]));
+      }
       break;
 
-    // For an instantiation, we need 4+ words, for the inst
-    // tag, the symbol tag, the symbol pointer, the length
-    // tag, followed by the arguments (can be none for len=0).
+    // For an instantiation, we need 4+ words, for the inst tag, the symbol tag,
+    // the symbol pointer, the length tag, followed by the arguments (can be
+    // none for len=0).
     case TypeKey::Tag::Inst:
       if (words.size() >= 4 and TagOf(words[3]) == TypeKey::Tag::Len) {
-        head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2]));
+        head.Ptr = WORD_CAST(words[2]));
         auto args = TypeKey();
-        args._AppendWords(words.subspan(4, PayloadOf(words[3])), id->HasUnresolved, id->HasSelf);
+        args._AppendWords(
+          words.subspan(4, PayloadOf(words[3])), id->HasUnresolved, id->HasSelf);
         head.Args = InternTypeKey(std::move(args));
       }
       break;
 
-    // For a variant, we need 3+ words, for the variant tag,
-    // the symbol tag, the variant's template pointer, followed
-    // by 0+ members. Each variant member is a "type part".
+    // For a variant, we need 3+ words, for the variant tag, the symbol tag, the
+    // variant's template pointer, followed by 0+ members. Each variant member
+    // is a "type part".
     case TypeKey::Tag::Variant:
       if (words.size() >= 3) {
-        head.Ptr = reinterpret_cast<void const*>(static_cast<std::uintptr_t>(words[2]));
+        head.Ptr = WORD_CAST(words[2]));
         for (auto rest = words.subspan(3); not rest.empty();) {
           auto taken = 0uz;
           head.VariantMembers.push_back(TypeKey::_DecodePart(rest, taken));
@@ -288,8 +283,8 @@ auto spp::analyse::scopes::HeaderOf(
       }
       break;
 
-    // A type pack's list: the tag (with the count), then each
-    // element as a type part.
+    // A type pack's list: the tag (with the count), then each element as a type
+    // part.
     case TypeKey::Tag::Pack:
       for (auto rest = words.subspan(1); not rest.empty();) {
         auto taken = 0uz;
@@ -298,9 +293,7 @@ auto spp::analyse::scopes::HeaderOf(
       }
       break;
 
-    // No behaviour for anything else (no possibilities).
-    default:
-      break;
+    default: break;
   }
 
   // Cache the value and return it.
@@ -310,29 +303,26 @@ auto spp::analyse::scopes::HeaderOf(
 /// [CHECKED]
 auto spp::analyse::scopes::BareOf(
   const TypeId id) -> TypeId {
-  // For a type id that hasn't got a convention already, no
-  // work needs to be done, so return the id as it is.
+  // For a type id that hasn't got a convention already, no work needs to be
+  // done, so return the id as it is.
   if (id == nullptr or id->Words.empty()) { return id; }
   if (TagOf(id->Words[0]) != TypeKey::Tag::Conv) { return id; }
 
-  // Use the internally cached "bare" on the type id, if it
-  // exists, to get the bare. Define the "remember" lambda
-  // that memoises the bare for the type id.
+  // Use the internally cached "bare" on the type id, if it exists, to get the
+  // bare. Define the "remember" lambda that memoises the bare for the type id.
   if (id->_CachedBare != nullptr) { return id->_CachedBare; }
 
-  // Define an empty bare to fill, and the "words" which is
-  // the pair [id-words-data, id-words-size] (parts taken
-  // after the convention).
+  // Define an empty bare to fill, and the "words" which is the pair
+  // [id-words-data, id-words-size] (parts taken after the convention).
   auto key = TypeKey();
   key._AppendWords(
-    WordsOf(id).subspan(1), id->HasUnresolved, id->HasSelf);
+    id->ViewWords().subspan(1), id->HasUnresolved, id->HasSelf);
   id->_CachedBare = InternTypeKey(std::move(key));
   return id->_CachedBare;
 }
 
 SPP_MOD_END
 
-/// [CHECKED]
 auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const& {
   // For a type id that hasn't been param-extracted already,
   // no work needs to be done, so return the ids as they are.
@@ -351,7 +341,7 @@ auto spp::analyse::scopes::ParamsNamedBy(const TypeId id) -> TypeIdParams const&
   // check the tag of each part. Example: Type[T, Str, n, 1]
   // where T and n are generic parameters from the enclosing
   // context (function).
-  const auto words = WordsOf(id);
+  const auto words = id->ViewWords();
   for (auto i = 0uz; i < words.size(); ++i) {
     switch (TagOf(words[i])) {
       // For a type parameter, add the payload of the current
@@ -417,7 +407,6 @@ auto spp::analyse::scopes::ClearTypeIds() -> void {
   InternedTypeKeys().clear();
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::DoesTypeIdNameAnyGnParams(
   const TypeId id) -> bool {
   // Get the params under the type id, and check if
@@ -426,16 +415,13 @@ auto spp::analyse::scopes::DoesTypeIdNameAnyGnParams(
   return not params.TypeParams.empty() or not params.CompParams.empty();
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::StableKeyLess(
   TypeKey const &lhs, TypeKey const &rhs) -> bool {
   // The comparison uses the "stable compare" algorithm.
   return std::is_lt(StableCompare(
-    {lhs.Words.data(), lhs.Words.size()},
-    {rhs.Words.data(), rhs.Words.size()}));
+    lhs.ViewWords(), rhs.ViewWords()));
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::ParamTypeId(
   const std::uint64_t param_id) -> TypeId {
   // Create a type key, push the param id into it under
@@ -461,8 +447,8 @@ auto spp::analyse::scopes::InstanceIdOfArgs(
   auto key = TypeKey();
   const auto all_args = spp::analyse::scopes::ArgsOf(args);
   const auto empty_packs = not all_args.empty() and genex::all_of(all_args, [](TypeIdArg const &arg) {
-    if (arg.CompVal != nullptr) { return arg.CompVal->Kind == CompKey::Part::Pack and arg.CompVal->Kids.empty(); }
-    return spp::analyse::scopes::IsPackId(arg.TypeVal)
+    if (arg.CompVal != nullptr) { return IsPackCompId(arg.CompVal) and arg.CompVal->Kids.empty(); }
+    return spp::analyse::scopes::IsPackTypeId(arg.TypeVal)
       and spp::analyse::scopes::HeaderOf(arg.TypeVal).PackElements.empty();
   });
   if (empty_packs) {
@@ -475,7 +461,7 @@ auto spp::analyse::scopes::InstanceIdOfArgs(
   return InternTypeKey(std::move(key));
 }
 
-auto spp::analyse::scopes::IsPackId(
+auto spp::analyse::scopes::IsPackTypeId(
   const TypeId id) -> bool {
   return id != nullptr and spp::analyse::scopes::HeaderOf(id).Kind == TypeKey::Tag::Pack;
 }
@@ -487,7 +473,6 @@ auto spp::analyse::scopes::IsSelfTypeId(
   return head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == 0;
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::ParamCompId(
   const std::uint64_t param_id) -> CompId {
   // Create comp key from the param id and intern it for
@@ -495,7 +480,6 @@ auto spp::analyse::scopes::ParamCompId(
   return InternCompKey(CompKey::OfParam(param_id));
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::IsConcreteTypeId(
   const TypeId id) -> bool {
   // A type is "concrete" if it has no generic parameters
@@ -504,7 +488,6 @@ auto spp::analyse::scopes::IsConcreteTypeId(
   return id != nullptr and not id->HasSelf and not DoesTypeIdNameAnyGnParams(id);
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::IsClosedTypeId(
   const TypeId id) -> bool {
   // A closed type is a concrete type that doesn't have any
@@ -514,15 +497,14 @@ auto spp::analyse::scopes::IsClosedTypeId(
 
 SPP_MOD_BEGIN
 /// [CHECKED]
-auto spp::analyse::scopes::ArgsOf(
-  const TypeId args) -> Vec<TypeIdArg> {
-  // Create the empty list of what the arg ids will fill
-  // up, then decode each argument in turn.
+auto spp::analyse::scopes::ArgsOf(const TypeId args) -> Vec<TypeIdArg> {
+  // Create the empty list of what the arg ids will fill up, then decode each
+  // argument in turn.
   auto out = Vec<TypeIdArg>();
   if (args == nullptr) { return out; }
-  auto words = WordsOf(args);
-  for (auto arg = TypeIdArg(); TypeKey::_DecodeArg(words, arg); arg = TypeIdArg()) {
-    out.push_back(arg);
+  auto words = args->ViewWords();
+  while (const auto arg = TypeKey::_DecodeArg(words)) {
+    out.push_back(*arg);
   }
   return out;
 }
@@ -530,53 +512,53 @@ auto spp::analyse::scopes::ArgsOf(
 /// [CHECKED]
 auto spp::analyse::scopes::FindArgOf(
   const TypeId args, const std::uint64_t param_id) -> Opt<TypeIdArg> {
-  // Decode the arguments one at a time, stopping at the first
-  // one for the parameter.
+  // Decode the arguments one at a time, stopping at the first one for the
+  // parameter.
   if (args == nullptr) { return Nullopt; }
-  auto words = WordsOf(args);
-  for (auto arg = TypeIdArg(); TypeKey::_DecodeArg(words, arg); arg = TypeIdArg()) {
-    if (arg.Named and arg.Slot == param_id) { return arg; }
+  auto words = args->ViewWords();
+  while (const auto arg = TypeKey::_DecodeArg(words)) {
+    if (arg->Named and arg->Slot == param_id) { return arg; }
   }
   return Nullopt;
 }
 
 /// [CHECKED]
 auto spp::analyse::scopes::TypeKey::_DecodeArg(
-  Span<const Word> &words, TypeIdArg &arg) -> bool {
-  // The parameter (or position) word, then the value. Cut short
-  // after the parameter, nothing is decoded.
-  if (words.empty()) { return false; }
-  arg.Named = TagOf(words[0]) == Tag::Arg;
-  arg.Slot = PayloadOf(words[0]);
+  Span<const Word> &words) -> Opt<TypeIdArg> {
+  // The parameter (or position) word, then the value. Cut short after the
+  // parameter, nothing is decoded.
+  if (words.empty()) { return Nullopt; }
+  auto arg = TypeIdArg{
+    .Named = TagOf(words[0]) == Tag::Arg, .Slot = PayloadOf(words[0])
+  };
   words = words.subspan(1);
-  if (words.empty()) { return false; }
+  if (words.empty()) { return Nullopt; }
 
   // Comp arg.
   if (TagOf(words[0]) == Tag::CompId) {
-    if (words.size() < 2) { return false; }
+    if (words.size() < 2) { return Nullopt; }
     arg.CompVal = CompIdOfWord(words[1]);
     words = words.subspan(2);
-    return true;
+    return arg;
   }
 
   // Type arg.
-  auto taken = 0uz;
-  arg.TypeVal = _DecodePart(words, taken);
-  words = words.subspan(taken);
-  return true;
+  else {
+    auto taken = 0uz;
+    arg.TypeVal = _DecodePart(words, taken);
+    words = words.subspan(taken);
+    return arg;
+  }
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::TypeKey::PushTypePart(
   const TypeId id)
   -> void {
-  // If the part is not resolved, push its key inline, otherwise
-  // push its id.
+  // If the part is not resolved, push its key inline, otherwise push its id.
   if (id->HasUnresolved) { PushKey(*id); }
   else { PushTypeId(id); }
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::TypeKey::PushCompPart(
   const CompId id) -> void {
   // Push the comp id in, and then do a recursive "self" and
@@ -587,7 +569,6 @@ auto spp::analyse::scopes::TypeKey::PushCompPart(
   HasUnresolved = HasUnresolved or not IsReadableCompId(id);
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::TypeKey::_DecodePart(
   const Span<const Word> words,
   std::size_t &taken) -> TypeKey const* {
@@ -610,7 +591,6 @@ auto spp::analyse::scopes::TypeKey::_DecodePart(
   return InternTypeKey(std::move(key));
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::TypeKeyHeader::Symbol() const -> TypeSymbol* {
   // If this is a symbol or instantiation or variant,
   // then return from the ptr (cast).
@@ -620,7 +600,6 @@ auto spp::analyse::scopes::TypeKeyHeader::Symbol() const -> TypeSymbol* {
     : nullptr;
 }
 
-/// [CHECKED]
 auto spp::analyse::scopes::TypeKeyHeader::IsInstance() const -> bool {
   // An instantiation or variant is an instance.
   return Kind == TypeKey::Tag::Inst or Kind == TypeKey::Tag::Variant;

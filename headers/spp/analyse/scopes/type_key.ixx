@@ -50,10 +50,8 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS SPP_ATTR_HOT auto BareOf(
     TypeKey const *id) -> TypeKey const*;
 
-  /// The arguments an instantiation's arguments key lists,
-  /// in order.
-  SPP_EXP_CLS auto ArgsOf(
-    TypeKey const *args) -> Vec<TypeIdArg>;
+  /// The arguments an instantiation's arguments key lists, in order. Extract per part and
+  SPP_EXP_CLS auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
 
   /// The argument an instantiation's arguments key holds for the
   /// parameter "param_id", decoded as "ArgsOf" decodes it; read in
@@ -81,6 +79,13 @@ namespace spp::analyse::scopes {
     /// might include things like generic argument interned
     /// information.
     SmallVec<Word, 16> Words;
+
+    /// The words as a read-only span: a cursor the decoders
+    /// advance ("subspan"), and the helpers take for part of a
+    /// key as for a whole one.
+    SPP_ATTR_NODISCARD auto ViewWords() const -> Span<Word const> {
+      return {Words.data(), Words.size()};
+    }
 
     /// The "intern" of this entire instantiation. This is
     /// the master value used for things like comparisons.
@@ -214,9 +219,9 @@ namespace spp::analyse::scopes {
     static auto _DecodePart(Span<const Word> words, std::size_t &taken) -> TypeKey const*;
 
     /// Decode the argument at the front of an arguments key's
-    /// "words" into "arg", and move "words" past it; false at
-    /// the end, or on words cut short.
-    static auto _DecodeArg(Span<const Word> &words, TypeIdArg &arg) -> bool;
+    /// "words", and move "words" past it; nothing at the end,
+    /// or on words cut short.
+    static auto _DecodeArg(Span<const Word> &words) -> Opt<TypeIdArg>;
   };
 
   /// A key hashes as the hash it accumulated while it was built.
@@ -278,7 +283,7 @@ namespace spp::analyse::scopes {
     Vec<TypeId> const &elems) -> TypeId;
 
   /// Whether "id" is a type pack's list ("PackIdOf").
-  SPP_EXP_FUN auto IsPackId(
+  SPP_EXP_FUN auto IsPackTypeId(
     TypeId id) -> bool;
 
   /// Whether "id" is "Self" itself (parameter 0), with or without a convention ("&Self").
