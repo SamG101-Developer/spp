@@ -153,10 +153,7 @@ namespace spp::codegen::mangle {
 
       const auto head = bare->WithoutGns()->ToString();
       if (head == "std::tuple::Tup") { return out + "(" + join(args, ", ") + ")"; }
-      if (head == "std::variant::Var" and args.size() == 1 and args[0]->IsTypeArg()) {
-        auto const *tup = args[0]->TypeVal->LastTypePart();
-        if (tup != nullptr and tup->GnArgGroup != nullptr) { return out + join(tup->GnArgGroup->GetAllArgs(), " or "); }
-      }
+      if (head == "std::variant::Var") { return out + join(args, " or "); }
 
       // A closure's type is named after an address, which
       // reads as noise and changes every build.
