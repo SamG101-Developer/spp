@@ -21,6 +21,7 @@ use(spp::analyse::scopes, struct NamespaceSymbol);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::scopes, struct PackInfo);
 use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
@@ -170,7 +171,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
     GenericSubst const &subst, Scope const &scope, OnMissing missing = OnMissing::Open) const -> TypeRef;
 
   /// The template this type instantiates: for an instantiation,
-  /// the one its identity's head names ("HeadOf"; "Vec" for
+  /// the one its identity's head names ("HeaderOf"; "Vec" for
   /// "Vec[Str]", the variant template for a variant); for a
   /// binding, parameter or "Self", the template of what it
   /// stands for.
@@ -384,6 +385,23 @@ namespace spp::analyse::scopes {
 
 }
 
+/// A function's pack ("..xs: Ts"): a list of values, one per argument a call passes, that is not itself a value
+/// (pack-design.md D1); or a template's comp pack ("cmp ..ns: Bool"), which is not either ("(..ns)" is its tuple; D5
+/// superseded 2026-11-05). Held by its parameter's symbol.
+SPP_EXP_CLS struct spp::analyse::scopes::PackInfo {
+  /// The type the pack declares for each element, with its convention ("&Ts" for "..xs: &Ts", "S32" for
+  /// "..xs: S32"): what "xs.N" is in a template.
+  Shared<asts::TypeAst> Element;
+
+  /// Whether its length is unknown where it is read: a template's, whose spreads are resolved per length. An
+  /// instance's is closed, a list of the call's elements.
+  bool Open = true;
+
+  /// A closed pack's elements: the parameters an instance has in its place ("xs#0", "xs#1", ...), one per element, in
+  /// order. "..xs" is them, and "xs.N" the Nth. Empty while open.
+  Vec<Shared<asts::IdentifierAst>> Elements;
+};
+
 /// A variable symbol is used extremely often, for class fields,
 /// constants, parameters, variables, captures, etc etc. It has
 /// a host of flags for fine-tuning usage.
@@ -430,6 +448,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// like "..n", or binds one. Its type is one element's ("Bool"
   /// for "..n: Bool"), so this is what says it holds a tuple.
   bool IsVariadic = false;
+
+  /// For a function's variadic parameter, what its pack is: a whole use of it is no value ("PackInfo").
+  Opt<PackInfo> Pack;
 
   /// Whether the symbol is mutable, ie can the variable it
   /// represents be re-assigned a new value.
@@ -628,6 +649,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// are all the generic arguments concrete etc.
   bool IsConcrete = true;
 
+  /// "marker_sups::HoldsNoValueOfItsArgs", worked out once for a class or template: its sups are attached before it is
+  /// first asked, and do not change after. Not copied with the symbol.
+  Opt<bool> HoldsNoValueOfArgs;
+
   /// On a generic type parameter, its own identity: non-zero, unique to its declaration and kept by every copy of the
   /// symbol (the name alone is shared by every parameter spelled the same). Zero on anything else.
   std::uint64_t OwnParamId = 0;
@@ -660,6 +685,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// For generic-to-generic bindings, we need to store the lexical
   /// value of the next generic symbol.
   Shared<TypeAst> BoundTypeVal;
+
+  /// For a type pack's binding ("..Ts" bound to "S32, Bool"), its
+  /// list ("PackIdOf"): no type, so nothing to link to; keyed as it
+  /// ("KeyBinding"), which splices it wherever it is named.
+  TypeId BoundPack = nullptr;
 
   /// There is sometimes a case where we want to derive information
   /// off of another symbol, such as a generic base might be copyable
@@ -874,9 +904,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// scope (no ast built); no type if there is none. Name it with "TypeRef::AstIn" where syntax or a message needs it.
   SPP_ATTR_NODISCARD auto TypeArgRef(Str const &name) const -> TypeRef;
 
-  /// Every type argument of that instantiation, in order (a
-  /// tuple's stay positional, with no names to read), each as
-  /// "TypeArgRef" reads one: off the identity, in the
+  /// Every type argument of that instantiation, in order (a type
+  /// pack's list as its elements, so a tuple's are its elements),
+  /// each as "TypeArgRef" reads one: off the identity, in the
   /// instantiation's scope, no ast built. Name one with
   /// "TypeRef::AstIn" where syntax needs it.
   SPP_ATTR_NODISCARD auto TypeArgRefs() const -> Vec<TypeRef>;
