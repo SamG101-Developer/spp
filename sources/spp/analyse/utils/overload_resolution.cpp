@@ -577,21 +577,6 @@ namespace spp::analyse::utils::overload_resolution {
       return pos != nullptr and pos->TokUnpack != nullptr;
     }
 
-    /// The tuple a variadic parameter receives when its last argument
-    /// is an open spread: the elements before it, then the spread
-    /// tuple's own ("Tup[A, Ts]" for "x, ..b" with "b: Tup[Ts]"), so it
-    /// stays open.
-    auto OpenPackType(
-      Vec<ExpressionAst*> const &vals, ScopeManager *sm, meta::CompilerMetaData *meta) -> Shared<TypeAst> {
-      auto elems = Vec<Shared<TypeAst>>();
-      for (auto i = 0uz; i + 1 < vals.size(); ++i) { elems.emplace_back(vals[i]->InferType(sm, meta)); }
-      const auto open = vals.back()->InferType(sm, meta);
-      for (auto const *const arg : open->LastTypePart()->GnArgGroup->GetTypeArgs()) { elems.emplace_back(arg->TypeVal); }
-      auto type = generate::common_types::TupleType(vals.front()->PosStart(), std::move(elems));
-      type->Stage7_AnalyseSemantics(sm, meta);
-      return type;
-    }
-
     /// Create a list of "param slots", which bind each argument
     /// to the correct corresponding parameter, by keyword,
     /// then positionals left over. A variadic parameter swallows
@@ -647,18 +632,25 @@ namespace spp::analyse::utils::overload_resolution {
       };
 
       auto taken = Vec<ParamSlot>();
+      auto const *keyword_before = static_cast<FunctionCallArgumentAst const*>(nullptr);
       for (auto const &[i, arg] : fn_args.Args | genex::views::ptr | genex::views::enumerate) {
 
         // Take the keyword arguments by their name and matching
         // parameter. Index stored for LLVM.
         if (auto const *const kw_arg = arg->To<FunctionCallArgumentKeywordAst>(); kw_arg != nullptr) {
           taken.emplace_back(make_slot(param_named(*kw_arg->Name), kw_arg->Name, {i}, false));
+          keyword_before = arg;
           continue;
         }
 
         // Otherwise, take the first available parameter for a
-        // positional argument, and pop it from the list.
+        // positional argument, and pop it from the list. One after
+        // a keyword is only the variadic parameter's tail ("f(a=1,
+        // ..xs)").
         const auto param = positional.front();
+        RaiseIf<errors::SppOrderInvalidError>(
+          keyword_before != nullptr and param->To<FunctionParameterVariadicAst>() == nullptr,
+          ERR_ARGS(Str("kKeywordArg"), *keyword_before, Str("kPositionalArg"), *arg));
         auto name = MakeShared<IdentifierAst>(arg->PosStart(), Str(param->ExtractName()->Val));
         positional |= genex::actions::pop_front;
 
@@ -704,20 +696,60 @@ namespace spp::analyse::utils::overload_resolution {
       }
 
       // Type each slot as what it is given: the argument (with its convention, or the receiver's type for an injected
-      // "self"), the tuple of a pack's values (conventions dropped, as a tuple holds no borrow), or the default.
+      // "self"), the default, or for a pack the list of its elements' types, conventions stripped: its convention is
+      // its parameter's ("..xs: &Ts" binds "Ts" to "Str, S32"), and each element's own is checked against it once the
+      // instantiation has a parameter per element ("SplitPackSlot"). An open spread last (a template forwarding its
+      // own pack, "x, ..b" with "b: Tup[Ts]") gives its tuple's elements after them ("A, Ts"), and leaves it open.
       for (auto &slot : slots) {
         if (slot.Default != nullptr) { slot.Type = slot.Default->InferType(sm, meta); }
         else if (slot.IsPack) {
-          const auto vals = slot.Args
+          auto vals = slot.Args
             | genex::views::transform([&](auto i) { return fn_args.Args[i]->Val.get(); })
             | genex::to<Vec>();
-          slot.Type = not slot.Args.empty() and IsOpenSpread(*fn_args.Args[slot.Args.back()])
-            ? OpenPackType(vals, sm, meta)
-            : TupleLiteralAst::TypeOfElements(vals, vals.empty() ? 0uz : vals[0]->PosStart(), sm, meta);
+          slot.Pack.Open = not slot.Args.empty() and IsOpenSpread(*fn_args.Args[slot.Args.back()]);
+          auto *const open = slot.Pack.Open ? vals.back() : nullptr;
+          if (open != nullptr) { vals.pop_back(); }
+          slot.Pack.Elems = TupleLiteralAst::ElementTypes(vals, sm, meta, true);
+          if (open != nullptr) {
+            for (auto const *const arg : open->InferType(sm, meta)->LastTypePart()->GnArgGroup->GetTypeArgs()) {
+              slot.Pack.Elems.emplace_back(AstCloneShared(arg->TypeVal->WithoutConvention()));
+            }
+          }
         }
         else { slot.Type = fn_args.Args[slot.Args[0]]->InferType(sm, meta); }
       }
       return slots;
+    }
+
+    /**
+     * Once the instantiation has a parameter per element of its pack ("monomorphization::ExpandClosedPack"), the
+     * pack's slot is one slot per element, each the argument it is, convention and all: so each is checked against
+     * its parameter (an owned pack given "&a" is a convention mismatch, as "f[T](x: T)" given "&a" is), ranked, and
+     * passed as an argument of its own. A prototype still variadic (a template forwarding its pack, an FFI function)
+     * keeps the slot.
+     */
+    auto SplitPackSlot(
+      Vec<ParamSlot> &slots, FunctionPrototypeAst const &instance,
+      FunctionCallArgumentGroupAst const &fn_args, ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+      if (instance.FnParamGroup->GetVariadicParam() != nullptr) { return; }
+      const auto pack = genex::find_if(slots, [](auto const &slot) { return slot.IsPack; });
+      if (pack == slots.end()) { return; }
+
+      auto const &pack_name = *pack->Param->ExtractName();
+      auto elements = Vec<ParamSlot>();
+      for (auto const &[i, arg] : pack->Args | genex::views::enumerate) {
+        // The slot keeps the template's parameter: what it declares (a generic, "..xs: T") is what ranks the
+        // argument ("MatchRank::Bound"), and the instantiation's parameters are matched by name and position.
+        auto slot = ParamSlot{};
+        slot.Param = pack->Param;
+        slot.Name = MakeShared<IdentifierAst>(fn_args.Args[arg]->PosStart(), packs::PackElementName(pack_name, i));
+        slot.Args = {arg};
+        slot.Type = fn_args.Args[arg]->InferType(sm, meta);
+        elements.emplace_back(std::move(slot));
+      }
+      const auto index = pack - slots.begin();
+      slots.erase(pack);
+      slots.insert(slots.begin() + index, std::make_move_iterator(elements.begin()), std::make_move_iterator(elements.end()));
     }
 
     /**
@@ -756,13 +788,28 @@ namespace spp::analyse::utils::overload_resolution {
         if (slot->Default != nullptr and not type_predicates::IsTypeConcrete(*slot->Type, *sm->CurrentScope)) {
           continue;
         }
-        solver.Unify(name, slot->Type->WithSourceSpanAt(SlotSite(*slot, fn_args)), param->Type);
+        if (not slot->IsPack) {
+          solver.Unify(name, slot->Type->WithSourceSpanAt(SlotSite(*slot, fn_args)), param->Type);
+          continue;
+        }
+
+        // A pack's elements are matched against what its parameter declares each to be, without the convention,
+        // which it declares for all of them. Over a type pack ("..xs: Ts"), their list against "Ts", which binds it.
+        // A pack of one element type ("..xs: T") offers each element to it; the open tail of a forwarded pack restates
+        // the caller's pack, which binds nothing here.
+        const auto element = AstCloneShared(param->Type->WithoutConvention());
+        if (param->As<FunctionParameterVariadicAst>()->OverTypePack) {
+          auto site = slot->Pack.Elems.empty() ? nullptr : slot->Pack.Elems[0]->WithSourceSpanAt(SlotSite(*slot, fn_args));
+          solver.UnifyPack(name, slot->Pack.Elems, element, std::move(site));
+          continue;
+        }
+        for (auto const &elem : slot->Pack.Elems) {
+          if (packs::DoesTypeNameAnUnboundPack(*elem, *sm->CurrentScope)) { continue; }
+          solver.Unify(name, elem->WithSourceSpanAt(SlotSite(*slot, fn_args)), element);
+        }
       }
 
-      const auto variadic_param = fn_proto.FnParamGroup->GetVariadicParam();
-      solver.Solve(
-        *site.Written->InferType(sm, meta),
-        variadic_param != nullptr ? variadic_param->ExtractName() : nullptr);
+      solver.Solve(*site.Written->InferType(sm, meta));
     }
 
     /**
@@ -834,8 +881,10 @@ namespace spp::analyse::utils::overload_resolution {
           return not FunctionParameterGroupAst::IsVoidParam(*p, *fn_scope);
         })
         | genex::to<Vec>();
+      // A pack is a list, never "Void" itself (an element that is, is dropped from its instantiation's parameters).
       const auto slot_is_void = [&](ParamSlot const &slot) {
-        const auto ref = slot.Default == nullptr and not slot.IsPack
+        if (slot.IsPack) { return false; }
+        const auto ref = slot.Default == nullptr
           ? fn_args.Args[slot.Args[0]]->Val->InferTypeRef(sm, meta)
           : TypeRef::Of(*slot.Type->WithoutConvention(), *sm->CurrentScope);
         return type_predicates::IsTypeVoid(ref, *sm->CurrentScope);
@@ -932,24 +981,30 @@ namespace spp::analyse::utils::overload_resolution {
           return fn_scope->FindTypeSymbol(param->Type.get())->FqName()->WithConvention(
             AstClone(param->Type->GetConvention()));
         };
-        auto const &a_type = slot->Type;
+        // A pack still a parameter here is a template's own forwarded on, open ("SplitPackSlot" gave every closed one a
+        // slot per element): used whole, it is the open tuple of its list.
+        auto a_type = slot->Type;
+        if (slot->IsPack) {
+          a_type = generate::common_types::TupleType(SlotSite(*slot, fn_args).PosStart(), Vec(slot->Pack.Elems));
+          a_type->Stage7_AnalyseSemantics(sm, meta);
+        }
 
-        // "..a: T" takes a tuple of "T"s, one per element the call passed; "..a: Ts" (a variadic generic) is that
-        // tuple itself. Anything else is matched as written.
+        // "..a: T" takes a tuple of "T"s, one per element the call passed; "..a: Ts" (a variadic generic) the tuple of
+        // its list, "Tup[Ts]", keyed where "Ts" is bound. Anything else is matched as written.
         auto p_written = Shared<TypeAst const>(param->Type);
         if (const auto variadic_param = param->To<FunctionParameterVariadicAst>(); variadic_param != nullptr) {
-          const auto variadic_gn_param = fn_proto.GetNonGnImpl()->GnParamGroup->GetVariadicParam();
-          const auto orig_name = shared_cast<TypeIdentifierAst>(variadic_param->Source.OriginalType);
-          const auto is_variadic_generic_type = variadic_gn_param != nullptr
-            and orig_name != nullptr
-            and *orig_name == *shared_cast<TypeIdentifierAst>(variadic_gn_param->Name);
-          auto p_tuple = spelled();
-          if (not is_variadic_generic_type) {
-            auto ts = Vec(packs::TypePackElements(*a_type).size(), p_tuple);
-            p_tuple = generate::common_types::TupleType(param->PosStart(), std::move(ts));
-            p_tuple->Stage7_AnalyseSemantics(sm, meta);
+          if (variadic_param->OverTypePack) {
+            auto p_tuple = generate::common_types::TupleType(
+              param->PosStart(), {AstCloneShared(param->Type->WithoutConvention())});
+            p_sig = fn_scope->TypeIdOf(*p_tuple);
+            p_written = std::move(p_tuple);
           }
-          p_written = std::move(p_tuple);
+          else {
+            auto ts = Vec(slot->Pack.Elems.size(), spelled());
+            auto p_tuple = generate::common_types::TupleType(param->PosStart(), std::move(ts));
+            p_tuple->Stage7_AnalyseSemantics(sm, meta);
+            p_written = std::move(p_tuple);
+          }
         }
         const auto p_ref = [&] {
           return p_sig != nullptr
@@ -1216,12 +1271,15 @@ namespace spp::analyse::utils::overload_resolution {
             return param->template To<FunctionParameterVariadicAst>() == nullptr
               and genex::none_of(named, [&](auto const *kw) { return *kw->Name == *param->ExtractName(); });
           }));
-        const auto last_positional = genex::none_of(
+        const auto after = genex::find_if(
           fn_args.Args.begin() + static_cast<std::ptrdiff_t>(spread_at) + 1, fn_args.Args.end(),
           [](auto const &arg) { return arg->template To<FunctionCallArgumentPositionalAst>() != nullptr; });
         RaiseIf<SppFunctionCallTooManyArgumentsError>(
-          not is_variadic_fn or not last_positional or positional_before < fixed_positional,
+          not is_variadic_fn or positional_before < fixed_positional,
           ERR_ARGS(*fn_proto, fn_proto->FnParamGroup->Params.size(), fn_call, fn_args.Args.size()));
+
+        // The call's own mistake, not the candidate's: raised as it is (D7).
+        RaiseIf<errors::SppSpreadNotLastError>(after != fn_args.Args.end(), ERR_ARGS(**spread, **after));
       }
 
       // Add a generic solver for the function generics. The order
@@ -1234,11 +1292,8 @@ namespace spp::analyse::utils::overload_resolution {
       solver.Give(std::move(generic_inference::NamedGnArgs(
         *fn_call.GnArgGroup, *fn_proto->GnParamGroup, fn_scope, *fn_proto->Name, *sm, *meta)->Args));
       solver.Give(
-        ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : site.OwnerType.get(), *sm),
-        *sm->CurrentScope);
-      if (candidate.ReachedThrough != nullptr) {
-        solver.Give(BoundGnsOf(*candidate.ReachedThrough), *sm->CurrentScope);
-      }
+        ReceiverGns(fn_scope, candidate.FwdType != nullptr ? candidate.FwdType.get() : site.OwnerType.get(), *sm));
+      if (candidate.ReachedThrough != nullptr) { solver.Give(BoundGnsOf(*candidate.ReachedThrough)); }
 
       // Determine the true value for "Self" for this function
       // call, and then pin that self into the receiver. A value
@@ -1260,15 +1315,19 @@ namespace spp::analyse::utils::overload_resolution {
       const auto inferred = solver.InferredParams();
       auto const &template_scope = *fn_scope;
 
-      // What the variadic parameter actually receives: the tuple
-      // of the trailing arguments.
-      auto variadic_pack_type = Shared<TypeAst>(nullptr);
+      // What the variadic parameter actually receives: the list of
+      // the trailing arguments' types, each as written nowhere.
+      auto given_pack = Opt<packs::GivenPack>();
       if (is_variadic_fn) {
         const auto variadic_param = fn_proto->FnParamGroup->GetVariadicParam();
         const auto pack = genex::find_if(slots, [&](auto const &slot) { return slot.Param == variadic_param; });
         if (pack != slots.end()) {
-          variadic_pack_type = AstCloneShared(pack->Type);
-          variadic_pack_type->ClearPartsSourceWritten();
+          given_pack = packs::GivenPack{.Open = pack->Pack.Open};
+          for (auto const &elem : pack->Pack.Elems) {
+            auto copy = AstCloneShared(elem);
+            copy->ClearPartsSourceWritten();
+            given_pack->Elems.emplace_back(std::move(copy));
+          }
         }
       }
 
@@ -1276,9 +1335,10 @@ namespace spp::analyse::utils::overload_resolution {
       // are built.
       auto template_proto = fn_proto;
       tie(fn_proto, fn_scope) = monomorphization::FindOrMakeFnInstance(
-        fn_proto, fn_scope, solver.SolvedArgsId(), variadic_pack_type, sm, meta);
+        fn_proto, fn_scope, solver.SolvedArgsId(), given_pack.has_value() ? &*given_pack : nullptr, sm, meta);
       candidate.Proto = fn_proto;
       candidate.FnScope = fn_scope;
+      SplitPackSlot(slots, *fn_proto, fn_args, sm, meta);
 
       // A default the call takes is made again once everything is solved. The one "BindSlots" made (and inference
       // read) had only what was bound before inference; the instantiation's own parameter carries it translated with
@@ -1565,9 +1625,9 @@ auto spp::analyse::utils::overload_resolution::ElaborateCall(
       val = std::move(written[slot.Args[0]]->Val);
     }
     else if (slot.IsPack) {
-      // Elements and an open spread together are only typed, as
-      // "OpenPackType" builds, for a template that is never emitted;
-      // the value only has to hold them.
+      // Elements and an open spread together ("ParamSlot::Pack",
+      // open) are only in a template that is never emitted; the
+      // value only has to hold them.
       auto elems = slot.Args
         | genex::views::transform([&](auto i) { return std::move(written[i]->Val); })
         | genex::to<Vec>();

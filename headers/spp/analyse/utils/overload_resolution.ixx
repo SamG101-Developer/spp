@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.overload_resolution;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.packs;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -60,14 +61,16 @@ namespace spp::analyse::utils::overload_resolution {
     /// The indices of the arguments taken, in the call's group.
     Vec<std::size_t> Args = {};
 
-    /// Whether this is the variadic parameter, taking a tuple of
-    /// the arguments.
+    /// Whether this is the variadic parameter, taking the arguments
+    /// as its elements ("Pack").
     bool IsPack = false;
+    packs::GivenPack Pack;
 
     /// The default value, for a parameter the call left out.
     Unique<ExpressionAst> Default;
 
-    /// The type of what the parameter is given.
+    /// The type of what the parameter is given; null for a pack,
+    /// which is given a list ("Pack").
     Shared<TypeAst> Type = nullptr;
 
     /// Whether this is "self", whose argument takes the
