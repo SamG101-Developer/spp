@@ -19,6 +19,7 @@ import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.parenthesised_expression_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.spread_expression_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -222,9 +223,8 @@ auto spp::analyse::utils::type_predicates::IsTypeConcrete(
   return scopes::IsConcreteTypeId(scope.PartialTypeIdOf(type));
 }
 
-/// [CHECKED]
 auto spp::analyse::utils::type_predicates::IsTypeBorrowed(
-  TypeAst const &type, ScopeManager const &sm, const bool deep) -> bool {
+  TypeAst const &type, Scope const &scope, const bool deep) -> bool {
   // Check that either this type, or any inner types for variants,
   // are "&" or "&mut". Start with short-circuits on the type given,
   // which might contain an "&"/"&mut" unary operator.
@@ -232,13 +232,13 @@ auto spp::analyse::utils::type_predicates::IsTypeBorrowed(
   if (type.IsSelfType()) { return false; }
 
   // A generic bound to a borrow is one ("T" with "T=&mut Str").
-  const auto ref = TypeRef::Of(type, *sm.CurrentScope);
+  const auto ref = TypeRef::Of(type, scope);
   if (ref.IsBorrowed()) { return true; }
 
   // A variant is borrowed when any member is: the members are
   // flattened through nested variants already.
-  if (deep and IsTypeVariant(ref, *sm.CurrentScope)) {
-    for (auto const &member : type_members::VariantMemberRefs(ref, *sm.CurrentScope)) {
+  if (deep and IsTypeVariant(ref, scope)) {
+    for (auto const &member : type_members::VariantMemberRefs(ref, scope)) {
       if (member.IsBorrowed()) { return true; }
     }
   }
