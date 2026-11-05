@@ -533,11 +533,12 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
       }
   )");
 
-// D5: a comp pack stays a tuple. Used whole it is its tuple value; indexed, see
+// A comp pack is no value, as a function pack is not (D5 superseded 2026-11-05): "(..n)" is its tuple. Indexed, see
 // "test_valid_variadic_comp_parameter_element_access".
-SPP_TEST_SHOULD_PASS_SEMANTIC(
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestVariadicPack,
-  test_valid_comp_pack_used_whole_as_a_tuple, R"(
+  test_invalid_comp_pack_bound_whole,
+  SppPackNotValueError, R"(
       fun g[cmp ..n: Bool]() -> Void {
           let t = n
       }
@@ -547,8 +548,49 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// D5: a comp pack spreads as a tuple does. In the template it is open, so the call is resolved per length, as a
-// function pack's is: into a variadic parameter, after fixed arguments too. open-bugs.md #51.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestVariadicPack,
+  test_invalid_comp_pack_passed_whole,
+  SppPackNotValueError, R"(
+      fun takes[T](v: T) -> Void {
+          std::mem::ops::drop(v)
+      }
+
+      fun g[cmp ..n: Bool]() -> Void {
+          takes(n)
+      }
+  )");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestVariadicPack,
+  test_invalid_comp_pack_compared_whole,
+  SppPackNotValueError, R"(
+      fun g[cmp ..n: Bool]() -> Bool {
+          ret n == n
+      }
+  )");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestVariadicPack,
+  test_valid_comp_pack_spread_into_a_tuple, R"(
+      fun takes[T](v: T) -> Void {
+          std::mem::ops::drop(v)
+      }
+
+      fun g[cmp ..n: Bool]() -> Void {
+          let t = (..n)
+          takes((..n))
+      }
+
+      fun f() -> Void {
+          g[true, false]()
+          g[true]()
+          g()
+      }
+  )");
+
+// A comp pack spreads as a function pack does. In the template it is open, so the call is resolved per length: into a
+// variadic parameter, after fixed arguments too. open-bugs.md #51.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
   test_valid_comp_pack_spread, R"(
@@ -588,12 +630,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
       }
   )");
 
-// D5: a comp pack used whole is its tuple, open in its template, so an element reads off it.
+// A comp pack's tuple is open in its template, as a function pack's is, so an element reads off it.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestVariadicPack,
-  test_valid_comp_pack_used_whole_reads_an_element, R"(
+  test_valid_comp_pack_tuple_reads_an_element, R"(
       fun g[cmp ..n: Bool]() -> Bool {
-          let t = n
+          let t = (..n)
           ret t.0
       }
 
