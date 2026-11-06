@@ -223,9 +223,12 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
     return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_type_member" + uid, ctx);
   }
 
-  // Namespace case: LHS is a namespace identifier — access a cmp constant in the namespace's scope.
+  // Namespace case: LHS is a namespace identifier — access a cmp constant in
+  // the namespace's scope. A (namespaced) function named as a value, like
+  // "apply(std::debug::breakpoint)" is its mock's constant, as a method's is
+  // above.
   const auto var_sym = _Resolve(sm);
-  if (var_sym->Kind == VariableKind::FnMock) { return nullptr; }
+  if (var_sym->Kind == VariableKind::FnMock and var_sym->LlvmInfo->Alloca == nullptr) { return nullptr; }
   SPP_ASSERT(var_sym->LlvmInfo->Alloca != nullptr);
   return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
 }

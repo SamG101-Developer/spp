@@ -317,8 +317,8 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Red (found 2026-11-06): a function named through its namespace has no "{fn, env}" global in this module, its codegen
-// is null, and the call's argument assertion fires. A function named bare, or through a type, works.
+// A function named through its namespace is its mock's constant, as a method named through its type is. Its codegen
+// was null, and the call taking it asserted on its argument.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,
   test_valid_namespaced_function_as_value, R"(
@@ -326,6 +326,27 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 
     fun f() -> Void {
         apply(std::debug::breakpoint)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_namespaced_overloaded_generic_function_as_value, R"(
+    fun apply(f: std::function::FunRef[(S32,), S32], x: S32) -> S32 { ret f(x) }
+
+    fun f() -> S32 {
+        ret apply(std::hints::black_box, 41)
+    }
+)");
+
+// "likely" is lowered in place at a direct call; called through a value it is its wrapper, which passes the value on.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_namespaced_call_site_intrinsic_as_value, R"(
+    fun apply(f: std::function::FunRef[(Bool,), Bool], b: Bool) -> Bool { ret f(b) }
+
+    fun f() -> Bool {
+        ret apply(std::hints::likely, true)
     }
 )");
 
