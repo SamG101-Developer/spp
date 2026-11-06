@@ -42,6 +42,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 import std;
@@ -339,6 +340,12 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+
+      // What the superclass still has to be overridden, for an
+      // editor to offer inside this block.
+      if (lsp::resolution_index::IsEnabled() and sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
+        lsp::resolution_index::RecordOverridables(*this, *sup_sym->LinkedScope, *sm, meta);
+      }
 
       // Copying a value copies every attribute, so "Copy" only
       // holds over a type whose attributes are all copyable -

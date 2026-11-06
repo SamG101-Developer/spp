@@ -508,6 +508,69 @@ fun probe() -> Void {
   EXPECT_TRUE(holds(ops_members, "drop"));
 }
 
+TEST(MscJsonDiagnostics, test_the_index_lists_what_an_extension_can_still_override) {
+  const auto indexed = IndexedCompile();
+
+  build_temp_project(R"(
+cls Shape { }
+sup Shape {
+    !abstract_method
+    fun area(&self) -> S32 { }
+
+    !virtual_method
+    fun describe(&self) -> Void { }
+
+    fun plain(&self) -> Void { }
+}
+
+cls Square { }
+sup Square ext Shape {
+    fun area(&self) -> S32 { ret 4 }
+}
+
+cls Circle { }
+sup Circle ext Shape { }
+)");
+
+  auto const &lists = spp::lsp::resolution_index::GetAllOverridables();
+  const auto list_for = [&lists](spp::Str const &name) {
+    return genex::find_if(lists, [&](auto const &l) { return l.Name == name and l.SuperCls == "Shape"; });
+  };
+  const auto method = [](auto const &list, spp::Str const &name) {
+    return genex::find_if(list->Methods, [&](auto const &m) { return m.Name == name; });
+  };
+
+  // A block that has written nothing yet is offered everything it can override: the abstract method it must, and the
+  // virtual one it may, each as the header it would write. A method that is neither is not offered.
+  const auto circle = list_for("Circle");
+  const auto recorded = [&lists] {
+    auto out = spp::Str();
+    for (auto const &l : lists) { out += l.Name + " ext " + l.SuperCls + " (" + std::to_string(l.Methods.size()) + "); "; }
+    return out;
+  };
+  ASSERT_NE(circle, lists.end()) << "no entry for the empty extension block; recorded: " << recorded();
+  ASSERT_EQ(circle->Methods.size(), 2u);
+  const auto area = method(circle, "area");
+  ASSERT_NE(area, circle->Methods.end());
+  EXPECT_EQ(area->Modifier, "abstract");
+  EXPECT_EQ(area->Prototype, "fun area(&self) -> S32");
+  EXPECT_FALSE(area->Definition.Generated);
+  const auto describe = method(circle, "describe");
+  ASSERT_NE(describe, circle->Methods.end());
+  EXPECT_EQ(describe->Modifier, "virtual");
+  EXPECT_EQ(describe->Prototype, "fun describe(&self) -> Void");
+
+  // The types are named as written, which is what an editor matches the block by.
+  EXPECT_EQ(circle->Name, "Circle");
+
+  // A block that already overrides a method is not offered it again.
+  const auto square = list_for("Square");
+  ASSERT_NE(square, lists.end()) << "no entry for the extension block that overrides";
+  ASSERT_EQ(square->Methods.size(), 1u);
+  EXPECT_EQ(square->Methods[0].Name, "describe");
+  EXPECT_FALSE(square->Where.Generated);
+}
+
 TEST(MscJsonDiagnostics, test_the_index_lists_the_types_a_type_and_a_namespace_hold) {
   const auto indexed = IndexedCompile();
 

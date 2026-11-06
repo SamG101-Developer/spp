@@ -25,3 +25,4 @@
 - [APFloat toString isn't rounded](apfloat-tostring-not-rounded.md) — full exact digits whatever the precision, then truncated; WriteFloat calls it once and rounds
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons
 - [JSON inline backticks](json-diagnostics-inline-backticks.md) — INLINE_* spans become `backticks` in JSON diagnostics, matched by exact colour codes
+- [Overridables recorded at stage 7](overridables-recorded-at-stage-7.md) — sup-ext 'still to override' record; MethodsOf caches, so not before stage 7; names as written

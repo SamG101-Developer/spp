@@ -286,6 +286,22 @@ auto spp::lsp::ToJson(lsp::resolution_index::InactiveRegion const &region) -> St
   return Str("{\"kind\":\"inactive\",\"where\":{") + JsonSpan(region.Where) + "}}";
 }
 
+auto spp::lsp::ToJson(lsp::resolution_index::OverridableList const &list) -> Str {
+  auto out = Str("{\"kind\":\"overridables\",\"where\":{") + JsonSpan(list.Where) + "}";
+  out += ",\"name\":" + JsonString(list.Name);
+  out += ",\"superclass\":" + JsonString(list.SuperCls);
+  out += ",\"methods\":[";
+  for (auto i = 0uz; i < list.Methods.size(); ++i) {
+    auto const &method = list.Methods[i];
+    out += i > 0 ? "," : "";
+    out += "{\"name\":" + JsonString(method.Name);
+    out += ",\"prototype\":" + JsonString(method.Prototype);
+    out += ",\"modifier\":" + JsonString(method.Modifier);
+    out += ",\"definition\":{" + JsonSpan(method.Definition) + "}}";
+  }
+  return out + "]}";
+}
+
 auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
   // Json catches in every build: a debugger is not what is
   // on the other end of the pipe. Enable the sink so that the
@@ -321,6 +337,7 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
     for (auto const &scope : index::GetAllScopes()) { std::cout << ToJson(scope) << "\n"; }
     for (auto const &value : index::GetAllComptimeValues()) { std::cout << ToJson(value) << "\n"; }
     for (auto const &region : index::GetAllInactive()) { std::cout << ToJson(region) << "\n"; }
+    for (auto const &list : index::GetAllOverridables()) { std::cout << ToJson(list) << "\n"; }
 
     const auto recovered = sink::HasErrors();
     sink::Enable(false);
