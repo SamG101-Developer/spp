@@ -694,10 +694,12 @@ auto GenericSolver::_CompValOf(
   // A value read back from its identity. A pack's is its list, each element spelled ("Scope::CompAstOf"); an identity
   // that is no list (a template's pack forwarded whole) is its one element.
   auto const &scope = *_Sm->CurrentScope;
+  auto out = _CompVal{.Site = std::move(site)};
   if (entry.Param == nullptr or not entry.Param->IsVariadic()) {
-    return _CompVal{.Val = scope.CompAstOf(id), .Site = std::move(site)};
+    out.Val = scope.CompAstOf(id);
+    return out;
   }
-  auto out = _CompVal{.Site = std::move(site), .IsPack = true};
+  out.IsPack = true;
   if (not scopes::IsPackCompId(id)) {
     out.Elems.emplace_back(scope.CompAstOf(id));
     return out;
