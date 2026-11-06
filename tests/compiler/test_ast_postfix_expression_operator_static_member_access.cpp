@@ -490,7 +490,114 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
-// Todo: red - calling a "Self"-returning method through a method value segfaults the compiler.
+// A method's function type follows its "self": "&mut self" is a "FunMut", called through a "mut" binding.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_mut_self_method_as_value, R"(
+    cls Counter {
+        !public n: S32
+    }
+
+    sup Counter {
+        !public fun add(&mut self, x: S32) -> Void { self.n += x }
+    }
+
+    fun apply(mut f: std::function::FunMut[(&mut Counter, S32), Void], c: &mut Counter) -> Void {
+        f(c, 5)
+        std::mem::ops::drop(f)
+    }
+
+    fun f() -> Void {
+        let mut c = Counter(n=1)
+        apply(Counter::add, &mut c)
+        std::mem::ops::drop(c)
+    }
+)");
+
+// A by-value "self" is a "FunMov".
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_value_self_method_as_value, R"(
+    cls Counter {
+        !public n: S32
+    }
+
+    sup Counter {
+        !public fun take(self) -> S32 {
+            let Counter(n) = self
+            ret n
+        }
+    }
+
+    fun apply(f: std::function::FunMov[(Counter,), S32], c: Counter) -> S32 { ret f(c) }
+
+    fun f() -> S32 {
+        ret apply(Counter::take, Counter(n=7))
+    }
+)");
+
+// A static and a "&self" method of a type in another module, named through the type's full path.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_namespaced_type_methods_as_values, R"(
+    fun make(f: std::function::FunRef[(U64,), std::time::duration::Duration], x: U64) -> std::time::duration::Duration {
+        ret f(x)
+    }
+
+    fun read(f: std::function::FunRef[(&std::time::duration::Duration,), U64], d: &std::time::duration::Duration) -> U64 {
+        ret f(d)
+    }
+
+    fun f() -> U64 {
+        let d = make(std::time::duration::Duration::from_millis, 1500_u64)
+        ret read(std::time::duration::Duration::as_millis, &d)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_method_values_held_in_lets, R"(
+    cls Counter {
+        n: S32
+    }
+
+    sup Counter {
+        !public fun new(n: S32) -> Counter { ret Counter(n=n) }
+        !public fun get(&self) -> S32 { ret self.n }
+    }
+
+    fun f() -> S32 {
+        let g = Counter::get
+        let h: std::function::FunRef[(S32,), Counter] = Counter::new
+        let c = h(3)
+        let n = g(&c)
+        std::mem::ops::drop(c)
+        ret n
+    }
+)");
+
+// "Box[S32]" is first named in a body, after the sweep that attaches every mock's function types, so its mock for
+// "new" has its own attached on first read. "MatchFnValue" binds the owner's "T" from the instance ("new[T=S32]").
+// Before, no overload matched; passed as an argument, the program called a null function (check-fn-values.sh runs it).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_generic_owner_static_method_held_in_a_typed_let, R"(
+    cls Box[T] {
+        val: T
+    }
+
+    sup [T: Copy] Box[T] {
+        !public fun new(val: T) -> Box[T] { ret Box[T](val=val) }
+    }
+
+    fun f() -> Void {
+        let h: std::function::FunRef[(S32,), Box[S32]] = Box[S32]::new
+        std::mem::ops::drop(h(9))
+    }
+)");
+
+// Calling a "Self"-returning method through a method value segfaulted the compiler.
+// FIXED
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   MethodAsValueSelfReturn,
   test_valid_method_value_returning_self, R"(
