@@ -1,4 +1,4 @@
-- [Project std + prelude imports](spp-project-std-and-prelude.md) — a project's vcs/std is its own clone; no prelude re-imports
+- [Project std + prelude imports](spp-project-std-and-prelude.md) — vcs/std is its own clone; every module (std too) gets the prelude minus its own namespace; no re-imports
 - [Library checks live in the compiler](library-checks-live-in-compiler.md) — ffi::Check* at link, *_ffi keys; no post-build scripts in sppc etc.
 - [sppc sibling repo](sppc-sibling-repo.md) — ../sppc C shim; edit → tell the maintainer; their push auto-PRs SPP-STL
 - [One dependency list](vcs-dependencies-one-level.md) — spp.compiler.dependencies is the only [vcs] reader, flat in vcs/; name only what you declare (E121); one namespace, one package; `rev` pins detached
