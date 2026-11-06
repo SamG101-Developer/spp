@@ -205,8 +205,8 @@ namespace spp::compiler::dependencies {
     }
 
     /// Check "package" declares the standard library. The prelude is added to
-    /// every module but std's own, and it names std, so anything else would be
-    /// reported at a prelude line nobody wrote, or as every std symbol missing.
+    /// every module, and it names std, so anything else would be reported at a
+    /// prelude line nobody wrote, or as every std symbol missing.
     auto DeclaresStd(Path const &folder, Str const &package) -> bool {
       const auto declared = Declared(folder);
       if (not declared.has_value()) { return false; }

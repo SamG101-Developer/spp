@@ -12,10 +12,10 @@ use(spp::lex, class Lexer);
 /// It matches by character, with a few rules for keywords and comments etc.
 SPP_EXP_CLS class spp::lex::Lexer {
 public:
-  /// Build the lexer from the code, and a flag about adding the prelude in.
-  /// This is because the prelude is attached afterwards, and can cause some
-  /// issues with parser error reporting.
-  explicit Lexer(Str code, bool add_prelude = false);
+  /// Build the lexer from the code, and the prelude to append behind it (none
+  /// if empty). It goes after the code so line numbers stay the author's, which
+  /// leaves the parser's error reporting to hide it ("PreludeTokenIndex").
+  explicit Lexer(Str code, StrView prelude = {});
 
   /// Call the lex method on the built lexer. This detaches the construction of
   /// the lexer from the actual scan and token production.

@@ -78,7 +78,7 @@ spp::compiler::ModuleTree::ModuleTree(
     if (std::filesystem::is_directory(src_path)) {
       for (auto const &p : spp::utils::files::GlobSpp(src_path)) {
         if (p == src_path / "main.spp") { continue; }
-        vcs_modules.emplace_back(Module::FromPath(p))->IsStd = dependency.Name == "std";
+        vcs_modules.emplace_back(Module::FromPath(p));
       }
     }
 

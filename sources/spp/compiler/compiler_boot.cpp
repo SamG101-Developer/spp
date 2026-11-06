@@ -42,6 +42,7 @@ import spp.codegen.llvm_target;
 import spp.compiler.cfg;
 import spp.compiler.ffi;
 import spp.compiler.module_tree;
+import spp.compiler.prelude;
 import spp.lex.lexer;
 import spp.lsp.resolution_index;
 import spp.parse.parser_spp;
@@ -122,7 +123,7 @@ auto spp::compiler::CompilerBoot::Lex(
   // Lex each module, assigning the tokens into the module. Also generate an
   // error formatter now that the tokens are present. Update progress bars.
   for (auto const &mod : tree) {
-    auto lexer = lex::Lexer(mod->Code, not mod->IsStd);
+    auto lexer = lex::Lexer(mod->Code, compiler::PreludeFor(mod->NsParts));
     mod->Tokens = lexer.Lex();
     mod->Formatter = utils::errors::ErrorFormatter::ForFile(
       mod->Tokens, utils::files::DisplayString(mod->Path),
@@ -158,7 +159,7 @@ auto spp::compiler::CompilerBoot::Parse(
   for (auto const &mod : tree) {
     if (not mod->IsTestHarness) { continue; }
     mod->Code = _GenerateTestHarness(tree, TestNameFilter, TestGroupFilter);
-    auto lexer = lex::Lexer(mod->Code, true);
+    auto lexer = lex::Lexer(mod->Code, compiler::PreludeFor(mod->NsParts));
     mod->Tokens = lexer.Lex();
     mod->Formatter = utils::errors::ErrorFormatter::ForFile(
       mod->Tokens, utils::files::DisplayString(mod->Path),
