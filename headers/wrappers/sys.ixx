@@ -23,11 +23,13 @@ module;
 #include <sys/types.h>
 
 #if SPP_PLATFORM_WINDOWS
+// First: psapi.h uses BOOL, DWORD and WINAPI without including it.
+#include <windows.h>
+
 #include <direct.h>
 #include <io.h>
 #include <psapi.h>
 #include <stddef.h>
-#include <windows.h>
 
 #define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 #else
