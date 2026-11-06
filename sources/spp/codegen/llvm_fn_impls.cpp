@@ -2299,6 +2299,26 @@ auto fn_impls::StdHintsBlackBox(
   ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.black_box"));
 }
 
+auto fn_impls::StdHintsBranch(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // "likely"/"unlikely" are lowered at the call site ("StdHintsExpect"). This wrapper is reached only by a call that
+  // cannot be (an indirect one), and passes the condition through with no hint: an "llvm.expect" here would be lowered
+  // before the wrapper is inlined, with no branch next to it to annotate.
+  const auto param = proto->FnParamGroup->GetAllParams()[0];
+  const auto slot = sm->CurrentScope->FindVarSymbol(param->ExtractName().get())->LlvmInfo->Alloca;
+  ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.branch"));
+}
+
+auto fn_impls::StdHintsExpect(
+  Vec<llvm::Value*> const &args, LlvmCtx *ctx, const bool expected) -> llvm::Value* {
+  // The "expect" is the value the caller branches on, so "LowerExpectIntrinsic" (which runs before inlining and SROA)
+  // finds it as the branch's condition and weights the branch. Kept anywhere in between, such as in a variable, it is
+  // lost.
+  const auto cond = args[0];
+  return ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::expect, {cond->getType()}, {cond, ctx->Builder.getInt1(expected)}, {}, "hint.expect");
+}
+
 auto fn_impls::StdThreadingAtomicIsLockFree(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //

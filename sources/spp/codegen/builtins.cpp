@@ -15,14 +15,17 @@ namespace spp::codegen::builtins {
     using LlvmImplFn = decltype(LoweredFnImpl::LlvmImpl);
 
     /// File the builtin "name": how it is lowered, how it is computed at compile time if it can be, and the generic
-    /// parameter whose destructor its lowering calls, if any ("T" for "drop").
+    /// parameter whose destructor its lowering calls, if any ("T" for "drop"), and how a direct call to it is lowered
+    /// in place, if it is (a branch hint).
     auto Register(
       Map<Str, LoweredFnImpl> &map, Str const &name, LlvmImplFn llvm_impl,
-      Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "")
+      Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "",
+      decltype(LoweredFnImpl::CallSiteImpl) call_site_impl = nullptr)
       -> void {
       map.emplace(name, LoweredFnImpl{
-        .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl), .Name = name,
-        .DropsGn = std::move(drops_gn)});
+        .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl),
+        .Name = name, .DropsGn = std::move(drops_gn),
+        .CallSiteImpl = std::move(call_site_impl)});
     }
 
     // The lowerings that are one call to a shared builder ("fn_impls::Simple*"), bound to what picks the operation:
@@ -107,6 +110,13 @@ namespace spp::codegen::builtins {
       -> LlvmImplFn {
       return [build](auto sm, auto proto, auto meta, auto ctx, auto) { build(sm, proto, meta, ctx); };
     }
+
+    /// A branch hint, lowered at the call site to the condition expected to be "expected".
+    auto Expect(const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl) {
+      return [expected](auto const &args, auto ctx) {
+        return fn_impls::StdHintsExpect(args, ctx, expected);
+      };
+    }
   }
 }
 
@@ -174,6 +184,10 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
 
   Register(map, "std.hints.black_box", fn_impls::StdHintsBlackBox);
   Register(map, "std.hints.black_box_ref", fn_impls::StdHintsBlackBox);
+  Register(
+    map, "std.hints.likely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(true));
+  Register(
+    map, "std.hints.unlikely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(false));
 
   Register(
     map, "std.intrinsics.sadd", Binop(BinOp::SAddChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsAdd));

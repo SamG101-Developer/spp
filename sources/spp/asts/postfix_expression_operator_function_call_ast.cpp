@@ -38,6 +38,7 @@ import spp.asts.function_call_argument_group_ast;
 import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_call_argument_positional_ast;
 import spp.asts.function_implementation_ast;
+import spp.asts.function_implementation_lowered_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_required_ast;
@@ -69,6 +70,7 @@ import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.builtins;
 import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
@@ -679,6 +681,16 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 
     llvm_func_args.emplace_back(llvm_arg);
     ++p;
+  }
+
+  // A builtin whose lowering has to sit in this function's own code (a branch
+  // hint) is lowered here, not called. For example, "likely" doesn't even have
+  // an llvm lowered body, it is a callsite modifier masquerading as a function
+  // call.
+  if (const auto lowered = Target()->Impl->To<FunctionImplementationLoweredAst>(); lowered != nullptr) {
+    if (const auto builtin = lowered->Builtin(); builtin != nullptr and builtin->CallSiteImpl) {
+      return builtin->CallSiteImpl(llvm_func_args, ctx);
+    }
   }
 
   // An ffi function takes a struct argument as the target's C

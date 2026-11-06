@@ -281,6 +281,8 @@ export namespace spp::codegen::fn_impls {
   auto StdMemOpsDropInPlace(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdHintsBlackBox(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdHintsBranch(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdHintsExpect(Vec<llvm::Value*> const &args, LlvmCtx *ctx, bool expected) -> llvm::Value*;
 
   auto StdThreadingAtomicIsLockFree(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdThreadingAtomicFenceInner(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;

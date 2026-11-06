@@ -733,6 +733,13 @@ auto spp::analyse::utils::comp_time_intrinsics::StdNumIntTwo(
   return IntegerLiteralAst::FromBigVal(numex::BigInt(2), type);
 }
 
+auto spp::analyse::utils::comp_time_intrinsics::StdHintsBranch(
+  BooleanLiteralAst const &condition)
+  -> Unique<BooleanLiteralAst> {
+  // "likely"/"unlikely" hint the optimiser only; at compile time the condition is passed through.
+  return BooleanLiteralAst::FromCppVal(condition.CppVal());
+}
+
 auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsSizeOf(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)

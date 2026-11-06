@@ -317,6 +317,18 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 )");
 
+// Red (found 2026-11-06): a function named through its namespace has no "{fn, env}" global in this module, its codegen
+// is null, and the call's argument assertion fires. A function named bare, or through a type, works.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorStaticMemberAccessAst,
+  test_valid_namespaced_function_as_value, R"(
+    fun apply(f: std::function::FunRef[(), Void]) -> Void { f() }
+
+    fun f() -> Void {
+        apply(std::debug::breakpoint)
+    }
+)");
+
 // A method value on a generic owner is named through the instantiated owner ("Box[S32]::$get").
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   AstPostfixExpressionOperatorStaticMemberAccessAst,

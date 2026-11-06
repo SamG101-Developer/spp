@@ -32,6 +32,12 @@ SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
   /// resolves that destructor, so each instantiation of the
   /// builtin has to make sure it exists.
   Str DropsGn;
+
+  /// Lowers a direct call in place of the call, from the argument values, for a
+  /// lowering that has to sit in the caller's own code: a branch hint must feed
+  /// Effectively a function that doesn't have even an IR body, but rather
+  /// lowers to a callsite modifier.
+  Func<llvm::Value*(Vec<llvm::Value*> const &, LlvmCtx *)> CallSiteImpl;
 };
 
 namespace spp::codegen::builtins {
