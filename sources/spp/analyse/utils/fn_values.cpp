@@ -78,19 +78,22 @@ auto spp::analyse::utils::fn_values::GetFnValueName(
   return {nullptr, nullptr};
 }
 
+auto spp::analyse::utils::fn_values::NamesFnInto(
+  TypeRef const &mock, TypeRef const &func,
+  Scope const &func_scope) -> bool {
+  // The target has to be a function type held by value, and the
+  // value a named function's mock.
+  return func.Symbol != nullptr and not func.IsBorrowed() and not func.Symbol->IsMock()
+    and type_predicates::IsTypeFunction(func, func_scope)
+    and GetFnValueName(mock).first != nullptr;
+}
+
 auto spp::analyse::utils::fn_values::MatchFnValue(
   TypeRef const &mock, TypeRef const &func,
   Scope const &func_scope) -> Opt<FnValueMatch> {
   //
   using type_compare::TypeEq;
-
-  // The target has to be a function type held by value, and the
-  // value a named function's mock.
-  if (func.Symbol == nullptr or func.IsBorrowed() or func.Symbol->IsMock()
-    or not type_predicates::IsTypeFunction(func, func_scope)
-    or GetFnValueName(mock).first == nullptr) {
-    return Nullopt;
-  }
+  if (not NamesFnInto(mock, func, func_scope)) { return Nullopt; }
 
   // The mock carries the superimposed function type of each overload.
   const auto mock_sym = mock.Symbol;
@@ -129,6 +132,23 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
     // Either way the signature is then checked exactly.
     auto const &own_params = proto->GnParamGroup->Params;
     auto inferred = scopes::GenericSubst();
+
+    // A generic owner's parameters ("T" of "sup [T] Box[T]") are the overload's too, and the owner's instance this
+    // mock belongs to ("Box[S32]::$new") has bound them already: they are taken from there, not from the target, so
+    // the overload found is that instance's ("new[T=S32]").
+    for (auto const &param : own_params) {
+      if (param->IsCompParam()) {
+        auto const *const sym = ext_scope->FindVarSymbol(IdentifierAst::FromType(*param->Name).get());
+        if (sym != nullptr and sym->Kind == VariableKind::GnCompArg) {
+          inferred.CompParams.emplace_back(sym->ParamId(), ext_scope->CompIdOfSymbol(*sym));
+        }
+        continue;
+      }
+      auto const *const sym = ext_scope->FindTypeSymbol(param->Name.get());
+      if (sym != nullptr and sym->Kind == TypeKind::GnTypeArg) {
+        inferred.TypeParams.emplace_back(sym->ParamId(), ext_scope->TypeIdOfSymbol(*sym));
+      }
+    }
     if (not own_params.empty()) {
       const auto unify = [&](TypeAst const &target, TypeAst const &own) {
         const auto t = func_scope.TypeIdOf(target);

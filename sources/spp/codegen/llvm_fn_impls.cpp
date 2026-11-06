@@ -1859,6 +1859,21 @@ auto fn_impls::StdNonNullFromPtrInner(
   ctx->Builder.CreateRet(data_ptr);
 }
 
+auto fn_impls::StdNonNullFromMut(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "place" is "&mut T" - a borrow, so its slot holds the address of the value, and a "NonNull[T]" lowers to that same
+  // address. A Void generic arg removes the parameter; there is no address to take, and nothing can be read through it.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.empty()) {
+    ctx->Builder.CreateRet(llvm::PoisonValue::get(ptr_ty));
+    return;
+  }
+  const auto place_sym = sm->CurrentScope->FindVarSymbol(params[0]->ExtractName().get());
+  const auto addr = ctx->Builder.CreateLoad(ptr_ty, place_sym->LlvmInfo->Alloca, "non_null.from_mut.addr");
+  ctx->Builder.CreateRet(addr);
+}
+
 auto fn_impls::StdVolRead(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
@@ -2239,8 +2254,8 @@ auto fn_impls::StdMemOpsSwap(
 auto fn_impls::StdMemOpsDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
-  // is what the destruction works through. This is the owning counterpart of "drop_in_place": the value is consumed by
-  // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
+  // is what the destruction works through. The value is consumed by being passed in, so nothing is left behind in the
+  // caller for the destroyed storage to be read back out of.
   // A Void generic arg removes the parameter from the signature, and a Void has nothing to destroy.
   const auto params = proto->FnParamGroup->GetAllParams();
   if (params.empty()) {
@@ -2255,6 +2270,8 @@ auto fn_impls::StdMemOpsDrop(
 
 auto fn_impls::StdMemOpsDropInPlace(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // Todo: delete once SPP-STL drops its "drop_in_place" declaration (replaced by "NonNull.from_mut" + "read"); kept so
+  //  the std the test harness and CI clone still compiles in the meantime.
   // "ptr" is "&mut T" - a borrow, so its slot holds the
   // address of the value rather than the value (see
   // "StdMemOpsReplace" for the same shape). That

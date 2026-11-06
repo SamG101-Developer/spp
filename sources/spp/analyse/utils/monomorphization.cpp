@@ -1239,6 +1239,10 @@ auto spp::analyse::utils::monomorphization::MakeSupInstance(
     if (own == nullptr or own == old_child.LinkedTypeSymbol.get()) { continue; }
     own->LinkedScope = &new_child;
     new_child.LinkedTypeSymbol = own->SharedFromThis<TypeSymbol>();
+
+    // Its function types are attached on its first read, as the sweep leaves every mock: a clone does not carry
+    // that, and an instance made after the sweep (first named in a function body) would never have them attached.
+    new_child.SupsDeferred = true;
   }
   for (auto const &child : new_sup_scope_ptr->Children) {
     const auto ext = AstAs<SupPrototypeExtensionAst>(child->AstNode);
