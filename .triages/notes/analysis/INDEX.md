@@ -24,3 +24,4 @@
 - [Perf hot path](spp-perf-hot-path.md) — where compile time goes, what's optimised; per-written-type checks are hot; counter bisecting
 - [APFloat toString isn't rounded](apfloat-tostring-not-rounded.md) — full exact digits whatever the precision, then truncated; WriteFloat calls it once and rounds
 - [AST reflection refactor (reverted)](spp-ast-reflection-refactor.md) — latent ast bugs found; retry lessons
+- [JSON inline backticks](json-diagnostics-inline-backticks.md) — INLINE_* spans become `backticks` in JSON diagnostics, matched by exact colour codes

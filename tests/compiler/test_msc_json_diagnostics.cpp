@@ -87,7 +87,31 @@ fun f() -> Void {
     EXPECT_EQ(primary.Message.find('\x1b'), spp::Str::npos) << "message: " << primary.Message;
     EXPECT_EQ(diagnostic.Title.find('\x1b'), spp::Str::npos);
     EXPECT_EQ(spp::lsp::ToJson(diagnostic).find('\x1b'), spp::Str::npos);
-    EXPECT_TRUE(primary.Message.starts_with("Unknown identifier")) << "message: " << primary.Message;
+    EXPECT_TRUE(primary.Message.starts_with("Unknown `identifier`")) << "message: " << primary.Message;
+  }
+}
+
+TEST(MscJsonDiagnostics, test_inline_highlights_are_kept_as_backticks) {
+  try {
+    // The highlighted parts of a message - the name, the type, the kind of thing - are what a reader scans for, so
+    // they survive the colours being stripped as backtick-quoted spans an editor can render as code.
+    build_temp_project(R"(
+fun f() -> Void {
+    let x = undefined_thing
+}
+)");
+    ADD_FAILURE() << "Expected the unknown identifier error, but nothing was thrown.";
+  }
+  catch (spp::analyse::errors::SemanticError const &e) {
+    const auto diagnostic = spp::lsp::DiagnosticFrom(e);
+    EXPECT_EQ(diagnostic.Labels[0].Message.find("`identifier`"), 8u) << "message: " << diagnostic.Labels[0].Message;
+    EXPECT_NE(diagnostic.Note.find("`undefined_thing`"), spp::Str::npos) << "note: " << diagnostic.Note;
+    EXPECT_EQ(diagnostic.Title.find('`'), spp::Str::npos);
+
+    // Every highlight is closed: the backticks pair up.
+    for (auto const &text : {diagnostic.Labels[0].Message, diagnostic.Note, diagnostic.Help}) {
+      EXPECT_EQ(genex::count(text, '`') % 2, 0) << "text: " << text;
+    }
   }
 }
 
