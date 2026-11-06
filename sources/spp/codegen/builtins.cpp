@@ -159,6 +159,7 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
 
   Register(map, "std.mem.pointer.NonNull.cast", fn_impls::StdNonNullCast);
   Register(map, "std.mem.pointer.NonNull.from_ptr_inner", fn_impls::StdNonNullFromPtrInner);
+  Register(map, "std.mem.pointer.NonNull.from_mut", fn_impls::StdNonNullFromMut);
   Register(map, "std.mem.pointer.NonNull.fwd_mut", Untyped(fn_impls::SimpleCoroNonNullFwd));
   Register(map, "std.mem.pointer.NonNull.fwd_ref", Untyped(fn_impls::SimpleCoroNonNullFwd));
 
