@@ -25,7 +25,7 @@ import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
