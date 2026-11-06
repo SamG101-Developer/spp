@@ -713,15 +713,25 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
   auto command = *linker
     + " -o " + utils::shell::Quote(exe_filepath)
     + " " + utils::shell::Quote(obj_filepath);
+  // Every ffi library is a direct dependency on ELF, used or not. One may need
+  // another ("libssl.so.4" needs "libcrypto.so.4"), and the executable's
+  // "$ORIGIN/lib" runpath does not apply to a library's own dependencies: if
+  // "--as-needed" (the default of many distributions' cc) dropped the one the
+  // program never calls, the loader would look for it everywhere but beside the
+  // executable, and pick up another build of it or none.
+  const auto elf = codegen::TargetTriple().isOSBinFormatELF();
+  if (elf and not libraries->empty()) { command += " -Wl,--push-state,--no-as-needed"; }
   for (auto const &lib : *libraries) {
     // Staged beside the executable rather than linked where it sits, so
     // that what the loader needs travels with what was built and the path baked
-    // into it is a relative one.
+    // into it is a relative one. A versioned library keeps its version, the
+    // name its SONAME gives and so the one the loader is asked for.
     const auto staged = lib_dir / lib.filename();
     std::filesystem::copy_file(
       lib, staged, std::filesystem::copy_options::overwrite_existing);
     command += " " + utils::shell::Quote(utils::files::NativeString(staged));
   }
+  if (elf and not libraries->empty()) { command += " -Wl,--pop-state"; }
 
   // Todo: a COFF link also needs a linker other than "cc", an ".exe" name, and
   //  the staged DLLs beside the executable.

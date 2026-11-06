@@ -46,6 +46,41 @@ namespace spp::compiler::ffi {
       return spp::utils::files::SharedLibraryName(Name(package), spp::codegen::SharedLibraryExtension(target.c_str()));
     }
 
+    /// Whether "found" is the library named "base": "base" itself or, for an
+    /// ELF library, "base" with a version after it ("libssl.so.4", "libz.so.1.3").
+    /// A versioned library stays versioned: it is staged under the name its
+    /// SONAME gives, which is the name an executable linked to it asks for.
+    auto IsLibraryFile(spp::StrView const found, spp::StrView const base) -> bool {
+      if (found == base) { return true; }
+      if (not base.ends_with(".so") or not found.starts_with(base) or found.size() == base.size()) { return false; }
+      const auto version = found.substr(base.size());
+      // ".<digits>" repeated: no empty parts, nothing that is not a digit.
+      auto expect_digit = true;
+      for (auto const c : version.substr(1)) {
+        if (c == '.') {
+          if (expect_digit) { return false; }
+          expect_digit = true;
+        }
+        else if (c >= '0' and c <= '9') { expect_digit = false; }
+        else { return false; }
+      }
+      return version.front() == '.' and not expect_digit;
+    }
+
+    /// The files in "package"'s folder for "target" that are its library. One,
+    /// once "Validate" has passed.
+    auto LibraryFiles(spp::Path const &package, spp::Str const &target) -> spp::Vec<spp::Path> {
+      const auto base = LibraryName(package, target);
+      auto files = spp::Vec<spp::Path>();
+      for (auto const &entry : Entries(package / target)) {
+        if (not entry.is_directory()
+            and IsLibraryFile(spp::utils::files::NativeString(entry.path().filename()), base)) {
+          files.emplace_back(entry.path());
+        }
+      }
+      return files;
+    }
+
     /// Check one package's stub and target folders.
     auto ValidatePackage(spp::Path const &root, spp::Path const &package) -> bool {
       const auto example = Shown(root, package / spp::codegen::HostFolderName());
@@ -63,7 +98,7 @@ namespace spp::compiler::ffi {
         // folder, the old flat layout, is an error.
         if (not entry.is_directory()) {
           const auto misplaced = genex::any_of(spp::Arr<spp::StrView, 3>{"so", "dylib", "dll"}, [&](auto const ext) {
-            return found == spp::utils::files::SharedLibraryName(Name(package), ext);
+            return IsLibraryFile(found, spp::utils::files::SharedLibraryName(Name(package), ext));
           });
           if (not misplaced) { continue; }
           std::cerr
@@ -80,8 +115,16 @@ namespace spp::compiler::ffi {
           return false;
         }
 
-        if (not std::filesystem::exists(entry.path() / LibraryName(package, found))) {
+        const auto libraries = LibraryFiles(package, found);
+        if (libraries.empty()) {
           std::cerr << "Error: " << Shown(root, entry.path()) << " has no '" << LibraryName(package, found) << "'.\n";
+          return false;
+        }
+        if (libraries.size() > 1) {
+          std::cerr
+            << "Error: " << Shown(root, entry.path()) << " has more than one '" << LibraryName(package, found)
+            << "': " << Shown(root, libraries[0]) << " and " << Shown(root, libraries[1]) << ".\n"
+            << "  Keep the one to link against.\n";
           return false;
         }
         targets += 1;
@@ -136,9 +179,8 @@ auto spp::compiler::ffi::Libraries(Path const &root) -> Opt<Vec<Path>> {
   const auto target = Str(codegen::TargetFolderName());
   auto libraries = Vec<Path>();
   for (auto const &package : Packages(root)) {
-    const auto library = package / target / LibraryName(package, target);
-    if (std::filesystem::exists(library)) {
-      libraries.emplace_back(library);
+    if (const auto found = LibraryFiles(package, target); not found.empty()) {
+      libraries.emplace_back(found.front());
       continue;
     }
 

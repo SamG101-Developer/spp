@@ -18,7 +18,8 @@ namespace spp::compiler::ffi {
   SPP_EXP_FUN auto Validate(Path const &root) -> bool;
 
   /// Each package's library for the selected target, or nothing when a package
-  /// has none - reported, rather than a link that quietly leaves it out.
+  /// has none - reported, rather than a link that quietly leaves it out. An ELF
+  /// library may carry its version ("libssl.so.4"), and keeps it when staged.
   SPP_EXP_FUN auto Libraries(Path const &root) -> Opt<Vec<Path>>;
 
   /// Check every library from "Libraries()" was built with fortified libc
