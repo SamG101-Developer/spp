@@ -38,6 +38,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [gtest-parallel crash reporting](build/gtest-parallel-crash-reporting.md) — segfaults say "killed by signal"
 - [Test suite stage scope](build/spp-test-suite-stage-scope.md) — suite runs codegen + verify; LLVM context per compile (N1.12); identities cleared per compile (N1.13)
 - [Test harness std refresh](build/spp-test-harness-stale-std.md) — SppBootstrap.Fixture pulls once per run; hand runs without it compile a stale std
+- [Intrinsic removal order](build/std-intrinsic-removal-order.md) — keep a removed intrinsic registered until SPP-STL stops declaring it; else every gtest compile ICEs
 - [Codegen checks suite](build/codegen-checks-suite.md) — tests/codegen/run.sh, ~6 min with check-intrinsics (KNOWN list in intrinsics.py); new checks on lib.sh
 - [Test group bugs](build/spp-test-group-filter-bugs.md) — novel !test group segfaults; --group filter misbehaves
 - [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus; benchmark idioms (Arr type, closures, black_box, formatted println)

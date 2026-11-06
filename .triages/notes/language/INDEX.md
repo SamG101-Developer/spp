@@ -1,5 +1,5 @@
 - [Linear types](spp-linear-types.md) — non-Copy used exactly once; 5 rules, Drop bound
-- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop_in_place
+- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop only for the drop intrinsics
 - [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — mint in the monomorphisation drain
 - [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
 - [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)

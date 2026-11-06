@@ -1,7 +1,7 @@
 ---
 name: spp-method-as-value-gap
 description: "`Type::method` as a value works via nested-type naming (`main::A::$M`) + per-block mock coalescing + a mock per generic-owner instance; the traps hit on the way; `Type::method()` without self used to segfault"
-updated: 2026-09-12
+updated: 2026-11-06
 ---
 
 **Method as a value (done 2026-09-12, nested-type approach, the user's choice):** before this, `Type::method` as a value
@@ -33,6 +33,22 @@ cloned generic `sup` block owns its `$M`. `MakeSupInstance` re-links the copy to
 `MatchFnValue` now reads the signature in the clone, where `T` is bound. **Do not resolve/instantiate the mock's
 `FunXxx` at attach time** (`FindOrMakeTypeSymbol` there): every `FunXxx` instance has method mocks naming a bigger
 `FunXxx`, so the sweep recursed into E109 on every program.
+
+**Generic owners regressed, fixed 2026-11-06.** Three separate causes:
+- `MatchFnValue` read the template prototype's generics, which include the owner's `T`, and expected to infer them
+  from the target. `T` is bound in the instance, so nothing bound it and the overload was rejected (since 2398087b).
+  It now seeds `inferred` with the parameters already bound in the mock's scope (`GnTypeArg`/`GnCompArg`), so the
+  overload found is the instance's, `new[T=S32]`. That is the function a direct `Box[S32]::new(9)` calls; the mock's
+  own copy of `new` never gets an llvm function.
+- `CoerceToFnValue` returned the loaded mock constant when it found no overload. The call then jumped to null: a
+  segfault at dev, silently skipped code at rel. It is now an ICE whenever `fn_values::NamesFnInto` holds.
+- A mock cloned by `MakeSupInstance` did not carry `SupsDeferred`. An instance first named in a body (after the sweep)
+  never had its method mocks' `FunXxx` attached, so a typed `let` gave E1. The clone is now marked deferred.
+`tests/codegen/check-fn-values.sh` runs every shape; the gtests only build.
+
+**Kinds follow `self`:** `&self` gives `FunRef`, `&mut self` gives `FunMut` and `self` gives `FunMov`. Free functions and
+static methods are `FunRef`. So `Counter::add` (`&mut self`) does not fit a `FunRef[(&mut Counter, S32), Void]`, which a
+free function with the same parameters does. Calling a `FunMut` needs a `mut` binding, and the value is linear (drop it).
 
 **Trap: shared cached FqName nodes.** Once the mock's function type named the owner (`FunRef[(&A,), Void]`), `A`'s cached
 FqName node was analysed under AllowAbstractType. `cls B { a: A }` then hit `_HasAnalysed` and skipped the abstract check

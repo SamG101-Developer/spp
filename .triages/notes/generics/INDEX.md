@@ -18,6 +18,6 @@
 - [Overload arg matching order](overload-arg-matching-order.md) — exact, relaxed, forwarding; don't reorder
 - [Return-type overloading contexts](return-type-overloading-contexts.md) — where an overload gets its target
 - [Abstract types by value](abstract-types-by-value.md) — E45 only if held by value (FindHeldByValue)
-- [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; no FunXxx at attach
+- [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; kinds follow self; generic owners: seed bindings, mocks deferred, ICE
 - [Comp args target their param type](comp-args-target-their-param-type.md) — ExpectedCompType, set in NamedGnArgs + ExpectedCompArgTypes; AnalyseCompExpr
 - [Pack constraints pairwise](pack-constraints-pairwise.md) — ..Ts: C per element; ..Ts: Add[Ts] every pair (Self = element); constraint inference skips packs
