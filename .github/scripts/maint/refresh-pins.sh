@@ -255,25 +255,41 @@ else
     "$(fetch "${arm_api}/packages/generic/gnu-toolchain/${arm_version}/${arm_tar}.sha256asc" | cut -d ' ' -f 1)"
 fi
 
-# LLVM (WINDOWS)
+# LLVM (WINDOWS, MACOS): the newest final release of the major
+# that [pin.llvm-lib] names, so a new major is never taken here.
+# Both pins move together, and only once every value resolves.
 echo
-echo "Windows LLVM (checked, not refreshed)"
-win_tag="$(pinned pin.llvm-win.tag)"
-win_asset="$(pinned pin.llvm-win.asset)"
-win_want="$(pinned pin.llvm-win.sha256)"
-win_got="$(asset_digest llvm/llvm-project "$win_tag" "$win_asset")"
-if [ -z "$win_got" ]; then
-  echo "::error::${win_tag} publishes no asset named ${win_asset}"
-  echo "  pick a tag that ships an x86_64 Windows build and move tag, asset and sha256 under [pin.llvm-win] together;"
-  echo "  the asset name is not derivable from the tag, so it has to be read off the release page"
-  status=1
-elif [ "$win_got" != "$win_want" ]; then
-  echo "::error::the asset behind ${win_tag} changed; a published release asset should never do this"
-  echo "  pinned ${win_want}"
-  echo "  actual ${win_got}"
+echo "Windows and macOS LLVM (${MANIFEST})"
+llvm_major="$(pinned pin.llvm-lib.version)"
+llvm_tag="$(fetch "${auth[@]}" "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100" \
+  | python3 -c '
+import json, re, sys
+tags = [r["tag_name"] for r in json.load(sys.stdin) if not r["prerelease"] and not r["draft"]]
+found = [m for t in tags if (m := re.fullmatch(r"llvmorg-" + sys.argv[1] + r"\.(\d+)\.(\d+)", t))]
+if found:
+    print(max(found, key=lambda m: (int(m[1]), int(m[2])))[0])
+' "$llvm_major")"
+if [ -z "$llvm_tag" ]; then
+  echo "::error::could not find a final llvmorg-${llvm_major}.x.y release"
   status=1
 else
-  echo "  ${win_asset} matches its pin"
+  llvm_version="${llvm_tag#llvmorg-}"
+  win_asset="clang+llvm-${llvm_version}-x86_64-pc-windows-msvc.tar.xz"
+  mac_asset="LLVM-${llvm_version}-macOS-ARM64.tar.xz"
+  win_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$win_asset")"
+  mac_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$mac_asset")"
+  if [ -z "$win_digest" ] || [ -z "$mac_digest" ]; then
+    echo "::error::${llvm_tag} publishes no digest for ${win_asset} or ${mac_asset}; leaving both pins alone"
+    echo "  pick a tag that ships both builds and move tag, asset and sha256 under [pin.llvm-win] and [pin.llvm-mac] by hand"
+    status=1
+  else
+    set_pin pin.llvm-win.tag "$llvm_tag"
+    set_pin pin.llvm-win.asset "$win_asset"
+    set_pin pin.llvm-win.sha256 "$win_digest"
+    set_pin pin.llvm-mac.tag "$llvm_tag"
+    set_pin pin.llvm-mac.asset "$mac_asset"
+    set_pin pin.llvm-mac.sha256 "$mac_digest"
+  fi
 fi
 
 echo
