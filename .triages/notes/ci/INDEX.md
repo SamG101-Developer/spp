@@ -22,3 +22,4 @@
 - [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
 - [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
 - [LLVM Windows/macOS pins](llvm-win-mac-pins-refreshed.md) — fixed tags that refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt
+- [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify
