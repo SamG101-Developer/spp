@@ -31,6 +31,13 @@ use_alias(spp::asts, PostfixExpressionOperatorEarlyReturnAst);
 use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
 use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
 
 SPP_MOD_BEGIN
 spp::analyse::utils::regions::PlaceAt::PlaceAt() = default;

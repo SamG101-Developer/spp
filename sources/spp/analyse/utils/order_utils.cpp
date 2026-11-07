@@ -1,9 +1,15 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.utils.order_utils;
 import spp.asts.ast;
 import spp.asts.mixins.orderable_ast;
 import genex;
 import magic_enum;
 import std;
+
+use_alias(spp::asts, Ast);
+use_alias(spp::asts::mixins, OrderableAst);
 
 namespace spp::analyse::utils::order_utils {
   namespace {

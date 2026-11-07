@@ -16,6 +16,11 @@ import spp.asts.type_ast;
 import genex;
 
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 SPP_MOD_BEGIN
 spp::analyse::utils::type_join::TypeJoin::TypeJoin(

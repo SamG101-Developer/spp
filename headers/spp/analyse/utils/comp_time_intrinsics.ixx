@@ -46,7 +46,7 @@ namespace spp {
   struct DetermineCompTimeFnSig_<true, false, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -54,7 +54,7 @@ namespace spp {
   struct DetermineCompTimeFnSig_<false, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnCompArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -62,8 +62,8 @@ namespace spp {
   struct DetermineCompTimeFnSig_<true, true, Ret, Args...> {
     using Type = Ret(*)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnTypeArgs) const &,
-      decltype(CompTimeCallArgs::GnCompArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -79,8 +79,8 @@ namespace spp {
 
 namespace spp::analyse::utils::comp_time_intrinsics {
   SPP_EXP_CLS struct CompTimeFn {
-    decltype(CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
-    decltype(CompTimeCallArgs::GnCompArgs) GnCompArgs;
+    decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
+    decltype(asts::meta::CompTimeCallArgs::GnCompArgs) GnCompArgs;
     ScopeManager *Sm;
 
     virtual ~CompTimeFn() = default;
@@ -91,8 +91,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
 
     auto PreloadGns(
       ScopeManager *sm,
-      decltype(CompTimeCallArgs::GnTypeArgs) gn_type_args,
-      decltype(CompTimeCallArgs::GnCompArgs) gn_comp_args)
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) gn_type_args,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) gn_comp_args)
       -> CompTimeFn& {
       Sm = sm;
       GnTypeArgs = std::move(gn_type_args);
@@ -154,7 +154,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, false, Ret, Args...>>(fn);
@@ -165,7 +165,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnCompArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<false, true, Ret, Args...>>(fn);
@@ -176,8 +176,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
   auto MakeCompTimeFn(
     Ret (*fn)(
       ScopeManager const &,
-      decltype(CompTimeCallArgs::GnTypeArgs) const &,
-      decltype(CompTimeCallArgs::GnCompArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, true, Ret, Args...>>(fn);

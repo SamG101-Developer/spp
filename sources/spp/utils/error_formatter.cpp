@@ -10,6 +10,8 @@ import genex;
 import std;
 import sys;
 
+use_alias(spp::asts, Ast);
+
 SPP_MOD_BEGIN
 namespace spp::utils::errors {
   namespace {

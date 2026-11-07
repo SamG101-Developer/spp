@@ -25,6 +25,7 @@ import spp.asts.class_attribute_ast;
 import spp.asts.class_implementation_ast;
 import spp.asts.class_prototype_ast;
 import spp.asts.convention_ast;
+import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_parameter_optional_ast;
 import spp.asts.function_parameter_required_ast;
@@ -83,6 +84,14 @@ use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, ScopeTree);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 
 namespace spp::analyse::utils::monomorphization {
   namespace {
