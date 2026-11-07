@@ -41,6 +41,16 @@ namespace spp::analyse::utils::linear_utils {
       // to the closure's environment, which is read again on every call - it is the closure value that is held to
       // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
       if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
+
+      // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
+      // An open one holds what its elements are: nothing owed when each is copied ("..xs: S32", "..xs: Ts" with
+      // "Ts: Copy"), whatever its tuple of unknown length says.
+      if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
+      if (sym.Pack.has_value()) {
+        const auto element = sm.CurrentScope->FindTypeSymbol(
+          sym.Pack->Element->WithoutConvention().get());
+        if (element != nullptr and element->IsCopyable()) { return false; }
+      }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) {
         Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
       }
@@ -355,9 +365,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
   // there, the outermost call to reach it, with the write
   // as context.
   auto const *sub = asts::FunctionPrototypeAst::AnalysingGnSubstitution();
-  while (sub != nullptr and sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
-    sub = sub->RequestedBy;
-  }
+  if (sub != nullptr) { sub = sub->OutermostRequest(); }
   if (sub != nullptr and sub->RequiredAt != nullptr and sub->RequiredIn != nullptr) {
     Raise<SppLinearValueNotConsumedError>(ERR_ARGS(part, *sub->RequiredAt, StrView(type_name)));
   }

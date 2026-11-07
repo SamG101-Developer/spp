@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.monomorphization;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.packs;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -39,7 +40,7 @@ namespace spp::analyse::utils::monomorphization {
   /// representing type, under the arguments of the "type_part".
   SPP_EXP_FUN auto FindOrMakeClsInstance(
     TypeIdentifierAst &type_part, Shared<TypeSymbol> const &old_cls_sym,
-    TypeId args_id, bool is_tuple, ScopeManager *sm,
+    TypeId args_id, ScopeManager *sm,
     meta::CompilerMetaData *meta) -> TypeSymbol*;
 
   // Superimposition instances.
@@ -61,11 +62,10 @@ namespace spp::analyse::utils::monomorphization {
   /// it before the call knows which overload it makes, so it is
   /// not required ("FunctionPrototypeAst::RequireGnSubstitution") -
   /// nothing analyses or emits it until a call chooses it.
-  /// "variadic_pack_type" is the tuple a variadic parameter's
-  /// arguments form.
+  /// "pack" is what the call gives a variadic parameter, or null.
   SPP_EXP_FUN auto FindOrMakeFnInstance(
     FunctionPrototypeAst *fn_proto, Scope const *fn_scope, TypeId args_id,
-    Shared<TypeAst> const &variadic_pack_type, ScopeManager *sm, meta::CompilerMetaData *meta)
+    packs::GivenPack const *pack, ScopeManager *sm, meta::CompilerMetaData *meta)
     -> Tup<FunctionPrototypeAst*, Scope const*>;
 
   /// As "FindOrMakeFnInstance", for arguments already named (read

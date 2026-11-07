@@ -1,0 +1,32 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let size = black_box(1800_u64)
+  let max_iter = black_box(50_u64)
+  let scale = F64::from(size)
+  let mut inside = 0_u64
+  let mut y = 0_u64
+  loop y < size {
+    let ci = F64::from(y) * 2.0_f64 / scale - 1.0_f64
+    let mut x = 0_u64
+    loop x < size {
+      let cr = F64::from(x) * 2.0_f64 / scale - 1.5_f64
+      let mut zr = 0.0_f64
+      let mut zi = 0.0_f64
+      let mut i = 0_u64
+      let mut escaped = false
+      loop i < max_iter and escaped.not {
+        let tr = zr * zr - zi * zi + cr
+        zi = 2.0_f64 * zr * zi + ci
+        zr = tr
+        case zr * zr + zi * zi > 4.0_f64 { escaped = true }
+        i += 1_u64
+      }
+      case escaped.not { inside += 1_u64 }
+      x += 1_u64
+    }
+    y += 1_u64
+  }
+  println("{}", inside)
+}

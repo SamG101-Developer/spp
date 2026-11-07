@@ -140,6 +140,26 @@ auto spp::analyse::utils::marker_sups::FindFnSup(
   return TypeRef();
 }
 
+auto spp::analyse::utils::marker_sups::HoldsNoValueOfItsArgs(
+  TypeSymbol &sym, Scope const &scope) -> bool {
+  // The type itself, then everything it superimposes: a user's
+  // class extending "GenOnce" is a generator just as "GenOnce" is.
+  const auto names_only = [&scope](TypeRef const &ref) {
+    return type_predicates::IsTypeGenerator(ref, scope)
+      or type_predicates::IsTypeFunction(ref, scope);
+  };
+
+  // Asked for nearly every written type with arguments, so a class's answer is
+  // kept on it. A generic parameter's sups are its constraints, read where it
+  // is asked, so it is worked out each time.
+  if (sym.HoldsNoValueOfArgs.has_value()) { return *sym.HoldsNoValueOfArgs; }
+  const auto ref = TypeRef::ForKindCheck(sym, scope);
+  const auto holds_none = names_only(ref)
+    or genex::any_of(type_members::SuperClsRefs(ref, scope), names_only);
+  if (not sym.IsGn()) { sym.HoldsNoValueOfArgs = holds_none; }
+  return holds_none;
+}
+
 auto spp::analyse::utils::marker_sups::FindGenSup(
   TypeRef const &ref, Scope const &scope,
   ExpressionAst const &expr, FuncRef<Shared<TypeAst>()> spell,

@@ -277,13 +277,9 @@ auto TypeStatementAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Sync the alias symbol's visibility from the AST (annotations set Visibility in Stage5). Without this the alias
-  // symbol keeps the symbol-constructor default (public), making every alias publicly accessible regardless of its
-  // annotation (or lack of one: unannotated statements are private).
-  if (_AliasSymbol != nullptr) {
-    _AliasSymbol->Visibility = Visibility.first;
-    for (auto const &[_, inst] : _AliasSymbol->Instances) { inst->Visibility = Visibility.first; }
-  }
+  // The alias symbol, and so its instances, read their visibility here, where the annotations set it: without, the
+  // symbol keeps its constructor's default (public), whatever the annotation (an unannotated statement is private).
+  if (_AliasSymbol != nullptr) { _AliasSymbol->VisibilityFrom = this; }
 
   sm->MoveOutOfCurrentScope();
 }
@@ -310,7 +306,6 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
-      resolved->ResetCache();
       resolved->Stage7_AnalyseSemantics(sm, meta);
     }
 

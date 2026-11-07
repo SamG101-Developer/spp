@@ -313,7 +313,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_fixed_beats_variadic_with_one_argument, R"(
     fun g(x: S32) -> Bool { ret true }
     fun g(..xs: S32) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -328,7 +328,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_fixed_beats_variadic_of_the_same_length, R"(
     fun g(x: S32, y: S32, z: S32) -> Bool { ret true }
     fun g(..xs: S32) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -343,7 +343,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_variadic_chosen_at_another_length, R"(
     fun g(x: S32, y: S32, z: S32) -> S32 { ret 1_s32 }
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
 
@@ -357,11 +357,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_concrete_variadic_beats_generic_variadic, R"(
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[T](..xs: T) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -375,11 +375,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_generic_variadic_beats_pack_variadic, R"(
     fun g[T](..xs: T) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[..Ts](..xs: Ts) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -393,11 +393,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_pack_variadic_chosen_for_mixed_types, R"(
     fun g[T](..xs: T) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
     fun g[..Ts](..xs: Ts) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
 
@@ -411,11 +411,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_concrete_variadic_beats_pack_variadic, R"(
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[..Ts](..xs: Ts) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -430,15 +430,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_fixed_beats_every_variadic_of_the_same_length, R"(
     fun g(x: S32, y: S32, z: S32) -> Bool { ret true }
     fun g(..xs: S32) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
     fun g[T](..xs: T) -> U32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 2_u32
     }
     fun g[..Ts](..xs: Ts) -> U64 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 3_u64
     }
 
@@ -452,15 +452,15 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_concrete_variadic_beats_both_generic_variadics, R"(
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[T](..xs: T) -> U32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 2_u32
     }
     fun g[..Ts](..xs: Ts) -> U64 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 3_u64
     }
 
@@ -480,7 +480,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         ret true
     }
     fun g[T](..xs: T) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -494,7 +494,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_exact_variadic_beats_fixed_generic_of_the_same_length, R"(
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[T](x: T, y: T, z: T) -> S32 {
@@ -514,12 +514,12 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_fixed_prefix_beats_variadic_prefix, R"(
     fun g(x: S32, ..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g[T](x: T, ..xs: S32) -> S32 {
         std::mem::ops::drop(x)
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
 
@@ -535,11 +535,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_generic_and_pack_variadics_with_one_return_type_coexist, R"(
     fun g[T](..xs: T) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
     fun g[..Ts](..xs: Ts) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 2_s32
     }
 
@@ -829,11 +829,11 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   test_invalid_two_variadics_of_one_kind_differing_in_return_type,
   SppFunctionCallOverloadAmbiguousError, R"(
     fun g(..xs: S32) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
     fun g(..ys: S32) -> S32 {
-        std::mem::ops::drop(ys)
+        std::mem::ops::drop(..ys)
         ret 1_s32
     }
 
@@ -930,11 +930,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestOverloadRanks,
   test_valid_explicit_element_type_picks_the_generic_variadic, R"(
     fun g(..xs: S32) -> S32 {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret 1_s32
     }
     fun g[T](..xs: T) -> Bool {
-        std::mem::ops::drop(xs)
+        std::mem::ops::drop(..xs)
         ret true
     }
 

@@ -45,13 +45,15 @@ namespace spp::analyse::utils::visibility_utils {
       return not sym.IsGn();
     }
 
-    /// The ffi package a module member is in, when the module
-    /// naming it is not its owner's: a dependency's package is
-    /// for the dependency's own modules, which is how it is
-    /// linked, not for the project's or another dependency's.
+    /// The package a module member is in, when the module naming
+    /// it cannot: an ffi package is for its owner's own modules,
+    /// which is how it is linked, and any other package is for
+    /// its owner and whoever declares it. The test harness names
+    /// each library's tests, declared or not, and is no package.
     template <typename Symbol>
-    auto ForeignFfiPackage(
-      Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm) -> scopes::NamespaceSymbol const* {
+    auto ForeignPackage(
+      Symbol const &sym, Scope const &definition_scope, ScopeManager const &sm,
+      CompilerMetaData const &meta) -> scopes::NamespaceSymbol const* {
       if (not IsPackageMember(sym)) { return nullptr; }
       auto const *const package_scope = definition_scope.GetTopLevelParentModule();
       auto const *const accessing_scope = sm.CurrentScope->GetTopLevelParentModule();
@@ -59,8 +61,11 @@ namespace spp::analyse::utils::visibility_utils {
 
       auto const *const package = package_scope->LinkedNamespaceSymbol.get();
       auto const *const accessing = accessing_scope->LinkedNamespaceSymbol.get();
-      if (package == nullptr or accessing == nullptr or not package->IsFfiPackage) { return nullptr; }
-      return package->Owner == accessing->Owner ? nullptr : package;
+      if (package == nullptr or accessing == nullptr or package->Owner == accessing->Owner) { return nullptr; }
+      if (package->IsFfiPackage) { return package; }
+      if (meta.IsTestHarness) { return nullptr; }
+      const auto declared = package->Owner.has_value() and genex::contains(accessing->Declares, *package->Owner);
+      return declared ? nullptr : package;
     }
 
     /// Who an owner is, for an error: the project or a dependency.
@@ -84,8 +89,8 @@ namespace spp::analyse::utils::visibility_utils {
       // visibility.
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
-      if (ForeignFfiPackage(sym, definition_scope, sm) != nullptr) { return false; }
-      if (sym.Visibility == V::kPublic) { return true; }
+      if (ForeignPackage(sym, definition_scope, sm, meta) != nullptr) { return false; }
+      if (sym.GetVisibility() == V::kPublic) { return true; }
 
       // Get the module owning the access, and the module owning
       // the definition, by scope, for module comparisons.
@@ -94,12 +99,12 @@ namespace spp::analyse::utils::visibility_utils {
 
       // Private: the defining module only.
       const auto good_private = accessing_module == definition_module;
-      if (sym.Visibility == V::kPrivate) { return good_private; }
+      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
 
       // Protected: and its descendant modules.
       const auto good_protected = good_private or genex::contains(
         accessing_module->GetAncestors(), definition_module);
-      if (sym.Visibility == V::kProtected) { return good_protected; }
+      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
 
       // Package: and anything sharing a top-level module with it.
       return good_protected
@@ -137,7 +142,7 @@ namespace spp::analyse::utils::visibility_utils {
       // visibility.
       using V = asts::utils::Visibility;
       if (meta.IgnoreAccessModifierViolations) { return true; }
-      if (sym.Visibility == V::kPublic) { return true; }
+      if (sym.GetVisibility() == V::kPublic) { return true; }
 
       // A member declared in a "sup" block belongs to the type
       // the block is over ("Self").
@@ -166,14 +171,14 @@ namespace spp::analyse::utils::visibility_utils {
 
       // Private: only from the same type, in the same module.
       const auto good_private = enclosing_scope == owner_scope and accessing_module == definition_module;
-      if (sym.Visibility == V::kPrivate) { return good_private; }
+      if (sym.GetVisibility() == V::kPrivate) { return good_private; }
 
       // Protected: and from its subtypes, in the module each
       // was defined in.
       const auto good_protected = good_private or (enclosing_scope
         and genex::contains(enclosing_scope->GetSupScopes(), owner_scope)
         and accessing_module == enclosing_scope->GetParentModule());
-      if (sym.Visibility == V::kProtected) { return good_protected; }
+      if (sym.GetVisibility() == V::kProtected) { return good_protected; }
 
       // Package: and from any module in the same package.
       return good_protected
@@ -192,7 +197,7 @@ namespace spp::analyse::utils::visibility_utils {
       using errors::SppAccessViolationError;
       RaiseIf<SppAccessViolationError>(
         not visible,
-        ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.Visibility), what));
+        ERR_ARGS(access_ast, *sym.Name, VisibilityName(sym.GetVisibility()), what));
     }
   }
 }
@@ -235,7 +240,7 @@ auto spp::analyse::utils::visibility_utils::IsModuleMemberVisible(
 auto spp::analyse::utils::visibility_utils::CheckModuleMemberVisibility(
   VariableSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
-  CheckFfiPackageOwner(sym, definition_scope, access_ast, sm, meta);
+  CheckPackageAccess(sym, definition_scope, access_ast, sm, meta);
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
       sym, definition_scope, sm, meta), sym, access_ast, "symbol");
@@ -251,7 +256,7 @@ auto spp::analyse::utils::visibility_utils::IsModuleTypeVisible(
 auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
   TypeSymbol const &sym, Ast const &access_ast, Scope const &definition_scope,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
-  CheckFfiPackageOwner(sym, definition_scope, access_ast, sm, meta);
+  CheckPackageAccess(sym, definition_scope, access_ast, sm, meta);
   RaiseIfNotVisible(
     IsModuleMemberVisibleImpl(
       sym, definition_scope, sm, meta), sym, access_ast, "type");
@@ -259,13 +264,13 @@ auto spp::analyse::utils::visibility_utils::CheckModuleTypeVisibility(
 
 namespace spp::analyse::utils::visibility_utils {
   namespace {
-    /// Raises "SppFfiPackageNotOwnedError" for "CheckFfiPackageOwner".
+    /// Raises the error for "CheckPackageAccess".
     template <typename Symbol>
-    auto CheckFfiPackageOwnerImpl(
+    auto CheckPackageAccessImpl(
       Symbol const &sym, Scope const &definition_scope, Ast const &access_ast,
       ScopeManager const &sm, CompilerMetaData const &meta) -> void {
       if (meta.IgnoreAccessModifierViolations) { return; }
-      auto const *const package = ForeignFfiPackage(sym, definition_scope, sm);
+      auto const *const package = ForeignPackage(sym, definition_scope, sm, meta);
       if (package == nullptr) { return; }
 
       // Held in locals so the views handed to the error outlive them.
@@ -273,20 +278,24 @@ namespace spp::analyse::utils::visibility_utils {
       const auto package_owner = OwnerText(package->Owner);
       const auto accessing_owner = OwnerText(
         sm.CurrentScope->GetTopLevelParentModule()->LinkedNamespaceSymbol->Owner);
-      Raise<errors::SppFfiPackageNotOwnedError>(ERR_ARGS(
+      if (package->IsFfiPackage) {
+        Raise<errors::SppFfiPackageNotOwnedError>(ERR_ARGS(
+          access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
+      }
+      Raise<errors::SppDependencyNotDeclaredError>(ERR_ARGS(
         access_ast, StrView(package_name), StrView(package_owner), StrView(accessing_owner)));
     }
   }
 }
 
-auto spp::analyse::utils::visibility_utils::CheckFfiPackageOwner(
+auto spp::analyse::utils::visibility_utils::CheckPackageAccess(
   VariableSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
-  CheckFfiPackageOwnerImpl(sym, definition_scope, access_ast, sm, meta);
+  CheckPackageAccessImpl(sym, definition_scope, access_ast, sm, meta);
 }
 
-auto spp::analyse::utils::visibility_utils::CheckFfiPackageOwner(
+auto spp::analyse::utils::visibility_utils::CheckPackageAccess(
   TypeSymbol const &sym, Scope const &definition_scope, Ast const &access_ast,
   ScopeManager const &sm, CompilerMetaData const &meta) -> void {
-  CheckFfiPackageOwnerImpl(sym, definition_scope, access_ast, sm, meta);
+  CheckPackageAccessImpl(sym, definition_scope, access_ast, sm, meta);
 }

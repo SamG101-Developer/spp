@@ -1859,6 +1859,21 @@ auto fn_impls::StdNonNullFromPtrInner(
   ctx->Builder.CreateRet(data_ptr);
 }
 
+auto fn_impls::StdNonNullFromMut(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "place" is "&mut T" - a borrow, so its slot holds the address of the value, and a "NonNull[T]" lowers to that same
+  // address. A Void generic arg removes the parameter; there is no address to take, and nothing can be read through it.
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.empty()) {
+    ctx->Builder.CreateRet(llvm::PoisonValue::get(ptr_ty));
+    return;
+  }
+  const auto place_sym = sm->CurrentScope->FindVarSymbol(params[0]->ExtractName().get());
+  const auto addr = ctx->Builder.CreateLoad(ptr_ty, place_sym->LlvmInfo->Alloca, "non_null.from_mut.addr");
+  ctx->Builder.CreateRet(addr);
+}
+
 auto fn_impls::StdVolRead(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
@@ -2239,8 +2254,8 @@ auto fn_impls::StdMemOpsSwap(
 auto fn_impls::StdMemOpsDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
-  // is what the destruction works through. This is the owning counterpart of "drop_in_place": the value is consumed by
-  // being passed in, so nothing is left behind in the caller for the destroyed storage to be read back out of.
+  // is what the destruction works through. The value is consumed by being passed in, so nothing is left behind in the
+  // caller for the destroyed storage to be read back out of.
   // A Void generic arg removes the parameter from the signature, and a Void has nothing to destroy.
   const auto params = proto->FnParamGroup->GetAllParams();
   if (params.empty()) {
@@ -2255,6 +2270,8 @@ auto fn_impls::StdMemOpsDrop(
 
 auto fn_impls::StdMemOpsDropInPlace(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // Todo: delete once SPP-STL drops its "drop_in_place" declaration (replaced by "NonNull.from_mut" + "read"); kept so
+  //  the std the test harness and CI clone still compiles in the meantime.
   // "ptr" is "&mut T" - a borrow, so its slot holds the
   // address of the value rather than the value (see
   // "StdMemOpsReplace" for the same shape). That
@@ -2268,6 +2285,55 @@ auto fn_impls::StdMemOpsDropInPlace(
   // made for, the parameter's type without its borrow.
   EmitDrop(ptr_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention(), target_ptr, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
+}
+
+auto fn_impls::StdHintsBlackBox(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // An empty asm that takes an address and clobbers memory: llvm must assume the asm read and rewrote what is there.
+  // Being an instruction, not a call, it survives the wrapper being inlined. The owned form hides "value"'s own slot
+  // and reloads the value from it; the borrowed form ("&T -> Void") hides the referent, whose address the slot holds.
+  // A Void generic arg removes the parameter, leaving nothing to hide.
+  const auto params = proto->FnParamGroup->GetAllParams();
+  if (params.empty()) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  const auto value_sym = sm->CurrentScope->FindVarSymbol(params[0]->ExtractName().get());
+  const auto slot = value_sym->LlvmInfo->Alloca;
+  const auto borrowed = value_sym->TypeRefIn(*sm->CurrentScope).IsBorrowed();
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto hidden = borrowed
+    ? static_cast<llvm::Value*>(ctx->Builder.CreateLoad(ptr_ty, slot, "hint.black_box.ref"))
+    : static_cast<llvm::Value*>(slot);
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+  const auto asm_ty = llvm::FunctionType::get(void_ty, {hidden->getType()}, false);
+  const auto barrier = llvm::InlineAsm::get(asm_ty, "", "r,~{memory}", true);
+  ctx->Builder.CreateCall(asm_ty, barrier, {hidden});
+  if (borrowed) {
+    ctx->Builder.CreateRetVoid();
+    return;
+  }
+  ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.black_box"));
+}
+
+auto fn_impls::StdHintsBranch(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // "likely"/"unlikely" are lowered at the call site ("StdHintsExpect"). This wrapper is reached only by a call that
+  // cannot be (an indirect one), and passes the condition through with no hint: an "llvm.expect" here would be lowered
+  // before the wrapper is inlined, with no branch next to it to annotate.
+  const auto param = proto->FnParamGroup->GetAllParams()[0];
+  const auto slot = sm->CurrentScope->FindVarSymbol(param->ExtractName().get())->LlvmInfo->Alloca;
+  ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.branch"));
+}
+
+auto fn_impls::StdHintsExpect(
+  Vec<llvm::Value*> const &args, LlvmCtx *ctx, const bool expected) -> llvm::Value* {
+  // The "expect" is the value the caller branches on, so "LowerExpectIntrinsic" (which runs before inlining and SROA)
+  // finds it as the branch's condition and weights the branch. Kept anywhere in between, such as in a variable, it is
+  // lost.
+  const auto cond = args[0];
+  return ctx->Builder.CreateIntrinsic(
+    llvm::Intrinsic::expect, {cond->getType()}, {cond, ctx->Builder.getInt1(expected)}, {}, "hint.expect");
 }
 
 auto fn_impls::StdThreadingAtomicIsLockFree(

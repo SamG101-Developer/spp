@@ -1,0 +1,10 @@
+description = "A generator that delegates to another with gen with, iterated, and the same driven by hand with res; the C and Rust equivalents are plain loops, so the gap is the coroutines' overhead"
+layer = "core"
+output = "exact"
+gaps = ["coroutine frames that are not elided"]
+covers = [
+  "ast:gen_with_expression",
+  "ast:postfix_expression_operator_keyword_res",
+  "ast:coroutine_prototype",
+  "codegen:llvm_coros",
+]

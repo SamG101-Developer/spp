@@ -19,7 +19,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_type;
-import spp.utils.algorithms;
+import spp.utils.ptr;
 import genex;
 
 SPP_MOD_BEGIN
@@ -65,13 +65,37 @@ auto ClosureExpressionParameterAndCaptureGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
+namespace {
+  /// Moves the captures out as call arguments, so the argument
+  /// group's analysis can run over them.
+  auto CapturesAsArgs(
+    spp::Vec<spp::Unique<ClosureExpressionCaptureAst>> &captures)
+    -> spp::Vec<spp::Unique<FunctionCallArgumentAst>> {
+    //
+    return captures
+      | genex::views::move
+      | genex::views::transform([](auto &&x) { return spp::unique_cast<FunctionCallArgumentAst>(std::move(x)); })
+      | genex::to<spp::Vec>();
+  }
+
+  /// Moves the call arguments made by "CapturesAsArgs" back out
+  /// as captures.
+  auto ArgsAsCaptures(
+    spp::Vec<spp::Unique<FunctionCallArgumentAst>> &args)
+    -> spp::Vec<spp::Unique<ClosureExpressionCaptureAst>> {
+    //
+    return args
+      | genex::views::move
+      | genex::views::transform([](auto &&x) { return spp::unique_cast<ClosureExpressionCaptureAst>(std::move(x)); })
+      | genex::to<spp::Vec>();
+  }
+}
+
 auto ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the arguments against the outer scope's symbols
   // (temp move asts).
-  auto caps = CaptureGroup->Captures
-    | genex::views::move
-    | spp::views::cast_unique<FunctionCallArgumentAst>();
+  auto caps = CapturesAsArgs(CaptureGroup->Captures);
 
   const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(
     nullptr, std::move(caps), nullptr);
@@ -85,9 +109,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
   auto scope_name = ScopeBlockName::FromParts(
     "closure-outer", {}, PosStart());
   sm->CreateAndMoveIntoNewScope(std::move(scope_name), this);
-  CaptureGroup->Captures = cap_group->Args
-    | genex::views::move
-    | spp::views::cast_unique<ClosureExpressionCaptureAst>();
+  CaptureGroup->Captures = ArgsAsCaptures(cap_group->Args);
 
   // Analyse the parameters and captures.
   ParamGroup->Stage7_AnalyseSemantics(sm, meta);
@@ -99,9 +121,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
   // Analyse the arguments against the outer scope's symbols
   // (temp move asts).
   meta->CurrentLambdaOuterScope = sm->CurrentScope;
-  auto caps = CaptureGroup->Captures
-    | genex::views::move
-    | spp::views::cast_unique<FunctionCallArgumentAst>();
+  auto caps = CapturesAsArgs(CaptureGroup->Captures);
 
   const auto cap_group = MakeUnique<FunctionCallArgumentGroupAst>(
     nullptr, std::move(caps), nullptr);
@@ -109,9 +129,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
 
   // New scope for parameters.
   sm->MoveToNextScope();
-  CaptureGroup->Captures = cap_group->Args
-    | genex::views::move
-    | spp::views::cast_unique<ClosureExpressionCaptureAst>();
+  CaptureGroup->Captures = ArgsAsCaptures(cap_group->Args);
 
   // Check the parameters and captures.
   ParamGroup->Stage8_CheckMemory(sm, meta);

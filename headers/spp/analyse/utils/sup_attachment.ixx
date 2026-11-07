@@ -19,9 +19,15 @@ namespace spp::analyse::utils::sup_attachment {
   /// constraint as it is attached. A constraint is checked
   /// against the constrained type's own supertypes, which may
   /// not be attached yet, so reading a scope's supertypes during
-  /// the sweep attaches them first ("Scope::OnSupScopesRead").
+  /// the sweep attaches them first ("Scope::OnSupScopesRead"). A "$"
+  /// mock's wait until they are read ("Scope::SupsDeferred"), as
+  /// almost none are.
   SPP_EXP_FUN auto AttachAllSuperScopes(
     ScopeManager &sm, CompilerMetaData *meta) -> void;
+
+  /// Stop attaching what the sweep put off ("Scope::SupsDeferred"),
+  /// as the scope tree it belongs to is going away.
+  SPP_EXP_FUN auto StopAttachingDeferredSups() -> void;
 
   /// Attach the super scopes to one type, once ("Scope::SupsAttached"),
   /// returning whether it attached them now. Called by the sweep,

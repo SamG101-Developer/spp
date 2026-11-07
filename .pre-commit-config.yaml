@@ -58,6 +58,13 @@ repos:
         pass_filenames: false
         files: '^(headers/spp/asts/.*\.ixx|\.tools/generate-ast-kinds\.py)$'
 
+      - id: benchmark-coverage
+        name: check every codegen part has a benchmark
+        entry: python3 benchmarks/coverage.py
+        language: python
+        pass_filenames: false
+        files: '^(sources/spp/(asts|codegen)/.*\.cpp|benchmarks/(coverage\.py|exempt\.txt|runtime/.*/manifest\.toml))$'
+
       - id: pins
         name: validate dependency manifest
         entry: python3 .github/scripts/lib/pins.py check -q
@@ -80,6 +87,20 @@ repos:
         additional_dependencies: [ "pyyaml==6.0.3" ]
         pass_filenames: false
         files: '^\.github/(dependencies\.toml|workflows/|actions/|scripts/ci/check-workflows\.py|scripts/lib/pins\.py)'
+
+      - id: suggested-triples
+        name: check suggested triples match ci
+        entry: python3 .github/scripts/ci/check-suggested-triples.py
+        language: python
+        pass_filenames: false
+        files: '^(\.github/workflows/_cross_codegen\.yaml|\.github/scripts/ci/check-suggested-triples\.py|sources/spp/codegen/llvm_target\.cpp)$'
+
+      - id: env-vars
+        name: check environment variables are registered
+        entry: python3 .github/scripts/ci/check-env-vars.py
+        language: python
+        pass_filenames: false
+        files: '^(\.github/|\.tools/|tests/|sources/|headers/|cmake/|CMakeLists\.txt$)'
 
   # PYTHON CHECKS
 

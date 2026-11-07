@@ -253,13 +253,23 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
   GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params,
   Scope const &scope, Scope const &decl_scope) -> Vec<Unique<GenericArgumentAst>> {
   auto out = Vec<Unique<GenericArgumentAst>>();
-  if (params.GetVariadicParam() != nullptr) { return out; }
+  auto const *const pack = params.GetVariadicParam();
 
-  // Each argument names its parameter as the solver names it ("ParamsBoundByArgs").
+  // Each argument names its parameter as the solver names it ("ParamsBoundByArgs"); a pack's elements stay positional,
+  // after the others ("Scope::ArgsIdOf" keys them into its list).
   const auto all_args = args.GetAllArgs();
   const auto all_params = params.GetAllParams();
   const auto targets = ParamsBoundByArgs(all_args, all_params);
   for (auto *const param : all_params) {
+    if (param == pack) {
+      for (auto i = 0uz; i < all_args.size(); ++i) {
+        if (targets[i] != pack) { continue; }
+        out.emplace_back(all_args[i]->IsTypeArg()
+          ? GenericArgumentAst::NewType(nullptr, all_args[i]->TypeVal)
+          : GenericArgumentAst::NewComp(nullptr, AstCloneShared(all_args[i]->CompVal)));
+      }
+      continue;
+    }
     const auto at = genex::find(targets, param);
     auto const *const given = at != targets.end() ? all_args[static_cast<std::size_t>(at - targets.begin())] : nullptr;
     if (given != nullptr and given->IsTypeArg()) {

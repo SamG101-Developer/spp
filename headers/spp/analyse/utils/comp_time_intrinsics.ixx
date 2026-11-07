@@ -554,6 +554,10 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
 
+  SPP_EXP_FUN auto StdHintsBranch(
+    BooleanLiteralAst const &condition)
+    -> Unique<BooleanLiteralAst>;
+
   SPP_EXP_FUN auto StdMemOpsAlignOf(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)

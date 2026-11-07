@@ -1,0 +1,42 @@
+use std::console::println
+use std::hints::black_box
+
+cls Counter {
+  !public total: U64
+  !public step: U64
+}
+
+sup Counter {
+  !public
+  fun make(step: U64) -> Counter {
+    ret Counter(total=0_u64, step=step)
+  }
+
+  !public
+  fun advance(&mut self, by: U64) -> Void {
+    self.total = (self.total + by * self.step) % 1000003_u64
+  }
+
+  !public
+  fun peek(&self) -> U64 {
+    ret self.total
+  }
+}
+
+fun add_into(target: &mut U64, value: U64) -> Void {
+  target@ = (target@ + value) % 1000000007_u64
+}
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut c = Counter::make(black_box(7_u64))
+  let mut acc = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    c.advance(i)
+    add_into(&mut acc, c.peek())
+    i += 1_u64
+  }
+  drop(c)
+  println("{}", acc)
+}

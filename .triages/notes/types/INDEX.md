@@ -6,7 +6,8 @@
 - [Alias names read where written](alias-names-read-where-written.md) — DeclScope first; BoundAlias re-link
 - [use imports are alias symbols](use-imports-are-alias-symbols.md) — TypeRef resolves aliases; raw lookup doesn't
 - [Variant tag order](variant-tag-order-is-address-order.md) — StableKeyLess by Name + Serial, never FqName
+- [Borrowed variant is one member](borrowed-variant-is-one-member.md) — &Opt never flattens; VariantMemberRefs still lists it, check the borrow (#55)
 - [TypeEq vs Assignable](typeeq-accepts-forwarding.md) — TypeEq is identity; Assignable widens/forwards
 - [Generic leak into shared instantiations](generic-leak-shared-instantiations.md) — ancestor sweep gone (H18)
-- [Self type resolution](spp-self-type-resolution.md) — Self is stage 3; ~14 sites can't fold into FqName
+- [Self type resolution](spp-self-type-resolution.md) — Self is stage 3; ~14 sites can't fold into FqName; FqName drops the convention (#54)
 - [Comp keys fold by intrinsics](comp-key-folds-by-intrinsics.md) — FoldBinaryOp op table; key refuses what the call raises (E90/E91)

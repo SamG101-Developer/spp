@@ -1,0 +1,3 @@
+description = "Mandelbrot set membership on a 1800x1800 grid, 50 iterations: F64 arithmetic, early exit"
+layer = "core"
+output = "exact"

@@ -127,7 +127,7 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
     ? VariableKind::FnMock
     : VariableKind::Constant;
   _AliasSymbol = MakeShared<VariableSymbol>(
-    Name, Type, sm->CurrentScope, kind, false, Visibility.first);
+    Name, Type, sm->CurrentScope, kind);
   memory_state::StateOf(
     *sm->CurrentScope, *_AliasSymbol).InitializedBy(*this);
   _AliasSymbol->CompTimeValue = AstClone(Value);
@@ -186,8 +186,7 @@ auto CmpStatementAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   if (_AliasSymbol != nullptr and not Type->IsCompilerGeneratedType()) {
-    _AliasSymbol->Visibility = Visibility.first;
-    _AliasSymbol->VisibilityAnnotation = Visibility.second;
+    _AliasSymbol->VisibilityFrom = this;
   }
   sm->MoveOutOfCurrentScope();
 }

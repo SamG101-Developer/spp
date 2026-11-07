@@ -15,6 +15,8 @@ namespace spp::lex {
 
 // TODO: Rename all constants to kConstant format.
 
+/// The raw tokens that are created from the lexer. These are non-composed, so
+/// <= is [TK_LESS_THEN TK_EQUALS].
 SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   LX_CHARACTER,
   LX_DIGIT,
@@ -89,6 +91,9 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
   KW_CAPS,
 };
 
+/// The composed tokens that are registered on TokenAst ASTs. These are used in
+/// the parser, by taking [TK_LESS_THAN, TK_EQUALS], and giving out the token
+/// TK_LESS_THAN_EQUALS for example.
 SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
   LX_CHARACTER,
   LX_DIGIT,
@@ -189,6 +194,8 @@ SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
   SP_NO_TOK
 };
 
+/// A "raw token" is a token type (enum) with its associated data. This is
+/// needed for strings or numbers for example.
 SPP_EXP_CLS class spp::lex::RawToken {
 public:
   RawTokenType Type;
@@ -197,7 +204,9 @@ public:
   RawToken(RawTokenType type, Str data);
 };
 
-SPP_EXP_FUN auto spp::lex::TokToString(const SppTokenType token) noexcept -> Str {
+/// Convert a token into string (reverse lexer).
+SPP_EXP_FUN auto spp::lex::TokToString(
+  const SppTokenType token) noexcept -> Str {
   switch (token) {
     case SppTokenType::LX_CHARACTER: return "";
     case SppTokenType::LX_DIGIT: return "";

@@ -396,15 +396,15 @@ auto CaseExpressionAst::Stage11_CodeGen(
     or LoweredFromTryOperator
     or yields_value;
 
-  // Get the function, and create the end basic block. We
-  // define "entry" and "end" zones for the "case" expression,
-  // and start in the "entry" zone.
-  const auto func = ctx->Builder.GetInsertBlock()->getParent();
-  const auto case_entry_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "case.entry" + uid, func);
+  // Create the end basic block. The branches start in the block
+  // the condition ended in, with no block between: a branch hint
+  // ("std::hints::likely") is lost unless its "llvm.expect" is in
+  // the same block as the branch it feeds, as LLVM removes every
+  // "expect" in a block once it has seen that block's own branch.
+  const auto case_entry_bb = ctx->Builder.GetInsertBlock();
+  const auto func = case_entry_bb->getParent();
   const auto case_end_bb = llvm::BasicBlock::Create(
     *ctx->Context, "case.end" + uid, func);
-  ctx->Builder.CreateBr(case_entry_bb);
 
   auto phi = static_cast<llvm::PHINode*>(nullptr);
   auto ret_type = Shared<TypeAst>(nullptr);

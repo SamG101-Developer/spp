@@ -66,7 +66,7 @@ runs:
       with:
         runner-image: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
+        version: ${{ env.SPP_CI_TOOLCHAIN_VERSION }}
         cache-key-suffix: ${{ inputs.variant }}
 
     - name: Restore source mtimes
@@ -80,7 +80,7 @@ runs:
       with:
         os: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
+        version: ${{ env.SPP_CI_TOOLCHAIN_VERSION }}
         variant: ${{ inputs.variant }}
 
     # Falls back to the newest tree for this variant on this branch, then on the base branch.

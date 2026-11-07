@@ -159,6 +159,14 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
     member_lookup::RaiseMissingIdentifierAndClosestOptions(*this, {}, {});
   }
 
+  // A pack, a function's or a comp one, is no value: it is named whole only
+  // where it is spread, folded or forwarded ("AllowPackWhole"), and "(..xs)"
+  // is its tuple.
+  RaiseIf<SppPackNotValueError>(
+    sym != nullptr and sym->Pack.has_value() and
+    not meta->AllowPackWhole,
+    ERR_ARGS(*this, *sym->Name));
+
   // A parameter's default is analysed where the parameters are
   // in scope, but it is copied into the calls, where this name
   // would mean whatever the caller has under it.

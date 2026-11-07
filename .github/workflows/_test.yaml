@@ -97,8 +97,8 @@ jobs:
       - name: Expose valgrind
         if: contains(matrix.suites, 'valgrind')
         run: |
-          echo "$SPP_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
-          "$SPP_VALGRIND_PREFIX/bin/valgrind" --version
+          echo "$SPP_CI_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_CI_VALGRIND_PREFIX/bin/valgrind" --version
 
       - name: Install glibc debug symbols
         if: contains(matrix.suites, 'valgrind')
@@ -134,7 +134,7 @@ jobs:
           - name: s++ STL conformance
             if: contains(matrix.suites, 'stl')
             env:
-              SPP_OFF: ${{ inputs.off }}
+              SPP_CI_OFF: ${{ inputs.off }}
             run: bash .github/scripts/test/stl-conformance.sh
 
           # The compiled code's memory, over the groups that make

@@ -1,7 +1,7 @@
 ---
 name: spp-self-type-resolution
 description: "Self is registered in stage 3 and substituted per written-type position; why it cannot be centralised in FqName"
-updated: 2026-09-14
+updated: 2026-11-04
 ---
 
 `Self` is a real `TypeSymbol` registered into the class or superimposition scope, linked to the scope of the type the
@@ -79,3 +79,9 @@ That removed the only load-bearing use of equality's one-sided "`Self` means the
 - **Per default:** `GenericSolver::_SelfForDefault`. A value default gets the resolved owner; a type default keeps `Self` as spelled.
 
 **Kept on purpose:** the `Self` block in `SameType`/`AssignableCore` (`ReadSelfPair`). Removing it (with `TypeRef::Of` answering `Self` as its class) broke codegen: `Opt[Self]` and `Opt[Char]` are two instances under the spelling key, and the "no coercion" check needs them equal. `SameSignature` also binds a base parameter bound to `Self` (like `Ret` of `BitAnd`) to the implementer.
+
+**A symbol's `FqName()` has no convention (2026-11-04).** Anything that turns a written type into its symbol's name has
+to put the written convention back, as `FindWrittenTypeSymbol` does. `SubroutinePrototypeAst` set `EnclosingFnRetType`
+to the bare `FqName()`, so a lowered `GenOnce[&Opt[S32]]` (returning `ptr`) read its return type as `Opt[S32]` and
+wrapped the pointer into the variant by value: an ICE (open-bugs #54). Only a variant showed it, as nothing coerces
+into a class.

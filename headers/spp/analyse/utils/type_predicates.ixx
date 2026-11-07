@@ -90,7 +90,8 @@ namespace spp::analyse::utils::type_predicates {
   SPP_EXP_FUN auto IsTypeConcrete(TypeRef const &ref) -> bool;
 
   /// A type is borrowed if it has a convention, or its a by-move
-  /// variant that itself can contain a borrow, like "Str or &S32".
-  SPP_EXP_FUN auto IsTypeBorrowed(TypeAst const &type, ScopeManager const &sm, bool deep = true) -> bool;
-
+  /// variant that itself can contain a borrow, like "Str or &S32",
+  /// read in "scope".
+  SPP_EXP_FUN auto IsTypeBorrowed(
+    TypeAst const &type, Scope const &scope, bool deep = true) -> bool;
 }

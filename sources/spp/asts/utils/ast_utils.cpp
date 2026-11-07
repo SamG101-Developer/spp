@@ -55,19 +55,19 @@ auto spp::asts::AstBody(
   if (ast == nullptr) { return {}; }
 
   if (const auto cls = ast->To<ClassPrototypeAst>(); cls != nullptr) {
-    return cls->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
+    return cls->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*> | genex::to<Vec>();
   }
   if (const auto sup = ast->To<SupPrototypeFunctionsAst>(); sup != nullptr) {
-    return sup->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
+    return sup->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*> | genex::to<Vec>();
   }
   if (const auto ext = ast->To<SupPrototypeExtensionAst>(); ext != nullptr) {
-    return ext->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
+    return ext->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*> | genex::to<Vec>();
   }
   if (const auto fun = ast->To<FunctionPrototypeAst>(); fun != nullptr) {
-    return fun->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
+    return fun->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*> | genex::to<Vec>();
   }
   if (const auto mod = ast->To<ModulePrototypeAst>(); mod != nullptr) {
-    return mod->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*>() | genex::to<Vec>();
+    return mod->Impl->Members | genex::views::ptr | genex::views::cast_dynamic<Ast*> | genex::to<Vec>();
   }
 
   Ice(*ast, "AstBody: this kind of ast has no body");

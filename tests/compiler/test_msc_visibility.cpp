@@ -147,8 +147,8 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestMscVisibility,
   test_invalid_visibility_access_package_module_member,
   SppAccessViolationError, R"(
-    fun f(mut x: Str) -> Void {
-        std::mem::ops::drop_in_place(&mut x)
+    fun f() -> Void {
+        let r = std::format::radix_of(0_u8)
     }
 )");
 

@@ -105,3 +105,42 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         loop x in c(false) { }
     }
 )");
+
+// "gen self" forwarded through "FwdRef" to a variant (open-bugs #54). The lowered "GenOnce" returns "&Opt[S32]", a
+// pointer; its return type was read without the convention, so the pointer was coerced into the variant by value, an
+// ICE ("Function return type does not match operand type of return inst").
+// The same coroutine yielding "&self.inner" itself is fine.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenForwarding,
+  test_valid_gen_self_forwarded_to_a_variant, R"(
+    cls VariantWrapper { !public inner: Opt[S32] }
+
+    sup VariantWrapper ext std::ops::fwd::FwdRef[Opt[S32]] {
+        cor fwd_ref(&self) -> std::generator::GenOnce[&Opt[S32]] {
+            gen &self.inner
+        }
+    }
+
+    sup VariantWrapper {
+        !public cor get(&self) -> std::generator::GenOnce[&Opt[S32]] {
+            gen self
+        }
+    }
+
+    fun f() -> Void {
+        let w = VariantWrapper(inner=Some(val=1_s32))
+        let b = w.get().is_some()
+        std::mem::ops::drop(w)
+    }
+)");
+
+// The same through std, "Single::get_ref" ("gen self") over a variant (open-bugs #54).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenForwarding,
+  test_valid_single_get_ref_of_a_variant, R"(
+    fun f() -> Void {
+        let s = std::single::Single[Opt[S32]]::new(Some(val=1_s32))
+        let b = s.get_ref().is_some()
+        std::mem::ops::drop(s)
+    }
+)");

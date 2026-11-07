@@ -6,6 +6,7 @@
 - [NonNull lowers to ptr](nonnull-lowers-to-ptr.md) — needs the is(*NON_NULL) special case
 - [noalias unsound on &mut params](noalias-unsound-on-mut-params.md) — plan is M7; index/slice borrows the blocker
 - [GetAllParams includes self](getallparams-includes-self.md) — [0] on a method is `self`
+- [llvm.expect at the call site](expect-lowered-before-inlining.md) — hints via CallSiteImpl; expect in the branch's own block, else dropped
 - [rel miscompiles with intrinsics](rel-profile-miscompiles-with-intrinsics.md) — strip inliner lifetime markers
 - [Symbol mangling](spp-symbol-mangling.md) — path + $h<fnv64>; closures {closure#N}
 - [Stack protector heuristics](stack-protector-heuristics.md) — canaries everywhere; sspstrong = all
@@ -18,5 +19,6 @@
 - [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
 - [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()
+- [ARM narrow atomics miscompare](arm-narrow-atomics-sync-libcall-extension.md) — pre-v6: LLVM assumes __sync_* results zero-extended, libgcc sign-extends; U8 > 127 fails
 - [musl programs need libgcc_s](musl-programs-need-libgcc-s.md) — __gcc_personality_v0; bare Alpine needs `apk add libgcc`, not an sppc gap
 - [ffi params in the C ABI](ffi-struct-params-c-abi.md) — structs byval/by pointer on ppc32, m68k, s390x; small ints signext/zeroext per target; one-field structs are scalars

@@ -1,6 +1,6 @@
 - [Generic inference engine](generic-inference-engine-shape.md) — GenericSolver: Give, Unify, worklist
 - [Inference is one-way](spp-generic-inference-is-one-way.md) — from a thing's own args, never its result
-- [Variadic pack model](variadic-pack-model.md) — IsVariadic; element-typed in templates, tuple in instances
+- [Variadic pack model](variadic-pack-model.md) — every pack a list, never named; tuples/variants are classes over a pack; E123/E124; helpers
 - [Pack in a variant flattens](variant-pack-flattens.md) — f[S32, Str] on Bool or Rest is Bool or S32 or Str (maintainer, 2026-10-22)
 - [Generic alias constraints](generic-alias-constraints.md) — aliases::TargetOf; checks from arg scope
 - [Generic param syms link a dummy scope](generic-param-sym-links-dummy-scope.md) — use Kind==GenericParam
@@ -8,13 +8,16 @@
 - [Defaults copied to use sites](spp-defaults-copied-to-use-sites.md) — no scopes in defaults (E108)
 - [Generic sup cmp + Void params](spp-generic-sup-cmp-and-void-params.md) — `cmp n: T` folded at the use
 - [Sup attach is lazy + memoised](sup-attach-fixed-point.md) — attach once on first read
+- [Module-order failures](module-order-failures.md) — 5-10% of shuffled orders crash or fail; a use-after-free holding a reference into NormalSupBlocks; GlobSpp's sort hides it
 - [Lazy attach needs a clean context](lazy-attach-clean-context.md) — ResetContext under a heavy MetaGuard
 - [GetSupScopes is a snapshot](getsupscopes-snapshot.md) — SupScopeList; old const& was a UAF
 - [Sup generics from the receiver](spp-sup-generics-from-receiver.md) — bind blanket/pack sups off the receiver
 - [E60 is order-dependent](e60-double-extension-order-dependent.md) — CI-only from unsorted module glob order
-- [Tuple sup matching](tuple-sup-matching-broken.md) — tuple args positional; 2 deliberately-red tests
+- [Tuple sup matching](tuple-sup-matching-broken.md) — history: tuple args were positional; gone in phase 11, tuples are ordinary classes
+- [Constraint failure on a call is E51](constraint-failure-on-a-call-is-e51.md) — E78 only for class/alias/sup constraints; a call wraps it in E51
 - [Overload arg matching order](overload-arg-matching-order.md) — exact, relaxed, forwarding; don't reorder
 - [Return-type overloading contexts](return-type-overloading-contexts.md) — where an overload gets its target
 - [Abstract types by value](abstract-types-by-value.md) — E45 only if held by value (FindHeldByValue)
-- [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; no FunXxx at attach
+- [Method as a value](spp-method-as-value-gap.md) — `Type::method` via `Owner::$M`; kinds follow self; generic owners: seed bindings, mocks deferred, ICE
 - [Comp args target their param type](comp-args-target-their-param-type.md) — ExpectedCompType, set in NamedGnArgs + ExpectedCompArgTypes; AnalyseCompExpr
+- [Pack constraints pairwise](pack-constraints-pairwise.md) — ..Ts: C per element; ..Ts: Add[Ts] every pair (Self = element); constraint inference skips packs

@@ -3,52 +3,105 @@ module;
 
 module spp.compiler.out_layout;
 import spp.utils.files;
+import genex;
+import magic_enum;
 import std;
 
+namespace spp::compiler {
+  SPP_INTERNAL {
+    /// The name of an enum value in lower case: how it is written by the user.
+    template <typename E>
+    auto LowerName(const E value) -> Str {
+      return magic_enum::enum_name(value)
+        | genex::strings::lower_case
+        | genex::to<Str>();
+    }
+
+    /// The lower case name of every value of an enum, in declaration order.
+    template <typename E>
+    auto LowerNames() -> Vec<Str> {
+      auto names = Vec<Str>();
+      for (const auto value : magic_enum::enum_values<E>()) {
+        names.emplace_back(LowerName(value));
+      }
+      return names;
+    }
+
+    /// The value of an enum that a name written by the user means, if any.
+    template <typename E>
+    auto FromName(const StrView name) -> Opt<E> {
+      return magic_enum::enum_cast<E>(name, magic_enum::case_insensitive);
+    }
+  }
+}
+
+auto spp::compiler::ModeName(
+  const BuildMode mode) -> Str {
+  return LowerName(mode);
+}
+
+auto spp::compiler::ModeNames() -> Vec<Str> {
+  return LowerNames<BuildMode>();
+}
+
+auto spp::compiler::ModeFromName(
+  const StrView name) -> Opt<BuildMode> {
+  return FromName<BuildMode>(name);
+}
+
+auto spp::compiler::TypeName(
+  const BuildType type) -> Str {
+  return LowerName(type);
+}
+
+auto spp::compiler::TypeNames() -> Vec<Str> {
+  return LowerNames<BuildType>();
+}
+
+auto spp::compiler::TypeFromName(
+  const StrView name) -> Opt<BuildType> {
+  return FromName<BuildType>(name);
+}
+
 SPP_MOD_BEGIN
-auto spp::compiler::OutLayout::AllTargetsRoot() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::AllTargetsRoot() const -> Path {
   return Root / "out";
 }
 
-auto spp::compiler::OutLayout::OutRoot() const
-  -> Path {
-  return AllTargetsRoot() / Target / Mode;
+/// [CHECKED]
+auto spp::compiler::OutLayout::OutRoot() const -> Path {
+  return AllTargetsRoot() / Target / ModeName(Mode);
 }
 
-auto spp::compiler::OutLayout::LlvmRoot() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::LlvmRoot() const -> Path {
   return OutRoot() / "llvm";
 }
 
-auto spp::compiler::OutLayout::LibRoot() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::LibRoot() const -> Path {
   return OutRoot() / "lib";
 }
 
-auto spp::compiler::OutLayout::LtoIrFile() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::LtoIrFile() const -> Path {
   return LlvmRoot() / "lto.ll";
 }
 
-auto spp::compiler::OutLayout::ObjectFile() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::ObjectFile() const -> Path {
   return LlvmRoot() / "spp.o";
 }
 
-auto spp::compiler::OutLayout::ExecutablePath() const
-  -> Path {
+/// [CHECKED]
+auto spp::compiler::OutLayout::ExecutablePath() const -> Path {
   return OutRoot() / ExecutableName();
 }
 
-auto spp::compiler::OutLayout::ExecutableName() const
-  -> Str {
+/// [CHECKED]
+auto spp::compiler::OutLayout::ExecutableName() const -> Str {
   return utils::files::NativeString(Root.filename());
-}
-
-auto spp::compiler::OutLayout::AllModes()
-  -> Vec<Str> {
-  return Vec<Str>{"dev", "rel"};
 }
 
 SPP_MOD_END

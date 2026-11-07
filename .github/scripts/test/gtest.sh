@@ -84,9 +84,9 @@ fi
 # A lane may run only some suites (the sanitizer lane, whose build is too slow for all of them).
 # Not GTEST_FILTER: gtest reads that from the environment, and an empty one matches no tests.
 filter_flags=()
-if [ -n "${SPP_GTEST_FILTER:-}" ]; then
-  filter_flags=("--gtest_filter=${SPP_GTEST_FILTER}")
-  echo "filter: ${SPP_GTEST_FILTER}"
+if [ -n "${SPP_CI_GTEST_FILTER:-}" ]; then
+  filter_flags=("--gtest_filter=${SPP_CI_GTEST_FILTER}")
+  echo "filter: ${SPP_CI_GTEST_FILTER}"
 fi
 
 status=0

@@ -1,0 +1,10 @@
+description = "A class with a static constructor and methods taking &self and &mut self, its fields read and written, and a write through a &mut parameter's deref, in a hot loop"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:postfix_expression_operator_runtime_member_access",
+  "ast:postfix_expression_operator_static_member_access",
+  "ast:postfix_expression_operator_deref",
+  "ast:class_implementation",
+  "ast:sup_prototype_functions",
+]

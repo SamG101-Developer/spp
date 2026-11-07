@@ -1,6 +1,7 @@
 ---
 name: spp-test-writing-idioms
-description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests"
+description: "Syntax that costs a rebuild each time it is guessed wrong when writing s++ tests or benchmarks"
+updated: 2026-11-03
 ---
 
 Collected while writing std unit tests — each of these was found by a failed build, so check here first.
@@ -18,5 +19,30 @@ Collected while writing std unit tests — each of these was found by a failed b
 - `RawBuf` indexes to `&T or None`, not a plain borrow, so `buf[i]@` does not compile; use `take_at`.
 - **`unwrap_or` evaluates its fallback eagerly** — it is an ordinary argument. Use **`unwrap_or_else`** with a closure when the fallback is expensive or can fault. A real bug came from this: `TimePoint::duration_since` fell back on an expression that underflowed and aborted in exactly the case where the fallback was not needed.
 - Test groups: `!test(group="std/x/y")` in `tst/std/x/y.spp`. `spp test` takes **at most one** `-g`.
+
+Found writing the run-time benchmarks (`benchmarks/runtime`, 2026-11-02), for a project rather than the std:
+
+- **`Vec` is in the prelude for a project too**: `use std::vector::Vec` is E14 (duplicate). `Range` and `Copy` are not.
+- **The array type is `std::array::Arr[T, n_uz]`**; `[T; n]` is only the literal (`[0_s64; 16_uz]`), and as a type it
+  is a syntax error.
+- **A closure capturing by value (`caps k`) can be called once**: the second call is "uninitialized memory used". Capture
+  by borrow (`caps &k`, read `k@`) to call it in a loop.
+- **Passing a `&mut` parameter on to a call uses it up**: a second call with it is "uninitialized memory used". Pass it
+  to one callee, or have the owner make each borrow (`f(&mut v)` twice).
+- **Print with the formatted `println`** (std `3af56ae`, 2026-11-03): `use std::console::println`, then
+  `println("{}\n{}", a, b)`, as the Rust versions do. The old per-type `show`/`show_s` helpers are gone (a generic
+  `show[T]` could not call `Str::from(x)`: no `From` impl is chosen for an unbound `T`).
+- **There is no argv and no integer parsing**; `std::process::get_env` returns an unparsed `Str`. For an input the
+  optimiser must not see, use `std::hints::black_box` (`use std::hints::black_box`), as Rust's `black_box`. It
+  replaced each benchmark's `hide()` (a volatile round-trip).
+- **Methods in a `sup` block are private by default**: mark each one called from outside `!public`. An override in
+  `sup X ext Base` must not be: it takes the base method's visibility, and `!public` on it is "invalid target of
+  annotation".
+- **`None` is a zero type**: `ret None`, not `ret None()`. `Some(val=x)`, `Pass(val=x)`, `Fail(err=x)`; match with
+  `is Some[U64](val)`, `is Pass[U64](val)`.
+- **There is no dynamic dispatch through a base type**: an override is called on the derived value. An indirect call is a
+  function value (`FunRef[(U64,), U64]`) passed to a `!no_inline` function (`use std::llvm::no_inline`).
+- `v[mut i]@ = x` writes an element; `v[i]@` reads one. `F64::from(u)`, `S64::from(f)` (truncating) and
+  `USize::from(u64)` convert.
 
 Related: [[spp-linear-types]], [[build-workflow]], [[add-tests-even-if-failing]].

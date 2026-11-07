@@ -17,7 +17,7 @@ fi
 scratch_project "$exe" conformance
 
 # Keys the lane's target cannot have (the lane's "off" input).
-features_off "${SPP_OFF:-}"
+features_off "${SPP_CI_OFF:-}"
 
 "$exe" build
 "$exe" test --all-libs

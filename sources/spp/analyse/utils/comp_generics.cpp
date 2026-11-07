@@ -58,7 +58,7 @@ auto spp::analyse::utils::comp_generics::FindCompMemberId(
   } const _leave_guard;
 
   // The owner: a class, or a made instance of a template.
-  auto const &head = scopes::HeadOf(owner);
+  auto const &head = scopes::HeaderOf(owner);
   auto const *const tmpl = head.Kind == Tag::Symbol or head.Kind == Tag::Inst
     ? head.Symbol()
     : nullptr;

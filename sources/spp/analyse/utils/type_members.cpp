@@ -32,7 +32,6 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
-import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.ptr;
@@ -155,37 +154,6 @@ namespace spp::analyse::utils::type_members {
       return ref.Conv != ConventionTag::MOV ? name->WithConvention(ConventionAstOf(ref.Conv)) : name;
     }
 
-    /// For a variant type, flatten any sub-variants into the
-    /// single variant type list, and remove any duplicates too
-    /// (flattening can introduce duplicates, or they might be
-    /// pre-existing).
-    auto FlattenVariants(
-      TypeAst const &variants, Scope const &scope) -> Vec<Pair<Shared<TypeAst>, TypeRef>> {
-      // Create the list of types that will be the final returned
-      // flattened, deduplicated list.
-      auto out = Vec<Pair<Shared<TypeAst>, TypeRef>>();
-
-      // The adder function first checks that the type doesn't
-      // exist within the output list, before adding it in.
-      const auto add_unique = [&](Shared<TypeAst> const &member, TypeRef const &ref) {
-        const auto same = [&](auto const &x) { return type_compare::TypeEq(ref, x.second, scope, scope); };
-        if (genex::any_of(out, same)) { return; }
-        out.emplace_back(member, ref);
-      };
-
-      // Get the variant member's types from the tuple that is
-      // the "..Variants" generic parameter's argument. Add or
-      // flatten each type into the resulting list.
-      for (const auto arg : variants.LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        const auto ref = TypeRef::Of(*arg->TypeVal, scope);
-        const auto nested = VariantMemberRefs(ref, scope);
-        if (nested.empty()) { add_unique(arg->TypeVal, ref); }
-        else { for (auto const &m : nested) { add_unique(AsType(m), m); } }
-      }
-
-      // Return the new filled flat vector.
-      return out;
-    }
   }
 }
 
@@ -467,7 +435,7 @@ auto spp::analyse::utils::type_members::FindRecursiveAttrType(
   const auto is_self = [&](TypeRef const &held) { return held.Template() == self_template; };
   for (auto const *attr : type.Impl->Members
        | genex::views::ptr
-       | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+       | genex::views::cast_dynamic<ClassAttributeAst*>) {
     if (FindHeldByValue(TypeRef::Of(*attr->Type, scope), scope, is_self).Symbol != nullptr) {
       return attr->Source.OriginalType;
     }
@@ -506,31 +474,10 @@ auto spp::analyse::utils::type_members::GetNthTypeOfIndexableType(
   Ice(*ref.Symbol->FqName(), scope, err_msg);
 }
 
-auto spp::analyse::utils::type_members::OrderVariantMembers(
-  Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
-  -> Vec<Shared<TypeAst>> {
-  auto keyed = Vec<Pair<Str, Shared<TypeAst>>>();
-  for (auto &[type, sym] : members) {
-    keyed.emplace_back(sym != nullptr ? sym->FqName()->ToString() : type->ToString(), std::move(type));
-  }
-  genex::actions::stable_sort(keyed, {}, [](auto const &k) -> Str const& { return k.first; });
-  auto out = Vec<Shared<TypeAst>>();
-  for (auto &[_, type] : keyed) { out.emplace_back(std::move(type)); }
-  return out;
-}
-
 /// [CHECKED]
 auto spp::analyse::utils::type_members::VariantMembers(
   TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>> {
-  // A type based overload of the variant member detection,
-  // which flattens and deduplicates.
-  const auto variants = type.LastTypePart()->GnArgGroup->At("Variants");
-  if (variants != nullptr and variants->IsTypeArg()) {
-    return FlattenVariants(*variants->TypeVal, scope)
-      | genex::views::transform([](auto const &x) { return x.first; })
-      | genex::to<Vec>();
-  }
-
+  // Read off its identity, which alone orders the members.
   return VariantMemberRefs(TypeRef::Of(type, scope), scope)
     | genex::views::transform([](auto const &x) { return AsType(x); })
     | genex::to<Vec>();
@@ -546,10 +493,10 @@ auto spp::analyse::utils::type_members::VariantMemberRefs(
 
   // Its identity lists its members, flattened and in order,
   // each what it means; anything else is not a variant.
-  if (ref.Id == nullptr or scopes::HeadOf(ref.Id).Kind != TypeKey::Tag::Variant) { return {}; }
+  if (ref.Id == nullptr or scopes::HeaderOf(ref.Id).Kind != TypeKey::Tag::Variant) { return {}; }
   auto members = Vec<TypeRef>();
   // Read straight off each member's identity, one per member:
   // a member's index is its tag.
-  for (const auto member : scopes::HeadOf(ref.Id).VariantMembers) { members.emplace_back(TypeRef::Of(member, scope)); }
+  for (const auto member : scopes::HeaderOf(ref.Id).VariantMembers) { members.emplace_back(TypeRef::Of(member, scope)); }
   return members;
 }

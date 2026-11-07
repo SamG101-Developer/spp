@@ -23,7 +23,7 @@ readonly FLAMEGRAPH_DIR="${ROOT}/../FlameGraph"
 
 # Release runs several times faster than debug, so the default sample rate is raised to keep the stack count in the
 # same range. Override for a longer or shorter workload.
-readonly FREQ="${SPP_PERF_FREQ:-999}"
+readonly FREQ="${SPP_CI_PERF_FREQ:-999}"
 
 trap 'rm -f "${PERF_DATA}"' EXIT
 

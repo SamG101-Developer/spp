@@ -70,6 +70,9 @@ import std;
 SPP_MOD_BEGIN
 namespace spp::analyse::errors {
   namespace {
+    /// "InstantiatedFrom".
+    asts::Ast const *instantiated_from = nullptr;
+
     /// [CHECKED]
     /// Owned text for the `INLINE_*` macros. A function rather
     /// than `Str(...)` at the splice: the argument is as often
@@ -160,6 +163,19 @@ namespace spp::analyse::errors {
       return texts;
     }
   }
+}
+
+auto spp::analyse::errors::InstantiatedFrom() -> asts::Ast const* {
+  return instantiated_from;
+}
+
+spp::analyse::errors::InstantiatedFromGuard::InstantiatedFromGuard(asts::Ast const *site) :
+  _Marked(instantiated_from == nullptr and site != nullptr) {
+  if (_Marked) { instantiated_from = site; }
+}
+
+spp::analyse::errors::InstantiatedFromGuard::~InstantiatedFromGuard() {
+  if (_Marked) { instantiated_from = nullptr; }
 }
 
 auto SemanticError::AddHeader(
@@ -1112,10 +1128,10 @@ SppGenericParameterConflictError::SppGenericParameterConflictError(
 }
 
 SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
-  Ast const &param, Ast const &ctx) {
+  Ast const &param, Ast const &use) {
   AddHeader(72, "Generic Parameter Not Inferred Error");
-  AddCtxForErr(&ctx, "Context parameter introduced here");
-  AddErr(&param, "Generic parameter not inferred here");
+  AddCtxForErr(&param, "Generic parameter declared here");
+  AddErr(&use, "Generic parameter not inferred here");
   AddFooter(
     "The type for this generic parameter could not be inferred.",
     "Provide an explicit type argument for the generic parameter.");
@@ -1554,6 +1570,68 @@ SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
     Str(accessing_owner) + ", so only " + Str(package_owner) + " can name it.",
     "Ship the package in this project's own 'ffi' folder to use it directly, or go through " + Str(package_owner) +
     "'s own functions.");
+}
+
+SppDependencyNotDeclaredError::SppDependencyNotDeclaredError(
+  Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
+  AddHeader(121, "Dependency Not Declared Error");
+  AddErr(&access_site, "Use of the package " + INLINE_INFO(package) + " here");
+  AddFooter(
+    "The package '" + INLINE_NOTE(package) + "' is shipped by " + Str(package_owner) + ", which " +
+    Str(accessing_owner) + " does not declare.",
+    "Declare it under [vcs] in the 'spp.toml' of " + Str(accessing_owner) + " to use it directly.");
+}
+
+SppSpreadNotLastError::SppSpreadNotLastError(
+  Ast const &spread, Ast const &after) {
+  AddHeader(122, "Spread Not Last Error");
+  AddCtxForErr(&spread, "Spread into a variadic parameter here");
+  AddErr(&after, "Positional argument after the spread here");
+  AddFooter(
+    "A spread into a variadic parameter takes every positional argument from it on, so it must be the last one.",
+    "Move the spread after the other positional arguments, or pass them by keyword.");
+}
+
+SppPackNotValueError::SppPackNotValueError(
+  Ast const &use, Ast const &param) {
+  AddHeader(123, "Pack Not A Value Error");
+  AddCtxForErr(&param, "Pack declared here");
+  AddErr(&use, "Pack used as a value here");
+  AddFooter(
+    "A pack is a list of values, not a value: it can be spread (" + INLINE_NOTE("..xs") + "), indexed (" +
+    INLINE_NOTE("xs.0") + ") or collected into a tuple (" + INLINE_NOTE("(..xs)") + ").",
+    "Spread it with " + INLINE_HELP("..xs") + ", or collect it into a tuple with " + INLINE_HELP("(..xs)") + ".");
+}
+
+SppSpreadInFoldError::SppSpreadInFoldError(
+  Ast const &spread, Ast const &fold) {
+  AddHeader(125, "Spread In Fold Error");
+  AddCtxForErr(&fold, "Fold here");
+  AddErr(&spread, "Spread in the folded call here");
+  AddFooter(
+    "A fold calls once per element of a tuple or pack it is given whole, where a spread would give every element to "
+    "each call.",
+    "Give the tuple or pack whole: " + INLINE_HELP("f(xs)..") + ", not " + INLINE_HELP("f(..xs)..") + ".");
+}
+
+SppFoldLengthMismatchError::SppFoldLengthMismatchError(
+  Ast const &first, const std::size_t first_length, Ast const &other, const std::size_t other_length) {
+  AddHeader(126, "Fold Length Mismatch Error");
+  AddCtxForErr(&first, "Folded here with " + std::to_string(first_length) + " element(s)");
+  AddErr(&other, "Folded here with " + std::to_string(other_length) + " element(s)");
+  AddFooter(
+    "A fold over packs calls once per element, taking one of each, so they must have as many elements.",
+    "Fold packs of one length, or spread the longer one where its extra elements go.");
+}
+
+SppPackNotTypeError::SppPackNotTypeError(
+  Ast const &use, Ast const &param) {
+  AddHeader(124, "Pack Not A Type Error");
+  AddCtxForErr(&param, "Type pack declared here");
+  AddErr(&use, "Type pack used as a type here");
+  AddFooter(
+    "A type pack is a list of types, not a type: it can only be a generic argument (" + INLINE_NOTE("Tup[Ts]") + ").",
+    "Use " + INLINE_HELP("Tup[Ts]") + " for the tuple of its types.");
 }
 
 SPP_MOD_END

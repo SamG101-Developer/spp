@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.regions;
@@ -20,7 +21,6 @@ import spp.asts.local_variable_destructure_skip_multiple_arguments_ast;
 import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
@@ -52,7 +52,7 @@ namespace spp::analyse::utils::destructure_utils {
       // (not a case pattern), then there must be a value, and it
       // must name existing storage.
       const auto val = meta->LetStatementValue;
-      if (val == nullptr or not IsDestructurePlaceExpression(*val)) { return; }
+      if (val == nullptr or not expr_utils::IsPlace(*val, *sm.CurrentScope)) { return; }
 
       // Get the outermost (root) symbol for the value being
       // destructured.
@@ -301,7 +301,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // Only 1 "multi-skip" allowed in a destructure.
   const auto multi_arg_skips = elems
     | genex::views::ptr
-    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
     | genex::to<Vec>();
   RaiseIf<errors::SppMultipleRestPatternsError>(
     multi_arg_skips.size() > 1,
@@ -319,7 +319,8 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
   // Bind the value to a hidden temporary, and index that from every element, so the value is analysed and evaluated
   // once for the whole pattern.
   auto effective_val = static_cast<ExpressionAst const*>(val);
-  if (not IsDestructurePlaceExpression(*val) and not meta->LetStatementFromUninitialized) {
+  if (not expr_utils::IsPlace(*val, *sm->CurrentScope)
+    and not meta->LetStatementFromUninitialized) {
     tmp_name = BindDestructureTemporary(val, val_type, *sm);
     effective_val = tmp_name.get();
   }
@@ -327,9 +328,7 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
     tmp_name = nullptr; // Clear from clone.
   }
   const auto index_of = [&](const std::size_t i) -> Unique<ExpressionAst> {
-    auto index = MakeUnique<IdentifierAst>(val->PosEnd(), std::to_string(i));
-    auto field = MakeUnique<asts::PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(index));
-    return MakeUnique<asts::PostfixExpressionAst>(AstClone(effective_val), std::move(field));
+    return expr_utils::ElementAccess(*effective_val, i);
   };
 
   // Elements before the skip keep their own position; elements after it are counted back from the end of the value
@@ -368,19 +367,4 @@ auto spp::analyse::utils::destructure_utils::DestructureSequenceStage7(
       add_let(AstClone(elem), index_of(i));
     }
   }
-}
-
-auto spp::analyse::utils::destructure_utils::IsDestructurePlaceExpression(
-  ExpressionAst const &expr) -> bool {
-  // Strip the member accesses off the expression: "a.b.c"
-  // becomes "a". Any other postfix operator (a function
-  // call, an early return etc) means the expression produces
-  // a new value rather than naming existing storage.
-  auto cur = static_cast<Ast const*>(&expr);
-  while (const auto postfix = cur->To<PostfixExpressionAst>()) {
-    if (postfix->Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>() == nullptr) { return false; }
-    cur = postfix->Lhs.get();
-  }
-
-  return cur->To<IdentifierAst>() != nullptr;
 }

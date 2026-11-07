@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.overload_resolution;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.packs;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -60,14 +61,16 @@ namespace spp::analyse::utils::overload_resolution {
     /// The indices of the arguments taken, in the call's group.
     Vec<std::size_t> Args = {};
 
-    /// Whether this is the variadic parameter, taking a tuple of
-    /// the arguments.
+    /// Whether this is the variadic parameter, taking the arguments
+    /// as its elements ("Pack").
     bool IsPack = false;
+    packs::GivenPack Pack;
 
     /// The default value, for a parameter the call left out.
     Unique<ExpressionAst> Default;
 
-    /// The type of what the parameter is given.
+    /// The type of what the parameter is given; null for a pack,
+    /// which is given a list ("Pack").
     Shared<TypeAst> Type = nullptr;
 
     /// Whether this is "self", whose argument takes the
@@ -234,6 +237,12 @@ public:
   /// is the function type of the indirect callee, or null
   /// for a call of a named function.
   auto Resolve() -> Pair<PassedOverload, Shared<TypeAst const>>;
+
+  /// The most parameters any candidate has, not counting "self" or
+  /// a variadic one: past that many arguments, only a variadic
+  /// parameter takes more. Bounds the pack lengths a call spreading
+  /// an open tuple is resolved for.
+  SPP_ATTR_NODISCARD auto MaxParams() const -> std::size_t;
 
 private:
   /// Check one candidate against the call, without editing the

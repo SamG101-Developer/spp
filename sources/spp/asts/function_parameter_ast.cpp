@@ -9,9 +9,11 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_resolution;
 import spp.asts.convention_ast;
 import spp.asts.function_parameter_variadic_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_uninitialized_ast;
 import spp.asts.local_variable_ast;
@@ -19,6 +21,8 @@ import spp.asts.local_variable_single_identifier_alias_ast;
 import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
+import spp.asts.generate.common_types;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
@@ -56,9 +60,31 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   using type_resolution::SelfPolicy;
   Type = type_resolution::AnalyseWrittenType(*Type, *sm, *meta, SelfPolicy::kKeep);
 
+  // A template's variadic parameter holds, as a whole, an open tuple of its pack, of a length only an instance knows:
+  // "Tup[Ts]" for "..b: Ts". A pack of one element type ("..b: T", "..b: S32") has no type pack of its own to name its
+  // length, so it is given one: the hidden parameter an instance binds to the pack's tuple ("packs::
+  // FnVariadicParamName"), declared here as an unbound variadic generic, so "b" is "Tup[VariadicPackOfb]". Then "(..b)"
+  // and a forward of it ("inner(..b)") are typed alike for both (pack-design.md phase 5). Each element is a "T", so
+  // the hidden parameter is held to what a "T" meets: a generic element's constraints, or a concrete element itself.
+  // An element ("b.0") is typed as the pack declares it ("PackInfo"), never off the tuple. In an instance the pack is
+  // its elements' parameters ("monomorphization::ExpandClosedPack").
+  auto var_type = Type;
+  if (auto *const variadic = To<FunctionParameterVariadicAst>(); variadic != nullptr) {
+    auto element = Type;
+    variadic->OverTypePack = packs::DoesTypeNameAnUnboundPack(*Type, *sm->CurrentScope);
+    if (not variadic->OverTypePack) {
+      const auto hidden = packs::DeclareHiddenPack(
+        packs::FnVariadicParamName(*ExtractName()), *Type, variadic, Type->PosStart(), *sm->CurrentScope);
+      element = hidden->WithConvention(AstClone(Type->GetConvention()));
+    }
+    var_type = generate::common_types::TupleType(Type->PosStart(), {element});
+    var_type->Stage7_AnalyseSemantics(sm, meta);
+  }
+
   // Create the variable for the parameter (use temp copies
   // and put them back).
-  const auto ast = MakeUnique<LetStatementUninitializedAst>(nullptr, std::move(Var), nullptr, Type);
+  const auto ast = MakeUnique<LetStatementUninitializedAst>(
+    nullptr, std::move(Var), nullptr, var_type);
   ast->Stage7_AnalyseSemantics(sm, meta);
   Var = std::move(ast->Var);
 
@@ -76,7 +102,10 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
     const auto sym = sm->CurrentScope->FindVarSymbol(name.get());
     memory_state::StateOf(*sm->CurrentScope, *sym).InitializedBy(*this);
     sym->MemInfo->AstBorrowed = conv;
-    sym->IsVariadic = To<FunctionParameterVariadicAst>() != nullptr;
+
+    // A pack is no value ("PackInfo"): what it declares each element to be. Open, as a signature is analysed in its
+    // template; an instance closes its copy ("monomorphization::FindOrMakeFnInstance").
+    if (To<FunctionParameterVariadicAst>() != nullptr) { sym->Pack = analyse::scopes::PackInfo{.Element = Type}; }
   }
 }
 

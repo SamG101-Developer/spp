@@ -37,11 +37,13 @@ auto FunctionParameterVariadicAst::PosEnd() const -> std::size_t {
 
 auto FunctionParameterVariadicAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FunctionParameterVariadicAst>(
+  auto ast = MakeUnique<FunctionParameterVariadicAst>(
     AstClone(TokEllipsis),
     AstClone(Var),
     AstClone(TokColon),
     AstCloneShared(Type));
+  ast->OverTypePack = OverTypePack;
+  return ast;
 }
 
 auto FunctionParameterVariadicAst::ToString() const -> Str {

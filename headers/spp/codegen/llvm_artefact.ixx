@@ -5,20 +5,19 @@ export module spp.codegen.llvm_artefact;
 import spp.utils.types;
 
 namespace spp::codegen {
-  /// Record in an "llvm::Module" (passed as an opaque pointer)
-  /// what the program was built with ("record": one fact per
-  /// line), for "spp audit" to read back out of the executable
-  /// ("ReadHardeningRecord"). On ELF it is a note, which "strip"
-  /// keeps; elsewhere a section of its own. No paths or times
-  /// go in, so a build stays reproducible.
-  SPP_EXP_FUN auto EmitHardeningRecord(void *llvm_module, char const *record) -> void;
+  /// Record in an "llvm::Module" (passed as an opaque pointer) what the program
+  /// was built with ("record": one fact per line), for "spp audit" to read back
+  /// out of the executable. On ELF it is a note, which "strip" keeps; elsewhere
+  /// a section of its own.
+  SPP_EXP_FUN auto EmitHardeningRecord(
+    void *llvm_module, char const *record) -> void;
 
-  /// The hardening record of the built program at "path": the
-  /// text "EmitHardeningRecord" was given, or none when it has
-  /// none (not built by spp, or by one from before records were
-  /// written). The error, when the file cannot be read as an
-  /// object at all.
-  SPP_EXP_FUN auto ReadHardeningRecord(char const *path) -> Expected<Opt<Str>, Str>;
+  /// The hardening record of the built program at "path": the text embedded
+  /// into the executable by the emitter, or none when it has none (not built by
+  /// spp, or by one from before records were written). The error, when the file
+  /// cannot be read as an object at all.
+  SPP_EXP_FUN auto ReadHardeningRecord(
+    char const *exe_path) -> Expected<Opt<Str>, Str>;
 
   /// Whether the shared library at "path" was built without
   /// fortified libc calls (_FORTIFY_SOURCE): answers a function
@@ -53,5 +52,6 @@ namespace spp::codegen {
   /// so a linker that ignored the flags is caught. None when the
   /// layout is sound or it is not ELF; the error, when it cannot
   /// be read.
-  SPP_EXP_FUN auto UnhardenedSegments(char const *path) -> Expected<Opt<Str>, Str>;
+  SPP_EXP_FUN auto UnhardenedSegments(
+    char const *path) -> Expected<Opt<Str>, Str>;
 }

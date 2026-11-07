@@ -1,0 +1,42 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(700_uz)
+  let mut a = Vec[S64]::new_filled(n * n, 0_s64)
+  let mut b = Vec[S64]::new_filled(n * n, 0_s64)
+  let mut c = Vec[S64]::new_filled(n * n, 0_s64)
+  let mut state = black_box(99_u64)
+  let mut i = 0_uz
+  loop i < n * n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    a[mut i]@ = S64::from((state >> 33_u32) % 100_u64)
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    b[mut i]@ = S64::from((state >> 33_u32) % 100_u64)
+    i += 1_uz
+  }
+  i = 0_uz
+  loop i < n {
+    let mut k = 0_uz
+    loop k < n {
+      let aik = a[i * n + k]@
+      let mut j = 0_uz
+      loop j < n {
+        c[mut i * n + j]@ = c[i * n + j]@ + aik * b[k * n + j]@
+        j += 1_uz
+      }
+      k += 1_uz
+    }
+    i += 1_uz
+  }
+  let mut total = 0_s64
+  i = 0_uz
+  loop i < n * n {
+    total += c[i]@
+    i += 1_uz
+  }
+  drop(a)
+  drop(b)
+  drop(c)
+  println("{}", total)
+}

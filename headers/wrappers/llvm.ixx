@@ -4,6 +4,7 @@ module;
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -88,6 +89,7 @@ export namespace llvm {
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
   using ::llvm::GlobalVariable;
+  using ::llvm::InlineAsm;
   using ::llvm::IRBuilder;
   using ::llvm::Instruction;
   using ::llvm::IntegerType;
@@ -177,6 +179,11 @@ export namespace llvm {
 
   namespace Reloc {
     using ::llvm::Reloc::PIC_;
+    using ::llvm::Reloc::Static;
+  }
+
+  namespace CodeModel {
+    using ::llvm::CodeModel::Large;
   }
 
   namespace Intrinsic {

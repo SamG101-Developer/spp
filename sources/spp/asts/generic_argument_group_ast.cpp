@@ -63,17 +63,20 @@ auto GenericArgumentGroupAst::FromParams(
   auto mapped_args = Vec<Unique<GenericArgumentAst>>();
 
   for (auto const &param : generic_params.Params) {
-    // Map type generic parameters to keyword type arguments.
+    // Map type generic parameters to keyword type arguments. A type
+    // pack is never named: it is given as itself, positionally, the
+    // last argument ("Tup[Items]" for "cls Tup[..Items]").
     if (param->IsTypeParam()) {
       auto val = AstClone(param->Name);
-      auto arg = GenericArgumentAst::NewType(param->Name, std::move(val));
+      auto arg = GenericArgumentAst::NewType(param->IsVariadic() ? nullptr : param->Name, std::move(val));
       mapped_args.emplace_back(std::move(arg));
     }
 
-    // Map comptime generic parameters to keyword comptime arguments.
+    // Map comptime generic parameters to keyword comptime arguments,
+    // a comp pack, likewise never named, positionally.
     else {
       auto val = IdentifierAst::FromType(*param->Name);
-      auto arg = GenericArgumentAst::NewComp(param->Name, std::move(val));
+      auto arg = GenericArgumentAst::NewComp(param->IsVariadic() ? nullptr : param->Name, std::move(val));
       mapped_args.emplace_back(std::move(arg));
     }
   }
@@ -161,7 +164,7 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   // Check the arguments are in the correct order.
   const auto unordered_args = order_utils::DoOrderArgs(Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(

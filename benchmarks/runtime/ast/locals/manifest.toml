@@ -1,0 +1,15 @@
+description = "Lets (initialised and not), assignment, tuple, array and object destructuring, inner scopes and scope expressions in a hot loop: none of it should cost anything once SROA has run"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:let_statement_initialized",
+  "ast:let_statement_uninitialized",
+  "ast:local_variable_single_identifier",
+  "ast:local_variable_destructure_tuple",
+  "ast:local_variable_destructure_array",
+  "ast:local_variable_destructure_object",
+  "ast:assignment_statement",
+  "ast:identifier",
+  "ast:inner_scope",
+  "ast:inner_scope_expression",
+]

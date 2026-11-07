@@ -1,0 +1,82 @@
+use std::console::println
+use std::hints::black_box
+
+fun energy(x: &std::array::Arr[F64, 5_uz], y: &std::array::Arr[F64, 5_uz], z: &std::array::Arr[F64, 5_uz], vx: &std::array::Arr[F64, 5_uz], vy: &std::array::Arr[F64, 5_uz], vz: &std::array::Arr[F64, 5_uz], m: &std::array::Arr[F64, 5_uz]) -> F64 {
+  let mut e = 0.0_f64
+  let mut i = 0_uz
+  loop i < 5_uz {
+    e = e + 0.5_f64 * m[i]@ * (vx[i]@ * vx[i]@ + vy[i]@ * vy[i]@ + vz[i]@ * vz[i]@)
+    let mut j = i + 1_uz
+    loop j < 5_uz {
+      let dx = x[i]@ - x[j]@
+      let dy = y[i]@ - y[j]@
+      let dz = z[i]@ - z[j]@
+      e = e - m[i]@ * m[j]@ / (dx * dx + dy * dy + dz * dz).sqrt()
+      j += 1_uz
+    }
+    i += 1_uz
+  }
+  ret e
+}
+
+fun main() -> Void {
+  let steps = black_box(5000000_u64)
+  let pi = 3.141592653589793_f64
+  let solar = 4.0_f64 * pi * pi
+  let days = 365.24_f64
+  let dt = black_box(0.01_f64)
+  let mut x = [0.0_f64, 4.84143144246472090_f64, 8.34336671824457987_f64, 12.8943695621391310_f64, 15.3796971148509165_f64]
+  let mut y = [0.0_f64, -1.16032004402742839_f64, 4.12479856412430479_f64, -15.1111514016986312_f64, -25.9193146099879641_f64]
+  let mut z = [0.0_f64, -0.103622044471123109_f64, -0.403523417114321381_f64, -0.223307578892655734_f64, 0.179258772950371181_f64]
+  let mut vx = [0.0_f64, 0.00166007664274403694_f64 * days, -0.00276742510726862411_f64 * days, 0.00296460137564761618_f64 * days, 0.00268067772490389322_f64 * days]
+  let mut vy = [0.0_f64, 0.00769901118419740425_f64 * days, 0.00499852801234917238_f64 * days, 0.00237847173959480950_f64 * days, 0.00162824170038242295_f64 * days]
+  let mut vz = [0.0_f64, -0.0000690460016972063023_f64 * days, 0.0000230417297573763929_f64 * days, -0.0000296589568540237556_f64 * days, -0.0000951592254519715870_f64 * days]
+  let m = [solar, 0.000954791938424326609_f64 * solar, 0.000285885980666130812_f64 * solar, 0.0000436624404335156298_f64 * solar, 0.0000515138902046611451_f64 * solar]
+
+  let mut px = 0.0_f64
+  let mut py = 0.0_f64
+  let mut pz = 0.0_f64
+  let mut i = 0_uz
+  loop i < 5_uz {
+    px = px + vx[i]@ * m[i]@
+    py = py + vy[i]@ * m[i]@
+    pz = pz + vz[i]@ * m[i]@
+    i += 1_uz
+  }
+  vx[mut 0_uz]@ = 0.0_f64 - px / solar
+  vy[mut 0_uz]@ = 0.0_f64 - py / solar
+  vz[mut 0_uz]@ = 0.0_f64 - pz / solar
+  println("{}", S64::from(energy(&x, &y, &z, &vx, &vy, &vz, &m) * 1000000000.0_f64))
+
+  let mut step = 0_u64
+  loop step < steps {
+    i = 0_uz
+    loop i < 5_uz {
+      let mut j = i + 1_uz
+      loop j < 5_uz {
+        let dx = x[i]@ - x[j]@
+        let dy = y[i]@ - y[j]@
+        let dz = z[i]@ - z[j]@
+        let d2 = dx * dx + dy * dy + dz * dz
+        let mag = dt / (d2 * d2.sqrt())
+        vx[mut i]@ = vx[i]@ - dx * m[j]@ * mag
+        vy[mut i]@ = vy[i]@ - dy * m[j]@ * mag
+        vz[mut i]@ = vz[i]@ - dz * m[j]@ * mag
+        vx[mut j]@ = vx[j]@ + dx * m[i]@ * mag
+        vy[mut j]@ = vy[j]@ + dy * m[i]@ * mag
+        vz[mut j]@ = vz[j]@ + dz * m[i]@ * mag
+        j += 1_uz
+      }
+      i += 1_uz
+    }
+    i = 0_uz
+    loop i < 5_uz {
+      x[mut i]@ = x[i]@ + dt * vx[i]@
+      y[mut i]@ = y[i]@ + dt * vy[i]@
+      z[mut i]@ = z[i]@ + dt * vz[i]@
+      i += 1_uz
+    }
+    step += 1_u64
+  }
+  println("{}", S64::from(energy(&x, &y, &z, &vx, &vy, &vz, &m) * 1000000000.0_f64))
+}

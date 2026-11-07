@@ -15,7 +15,7 @@ dir="${BIN_DIR:-build}"
 # The expected set follows the digests: spp always, spp_tests
 # when the build staged it.
 expected=("spp${exe}")
-digests=("${SPP_SHA256:-}")
+digests=("${SPP_CI_SHA256:-}")
 if [ -n "${TESTS_SHA256:-}" ]; then
   expected+=("tests/spp_tests${exe}")
   digests+=("$TESTS_SHA256")

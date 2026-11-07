@@ -37,7 +37,7 @@ Hook calls went from about 2,600 to 588, none of them from keying. The rest are 
 - Kept by design: stamps, the caches and generations, `InstanceIdentityKey` (now the args half of a TypeId), and `ReadSelfPair`.
 - A memoised TypeId→TypeId substitution needs a TypeId-headed type, not an AST; that is the next foundation, not part of the migration.
 
-**TypeId-headed types, phase 1 (2026-09-29).** `HeadOf`, `BareTypeId`, memoised `SubstituteTypeId(id, GenericSubst)`, `Scope::SymbolOf`, `TypeRef::Id`. SameSignature and the conflict check compare param ids via `IdSubstOf`.
+**TypeId-headed types, phase 1 (2026-09-29).** `HeaderOf`, `BareTypeId`, memoised `SubstituteTypeId(id, GenericSubst)`, `Scope::SymbolOf`, `TypeRef::Id`. SameSignature and the conflict check compare param ids via `IdSubstOf`.
 - Validate each switch with a shadow run (log disagreements over all probes) before flipping it.
 - Nothing symbol-keyed may be cached statically: the test harness runs many compiles in one process.
 - Keys are interned for the process, so a key→key memo is safe.

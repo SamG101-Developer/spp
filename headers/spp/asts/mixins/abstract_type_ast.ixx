@@ -108,8 +108,4 @@ SPP_EXP_CLS struct spp::asts::mixins::AbstractTypeAst {
   /// generated type. Unary type expressions will move into
   /// their right-hand-side identifier etc, to inspect it.
   SPP_ATTR_NODISCARD virtual auto IsCompilerGeneratedType() const -> bool = 0;
-
-  /// Reset caches to force re-analysis when things like generics
-  /// change etc.
-  virtual auto ResetCache() -> void = 0;
 };

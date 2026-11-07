@@ -6,6 +6,8 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.fn_signatures;
+import spp.analyse.utils.overload_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.ast;
 import spp.asts.class_prototype_ast;
@@ -14,10 +16,13 @@ import spp.asts.function_call_argument_keyword_ast;
 import spp.asts.function_parameter_ast;
 import spp.asts.function_parameter_group_ast;
 import spp.asts.function_prototype_ast;
+import spp.asts.generic_parameter_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_keyword_ast;
+import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
+import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.type_statement_ast;
@@ -40,6 +45,10 @@ namespace spp::lsp::resolution_index {
       Kept Where = Kept::None;
       Vec<Str> Files;
 
+      /// How a dependency's file starts, for the project's indexing. Read on
+      /// first use, in the directory the compile runs in.
+      Str VcsPrefix;
+
       /// The entries provide the "hover" and "goto"-navigation
       /// data. They store the span encompassing the definition,
       /// against where it was used, and additional metadata.
@@ -61,6 +70,9 @@ namespace spp::lsp::resolution_index {
       Set<Str> SeenValues;
 
       Vec<InactiveRegion> Inactive;
+
+      Vec<OverridableList> Overridables;
+      Set<Str> SeenExtensions;
     };
 
     /// Singleton instance to the static state for the current
@@ -85,7 +97,7 @@ namespace spp::lsp::resolution_index {
       const auto mock = scope.FindTypeSymbol(sym.Type.get());
       if (mock == nullptr or mock->LinkedScope == nullptr) { return signatures; }
 
-      for (const auto overload : mock->LinkedScope->DirectSupScopes) {
+      for (const auto overload : mock->LinkedScope->GetDirectSupScopes()) {
         // Get the "sup-ext" asts, which are the superimpositions
         // of the "FunXXX" family of types. Extract the function
         // prototype from the "sup-ext".
@@ -243,6 +255,32 @@ namespace spp::lsp::resolution_index {
       return KeyOf(what, span.File, span.StartLine, span.StartCol, span.EndLine, span.EndCol);
     }
 
+    /// A method written in a "sup" block: a prototype, or the
+    /// "sup $m ext FunXxx" block a method is lowered into.
+    auto SupMemberAsMethod(
+      Ast const *member) -> FunctionPrototypeAst const* {
+      if (const auto fn = member->To<FunctionPrototypeAst>()) { return fn; }
+      if (const auto ext = member->To<SupPrototypeExtensionAst>(); ext != nullptr and ext->Impl != nullptr) {
+        const auto final_member = ext->Impl->FinalMember();
+        return final_member != nullptr ? final_member->To<FunctionPrototypeAst>() : nullptr;
+      }
+      return nullptr;
+    }
+
+    /// A method's header as it would be written to override it:
+    /// "fun name[T](&self, x: S32) -> Ret", without annotations or
+    /// a body.
+    auto PrototypeOf(
+      FunctionPrototypeAst const &proto) -> Str {
+      auto out = Str();
+      if (proto.TokCmp != nullptr) { out += proto.TokCmp->ToString() + " "; }
+      out += proto.TokFun->ToString() + " " + proto.Name->ToString();
+      if (proto.GnParamGroup != nullptr) { out += proto.GnParamGroup->ToString(); }
+      if (proto.FnParamGroup != nullptr) { out += proto.FnParamGroup->ToString(); }
+      if (proto.ReturnType != nullptr) { out += " -> " + proto.ReturnType->ToString(); }
+      return out;
+    }
+
     /// Whether the analysis is at the stage where filling out
     /// completion lists is actually correct. Sup scope handling,
     /// visibility, etc, must have all been processed.
@@ -277,7 +315,7 @@ namespace spp::lsp::resolution_index {
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
           .Signatures = SignaturesOf(*sym, type_scope),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 
@@ -297,7 +335,7 @@ namespace spp::lsp::resolution_index {
           .Kind = "type",
           .Type = Str(),
           .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
       return members;
@@ -332,7 +370,7 @@ namespace spp::lsp::resolution_index {
           .Type = sym->Type != nullptr ? sym->Type->ToString() : Str(),
           .Definition = sym->ScopeDefinedIn != nullptr ? SpanOf(sym->Name.get(), *sym->ScopeDefinedIn) : SourceSpan(),
           .Signatures = SignaturesOf(*sym, ns_scope),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 
@@ -352,7 +390,7 @@ namespace spp::lsp::resolution_index {
           .Kind = "type",
           .Type = Str(),
           .Definition = DefinitionOfType(*sym),
-          .Visibility = VisibilityName(sym->Visibility)
+          .Visibility = VisibilityName(sym->GetVisibility())
         });
       }
 
@@ -410,7 +448,7 @@ namespace spp::lsp::resolution_index {
       CompilerMetaData const &meta) -> void {
       // Get the members of a type and create a member list containing
       // them, assigned against the owner type (pre-serialized).
-      if (owner.empty() or not WantsMembersYet(meta) or not type_scope.SupsAttached) { return; }
+      if (owner.empty() or not WantsMembersYet(meta) or not (type_scope.SupsAttached or type_scope.SupsDeferred)) { return; }
       if (not Current().SeenOwners.insert(KeyOf("type", owner)).second) { return; }
       auto members = MembersOfTypeScope(type_scope, sm, meta);
       Current().Members.emplace_back(MemberList{
@@ -491,6 +529,7 @@ auto spp::lsp::resolution_index::EnableProject()
   // Tell the state to maintain indexes for the current
   // project (no vcs dependencies).
   Current().Where = Kept::Project;
+  Current().VcsPrefix.clear();
 }
 
 auto spp::lsp::resolution_index::Disable()
@@ -516,7 +555,13 @@ auto spp::lsp::resolution_index::Wants(
   // that contains this file. Otherwise, it is not wanted.
   switch (Current().Where) {
     case Kept::Files: return genex::contains(Current().Files, file);
-    case Kept::Project: return not file.contains("/vcs/") and not file.contains("\\vcs\\");
+    case Kept::Project: {
+      auto &prefix = Current().VcsPrefix;
+      if (prefix.empty()) {
+        prefix = utils::files::DisplayString(std::filesystem::current_path() / "vcs" / "");
+      }
+      return not file.starts_with(prefix);
+    }
     case Kept::None:
     default: return false;
   }
@@ -795,6 +840,76 @@ auto spp::lsp::resolution_index::RecordInactive(
   Current().Inactive.emplace_back(InactiveRegion{.Where = formatter.SpanAcross(start, end)});
 }
 
+auto spp::lsp::resolution_index::RecordOverridables(
+  SupPrototypeExtensionAst const &ext, Scope const &super_scope,
+  ScopeManager &sm, CompilerMetaData *meta) -> void {
+  // Only a block written in an indexed file, once per block however many times
+  // it is analysed.
+  auto const &ext_scope = *sm.CurrentScope;
+  if (not WantsScope(ext_scope)) { return; }
+  auto where = RegionOf(&ext, ext_scope);
+  if (where.Generated) { return; }
+  if (not Current().SeenExtensions.insert(KeyOfSpan("ext", where)).second) { return; }
+
+  // The superclass methods this block already overrides, found the way the
+  // override check finds them.
+  auto written = Set<FunctionPrototypeAst const*>();
+  for (auto const &member : ext.Impl->Members) {
+    const auto fn = SupMemberAsMethod(member.get());
+    if (fn == nullptr or member->GetAstScope() == nullptr) { continue; }
+    if (const auto base = analyse::utils::fn_signatures::CheckForConflictingOverride(
+      *member->GetAstScope(), &super_scope, *fn, sm, meta)) {
+      written.insert(base);
+    }
+  }
+
+  // Every name the superclass has an abstract or virtual method under, from the
+  // blocks superimposed over it.
+  auto names = Vec<IdentifierAst const*>();
+  for (auto const *scope : super_scope.GetSupScopes()) {
+    if (scope->AstNode == nullptr) { continue; }
+    for (const auto member : AstBody(scope->AstNode)) {
+      const auto fn = SupMemberAsMethod(member);
+      if (fn == nullptr or not(fn->AbstractAnnotation or fn->VirtualAnnotation)) { continue; }
+      if (genex::none_of(names, [&](auto const *n) { return n->NameId() == fn->Name->NameId(); })) {
+        names.emplace_back(fn->Name.get());
+      }
+    }
+  }
+
+  // What a call on the superclass reaches under each name, with overrides
+  // applied: an abstract or virtual one left there is one this block can
+  // override, unless it already does.
+  auto methods = Vec<Overridable>();
+  auto seen = Set<Str>();
+  for (auto const *name : names) {
+
+    // For every available super class name, get the methods off of it. Then,
+    // filter out if they've been overridden ("written") or they're not abstract
+    // or virtual.
+    for (auto const &entry : analyse::utils::overload_resolution::MethodsOf(super_scope, *name)) {
+      auto const *proto = entry.Proto;
+      if (proto == nullptr or written.contains(proto)) { continue; }
+      if (not(proto->AbstractAnnotation or proto->VirtualAnnotation)) { continue; }
+      auto prototype = PrototypeOf(*proto);
+      if (not seen.insert(prototype).second) { continue; }
+      methods.emplace_back(Overridable{
+        .Name = proto->Name->ToString(),
+        .Prototype = std::move(prototype),
+        .Modifier = proto->AbstractAnnotation ? "abstract" : "virtual",
+        .Definition = entry.FnScope != nullptr ? SpanOf(proto->Name.get(), *entry.FnScope) : SourceSpan()
+      });
+    }
+  }
+
+  // An empty list is kept too: it says the block has nothing
+  // left to override, rather than that it was never looked at.
+  Current().Overridables.emplace_back(OverridableList{
+    .Where = std::move(where), .Name = ext.Name->ToString(), .SuperCls = ext.SuperCls->ToString(),
+    .Methods = std::move(methods)
+  });
+}
+
 auto spp::lsp::resolution_index::RecordScopeOf(
   Ast const &node, ScopeManager const &sm, const bool whole_file) -> void {
   // If we are not bothered about this scope, then return early;
@@ -836,6 +951,12 @@ auto spp::lsp::resolution_index::RecordScopeOf(
   if (names.empty()) { return; }
   Current().Scopes.emplace_back(
     NamesInScope{.Where = std::move(where), .Names = std::move(names)});
+}
+
+auto spp::lsp::resolution_index::GetAllOverridables()
+  -> Vec<OverridableList> const& {
+  // Getter for the overridables, for json for the IDEA plugin.
+  return Current().Overridables;
 }
 
 auto spp::lsp::resolution_index::GetAllEntries()
@@ -887,4 +1008,6 @@ auto spp::lsp::resolution_index::Clear()
   Current().Values.clear();
   Current().SeenValues.clear();
   Current().Inactive.clear();
+  Current().Overridables.clear();
+  Current().SeenExtensions.clear();
 }

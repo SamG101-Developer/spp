@@ -4,9 +4,11 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.cli;
+import spp.compiler.out_layout;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 import spp.parse.errors.parser_error;
+import spp.utils.env;
 import spp.utils.files;
 import spp.utils.types;
 import std;
@@ -70,14 +72,15 @@ auto EnsureTempProject(const bool refresh) -> bool {
  * the same answer, and an unrecognised value is a typo worth failing on rather than silently compiling the other mode.
  */
 namespace {
-  auto TestBuildMode() -> spp::Str const& {
+  auto TestBuildMode() -> spp::compiler::BuildMode {
     static const auto mode = [] {
-      auto value = spp::utils::files::GetEnv("SPP_TEST_MODE").value_or("rel");
-      if (value != "dev" and value != "rel") {
-        std::cerr << "SPP_TEST_MODE must be 'dev' or 'rel', not '" << value << "'\n";
+      auto errors = spp::Vec<spp::Str>();
+      if (not spp::utils::env::Check(errors)) {
+        for (auto const &e : errors) { std::cerr << e << "\n"; }
         std::abort();
       }
-      return value;
+      const auto name = spp::utils::env::Get(spp::utils::env::Var::TestMode);
+      return name.has_value() ? *spp::compiler::ModeFromName(*name) : spp::compiler::BuildMode::REL;
     }();
     return mode;
   }

@@ -162,17 +162,6 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Sync the type symbols' visibility from the AST.
-  // Instances minted before this stage (use statements
-  // analyse their targets in Stage4) copied the default
-  // visibility, and are shared by identity across modules.
-  const auto sync = [this](TypeSymbol *sym) {
-    if (sym == nullptr) { Ice(*Name, "class has no type symbol by stage 5"); }
-    sym->Visibility = Visibility.first;
-    for (auto const &[_, inst] : sym->Instances) { inst->Visibility = Visibility.first; }
-  };
-  sync(_ClsSymbol.get());
-  sync(sm->CurrentScope->LinkedTypeSymbol.get());
 
   // Mark the "Copy" class itself as copyable. Minimise
   // `TypeEq` calls.
@@ -339,6 +328,9 @@ auto ClassPrototypeAst::_GenerateSymbols(
   symbol_1 = MakeShared<TypeSymbol>(
     std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope,
     is_dollar_type ? TypeKind::FnMock : TypeKind::Cls, is_dollar_type);
+  // Its visibility is read here, where the annotations set it after the symbol is made; its instances read it
+  // through it ("TypeSymbol::GetVisibility").
+  symbol_1->VisibilityFrom = this;
   sm->CurrentScope->LinkedTypeSymbol = symbol_1;
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);
   _ClsSymbol = sm->CurrentScope->LinkedTypeSymbol;

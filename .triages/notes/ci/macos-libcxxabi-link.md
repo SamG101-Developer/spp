@@ -4,7 +4,7 @@ description: "macOS links the pinned LLVM release's libc++ and libc++abi statica
 updated: 2026-09-11
 ---
 
-macOS CI builds with the LLVM release tarball unpacked at `$SPP_LLVM_MAC_PREFIX`
+macOS CI builds with the LLVM release tarball unpacked at `$SPP_CI_LLVM_MAC_PREFIX`
 (`.github/scripts/setup/install-llvm-macos.sh`). Since 2026-09-11
 `install-clang-macos.sh` sets `LDFLAGS=-nostdlib++ <prefix>/lib/libc++.a
 <prefix>/lib/libc++abi.a`, found with `find` and a hard error if missing. The

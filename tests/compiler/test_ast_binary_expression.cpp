@@ -326,3 +326,37 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         let b = a + ..
     }
 )");
+
+// A fold reads each element off its operand, so the operand is evaluated once ("expr_utils::HoistOnce"): a place, a
+// field path included ("self.items"), is read where it is, as a spread reads it, not copied into a temporary first.
+// Moving non-copy elements out of an owned receiver's field in place is a move of each (next-steps.md N14.5).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  BinaryExpressionAst,
+  test_valid_folds_over_a_field_place, R"(
+    cls H {
+        !public items: (S32, S32, S32)
+        !public names: (Str, Str)
+    }
+
+    fun twice(x: S32) -> S32 {
+        ret x + x
+    }
+
+    fun size(s: Str) -> USize {
+        let n = s.len()
+        std::mem::ops::drop(s)
+        ret n
+    }
+
+    sup H {
+        !public fun total(&self) -> S32 {
+            let r = twice(self.items)..
+            ret (.. + self.items) + (.. + r)
+        }
+
+        !public fun sizes(self) -> USize {
+            let r = size(self.names)..
+            ret r.0 + r.1
+        }
+    }
+)");

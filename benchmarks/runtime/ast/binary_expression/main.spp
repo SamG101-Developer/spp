@@ -1,0 +1,18 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut a = black_box(1_u64)
+  let mut b = black_box(7_u64)
+  let mut c = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    a = (a * 31_u64 + b) % 1000003_u64
+    b = ((b ^ a) & 0xffff_u64) | (i >> 3_u32 & 1_u64)
+    c = c + a / (b + 1_u64) - (c >> 7_u32)
+    case a < b { c += 1_u64 }
+    i += 1_u64
+  }
+  println("{}\n{}\n{}", a, b, c)
+}

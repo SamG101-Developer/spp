@@ -1,11 +1,12 @@
 ---
 name: spp-ir-diff-verification
 description: "Verify spp refactors by diffing generated .ll files, but normalise Uid addresses first"
-updated: 2026-09-16
+updated: 2026-11-01
 ---
 
-To prove a refactor is behaviourally transparent, diff `project/out/x86_64-pc-linux-gnu/dev/llvm/**/*.ll` before and
-after (excluding `lto.ll`, see below; compare the binary `spp.o` by its sorted `nm` names instead).
+To prove a refactor is behaviourally transparent, diff `project/out/x86_64-linux-gnu/dev/llvm/**/*.ll` before and
+after (excluding `lto.ll`, see below; compare the binary `spp.o` by its sorted `nm` names instead). The target folder
+was `x86_64-pc-linux-gnu` in older runs; a snapshot of a missing folder copies nothing, so check the file count.
 It is a much stronger check than comparing program stdout, and cheaper than the gtest suite
 (which [[build-workflow]] says not to run).
 

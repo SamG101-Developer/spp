@@ -26,6 +26,7 @@ ScopeTree::~ScopeTree() {
   spp::analyse::utils::monomorphization::StopInstantiatingOnRead();
   Scope::ClearOpaqueCompValues();
   spp::analyse::scopes::ClearGnParams();
+  spp::analyse::utils::sup_attachment::StopAttachingDeferredSups();
   spp::analyse::utils::sup_attachment::ClearSupStatementsCache();
   spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache();
   spp::analyse::utils::overload_resolution::ClearCaches();

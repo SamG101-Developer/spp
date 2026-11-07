@@ -16,6 +16,7 @@ use(spp::asts, struct FunctionCallArgumentGroupAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct ObjectInitializerArgumentKeywordAst);
+use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::lsp::resolution_index, struct CompTimeValue);
@@ -23,6 +24,8 @@ use(spp::lsp::resolution_index, struct InactiveRegion);
 use(spp::lsp::resolution_index, struct Member);
 use(spp::lsp::resolution_index, struct MemberList);
 use(spp::lsp::resolution_index, struct NamesInScope);
+use(spp::lsp::resolution_index, struct Overridable);
+use(spp::lsp::resolution_index, struct OverridableList);
 use(spp::lsp::resolution_index, struct ResolvedName);
 use(spp::lsp::resolution_index, struct Signature);
 use(spp::utils::errors, class ErrorFormatter);
@@ -108,6 +111,28 @@ SPP_EXP_CLS struct spp::lsp::resolution_index::CompTimeValue {
 /// compiled, so an editor greys it out.
 SPP_EXP_CLS struct spp::lsp::resolution_index::InactiveRegion {
   SourceSpan Where;
+};
+
+/// One superclass method a "sup ext" block can still override:
+/// abstract (it must be) or virtual (it may be). The prototype
+/// is the header to write, "fun name(&self, x: S32) -> Ret",
+/// as the superclass declares it.
+SPP_EXP_CLS struct spp::lsp::resolution_index::Overridable {
+  Str Name;
+  Str Prototype;
+  Str Modifier;
+  SourceSpan Definition;
+};
+
+/// What one "sup Name ext SuperCls" block could override and
+/// has not yet: what an editor offers inside the block. The
+/// names are as written, so a block that has moved since the
+/// compile can still be matched to its entry.
+SPP_EXP_CLS struct spp::lsp::resolution_index::OverridableList {
+  SourceSpan Where;
+  Str Name;
+  Str SuperCls;
+  Vec<Overridable> Methods;
 };
 
 /// Where a name's meaning is recorded as analysis works it
@@ -218,6 +243,13 @@ namespace spp::lsp::resolution_index {
   SPP_EXP_FUN auto RecordInactive(
     ErrorFormatter const &formatter, std::size_t start, std::size_t end) -> void;
 
+  /// Record the abstract and virtual methods of @p super_scope
+  /// that the extension block @p ext does not override yet.
+  /// Called once the block's supertype is analysed.
+  SPP_EXP_FUN auto RecordOverridables(
+    SupPrototypeExtensionAst const &ext, Scope const &super_scope,
+    ScopeManager &sm, CompilerMetaData *meta) -> void;
+
   /// Everything recorded so far.
   SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllEntries() -> Vec<ResolvedName> const&;
 
@@ -241,6 +273,9 @@ namespace spp::lsp::resolution_index {
 
   /// What "!cfg" left out of the indexed files.
   SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllInactive() -> Vec<InactiveRegion> const&;
+
+  /// What each indexed "sup ext" block could still override.
+  SPP_EXP_FUN SPP_ATTR_NODISCARD auto GetAllOverridables() -> Vec<OverridableList> const&;
 
   /// Forget everything, for the next compile in this process.
   SPP_EXP_FUN auto Clear() -> void;

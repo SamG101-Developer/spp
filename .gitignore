@@ -15,4 +15,5 @@ __pycache__/
 # test fixture project and per-test logs
 tests/test_outputs/
 tests/gtest-parallel-logs/
+!benchmarks/**/*.spp
 !tests/**/*.spp

@@ -153,6 +153,77 @@ jobs:
       differential: true
       check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
+  # The benchmark record of this commit, against the one before it,
+  # for every later pull request to compare against.
+  benchmarks:
+    name: Benchmarks
+    needs: [ changes, linux-gcc ]
+    if: |
+      !cancelled()
+      && needs.changes.outputs.compile == 'true'
+      && needs.linux-gcc.outputs.artifact != ''
+    permissions: *read
+    uses: ./.github/workflows/_benchmarks.yaml
+    with:
+      artifact: ${{ needs.linux-gcc.outputs.artifact }}
+      spp-sha256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+      base: ${{ github.event.before }}
+
+  # Apart from the run so that only this job can write. Concurrency
+  # is the workflow's, so two records never race to the branch.
+  publish-benchmarks:
+    name: Publish Benchmarks
+    needs: [ benchmarks ]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write  # push the records to the benchmarks branch
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: block
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            codeload.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            productionresultssa0.blob.core.windows.net:443
+            productionresultssa1.blob.core.windows.net:443
+            productionresultssa2.blob.core.windows.net:443
+            productionresultssa3.blob.core.windows.net:443
+            productionresultssa4.blob.core.windows.net:443
+            productionresultssa5.blob.core.windows.net:443
+            productionresultssa6.blob.core.windows.net:443
+            productionresultssa7.blob.core.windows.net:443
+            productionresultssa8.blob.core.windows.net:443
+            productionresultssa9.blob.core.windows.net:443
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # By name and from this run only: no run-id or github-token.
+      # Every job's record (compile.json, runtime.json), into one folder.
+      - name: Download the records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: benchmark-record-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/records
+
+      - name: Publish the records
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: bash .github/scripts/bench/publish-record.sh "$RUNNER_TEMP/records"
+
   # The coverage lane, for Sonar below: build, suites and report in
   # one box. Too slow for a pull request. It waits on the release
   # gate only to start beside the Linux GCC build.
@@ -275,28 +346,28 @@ jobs:
       - name: Collect linux-x64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.linux-gcc.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add linux-x64 ""
 
       - name: Collect linux-arm64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-linux-arm64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-linux-arm64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-linux-arm64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add linux-arm64 ""
 
       - name: Collect macos-arm64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-macos-arm64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-macos-arm64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-macos-arm64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add macos-arm64 ""
 
       - name: Collect windows-x64
         env:
           VERSION: ${{ needs.release-gate.outputs.version }}
-          SPP_SHA256: ${{ needs.release-windows-x64.outputs.spp-sha256 }}
+          SPP_CI_SHA256: ${{ needs.release-windows-x64.outputs.spp-sha256 }}
           TESTS_SHA256: ${{ needs.release-windows-x64.outputs.tests-sha256 }}
         run: bash .github/scripts/release/collect.sh add windows-x64 .exe
 

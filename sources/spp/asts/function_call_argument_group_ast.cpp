@@ -9,12 +9,13 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.borrows;
+import spp.analyse.utils.common_errors;
 import spp.analyse.utils.drop_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.memory_state;
 import spp.analyse.utils.order_utils;
 import spp.analyse.utils.regions;
-import spp.analyse.utils.type_predicates;
 import spp.asts.closure_expression_ast;
 import spp.asts.closure_expression_capture_ast;
 import spp.asts.closure_expression_capture_group_ast;
@@ -30,9 +31,10 @@ import spp.asts.function_parameter_self_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -41,7 +43,6 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
-import sys;
 
 SPP_MOD_BEGIN
 auto FunctionCallArgumentGroupAst::NewEmpty() -> Unique<FunctionCallArgumentGroupAst> {
@@ -73,10 +74,12 @@ auto FunctionCallArgumentGroupAst::PosEnd() const -> std::size_t {
 
 auto FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
-  return MakeUnique<FunctionCallArgumentGroupAst>(
+  auto ast = MakeUnique<FunctionCallArgumentGroupAst>(
     AstClone(TokL),
     AstCloneVec(Args),
     AstClone(TokR));
+  ast->SpreadTemps = AstCloneVec(SpreadTemps);
+  return ast;
 }
 
 auto FunctionCallArgumentGroupAst::ToString() const -> Str {
@@ -126,41 +129,37 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   // Check the arguments are in the correct order.
   const auto unordered_args = order_utils::DoOrderArgs(Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   RaiseIf<SppOrderInvalidError>(
     not unordered_args.empty(),
     ERR_ARGS(unordered_args[1].first, *unordered_args[1].second, unordered_args[0].first, *unordered_args[0].second));
 
-  // Expand tuple-expansion arguments ("..tuple" =>
-  // "tuple.0, tuple.1, ..."). Must use "materialize" because
-  // the list gets updates from within the loop.
-  for (auto const &[i, arg] : Args | genex::views::ptr | genex::views::enumerate | genex::to<Vec>()) {
-    // Only check position arguments that have ".." tokens.
+  // Expand tuple-expansion arguments ("..tuple" => "tuple.0, tuple.1, ..."), into a new list, so a later spread is
+  // found where it now is. The convention the spread is written with is given to every element ("&..t" is "&t.0,
+  // &t.1"); a plain spread of a borrowed tuple reads each element through the borrow, which the memory checks hold to
+  // what a read through a borrow may do. An open tuple (a template's variadic parameter "..b", or comp pack "..n") stays a
+  // spread: the call resolves it per pack length ("PostfixExpressionOperatorFunctionCallAst::_ResolveOpenSpread"), and each
+  // instance, where it is a tuple, expands it here.
+  auto expanded_args = Vec<Unique<FunctionCallArgumentAst>>();
+  expanded_args.reserve(Args.size());
+  for (auto &arg : Args) {
     const auto pos_arg = arg->To<FunctionCallArgumentPositionalAst>();
-    if (pos_arg == nullptr or pos_arg->TokUnpack == nullptr) { continue; }
-
-    // Check the argument value is a tuple expression.
-    const auto arg_ref = arg->InferTypeRef(sm, meta);
-    if (not type_predicates::IsTypeTuple(arg_ref, *sm->CurrentScope)) {
-      const auto arg_type = arg->InferType(sm, meta);
-      Raise<SppExpansionOfNonTupleError>(ERR_ARGS(*pos_arg->TokUnpack, *arg->Val, *arg_type));
+    auto spread = pos_arg != nullptr and pos_arg->TokUnpack != nullptr
+      ? expr_utils::ExpandTupleSpread(*arg->Val, *pos_arg->TokUnpack, sm, meta)
+      : Nullopt;
+    if (not spread.has_value()) {
+      expanded_args.emplace_back(std::move(arg));
+      continue;
     }
-
-    // Replace the tuple-expansion argument with the expanded
-    // arguments.
-    const auto max = static_cast<sys::ssize_t>(arg_ref.Symbol->TypeArgRefs().size());
-    for (auto j = max - 1; j > -1z; --j) {
-      auto field = MakeUnique<IdentifierAst>(arg->Val->PosStart(), std::to_string(j));
-      auto new_ast = MakeUnique<PostfixExpressionAst>(
-        AstClone(arg->Val),
-        MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-      auto new_arg = MakeUnique<FunctionCallArgumentPositionalAst>(AstClone(arg->Conv), nullptr, std::move(new_ast));
-      Args.insert(Args.begin() + static_cast<std::ptrdiff_t>(i), std::move(new_arg));
+    if (spread->Temp != nullptr) { SpreadTemps.emplace_back(std::move(spread->Temp)); }
+    for (auto &elem : spread->Elems) {
+      expanded_args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
+        AstClone(arg->Conv), nullptr, std::move(elem)));
     }
-    genex::actions::erase(Args, Args.begin() + static_cast<std::ptrdiff_t>(i) + max);
   }
+  Args = std::move(expanded_args);
 
   // Analyse the arguments. The immutability/borrow mutation
   // checks are deferred to Stage8, because the "self" argument's
@@ -175,9 +174,17 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 }
 
+auto FunctionCallArgumentGroupAst::GenerateSpreadTemps(
+  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> void {
+  for (auto const &temp : SpreadTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
+}
+
 auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
+
+  // The temporaries spread arguments are read off are made first.
+  for (auto const &temp : SpreadTemps) { temp->Stage8_CheckMemory(sm, meta); }
 
   // If the target is a coroutine, or the target is called
   // as "async", then pins are required.
@@ -346,21 +353,10 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
     }
 
     else if (arg->Conv and *arg->Conv == ConventionTag::MUT) {
-      const auto is_sym_mutable = sym->IsMutable or (
-        sym->Type->GetConvention() and *sym->Type->GetConvention() == ConventionTag::MUT);
-
-      // Immutable symbols cannot be mutably borrowed. This also catches "&mut self" method calls.
-      RaiseIf<SppInvalidMutationError>(
-        not is_sym_mutable,
-        ERR_ARGS(
-          *sym->Name, *arg->Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
-          "immutable symbol"));
-
-      // Immutable borrows, even if their symbol is mutable, cannot be mutably borrowed. An argument that is itself a
-      // "&" borrow, a symbol's or not, was rejected above.
-      RaiseIf<SppInvalidMutationError>(
-        sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-        ERR_ARGS(*sym->Name, *arg->Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
+      // Immutable symbols, and immutable borrows even if their symbol is mutable, cannot be mutably borrowed. This
+      // also catches "&mut self" method calls. An argument that is itself a "&" borrow, a symbol's or not, was rejected
+      // above.
+      common_errors::RequireMutablyBorrowable(*sym, *arg->Conv, *sm);
 
       // A mutable borrow cannot overlap any other borrow.
       const auto borrowed = regions::PlaceAtOf(*arg->Val, *sm->CurrentScope);

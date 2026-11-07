@@ -1,0 +1,4 @@
+description = "Integer matrix multiply, 700x700 S64 in Vecs: checked multiply-add, strided reads"
+layer = "std"
+output = "exact"
+gaps = ["no SIMD in the std, and the CPU is baseline x86-64 for all three"]

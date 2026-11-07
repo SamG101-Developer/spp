@@ -45,7 +45,8 @@ jobs:
       actions: read
     uses: ./.github/workflows/_analysis.yaml
     with:
-      codeql: true
+      codeql-cpp: true
+      codeql-python: true
       full-scan: true
 
   # The compiler under ASan, UBSan and LSan, over the suites

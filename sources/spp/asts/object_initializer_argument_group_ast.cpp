@@ -37,7 +37,6 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
-import spp.utils.algorithms;
 import genex;
 
 SPP_MOD_BEGIN
@@ -97,7 +96,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*InitType);
   const auto all_attrs = type_members::GetAllAttrs(*cls_sym);
   const auto all_attr_names = all_attrs
-    | spp::views::tuple_nth<0>
+    | genex::views::tuple_nth<0>
     | genex::to<Vec>();
 
   // Use the hook to record information for the resolution and
@@ -341,7 +340,7 @@ auto ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArg
   // Get the first shorthand argument tagged with the ".." token.
   const auto filtered = Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
     | genex::views::filter([](auto const &x) { return x != nullptr and x->TokEllipsis != nullptr; })
     | genex::to<Vec>();
   return filtered.empty() ? nullptr : filtered[0];
@@ -359,7 +358,7 @@ auto ObjectInitializerArgumentGroupAst::GetShorthandArgs() -> Vec<ObjectInitiali
   // Get all shorthand arguments tagged with the ".." token.
   return Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentShorthandAst*>
     | genex::to<Vec>();
 }
 
@@ -367,7 +366,7 @@ auto ObjectInitializerArgumentGroupAst::GetKeywordArgs() -> Vec<ObjectInitialize
   // Get all keyword arguments.
   return Args
     | genex::views::ptr
-    | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>()
+    | genex::views::cast_dynamic<ObjectInitializerArgumentKeywordAst*>
     | genex::to<Vec>();
 }
 

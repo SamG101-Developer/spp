@@ -42,27 +42,20 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import spp.utils.files;
+import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 import std;
 
 namespace spp::asts {
   namespace {
-    /// The package a scope belongs to. This is the library folder
-    /// that is a direct child of the "vcs" folder, or "" for the
-    /// project's modules.
+    /// The package a scope belongs to: its module's owner, or "" for
+    /// the project's modules.
     auto PackageOfScope(Scope const *const scope) -> Opt<Str> {
       const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
       const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
       if (mod_ast == nullptr) { return Nullopt; }
-
-      auto const &path = mod_ast->FilePath;
-      for (auto it = path.begin(); it != path.end(); ++it) {
-        if (*it != "vcs") { continue; }
-        if (const auto lib = std::next(it); lib != path.end()) { return spp::utils::files::NativeString(*lib); }
-      }
-      return Str();
+      return mod_ast->Owner.value_or(Str());
     }
 
     /// The first block in "scopes" extending a type matching
@@ -283,26 +276,28 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Re-analyse the superclass type so its generic-argument
-  // constraints are enforced at this pre-analysis stage. If
+  // Analyse the superclass type again, which checks its generic
+  // arguments' constraints at this pre-analysis stage. If
   // they are done in stage 7, then we get misleading errors
   // because when something else correctly fails, a missing
   // constraint enforcement spews some inference error..
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Get the symbols.
   const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+  if (sup_sym == nullptr or sup_sym->LinkedScope == nullptr) {
+    Ice(*SuperCls, *sm->CurrentScope, "a superclass analysed again does not resolve where its block is");
+  }
 
   // We use "direct" super scopes here because it enforces
   // superimposing "Copy" on the type directly, not via an
   // extension chain.
-  auto sup_scopes = sm->CurrentScope->FindTypeSymbol(SuperCls.get())->LinkedScope->DirectSupScopes;
+  auto sup_scopes = sup_sym->LinkedScope->DirectSupScopes;
   sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
   sup_scopes |= genex::actions::remove_if([](auto const &x) {
     return AstAs<ClassPrototypeAst>(x->AstNode) == nullptr;
@@ -339,14 +334,18 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
 
-    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
 
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+
+      // What the superclass still has to be overridden, for an
+      // editor to offer inside this block.
+      if (lsp::resolution_index::IsEnabled() and sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
+        lsp::resolution_index::RecordOverridables(*this, *sup_sym->LinkedScope, *sm, meta);
+      }
 
       // Copying a value copies every attribute, so "Copy" only
       // holds over a type whose attributes are all copyable -
@@ -434,8 +433,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
       this_method->Visibility = base_method->Visibility;
       const auto func_sym = _Scope->FindVarSymbol(this_method->Name.get(), true);
-      func_sym->Visibility = base_method->Visibility.first;
-      func_sym->VisibilityAnnotation = this_method->Visibility.second;
+      func_sym->VisibilityFrom = this_method;
     }
 
     else if (const auto type_member = member->To<TypeStatementAst>()) {

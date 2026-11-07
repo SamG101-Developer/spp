@@ -35,6 +35,7 @@ import spp.asts.type_statement_ast;
 import spp.asts.type_unary_expression_ast;
 import spp.asts.type_unary_expression_operator_namespace_ast;
 import spp.asts.generate.common_types_precompiled;
+import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_sym_info;
 import spp.utils.ice;
@@ -79,15 +80,15 @@ namespace {
   auto IdArgNamed(
     TypeSymbol const &inst, spp::Str const &name) -> spp::Opt<TypeIdArg> {
     using namespace spp::analyse::scopes;
-    if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) {
+    if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeaderOf(inst.Id).Kind != TypeKey::Tag::Inst) {
       return spp::Nullopt;
     }
-    auto const *const tmpl = HeadOf(inst.Id).Symbol();
+    auto const *const tmpl = HeaderOf(inst.Id).Symbol();
     auto const *const params = tmpl != nullptr ? tmpl->GnParams() : nullptr;
     if (params == nullptr) { return spp::Nullopt; }
     for (auto const *param : params->GetAllParams()) {
       if (param->Name->ToString() == name and param->ParamId() != 0) {
-        return FindArgOf(HeadOf(inst.Id).Args, param->ParamId());
+        return FindArgOf(HeaderOf(inst.Id).Args, param->ParamId());
       }
     }
     return spp::Nullopt;
@@ -123,10 +124,10 @@ namespace {
     // instantiation not made yet, left to whoever makes it.
     using namespace spp::analyse::scopes;
     const auto id = scope.TypeIdOf(type);
-    if (not IsClosedTypeId(id) or HeadOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
+    if (not IsClosedTypeId(id) or HeaderOf(id).Kind != TypeKey::Tag::Inst) { return nullptr; }
     const auto stamp = last->StampedTypeId();
     if (stamp == nullptr or scope.ReadIn(stamp) == id) { return nullptr; }
-    auto const *const tmpl = HeadOf(id).Symbol();
+    auto const *const tmpl = HeaderOf(id).Symbol();
     if (tmpl == nullptr or tmpl->Kind != TypeKind::Cls) { return nullptr; }
     return spp::analyse::utils::monomorphization::InstantiateForScope(id, scope);
   }
@@ -221,7 +222,7 @@ namespace {
     // Its arguments as its identity holds them: its name spells them as they were written where it was made, which
     // they need not mean here.
     if (compiler_special_type and sym->Id != nullptr) {
-      auto const &head = HeadOf(sym->Id);
+      auto const &head = HeaderOf(sym->Id);
       auto arg_ids = spp::Vec<TypeId>();
       if (head.Kind == TypeKey::Tag::Inst) {
         for (auto const &arg : ArgsOf(head.Args)) { if (arg.TypeVal != nullptr) { arg_ids.emplace_back(arg.TypeVal); } }
@@ -260,6 +261,7 @@ NamespaceSymbol::NamespaceSymbol(
   Name(that.Name),
   LinkedScope(that.LinkedScope),
   Owner(that.Owner),
+  Declares(that.Declares),
   IsFfiPackage(that.IsFfiPackage) {
 }
 
@@ -288,7 +290,7 @@ VariableSymbol::VariableSymbol(
   ScopeDefinedIn(ScopeDefinedIn),
   Kind(kind),
   IsMutable(is_mutable),
-  Visibility(visibility),
+  VisibilityFallback(visibility),
   MemInfo(MakeUnique<utils::memory_state::MemoryInfo>()) {
   LlvmInfo = MakeShared<codegen::LlvmVarSymbolInfo>();
   CompTimeValue = nullptr;
@@ -303,12 +305,13 @@ VariableSymbol::VariableSymbol(
   OwnParamId(that.OwnParamId),
   BindsParamId(that.BindsParamId),
   IsVariadic(that.IsVariadic),
+  Pack(that.Pack),
   IsMutable(that.IsMutable),
   AliasSymbol(that.AliasSymbol),
   NarrowsSymbol(that.NarrowsSymbol),
   IndirectFnType(that.IndirectFnType),
-  Visibility(that.Visibility),
-  VisibilityAnnotation(that.VisibilityAnnotation),
+  VisibilityFallback(that.VisibilityFallback),
+  VisibilityFrom(that.VisibilityFrom),
   MemInfo(that.MemInfo->Clone()),
   LlvmInfo(MakeShared<codegen::LlvmVarSymbolInfo>()),
   CompTimeValue(AstClone(that.CompTimeValue)),
@@ -577,7 +580,7 @@ TypeSymbol::TypeSymbol(
   ScopeDefinedIn(scope_defined_in),
   Kind(kind),
   TypeConstraints(generic_constraints),
-  Visibility(visibility),
+  VisibilityFallback(visibility),
   Convention(convention),
   LlvmInfo(MakeShared<codegen::LlvmTypeSymbolInfo>()),
   IsDirectlyCopyable(is_directly_copyable),
@@ -598,8 +601,10 @@ TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   Id(that.Id),
   TypeConstraints(that.TypeConstraints),
   BoundTypeVal(that.BoundTypeVal),
+  BoundPack(that.BoundPack),
   DerivesFromSymbol(that.DerivesFromSymbol),
-  Visibility(that.Visibility),
+  VisibilityFallback(that.VisibilityFallback),
+  VisibilityFrom(that.VisibilityFrom),
   Convention(that.Convention),
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
@@ -751,11 +756,14 @@ auto TypeSymbol::AliasTargetId(
 }
 
 auto TypeSymbol::UseTarget() const -> TypeSymbol* {
-  // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle of "use"s is rejected where one is
-  // declared, but can be followed before then.
-  auto *s = const_cast<TypeSymbol*>(this);
+  // Followed as "AliasTarget" is, stopping on an alias it has passed: a cycle
+  // of "use"s is rejected where one is declared, but can be followed before
+  // then.
+  auto s = const_cast<TypeSymbol*>(this);
   auto passed = PassedAliases<>{s};
-  while (s->Alias != nullptr and s->Alias->IsFromUseStmt and s->Alias->WrittenIn != nullptr
+  while (s->Alias != nullptr
+    and s->Alias->IsFromUseStmt
+    and s->Alias->WrittenIn != nullptr
     and s->Alias->Written != nullptr) {
     auto *const next = s->Alias->WrittenIn->FindHeadSymbol(*s->Alias->Written);
     if (next == nullptr or WasPassed(passed, next)) { break; }
@@ -917,16 +925,21 @@ auto TypeSymbol::TypeArgRefs() const -> Vec<TypeRef> {
 
   // If the instantiation is not a type key "Inst" tag
   // type, then return the empty type list.
-  if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeadOf(inst.Id).Kind != TypeKey::Tag::Inst) {
+  if (inst.Id == nullptr or inst.LinkedScope == nullptr or HeaderOf(inst.Id).Kind != TypeKey::Tag::Inst) {
     return types;
   }
 
   // Otherwise, extract the args off of the head (all by
-  // identity), and keep the type args only, as refs.
-  for (auto const &arg : ArgsOf(HeadOf(inst.Id).Args)) {
-    if (arg.TypeVal != nullptr) {
+  // identity), and keep the type args only, as refs: a type
+  // pack's list as its elements ("Tup[S32, Bool]" is "S32",
+  // "Bool").
+  for (auto const &arg : ArgsOf(HeaderOf(inst.Id).Args)) {
+    if (arg.TypeVal == nullptr) { continue; }
+    if (not IsPackTypeId(arg.TypeVal)) {
       types.emplace_back(TypeRef::Of(arg.TypeVal, *inst.LinkedScope));
+      continue;
     }
+    for (const auto elem : HeaderOf(arg.TypeVal).PackElements) { types.emplace_back(TypeRef::Of(elem, *inst.LinkedScope)); }
   }
   return types;
 }
@@ -967,7 +980,7 @@ auto TypeRef::FromId(
   auto sym = id != nullptr and not id->HasSelf ? scope.FindTypeSymbolById(id) : nullptr;
   if (missing == OnMissing::Make and sym == nullptr and id != nullptr
     and not id->HasSelf and open != nullptr and open->Alias == nullptr) {
-    if (HeadOf(id).IsInstance()) {
+    if (HeaderOf(id).IsInstance()) {
       ignore = MakeOnRead(scope, *open, id);
       sym = scope.FindTypeSymbolById(id);
     }
@@ -1027,7 +1040,7 @@ auto TypeRef::Of(
   // to create a type ref.
   using generate::common_types_precompiled::NEVER;
   const auto own_conv = id != nullptr
-    ? static_cast<ConventionTag>(HeadOf(id).Conv)
+    ? static_cast<ConventionTag>(HeaderOf(id).Conv)
     : ConventionTag::MOV;
 
   // Call into the "FromId" function with the "null" flag
@@ -1111,7 +1124,7 @@ auto TypeRef::Template() const -> TypeSymbol* {
   // template like Vec).
   auto named = Symbol;
   if (Id != nullptr) {
-    auto const &head = HeadOf(Id);
+    auto const &head = HeaderOf(Id);
     if (head.IsInstance()) { return head.Symbol(); }
     if (head.Kind == TypeKey::Tag::Symbol and head.Symbol() != nullptr) { named = head.Symbol(); }
   }
@@ -1224,6 +1237,23 @@ auto TypeSymbol::InvalidateFqNameCache() const -> void {
   // Clear caches.
   _CachedFqName = nullptr;
   _CachedFqNameGen = 0;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::VariableSymbol::GetVisibility() const
+  -> asts::utils::Visibility {
+  return VisibilityFrom != nullptr
+    ? VisibilityFrom->Visibility.first
+    : VisibilityFallback;
+}
+
+/// [CHECKED]
+auto spp::analyse::scopes::TypeSymbol::GetVisibility() const
+  -> asts::utils::Visibility {
+  if (VisibilityFrom != nullptr) { return VisibilityFrom->Visibility.first; }
+  return InstanceOf != nullptr
+    ? InstanceOf->GetVisibility()
+    : VisibilityFallback;
 }
 
 SPP_MOD_END

@@ -238,16 +238,8 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   // The iterator is consumed on every way out of the loop, and
   // only then, so it is deferred in the loop's own scope.
   // Translated: "defer std::mem::ops::drop($_iter)".
-  auto drop_iter = [&] {
-    auto args = Vec<Unique<FunctionCallArgumentAst>>();
-    args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
-      nullptr, nullptr, AstClone(iterable_name)));
-    auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
-      nullptr, MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);
-    return MakeUnique<PostfixExpressionAst>(
-      INJECT_CODE("std::mem::ops::drop", ParseExpression), std::move(call));
-  }();
-  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(nullptr, std::move(drop_iter));
+  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(
+    nullptr, expr_utils::DropCall(*iterable_name));
 
   // Analyse the other initial let statement.
   _TransformedLet = std::move(iterable_let);

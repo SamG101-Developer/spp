@@ -56,12 +56,12 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.compiler.module_tree;
 import spp.lex.tokens;
-import spp.utils.algorithms;
 import spp.utils.error_formatter;
 import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.numbers;
 import spp.utils.ptr;
+import spp.utils.stats;
 import genex;
 import llvm;
 import numex.big_dec;
@@ -356,13 +356,15 @@ namespace spp::analyse::scopes {
     SPP_ATTR_HOT auto RawTypeKey(TypeAst const *t, TypeSymbol const *given, Scope const &scope) -> TypeKeyParts;
 
     /// Continue "out" with a key already made: a variant's members are carried with it, so a variant it is a member of
-    /// flattens it.
+    /// flattens it. Not when "out" already holds a convention: a borrow of a variant ("&Opt[S32]") is one member, a
+    /// pointer, never flattened into the variant holding it.
     SPP_ATTR_HOT auto AppendKeyId(
       TypeKeyParts &out, const TypeId id) -> void {
       using namespace spp::analyse::scopes;
+      const auto whole = out.Key.Words.empty();
       out.Key.PushSpliced(*id);
-      auto const &head = HeadOf(id);
-      if (head.Kind == TypeKey::Tag::Variant and head.Conv == 0) {
+      auto const &head = HeaderOf(id);
+      if (whole and head.Kind == TypeKey::Tag::Variant and head.Conv == 0) {
         for (const auto m : head.VariantMembers) { out.VariantMembers.emplace_back(TypeKey(*m)); }
       }
     }
@@ -371,10 +373,10 @@ namespace spp::analyse::scopes {
     /// alias's target when it is read, as the alias itself would be.
     auto AliasHeadOf(
       const spp::analyse::scopes::TypeId id) -> spp::analyse::scopes::TypeSymbol const* {
-      using spp::analyse::scopes::HeadOf;
+      using spp::analyse::scopes::HeaderOf;
       using spp::analyse::scopes::TypeKey;
-      if (id == nullptr or HeadOf(id).Kind != TypeKey::Tag::Symbol or HeadOf(id).Conv != 0) { return nullptr; }
-      auto const *const sym = HeadOf(id).Symbol();
+      if (id == nullptr or HeaderOf(id).Kind != TypeKey::Tag::Symbol or HeaderOf(id).Conv != 0) { return nullptr; }
+      auto const *const sym = HeaderOf(id).Symbol();
       return sym != nullptr and sym->Alias != nullptr ? sym : nullptr;
     }
 
@@ -431,7 +433,7 @@ namespace spp::analyse::scopes {
 
       // Read here (an operation over a parameter bound here is rewritten and folded by identity,
       // "scopes::SubstituteCompId"); one whose identity does not read so is keyed from its written arguments.
-      auto const *const named = HeadOf(written).Kind == TypeKey::Tag::Inst
+      auto const *const named = HeaderOf(written).Kind == TypeKey::Tag::Inst
         ? scope.FindTypeSymbolById(written)
         : nullptr;
       const auto read = named != nullptr and named->Kind == TypeKind::Cls and named->Alias == nullptr
@@ -457,7 +459,7 @@ namespace spp::analyse::scopes {
 
       // An open instantiation of an alias stands for its target ("TypeSymbol::AliasTargetId"), recorded in the same
       // terms as its arguments: that target read here.
-      if (const auto target = named->AliasTargetId(); target != nullptr and HeadOf(target).IsInstance()) {
+      if (const auto target = named->AliasTargetId(); target != nullptr and HeaderOf(target).IsInstance()) {
         if (const auto target_read = scope.ReadIn(target); target_read != nullptr) {
           AppendKeyId(out, target_read);
           return {.How = StampKeying::Keyed};
@@ -495,15 +497,10 @@ namespace spp::analyse::scopes {
         }
       }
 
-      // A class, as its template and its arguments. A variadic class (a variant, a tuple) has no defaults to record:
-      // its arguments are keyed as written.
+      // A class, as its template and its arguments.
       if (named != nullptr and named != head and named->Alias == nullptr) { head = named; }
       if (head == nullptr or head->Alias != nullptr or head->Type == nullptr or head->InstanceOf != nullptr) {
         return false;
-      }
-      if (head->Type->GnParamGroup->GetVariadicParam() != nullptr) {
-        AppendKeyId(out, scope.InstanceIdOf(*head, written_args.GetAllArgs()));
-        return true;
       }
       const auto recorded = spp::analyse::utils::type_resolution::RecordedArgsFor(
         written_args, *head->Type->GnParamGroup, scope, *head->LinkedScope);
@@ -520,6 +517,12 @@ namespace spp::analyse::scopes {
       using spp::asts::ConventionTag;
       using Tag = TypeKey::Tag;
 
+      // A type pack's binding is its list.
+      if (sym.BoundPack != nullptr) {
+        AppendKeyId(out, sym.BoundPack);
+        return nullptr;
+      }
+
       // Held as the binding holds it ("T" bound to "&mut Str" is "&mut Str"), as "TypeRef::Of" reads it, unless written
       // with a convention of its own.
       const auto held = sym.HeldConvention();
@@ -534,10 +537,10 @@ namespace spp::analyse::scopes {
           out.Key.Push(Tag::TypeParam, 0);
           return nullptr;
         }
-        out.Key.Push(Tag::TypeBound, static_cast<std::uint64_t>(sym.BindsParamId));
-        if (sym.BoundTypeVal != nullptr) { out.Key.PushText(Tag::TypeBound, sym.BoundTypeVal->ToString()); }
-        else { out.Key.PushText(Tag::TypeBound, sym.Name->ToView()); }
-        return nullptr;
+        // Every other binding links to what it binds (an instance's argument is a symbol, a parameter or "Self"). One
+        // linking to nothing had a key of its own once ("TypeBound": the parameter and its spelling); no compile
+        // reached it (counted over std and the suite, 2026-11-05), so it is a bug here.
+        Ice(std::format("the binding \"{}\" of parameter {} links to nothing", sym.Name->ToView(), sym.BindsParamId));
       }
       return bound;
     }
@@ -572,7 +575,7 @@ namespace spp::analyse::scopes {
       return {nullptr, nullptr};
     }
 
-    /// A variant, by the set of the members its "Variants" argument lists, read in "read_in": flattened, deduplicated,
+    /// A variant, by the set of its members (its pack's elements), read in "read_in": flattened, deduplicated,
     /// and in one order, whatever order they were written or substituted in.
     auto VariantKey(
       TypeSymbol const &tmpl, Vec<TypeAst const*> const &members, Scope const &read_in) -> TypeKeyParts {
@@ -580,24 +583,20 @@ namespace spp::analyse::scopes {
       auto out = TypeKeyParts();
       for (auto const *member : members) {
         auto parts = RawTypeKey(member, nullptr, read_in);
-        auto flat = parts.VariantMembers.empty()
-          ? spp::Vec<TypeKey>{std::move(parts.Key)}
-          : std::move(parts.VariantMembers);
 
-        // A pack bound to its tuple ("Bool or Rest" with "Rest" bound to "(S32, Str)") is the tuple's elements, as
-        // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str". Only a bare name can be a pack.
-        auto const *const named = member->To<spp::asts::TypeIdentifierAst>();
-        const auto elements = named != nullptr and named->GnArgGroup->Args.empty()
-          ? spp::analyse::utils::packs::BoundTypePackElements(*member, read_in)
-          : spp::Nullopt;
-        if (elements.has_value()) {
-          flat.clear();
-          for (auto const &element : *elements) {
-            auto element_parts = RawTypeKey(element.get(), nullptr, read_in);
-            if (element_parts.VariantMembers.empty()) { flat.emplace_back(std::move(element_parts.Key)); }
-            else { for (auto &m : element_parts.VariantMembers) { flat.emplace_back(std::move(m)); } }
+        // A pack bound to its list ("Bool or Rest" with "Rest" bound to "S32, Str") is the list's elements, as
+        // substitution has it ("SubstituteTypeId"): "Bool or S32 or Str".
+        const auto member_id = parts.VariantMembers.empty() ? InternTypeKey(TypeKey(parts.Key)) : nullptr;
+        auto flat = spp::Vec<TypeKey>();
+        if (IsPackTypeId(member_id)) {
+          for (const auto elem : HeaderOf(member_id).PackElements) {
+            auto const &elem_head = HeaderOf(elem);
+            if (elem_head.Kind != TypeKey::Tag::Variant or elem_head.Conv != 0) { flat.emplace_back(*elem); }
+            else { for (const auto m : elem_head.VariantMembers) { flat.emplace_back(*m); } }
           }
         }
+        else if (parts.VariantMembers.empty()) { flat.emplace_back(std::move(parts.Key)); }
+        else { flat = std::move(parts.VariantMembers); }
         for (auto &m : flat) {
           if (not genex::contains(out.VariantMembers, m)) { out.VariantMembers.emplace_back(std::move(m)); }
         }
@@ -748,12 +747,12 @@ namespace spp::analyse::scopes {
         return ConstantCompKey(expr, *constant, scope);
       }
 
-      // Create a pack from a tuple of elements, recursively
-      // interning the inner elements.
+      // A tuple value of elements, recursively interning the
+      // inner elements.
       if (const auto tup = expr.To<TupleLiteralAst>(); tup != nullptr) {
         auto elems = Vec<CompId>();
         for (auto const &elem : tup->Elems) { elems.push_back(InternCompKey(RawCompKey(*elem, scope))); }
-        return CompKey::OfPack(std::move(elems));
+        return CompKey::OfTuple(std::move(elems));
       }
 
       // For a parenthesis expression, extract the inner
@@ -844,6 +843,7 @@ Scope::Scope(
   LinkedNamespaceSymbol(nullptr),
   NonGnScope(this),
   _ErrorFormatter(error_formatter) {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCreated);
 }
 
 Scope::Scope(Scope const &other) :
@@ -859,6 +859,7 @@ Scope::Scope(Scope const &other, const std::size_t depth) :
   NonGnScope(other.NonGnScope),
   Deferred(other.Deferred),
   _ErrorFormatter(nullptr) {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCopied);
   InternalTable.ShallowCopyFrom(other.InternalTable);
 
   // Copy the children recursively, as far down as asked.
@@ -1189,6 +1190,7 @@ auto Scope::FindVarSymbol(
   IdentifierAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> VariableSymbol* {
   if (sym_name == nullptr) { return nullptr; }
+  spp::utils::stats::Bump(spp::utils::stats::Counter::VarSymbolLookups);
 
   // If an identifier has been stamped with an identity, then
   // lookup the symbol by the stamped id. If found, return it.
@@ -1277,12 +1279,14 @@ auto Scope::FindTypeSymbol(
   TypeAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> TypeSymbol* {
   if (sym_name == nullptr) { return nullptr; }
+  spp::utils::stats::Bump(spp::utils::stats::Counter::TypeSymbolLookups);
 
   // If a type has been stamped with an identity, then lookup
   // the symbol by the stamped id. If found, return it.
   if (not exclusive) {
     if (const auto type_id = sym_name->StampedTypeId(); type_id != nullptr) {
       if (const auto found = FindBoundTypeSymbolById(type_id); found != nullptr) {
+        spp::utils::stats::Bump(spp::utils::stats::Counter::TypeSymbolLookupsByStamp);
         return found;
       }
     }
@@ -1417,16 +1421,14 @@ auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
     // too as it isn't a true change.
     const auto bound = TypeIdOfSymbol(*binding);
     if (bound == nullptr) { continue; }
-    auto const &head = HeadOf(bound);
-    const auto is_itself = (head.Kind == TypeKey::Tag::TypeParam or head.Kind == TypeKey::Tag::TypeBound)
-      and head.TypeParamId == gn_param_id;
+    auto const &head = HeaderOf(bound);
+    const auto is_itself = head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == gn_param_id;
     if (is_itself) { continue; }
 
     // Record the type id -> type id substitution into the
-    // type params map on the overall substitution, and
-    // record if it was a pack or not.
+    // type params map on the overall substitution (a pack's
+    // binding is its list).
     subst.TypeParams.emplace_back(gn_param_id, bound);
-    if (param->IsVariadic) { subst.TypePackParams.push_back(gn_param_id); }
   }
 
   // For every comp parameter, get the comp symbol for each
@@ -1444,10 +1446,9 @@ auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
     if (bound == ParamCompId(comp)) { continue; }
 
     // Record the comp id -> comp id substitution into the
-    // comp params map on the overall substitution, and
-    // record if it was a pack or not.
+    // comp params map on the overall substitution (a pack's
+    // binding is its list).
     subst.CompParams.emplace_back(comp, bound);
-    if (param->IsVariadic) { subst.CompPackParams.push_back(comp); }
   }
 
   return subst;
@@ -1464,9 +1465,10 @@ auto Scope::ArgsIdOf(
   // Each argument is keyed by the parameter it is for ("ParamId"): a keyword by the identity its name carries (a
   // parameter's own name, "FromParams", or a variadic pack's, "GnPackParamId"), else by the parameter of that name in
   // "params", the group it is written against ("Self" records parameter 0); a positional argument by the parameter it
-  // binds ("ParamsBoundByArgs"). A pack's elements, and anything past the parameters, stay positional. A keyword naming
-  // no parameter is rejected before anything is keyed (E46), so reaching one here is a bug. A comp argument is its
-  // value's identity: folded where closed, its parameters by identity where not.
+  // binds ("ParamsBoundByArgs"). A pack's elements (the positionals its variadic parameter takes) are its list, under
+  // that parameter ("PackIdOf", "CompKey::OfPack"), always there, empty or not, so "P[S32]" and the "P[S32]" a solver
+  // fills are one; an element that is a bound pack is spliced in. Anything past the parameters stays positional. A keyword naming no parameter is rejected before anything is keyed (E46), so reaching one here is a
+  // bug. A comp argument is its value's identity: folded where closed, its parameters by identity where not.
   const auto targets = params != nullptr
     ? utils::type_resolution::ParamsBoundByArgs(args, params->GetAllParams())
     : Vec<GenericParameterAst*>();
@@ -1474,8 +1476,8 @@ auto Scope::ArgsIdOf(
   // "params"; none for a name that is no parameter.
   const auto param_named = [params](TypeIdentifierAst const &name) -> Opt<std::uint64_t> {
     if (const auto stamped = name.StampedTypeId(); stamped != nullptr) {
-      auto const &head = HeadOf(stamped);
-      if (head.Kind == TypeKey::Tag::TypeParam or head.Kind == TypeKey::Tag::TypeBound) { return head.TypeParamId; }
+      auto const &head = HeaderOf(stamped);
+      if (head.Kind == TypeKey::Tag::TypeParam) { return head.TypeParamId; }
     }
     if (params == nullptr) { return Nullopt; }
     for (auto const *param : params->GetAllParams()) {
@@ -1486,9 +1488,32 @@ auto Scope::ArgsIdOf(
     return Nullopt;
   };
 
+  auto const *const pack = params != nullptr and params->GetVariadicParam() != nullptr
+    and params->GetVariadicParam()->ParamId() != 0
+    ? params->GetVariadicParam()
+    : nullptr;
+  auto const *const type_pack = pack != nullptr and pack->IsTypeParam() ? pack : nullptr;
+  auto const *const comp_pack = pack != nullptr and pack->IsCompParam() ? pack : nullptr;
+  auto pack_elems = Vec<TypeAst const*>();
+  auto comp_pack_elems = Vec<CompId>();
+  auto comp_pack_unkeyed = false;
+
   for (auto i = 0uz; i < args.size(); ++i) {
     const auto arg = args[i];
     const auto param = arg->KeywordName() == nullptr and i < targets.size() ? targets[i] : nullptr;
+
+    // An element of the type pack: gathered into its list, keyed below.
+    if (type_pack != nullptr and param == type_pack and arg->IsTypeArg()) {
+      pack_elems.push_back(arg->TypeVal.get());
+      continue;
+    }
+    if (comp_pack != nullptr and param == comp_pack and arg->IsCompArg()) {
+      const auto elem = CompIdOf(*arg->CompVal);
+      if (elem == nullptr) { comp_pack_unkeyed = true; }
+      else if (IsPackCompId(elem)) { comp_pack_elems.append_range(elem->Kids); }
+      else { comp_pack_elems.push_back(elem); }
+      continue;
+    }
 
     // A keyword: the parameter it names, "Self" as 0.
     if (arg->KeywordName() != nullptr) {
@@ -1518,9 +1543,30 @@ auto Scope::ArgsIdOf(
     if (arg->IsCompArg()) { key.PushCompPart(CompIdOf(*arg->CompVal)); }
   }
 
+  // The type pack's list, after the parameters before it.
+  if (type_pack != nullptr) {
+    key.Push(TypeKey::Tag::Arg, type_pack->ParamId());
+    key.PushTypePart(PackIdOfElements(pack_elems));
+  }
+  if (comp_pack != nullptr) {
+    key.Push(TypeKey::Tag::Arg, comp_pack->ParamId());
+    key.PushCompPart(comp_pack_unkeyed ? nullptr : InternCompKey(CompKey::OfPack(std::move(comp_pack_elems))));
+  }
+
   // Finally, intern the instance key into a type id, which is the
   // final interned value for the "args id of".
   return InternTypeKey(std::move(key));
+}
+
+auto Scope::PackIdOfElements(
+  Vec<TypeAst const*> const &elems) const -> TypeId {
+  auto ids = Vec<TypeId>();
+  for (auto const *elem : elems) {
+    const auto id = InternTypeKey(_TypeKey(*elem));
+    if (IsPackTypeId(id)) { ids.append_range(HeaderOf(id).PackElements); }
+    else { ids.push_back(id); }
+  }
+  return PackIdOf(ids);
 }
 
 /// [CHECKED]
@@ -1540,32 +1586,13 @@ auto Scope::InstanceIdOf(
   // Handle the case where the input symbol is not an alias, and the
   // template is the variant type template (Var).
   if (head.Alias == nullptr and tmpl == PrecompiledTemplate(*VAR, *this)) {
-    // Read the variants off of the "..Variants" generic type pack.
-    const auto variants = args.size() == 1 and args[0]->KeywordName() != nullptr and args[0]->ViewName() == "Variants"
-      ? args[0]
-      : nullptr;
+    // Its members are its pack's elements, positionally. A pack
+    // named among them ("Var[Variants]" in its own block) is the
+    // member that stands for all of them, as a pattern binds it,
+    // or its list where it is bound ("VariantKey").
     auto members = Vec<TypeAst const*>();
-
-    // If we have extracted the variants as a valid "Variants..."
-    // type argument, read each member off. An unbound pack named
-    // there ("Var[Variants]" in its own block) is the member that
-    // stands for all of them, as a pattern binds it.
-    if (variants != nullptr and variants->IsTypeArg()) {
-      if (variants->TypeVal->LastTypePart()->GnArgGroup->Args.empty()
-        and utils::packs::DoesTypeNameAnUnboundPack(*variants->TypeVal, *this)) {
-        members.emplace_back(variants->TypeVal.get());
-      }
-      for (const auto member : variants->TypeVal->LastTypePart()->GnArgGroup->GetTypeArgs()) {
-        members.emplace_back(member->TypeVal.get());
-      }
-    }
-
-    // Otherwise, read of the non-tuple converted pack into the
-    // members.
-    else {
-      for (const auto arg : args) {
-        if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.emplace_back(arg->TypeVal.get()); }
-      }
+    for (const auto arg : args) {
+      if (arg->KeywordName() == nullptr and arg->IsTypeArg()) { members.emplace_back(arg->TypeVal.get()); }
     }
 
     // Create a variant-based instance key and intern it into a
@@ -1584,10 +1611,10 @@ auto Scope::InstanceIdOf(
 auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
   if (id == nullptr or id->HasUnresolved) { return nullptr; }
 
-  // Branch on the kind of the identity's head ("HeadOf"); its
+  // Branch on the kind of the identity's head ("HeaderOf"); its
   // symbol is the class, or the template ("Vec" for the head
   // of "Vec[T=Str]").
-  auto const &head = HeadOf(id);
+  auto const &head = HeaderOf(id);
   const auto ptr = head.Symbol();
   switch (head.Kind) {
     // If the instance key was built off of a symbol directly,
@@ -1621,9 +1648,8 @@ auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
 /// [CHECKED]
 auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
   using generate::common_types_precompiled::SELF_TYPE;
-  using generate::common_types_precompiled::TUP;
   if (id == nullptr) { return nullptr; }
-  auto const &head = HeadOf(id);
+  auto const &head = HeaderOf(id);
   const auto bare = BareOf(id);
 
   auto out = Shared<TypeAst>(nullptr);
@@ -1631,31 +1657,47 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
   if (sym != nullptr) { out = sym->FqName(); }
   else {
     switch (head.Kind) {
-      // For a type parameter, or a bound type parameter, get the
-      // type symbol from the parameter identity. Get the fully
-      // qualified type from it, and stamp the id into it. "Self"
-      // (0) is the "SELF" precompiled constant.
-      case TypeKey::Tag::TypeParam:
-      case TypeKey::Tag::TypeBound: {
-        if (head.Kind == TypeKey::Tag::TypeParam and head.TypeParamId == 0) {
+      // For a type parameter, get the type symbol from the
+      // parameter identity. Get the fully qualified type from it,
+      // and stamp the id into it. "Self" (0) is the "SELF"
+      // precompiled constant.
+      case TypeKey::Tag::TypeParam: {
+        if (head.TypeParamId == 0) {
           out = AstCloneShared(SELF_TYPE.get());
           break;
         }
         const auto param = FindGnTypeParamById(head.TypeParamId);
         if (param == nullptr) { return nullptr; }
         out = AstCloneShared(param->FqName().get());
-        out->LastTypePart()->StampTypeId(
-          head.Kind == TypeKey::Tag::TypeParam ? bare : NameTypeIdOf(*param));
+        out->LastTypePart()->StampTypeId(bare);
         break;
       }
 
       // For a generic instantiation, get each generic argument's
       // name, and reconstruct the generic argument's equivalent
-      // ast. Attach the group to the template.
+      // ast. Attach the group to the template. A type pack's list
+      // is spelled as its elements, positionally (a pack is never
+      // named, and is last).
       case TypeKey::Tag::Inst: {
         const auto tmpl = head.Symbol();
         auto group = GenericArgumentGroupAst::NewEmpty();
         for (auto const &arg : ArgsOf(head.Args)) {
+          if (IsPackTypeId(arg.TypeVal)) {
+            for (const auto elem : HeaderOf(arg.TypeVal).PackElements) {
+              auto type = TypeAstOf(elem);
+              if (type == nullptr) { return nullptr; }
+              group->Args.emplace_back(GenericArgumentAst::NewType(nullptr, std::move(type)));
+            }
+            continue;
+          }
+          if (IsPackCompId(arg.CompVal)) {
+            for (const auto elem : arg.CompVal->Kids) {
+              auto value = CompAstOf(elem);
+              if (value == nullptr) { return nullptr; }
+              group->Args.emplace_back(GenericArgumentAst::NewComp(nullptr, std::move(value)));
+            }
+            continue;
+          }
           // Named by its parameter's identity as well as spelled,
           // so what reads it back finds the parameter by identity.
           auto name = arg.Named
@@ -1681,34 +1723,17 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
       }
 
       // For variant types, recursively convert each inner member
-      // of the variant, and apply the ordering. Build a variant
-      // type and insert the type arguments.
+      // of the variant, in the identity's order (its tags'). Build
+      // a variant type and insert the type arguments.
       case TypeKey::Tag::Variant: {
-        auto unordered = Vec<Pair<Shared<TypeAst>, TypeSymbol const*>>();
+        auto members = Vec<Shared<TypeAst>>();
         for (const auto member : head.VariantMembers) {
           auto type = TypeAstOf(member);
           if (type == nullptr) { return nullptr; }
-          unordered.emplace_back(std::move(type), FindTypeSymbolById(BareOf(member)));
+          members.emplace_back(std::move(type));
         }
-        auto members = utils::type_members::OrderVariantMembers(std::move(unordered));
-        out = generate::common_types::VariantType(0, {});
-        out->LastTypePart()->GnArgGroup->Args.emplace_back(GenericArgumentAst::NewType(
-          TypeIdentifierAst::FromString("Variants"), generate::common_types::TupleType(0, std::move(members))));
-        if (IsStampableTypeId(bare)) {
-          out->LastTypePart()->StampTypeId(bare);
-          // Its members' tuple is the "Tup" instance over them, keyed
-          // from its template and arguments (as an unmade one is,
-          // "KeyUnmade"): its members are each stamped already, so
-          // nothing is looked up by name.
-          if (const auto variants = out->LastTypePart()->GnArgGroup->At("Variants"); variants != nullptr) {
-            auto const &tup = *variants->TypeVal->LastTypePart();
-            if (auto const *const tup_tmpl = PrecompiledTemplate(*TUP, *this)) {
-              if (const auto tup_id = InstanceIdOf(*tup_tmpl, tup.GnArgGroup->GetAllArgs()); tup_id != nullptr) {
-                tup.StampTypeId(tup_id);
-              }
-            }
-          }
-        }
+        out = generate::common_types::VariantType(0, std::move(members));
+        if (IsStampableTypeId(bare)) { out->LastTypePart()->StampTypeId(bare); }
         break;
       }
 
@@ -1745,9 +1770,10 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
       return name;
     }
 
-    // For a generic comp parameter pack, convert each
-    // element, and then wrap the load inside a tuple literal
-    // ast.
+    // For a tuple, or a comp pack (an instance binds one to its
+    // tuple), convert each element, and then wrap the load inside
+    // a tuple literal ast.
+    case CompKey::Part::Tuple:
     case CompKey::Part::Pack: {
       auto values = Vec<Unique<ExpressionAst>>();
       for (const auto elem : node.Kids) {
@@ -1849,7 +1875,7 @@ auto Scope::DepthDiff(const Scope *scope) const -> sys::ssize_t {
   // a counter.
   auto func = [](this auto &&self, Scope const *source, Scope const *target, const sys::ssize_t depth) -> sys::ssize_t {
     if (source == target) { return depth; }
-    for (auto const *sup_scope : source->DirectSupScopes) {
+    for (auto const *sup_scope : source->GetDirectSupScopes()) {
       if (const auto result = self(sup_scope, target, depth + 1z); result >= 0z) {
         return result;
       }
@@ -1967,8 +1993,10 @@ auto Scope::GetSupScopes() const -> SupScopeList {
   // Get all super scopes, recursively, yielding each one once.
   // Use the cache if available, saving on a massive number of
   // allocations.
+  spp::utils::stats::Bump(spp::utils::stats::Counter::SupScopeWalks);
   const auto generation = TypeStructureGeneration();
   if (_SupScopesCache != nullptr and _SupScopesGen == generation) {
+    spp::utils::stats::Bump(spp::utils::stats::Counter::SupScopeWalksCached);
     return SupScopeList(_SupScopesCache);
   }
 

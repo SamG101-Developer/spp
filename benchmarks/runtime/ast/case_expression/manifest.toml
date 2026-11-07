@@ -1,0 +1,3 @@
+description = "A dense eight-way case on LCG values in a hot loop: a jump table or a compare chain"
+layer = "core"
+output = "exact"

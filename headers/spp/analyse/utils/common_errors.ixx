@@ -7,6 +7,7 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TypeAst);
@@ -30,5 +31,11 @@ namespace spp::analyse::utils::common_errors {
   /// "RequireNotBorrowed" showing the checked type itself.
   SPP_EXP_FUN auto RequireNotBorrowed(
     TypeAst const &type, Ast const &at, StrView what, ScopeManager const &sm, bool deep = true)
+    -> void;
+
+  /// "sym" can be lent on mutably by "mutator" (the "&mut" of a call's argument or a "gen"): it is "mut", or holds a
+  /// mutable borrow ("x: &mut S32"), and holds no immutable one; or an "SppInvalidMutationError".
+  SPP_EXP_FUN auto RequireMutablyBorrowable(
+    VariableSymbol const &sym, Ast const &mutator, ScopeManager const &sm)
     -> void;
 }

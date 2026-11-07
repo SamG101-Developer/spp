@@ -658,6 +658,19 @@ def size_cases() -> None:
         )
 
 
+def hint_cases() -> None:
+    # A branch hint returns its condition unchanged; the weights it adds are checked by check-branch-hints.sh.
+    covers("std.hints.likely", "std.hints.unlikely")
+    for fn in ("likely", "unlikely"):
+        for v in (False, True):
+            lit = value_lit("Bool", v)
+            CASES.append(
+                Case(
+                    "hints", f"{fn} {lit}", "Bool", f"std::hints::{fn}({lit})", [], f"std::hints::{fn}(hide({lit}))", v
+                )
+            )
+
+
 # -- Run time only ----------------------------------------------------------------------------------------------------
 
 
@@ -1273,6 +1286,7 @@ EXCLUDED: dict[str, str] = {
     "std.single.": "a singleton",
     "std.allocator.": "allocation",
     "std.abort.": "aborting",
+    "std.hints.black_box": "an optimisation barrier with no compile-time form",
 }
 
 # -- Known failures ---------------------------------------------------------------------------------------------------
@@ -1348,6 +1362,7 @@ def emit(builtins: str, std_src: str, out: str) -> None:
     int_cases()
     float_cases()
     size_cases()
+    hint_cases()
     f8_cases()
     runtime_int_cases()
     runtime_float_cases()
@@ -1369,7 +1384,9 @@ def emit(builtins: str, std_src: str, out: str) -> None:
         for m in re.findall(r'!intrinsic\(name="[^"]+"\)\s*\n(?:\s*!.*\n)*\s*(?:cmp\s+)?fun\s+(\w+)', f.read_text())
     }
     CASES[:] = [
-        c for c in CASES if all(x in callable_fns for x in re.findall(r"std::intrinsics::(\w+)", f"{c.cmp} {c.rt_val}"))
+        c
+        for c in CASES
+        if all(x in callable_fns for x in re.findall(r"std::(?:intrinsics|hints)::(\w+)", f"{c.cmp} {c.rt_val}"))
     ]
     missing = sorted(
         n for n in set(names) if n not in COVERED and n in declared and not any(n.startswith(p) for p in EXCLUDED)

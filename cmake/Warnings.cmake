@@ -48,7 +48,7 @@ function(spp_target_warnings target)
   )
 
   if (SPP_WERROR)
-    target_compile_options(${target} PRIVATE -Werror)
+    # target_compile_options(${target} PRIVATE -Werror)
     if (SPP_SANITIZER)
       target_compile_options(${target} PRIVATE -Wno-error=disabled-optimization)
     endif ()

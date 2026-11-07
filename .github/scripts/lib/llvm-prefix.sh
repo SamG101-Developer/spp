@@ -6,8 +6,8 @@
 
 llvm_prefix() {
   case "$RUNNER_OS" in
-    Windows) cygpath -m "$SPP_LLVM_WIN_PREFIX" ;;
-    macOS) printf '%s\n' "$SPP_LLVM_MAC_PREFIX" ;;
+    Windows) cygpath -m "$SPP_CI_LLVM_WIN_PREFIX" ;;
+    macOS) printf '%s\n' "$SPP_CI_LLVM_MAC_PREFIX" ;;
     *) printf '%s\n' "/usr/lib/llvm-${LLVM_LIB_VERSION}" ;;
   esac
 }

@@ -44,6 +44,13 @@ set(
   $<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>,$<PLATFORM_ID:Darwin>>)
 add_compile_definitions($<${SPP_NO_MIMALLOC_GENEX}:SPP_NO_MIMALLOC>)
 
+# Builds that exist to see destructors run: a test process otherwise
+# skips them.
+set(
+  SPP_TEST_TEARDOWN_GENEX
+  $<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>,$<BOOL:${SPP_COVERAGE}>>)
+add_compile_definitions($<${SPP_TEST_TEARDOWN_GENEX}:SPP_TEST_TEARDOWN>)
+
 # Strengthen the debug and asan builds.
 add_compile_options(
   $<$<OR:$<CONFIG:Debug>,$<BOOL:${_spp_sanitized}>>:-D_GLIBCXX_ASSERTIONS>)

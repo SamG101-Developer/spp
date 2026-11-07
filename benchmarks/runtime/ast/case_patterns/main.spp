@@ -1,0 +1,39 @@
+use std::console::println
+use std::hints::black_box
+
+cls Point {
+  !public x: U64
+  !public y: U64
+}
+
+sup Point ext std::copy::Copy { }
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut state = black_box(9_u64)
+  let mut acc = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    let a = state >> 60_u32
+    let b = (state >> 56_u32) & 15_u64
+    let p = Point(x=a, y=b)
+    let t = case (a, b) of {
+      is (u, v) and u == v { u * 2_u64 }
+      is (u, v) and u > v { u - v }
+      else { 1_u64 }
+    }
+    let r = case [a, b] of {
+      is [u, v] and u < 4_u64 { v }
+      else { 2_u64 }
+    }
+    let o = case p of {
+      is Point(x, y) and x == 3_u64 { y + 1_u64 }
+      is Point(x, y) { x ^ y }
+    }
+    case p is Point(x, y) and x > y { acc += 1_u64 }
+    acc = acc + t + r + o
+    i += 1_u64
+  }
+  println("{}", acc)
+}

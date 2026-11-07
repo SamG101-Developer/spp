@@ -13,6 +13,7 @@ SPP_AST_COMMON_FWD_DECL(TupleLiteralAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
+use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
@@ -36,15 +37,21 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
   ~TupleLiteralAst() override;
 
-  SPP_ATTR_NODISCARD auto EqualsTupleLiteral(TupleLiteralAst const &) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto EqualsTupleLiteral(
+    TupleLiteralAst const &) const -> Ordering override;
 
-  SPP_ATTR_NODISCARD auto Equals(ExpressionAst const &other) const -> Ordering override;
+  SPP_ATTR_NODISCARD auto Equals(
+    ExpressionAst const &other) const -> Ordering override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta,
+    codegen::LlvmCtx *ctx) -> llvm::Value* override;
 
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -60,22 +67,21 @@ SPP_EXP_CLS struct spp::asts::TupleLiteralAst final : LiteralAst {
 
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
-  /// The type a tuple literal of these elements has, analysed:
-  /// what a call's variadic arguments are typed as before any
-  /// literal holding them is built.
-  static auto TypeOfElements(
-    Vec<ExpressionAst*> const &elems,
-    std::size_t pos,
-    ScopeManager *sm,
-    CompilerMetaData *meta)
-    -> Shared<TypeAst>;
+  /// The types of these elements, which is used by "_BuildType" when creating
+  /// the type to cache or return (like for the type inference methods).
+  static auto ElementTypes(
+    Vec<ExpressionAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta,
+    bool strip_conventions = false) -> Vec<Shared<TypeAst>>;
 
 private:
-  /// The type, built and analysed once in stage 7. Rebuilding it
-  /// for every "InferType" analysed it again each time, codegen
-  /// included, and re-decided it in whatever context the caller
-  /// happened to be in.
+  /// The type, built and analysed once in stage 7. Rebuilding it for every
+  /// "InferType" analysed it again each time, codegen included, and re-decided
+  /// it in whatever context the caller happened to be in.
   Shared<TypeAst> _InferredType;
+
+  /// A spread element that is no place ("(..g())") evaluated once, into a
+  /// temporary its elements are read off (made before the elements).
+  Vec<Unique<LetStatementInitializedAst>> _SpreadTemps;
 
   /// Build and analyse the type from the elements.
   auto _BuildType(ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst>;

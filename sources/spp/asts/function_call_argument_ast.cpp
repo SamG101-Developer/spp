@@ -12,6 +12,7 @@ import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_positional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -59,8 +60,13 @@ auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // Analyse the semantics of the value expression.
+  // Analyse the semantics of the value expression. A spread ("..xs"), or an argument of a fold (the call allows it),
+  // may name a pack whole; nothing under it may.
   const auto _target_guard = WithoutCallersTarget(meta);
+  const auto pos = To<FunctionCallArgumentPositionalAst>();
+  const auto spreads = pos != nullptr and pos->TokUnpack != nullptr;
+  const auto _pack_guard = AllowPackWholeGuard(
+    meta, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
   Val->Stage7_AnalyseSemantics(sm, meta);
   common_errors::RequirePrimary(*Val, *sm);
 }

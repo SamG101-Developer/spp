@@ -6,12 +6,12 @@ module spp.asts.postfix_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -28,6 +28,20 @@ import spp.lsp.resolution_index;
 import genex;
 
 SPP_MOD_BEGIN
+namespace {
+  /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.
+  thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
+}
+
+PackElementCloneGuard::PackElementCloneGuard(
+  Map<Str, std::size_t> packs) :
+  _Outer(std::exchange(pack_elements, std::move(packs))) {
+}
+
+PackElementCloneGuard::~PackElementCloneGuard() {
+  pack_elements = std::move(_Outer);
+}
+
 PostfixExpressionAst::PostfixExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(Op) &&op) :
@@ -60,6 +74,19 @@ auto PostfixExpressionAst::PosEnd() const -> std::size_t {
 }
 
 auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
+  // An element of a closed pack is cloned as the name of its parameter ("PackElementCloneGuard").
+  if (auto const *const id = Lhs->To<IdentifierAst>(); id != nullptr and not pack_elements.empty()) {
+    auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+    const auto pack = pack_elements.find(id->Val);
+    if (access != nullptr and pack != pack_elements.end()
+      and genex::all_of(access->Name->Val, [](const char c) { return std::isdigit(c) != 0; })) {
+      const auto index = std::stoul(access->Name->Val);
+      if (index < pack->second) {
+        return MakeUnique<IdentifierAst>(id->PosStart(), analyse::utils::packs::PackElementName(*id, index));
+      }
+    }
+  }
+
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
@@ -110,7 +137,11 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
       // Standard analysis of the lhs (which is not a type), and
       // checking that the lhs is a valid form of primary expression.
+      // An element of a pack ("xs.0") names the pack whole, as a spread does.
       if (not _LhsAnalysed) {
+        auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+        const auto _pack_guard = AllowPackWholeGuard(
+          meta, access != nullptr and std::isdigit(access->Name->Val[0]) and Lhs->To<IdentifierAst>() != nullptr);
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }

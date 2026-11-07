@@ -130,6 +130,16 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     fun g() -> Void { std::mem::ops::drop(V[1_uz, 2_uz]()) }
 )");
 
+// A template's comp pack forwarded whole ("V[ns]") offers its elements' type, what the pack declares ("USize"), not
+// the open tuple it is as a whole (next-steps.md N14.1/N14.2).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestGenericArgumentComp,
+    test_valid_infer_type_from_a_forwarded_comp_pack, R"(
+    cls V[T, cmp ..n: T] { }
+    fun f[cmp ..ns: USize]() -> Void { std::mem::ops::drop(V[ns]()) }
+    fun g() -> Void { f[1_uz, 2_uz]() }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     TestGenericArgumentComp,
     test_invalid_infer_type_from_mixed_variadic_comp_args,

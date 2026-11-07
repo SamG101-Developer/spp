@@ -198,7 +198,7 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   // the symbols are registered.
   const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   // Mark copyable generics. An inherited one resolves to its

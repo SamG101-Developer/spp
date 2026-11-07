@@ -263,10 +263,13 @@ auto GenericArgumentAst::AnalyseCompExpr(
   // overloads against, an assignment target - applies to it. Its
   // target is its parameter's type, where that is known: without
   // it, a variant array ("[Some(val=1), None]") would hold each
-  // element to the first one's type.
+  // element to the first one's type. A comp pack named alone is
+  // forwarded as its list ("A[ns]", as "Tup[Ts]" is for a type
+  // pack); one inside an expression is no value there.
   const auto _meta_guard = MetaGuard(meta);
   meta->ReturnTypeOverloadResolverType = nullptr;
   meta->ClearAssignmentTarget();
+  meta->AllowPackWhole = value.To<IdentifierAst>() != nullptr;
   if (ExpectedCompType != nullptr) { meta->AssignmentTargetType = ExpectedCompType->AstIn(*sm->CurrentScope); }
   value.Stage7_AnalyseSemantics(sm, meta);
 }

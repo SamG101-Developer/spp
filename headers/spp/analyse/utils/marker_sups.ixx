@@ -37,6 +37,12 @@ namespace spp::analyse::utils::marker_sups {
   SPP_EXP_FUN auto FindFnSup(
     TypeAst const &type, Scope const &scope) -> TypeRef;
 
+  /// Only some types are allowed borrow types in the generic parameters, which
+  /// are compiler known and guaranteed to be valueless from a storage
+  /// perspective - functions and generators.
+  SPP_EXP_FUN auto HoldsNoValueOfItsArgs(
+    TypeSymbol &sym, Scope const &scope) -> bool;
+
   /// The generator ("Gen" / "GenOnce") the type is or superimposes: its "Yield" argument is what a resumption gives
   /// ("GenYieldOf"). None for no generator, or more than one, raised on "expr" (printing the type "spell" gives, only
   /// asked for then) unless "raise" is false.

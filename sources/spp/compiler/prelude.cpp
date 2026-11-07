@@ -1,4 +1,6 @@
 module spp.compiler.prelude;
+import spp.utils.types;
+import std;
 
 // Defined here, not inline in the interface: MSVC emits no definition
 // for an exported inline variable with a dynamic initialiser.
@@ -61,3 +63,24 @@ use std::copy::Copy
 use std::view::View
 use std::future::Fut
 )";
+
+auto spp::compiler::PreludeFor(
+  Vec<Str> const &ns_parts) -> Str {
+  // The module's namespace as written in a "use", with the trailing "::" so
+  // "std::str" does not match "std::string::Str".
+  auto own = Str("use ");
+  for (auto const &part : ns_parts) { own += part + "::"; }
+
+  // Keep every line but a "use" of a name directly in that namespace; one in a
+  // namespace nested below it is another module's.
+  auto prelude = Str();
+  auto rest = StrView(kPrelude);
+  while (not rest.empty()) {
+    const auto end = rest.find('\n');
+    const auto line = rest.substr(0, end);
+    rest = end == StrView::npos ? StrView() : rest.substr(end + 1);
+    if (line.starts_with(own) and line.find("::", own.length()) == StrView::npos) { continue; }
+    prelude.append(line).push_back('\n');
+  }
+  return prelude;
+}

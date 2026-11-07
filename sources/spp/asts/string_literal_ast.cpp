@@ -118,16 +118,17 @@ auto StringLiteralAst::EvaluateCompTime(
 
 auto StringLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // A char literal is either a StrView or Vec[U8] type,
-  // depending on the "b" byte prefix.
-  // Todo: static flag to check if the type's been analysed before? only has to be done once.
+  // A string literal is a "&StrView", or a "&View[U8]" with the
+  // "b" byte prefix: built and analysed once ("_Type").
   using generate::common_types_precompiled::StrViewAt;
   using generate::common_types::ViewU8Type;
-  auto type = BytePrefix != nullptr
-    ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
-    : StrViewAt(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
-  type->Stage7_AnalyseSemantics(sm, meta); // Todo: single analysis somewhere?
-  return type;
+  if (_Type == nullptr) {
+    _Type = BytePrefix != nullptr
+      ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
+      : StrViewAt(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
+    _Type->Stage7_AnalyseSemantics(sm, meta);
+  }
+  return AstCloneShared(_Type);
 }
 
 auto StringLiteralAst::InferTypeRef(

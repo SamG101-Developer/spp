@@ -154,7 +154,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   test_valid_self_as_a_variadic_parameter_type, R"(
     cls A { }
     sup A {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(rest) }
+        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
     }
     fun f() -> Void {
         let a = A()

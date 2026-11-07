@@ -1,27 +1,32 @@
 module;
 #include <spp/macros.hpp>
 
-#if SPP_PLATFORM_UNIX
-#include <dlfcn.h> // Todo: move to a "sys module
-#endif
-
 module spp.codegen.llvm_artefact;
 import spp.codegen.llvm_target;
 import spp.utils.types;
 import llvm;
 import std;
+import sys;
 
 namespace spp::codegen {
   namespace {
-    /// Where a program's hardening record lives: an ELF note,
-    /// which "strip" keeps, or a section of its own elsewhere.
-    constexpr auto kHardeningNoteSection = llvm::StringLiteral(".note.spp.hardening");
+    /// Where a program's hardening record lives: an ELF note, which "strip"
+    /// keeps, or a section of its own elsewhere.
+    constexpr auto kHardeningNoteSection = llvm::StringLiteral(
+      ".note.spp.hardening");
+
+    /// Where a program's hardening record lives for MachO binaries.
     constexpr auto kHardeningMachOSection = llvm::StringLiteral("__spp_hardening");
+
+    /// Where a program's hardening record lives for COFF binaries.
     constexpr auto kHardeningCoffSection = llvm::StringLiteral(".spphard");
 
     /// The owner the hardening record's ELF note names, and the
     /// note's type under that owner.
     constexpr auto kHardeningNoteOwner = llvm::StringLiteral("SPP");
+
+    /// The hardening note type (version) embedded with the owner, allowing for
+    /// different versions to expand in the future.
     constexpr auto kHardeningNoteType = 1U;
 
     /// What the libc this process runs against can fortify: "X"
@@ -38,11 +43,11 @@ namespace spp::codegen {
         // opened by; not its link map, as "<link.h>" brings in
         // "<elf.h>", whose macros take the names of llvm::ELF's.
         constexpr auto soname = "libc.so.6";
-        const auto handle = dlopen(soname, RTLD_LAZY | RTLD_NOLOAD);
+        const auto handle = sys::dlopen(soname, sys::RTLD_LAZY | sys::RTLD_NOLOAD);
         if (handle == nullptr) { return out; }
         char origin[4096] = {};
-        const auto found = dlinfo(handle, RTLD_DI_ORIGIN, origin) == 0;
-        dlclose(handle);
+        const auto found = sys::dlinfo(handle, sys::RTLD_DI_ORIGIN, origin) == 0;
+        sys::dlclose(handle);
         if (not found or origin[0] == '\0') { return out; }
         const auto path = Str(origin) + "/" + soname;
 
@@ -191,79 +196,105 @@ namespace spp::codegen {
       return wide ? VisitElfAs<llvm::object::ELF64BE>(data, f) : VisitElfAs<llvm::object::ELF32BE>(data, f);
     }
 
-    /// "n" rounded up to the four bytes every part of an ELF
-    /// note is padded to.
+    /// [CHECKED]
+    /// "n" rounded up to the four bytes every part of an ELF note is padded to.
     constexpr auto NotePadded(const std::size_t n) -> std::size_t {
-      return (n + 3) & ~std::size_t{3};
+      return (n + 3) & ~3uz;
     }
   }
 }
 
+/// [CHECKED]
 auto spp::codegen::EmitHardeningRecord(
-  void *llvm_module,
-  char const *record)
-  -> void {
+  void *llvm_module, char const *record) -> void {
+  // Cast the module to the correct type, and extract the context and target
+  // triple for this build. The record is received (pre-built) into this
+  // function.
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
   const auto &triple = TargetTriple();
   const auto text = llvm::StringRef(record);
 
-  // On ELF, a note: its owner's name and the record each padded
-  // to four bytes, behind a header of their sizes and the note's
-  // type, in the target's byte order.
   auto bytes = Str();
   auto section = llvm::StringRef();
+
+  // On ELF binaries, embed the record as a note: its owner's name and the
+  // record each padded to four bytes, behind a header of their sizes and the
+  // note's type. All done in the target's byte order.
   if (triple.isOSBinFormatELF()) {
     const auto little = llvm_mod.getDataLayout().isLittleEndian();
     const auto put32 = [&](const std::uint32_t v) {
-      for (auto i = 0U; i < 4U; ++i) { bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i)))); }
+      for (auto i = 0U; i < 4U; ++i) {
+        bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i))));
+      }
     };
     constexpr auto owner_size = kHardeningNoteOwner.size() + 1;
-    put32(static_cast<std::uint32_t>(owner_size));
-    put32(static_cast<std::uint32_t>(text.size()));
-    put32(kHardeningNoteType);
-    bytes += kHardeningNoteOwner;
+    put32(static_cast<std::uint32_t>(owner_size));  // 4 bytes sizeof owner
+    put32(static_cast<std::uint32_t>(text.size())); // 4 bytes sizeof record
+    put32(kHardeningNoteType);                      // 4 bytes version
+    bytes += kHardeningNoteOwner;                   // n bytes owner
     bytes.resize(12 + NotePadded(owner_size), '\0');
-    bytes += text;
+    bytes += text;                                  // n bytes record
     bytes.resize(12 + NotePadded(owner_size) + NotePadded(text.size()), '\0');
     section = kHardeningNoteSection;
   }
+
+  // Otherwise (MachO and Coff builds), use the raw records text and the correct
+  // section (platform-dependent).
   else {
     bytes = text.str();
     section = triple.isOSBinFormatMachO()
-      ? llvm::StringRef("__TEXT,__spp_hardening")
+      ? llvm::StringRef("__TEXT,__spp_hardening") // kHardeningMachOSection
       : llvm::StringRef(kHardeningCoffSection);
   }
 
-  // Nothing refers to it, so it is kept by being "used".
-  const auto init = llvm::ConstantDataArray::getString(ctx, bytes, /*AddNull=*/false);
+  // Nothing refers to it, so it is kept by being "used". Mock up a global
+  // variable with private linkage to hold the "init" for the "bytes", and then
+  // set its section into the specialized area. Force 4-byte alignment.
+  const auto init = llvm::ConstantDataArray::getString(
+    ctx, bytes, false);
   const auto global = new llvm::GlobalVariable(
-    llvm_mod, init->getType(), true, llvm::GlobalValue::PrivateLinkage, init, "spp.hardening");
+    llvm_mod, init->getType(), true, llvm::GlobalValue::PrivateLinkage, init,
+    "spp.hardening");
   global->setSection(section);
   global->setAlignment(llvm::Align(4));
   llvm::appendToUsed(llvm_mod, {global});
 }
 
+/// [CHECKED]
 auto spp::codegen::ReadHardeningRecord(
-  char const *path)
-  -> Expected<Opt<Str>, Str> {
-  auto object = llvm::object::ObjectFile::createObjectFile(path);
+  char const *exe_path) -> Expected<Opt<Str>, Str> {
+  // Convert the executable path into an object file, and return an error if
+  // that fails (ie this is not an executable file).
+  auto object = llvm::object::ObjectFile::createObjectFile(exe_path);
   if (not object) { return Unexpected(llvm::toString(object.takeError())); }
-
   auto record = Str();
 
+  // Convert the object file into its binary, allowing access to the sections of
+  // it. We can the filter by the specialised section name.
   auto const &file = *object->getBinary();
   for (auto const &sec : file.sections()) {
     auto name = sec.getName();
+
+    // Unnameable section.
     if (not name) {
       llvm::consumeError(name.takeError());
       continue;
     }
-    if (*name != kHardeningNoteSection and *name != kHardeningMachOSection and *name != kHardeningCoffSection) {
+
+    // Non-specialised section.
+    if (*name != kHardeningNoteSection
+      and *name != kHardeningMachOSection
+      and *name != kHardeningCoffSection) {
       continue;
     }
+
+    // At this point, the correct special section has been identified, and is
+    // ready to be read from. Check for present and non-corrupt contents first.
     auto contents = sec.getContents();
-    if (not contents) { return Unexpected(llvm::toString(contents.takeError())); }
+    if (not contents) {
+      return Unexpected(llvm::toString(contents.takeError()));
+    }
 
     // An ELF note's record follows its header and owner's name.
     auto data = *contents;
@@ -276,6 +307,9 @@ auto spp::codegen::ReadHardeningRecord(
         }
         return v;
       };
+
+      // If the data is too small, stop processing (prevent index errors). This
+      // is a present but no-key record. Otherwise, get the data.
       if (data.size() < 12) { break; }
       const auto desc_at = 12 + NotePadded(get32(0));
       const auto desc_size = get32(4);
@@ -285,6 +319,9 @@ auto spp::codegen::ReadHardeningRecord(
     record = data.str();
     break;
   }
+
+  // Otherwise, the raw data was being used, so read it unmodified (MachO and
+  // Coff)
   if (record.empty()) { return Nullopt; }
   return record;
 }

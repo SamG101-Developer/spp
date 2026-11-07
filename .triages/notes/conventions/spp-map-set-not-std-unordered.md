@@ -11,7 +11,7 @@ Never use `std::unordered_map` / `std::unordered_set`. Use the aliases in `heade
   Erase is swap-and-pop, so it still invalidates the moved element.
 
 **Why:** the maintainer's rule; ankerl is faster, and the wrapper is `headers/wrappers/ankerl.ixx`. The stable variants exist
-because `InternTypeKey` (TypeId = element pointer), `HeadOf`/`ParamsOf` (const& + CachedHead/CachedParams) and
+because `InternTypeKey` (TypeId = element pointer), `HeaderOf`/`ParamsOf` (const& + CachedHead/CachedParams) and
 `CompNodeOf` all depend on stable addresses — a plain `Map` there would dangle silently.
 
 **How to apply:** pick `Map`/`Set` by default; `Stable*` only when an address escapes. Never box values in `Unique`

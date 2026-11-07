@@ -9,6 +9,7 @@ import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.destructure_utils;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
@@ -114,12 +115,12 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
     : Vec<Ast*>{};
 
   const auto attributes = cls_attrs
-    | genex::views::cast_dynamic<ClassAttributeAst*>()
+    | genex::views::cast_dynamic<ClassAttributeAst*>
     | genex::to<Vec>();
 
   const auto multi_arg_skips = Elems
     | genex::views::ptr
-    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>()
+    | genex::views::cast_dynamic<LocalVariableDestructureSkipMultipleArgumentsAst*>
     | genex::to<Vec>();
 
   const auto assigned_attributes = Elems
@@ -177,7 +178,7 @@ auto LocalVariableDestructureObjectAst::Stage7_AnalyseSemantics(
   // and index on it.
   Shared<IdentifierAst> uid_name = nullptr;
   const ExpressionAst *effective_val = val;
-  if (not destructure_utils::IsDestructurePlaceExpression(*val)
+  if (not expr_utils::IsPlace(*val, *sm->CurrentScope)
     and not meta->LetStatementFromUninitialized) {
     _TmpName = destructure_utils::BindDestructureTemporary(val, val_type, *sm);
     effective_val = _TmpName.get();

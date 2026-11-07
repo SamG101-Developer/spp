@@ -33,6 +33,7 @@ jobs:
       compile: ${{ steps.filter.outputs.compile }}
       cross_codegen: ${{ steps.filter.outputs.cross_codegen }}
       security: ${{ steps.filter.outputs.security }}
+      codeql_python: ${{ steps.filter.outputs.codeql_python }}
       sonar: ${{ steps.filter.outputs.sonar }}
     steps:
       - name: Harden Runner
@@ -233,6 +234,24 @@ jobs:
     permissions: *read
     uses: ./.github/workflows/_cross_codegen.yaml
 
+  # Report-only until its gate is switched on, so it stays out of
+  # ci-success. It needs the whole Linux GCC lane, as a called
+  # workflow's jobs cannot be needed one by one, and runs once that
+  # lane's build has staged, whatever its tests did.
+  benchmarks:
+    name: Benchmarks (Advisory)
+    needs: [ changes, linux-gcc ]
+    if: |
+      !cancelled()
+      && needs.changes.outputs.compile == 'true'
+      && needs.linux-gcc.outputs.artifact != ''
+    permissions: *read
+    uses: ./.github/workflows/_benchmarks.yaml
+    with:
+      artifact: ${{ needs.linux-gcc.outputs.artifact }}
+      spp-sha256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+      base: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+
   # Independent of the compilation chain: doc breakage is worth
   # hearing about while the build is still running.
   docs:
@@ -263,6 +282,7 @@ jobs:
     needs: [ changes ]
     if: |
       (needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true')
+      || needs.changes.outputs.codeql_python == 'true'
       || needs.changes.outputs.sonar == 'true'
     permissions:
       contents: read
@@ -270,7 +290,8 @@ jobs:
       actions: read
     uses: ./.github/workflows/_analysis.yaml
     with:
-      codeql: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      codeql-cpp: ${{ needs.changes.outputs.security == 'true' && needs.changes.outputs.ci_pins_only != 'true' }}
+      codeql-python: ${{ needs.changes.outputs.codeql_python == 'true' }}
       sonar: >-
         ${{ needs.changes.outputs.sonar == 'true'
         && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}

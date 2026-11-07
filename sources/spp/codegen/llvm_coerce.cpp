@@ -166,11 +166,17 @@ namespace spp::codegen {
       TypeRef const &source, ScopeManager const &sm,
       LlvmCtx const *ctx) -> llvm::Value* {
       // A named function carries nothing at runtime, so whatever was
-      // loaded for it is dropped and the chosen overload built.
-      const auto fn = llvm_val != nullptr
-        ? analyse::utils::fn_values::FindFnValue(source, target, sm)
-        : nullptr;
-      if (fn == nullptr or fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) { return llvm_val; }
+      // loaded for it is dropped and the chosen overload built. One
+      // with no overload to build is an error here: passing on the
+      // loaded mock would call a null function.
+      namespace fv = analyse::utils::fn_values;
+      if (llvm_val == nullptr or not fv::NamesFnInto(source, target, *sm.CurrentScope)) { return llvm_val; }
+      const auto fn = fv::FindFnValue(source, target, sm);
+      const auto into = " into " + target.Symbol->FqName()->ToString();
+      if (fn == nullptr) { Ice("no overload of a function value was found for its function type" + into); }
+      if (fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) {
+        Ice("the overload of a function value has no llvm function: " + fn->PrintSignature("") + into);
+      }
       const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
       return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
     }

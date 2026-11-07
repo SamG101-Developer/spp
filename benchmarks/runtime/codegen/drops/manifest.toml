@@ -1,0 +1,9 @@
+description = "A small Vec allocated, filled, read and dropped 50M times: allocation, drop emission, temporaries"
+layer = "std"
+output = "exact"
+covers = [
+  "codegen:llvm_drop",
+  "codegen:llvm_alloca",
+  "codegen:llvm_materialize",
+  "codegen:llvm_harden_memory",
+]

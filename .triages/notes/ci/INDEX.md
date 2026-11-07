@@ -1,8 +1,8 @@
 - [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; needs brew binutils; specs inject rpath+loader
 - [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
 - [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
-- [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores; don't lower workers
-- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k, ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
+- [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores on a varying CPU pool, ARM 4 real cores; don't lower workers
+- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
@@ -17,3 +17,7 @@
 - [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; ci-success needs lanes
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
 - [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu
+- [Scorecard reads pruned check runs](scorecard-reads-pruned-check-runs.md) — CI-Tests 0/6 comes from nightly prune-runs (3 days) deleting check runs, not from missing CI
+- [Python CodeQL alerts frozen](python-codeql-alerts-frozen.md) — old py/* alerts date from the removed default setup; codeql-python ignores tests, so dismiss gtest-parallel ones
+- [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
+- [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors

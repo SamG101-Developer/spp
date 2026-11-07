@@ -70,7 +70,7 @@ auto spp::analyse::utils::sup_blocks::LoadTarget(
     name->Stage7_AnalyseSemantics(&sm, meta);
   }
   RaiseIf<errors::SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*name, sm),
+    type_predicates::IsTypeBorrowed(*name, *sm.CurrentScope),
     ERR_ARGS(block, *name, "superimposition type"));
 
   // A "$" mock keeps its bare name: it is declared in the

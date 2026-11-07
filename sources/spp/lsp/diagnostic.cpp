@@ -28,6 +28,43 @@ namespace spp::lsp {
       return out;
     }
 
+    /// The colours "INLINE_INFO" and friends open a highlighted
+    /// span with (bright yellow, italic), and the reset that
+    /// always closes it. Nothing else in an error opens with this
+    /// pair, so it marks exactly the spans the terminal shows in
+    /// yellow.
+    constexpr auto kInlineOpen = StrView("\x1b[93m\x1b[3m");
+    constexpr auto kInlineClose = StrView("\x1b[0m");
+
+    /// Strip the ANSI colours like StripAnsi, but keep each inline
+    /// highlight as a backtick-quoted span, so a reader that has
+    /// no colours can still tell the type or name apart from the
+    /// prose around it ("Found type `S32`").
+    auto MarkInline(StrView text) -> Str {
+      auto out = Str();
+      out.reserve(text.length());
+      auto inside = false;
+      for (auto i = 0uz; i < text.length(); ++i) {
+        if (text[i] != '\x1b') {
+          out += text[i];
+          continue;
+        }
+        if (not inside and text.substr(i).starts_with(kInlineOpen)) {
+          out += '`';
+          inside = true;
+          i += kInlineOpen.length() - 1;
+          continue;
+        }
+        if (inside and text.substr(i).starts_with(kInlineClose)) {
+          out += '`';
+          inside = false;
+        }
+        while (i < text.length() and text[i] != 'm') { ++i; }
+      }
+      if (inside) { out += '`'; }
+      return out;
+    }
+
     /// Convert a string to be JSON compatible, the key part being
     /// the escape characters.
     auto JsonString(StrView text) -> Str {
@@ -123,7 +160,7 @@ auto spp::lsp::DiagnosticFrom(
       // copying the span over.
       case ErrorInformationKind::ERROR: {
         diagnostic.Labels.emplace_back(
-          DiagnosticLabel{.Span = info.Span, .Message = StripAnsi(info.Tag), .Primary = true});
+          DiagnosticLabel{.Span = info.Span, .Message = MarkInline(info.Tag), .Primary = true});
         break;
       }
 
@@ -132,15 +169,15 @@ auto spp::lsp::DiagnosticFrom(
       // diagnostic, copying the span over.
       case ErrorInformationKind::CONTEXT: {
         diagnostic.Labels.emplace_back(
-          DiagnosticLabel{.Span = info.Span, .Message = StripAnsi(info.Tag), .Primary = false});
+          DiagnosticLabel{.Span = info.Span, .Message = MarkInline(info.Tag), .Primary = false});
         break;
       }
 
-      // Add the footer information too, again simple ANSI-stripped
-      // message copying.
+      // Add the footer information too, keeping the inline
+      // highlights as backtick-quoted spans like the labels.
       case ErrorInformationKind::FOOTER: {
-        diagnostic.Note = StripAnsi(info.Tag);
-        diagnostic.Help = StripAnsi(info.Msg);
+        diagnostic.Note = MarkInline(info.Tag);
+        diagnostic.Help = MarkInline(info.Msg);
         break;
       }
 
@@ -249,6 +286,22 @@ auto spp::lsp::ToJson(lsp::resolution_index::InactiveRegion const &region) -> St
   return Str("{\"kind\":\"inactive\",\"where\":{") + JsonSpan(region.Where) + "}}";
 }
 
+auto spp::lsp::ToJson(lsp::resolution_index::OverridableList const &list) -> Str {
+  auto out = Str("{\"kind\":\"overridables\",\"where\":{") + JsonSpan(list.Where) + "}";
+  out += ",\"name\":" + JsonString(list.Name);
+  out += ",\"superclass\":" + JsonString(list.SuperCls);
+  out += ",\"methods\":[";
+  for (auto i = 0uz; i < list.Methods.size(); ++i) {
+    auto const &method = list.Methods[i];
+    out += i > 0 ? "," : "";
+    out += "{\"name\":" + JsonString(method.Name);
+    out += ",\"prototype\":" + JsonString(method.Prototype);
+    out += ",\"modifier\":" + JsonString(method.Modifier);
+    out += ",\"definition\":{" + JsonSpan(method.Definition) + "}}";
+  }
+  return out + "]}";
+}
+
 auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
   // Json catches in every build: a debugger is not what is
   // on the other end of the pipe. Enable the sink so that the
@@ -284,6 +337,7 @@ auto spp::lsp::CompileReportingJson(compiler::Compiler &c) -> bool {
     for (auto const &scope : index::GetAllScopes()) { std::cout << ToJson(scope) << "\n"; }
     for (auto const &value : index::GetAllComptimeValues()) { std::cout << ToJson(value) << "\n"; }
     for (auto const &region : index::GetAllInactive()) { std::cout << ToJson(region) << "\n"; }
+    for (auto const &list : index::GetAllOverridables()) { std::cout << ToJson(list) << "\n"; }
 
     const auto recovered = sink::HasErrors();
     sink::Enable(false);

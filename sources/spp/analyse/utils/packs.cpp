@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.type_predicates;
 import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.generic_argument_ast;
 import spp.asts.generic_argument_group_ast;
@@ -15,6 +16,8 @@ import spp.asts.identifier_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
+import spp.asts.utils.ast_utils;
+import spp.asts.utils.visibility;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
@@ -53,30 +56,11 @@ namespace {
   }
 }
 
-auto spp::analyse::utils::packs::TypePackElements(
-  TypeAst const &pack) -> Vec<Shared<TypeAst>> {
-  return pack.LastTypePart()->GnArgGroup->GetTypeArgs()
-    | genex::views::transform([](auto const *arg) { return arg->TypeVal; })
-    | genex::to<Vec>();
-}
-
 auto spp::analyse::utils::packs::CompPackElements(
   ExpressionAst const &pack) -> Vec<ExpressionAst*> {
   return pack.As<asts::TupleLiteralAst>()->Elems
     | genex::views::transform([](auto const &elem) { return elem.get(); })
     | genex::to<Vec>();
-}
-
-auto spp::analyse::utils::packs::BoundTypePackElements(
-  TypeAst const &type, Scope const &scope) -> Opt<Vec<Shared<TypeAst>>> {
-  //
-  if (not type.IsTypeIdentifier() or not type.LastTypePart()->GnArgGroup->Args.empty()) { return Nullopt; }
-  const auto sym = FindTypePack(type, scope);
-  if (sym == nullptr or not type_predicates::IsTypeTuple(
-    TypeRef::ForKindCheck(*sym, scope), scope)) {
-    return Nullopt;
-  }
-  return TypePackElements(*sym->FqName());
 }
 
 auto spp::analyse::utils::packs::BoundCompPackElements(
@@ -90,25 +74,43 @@ auto spp::analyse::utils::packs::BoundCompPackElements(
 
 auto spp::analyse::utils::packs::DoesTypeNameAnUnboundPack(
   TypeAst const &type, Scope const &scope) -> bool {
+  // A pack bound to its list links to nothing ("TypeSymbol::BoundPack"), so is bound though it reads as generic.
   const auto sym = FindTypePack(type, scope);
-  return sym != nullptr and sym->AsBound()->IsGn();
-}
-
-auto spp::analyse::utils::packs::DoesCompNameAnUnboundPack(
-  ExpressionAst const &value, Scope const &scope) -> bool {
-  auto const *const sym = FindCompPack(value, scope);
-  return sym != nullptr and sym->AsBound()->BoundCompVal() == nullptr;
-}
-
-auto spp::analyse::utils::packs::DoesArgNameAPack(
-  GenericArgumentAst const &arg, Scope const &scope) -> bool {
-  return arg.IsTypeArg()
-    ? FindTypePack(*arg.TypeVal, scope) != nullptr
-    : FindCompPack(*arg.CompVal, scope) != nullptr;
+  return sym != nullptr and sym->AsBound()->IsGn() and sym->AsBound()->BoundPack == nullptr;
 }
 
 auto spp::analyse::utils::packs::FnVariadicParamName(
   IdentifierAst const &param_name)
   -> Str {
   return "VariadicPackOf" + param_name.Val;
+}
+
+auto spp::analyse::utils::packs::DeclareHiddenPack(
+  Str const &name, TypeAst const &element, void const *key, const std::size_t pos, Scope &scope)
+  -> Shared<TypeIdentifierAst> {
+  using scopes::TypeSymbol;
+  auto hidden = MakeShared<asts::TypeIdentifierAst>(pos, Str(name), nullptr);
+  const auto written = AstCloneShared(element.WithoutConvention());
+  auto const *const found = scope.FindTypeSymbol(written.get());
+  auto const *const declared = found != nullptr ? found->AsBound() : nullptr;
+  auto constraints = declared == nullptr ? Vec<Shared<TypeAst>>() : declared->IsGn()
+    ? declared->TypeConstraints
+    : Vec<Shared<TypeAst>>{AstCloneShared(declared->FqName())};
+
+  const auto sym = MakeShared<TypeSymbol>(
+    AstCloneShared(hidden), nullptr, nullptr, &scope, scopes::TypeKind::GnTypeParam, false,
+    asts::utils::Visibility::kPublic, asts::ConventionTag::MOV, std::move(constraints));
+  sym->IsVariadic = true;
+  sym->OwnParamId = scopes::GnPackParamId(key, name);
+  if (declared != nullptr) { sym->DerivesFromSymbol = const_cast<TypeSymbol&>(*declared).SharedFromThis<TypeSymbol>(); }
+  scopes::RegisterGnTypeParam(*sym);
+  hidden->StampTypeId(scopes::NameTypeIdOf(*sym));
+  sym->Name->StampTypeId(scopes::NameTypeIdOf(*sym));
+  scope.AddTypeSymbol(sym);
+  return hidden;
+}
+
+auto spp::analyse::utils::packs::PackElementName(
+  IdentifierAst const &pack_name, const std::size_t index) -> Str {
+  return pack_name.Val + "#" + std::to_string(index);
 }

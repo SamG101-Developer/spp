@@ -4,6 +4,7 @@ module spp.analyse.utils.type_compare;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
+import spp.analyse.scopes.substitution;
 import spp.analyse.scopes.symbols;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
@@ -26,7 +27,6 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
-import spp.utils.algorithms;
 import spp.utils.ptr;
 import genex;
 import std;
@@ -77,8 +77,11 @@ namespace spp::analyse::utils::type_compare {
       if (variant_members.empty()) { return false; }
 
       // Get the members of the type (assuming it is a subset
-      // variant.
-      const auto subset_members = type_members::VariantMemberRefs(type, type_scope);
+      // variant). A borrow of a variant ("&Opt[S32]") is one
+      // member, not a subset: its members are behind the pointer.
+      const auto subset_members = type.IsBorrowed() and not variant.IsBorrowed()
+        ? Vec<TypeRef>()
+        : type_members::VariantMemberRefs(type, type_scope);
       if (not subset_members.empty()) {
         return genex::all_of(subset_members, [&](auto const &t) {
           return genex::any_of(variant_members, [&](auto const &v) {
@@ -281,14 +284,27 @@ namespace spp::analyse::utils::type_compare {
       return AssignableArgs(t, v, target_scope, value_scope);
     }
 
-    /// The arguments an identity holds: an instance's, or a
-    /// variant's members (positionally, as its "Variants" tuple
-    /// lists them, in their canonical order). None for anything
-    /// else.
+    /// The arguments an identity holds: an instance's (a type
+    /// pack's list spliced in as its elements), or a variant's
+    /// members (positionally, in their canonical order). None for
+    /// anything else.
     auto IdArgs(const TypeId id) -> Vec<TypeIdArg> {
       if (id == nullptr) { return {}; }
-      auto const &head = scopes::HeadOf(id);
-      if (head.Kind == TypeKey::Tag::Inst) { return scopes::ArgsOf(head.Args); }
+      auto const &head = scopes::HeaderOf(id);
+      if (head.Kind == TypeKey::Tag::Inst) {
+        // A type pack's list is its elements, positionally, as written ("Tup[A, Ts]" is "A", then "Ts").
+        auto out = Vec<TypeIdArg>();
+        for (auto const &arg : scopes::ArgsOf(head.Args)) {
+          if (scopes::IsPackTypeId(arg.TypeVal)) {
+            for (const auto elem : scopes::HeaderOf(arg.TypeVal).PackElements) { out.push_back({.TypeVal = elem}); }
+          }
+          else if (scopes::IsPackCompId(arg.CompVal)) {
+            for (const auto elem : arg.CompVal->Kids) { out.push_back({.CompVal = elem}); }
+          }
+          else { out.push_back(arg); }
+        }
+        return out;
+      }
       auto members = Vec<TypeIdArg>();
       if (head.Kind == TypeKey::Tag::Variant) {
         for (const auto m : head.VariantMembers) { members.push_back({.TypeVal = m}); }
@@ -301,7 +317,7 @@ namespace spp::analyse::utils::type_compare {
     /// for any number of arguments.
     auto IsUnboundPackArg(TypeIdArg const &arg) -> bool {
       if (arg.TypeVal != nullptr) {
-        auto const &head = scopes::HeadOf(arg.TypeVal);
+        auto const &head = scopes::HeaderOf(arg.TypeVal);
         auto const *const param = head.Kind == TypeKey::Tag::TypeParam
           ? FindGnTypeParamById(head.TypeParamId)
           : nullptr;
@@ -331,7 +347,7 @@ namespace spp::analyse::utils::type_compare {
       // template needs no check: its parameters fix the length.
       const auto has_pack = not value_args.empty() and IsUnboundPackArg(value_args.back());
       const auto fixed_len = has_pack ? value_args.size() - 1 : std::min(target_args.size(), value_args.size());
-      const auto is_variadic = scopes::HeadOf(target.Id).Kind == Tag::Variant
+      const auto is_variadic = scopes::HeaderOf(target.Id).Kind == Tag::Variant
         or (target.Symbol->Type != nullptr and target.Symbol->Type->GnParamGroup->GetVariadicParam() != nullptr);
       if (has_pack ? target_args.size() < fixed_len : is_variadic and target_args.size() != value_args.size()) {
         return false;
@@ -396,6 +412,15 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   const auto type_sym = concrete.Symbol;
   if (type_sym == nullptr) { return nullptr; }
 
+  // A hidden pack's elements are the type it derives from ("packs::DeclareHiddenPack": "..xs: S32"'s elements are
+  // "S32"s), so it meets what that type meets.
+  if (type_sym->IsGn() and type_sym->IsVariadic and type_sym->DerivesFromSymbol != nullptr) {
+    auto &derived = *type_sym->DerivesFromSymbol;
+    return UnmetConstraint(
+      constraints, TypeRef::Of(derived, concrete_scope), is_self,
+      constraints_owner_scope, concrete_scope);
+  }
+
   // The concrete type and each class it is superimposed as,
   // resolved where each is read.
   auto sup_info = Vec<Pair<TypeRef, Scope const*>>{};
@@ -446,9 +471,53 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
     const auto matched = genex::any_of(sup_info, [&](auto const &sup) {
       return Assignable(wanted, sup.first, constraints_owner_scope, *sup.second);
     });
-    if (not matched) { return constraint.get(); }
+
+    // "Self" in a constraint and in a superimposed class is the type checked: "S32 ext Add" is "Add[Rhs=Self,
+    // Ret=Self]" in its sup scope, which "Add[S32]" ("Add[Rhs=S32, Ret=Self]") only meets once both are read with
+    // "Self" as "S32". Compared by identity, as the instance the two name need not exist. Tried only when nothing
+    // matched as written, so a match costs no substitution.
+    // Only a superimposed class of the constraint's own template can match it ("Add" against "Add"), so only those
+    // are substituted: each substitution interns a key.
+    if (matched) { continue; }
+    const auto self = concrete.WithoutConvention().Id;
+    const auto wanted_head = wanted.Id != nullptr ? scopes::HeaderOf(wanted.Id).Ptr : nullptr;
+    const auto same_template = [&](auto const &sup) {
+      return sup.first.Id != nullptr and wanted_head != nullptr and scopes::HeaderOf(sup.first.Id).Ptr == wanted_head;
+    };
+    if (self == nullptr or not genex::any_of(sup_info, same_template)) { return constraint.get(); }
+    const auto wanted_as_self = wanted.Id->HasSelf ? scopes::SubstituteSelfId(wanted.Id, self) : wanted.Id;
+    const auto matched_as_self = genex::any_of(sup_info, [&](auto const &sup) {
+      return same_template(sup) and scopes::SubstituteSelfId(sup.first.Id, self) == wanted_as_self;
+    });
+    if (not matched_as_self) { return constraint.get(); }
   }
 
   // All constraints are satisfied.
   return nullptr;
+}
+
+auto spp::analyse::utils::type_compare::IsOpenTuple(
+  TypeRef const &type, Scope const &scope) -> bool {
+  // Read off the identity, not the spelling: inside an instance a
+  // caller's pack can be bound to a parameter of another name.
+  if (type.Symbol == nullptr or not type_predicates::IsTypeTuple(type, scope)) { return false; }
+  const auto args = IdArgs(type.Id);
+  return not args.empty() and IsUnboundPackArg(args.back());
+}
+
+auto spp::analyse::utils::type_compare::OpenTupleElement(
+  TypeRef const &type, const std::size_t n, Scope const &scope) -> TypeRef {
+  // The elements before the pack are written one by one; every
+  // element from the pack on is one of the pack's.
+  const auto args = IdArgs(type.Id);
+  auto const &arg = n + 1 < args.size() ? args[n] : args.back();
+  const auto element = TypeRef::Of(arg.TypeVal, scope);
+
+  // A hidden pack's elements are the type it derives from ("packs::DeclareHiddenPack"): a fold's results over
+  // "..xs: S32" are "S32"s, and are used as them.
+  auto const *const sym = element.Symbol;
+  if (sym != nullptr and sym->IsGn() and sym->IsVariadic and sym->DerivesFromSymbol != nullptr) {
+    return TypeRef::Of(*sym->DerivesFromSymbol, scope);
+  }
+  return element;
 }

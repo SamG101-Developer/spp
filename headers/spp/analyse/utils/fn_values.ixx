@@ -40,6 +40,13 @@ namespace spp::analyse::utils::fn_values {
   SPP_EXP_FUN auto GetFnValueName(
     TypeRef const &type) -> Pair<Shared<IdentifierAst>, Scope const*>;
 
+  /// Whether "mock" is a named function's mock going into
+  /// "func", a function type held by value: what
+  /// "MatchFnValue" finds an overload for.
+  SPP_EXP_FUN auto NamesFnInto(
+    TypeRef const &mock, TypeRef const &func,
+    Scope const &func_scope) -> bool;
+
   /// Given a mock function type like $Type, and a genuine
   /// functional type like FunMov[(), Void], extract the match
   /// information based on what $Type superimposes. Prefer

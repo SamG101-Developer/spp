@@ -1,0 +1,9 @@
+description = "Iterable loops over ranges with skip, exit carrying a value and a loop-else, nested: about 125M inner iterations"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:loop_conditional_expression",
+  "ast:loop_iterable_expression",
+  "ast:loop_control_flow_statement",
+  "ast:loop_else_statement",
+]

@@ -73,7 +73,7 @@ namespace spp::codegen {
     /// the feature is off.
     auto KcfiBundles(
       const std::uint32_t type, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
-      if (not utils::features::Enabled(utils::features::ConfigKey::BinaryCodegenCfi)) { return {}; }
+      if (not utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenCfi)) { return {}; }
       auto bundles = Vec<llvm::OperandBundleDef>();
       bundles.emplace_back(
         "kcfi", Vec<llvm::Value*>{

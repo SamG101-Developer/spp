@@ -422,7 +422,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     !public cls Box[T] { !public v: T }
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(rest) }
+        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
     }
     fun f() -> Void {
         let b = Box(v=1)
@@ -659,7 +659,7 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     !public cls Box[T] { !public v: T }
     sup [T: std::copy::Copy] Box[T] ext std::copy::Copy { }
     sup [T: std::copy::Copy] Box[T] {
-        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(rest) }
+        !public fun m(&self, ..rest: Self) -> Void { std::mem::ops::drop(..rest) }
     }
     fun f() -> Void {
         let b = Box(v=1)

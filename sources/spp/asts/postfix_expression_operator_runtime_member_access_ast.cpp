@@ -14,13 +14,14 @@ import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.packs;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_ast;
@@ -34,7 +35,6 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
@@ -44,7 +44,6 @@ import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
-import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.strings;
 import spp.utils.uid;
@@ -100,22 +99,16 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
 }
 
 namespace {
-  /// The left-hand side's symbol, when it names a pack not bound to its tuple yet: a template's variadic comp parameter
-  /// ("cmp ..ns"), or variadic function parameter ("..xs: S32") whose pack type parameter is not declared here. There
-  /// its type is one element's, and "xs.0" reads an element; in an instantiation it is the tuple, read like any other.
+  /// The left-hand side's symbol, when it names a template's open pack ("PackInfo::Open"): a function pack ("..xs:
+  /// S32") or a comp pack ("cmp ..ns: Bool"). There "xs.0" reads an element, of the type the pack declares; in an
+  /// instantiation it is the tuple, read like any other.
   auto UnboundPack(
     spp::asts::ExpressionAst const &lhs,
     spp::analyse::scopes::ScopeManager const &sm)
     -> spp::analyse::scopes::VariableSymbol const* {
-    IMPORT_UTILS;
-    using spp::analyse::scopes::VariableKind;
     auto const *const name = lhs.To<spp::asts::IdentifierAst>();
     auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
-    if (sym == nullptr or not sym->IsVariadic or sym->Kind == VariableKind::GnCompArg) { return nullptr; }
-    if (sym->Kind == VariableKind::GnCompParam) { return sym; }
-    const auto pack_type = spp::MakeUnique<spp::asts::TypeIdentifierAst>(
-      0, packs::FnVariadicParamName(*sym->Name), nullptr);
-    return sm.CurrentScope->FindTypeSymbol(pack_type.get()) == nullptr ? sym : nullptr;
+    return sym != nullptr and sym->Pack.has_value() and sym->Pack->Open ? sym : nullptr;
   }
 }
 
@@ -148,8 +141,11 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   if (std::isdigit(Name->Val[0])) {
     if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
 
-    // The lhs's type is only spelled out for the errors.
+    // The lhs's type is only spelled out for the errors. An open
+    // tuple ("Tup[Ts]", a variadic parameter as a whole) has no
+    // length here either.
     const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
@@ -490,12 +486,21 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // pack not yet bound to its tuple, which is typed as its
   // element.
   if (std::isdigit(Name->Val[0])) {
+    // An open pack's element is what the pack declares each to be, with its convention, read through the symbol it
+    // names (so a "Self" in it is resolved here, not wherever a callee reads it); never off the open tuple, whose
+    // element for a pack of one type is its hidden length parameter.
     if (auto const *const pack = UnboundPack(*Lhs, *sm); pack != nullptr) {
-      return TypeRef::Of(*sm->CurrentScope->FindTypeSymbol(pack->Type.get()), *sm->CurrentScope);
+      auto const &element = pack->Pack->Element;
+      auto const *const conv = element->GetConvention();
+      return TypeRef::Of(
+        *sm->CurrentScope->FindTypeSymbol(element.get())->AsBound(), *sm->CurrentScope,
+        conv != nullptr ? Opt<ConventionTag>(conv->Tag()) : Nullopt);
     }
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    return type_members::GetNthTypeOfIndexableType(
-      std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) {
+      return type_compare::OpenTupleElement(lhs_ref, std::stoul(Name->Val), *sm->CurrentScope);
+    }
+    return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope);
   }
 
   // Read where the field is declared for this instance: its

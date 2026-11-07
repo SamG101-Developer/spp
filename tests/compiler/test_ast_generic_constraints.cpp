@@ -345,3 +345,32 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
         g(5_s32)
     }
 )");
+
+// A constraint with its arguments written ("Add[S32]", which is "Add[Rhs=S32, Ret=Self]") is met by a type
+// superimposing it with its defaults ("S32 ext Add", "Add[Rhs=Self, Ret=Self]"): "Self" on both sides is the type
+// checked (open-bugs.md #53).
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestAstGenericConstraints,
+  test_valid_constraint_with_arguments_met_by_a_sup_with_self_defaults, R"(
+    fun f[T: std::ops::add::Add[S32]](x: T) -> Void {
+        std::mem::ops::drop(x)
+    }
+
+    fun g() -> Void {
+        f(1_s32)
+    }
+)");
+
+// ...but not by one superimposing it over other arguments.
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestAstGenericConstraints,
+  test_invalid_constraint_with_arguments_not_met_by_a_sup_with_other_arguments,
+  SppFunctionCallNoValidSignaturesError, R"(
+    fun f[T: std::ops::add::Add[U8]](x: T) -> Void {
+        std::mem::ops::drop(x)
+    }
+
+    fun g() -> Void {
+        f(1_s32)
+    }
+)");
