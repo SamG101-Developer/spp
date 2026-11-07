@@ -43,15 +43,14 @@ namespace {
   /// "Opt[&Str]" makes) is reported at the borrow written where the instantiation was asked for ("InstantiatedFrom"),
   /// with the field as context: the template is not where the mistake is.
   auto RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void {
-    using namespace spp::analyse;
     if (not spp::analyse::utils::type_predicates::IsTypeBorrowed(*attr.Type, *sm.CurrentScope)) { return; }
     auto const *const site = attr.Source.OriginalType->GetConvention() == nullptr ? errors::InstantiatedFrom() : nullptr;
     auto const *const site_type = site != nullptr ? site->To<TypeAst>() : nullptr;
     if (auto const *const written = site_type != nullptr ? FirstWrittenBorrow(*site_type) : nullptr) {
-      utils::common_errors::RequireNotBorrowed(
+      spp::analyse::utils::common_errors::RequireNotBorrowed(
         *attr.Type, *written, *attr.Source.OriginalType, "class field type", sm);
     }
-    utils::common_errors::RequireNotBorrowed(
+    spp::analyse::utils::common_errors::RequireNotBorrowed(
       *attr.Type, *attr.Source.OriginalType, "class field type", sm);
   }
 }
