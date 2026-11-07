@@ -31,11 +31,10 @@ import spp.utils.ptr;
 import genex;
 
 use_alias(spp::analyse::scopes, ScopeBlockName);
-use_alias(spp::asts::meta, MetaGuard);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN

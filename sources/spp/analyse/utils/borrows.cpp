@@ -22,8 +22,14 @@ import spp.asts.type_ast;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::borrows {
   namespace {

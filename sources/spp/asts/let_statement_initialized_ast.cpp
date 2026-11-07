@@ -28,6 +28,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, LocalVariableDestructureArrayAst);
@@ -36,10 +37,8 @@ use_alias(spp::asts, LocalVariableDestructureObjectAst);
 use_alias(spp::asts, LocalVariableDestructureSkipMultipleArgumentsAst);
 use_alias(spp::asts, LocalVariableDestructureTupleAst);
 use_alias(spp::asts, LocalVariableSingleIdentifierAst);
-use_alias(spp::asts::meta, MetaGuard);
-
-use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN

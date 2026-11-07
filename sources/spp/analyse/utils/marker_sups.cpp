@@ -36,10 +36,19 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::marker_sups {
   namespace {

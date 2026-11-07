@@ -36,10 +36,14 @@ use_alias(spp::analyse::scopes, CompKey);
 use_alias(spp::analyse::scopes, FindGnCompParamById);
 use_alias(spp::analyse::scopes, FindGnTypeParamById);
 use_alias(spp::analyse::scopes, IsSelfTypeId);
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeIdArg);
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, TypeAst);
 
 namespace spp::analyse::utils::type_compare {
   namespace {

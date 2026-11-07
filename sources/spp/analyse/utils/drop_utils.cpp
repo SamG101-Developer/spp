@@ -34,9 +34,17 @@ import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, GenericArgumentAst);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, StringLiteralAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::drop_utils {
   namespace {

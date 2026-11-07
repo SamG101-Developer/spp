@@ -16,7 +16,6 @@ import spp.lsp.resolution_index;
 import genex;
 
 use_alias(spp::analyse::scopes, Scope);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

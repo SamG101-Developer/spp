@@ -12,6 +12,10 @@ import spp.utils.features;
 import spp.utils.types;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, TypeAst);
+
 namespace spp::codegen {
   namespace {
     /// A 32-bit FNV-1a hash: stable across builds and platforms,

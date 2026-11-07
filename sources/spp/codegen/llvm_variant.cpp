@@ -22,6 +22,9 @@ import std;
 // accounts for.
 constexpr auto kVariantTagBits = 64u;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, TypeRef);
+
 auto spp::codegen::GetVariantTagType(
   LlvmCtx const *ctx)
   -> llvm::IntegerType* {

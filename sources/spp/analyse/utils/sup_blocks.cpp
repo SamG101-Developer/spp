@@ -22,8 +22,14 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, GenericParameterGroupAst);
 use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 
 /// [CHECKED]

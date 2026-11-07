@@ -22,12 +22,11 @@ import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_type;
 import spp.utils.types;
 
-use_alias(spp::asts::meta, AllowPackWholeGuard);
-use_alias(spp::asts::meta, MetaGuard);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN

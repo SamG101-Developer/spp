@@ -40,6 +40,14 @@ import std;
 // vector/extended precision territory, which the layout code does not model either.
 constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, TypeAst);
+
 namespace spp::codegen {
   namespace {
     auto AdoptLlvmTypeInfo(

@@ -33,11 +33,21 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, ParenthesisedExpressionAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, SpreadExpressionAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts, TypePostfixExpressionAst);
 use_alias(spp::asts, TypeUnaryExpressionAst);
 

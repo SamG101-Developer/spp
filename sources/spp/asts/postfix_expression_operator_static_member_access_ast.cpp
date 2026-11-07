@@ -42,12 +42,11 @@ import genex;
 
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, GenericSubst);
-use_alias(spp::analyse::scopes, VariableKind);
-
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

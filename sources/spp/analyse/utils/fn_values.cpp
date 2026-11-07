@@ -32,12 +32,21 @@ import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstAs);
 use_alias(spp::asts, AstBody);
-use_alias(spp::analyse::scopes, TypeKind);
-use_alias(spp::analyse::scopes, VariableKind);
-use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// [CHECKED]
 auto spp::analyse::utils::fn_values::FnBlockOf(

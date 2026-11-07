@@ -39,9 +39,18 @@ import spp.utils.ice;
 import spp.utils.uid;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, CaseExpressionAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts, LetStatementInitializedAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, StatementAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 
 auto spp::analyse::utils::expr_utils::ExpandTupleSpread(

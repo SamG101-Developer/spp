@@ -32,12 +32,11 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, SpreadExpressionAst);
-
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, SpreadExpressionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 

@@ -18,8 +18,14 @@ import spp.asts.utils.visibility;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::visibility_utils {
   namespace {

@@ -33,9 +33,18 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, LetStatementInitializedAst);
+use_alias(spp::asts, LocalVariableAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::destructure_utils {
   namespace {

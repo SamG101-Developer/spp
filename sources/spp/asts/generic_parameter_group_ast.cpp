@@ -27,7 +27,6 @@ import spp.utils.ptr;
 import genex;
 
 use_alias(spp::analyse::scopes, BumpTypeStructureGeneration);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

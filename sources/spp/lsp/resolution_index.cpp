@@ -35,11 +35,26 @@ import genex;
 import std;
 
 use_alias(spp::analyse::scopes, NamespaceSymbol);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstAs);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, ModulePrototypeAst);
+use_alias(spp::asts, ObjectInitializerArgumentKeywordAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::utils::errors, ErrorFormatter);
+use_alias(spp::utils::errors, SourceSpan);
 
 namespace spp::lsp::resolution_index {
   namespace {

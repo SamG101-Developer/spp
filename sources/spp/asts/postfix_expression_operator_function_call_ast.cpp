@@ -84,9 +84,16 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace {
   /// The convention a parameter is declared with: a "self"
@@ -96,14 +103,6 @@ namespace {
     return param.Type->GetConvention();
   }
 }
-
-use_alias(spp::analyse::scopes, ExprSubst);
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::analyse::scopes, TypeSymbol);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(

@@ -23,7 +23,10 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace {
   /// Resolve the types written on "pattern" and the destructures in
@@ -51,10 +54,6 @@ namespace {
     }
   }
 }
-
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 spp::asts::CasePatternVariantAst::CasePatternVariantAst() :

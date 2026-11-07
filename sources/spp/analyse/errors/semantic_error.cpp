@@ -52,9 +52,10 @@ import colex;
 import std;
 
 use_alias(spp::asts, AnnotationAst);
-use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, TypeAst);
 
 /// Rules for writing error messages.
 ///
@@ -71,8 +72,6 @@ use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 ///
 /// How to write help lines:
 /// - Describe exactly what to do by token or keyword.
-
-use_alias(spp::asts, Ast);
 
 SPP_MOD_BEGIN
 namespace spp::analyse::errors {

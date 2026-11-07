@@ -23,8 +23,13 @@ import spp.utils.types;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 
 namespace {
   using spp::analyse::scopes::TypeSymbol;

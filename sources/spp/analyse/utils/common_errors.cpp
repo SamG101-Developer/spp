@@ -17,6 +17,12 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, TypeAst);
+
 auto spp::analyse::utils::common_errors::RequirePrimary(
   ExpressionAst const &expr, ScopeManager const &sm, expr_utils::PrimaryExpressionOptions &&options)
   -> void {

@@ -39,13 +39,23 @@ import genex;
 import std;
 
 use_alias(spp::analyse::scopes, ConventionAstOf);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeStructureGeneration);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);
+use_alias(spp::asts, ClassAttributeAst);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, CmpStatementAst);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, TypeAst);
 
 namespace spp::analyse::utils::type_members {
   namespace {

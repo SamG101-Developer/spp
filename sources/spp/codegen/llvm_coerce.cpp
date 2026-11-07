@@ -25,6 +25,8 @@ import genex;
 import llvm;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+
 namespace spp::codegen {
   namespace {
     /**

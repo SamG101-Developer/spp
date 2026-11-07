@@ -72,30 +72,43 @@ import sys;
 
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstBody);
 use_alias(spp::asts, AstClone);
 use_alias(spp::asts, AstCloneShared);
 use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, ConventionAst);
 use_alias(spp::asts, ConventionMutAst);
 use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
 use_alias(spp::asts, FunctionCallArgumentKeywordAst);
 use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, FunctionParameterAst);
 use_alias(spp::asts, FunctionParameterGroupAst);
 use_alias(spp::asts, FunctionParameterOptionalAst);
 use_alias(spp::asts, FunctionParameterRequiredAst);
 use_alias(spp::asts, FunctionParameterSelfAst);
 use_alias(spp::asts, FunctionParameterVariadicAst);
+use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
 use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
 use_alias(spp::asts, SubroutinePrototypeAst);
 use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts, SupPrototypeFunctionsAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
@@ -1438,20 +1451,6 @@ namespace spp::analyse::utils::overload_resolution {
     }
   }
 }
-
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeId);
-use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::asts, ConventionAst);
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, FunctionCallArgumentGroupAst);
-use_alias(spp::asts, FunctionParameterAst);
-use_alias(spp::asts, FunctionPrototypeAst);
-use_alias(spp::asts, IdentifierAst);
-use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
-use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
-use_alias(spp::asts, TypeAst);
 
 SPP_MOD_BEGIN
 spp::analyse::utils::overload_resolution::OverloadSolver::OverloadSolver(

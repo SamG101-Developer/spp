@@ -40,14 +40,26 @@ import spp.utils.interner;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeKey);
 use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, LiteralAst);
 use_alias(spp::asts, ParenthesisedExpressionAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 auto spp::analyse::utils::comp_generics::FindCompMemberId(
   const TypeId owner, const StrView name, Scope const *const declared_in) -> CompId {
@@ -182,19 +194,6 @@ namespace {
   /// The constants "CompTimeResolutionGuard" holds, innermost last.
   thread_local spp::Vec<VariableSymbol const*> resolving_constants;
 }
-
-use_alias(spp::analyse::scopes, CompId);
-use_alias(spp::analyse::scopes, ExprSubst);
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeId);
-use_alias(spp::analyse::scopes, VariableSymbol);
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, GenericArgumentGroupAst);
-use_alias(spp::asts, GenericParameterGroupAst);
-use_alias(spp::asts, IdentifierAst);
-use_alias(spp::asts, TypeAst);
-use_alias(spp::asts::meta, CompilerMetaData);
 
 SPP_MOD_BEGIN
 spp::analyse::utils::comp_generics::CompTimeResolutionGuard::CompTimeResolutionGuard(

@@ -17,13 +17,12 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
-use_alias(spp::asts::meta, MetaGuard);
-
-// Todo: second-class borrow violation unit test.
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
+
+// Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN
 auto spp::asts::GenericParameterTypeConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeConstraintsAst> {

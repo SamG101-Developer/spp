@@ -19,8 +19,14 @@ import std;
 
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 
 auto spp::analyse::utils::self_type::SubstituteSelf(

@@ -51,9 +51,8 @@ import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
 
-use_alias(spp::analyse::scopes, ScopeBlockName);
-
 use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);

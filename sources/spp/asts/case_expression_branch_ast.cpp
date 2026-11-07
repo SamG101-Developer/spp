@@ -32,7 +32,6 @@ import spp.utils.uid;
 import genex;
 
 use_alias(spp::analyse::scopes, ScopeBlockName);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::utils::pattern_solver, MatchPlan);

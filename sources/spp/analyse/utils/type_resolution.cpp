@@ -35,6 +35,20 @@ import genex;
 import std;
 
 use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypePostfixExpressionAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 

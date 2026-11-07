@@ -26,14 +26,13 @@ import spp.codegen.llvm_type;
 import spp.utils.ice;
 import spp.utils.uid;
 
-use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::analyse::scopes, VariableKind);
-use_alias(spp::asts::meta, MetaGuard);
-
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN

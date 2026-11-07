@@ -70,10 +70,16 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+use_alias(spp::codegen, LlvmFnWrapper);
 
 namespace {
   /// The instantiation whose body is being analysed.
@@ -102,13 +108,6 @@ namespace {
       -> AnalysingGnSubstitutionGuard& = delete;
   };
 }
-
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeId);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::codegen, LlvmCtx);
-use_alias(spp::codegen, LlvmFnWrapper);
 
 SPP_MOD_BEGIN
 spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(

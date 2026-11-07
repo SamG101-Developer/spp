@@ -30,9 +30,8 @@ import genex;
 import std;
 import numex.big_int;
 
-use_alias(spp::analyse::scopes, TypeRef);
-
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);
 use_alias(spp::codegen::builtins, LoweredFnImpl);

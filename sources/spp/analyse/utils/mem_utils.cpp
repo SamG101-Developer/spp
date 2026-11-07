@@ -24,12 +24,18 @@ import spp.asts.type_ast;
 import genex;
 import std;
 
-use_alias(spp::asts, IdentifierAst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
 use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, FunctionCallArgumentAst);
-use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, SpreadExpressionAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::mem_utils {
   namespace {

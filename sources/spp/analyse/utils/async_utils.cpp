@@ -17,7 +17,15 @@ import spp.asts.utils.ast_utils;
 import spp.utils.types;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::asts, ClosureExpressionCaptureAst);
+use_alias(spp::asts, ConventionAst);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, StatementAst);
 
 namespace spp::analyse::utils::async_utils {
   namespace {

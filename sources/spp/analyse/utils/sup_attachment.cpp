@@ -30,6 +30,9 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+
 using namespace spp::analyse::scopes;
 using namespace spp::asts;
 using spp::asts::meta::CompilerMetaData;

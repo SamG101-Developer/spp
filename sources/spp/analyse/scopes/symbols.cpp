@@ -46,17 +46,32 @@ import genex;
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeIdArg);
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, AnnotationAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, CmpStatementAst);
+use_alias(spp::asts, ConventionAst);
 use_alias(spp::asts, ConventionMutAst);
 use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
 use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts, TypePostfixExpressionAst);
 use_alias(spp::asts, TypePostfixExpressionOperatorNestedTypeAst);
+use_alias(spp::asts, TypeStatementAst);
 use_alias(spp::asts, TypeUnaryExpressionAst);
 use_alias(spp::asts, TypeUnaryExpressionOperatorNamespaceAst);
+use_alias(spp::asts::mixins, VisibilityAst);
+use_alias(spp::asts::utils, Visibility);
+use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
 namespace {
   using spp::analyse::scopes::Scope;
@@ -260,22 +275,6 @@ namespace {
     return true;
   }
 }
-
-use_alias(spp::asts, AnnotationAst);
-use_alias(spp::asts, Ast);
-use_alias(spp::asts, ClassPrototypeAst);
-use_alias(spp::asts, CmpStatementAst);
-use_alias(spp::asts, ConventionAst);
-use_alias(spp::asts, ConventionTag);
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, GenericParameterGroupAst);
-use_alias(spp::asts, IdentifierAst);
-use_alias(spp::asts, TypeAst);
-use_alias(spp::asts, TypeIdentifierAst);
-use_alias(spp::asts, TypeStatementAst);
-use_alias(spp::asts::mixins, VisibilityAst);
-use_alias(spp::asts::utils, Visibility);
-use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
 SPP_MOD_BEGIN
 spp::analyse::scopes::Symbol::~Symbol() = default;

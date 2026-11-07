@@ -32,12 +32,11 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
-use_alias(spp::analyse::scopes, VariableKind);
-
 use_alias(spp::analyse::scopes, CompId);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

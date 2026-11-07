@@ -37,11 +37,26 @@ import spp.utils.ice;
 import spp.utils.interner;
 import genex;
 
+use_alias(spp::analyse::scopes, CompId);
 use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, LiteralAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);
@@ -293,22 +308,6 @@ namespace spp::analyse::utils::generic_inference {
     }
   }
 }
-
-use_alias(spp::analyse::scopes, CompId);
-use_alias(spp::analyse::scopes, GenericSubst);
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeId);
-use_alias(spp::analyse::scopes, TypeSymbol);
-use_alias(spp::asts, Ast);
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, GenericArgumentAst);
-use_alias(spp::asts, GenericArgumentGroupAst);
-use_alias(spp::asts, GenericParameterAst);
-use_alias(spp::asts, GenericParameterGroupAst);
-use_alias(spp::asts, IdentifierAst);
-use_alias(spp::asts, TypeAst);
-use_alias(spp::asts, TypeIdentifierAst);
 
 SPP_MOD_BEGIN
 /// A type a parameter is offered. Its identity is what the solver compares, substitutes and checks; it is null only

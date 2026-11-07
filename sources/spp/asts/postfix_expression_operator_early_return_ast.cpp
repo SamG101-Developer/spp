@@ -38,11 +38,10 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ice;
 
-use_alias(spp::asts::meta, MetaGuard);
-
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN

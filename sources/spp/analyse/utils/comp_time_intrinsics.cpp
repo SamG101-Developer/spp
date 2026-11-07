@@ -38,14 +38,23 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
-use_alias(spp::asts, ObjectInitializerAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FloatLiteralAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, IntegerLiteralAst);
 use_alias(spp::asts, ObjectInitializerArgumentAst);
 use_alias(spp::asts, ObjectInitializerArgumentKeywordAst);
 use_alias(spp::asts, ObjectInitializerArgumentShorthandAst);
+use_alias(spp::asts, ObjectInitializerAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
 use_alias(spp::asts, TokenAst);
+use_alias(spp::asts::meta, CompTimeCallArgs);
 
 namespace spp::analyse::utils::comp_time_intrinsics {
   namespace {

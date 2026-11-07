@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.codegen.llvm_size;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope_manager;
@@ -16,6 +19,8 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 import genex;
+
+use_alias(spp::analyse::scopes, ScopeManager);
 
 namespace spp::codegen {
   struct Layout {

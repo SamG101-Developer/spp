@@ -39,15 +39,25 @@ import genex;
 import std;
 
 use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::analyse::utils::pattern_solver, CaseCoverage);
+use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
+use_alias(spp::analyse::utils::pattern_solver, SubjectEdges);
 use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstClone);
 use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionBranchAst);
 use_alias(spp::asts, CasePatternVariantElseAst);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, ObjectInitializerAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, SubjectOnMatch);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::analyse::utils::case_utils {
   namespace {

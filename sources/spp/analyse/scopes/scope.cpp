@@ -68,16 +68,27 @@ import numex.big_dec;
 import numex.big_int;
 
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneShared);
 use_alias(spp::asts, BinaryExpressionAst);
 use_alias(spp::asts, ClosureExpressionParameterAndCaptureGroupAst);
 use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, DeferStatementAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
 use_alias(spp::asts, GenericArgumentGroupAst);
 use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
 use_alias(spp::asts, TokenAst);
 use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::compiler, Module);
+use_alias(spp::utils::errors, ErrorFormatter);
 
 namespace spp::analyse::scopes {
   namespace {
@@ -253,18 +264,6 @@ auto spp::analyse::scopes::BumpTypeStructureGeneration() -> void {
   // because new fields are accessible or no longer accessible.
   ++_TypeStructureGeneration;
 }
-
-use_alias(spp::asts, Ast);
-use_alias(spp::asts, DeferStatementAst);
-use_alias(spp::asts, ExpressionAst);
-use_alias(spp::asts, GenericArgumentAst);
-use_alias(spp::asts, GenericParameterGroupAst);
-use_alias(spp::asts, IdentifierAst);
-use_alias(spp::asts, TypeAst);
-use_alias(spp::asts, TypeIdentifierAst);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::compiler, Module);
-use_alias(spp::utils::errors, ErrorFormatter);
 
 SPP_MOD_BEGIN
 namespace {

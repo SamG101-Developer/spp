@@ -22,8 +22,12 @@ import spp.utils.uid;
 import llvm;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, LocalVariableSingleIdentifierAst);
 use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 
 auto spp::codegen::LlvmMaterialize(

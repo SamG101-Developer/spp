@@ -38,8 +38,12 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace {
   /// The runtime's allocator. A coroutine frame is allocated
@@ -69,11 +73,6 @@ namespace {
       ctx->Module->getOrInsertFunction("sppc_free", fn_ty).getCallee());
   }
 }
-
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::analyse::scopes, TypeRef);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(

@@ -14,7 +14,11 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
 
 namespace spp::analyse::utils::memory_state {
   namespace {
@@ -71,11 +75,6 @@ namespace spp::analyse::utils::memory_state {
     }
   }
 }
-
-use_alias(spp::analyse::scopes, Scope);
-use_alias(spp::analyse::scopes, VariableSymbol);
-use_alias(spp::asts, Ast);
-use_alias(spp::asts, ExpressionAst);
 
 SPP_MOD_BEGIN
 auto spp::analyse::utils::memory_state::MemoryState::InitializedBy(

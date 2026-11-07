@@ -23,10 +23,9 @@ import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import genex;
 
-use_alias(spp::analyse::scopes, VariableKind);
-
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

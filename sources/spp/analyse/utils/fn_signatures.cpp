@@ -32,6 +32,8 @@ import genex;
 
 use_alias(spp::analyse::scopes, BareOf);
 use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeKind);
 use_alias(spp::analyse::scopes, TypeRef);
@@ -39,6 +41,7 @@ use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneVec);
 use_alias(spp::asts, ConventionTag);
 use_alias(spp::asts, FunctionParameterRequiredAst);
+use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, SupPrototypeExtensionAst);
 use_alias(spp::asts, TypeAst);

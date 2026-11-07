@@ -37,7 +37,10 @@ import spp.lex.lexer;
 import spp.parse.parser_spp;
 
 use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace spp::asts {
   namespace {
@@ -57,10 +60,6 @@ namespace spp::asts {
     }
   }
 }
-
-use_alias(spp::analyse::scopes, ScopeManager);
-use_alias(spp::asts::meta, CompilerMetaData);
-use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 spp::asts::AnnotationAst::AnnotationAst(

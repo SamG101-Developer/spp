@@ -24,7 +24,15 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeStatementAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// [CHECKED]
 auto spp::analyse::utils::aliases::StatementTarget(

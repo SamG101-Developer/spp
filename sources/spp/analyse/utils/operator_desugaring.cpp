@@ -39,20 +39,29 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, BinaryExpressionAst);
 use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionAst);
 use_alias(spp::asts, CaseExpressionBranchAst);
 use_alias(spp::asts, CasePatternVariantAst);
 use_alias(spp::asts, CasePatternVariantElseAst);
 use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, FunctionCallArgumentAst);
 use_alias(spp::asts, FunctionCallArgumentGroupAst);
 use_alias(spp::asts, FunctionCallArgumentPositionalAst);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts, IsExpressionAst);
+use_alias(spp::asts, LetStatementInitializedAst);
+use_alias(spp::asts, PostfixExpressionAst);
 use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
 use_alias(spp::asts, StatementAst);
 use_alias(spp::asts, TokenAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::operator_desugaring {
   namespace {
