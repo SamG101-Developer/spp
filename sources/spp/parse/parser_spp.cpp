@@ -16,14 +16,13 @@ import spp.utils.ptr;
 import genex;
 import std;
 
-use_alias(spp::asts, AstClone);
-
 use_alias(spp::asts, AnnotationAst);
 use_alias(spp::asts, ArrayLiteralAst);
 use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
 use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
 use_alias(spp::asts, AssignmentStatementAst);
 use_alias(spp::asts, Ast);
+use_alias(spp::asts, AstClone);
 use_alias(spp::asts, BinaryExpressionAst);
 use_alias(spp::asts, BooleanLiteralAst);
 use_alias(spp::asts, CaseExpressionAst);

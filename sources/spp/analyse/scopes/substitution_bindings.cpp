@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
@@ -12,6 +15,10 @@ import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 import std;
+
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, TypeAst);
 
 auto spp::analyse::scopes::ParamsDeclaredBy(
   GenericParameterGroupAst const &params) -> TypeIdParams {

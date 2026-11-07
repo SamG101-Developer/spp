@@ -1,7 +1,12 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.errors.diagnostic_sink;
 import spp.analyse.errors.semantic_error;
 import spp.utils.types;
 import std;
+
+use_alias(spp::asts, Ast);
 
 namespace spp::analyse::errors::diagnostic_sink {
   namespace {
