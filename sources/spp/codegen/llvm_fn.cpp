@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 
 module spp.codegen.llvm_fn;
 import spp.analyse.scopes.symbols;
