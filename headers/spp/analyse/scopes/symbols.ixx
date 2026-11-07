@@ -36,9 +36,10 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeStatementAst);
-use(spp::asts, enum class ConventionTag);
-use(spp::asts::utils, enum class Visibility);
 use(spp::codegen, struct LlvmTypeSymbolInfo);
+
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts::utils, Visibility);
 
 /// What a type resolves to: the symbol of the type, and how
 /// a value of it is held. The convention is not part of the

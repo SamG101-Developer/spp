@@ -17,7 +17,8 @@ use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
-use(spp::asts::meta, enum class SubjectOnMatch);
+
+use_alias(spp::asts::meta, SubjectOnMatch);
 
 namespace spp::analyse::utils::pattern_solver {
   /// One step from a value to a part of it: into the payload of the

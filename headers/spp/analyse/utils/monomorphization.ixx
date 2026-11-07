@@ -17,8 +17,9 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
-use(spp::asts::meta, enum class CompilerStage);
+
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerStage);
 
 namespace spp::analyse::utils::monomorphization {
   // Class instances.
