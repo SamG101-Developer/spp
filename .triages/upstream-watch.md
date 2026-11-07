@@ -292,8 +292,12 @@ Each entry gives:
   the MSVC STL's `std.ixx` cleanly is untested.
 - **Check:** `gh api repos/Kitware/CMake/releases --jq '.[0:3][].tag_name'` for a final 4.5.0; the top of
   `Clang-CXX-CXXImportStd.cmake` at that tag should include `Compiler/MSVC-CXX-CXXImportStd` for the MSVC frontend.
-- **When it lands:** bump `[pin.cmake]` in `../.github/dependencies.toml` to 4.5.0 (the sibling libraries are built with
-  the same CMake), run the clang-cl lane, and once it is green drop `advisory: true` and the "(advisory)" from its
+- **Pinned to the RC (2026-11-07):** `[pin.cmake]` is `4.5.0-rc3`, installed by `lukka/get-cmake` at its `v4.5.0-rc3`
+  tag (its built-in release catalog decides which versions it can install: v4.4.4's ended at 4.4). Every lane builds
+  with it; `cmake_minimum_required` stays 4.4.0, so local 4.4 builds still configure.
+- **When it lands:** bump `[pin.cmake]` in `../.github/dependencies.toml` to 4.5.0 and `lukka/get-cmake` (in
+  `setup-toolchain/action.yaml` and `_cppcheck.yaml`) to a tag whose catalog has 4.5.0 (the sibling libraries are built
+  with the same CMake), run the clang-cl lane, and once it is green drop `advisory: true` and the "(advisory)" from its
   name in `pr.yaml`, and consider adding it to `ci-success`. Also recheck U8 on the new CMake.
 - **Last checked:** 2026-11-07 (CMake releases, `Clang-CXX-CXXImportStd.cmake` at v4.5.0-rc3).
 - **Sources:** [commit 1610aa22f4](https://github.com/Kitware/CMake/commit/1610aa22f4),

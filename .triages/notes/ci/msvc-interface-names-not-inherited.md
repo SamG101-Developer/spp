@@ -19,6 +19,8 @@ Since `use(ns, X)` became `using ns::X` (a55be4f4, 2026-11-07), MSVC (14.51) dif
 time.
 
 **How to apply:** a new `.cpp` that uses a name from its interface's `use(...)` declares it again with `use_alias`
-(add `module;` + `#include <spp/macros.hpp>` if the file has no fragment). In a class template, write names from other
+(add `module;` + `#include <spp/macros.hpp>` if the fragment lacks it). That includes names from the file's own
+namespace used at global scope, outside its `namespace … {` block, such as explicit instantiation arguments
+(`template class spp::analyse::scopes::IndividualSymbolTable<IdentifierAst, TypeSymbol>;` in `symbol_table.cpp`). In a class template, write names from other
 namespaces qualified so they resolve from the template's own namespace (`asts::meta::CompTimeCallArgs` from
 `spp::analyse::utils`), and keep such qualifications when tidying. Related: [[msvc-exported-inline-vars]].
