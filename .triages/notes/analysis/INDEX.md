@@ -18,6 +18,7 @@
 - [Ice for impossible states](ice-for-impossible-states.md) — spp::Ice, not SemanticError/unreachable; SPP_ASSERT live in release
 - [ERR_ARGS holds references](err-args-hold-references.md) — fresh ASTs inline in ERR_ARGS dangle; hold in a local
 - [Errors quote each AST from its own file](error-scope-per-block.md) — N8.7: positions name their file; Raise takes no scopes
+- [Error block at the user's code](error-block-at-the-users-code.md) — AddErr on the use to fix, declarations as context; harness checks; give the written AST, never FqName()
 - [Type source-span override](type-source-span-override.md) — WithSourceSpanOf(written) last; error locations
 - [InstantiatedFrom error site](instantiated-from-error-site.md) — outermost site an instantiation was asked for; "Instantiated here" block; field borrows reported there
 - [IDE recovery sectioning](ide-recovery-sectioning.md) — sink-mode recovery per member, stages 6-9
