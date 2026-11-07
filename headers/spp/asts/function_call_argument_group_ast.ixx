@@ -8,7 +8,7 @@ import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentGroupAst);
+use_common(FunctionCallArgumentGroupAst);
 use(spp::asts, struct FunctionCallArgumentAst);
 use(spp::asts, struct FunctionCallArgumentKeywordAst);
 use(spp::asts, struct FunctionCallArgumentPositionalAst);

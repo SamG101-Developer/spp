@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionAst);
+use_common(TypeUnaryExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ConventionAst);
 use(spp::analyse::scopes, struct ExprSubst);

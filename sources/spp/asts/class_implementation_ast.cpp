@@ -12,7 +12,6 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-use_ns(spp::analyse::utils);
 
 SPP_MOD_BEGIN
 auto ClassImplementationAst::NewEmpty() -> Unique<ClassImplementationAst> {

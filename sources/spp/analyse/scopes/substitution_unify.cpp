@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
@@ -10,6 +13,8 @@ import spp.asts.type_ast;
 import spp.utils.ice;
 import genex;
 import std;
+
+use_alias(spp::analyse::scopes, GenericSubst);
 
 namespace spp::analyse::scopes {
   namespace {

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CaseExpressionAst);
+use_common(CaseExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::pattern_solver, struct MatchPlan);

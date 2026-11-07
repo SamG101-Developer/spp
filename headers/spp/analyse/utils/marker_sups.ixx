@@ -13,8 +13,10 @@ use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
+use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::marker_sups {
   /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Copy" marker, which makes a type's values
@@ -96,14 +98,14 @@ namespace spp::analyse::utils::marker_sups {
   /// "&mut self" is reached through "fwd_mut".
   SPP_EXP_FUN auto BuildFwdCall(
     ExpressionAst const &receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta,
+    ScopeManager *sm, CompilerMetaData *meta,
     IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// As above, taking the receiver itself rather than a copy, for
   /// an argument whose analysed value becomes the forwarding call's.
   SPP_EXP_FUN auto BuildFwdCall(
     Unique<ExpressionAst> &&receiver, TypeRef const &receiver_ref,
-    ScopeManager *sm, meta::CompilerMetaData *meta,
+    ScopeManager *sm, CompilerMetaData *meta,
     IdentifierAst const *member = nullptr) -> Unique<PostfixExpressionAst>;
 
   /// Whether a value of this type forwards at all ("FwdRef" or

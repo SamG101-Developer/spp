@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TupleLiteralAst);
+use_common(TupleLiteralAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);

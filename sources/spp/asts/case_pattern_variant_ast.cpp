@@ -23,6 +23,8 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace {
   /// Resolve the types written on "pattern" and the destructures in
   /// it: a nested destructure is matched through the mapped "let"
@@ -33,17 +35,17 @@ namespace {
     CompilerMetaData &meta) -> void {
     IMPORT_UTILS;
     using namespace spp::asts;
-    if (auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
+    if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
       obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
       for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
+    else if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
       for (auto const &elem : tup->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
+    else if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
       for (auto const &elem : arr->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
+    else if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
       binding != nullptr and binding->Val != nullptr) {
       AnalyseNestedWrittenTypes(*binding->Val, sm, meta);
     }
@@ -103,7 +105,7 @@ auto CasePatternVariantAst::EvaluateCompTimeDestructure(
 }
 
 auto CasePatternVariantAst::CodeGenDestructure(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) const -> llvm::Value* {
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function. The literals the pattern
   // tests are the "case"'s plan's, so the shape always matches.

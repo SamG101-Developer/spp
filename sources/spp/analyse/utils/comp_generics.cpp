@@ -40,6 +40,15 @@ import spp.utils.interner;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, LiteralAst);
+use_alias(spp::asts, ParenthesisedExpressionAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+
 auto spp::analyse::utils::comp_generics::FindCompMemberId(
   const TypeId owner, const StrView name, Scope const *const declared_in) -> CompId {
   // Convert the type-interned owner into a comp key, and intern
@@ -134,7 +143,7 @@ auto spp::analyse::utils::comp_generics::ExpectCompParamTypes(
 }
 
 auto spp::analyse::utils::comp_generics::FoldCompCall(
-  ExpressionAst &value, ScopeManager *sm, asts::meta::CompilerMetaData *meta) -> Unique<ExpressionAst> {
+  ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) -> Unique<ExpressionAst> {
   IMPORT_UTILS;
   const auto has_call = type_predicates::AnyCompPart(value, nullptr, nullptr, [](ExpressionAst const &part) {
     const auto postfix = part.To<PostfixExpressionAst>();

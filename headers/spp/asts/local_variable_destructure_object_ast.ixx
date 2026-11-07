@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureObjectAst);
+use_common(LocalVariableDestructureObjectAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct CasePatternVariantDestructureObjectAst);
 use(spp::asts, struct IdentifierAst);

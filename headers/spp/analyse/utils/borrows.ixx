@@ -13,6 +13,7 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct FunctionCallArgumentAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::borrows {
   /// "conflict" with "loan", met now: raised at once, unless the
@@ -51,7 +52,7 @@ namespace spp::analyse::utils::borrows {
   SPP_EXP_FUN auto ValidateUnnamedArgumentBorrow(
     FunctionCallArgumentAst const &arg, VariableSymbol const *sym,
     memory_state::LoanSet &call_loans, ScopeManager &sm,
-    meta::CompilerMetaData *meta) -> void;
+    CompilerMetaData *meta) -> void;
 
   /// Raise if "holder", just given a value ("owner": a "let" or
   /// an assignment), would outlive what it now borrows: the root

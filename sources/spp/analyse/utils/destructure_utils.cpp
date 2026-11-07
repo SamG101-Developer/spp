@@ -33,6 +33,10 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace spp::analyse::utils::destructure_utils {
   namespace {
     /// When we have a pattern like "let Self(fd) = self", we

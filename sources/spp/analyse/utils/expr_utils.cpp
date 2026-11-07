@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 #include <spp/parse/macros.hpp>
 
@@ -37,6 +38,11 @@ import spp.parse.parser_spp;
 import spp.utils.ice;
 import spp.utils.uid;
 import std;
+
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, CaseExpressionAst);
+use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts::meta, MetaGuard);
 
 auto spp::analyse::utils::expr_utils::ExpandTupleSpread(
   ExpressionAst &tuple, Ast const &tok, ScopeManager *sm, CompilerMetaData *meta)

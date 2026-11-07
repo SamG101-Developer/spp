@@ -15,7 +15,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionPrototypeAst);
+use_common(FunctionPrototypeAst);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct FunctionImplementationAst);
 use(spp::asts, struct FunctionParameterGroupAst);
@@ -27,7 +27,9 @@ use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::codegen, struct LlvmFnWrapper);
 use(spp::analyse::scopes, class Scope);
+use_alias(spp::analyse::scopes, TypeId);
 
 /// The prototype of a function: its name, parameters and
 /// return type. The body is held in the implementation ast.
@@ -107,7 +109,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// In an instantiation, the return type by identity: the
   /// template's, with the bindings substituted once, which is what
   /// a call returns. Null in a template.
-  analyse::scopes::TypeId InstanceReturnTypeId = nullptr;
+  TypeId InstanceReturnTypeId = nullptr;
 
   /// The body of the function, containing the code executed
   /// when it is called.
@@ -146,7 +148,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage10_PreCodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override;
 
   /// The linkage name an "!ffi" function is declared under:
   /// the "symbol" argument of its annotation, which is the
@@ -157,7 +159,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// function, or its annotation names no symbol.
   SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Opt<Str>;
 
-  SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper>;
+  SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<LlvmFnWrapper>;
 
   /// The llvm context of the module this prototype was written
   /// in, which is the one module its definition may be emitted
@@ -174,7 +176,7 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// that module, making whichever caller got there first the
   /// accidental owner of the definition. Null if Stage10 has
   /// not run yet.
-  SPP_ATTR_NODISCARD auto OwnerCtx() const -> codegen::LlvmCtx*;
+  SPP_ATTR_NODISCARD auto OwnerCtx() const -> LlvmCtx*;
 
   /// The scope this prototype's signature is read in: a substitution's own ("GenericSubstitution::ProtoScope", where
   /// its bindings and "Self" are), else the prototype's. Where a declaration made outside the walk is positioned.
@@ -295,8 +297,8 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   virtual auto GenerateLlvmDeclaration(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LlvmCtx *ctx)
-    -> Shared<codegen::LlvmFnWrapper>;
+    LlvmCtx *ctx)
+    -> Shared<LlvmFnWrapper>;
 
   virtual auto IsCoroutine() const -> bool = 0;
 
@@ -341,13 +343,13 @@ protected:
   /// for further codegen in the second pass (function calls
   /// etc). Double shared pointer for altering the value, and
   /// updating in cloned ASTs that share this target.
-  Shared<Shared<codegen::LlvmFnWrapper>> _LlvmFn;
+  Shared<Shared<LlvmFnWrapper>> _LlvmFn;
 
   /// The context of the module this prototype belongs to; read
   /// it through "OwnerCtx". Never set on a clone, because a
   /// clone is not written in any module - it is reached
   /// through the template it substitutes.
-  codegen::LlvmCtx *_OwnerCtx;
+  LlvmCtx *_OwnerCtx;
 
   Unique<analyse::utils::annotation_utils::AnnotationInfo> _AnnotationInfo;
 
@@ -380,7 +382,7 @@ protected:
   SPP_ATTR_NODISCARD auto _IsPureGn(
     ScopeManager *sm,
     CompilerMetaData *meta,
-    codegen::LlvmCtx const *ctx) const
+    LlvmCtx const *ctx) const
     -> Tup<bool, llvm::Type*, Vec<llvm::Type*>>;
 
   /// Emit the body of every instantiation registered against
@@ -389,5 +391,5 @@ protected:
   /// Both exits from "Stage11_CodeGen" run this, because a
   /// template emits nothing of its own but is exactly where
   /// the instantiations that do are registered.
-  auto _CodeGenGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void;
+  auto _CodeGenGnSubstitutions(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> void;
 };

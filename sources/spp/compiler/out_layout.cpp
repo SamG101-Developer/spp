@@ -8,7 +8,7 @@ import magic_enum;
 import std;
 
 namespace spp::compiler {
-  SPP_INTERNAL {
+  namespace {
     /// The name of an enum value in lower case: how it is written by the user.
     template <typename E>
     auto LowerName(const E value) -> Str {

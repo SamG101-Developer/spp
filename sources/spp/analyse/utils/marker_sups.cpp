@@ -36,6 +36,11 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+
 namespace spp::analyse::utils::marker_sups {
   namespace {
     /**
@@ -74,7 +79,7 @@ namespace spp::analyse::utils::marker_sups {
       IdentifierAst const *member,
       TypeRef const &target,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> bool {
       if (member == nullptr or target.Symbol == nullptr or target.Symbol->LinkedScope == nullptr) { return false; }
       auto any_self = false;
@@ -227,7 +232,8 @@ auto spp::analyse::utils::marker_sups::IsGenOnce(
   TypeRef const &gen,
   Scope const &scope)
   -> bool {
-  return gen.Symbol != nullptr and gen.IsA(*generate::common_types_precompiled::GEN_ONCE, scope);
+  return gen.Symbol != nullptr and gen.IsA(
+    *asts::generate::common_types_precompiled::GEN_ONCE, scope);
 }
 
 auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
@@ -244,7 +250,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
 
   // A variant yield is checked member by member, as that is how
   // it is flattened into the result.
-  const auto done_ref = TypeRef::Of(*generate::common_types::GenDone(expr.PosStart()), scope);
+  const auto done_ref = TypeRef::Of(*asts::generate::common_types::GenDone(expr.PosStart()), scope);
   if (done_ref.Symbol == nullptr) { return; }
   auto members = VariantMemberRefs(yield_ref, scope);
   if (members.empty()) { members.emplace_back(yield_ref); }
@@ -303,8 +309,8 @@ auto spp::analyse::utils::marker_sups::FindFwdSups(
   Scope const &scope)
   -> Pair<TypeRef, TypeRef> {
   //
-  using generate::common_types_precompiled::FWD_MUT;
-  using generate::common_types_precompiled::FWD_REF;
+  using asts::generate::common_types_precompiled::FWD_MUT;
+  using asts::generate::common_types_precompiled::FWD_REF;
 
   // Generic types do not have forward types, so return nullptr.
   if (ref.Symbol == nullptr or ref.Symbol->IsGn() or ref.Symbol->LinkedScope == nullptr) { return {}; }
@@ -328,7 +334,7 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ExpressionAst const &receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta,
+  CompilerMetaData *meta,
   IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
   // The built call is over a clone of the analysed receiver, which
@@ -341,7 +347,7 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   Unique<ExpressionAst> &&receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta,
+  CompilerMetaData *meta,
   IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
   // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".

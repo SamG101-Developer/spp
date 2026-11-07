@@ -16,6 +16,9 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use(spp::asts::meta, enum class CompilerStage);
+use_alias(spp::analyse::scopes, TypeId);
 
 namespace spp::analyse::utils::monomorphization {
   // Class instances.
@@ -41,7 +44,7 @@ namespace spp::analyse::utils::monomorphization {
   SPP_EXP_FUN auto FindOrMakeClsInstance(
     TypeIdentifierAst &type_part, Shared<TypeSymbol> const &old_cls_sym,
     TypeId args_id, ScopeManager *sm,
-    meta::CompilerMetaData *meta) -> TypeSymbol*;
+    CompilerMetaData *meta) -> TypeSymbol*;
 
   // Superimposition instances.
 
@@ -50,7 +53,7 @@ namespace spp::analyse::utils::monomorphization {
   /// whose identity is "args_id", attached beside the block.
   SPP_EXP_FUN auto MakeSupInstance(
     Scope &old_sup_scope, Scope &new_cls_scope, TypeId args_id,
-    ScopeManager const *sm, meta::CompilerMetaData *meta) -> Tup<Scope*, Scope*>;
+    ScopeManager const *sm, CompilerMetaData *meta) -> Tup<Scope*, Scope*>;
 
   // Function instances.
 
@@ -65,7 +68,7 @@ namespace spp::analyse::utils::monomorphization {
   /// "pack" is what the call gives a variadic parameter, or null.
   SPP_EXP_FUN auto FindOrMakeFnInstance(
     FunctionPrototypeAst *fn_proto, Scope const *fn_scope, TypeId args_id,
-    packs::GivenPack const *pack, ScopeManager *sm, meta::CompilerMetaData *meta)
+    packs::GivenPack const *pack, ScopeManager *sm, CompilerMetaData *meta)
     -> Tup<FunctionPrototypeAst*, Scope const*>;
 
   /// As "FindOrMakeFnInstance", for arguments already named (read
@@ -74,7 +77,7 @@ namespace spp::analyse::utils::monomorphization {
   /// emitted.
   SPP_EXP_FUN auto RequireFnInstance(
     FunctionPrototypeAst *fn_proto, Scope const *fn_scope, TypeId args_id,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> FunctionPrototypeAst*;
+    ScopeManager *sm, CompilerMetaData *meta) -> FunctionPrototypeAst*;
 
   /// The instance of "fn_proto" for the arguments whose identity
   /// is "args_id", once required ("RequireFnInstance"): the
@@ -91,7 +94,7 @@ namespace spp::analyse::utils::monomorphization {
   /// analysis stages can make one ("CompilerBoot"): one made after
   /// them would never be generated.
   SPP_EXP_FUN auto StartInstantiatingOnRead(
-    ScopeTree &tree, meta::CompilerStage stage) -> void;
+    ScopeTree &tree, CompilerStage stage) -> void;
 
   /// Stop the TypeRef::Of and other type reads from creating any
   /// not-existing instantiations.
@@ -119,7 +122,7 @@ namespace spp::analyse::utils::monomorphization {
   /// each element from the list and analysing all the pending
   /// generic instantiations of it.
   SPP_EXP_FUN auto MonomorphiseToFixedPoint(
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> void;
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Drop everything waiting. Called between compilations,
   /// because the record outlives any one of them; prevents

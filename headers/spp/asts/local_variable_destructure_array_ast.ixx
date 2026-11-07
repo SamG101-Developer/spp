@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureArrayAst);
+use_common(LocalVariableDestructureArrayAst);
 use(spp::asts, struct CasePatternVariantDestructureArrayAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct TokenAst);

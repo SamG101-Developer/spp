@@ -33,6 +33,10 @@ import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, ConventionAstOf);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 auto GenericArgumentAst::NewType(
   Shared<TypeAst> name, decltype(TypeVal) val) -> Unique<GenericArgumentAst> {

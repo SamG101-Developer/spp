@@ -8,7 +8,7 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(AnnotationAst);
+use_common(AnnotationAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct FunctionCallArgumentGroupAst);

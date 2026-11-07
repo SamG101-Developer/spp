@@ -30,6 +30,9 @@ import spp.utils.ice;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 auto InnerScopeExpressionAst::NewEmpty() -> Unique<InnerScopeExpressionAst> {
   // Empty AST.

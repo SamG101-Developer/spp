@@ -49,6 +49,9 @@ import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
   decltype(TokDot) &&tok_dot,

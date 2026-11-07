@@ -7,7 +7,7 @@ import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureSkipMultipleArgumentsAst);
+use_common(LocalVariableDestructureSkipMultipleArgumentsAst);
 use(spp::asts, struct CasePatternVariantDestructureSkipMultipleArgumentsAst);
 use(spp::asts, struct LocalVariableSingleIdentifierAst);
 use(spp::asts, struct IdentifierAst);

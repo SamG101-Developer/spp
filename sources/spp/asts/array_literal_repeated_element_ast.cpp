@@ -29,6 +29,8 @@ import spp.utils.ice;
 import spp.utils.uid;
 import llvm;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
   decltype(TokL) &&tok_l,

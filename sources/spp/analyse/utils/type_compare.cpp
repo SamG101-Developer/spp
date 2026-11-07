@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 module spp.analyse.utils.type_compare;
 import spp.analyse.scopes.comp_key;
@@ -30,6 +31,15 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
 import std;
+
+use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::analyse::scopes, FindGnCompParamById);
+use_alias(spp::analyse::scopes, FindGnTypeParamById);
+use_alias(spp::analyse::scopes, IsSelfTypeId);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeIdArg);
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, ConventionTag);
 
 namespace spp::analyse::utils::type_compare {
   namespace {
@@ -104,8 +114,8 @@ namespace spp::analyse::utils::type_compare {
     /// must match.
     auto ForwardsTo(
       TypeRef const &arg, TypeRef const &param, Scope const &arg_scope, Scope const &param_scope) -> bool {
-      using generate::common_types_precompiled::FWD_REF;
-      using generate::common_types_precompiled::FWD_MUT;
+      using asts::generate::common_types_precompiled::FWD_REF;
+      using asts::generate::common_types_precompiled::FWD_MUT;
 
       // Do a convention match. "Str" cannot go to "&StrView, but
       // "&Str" can. Same for mutable borrows.
@@ -408,7 +418,7 @@ auto spp::analyse::utils::type_compare::UnmetConstraint(
   Vec<Shared<TypeAst>> const &constraints, TypeRef const &concrete, const bool is_self,
   Scope const &constraints_owner_scope, Scope const &concrete_scope) -> TypeAst const* {
   //
-  using generate::common_types_precompiled::THREAD_SAFE;
+  using asts::generate::common_types_precompiled::THREAD_SAFE;
   const auto type_sym = concrete.Symbol;
   if (type_sym == nullptr) { return nullptr; }
 

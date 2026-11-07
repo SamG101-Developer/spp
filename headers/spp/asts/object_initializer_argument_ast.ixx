@@ -7,7 +7,7 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentAst);
+use_common(ObjectInitializerArgumentAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::analyse::scopes, struct TypeRef);

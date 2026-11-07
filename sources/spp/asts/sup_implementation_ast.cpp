@@ -73,14 +73,14 @@ auto SupImplementationAst::Stage8_CheckMemory(
 }
 
 auto SupImplementationAst::Stage10_PreCodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Forward to members.
   for (auto const &m : Members) { m->Stage10_PreCodeGen(sm, meta, ctx); }
   return nullptr;
 }
 
 auto SupImplementationAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Forward to members.
   for (auto const &m : Members) { m->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;

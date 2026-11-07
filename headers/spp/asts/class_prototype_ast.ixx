@@ -12,7 +12,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClassPrototypeAst);
+use_common(ClassPrototypeAst);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ClassImplementationAst);
 use(spp::asts, struct GenericParameterGroupAst);
@@ -26,6 +26,7 @@ use(spp::analyse::scopes, struct TypeSymbol);
 /// and any generic parameters. The attributes are defined in
 /// the implementation ast, making the scoping rules easier.
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClassPrototypeAst);
 
   /// The annotations applied to this class prototype.
@@ -103,3 +104,5 @@ private:
 
   auto _GenerateSymbols(ScopeManager *sm) -> TypeSymbol*;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

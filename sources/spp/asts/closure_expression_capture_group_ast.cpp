@@ -32,6 +32,10 @@ import spp.lex.tokens;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+
 SPP_MOD_BEGIN
 auto ClosureExpressionCaptureGroupAst::NewEmpty() -> Unique<ClosureExpressionCaptureGroupAst> {
   // Empty.

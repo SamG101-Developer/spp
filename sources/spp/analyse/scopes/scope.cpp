@@ -67,6 +67,18 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, ClosureExpressionParameterAndCaptureGroupAst);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+use_alias(spp::asts, TokenAst);
+use_alias(spp::asts, TupleLiteralAst);
+
 namespace spp::analyse::scopes {
   namespace {
     /// [CHECKED]
@@ -168,7 +180,7 @@ namespace spp::analyse::scopes {
       ByParam const &find_by_param) -> Symbol* {
       // The binding function returns a symbol if that symbol's
       // binding parameter's id is the fixed id.
-      using generate::common_types_precompiled::SELF_TYPE;
+      using asts::generate::common_types_precompiled::SELF_TYPE;
       const auto binding = [id](Symbol *found) -> Symbol* {
         return found != nullptr and found->BindsParamId == id ? found : nullptr;
       };
@@ -1352,7 +1364,7 @@ auto Scope::FindBoundTypeSymbolById(
 /// [CHECKED]
 auto Scope::FindSelfSymbol(
   const bool exclusive) const -> TypeSymbol* {
-  using generate::common_types_precompiled::SELF_TYPE;
+  using asts::generate::common_types_precompiled::SELF_TYPE;
   return FindTypeSymbol(SELF_TYPE.get(), exclusive);
 }
 
@@ -1580,7 +1592,7 @@ auto Scope::InstanceIdOf(
 
   // Get the template of the symbol, if the symbol is an instantiation,
   // otherwise it is itself, a template.
-  using generate::common_types_precompiled::VAR;
+  using asts::generate::common_types_precompiled::VAR;
   const auto tmpl = head.InstanceOf != nullptr ? head.InstanceOf : &head;
 
   // Handle the case where the input symbol is not an alias, and the
@@ -1647,7 +1659,7 @@ auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
 
 /// [CHECKED]
 auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
-  using generate::common_types_precompiled::SELF_TYPE;
+  using asts::generate::common_types_precompiled::SELF_TYPE;
   if (id == nullptr) { return nullptr; }
   auto const &head = HeaderOf(id);
   const auto bare = BareOf(id);
@@ -1732,7 +1744,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
           if (type == nullptr) { return nullptr; }
           members.emplace_back(std::move(type));
         }
-        out = generate::common_types::VariantType(0, std::move(members));
+        out = asts::generate::common_types::VariantType(0, std::move(members));
         if (IsStampableTypeId(bare)) { out->LastTypePart()->StampTypeId(bare); }
         break;
       }

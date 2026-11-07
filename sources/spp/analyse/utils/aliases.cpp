@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.aliases;
@@ -23,10 +24,12 @@ import spp.asts.utils.ast_utils;
 import genex;
 import std;
 
+use_alias(spp::asts, GenericArgumentGroupAst);
+
 /// [CHECKED]
 auto spp::analyse::utils::aliases::StatementTarget(
   TypeStatementAst const &alias_stmt, const bool from_use_stmt,
-  Scope const *tracking_scope, ScopeManager *sm, meta::CompilerMetaData *meta)
+  Scope const *tracking_scope, ScopeManager *sm, CompilerMetaData *meta)
   -> AliasTarget {
   //
   const auto filter_params = [](
@@ -122,7 +125,7 @@ auto spp::analyse::utils::aliases::StatementTarget(
 }
 
 auto spp::analyse::utils::aliases::InstanceTargetIdOf(
-  TypeSymbol const &alias, const scopes::TypeId id) -> scopes::TypeId {
+  TypeSymbol const &alias, const TypeId id) -> TypeId {
   // Filed under the class it names (a "use" of the class), the identity is the
   // target already.
   if (id == nullptr) { return nullptr; }

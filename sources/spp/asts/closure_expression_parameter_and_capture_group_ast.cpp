@@ -22,6 +22,8 @@ import spp.codegen.llvm_type;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+
 SPP_MOD_BEGIN
 ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
   decltype(TokL) &&tok_l,
@@ -65,29 +67,31 @@ auto ClosureExpressionParameterAndCaptureGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-namespace {
-  /// Moves the captures out as call arguments, so the argument
-  /// group's analysis can run over them.
-  auto CapturesAsArgs(
-    spp::Vec<spp::Unique<ClosureExpressionCaptureAst>> &captures)
-    -> spp::Vec<spp::Unique<FunctionCallArgumentAst>> {
-    //
-    return captures
-      | genex::views::move
-      | genex::views::transform([](auto &&x) { return spp::unique_cast<FunctionCallArgumentAst>(std::move(x)); })
-      | genex::to<spp::Vec>();
-  }
+namespace spp::asts {
+  namespace {
+    /// Moves the captures out as call arguments, so the argument
+    /// group's analysis can run over them.
+    auto CapturesAsArgs(
+      Vec<Unique<ClosureExpressionCaptureAst>> &captures)
+      -> Vec<Unique<FunctionCallArgumentAst>> {
+      //
+      return captures
+        | genex::views::move
+        | genex::views::transform([](auto &&x) { return spp::unique_cast<FunctionCallArgumentAst>(std::move(x)); })
+        | genex::to<Vec>();
+    }
 
-  /// Moves the call arguments made by "CapturesAsArgs" back out
-  /// as captures.
-  auto ArgsAsCaptures(
-    spp::Vec<spp::Unique<FunctionCallArgumentAst>> &args)
-    -> spp::Vec<spp::Unique<ClosureExpressionCaptureAst>> {
-    //
-    return args
-      | genex::views::move
-      | genex::views::transform([](auto &&x) { return spp::unique_cast<ClosureExpressionCaptureAst>(std::move(x)); })
-      | genex::to<spp::Vec>();
+    /// Moves the call arguments made by "CapturesAsArgs" back out
+    /// as captures.
+    auto ArgsAsCaptures(
+      Vec<Unique<FunctionCallArgumentAst>> &args)
+      -> Vec<Unique<ClosureExpressionCaptureAst>> {
+      //
+      return args
+        | genex::views::move
+        | genex::views::transform([](auto &&x) { return spp::unique_cast<ClosureExpressionCaptureAst>(std::move(x)); })
+        | genex::to<Vec>();
+    }
   }
 }
 
@@ -137,7 +141,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
 }
 
 auto ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the parameters into the current scope.
   sm->MoveToNextScope();
   ParamGroup->Stage11_CodeGen(sm, meta, ctx);

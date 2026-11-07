@@ -12,6 +12,7 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::analyse::scopes, struct GenericSubst);
 use(spp::analyse::utils::generic_inference, class GenericSolver);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
@@ -22,6 +23,9 @@ use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, TypeId);
 
 /// Solves the generic arguments of one use of a generic declaration: a call of a generic function, or a generic
 /// type named with (or without) its arguments. Everything a parameter is offered is collected against that parameter
@@ -30,7 +34,7 @@ use(spp::asts, struct TypeIdentifierAst);
 /// 1. What is given, in layers of precedence ("Give"): the arguments written at the use site, then whatever the
 ///    receiver, the enclosing "sup" block and a pinned "Self" bind. A name already given keeps its first binding.
 /// 2. Equations ("Unify"): what was given for a parameter or attribute against its declared type, binding the
-///    generics the declared type names, by identity ("scopes::UnifyTypeIds"). What the declaration's own scope
+///    generics the declared type names, by identity ("UnifyTypeIds"). What the declaration's own scope
 ///    binds a parameter to already is that parameter's value.
 /// 3. "Solve": the equations, then comp values' types and the constraints, repeated until nothing new is bound; then
 ///    the defaults; then conflicts and uninferred parameters are checked, the defaults are read in the use site's
@@ -39,10 +43,8 @@ use(spp::asts, struct TypeIdentifierAst);
 SPP_EXP_CLS class spp::analyse::utils::generic_inference::GenericSolver {
 public:
   GenericSolver(
-    GenericParameterGroupAst const &params,
-    Scope const &owner_scope,
-    ScopeManager &sm,
-    meta::CompilerMetaData &meta);
+    GenericParameterGroupAst const &params, Scope const &owner_scope,
+    ScopeManager &sm, CompilerMetaData &meta);
 
   GenericSolver(GenericSolver const &) = delete;
   ~GenericSolver();
@@ -99,7 +101,7 @@ public:
   /// The solution's instance key, as "Scope::ArgsIdOf" keys the
   /// arguments "TakeArgs" makes, built from the identities held
   /// rather than from arguments read back.
-  SPP_ATTR_NODISCARD auto SolvedArgsId() const -> scopes::TypeId;
+  SPP_ATTR_NODISCARD auto SolvedArgsId() const -> TypeId;
 
   /// The parameters the solution took from the call's arguments
   /// ("Unify"): bound, but neither given ("Give") nor defaulted. An
@@ -123,7 +125,7 @@ private:
   GenericParameterGroupAst const *_Params;
   Scope const *_OwnerScope;
   ScopeManager *_Sm;
-  meta::CompilerMetaData *_Meta;
+  CompilerMetaData *_Meta;
   Vec<Unique<_Entry>> _Entries;
 
   /// The entry for "Self" (parameter 0), in "_Entries", once it is
@@ -133,7 +135,7 @@ private:
 
   Vec<Unique<_Equation>> _Equations;
   Vec<Unique<GenericArgumentAst>> _Given;
-  scopes::GenericSubst _DeclaredReading;
+  GenericSubst _DeclaredReading;
 
   bool _Trivial = false;
 
@@ -146,17 +148,17 @@ private:
   auto _FindById(std::uint64_t pid) const -> _Entry*;
   auto _TakeSelf(bool emit) -> _Entry*;
   auto _EntryParamId(_Entry const &entry) const -> std::uint64_t;
-  auto _EntryTypeId(_Entry const &entry) const -> scopes::TypeId;
-  auto _EntryCompId(_Entry const &entry) const -> scopes::CompId;
-  auto _ValCompId(_CompVal const &val) const -> scopes::CompId;
-  auto _CompValOf(_Entry const &entry, scopes::CompId id, Shared<TypeAst> site) const -> _CompVal;
+  auto _EntryTypeId(_Entry const &entry) const -> TypeId;
+  auto _EntryCompId(_Entry const &entry) const -> CompId;
+  auto _ValCompId(_CompVal const &val) const -> CompId;
+  auto _CompValOf(_Entry const &entry, CompId id, Shared<TypeAst> site) const -> _CompVal;
   auto _ShownCompVal(_CompVal const &val) const -> Shared<ExpressionAst>;
   auto _AstOf(_TypeVal const &val) const -> Shared<TypeAst>;
-  auto _Bindings(_Entry const *except = nullptr) const -> scopes::GenericSubst;
-  auto _OfferAll(scopes::GenericSubst const &inferred, Shared<TypeAst> const &site,
+  auto _Bindings(_Entry const *except = nullptr) const -> GenericSubst;
+  auto _OfferAll(GenericSubst const &inferred, Shared<TypeAst> const &site,
     FuncRef<bool(_Entry const &)> skip) -> bool;
-  auto _Match(TypeAst const &source, TypeAst const &target) const -> scopes::GenericSubst;
-  auto _MatchIds(scopes::TypeId given, scopes::TypeId declared) const -> scopes::GenericSubst;
+  auto _Match(TypeAst const &source, TypeAst const &target) const -> GenericSubst;
+  auto _MatchIds(TypeId given, TypeId declared) const -> GenericSubst;
   auto _SeedFromOwner() -> void;
   auto _ReadCompValues() -> bool;
   auto _ReadConstraints() -> bool;
@@ -165,8 +167,8 @@ private:
   auto _EnforceNoConflicts() const -> void;
   auto _EnforceAllInferred(Ast const &owner) const -> void;
   auto _CrossSubstitute() -> void;
-  auto _CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void;
-  auto _CheckCompArgs(scopes::GenericSubst const &bindings) const -> void;
+  auto _CheckTypeArgs(GenericSubst const &bindings) const -> void;
+  auto _CheckCompArgs(GenericSubst const &bindings) const -> void;
 };
 
 namespace spp::analyse::utils::generic_inference {
@@ -183,5 +185,5 @@ namespace spp::analyse::utils::generic_inference {
   /// ExpectCompParamTypes"); none when it is null.
   SPP_EXP_FUN auto NamedGnArgs(
     GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const *params_scope,
-    Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta) -> Unique<GenericArgumentGroupAst>;
+    Ast const &owner, ScopeManager &sm, CompilerMetaData &meta) -> Unique<GenericArgumentGroupAst>;
 }

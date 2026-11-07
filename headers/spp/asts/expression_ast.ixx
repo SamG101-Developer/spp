@@ -7,7 +7,7 @@ import spp.asts.statement_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ExpressionAst);
+use_common(ExpressionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
@@ -36,6 +36,7 @@ use(spp::asts, struct TypeAst);
 /// expressions inherit it too. It is mostly a "marker" for where
 /// expressions should be, with no additional functionality.
 SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
+  SPP_GCC_VTABLE_FIX
   ExpressionAst();
   ~ExpressionAst() override;
 
@@ -74,3 +75,5 @@ SPP_EXP_CLS struct spp::asts::ExpressionAst : StatementAst {
     analyse::scopes::ExprSubst const &sub) const
     -> Shared<ExpressionAst>;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ExpressionAst)

@@ -7,7 +7,7 @@ import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ConventionRefAst);
+use_common(ConventionRefAst);
 use(spp::asts, struct TokenAst);
 
 /// A convention for immutable borrows, which can be taken from

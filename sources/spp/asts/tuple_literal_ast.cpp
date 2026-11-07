@@ -32,6 +32,9 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, SpreadExpressionAst);
+
 SPP_MOD_BEGIN
 namespace {
   /// The value an element gives: a spread's tuple, or the element itself.

@@ -45,6 +45,31 @@ import spp.utils.uid;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, InternCompKey);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, AstClone);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CasePatternVariantAst);
+use_alias(spp::asts, CasePatternVariantDestructureArrayAst);
+use_alias(spp::asts, CasePatternVariantDestructureAttributeBindingAst);
+use_alias(spp::asts, CasePatternVariantDestructureObjectAst);
+use_alias(spp::asts, CasePatternVariantDestructureSkipMultipleArgumentsAst);
+use_alias(spp::asts, CasePatternVariantDestructureTupleAst);
+use_alias(spp::asts, CasePatternVariantElseAst);
+use_alias(spp::asts, CasePatternVariantElseCaseAst);
+use_alias(spp::asts, CasePatternVariantExpressionAst);
+use_alias(spp::asts, CasePatternVariantLiteralAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, FloatLiteralAst);
+use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, IntegerLiteralAst);
+use_alias(spp::asts, LiteralAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::asts::meta, SubjectOnMatch);
+
 namespace spp::analyse::utils::pattern_solver {
   namespace {
     /// A position a pattern tests: its type, where that type reads,
@@ -719,7 +744,6 @@ namespace spp::analyse::utils::pattern_solver {
       // Lambda to detect if every type ref in a list is copyable
       // or not. This dictates if a subject is moved or copied on
       // a match.
-      using meta::SubjectOnMatch;
       const auto all_copy = [](Vec<TypeRef> const &types) {
         const auto copyable = [](auto const &t) { return t.Symbol != nullptr and t.Symbol->IsCopyable(); };
         return not types.empty() and genex::all_of(types, copyable);

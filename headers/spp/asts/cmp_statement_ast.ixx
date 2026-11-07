@@ -13,7 +13,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CmpStatementAst);
+use_common(CmpStatementAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ExpressionAst);

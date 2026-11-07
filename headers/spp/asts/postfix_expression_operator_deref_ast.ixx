@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorDerefAst);
+use_common(PostfixExpressionOperatorDerefAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);

@@ -8,7 +8,7 @@ import spp.utils.types;
 import std;
 
 use(spp::parse::errors, struct SppSyntaxError);
-use(spp::parse::errors, template <typename T> struct SyntacticErrorBuilder);
+use(spp::parse::errors, (typename T) struct SyntacticErrorBuilder);
 use(spp::parse, class ParserBase);
 
 /// The base class for all parsers. This is so that we can have a consistent set

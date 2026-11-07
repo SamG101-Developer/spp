@@ -7,7 +7,7 @@ import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentKeywordAst);
+use_common(FunctionCallArgumentKeywordAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 

@@ -17,6 +17,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 // Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN

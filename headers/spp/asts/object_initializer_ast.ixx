@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ObjectInitializerAst);
+use_common(ObjectInitializerAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct ObjectInitializerArgumentGroupAst);

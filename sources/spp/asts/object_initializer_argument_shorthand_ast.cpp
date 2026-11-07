@@ -12,7 +12,6 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
-use_ns(spp::analyse::utils);
 
 SPP_MOD_BEGIN
 auto ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(

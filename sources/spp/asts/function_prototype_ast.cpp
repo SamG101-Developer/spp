@@ -70,6 +70,11 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace {
   /// The instantiation whose body is being analysed.
   thread_local auto analysing_gn_substitution =

@@ -23,6 +23,9 @@ import spp.utils.types;
 import genex;
 import std;
 
+use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, TupleLiteralAst);
+
 namespace {
   using spp::analyse::scopes::TypeSymbol;
   using spp::analyse::scopes::VariableSymbol;
@@ -58,7 +61,7 @@ namespace {
 
 auto spp::analyse::utils::packs::CompPackElements(
   ExpressionAst const &pack) -> Vec<ExpressionAst*> {
-  return pack.As<asts::TupleLiteralAst>()->Elems
+  return pack.As<TupleLiteralAst>()->Elems
     | genex::views::transform([](auto const &elem) { return elem.get(); })
     | genex::to<Vec>();
 }
@@ -89,7 +92,7 @@ auto spp::analyse::utils::packs::DeclareHiddenPack(
   Str const &name, TypeAst const &element, void const *key, const std::size_t pos, Scope &scope)
   -> Shared<TypeIdentifierAst> {
   using scopes::TypeSymbol;
-  auto hidden = MakeShared<asts::TypeIdentifierAst>(pos, Str(name), nullptr);
+  auto hidden = MakeShared<TypeIdentifierAst>(pos, Str(name), nullptr);
   const auto written = AstCloneShared(element.WithoutConvention());
   auto const *const found = scope.FindTypeSymbol(written.get());
   auto const *const declared = found != nullptr ? found->AsBound() : nullptr;

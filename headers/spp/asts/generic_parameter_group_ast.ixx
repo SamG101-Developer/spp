@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterGroupAst);
+use_common(GenericParameterGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct TokenAst);
 

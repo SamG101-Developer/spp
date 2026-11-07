@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClosureExpressionCaptureGroupAst);
+use_common(ClosureExpressionCaptureGroupAst);
 use(spp::asts, struct ClosureExpressionCaptureAst);
 use(spp::asts, struct TokenAst);
 

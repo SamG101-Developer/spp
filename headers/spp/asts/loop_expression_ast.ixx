@@ -7,7 +7,7 @@ import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopExpressionAst);
+use_common(LoopExpressionAst);
 use(spp::asts, struct LoopElseStatementAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);

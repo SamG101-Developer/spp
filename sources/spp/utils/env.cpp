@@ -6,7 +6,7 @@ import std;
 import sys;
 
 namespace spp::utils::env {
-  SPP_INTERNAL {
+  namespace {
     constexpr auto kOwnPrefix = StrView("SPP_");
     constexpr auto kCiPrefix = StrView("SPP_CI_");
 

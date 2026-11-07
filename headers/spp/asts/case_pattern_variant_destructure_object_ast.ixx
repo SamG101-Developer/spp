@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureObjectAst);
+use_common(CasePatternVariantDestructureObjectAst);
 use(spp::asts, struct LocalVariableAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);

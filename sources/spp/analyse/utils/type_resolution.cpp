@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.type_resolution;
@@ -33,6 +34,10 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::asts, TypePostfixExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+
 namespace spp::analyse::utils::type_resolution {
   namespace {
     /// "ReadType", null where the type does not resolve.
@@ -57,7 +62,7 @@ namespace spp::analyse::utils::type_resolution {
 
 /// [CHECKED]
 auto spp::analyse::utils::type_resolution::AnalyseWrittenType(
-  TypeAst const &written, ScopeManager &sm, meta::CompilerMetaData &meta,
+  TypeAst const &written, ScopeManager &sm, CompilerMetaData &meta,
   const SelfPolicy self) -> Shared<TypeAst> {
   // Based on the "self policy", extract the "Self" from the
   // current scope. Substituting with Self=nullptr is a no-op

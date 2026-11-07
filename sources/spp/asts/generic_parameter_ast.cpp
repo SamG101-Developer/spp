@@ -44,6 +44,19 @@ import spp.asts.utils.orderable;
 import spp.asts.utils.visibility;
 import spp.lex.tokens;
 
+use_alias(spp::analyse::scopes, NameTypeIdOf);
+use_alias(spp::analyse::scopes, NextGnParamId);
+use_alias(spp::analyse::scopes, ParamCompId);
+use_alias(spp::analyse::scopes, RegisterGnCompParam);
+use_alias(spp::analyse::scopes, RegisterGnTypeParam);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 GenericParameterAst::GenericParameterAst(
   decltype(TokCmp) &&tok_cmp,

@@ -6,6 +6,8 @@ import spp.analyse.scopes.symbols;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 ExpressionAst::ExpressionAst() = default;
 ExpressionAst::~ExpressionAst() = default;

@@ -22,6 +22,9 @@ import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_type;
 import spp.utils.types;
 
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 namespace {
   /// An argument is its parameter's value: what the call's own

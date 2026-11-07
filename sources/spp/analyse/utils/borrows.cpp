@@ -22,6 +22,9 @@ import spp.asts.type_ast;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, ConventionTag);
+
 namespace spp::analyse::utils::borrows {
   namespace {
     /// Check if one scope is the descendant of another (and not
@@ -115,8 +118,9 @@ auto spp::analyse::utils::borrows::CheckAgainstLoans(
 
 /// [CHECKED]
 auto spp::analyse::utils::borrows::ValidateUnnamedArgumentBorrow(
-  FunctionCallArgumentAst const &arg, VariableSymbol const *const sym, memory_state::LoanSet &call_loans,
-  ScopeManager &sm, meta::CompilerMetaData *const meta) -> void {
+  FunctionCallArgumentAst const &arg, VariableSymbol const *const sym,
+  memory_state::LoanSet &call_loans, ScopeManager &sm,
+  CompilerMetaData *const meta) -> void {
   // A borrow of a named symbol is checked with the symbol; this
   // handles unnamed borrow creators, like vec[mut 5] etc.
   if (sym != nullptr) { return; }

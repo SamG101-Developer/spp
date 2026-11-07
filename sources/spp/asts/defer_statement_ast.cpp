@@ -21,6 +21,8 @@ import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 DeferStatementAst::DeferStatementAst(
   decltype(TokDefer) &&tok_defer,

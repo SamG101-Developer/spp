@@ -70,6 +70,36 @@ import spp.utils.types;
 import genex;
 import sys;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, AstBody);
+use_alias(spp::asts, AstClone);
+use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, ConventionMutAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionCallArgumentKeywordAst);
+use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, FunctionParameterGroupAst);
+use_alias(spp::asts, FunctionParameterOptionalAst);
+use_alias(spp::asts, FunctionParameterRequiredAst);
+use_alias(spp::asts, FunctionParameterSelfAst);
+use_alias(spp::asts, FunctionParameterVariadicAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+use_alias(spp::asts, SubroutinePrototypeAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+
 namespace spp::analyse::utils::overload_resolution {
   namespace {
     /// [CHECKED]
@@ -132,7 +162,7 @@ namespace spp::analyse::utils::overload_resolution {
     /// name. For example, "x.m(a)" needs to run inference for
     /// the type, where-as "T::m(a, x)" already has it.
     auto GetFnOwnerTypeAndFnName(
-      ExpressionAst const &lhs, ScopeManager &sm, meta::CompilerMetaData *meta)
+      ExpressionAst const &lhs, ScopeManager &sm, CompilerMetaData *meta)
       -> Tup<Shared<TypeAst>, Scope const*, Shared<IdentifierAst>> {
       using member_lookup::RaiseMissingIdentifierAndClosestOptions;
 
@@ -246,7 +276,7 @@ namespace spp::analyse::utils::overload_resolution {
     /// information is extracted to form a "call site" object.
     auto CallSiteOf(
       ExpressionAst &written, ScopeManager &sm,
-      meta::CompilerMetaData *meta) -> CallSite {
+      CompilerMetaData *meta) -> CallSite {
       // Build an empty call site and attach the written
       // expression into it.
       auto site = CallSite();
@@ -371,7 +401,7 @@ namespace spp::analyse::utils::overload_resolution {
     /// the call (by symbol name, no argument checks yet).
     auto RetrieveAllOverloads(
       CallSite const &site, ScopeManager *sm,
-      meta::CompilerMetaData *meta) -> OverloadCandidates {
+      CompilerMetaData *meta) -> OverloadCandidates {
       // For named functions (ie non-closures), get all the
       // function overload implementation scopes. Empty list
       // for a value called through its function type.
@@ -529,7 +559,7 @@ namespace spp::analyse::utils::overload_resolution {
     auto PinSelfToReceiver(
       Scope const *fn_scope,
       Shared<TypeAst> const &call_self, generic_inference::GenericSolver &solver,
-      ScopeManager const *sm, meta::CompilerMetaData const *meta) -> void {
+      ScopeManager const *sm, CompilerMetaData const *meta) -> void {
       using type_compare::TypeEq;
 
       // Get the "Self" type from the scope that the function
@@ -561,7 +591,7 @@ namespace spp::analyse::utils::overload_resolution {
       Unique<ExpressionAst> val,
       Scope const &scope,
       ScopeManager const &sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> Unique<ExpressionAst> {
       auto tm = sm.NewManagerAt(const_cast<Scope*>(&scope));
       val->Stage7_AnalyseSemantics(&tm, meta);
@@ -589,7 +619,7 @@ namespace spp::analyse::utils::overload_resolution {
     auto BindSlots(
       FunctionCallArgumentGroupAst const &fn_args, FunctionParameterGroupAst const &fn_params,
       Opt<GenericSubst> const &bindings, Scope const &callee_scope,
-      ScopeManager *sm, meta::CompilerMetaData *meta) -> Vec<ParamSlot> {
+      ScopeManager *sm, CompilerMetaData *meta) -> Vec<ParamSlot> {
       // Get the argument names from the provided keyword arguments,
       // and then extract the parameter names too. Check there are
       // no invalidly named keyword arguments.
@@ -730,7 +760,7 @@ namespace spp::analyse::utils::overload_resolution {
      */
     auto SplitPackSlot(
       Vec<ParamSlot> &slots, FunctionPrototypeAst const &instance,
-      FunctionCallArgumentGroupAst const &fn_args, ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+      FunctionCallArgumentGroupAst const &fn_args, ScopeManager *sm, CompilerMetaData *meta) -> void {
       if (instance.FnParamGroup->GetVariadicParam() != nullptr) { return; }
       const auto pack = genex::find_if(slots, [](auto const &slot) { return slot.IsPack; });
       if (pack == slots.end()) { return; }
@@ -776,7 +806,7 @@ namespace spp::analyse::utils::overload_resolution {
       CallSite const &site,
       generic_inference::GenericSolver &solver,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> void {
       for (auto const *param : fn_proto.FnParamGroup->GetNonSelfParams()) {
         const auto name = param->ExtractName();
@@ -868,7 +898,7 @@ namespace spp::analyse::utils::overload_resolution {
       Vec<std::uint64_t> const &inferred,
       CallSite const &site,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> void {
       //
       using errors::SppTypeMismatchError;
@@ -985,7 +1015,7 @@ namespace spp::analyse::utils::overload_resolution {
         // slot per element): used whole, it is the open tuple of its list.
         auto a_type = slot->Type;
         if (slot->IsPack) {
-          a_type = generate::common_types::TupleType(SlotSite(*slot, fn_args).PosStart(), Vec(slot->Pack.Elems));
+          a_type = asts::generate::common_types::TupleType(SlotSite(*slot, fn_args).PosStart(), Vec(slot->Pack.Elems));
           a_type->Stage7_AnalyseSemantics(sm, meta);
         }
 
@@ -994,14 +1024,14 @@ namespace spp::analyse::utils::overload_resolution {
         auto p_written = Shared<TypeAst const>(param->Type);
         if (const auto variadic_param = param->To<FunctionParameterVariadicAst>(); variadic_param != nullptr) {
           if (variadic_param->OverTypePack) {
-            auto p_tuple = generate::common_types::TupleType(
+            auto p_tuple = asts::generate::common_types::TupleType(
               param->PosStart(), {AstCloneShared(param->Type->WithoutConvention())});
             p_sig = fn_scope->TypeIdOf(*p_tuple);
             p_written = std::move(p_tuple);
           }
           else {
             auto ts = Vec(slot->Pack.Elems.size(), spelled());
-            auto p_tuple = generate::common_types::TupleType(param->PosStart(), std::move(ts));
+            auto p_tuple = asts::generate::common_types::TupleType(param->PosStart(), std::move(ts));
             p_tuple->Stage7_AnalyseSemantics(sm, meta);
             p_written = std::move(p_tuple);
           }
@@ -1083,7 +1113,7 @@ namespace spp::analyse::utils::overload_resolution {
     auto NarrowByReturnType(
       Vec<PassedOverload> &pass_overloads,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> void {
       if (meta->ReturnTypeOverloadResolverType == nullptr) { return; }
 
@@ -1180,7 +1210,7 @@ namespace spp::analyse::utils::overload_resolution {
       FunctionCallArgumentGroupAst const &arg_group,
       const bool has_receiver,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> void {
       // How the call's arguments read, for either error below; a method's receiver as "Self".
       using namespace std::string_literals;
@@ -1239,7 +1269,7 @@ namespace spp::analyse::utils::overload_resolution {
     auto CheckCandidate(
       PostfixExpressionOperatorFunctionCallAst const &fn_call,
       FnOverload &candidate, CallSite const &site, const bool is_indirect,
-      ScopeManager *sm, meta::CompilerMetaData *meta) -> PassedOverload {
+      ScopeManager *sm, CompilerMetaData *meta) -> PassedOverload {
       using errors::SppFunctionCallTooManyArgumentsError;
       auto fn_proto = candidate.Proto;
       auto fn_scope = candidate.FnScope;
@@ -1413,7 +1443,7 @@ SPP_MOD_BEGIN
 OverloadSolver::OverloadSolver(
   PostfixExpressionOperatorFunctionCallAst &fn_call,
   ExpressionAst &callee, ScopeManager &sm,
-  meta::CompilerMetaData &meta) :
+  CompilerMetaData &meta) :
   _Call(fn_call),
   _Sm(&sm),
   _Meta(&meta),
@@ -1609,7 +1639,7 @@ auto spp::analyse::utils::overload_resolution::ElaborateCall(
   FunctionCallArgumentGroupAst &args,
   PassedOverload &overload,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta)
+  CompilerMetaData *meta)
   -> void {
   // The values are moved out of the written arguments into one keyword argument per slot. Nothing analysed is
   // dropped: the scopes an argument's analysis created (a loop's, a closure's) name its value as their "AstNode".
@@ -1761,7 +1791,7 @@ auto spp::analyse::utils::overload_resolution::ClearCaches()
 /// [CHECKED]
 auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
   IdentifierAst const &target_fn_name, Scope const *target_scope,
-  ScopeManager &sm, meta::CompilerMetaData *meta) -> Vec<FnOverload> {
+  ScopeManager &sm, CompilerMetaData *meta) -> Vec<FnOverload> {
   // If the name is empty (non-symbolic call) then return
   // "no scopes". If the target scope is nullptr, then the
   // functions are being superimposed over a generic type.
@@ -1824,7 +1854,7 @@ auto spp::analyse::utils::overload_resolution::GetAllFnScopes(
   // (e.g. "NonNull[Str]" -> "&Str" -> "&StrView") sees both
   // "fwd_ref" overloads and the forwarding call is ambiguous.
   if (target_scope->LinkedTypeSymbol != nullptr
-    and meta->CurrentStage >= meta::CompilerStage::kAnalyseSemantics
+    and meta->CurrentStage >= CompilerStage::kAnalyseSemantics
     and overload_scopes.empty()) {
     // Get the scopes on the scope for the forwarded type,
     // and append the scope list to the previously discovered

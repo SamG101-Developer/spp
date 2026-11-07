@@ -8,7 +8,7 @@ import spp.asts.mixins.compiler_stages;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(Ast);
+use_common(Ast);
 use(spp::analyse::scopes, class Scope);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
@@ -43,8 +43,7 @@ SPP_EXP_CLS struct spp::asts::Ast : mixins::CompilerStages {
   /// The customisable clone method that clones all the fields
   /// from an ast into the new ast. Usually internal flags are
   /// copied over too.
-  SPP_ATTR_NODISCARD virtual auto Clone() const
-    -> Unique<Ast> = 0;
+  SPP_ATTR_NODISCARD virtual auto Clone() const -> Unique<Ast> = 0;
 
   /// Convert an ast into a string, for debugging purposes or
   /// writing translated asts out to a file. Not critically

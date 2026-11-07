@@ -27,6 +27,8 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::asts, Ast);
+
 SPP_MOD_BEGIN
 template <typename T>
 auto InnerScopeAst<T>::NewEmpty() -> Unique<InnerScopeAst> {

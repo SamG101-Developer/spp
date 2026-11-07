@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorFunctionCallAst);
+use_common(PostfixExpressionOperatorFunctionCallAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
@@ -32,6 +32,7 @@ use(spp::asts, struct TypeAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorFunctionCallAst);
 
   /// The generic arguments for the function call.
@@ -230,3 +231,5 @@ private:
     CompilerMetaData *meta)
     -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorFunctionCallAst)

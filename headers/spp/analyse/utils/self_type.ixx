@@ -11,7 +11,9 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
+use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts, struct TypeAst);
+use_alias(spp::analyse::scopes, TypeId);
 
 namespace spp::analyse::utils::self_type {
   /// "type" with "Self" read as "self": parameter 0 bound to it
@@ -24,7 +26,7 @@ namespace spp::analyse::utils::self_type {
   /// reported by whoever does analyse it.
   SPP_EXP_FUN auto SubstituteSelf(
     TypeAst const &type, TypeAst const *self, Scope const &scope,
-    ScopeManager *sm = nullptr, meta::CompilerMetaData *meta = nullptr) -> Shared<TypeAst>;
+    ScopeManager *sm = nullptr, CompilerMetaData *meta = nullptr) -> Shared<TypeAst>;
 
   /// "SubstituteSelf" by identity: "instance_id" (an instance's
   /// own, already substituted) when given, else "written" keyed in
@@ -32,13 +34,14 @@ namespace spp::analyse::utils::self_type {
   /// "self" ("scopes::SubstituteSelfId"). Null when there is no
   /// "self", nowhere to key "written", or it names no "Self".
   SPP_EXP_FUN auto TypeIdWithSelf(
-    analyse::scopes::TypeId instance_id, TypeAst const &written, Scope const *written_in,
-    analyse::scopes::TypeId self) -> analyse::scopes::TypeId;
+    TypeId instance_id, TypeAst const &written, Scope const *written_in,
+    TypeId self) -> TypeId;
 
   /// The symbol for the special "Self" type, defined in
   /// "defined_in" and standing for the type "linked_scope" is.
   SPP_EXP_FUN auto MakeSelfTypeSymbol(
-    Scope *linked_scope, Scope *defined_in, std::size_t pos) -> Shared<TypeSymbol>;
+    Scope *linked_scope, Scope *defined_in,
+    std::size_t pos) -> Shared<TypeSymbol>;
 
   /// Add a "Self" symbol to "defined_in", standing for the type
   /// "linked_scope" is (nothing if it is null). Done as early as

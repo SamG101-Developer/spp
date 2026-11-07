@@ -37,6 +37,9 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.uid;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 RetStatementAst::RetStatementAst(
   decltype(TokRet) &&tok_ret,

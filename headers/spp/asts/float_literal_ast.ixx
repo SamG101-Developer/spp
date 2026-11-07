@@ -12,7 +12,7 @@ import std;
 import numex.big_dec;
 import numex.big_int;
 
-SPP_AST_COMMON_FWD_DECL(FloatLiteralAst);
+use_common(FloatLiteralAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);

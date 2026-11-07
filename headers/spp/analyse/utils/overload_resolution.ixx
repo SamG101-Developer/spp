@@ -22,6 +22,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use_alias(spp::analyse::scopes, TypeId);
 
 namespace spp::analyse::utils::overload_resolution {
   /// A function overload struct contains information about
@@ -159,7 +161,7 @@ namespace spp::analyse::utils::overload_resolution {
     FunctionCallArgumentGroupAst &args,
     PassedOverload &overload,
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void;
 
   /// One method a scope has under a name, once overrides are
@@ -191,7 +193,7 @@ namespace spp::analyse::utils::overload_resolution {
   /// are then processed for eligibility when calling.
   SPP_EXP_FUN auto GetAllFnScopes(
     IdentifierAst const &target_fn_name, Scope const *target_scope,
-    ScopeManager &sm, meta::CompilerMetaData *meta) -> Vec<FnOverload>;
+    ScopeManager &sm, CompilerMetaData *meta) -> Vec<FnOverload>;
 }
 
 /// One call's overload resolution, as a solver: what is called
@@ -209,7 +211,7 @@ public:
   /// here.
   OverloadSolver(
     PostfixExpressionOperatorFunctionCallAst &fn_call, ExpressionAst &callee,
-    ScopeManager &sm, meta::CompilerMetaData &meta);
+    ScopeManager &sm, CompilerMetaData &meta);
 
   ~OverloadSolver();
   OverloadSolver(OverloadSolver const &) = delete;
@@ -254,7 +256,7 @@ private:
 
   PostfixExpressionOperatorFunctionCallAst &_Call;
   ScopeManager *_Sm;
-  meta::CompilerMetaData *_Meta;
+  CompilerMetaData *_Meta;
   CallSite _Site;
   OverloadCandidates _Candidates;
 };

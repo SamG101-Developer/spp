@@ -36,6 +36,11 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 namespace spp::asts {
   namespace {

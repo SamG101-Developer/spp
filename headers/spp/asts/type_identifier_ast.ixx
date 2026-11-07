@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeIdentifierAst);
+use_common(TypeIdentifierAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeRef);
@@ -21,7 +21,7 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
+use(spp::asts::meta, enum class CompilerStage);
 
 /// A type expression represented by a single type name; the
 /// type analogue of the expression IdentifierAst.
@@ -213,7 +213,7 @@ private:
   SPP_ATTR_NODISCARD auto _ResolvedProvisionally(CompilerMetaData const *meta) const -> bool;
 
   /// The latest stage "_RecheckArgs" ran at: it runs once per stage, as that is when a check can newly become due.
-  meta::CompilerStage _RecheckedAt = {};
+  CompilerStage _RecheckedAt = {};
 
   /// Analyse the (named) generic arguments: abstract types allowed, as naming one produces no value of it, and borrows
   /// too under a type that holds no value of its arguments ("names_only").

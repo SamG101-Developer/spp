@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.mem_utils;
@@ -22,6 +23,13 @@ import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import genex;
 import std;
+
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
+use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, SpreadExpressionAst);
 
 namespace spp::analyse::utils::mem_utils {
   namespace {
@@ -150,10 +158,8 @@ namespace spp::analyse::utils::mem_utils {
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
-  ExpressionAst &value_ast, Ast const &move_ast,
-  ScopeManager &sm,
-  meta::CompilerMetaData *meta,
-  SymbolMemoryOptions const &options) -> void {
+  ExpressionAst &value_ast, Ast const &move_ast, ScopeManager &sm,
+  CompilerMetaData *meta, SymbolMemoryOptions const &options) -> void {
   // For tuple and array literals, recursively analyse each
   // element, with all checks enabled, except the pass-through
   // "MarkMoves".
@@ -303,7 +309,7 @@ auto spp::analyse::utils::mem_utils::RaiseIfMoved(
 
 /// [CHECKED]
 auto spp::analyse::utils::mem_utils::AssignmentTargetSymbol(
-  Scope const &scope, meta::CompilerMetaData const &meta) -> VariableSymbol* {
+  Scope const &scope, CompilerMetaData const &meta) -> VariableSymbol* {
   // Get the assignment target symbol off of the meta
   // context.
   if (meta.AssignmentTarget == nullptr) { return nullptr; }

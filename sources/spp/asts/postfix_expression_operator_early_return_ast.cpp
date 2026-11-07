@@ -38,6 +38,8 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ice;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
   decltype(TokQst) &&tok_qst) :

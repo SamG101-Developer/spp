@@ -27,6 +27,9 @@ import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
 import genex;
 
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 namespace {
   /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.

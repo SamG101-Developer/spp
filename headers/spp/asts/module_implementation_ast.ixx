@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ModuleImplementationAst);
+use_common(ModuleImplementationAst);
 
 /// The implementation of a module, containing the module
 /// members that define its functionality and structure.

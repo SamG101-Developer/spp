@@ -46,6 +46,21 @@ import spp.utils.uid;
 import llvm;
 import std;
 
+use_alias(spp, Ice);
+use_alias(spp, Vec);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, U64Of);
+use_alias(spp::asts, FunctionParameterAst);
+use_alias(spp::asts, GenExpressionAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::codegen::fn_impls, AtomicRmwOp);
+use_alias(spp::codegen::fn_impls, BinOp);
+use_alias(spp::codegen::fn_impls, ConvOp);
+use_alias(spp::codegen::fn_impls, UnOp);
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -175,7 +190,7 @@ namespace {
   /// bit width. Clamp the distance before the shift as well
   /// as afterwards.
   auto EmitDefinedShift(
-    LlvmCtx *ctx, const fn_impls::BinOp op,
+    LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b) -> llvm::Value* {
     // Create some predefined types that will be reused through
     // this function. Define the width and max for the shifts.
@@ -188,7 +203,7 @@ namespace {
     // this is the "before" check.
     const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
     const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
-    const auto raw = op == fn_impls::BinOp::Shl
+    const auto raw = op == BinOp::Shl
       ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
       : ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid);
 
@@ -235,10 +250,9 @@ namespace {
   /// additional information for if it overflowed or not. This
   /// flows up to all math calling functions.
   auto EmitOverflowPair(
-    LlvmCtx *ctx, const fn_impls::BinOp op,
+    LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b)
     -> spp::Pair<llvm::Value*, llvm::Value*> {
-    using BinOp = fn_impls::BinOp;
     const auto uid = "." + spp::utils::Uid();
 
     // Get the intrinsic based off the selected operation from
@@ -280,9 +294,8 @@ namespace {
   /// release mode; no wrapping or no undefined behaviour. This
   /// is to enforce maximum safety.
   auto EmitCheckedArith(
-    LlvmCtx *ctx, const fn_impls::BinOp op,
+    LlvmCtx *ctx, const BinOp op,
     llvm::Value *a, llvm::Value *b) -> llvm::Value* {
-    using BinOp = fn_impls::BinOp;
     const auto uid = "." + spp::utils::Uid();
 
     // One check per operation, so the report names the check
@@ -391,7 +404,7 @@ namespace {
   }
 }
 
-auto fn_impls::SimpleCreateFn(
+auto spp::codegen::fn_impls::SimpleCreateFn(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ret_ty, Vec<llvm::Type*> const &param_tys)
   -> llvm::Function* {
   if (const auto declared = proto->GetLlvmFn(); declared != nullptr and declared->Target != nullptr) {
@@ -411,7 +424,7 @@ auto fn_impls::SimpleCreateFn(
 // Layer 2: enum-driven operation dispatchers.
 // =========================================================================================================
 
-auto fn_impls::IsShiftBinOp(
+auto spp::codegen::fn_impls::IsShiftBinOp(
   const BinOp op) -> bool {
   switch (op) {
     case BinOp::Shl:
@@ -420,7 +433,7 @@ auto fn_impls::IsShiftBinOp(
   }
 }
 
-auto fn_impls::IsCompareBinOp(
+auto spp::codegen::fn_impls::IsCompareBinOp(
   const BinOp op) -> bool {
   switch (op) {
     case BinOp::ICmpEQ:
@@ -445,7 +458,7 @@ auto fn_impls::IsCompareBinOp(
   }
 }
 
-auto fn_impls::ApplyBinOp(
+auto spp::codegen::fn_impls::ApplyBinOp(
   LlvmCtx *ctx, const BinOp op, llvm::Value *a, llvm::Value *b)
   -> llvm::Value* {
   const auto name = "result" + utils::Uid();
@@ -493,7 +506,7 @@ auto fn_impls::ApplyBinOp(
   }
 }
 
-auto fn_impls::ApplyUnOp(
+auto spp::codegen::fn_impls::ApplyUnOp(
   LlvmCtx *ctx, const UnOp op, llvm::Value *a) -> llvm::Value* {
   const auto name = "result" + utils::Uid();
   switch (op) {
@@ -504,7 +517,7 @@ auto fn_impls::ApplyUnOp(
   }
 }
 
-auto fn_impls::ApplyConvOp(
+auto spp::codegen::fn_impls::ApplyConvOp(
   LlvmCtx *ctx, const ConvOp op, llvm::Value *a, llvm::Type *dest_ty) -> llvm::Value* {
   const auto name = "result" + utils::Uid();
   switch (op) {
@@ -524,7 +537,7 @@ auto fn_impls::ApplyConvOp(
   }
 }
 
-auto fn_impls::SimpleIntrinsicBinop(
+auto spp::codegen::fn_impls::SimpleIntrinsicBinop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const BinOp op) -> void {
   // "ty" (per the dispatcher) is always the function's declared RETURN type. For arithmetic ops that's also the
   // operand type ("T, T -> T"). For comparisons the return type is "Bool" (i1), so the *operand* type has to be read
@@ -563,7 +576,7 @@ auto fn_impls::SimpleIntrinsicBinop(
   ctx->Builder.CreateRet(ApplyBinOp(ctx, op, lhs, rhs));
 }
 
-auto fn_impls::SimpleIntrinsicBinopAssign(
+auto spp::codegen::fn_impls::SimpleIntrinsicBinopAssign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const BinOp op) -> void {
   // "(this: &mut T, that: U) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T", so both
   // operand types are read off the parameters. The two are the same type for every operation but a shift, whose
@@ -595,14 +608,14 @@ auto fn_impls::SimpleIntrinsicBinopAssign(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::SimpleIntrinsicUnop(
+auto spp::codegen::fn_impls::SimpleIntrinsicUnop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const UnOp op) -> void {
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
   const auto operand = fn->arg_begin();
   ctx->Builder.CreateRet(ApplyUnOp(ctx, op, operand));
 }
 
-auto fn_impls::SimpleIntrinsicUnopAssign(
+auto spp::codegen::fn_impls::SimpleIntrinsicUnopAssign(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *, const UnOp op)
   -> void {
   // "(this: &mut T) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T" - the operand
@@ -639,11 +652,11 @@ namespace {
    * @return Whether @p op is defined from @p src to @p dst .
    */
   auto ConvOpIsDefined(
-    const fn_impls::ConvOp op,
+    const ConvOp op,
     llvm::Type const *src,
     llvm::Type const *dst)
     -> bool {
-    using ConvOp = fn_impls::ConvOp;
+    using ConvOp = ConvOp;
     const auto ints = src->isIntegerTy() and dst->isIntegerTy();
 
     // A float's width; an "F8" is its bits, an "i8", which only a
@@ -669,7 +682,7 @@ namespace {
   }
 }
 
-auto fn_impls::SimpleIntrinsicConv(
+auto spp::codegen::fn_impls::SimpleIntrinsicConv(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const ConvOp op) -> void {
   // "ty" (per the dispatcher) is the function's declared RETURN type - the conversion's destination. The source
   // (operand) type is read off the function's own single parameter instead, since conversions genuinely go from one
@@ -695,9 +708,9 @@ auto fn_impls::SimpleIntrinsicConv(
   ctx->Builder.CreateRet(ApplyConvOp(ctx, op, operand, ty));
 }
 
-auto fn_impls::SimpleIntrinsicIsConst(
+auto spp::codegen::fn_impls::SimpleIntrinsicIsConst(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const bool is_float, const double value) -> void {
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto operand_ty = GetLlvmTypeOf(
@@ -712,7 +725,7 @@ auto fn_impls::SimpleIntrinsicIsConst(
   ctx->Builder.CreateRet(result);
 }
 
-auto fn_impls::ApplyAtomicRmwOp(
+auto spp::codegen::fn_impls::ApplyAtomicRmwOp(
   AtomicRmwOp op) -> llvm::AtomicRMWInst::BinOp {
   switch (op) {
     case AtomicRmwOp::Xchg: return llvm::AtomicRMWInst::Xchg;
@@ -778,12 +791,12 @@ static auto FromAtomic(
   return value->getType() == ty ? value : ctx->Builder.CreateTrunc(value, ty, "atomic.narrow");
 }
 
-auto fn_impls::SimpleAtomicFetchRmw(
+auto spp::codegen::fn_impls::SimpleAtomicFetchRmw(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const AtomicRmwOp op) -> void {
   // "(&self, val: T, order: U8) -> T": a plain method (not a coroutine, and not a free "_inner" function), so its
   // "llvm::Function" is already declared/opened by the time this runs, and "self" is
   // already bound; no "SimpleCreateFn"/env indirection needed.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
 
   // "self" is "&Atom[T]" - a borrow, so its frame slot holds the *address* of the caller's "Atom[T]" instance, not
@@ -826,7 +839,7 @@ auto fn_impls::SimpleAtomicFetchRmw(
   ctx->Builder.CreateRet(FromAtomic(ctx, rmw(op, val_arg), val_ty));
 }
 
-auto fn_impls::SimpleBinaryIntrinsicCall(
+auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCall(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic,
   llvm::Type *rhs_ty) -> void {
   // The intrinsic is overloaded on each operand type that differs from the result's ("llvm.powi" on "i32" too).
@@ -841,7 +854,7 @@ auto fn_impls::SimpleBinaryIntrinsicCall(
   ctx->Builder.CreateRet(result);
 }
 
-auto fn_impls::SimpleBinaryIntrinsicCallOverflow(
+auto spp::codegen::fn_impls::SimpleBinaryIntrinsicCallOverflow(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic)
   -> void {
   // "ty" (per the dispatcher) is already the whole return type's own lowering - "(T, Bool)" is a literal struct, so
@@ -880,7 +893,7 @@ auto fn_impls::SimpleBinaryIntrinsicCallOverflow(
   ctx->Builder.CreateRet(packed);
 }
 
-auto fn_impls::SimpleUnaryIntrinsicCall(
+auto spp::codegen::fn_impls::SimpleUnaryIntrinsicCall(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
   const auto uid = "." + utils::Uid();
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
@@ -890,7 +903,7 @@ auto fn_impls::SimpleUnaryIntrinsicCall(
   ctx->Builder.CreateRet(result);
 }
 
-auto fn_impls::SimpleGetValue(
+auto spp::codegen::fn_impls::SimpleGetValue(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, llvm::Value *val) -> void {
   ignore = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
   ctx->Builder.CreateRet(val);
@@ -900,14 +913,14 @@ auto fn_impls::SimpleGetValue(
 // Layer 2b: coroutine-specific shared helpers.
 // =========================================================================================================
 
-auto fn_impls::SimpleCoroIter(
+auto spp::codegen::fn_impls::SimpleCoroIter(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse, const bool borrow) -> void {
   // Implementation strategy for iterating an array - start at the
   // array pointer, and each step, increment the pointer value by
   // the array element size. At each position, load the value out
   // and place it into the yield slot, suspending after (mocks the
   // gen expression).
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -960,12 +973,12 @@ auto fn_impls::SimpleCoroIter(
   }
 }
 
-auto fn_impls::SimpleCoroViewIter(
+auto spp::codegen::fn_impls::SimpleCoroViewIter(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, const bool reverse, const bool borrow) -> void {
   // A view is a "{data, length}" pair, and the length is a runtime value, so there is no count to unroll against the
   // way there is for an array. This emits the loop instead, with the suspend point inside the body: the counter is an
   // entry-block alloca, so the coroutine passes give it a frame slot and it holds its value across each suspend.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1057,14 +1070,14 @@ auto fn_impls::SimpleCoroViewIter(
   ctx->Builder.SetInsertPoint(exit_bb);
 }
 
-auto fn_impls::SimpleCoroNonNullFwd(
+auto spp::codegen::fn_impls::SimpleCoroNonNullFwd(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // The NonNull[T] type can forward to &T/&mut T - modelled as a
   // pointer to the T type, stored within the NonNull[T]. Use two
   // loads, because there are two levels to go through: "NonNull[T]"
   // lowers to a pointer, but this takes it as "&self", so the
   // parameter is a pointer to *that*.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_slot = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.fwd.self");
@@ -1091,13 +1104,13 @@ auto fn_impls::SimpleCoroNonNullFwd(
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto fn_impls::SimpleCoroViewSlice(
+auto spp::codegen::fn_impls::SimpleCoroViewSlice(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx)
   -> void {
   // To slice a view, we need to GEP in the "from" and
   // "upto" pointers, and return the memory between.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1211,7 +1224,7 @@ auto fn_impls::SimpleCoroViewSlice(
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto fn_impls::SimpleCoroContiguousFwd(
+auto spp::codegen::fn_impls::SimpleCoroContiguousFwd(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *const ctx,
   llvm::Value *const data,
@@ -1259,14 +1272,14 @@ auto fn_impls::SimpleCoroContiguousFwd(
   mock_gen->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto fn_impls::SimpleCoroArrayFwd(
+auto spp::codegen::fn_impls::SimpleCoroArrayFwd(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *const ctx)
   -> void {
   // "Arr[T, n]" lowers to an llvm "[n x T]" held inline, so the view over it is the array's own address paired with
   // the length the type itself carries. Nothing is read out of "self": the borrow it arrives as is already the
   // address of the first element.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1282,7 +1295,7 @@ auto fn_impls::SimpleCoroArrayFwd(
   SimpleCoroContiguousFwd(sm, proto, meta, ctx, data, length);
 }
 
-auto fn_impls::SimpleCoroVectorFwd(
+auto spp::codegen::fn_impls::SimpleCoroVectorFwd(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *const ctx)
   -> void {
@@ -1290,7 +1303,7 @@ auto fn_impls::SimpleCoroVectorFwd(
   // region is "[0, length)": "start" only ever moves for the by-value move-iterator, which consumes the vector, so no
   // forwarded view can observe it non-zero.
   using analyse::utils::type_members::GetAllAttrs;
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1319,11 +1332,11 @@ auto fn_impls::SimpleCoroVectorFwd(
   SimpleCoroContiguousFwd(sm, proto, meta, ctx, data, length);
 }
 
-auto fn_impls::SimpleCoroViewIndex(
+auto spp::codegen::fn_impls::SimpleCoroViewIndex(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx) -> void {
   // To index a view, we need to GEP in the "from" and
   // "upto" pointers, and return the memory between.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1411,7 +1424,7 @@ auto fn_impls::SimpleCoroViewIndex(
 // builder is bound to it where it is registered ("builtins.cpp": "Binop", "UnaryIntrinsic", "AtomicRmw", ...).
 // =========================================================================================================
 
-auto fn_impls::StdArrayNew(
+auto spp::codegen::fn_impls::StdArrayNew(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The array starts out uninitialized rather than zero-filled; callers that need defined contents go through
@@ -1420,28 +1433,28 @@ auto fn_impls::StdArrayNew(
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumFloatNegOne(
+auto spp::codegen::fn_impls::StdNumFloatNegOne(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, -1.0);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumFloatZero(
+auto spp::codegen::fn_impls::StdNumFloatZero(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, 0.0);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumFloatOne(
+auto spp::codegen::fn_impls::StdNumFloatOne(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantFP::get(ty, 1.0);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumIntNegOne(
+auto spp::codegen::fn_impls::StdNumIntNegOne(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // All-ones bit pattern is "-1" in two's complement, for any width.
@@ -1449,28 +1462,28 @@ auto fn_impls::StdNumIntNegOne(
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumIntZero(
+auto spp::codegen::fn_impls::StdNumIntZero(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 0);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumIntOne(
+auto spp::codegen::fn_impls::StdNumIntOne(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 1);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdNumIntTwo(
+auto spp::codegen::fn_impls::StdNumIntTwo(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto val = llvm::ConstantInt::get(ty, 2);
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdIntrinsicsMinVal(
+auto spp::codegen::fn_impls::StdIntrinsicsMinVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The lowest representable value for this sized-integer type. LLVM integer types carry no sign, so signedness is
@@ -1483,7 +1496,7 @@ auto fn_impls::StdIntrinsicsMinVal(
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdIntrinsicsMaxVal(
+auto spp::codegen::fn_impls::StdIntrinsicsMaxVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // The highest representable value for this sized-integer type. See StdIntrinsicsMinVal for why signedness
@@ -1496,7 +1509,7 @@ auto fn_impls::StdIntrinsicsMaxVal(
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdIntrinsicsFminVal(
+auto spp::codegen::fn_impls::StdIntrinsicsFminVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Most negative finite value representable by this float type.
@@ -1504,7 +1517,7 @@ auto fn_impls::StdIntrinsicsFminVal(
   SimpleGetValue(sm, proto, meta, ctx, ty, val);
 }
 
-auto fn_impls::StdIntrinsicsFmaxVal(
+auto spp::codegen::fn_impls::StdIntrinsicsFmaxVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Largest finite value representable by this float type.
@@ -1516,7 +1529,7 @@ auto fn_impls::StdIntrinsicsFmaxVal(
 // Layer 3: two-operand intrinsics with a shape of their own ("powi"'s integer exponent, the saturating shifts)
 // =========================================================================================================
 
-auto fn_impls::StdIntrinsicsFpowi(
+auto spp::codegen::fn_impls::StdIntrinsicsFpowi(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // "float_powi(base: T, exponent: S32)" raises a float to
@@ -1526,14 +1539,14 @@ auto fn_impls::StdIntrinsicsFpowi(
     sm, proto, meta, ctx, ty, llvm::Intrinsic::powi, llvm::Type::getInt32Ty(*ctx->Context));
 }
 
-auto fn_impls::StdIntrinsicsSshlSaturating(
+auto spp::codegen::fn_impls::StdIntrinsicsSshlSaturating(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, ty});
   ctx->Builder.CreateRet(EmitSaturatingShift(ctx, true, fn->arg_begin(), fn->arg_begin() + 1));
 }
 
-auto fn_impls::StdIntrinsicsUshlSaturating(
+auto spp::codegen::fn_impls::StdIntrinsicsUshlSaturating(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, ty});
@@ -1544,7 +1557,7 @@ auto fn_impls::StdIntrinsicsUshlSaturating(
 // Layer 3: one-operand intrinsics with a shape of their own ("ctlz", the debug breakpoint)
 // =========================================================================================================
 
-auto fn_impls::StdIntrinsicsCtlz(
+auto spp::codegen::fn_impls::StdIntrinsicsCtlz(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // "(value: T) -> U32"; "ty" (per the dispatcher) is the return type "U32" - "T" is read off the "value" parameter
@@ -1564,7 +1577,7 @@ auto fn_impls::StdIntrinsicsCtlz(
   ctx->Builder.CreateRet(ctx->Builder.CreateZExtOrTrunc(count, ty, "intrinsic.count" + uid));
 }
 
-auto fn_impls::StdDebugBreakpointInternal(
+auto spp::codegen::fn_impls::StdDebugBreakpointInternal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   SimpleCreateFn(sm, proto, meta, ctx, ty, {});
@@ -1578,7 +1591,7 @@ auto fn_impls::StdDebugBreakpointInternal(
 // the operand type, so both types are passed to "getOrInsertDeclaration".
 // =========================================================================================================
 
-auto fn_impls::StdIntrinsicsScmp(
+auto spp::codegen::fn_impls::StdIntrinsicsScmp(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Both operands are declared "&T", so they arrive as pointers and the values have to be read out of them before
@@ -1598,7 +1611,7 @@ auto fn_impls::StdIntrinsicsScmp(
   ctx->Builder.CreateRet(result);
 }
 
-auto fn_impls::StdIntrinsicsUcmp(
+auto spp::codegen::fn_impls::StdIntrinsicsUcmp(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // Both operands are declared "&T", so they arrive as pointers and the values have to be read out of them before
@@ -1623,7 +1636,7 @@ auto fn_impls::StdIntrinsicsUcmp(
 // "SimpleBinaryIntrinsicCall" (which assumes both operands and the result share type "ty").
 // =========================================================================================================
 
-auto fn_impls::StdIntrinsicsFpclass(
+auto spp::codegen::fn_impls::StdIntrinsicsFpclass(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
   // "(value: T, flag: S32) -> Bool"; "ty" (per the dispatcher) is the return type "Bool" (i1) - "T" is read off the
@@ -1670,7 +1683,7 @@ auto fn_impls::StdIntrinsicsFpclass(
 // Layer 3: bespoke - coroutines / arrays / vectors / slots / futures / memory / atomics.
 // =========================================================================================================
 
-auto fn_impls::StdGeneratorSend(
+auto spp::codegen::fn_impls::StdGeneratorSend(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
   llvm::Type *)
@@ -1680,7 +1693,7 @@ auto fn_impls::StdGeneratorSend(
   EmitCheckFailed(ctx, RuntimeCheck::GeneratorSend);
 }
 
-auto fn_impls::StdGeneratorOnceSend(
+auto spp::codegen::fn_impls::StdGeneratorOnceSend(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
   llvm::Type *)
@@ -1690,7 +1703,7 @@ auto fn_impls::StdGeneratorOnceSend(
   EmitCheckFailed(ctx, RuntimeCheck::GeneratorSend);
 }
 
-auto fn_impls::StdGeneratorDrop(
+auto spp::codegen::fn_impls::StdGeneratorDrop(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
   llvm::Type *)
@@ -1708,7 +1721,7 @@ auto fn_impls::StdGeneratorDrop(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdCffiCClosureFrom(
+auto spp::codegen::fn_impls::StdCffiCClosureFrom(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // A closure and a "CClosure" are the same two pointers in the same order - the function and the environment it
   // captures - so this reads the pair back out under the other name. Nothing is copied, and nothing can be: the
@@ -1732,7 +1745,7 @@ auto fn_impls::StdCffiCClosureFrom(
   ctx->Builder.CreateRet(out);
 }
 
-auto fn_impls::StdFunctionFunMovDrop(
+auto spp::codegen::fn_impls::StdFunctionFunMovDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // A closure that captures anything it can carry away holds its environment on the heap, because it may outlive the
   // frame that made it (see "ClosureExpressionAst::Stage11_CodeGen"). Dropping the closure is what releases it: the
@@ -1740,7 +1753,7 @@ auto fn_impls::StdFunctionFunMovDrop(
   // ("EmitDropClosureEnv"), because a "FunRef" dropped as a "FunMov" has its environment on a stack. Every closure of
   // one signature has this type, so the destructor is read from the header, not from the type. The value is the
   // "{fn, env}" pair, so the environment is the second field.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1752,10 +1765,10 @@ auto fn_impls::StdFunctionFunMovDrop(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdNonNullRead(
+auto spp::codegen::fn_impls::StdNonNullRead(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1773,10 +1786,10 @@ auto fn_impls::StdNonNullRead(
   ctx->Builder.CreateRet(val);
 }
 
-auto fn_impls::StdNonNullWrite(
+auto spp::codegen::fn_impls::StdNonNullWrite(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.write.self");
@@ -1802,13 +1815,13 @@ auto fn_impls::StdNonNullWrite(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdNonNullRaw(
+auto spp::codegen::fn_impls::StdNonNullRaw(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
   llvm::Type *ty)
   -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.raw.self");
@@ -1821,26 +1834,26 @@ auto fn_impls::StdNonNullRaw(
   ctx->Builder.CreateRet(result);
 }
 
-auto fn_impls::StdNonNullEraseType(
+auto spp::codegen::fn_impls::StdNonNullEraseType(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.erase_type.self");
   ctx->Builder.CreateRet(self_ptr);
 }
 
-auto fn_impls::StdNonNullCast(
+auto spp::codegen::fn_impls::StdNonNullCast(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.cast.self");
   ctx->Builder.CreateRet(self_ptr);
 }
 
-auto fn_impls::StdNonNullFromPtrInner(
+auto spp::codegen::fn_impls::StdNonNullFromPtrInner(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
   llvm::Type *ty)
@@ -1859,7 +1872,7 @@ auto fn_impls::StdNonNullFromPtrInner(
   ctx->Builder.CreateRet(data_ptr);
 }
 
-auto fn_impls::StdNonNullFromMut(
+auto spp::codegen::fn_impls::StdNonNullFromMut(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "place" is "&mut T" - a borrow, so its slot holds the address of the value, and a "NonNull[T]" lowers to that same
   // address. A Void generic arg removes the parameter; there is no address to take, and nothing can be read through it.
@@ -1874,10 +1887,10 @@ auto fn_impls::StdNonNullFromMut(
   ctx->Builder.CreateRet(addr);
 }
 
-auto fn_impls::StdVolRead(
+auto spp::codegen::fn_impls::StdVolRead(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
 
   //
   const auto uid = "." + utils::Uid();
@@ -1898,10 +1911,10 @@ auto fn_impls::StdVolRead(
   ctx->Builder.CreateRet(llvm_val);
 }
 
-auto fn_impls::StdVolWrite(
+auto spp::codegen::fn_impls::StdVolWrite(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
 
   //
   const auto uid = "." + utils::Uid();
@@ -1928,9 +1941,9 @@ auto fn_impls::StdVolWrite(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdVolReplace(
+auto spp::codegen::fn_impls::StdVolReplace(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
@@ -1951,12 +1964,12 @@ auto fn_impls::StdVolReplace(
   ctx->Builder.CreateRet(old_val);
 }
 
-auto fn_impls::StdRawBufTakeAt(
+auto spp::codegen::fn_impls::StdRawBufTakeAt(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Bounds-checked "take", which moves the element at an index
   // off the buffer and hands it back as "Some(val)", or "None"
   // when the index is past the buffer's capacity.
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
 
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
@@ -1984,9 +1997,9 @@ auto fn_impls::StdRawBufTakeAt(
   // guarantees which order its members are declared in.
   const auto opt_ty_spp = proto->ReturnType->WithoutConvention();
   const auto opt_llvm_ty = GetLlvmTypeOf(TypeRef::Of(*opt_ty_spp, *sm->CurrentScope), ctx);
-  const auto some_ty_spp = generate::common_types::SomeType(
+  const auto some_ty_spp = asts::generate::common_types::SomeType(
     proto->PosStart(), AstCloneShared(elem_ty_sym->FqName()));
-  const auto none_ty_spp = generate::common_types::None(proto->PosStart());
+  const auto none_ty_spp = asts::generate::common_types::None(proto->PosStart());
   const auto opt_ref = TypeRef::Of(*opt_ty_spp, *sm->CurrentScope);
   const auto some_tag = GetVariantIndexOfMember(
     opt_ref, TypeRef::Of(*some_ty_spp, *sm->CurrentScope), *sm->CurrentScope);
@@ -2028,9 +2041,9 @@ auto fn_impls::StdRawBufTakeAt(
     BuildVariant(nullptr, opt_llvm_ty, *none_tag, "raw_buf.take_at.none" + uid, ctx));
 }
 
-auto fn_impls::StdRawBufPlaceAt(
+auto spp::codegen::fn_impls::StdRawBufPlaceAt(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   //
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
@@ -2063,10 +2076,10 @@ auto fn_impls::StdRawBufPlaceAt(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdRawBufShift(
+auto spp::codegen::fn_impls::StdRawBufShift(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
@@ -2106,10 +2119,10 @@ auto fn_impls::StdRawBufShift(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdRawBufClearRange(
+auto spp::codegen::fn_impls::StdRawBufClearRange(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
@@ -2171,7 +2184,7 @@ auto fn_impls::StdRawBufClearRange(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdMemOpsSizeOf(
+auto spp::codegen::fn_impls::StdMemOpsSizeOf(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto t_ast = TypeIdentifierAst::FromString("T");
@@ -2179,7 +2192,7 @@ auto fn_impls::StdMemOpsSizeOf(
   ctx->Builder.CreateRet(size_val);
 }
 
-auto fn_impls::StdMemOpsAlignOf(
+auto spp::codegen::fn_impls::StdMemOpsAlignOf(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto t_ast = TypeIdentifierAst::FromString("T");
@@ -2187,7 +2200,7 @@ auto fn_impls::StdMemOpsAlignOf(
   ctx->Builder.CreateRet(align_val);
 }
 
-auto fn_impls::StdMemOpsSizeOfVal(
+auto spp::codegen::fn_impls::StdMemOpsSizeOfVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // Todo: std documents this as counting what a value owns on the heap ("vectors or strings"), but it answers as
   //  "size_of[T]()" does. What a value's heap size is (a "Vec[Str]": its buffer, or the strings' buffers too) needs a
@@ -2199,7 +2212,7 @@ auto fn_impls::StdMemOpsSizeOfVal(
   ctx->Builder.CreateRet(size_val);
 }
 
-auto fn_impls::StdMemOpsAlignOfVal(
+auto spp::codegen::fn_impls::StdMemOpsAlignOfVal(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // A value is aligned as its type: S++ has no dynamically
   // sized types, and what a value owns on the heap has no
@@ -2211,7 +2224,7 @@ auto fn_impls::StdMemOpsAlignOfVal(
   ctx->Builder.CreateRet(align_val);
 }
 
-auto fn_impls::StdMemOpsReplace(
+auto spp::codegen::fn_impls::StdMemOpsReplace(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // "dest" is "&mut T" - a borrow, so its slot holds an address that must be loaded before use. "src" is a plain
   // by-value "T", so its own slot already holds it directly.
@@ -2229,7 +2242,7 @@ auto fn_impls::StdMemOpsReplace(
   ctx->Builder.CreateRet(old_val);
 }
 
-auto fn_impls::StdMemOpsSwap(
+auto spp::codegen::fn_impls::StdMemOpsSwap(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "a" and "b" are both "&mut T", so each slot holds an address. Both values are read before either is written, so
   // the exchange needs no third value: no default is made to stand in, and nothing is dropped. The type handed in is
@@ -2251,7 +2264,7 @@ auto fn_impls::StdMemOpsSwap(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdMemOpsDrop(
+auto spp::codegen::fn_impls::StdMemOpsDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
   // is what the destruction works through. The value is consumed by being passed in, so nothing is left behind in the
@@ -2268,7 +2281,7 @@ auto fn_impls::StdMemOpsDrop(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdMemOpsDropInPlace(
+auto spp::codegen::fn_impls::StdMemOpsDropInPlace(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Todo: delete once SPP-STL drops its "drop_in_place" declaration (replaced by "NonNull.from_mut" + "read"); kept so
   //  the std the test harness and CI clone still compiles in the meantime.
@@ -2287,7 +2300,7 @@ auto fn_impls::StdMemOpsDropInPlace(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdHintsBlackBox(
+auto spp::codegen::fn_impls::StdHintsBlackBox(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // An empty asm that takes an address and clobbers memory: llvm must assume the asm read and rewrote what is there.
   // Being an instruction, not a call, it survives the wrapper being inlined. The owned form hides "value"'s own slot
@@ -2316,7 +2329,7 @@ auto fn_impls::StdHintsBlackBox(
   ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.black_box"));
 }
 
-auto fn_impls::StdHintsBranch(
+auto spp::codegen::fn_impls::StdHintsBranch(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // "likely"/"unlikely" are lowered at the call site ("StdHintsExpect"). This wrapper is reached only by a call that
   // cannot be (an indirect one), and passes the condition through with no hint: an "llvm.expect" here would be lowered
@@ -2326,7 +2339,7 @@ auto fn_impls::StdHintsBranch(
   ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ty, slot, "hint.branch"));
 }
 
-auto fn_impls::StdHintsExpect(
+auto spp::codegen::fn_impls::StdHintsExpect(
   Vec<llvm::Value*> const &args, LlvmCtx *ctx, const bool expected) -> llvm::Value* {
   // The "expect" is the value the caller branches on, so "LowerExpectIntrinsic" (which runs before inlining and SROA)
   // finds it as the branch's condition and weights the branch. Kept anywhere in between, such as in a variable, it is
@@ -2336,7 +2349,7 @@ auto fn_impls::StdHintsExpect(
     llvm::Intrinsic::expect, {cond->getType()}, {cond, ctx->Builder.getInt1(expected)}, {}, "hint.expect");
 }
 
-auto fn_impls::StdThreadingAtomicIsLockFree(
+auto spp::codegen::fn_impls::StdThreadingAtomicIsLockFree(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
 
@@ -2353,7 +2366,7 @@ auto fn_impls::StdThreadingAtomicIsLockFree(
   SimpleGetValue(sm, proto, meta, ctx, bool_ty, val);
 }
 
-auto fn_impls::StdThreadingAtomicFenceInner(
+auto spp::codegen::fn_impls::StdThreadingAtomicFenceInner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // Create the fence function.
   const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
@@ -2364,7 +2377,7 @@ auto fn_impls::StdThreadingAtomicFenceInner(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdThreadingAtomicLoadInner(
+auto spp::codegen::fn_impls::StdThreadingAtomicLoadInner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto uid = "." + utils::Uid();
@@ -2378,7 +2391,7 @@ auto fn_impls::StdThreadingAtomicLoadInner(
   ctx->Builder.CreateRet(FromAtomic(ctx, load_inst, ty));
 }
 
-auto fn_impls::StdThreadingAtomicStoreInner(
+auto spp::codegen::fn_impls::StdThreadingAtomicStoreInner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
   const auto val_param = proto->FnParamGroup->GetAllParams()[1];
@@ -2397,7 +2410,7 @@ auto fn_impls::StdThreadingAtomicStoreInner(
   ctx->Builder.CreateRetVoid();
 }
 
-auto fn_impls::StdThreadingAtomicCompexInner(
+auto spp::codegen::fn_impls::StdThreadingAtomicCompexInner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
@@ -2428,7 +2441,7 @@ auto fn_impls::StdThreadingAtomicCompexInner(
   ctx->Builder.CreateRet(packed);
 }
 
-auto fn_impls::StdThreadingAtomicCompexWeakInner(
+auto spp::codegen::fn_impls::StdThreadingAtomicCompexWeakInner(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   //
   const auto ret_ty = llvm::cast<llvm::StructType>(ty);
@@ -2460,10 +2473,10 @@ auto fn_impls::StdThreadingAtomicCompexWeakInner(
   ctx->Builder.CreateRet(packed);
 }
 
-auto fn_impls::StdThreadingAtomicFetchNot(
+auto spp::codegen::fn_impls::StdThreadingAtomicFetchNot(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
-  using generate::common_types_precompiled::SELF_VAR;
+  using asts::generate::common_types_precompiled::SELF_VAR;
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "atomic.fetch_not.self");

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionImplementationLoweredAst);
+use_common(FunctionImplementationLoweredAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::codegen::builtins, struct LoweredFnImpl);
 

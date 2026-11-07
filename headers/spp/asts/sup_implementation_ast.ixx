@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(SupImplementationAst);
+use_common(SupImplementationAst);
 use(spp::asts, struct Ast);
 
 SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<Ast>> {

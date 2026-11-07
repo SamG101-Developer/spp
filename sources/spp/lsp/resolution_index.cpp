@@ -34,6 +34,13 @@ import spp.utils.files;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, NamespaceSymbol);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, AstAs);
+use_alias(spp::asts, ModulePrototypeAst);
+use_alias(spp::asts::meta, CompilerStage);
+
 namespace spp::lsp::resolution_index {
   namespace {
     /// Which uses are worth keeping. Not named "Scope": that

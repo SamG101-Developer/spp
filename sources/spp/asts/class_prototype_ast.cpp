@@ -38,6 +38,11 @@ import spp.utils.ice;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ScopeIdentifierName);
+use_alias(spp::analyse::scopes, ScopeTypeIdentifierName);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+
 SPP_MOD_BEGIN
 ClassPrototypeAst::ClassPrototypeAst(
   decltype(Annotations) &&annotations,

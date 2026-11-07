@@ -36,6 +36,12 @@ import spp.utils.ice;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 CmpStatementAst::CmpStatementAst(
   decltype(Annotations) &&annotations,

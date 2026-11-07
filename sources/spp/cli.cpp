@@ -87,7 +87,7 @@ build = "exe"
 std = { git = "https://github.com/SamG101-Developer/SPP-STL", branch = "master" })";
 
 namespace spp::cli {
-  SPP_INTERNAL {
+  namespace {
     /// Check the current directory has the structure a project needs, without
     /// looking at its dependencies. This is all that can be asked before a
     /// fetch: a dependency's checkout may be missing, or broken in a way the

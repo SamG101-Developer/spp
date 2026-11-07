@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(InnerScopeExpressionAst);
+use_common(InnerScopeExpressionAst);
 use(spp::asts, struct Ast);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);

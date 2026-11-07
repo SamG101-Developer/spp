@@ -52,6 +52,14 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, BumpScopeLinkageGeneration);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 ClosureExpressionAst::ClosureExpressionAst(
   decltype(Tok) &&tok,

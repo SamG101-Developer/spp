@@ -51,6 +51,8 @@ import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+
 SPP_MOD_BEGIN
 UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
   decltype(TokAsync) &&tok_async) :

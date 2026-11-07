@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.sup_blocks;
@@ -20,6 +21,10 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 import std;
+
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// [CHECKED]
 auto spp::analyse::utils::sup_blocks::IsSupBlock(
@@ -63,7 +68,7 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
 
 auto spp::analyse::utils::sup_blocks::LoadTarget(
   Ast const &block, Shared<TypeAst> &name, const bool files_nested_mock,
-  ScopeManager &sm, meta::CompilerMetaData *meta) -> TypeSymbol* {
+  ScopeManager &sm, CompilerMetaData *meta) -> TypeSymbol* {
   {
     const auto _meta_guard = asts::meta::MetaGuard(meta);
     meta->AllowAbstractType = true;

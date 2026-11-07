@@ -57,6 +57,33 @@ import spp.utils.types;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, AliasInfo);
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GnPackParamId);
+use_alias(spp::analyse::scopes, ScopeTypeIdentifierName);
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, AstClone);
+use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, ClassAttributeAst);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionParameterAst);
+use_alias(spp::asts, FunctionParameterOptionalAst);
+use_alias(spp::asts, FunctionParameterRequiredAst);
+use_alias(spp::asts, FunctionParameterVariadicAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, LocalVariableSingleIdentifierAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace spp::analyse::utils::monomorphization {
   namespace {
     /// The templates waiting, in the order they were recorded.
@@ -94,7 +121,7 @@ namespace spp::analyse::utils::monomorphization {
       FunctionPrototypeAst &new_fn_proto, FunctionPrototypeAst const &fn_proto,
       Shared<TypeAst> const &pinned_self,
       packs::GivenPack const *given_pack, ScopeManager &tm,
-      meta::CompilerMetaData *meta) -> void {
+      CompilerMetaData *meta) -> void {
       auto const *const new_fn_scope = tm.CurrentScope;
       auto const &params_scope = *new_fn_scope->Children[0];
       auto const *const self_param = new_fn_proto.FnParamGroup->GetSelfParam();
@@ -173,7 +200,7 @@ namespace spp::analyse::utils::monomorphization {
      */
     auto ExpandClosedPack(
       FunctionPrototypeAst &new_fn_proto, packs::GivenPack const *given_pack, ScopeManager &tm,
-      meta::CompilerMetaData *meta) -> void {
+      CompilerMetaData *meta) -> void {
       auto &params = new_fn_proto.FnParamGroup->Params;
       const auto at = genex::find_if(params, [](auto const &p) { return p->template To<FunctionParameterVariadicAst>() != nullptr; });
       if (at == params.end()) { return; }
@@ -224,7 +251,7 @@ namespace spp::analyse::utils::monomorphization {
       FunctionPrototypeAst const &new_fn_proto,
       TypeAst const *instance_self,
       ScopeManager &tm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> bool {
       auto const *const new_fn_scope = tm.CurrentScope;
       const auto type_is_concrete = [&](TypeAst const &type) {
@@ -436,7 +463,7 @@ namespace spp::analyse::utils::monomorphization {
       Shared<TypeIdentifierAst> const &name,
       const TypeId value,
       ScopeManager &sm,
-      meta::CompilerMetaData &meta)
+      CompilerMetaData &meta)
       -> Shared<TypeSymbol> {
       // "Self" itself is left for what pins it, linking nothing; it records that it is "Self", so it keys as "Self"
       // ("KeyBinding"), what the parameter means here, rather than as a binding of the parameter.
@@ -478,7 +505,7 @@ namespace spp::analyse::utils::monomorphization {
           and scopes::HeaderOf(value).Kind == TypeKey::Tag::Inst) {
           const auto made = AstCloneShared(written);
           {
-            const auto _meta_guard = meta::MetaGuard(&meta);
+            const auto _meta_guard = MetaGuard(&meta);
             meta.ResetContext();
             meta.AllowAbstractType = true;
             meta.IgnoreAccessModifierViolations = true;
@@ -520,7 +547,7 @@ namespace spp::analyse::utils::monomorphization {
       Shared<IdentifierAst> const &name,
       const CompId value,
       ScopeManager &sm,
-      meta::CompilerMetaData *meta,
+      CompilerMetaData *meta,
       VariableSymbol const *param)
       -> Shared<VariableSymbol> {
       // The value as its identity spells it: folded already where it folds ("n + 1_uz" with "n" bound to "1_uz" is
@@ -624,7 +651,7 @@ namespace spp::analyse::utils::monomorphization {
     auto BindInstance(
       Scope &scope, Vec<TypeId> const &args_ids,
       Scope *self_of, ScopeManager *sm,
-      meta::CompilerMetaData *meta) -> void {
+      CompilerMetaData *meta) -> void {
       for (const auto args_id : args_ids) {
         // Extract the interned argument ids as a Type id, into a
         // vector of "TypeIdArg" objects.
@@ -675,10 +702,10 @@ namespace spp::analyse::utils::monomorphization {
     auto AnalyseSubstitutedType(
       TypeAst &type,
       ScopeManager *tm,
-      meta::CompilerMetaData *meta,
+      CompilerMetaData *meta,
       const bool ignore_access)
       -> void {
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
       meta->IgnoreAccessModifierViolations = meta->IgnoreAccessModifierViolations or ignore_access;
       meta->SkipSubstitutedConstraintChecks = true;
@@ -690,7 +717,7 @@ namespace spp::analyse::utils::monomorphization {
     /// carry (the class's fields as variable symbols -> their
     /// types), through the generic bindings.
     auto ReadVarSymbolTypes(
-      Scope const &scope, ScopeManager *tm, meta::CompilerMetaData *meta,
+      Scope const &scope, ScopeManager *tm, CompilerMetaData *meta,
       TypeAst const *self_type, const bool is_cls = false,
       scopes::GenericSubst const &class_args = {}) -> void {
       // "Self" is parameter 0, bound beside the class's own: "self: Self" in "sup [cmp w: U32] SizedInteger[w,
@@ -719,7 +746,7 @@ namespace spp::analyse::utils::monomorphization {
           scoped_sym->Type = type_resolution::ReadType(
             *scoped_sym->Type, ExprSubst::In(scope, bindings));
         }
-        if (meta->CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
+        if (meta->CurrentStage >= CompilerStage::kResolveDeclarations) {
           // Note: DO NOT inline "analysed_type", because the scoped_sym->Type
           // can change during the analysis that uses it, leaving the original
           // dereference pointing to garbage.
@@ -736,7 +763,7 @@ namespace spp::analyse::utils::monomorphization {
     /// function.
     auto CreateGnFnScope(
       Scope const &old_fun_scope, const TypeId args_id,
-      ScopeManager const *sm, meta::CompilerMetaData *meta)
+      ScopeManager const *sm, CompilerMetaData *meta)
       -> Unique<Scope> {
       // Create the new scope for the generic instantiation of the
       // function's generic base (template) scope.
@@ -906,7 +933,7 @@ spp::analyse::utils::monomorphization::InstantiationDepth::~InstantiationDepth()
 SPP_MOD_END
 
 auto spp::analyse::utils::monomorphization::StartInstantiatingOnRead(
-  ScopeTree &tree, const meta::CompilerStage stage) -> void {
+  ScopeTree &tree, const CompilerStage stage) -> void {
   _OnRead = InstantiatingOnRead{.Tree = &tree, .Stage = stage};
 }
 
@@ -927,7 +954,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
   const auto type = scope.TypeAstOf(id);
   if (type == nullptr) { return nullptr; }
   auto tm = ScopeManager::ForTree(*_OnRead.Tree);
-  auto stage_meta = meta::CompilerMetaData();
+  auto stage_meta = CompilerMetaData();
   stage_meta.CurrentStage = _OnRead.Stage;
   auto *const meta = &stage_meta;
 
@@ -946,7 +973,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
   if (tmpl != nullptr and tmpl->Alias == nullptr and tmpl->Kind == TypeKind::Cls and tmpl->Type != nullptr) {
     if (all_named) {
       const auto _depth = InstantiationDepth(name);
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
       meta->IgnoreAccessModifierViolations = true;
       meta->SkipSubstitutedConstraintChecks = true;
@@ -968,7 +995,7 @@ auto spp::analyse::utils::monomorphization::InstantiateForScope(
 
 /// [CHECKED]
 auto spp::analyse::utils::monomorphization::MonomorphiseToFixedPoint(
-  ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Drain the list of functions who own monomorphised versions,
   // and generate them, allowing LLVM IR to be created in the
   // following stages. This is a fixed point drain so all comp-
@@ -992,7 +1019,7 @@ auto spp::analyse::utils::monomorphization::MonomorphiseToFixedPoint(
 auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   TypeIdentifierAst &type_part, Shared<TypeSymbol> const &old_cls_sym,
   const TypeId args_id, ScopeManager *sm,
-  meta::CompilerMetaData *meta) -> TypeSymbol* {
+  CompilerMetaData *meta) -> TypeSymbol* {
   // Made already under that identity: nothing to make.
   if (const auto made = sm->CurrentScope->FindTypeSymbolById(args_id); made != nullptr) { return made; }
 
@@ -1018,7 +1045,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   // What an instance is made of is substituted, not written
   // ("CompilerMetaData::AllowBorrowedTypeArgs"). An error making
   // it is also shown at the outermost name asking for it.
-  const auto _borrow_guard = meta::MetaGuard(meta);
+  const auto _borrow_guard = MetaGuard(meta);
   meta->AllowBorrowedTypeArgs = true;
   const auto _instantiated_from = errors::InstantiatedFromGuard(&type_part);
 
@@ -1129,7 +1156,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
 
   // Run the sup scope attachment logic if we are at the stage
   // where that is applicable.
-  if (meta->CurrentStage >= meta::CompilerStage::kAttachSupScopes) {
+  if (meta->CurrentStage >= CompilerStage::kAttachSupScopes) {
     sup_attachment::AttachSpecificSuperScopes(*new_cls_scope_ptr, *sm, meta);
   }
 
@@ -1187,7 +1214,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
   auto tm = sm->NewManagerAt(new_cls_scope_ptr);
   ReadVarSymbolTypes(*new_cls_scope_ptr, &tm, meta, nullptr, true);
 
-  if (meta->CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
+  if (meta->CurrentStage >= CompilerStage::kResolveDeclarations) {
     for (const auto attr : new_ast_ptr->Impl->Members
          | genex::views::ptr
          | genex::views::cast_dynamic<ClassAttributeAst*>) {
@@ -1195,7 +1222,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
       // when the instantiation is reached from somewhere that
       // allows naming one ("B[C[A]]" instantiates "C[A]" while
       // "B"'s arguments are being analysed).
-      const auto _meta_guard = meta::MetaGuard(meta);
+      const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = false;
       attr->Stage7_AnalyseSemantics(&tm, meta);
     }
@@ -1206,9 +1233,9 @@ auto spp::analyse::utils::monomorphization::FindOrMakeClsInstance(
 
 auto spp::analyse::utils::monomorphization::MakeSupInstance(
   Scope &old_sup_scope, Scope &new_cls_scope, const TypeId args_id,
-  ScopeManager const *sm, meta::CompilerMetaData *meta) -> Tup<Scope*, Scope*> {
+  ScopeManager const *sm, CompilerMetaData *meta) -> Tup<Scope*, Scope*> {
   spp::utils::stats::Bump(spp::utils::stats::Counter::SupInstancesMade);
-  const auto _borrow_guard = meta::MetaGuard(meta);
+  const auto _borrow_guard = MetaGuard(meta);
   meta->AllowBorrowedTypeArgs = true;
 
   // 1. Clone the template's scope, two levels down: each member function's mock "sup $M ext FunXxx" block, and the
@@ -1302,7 +1329,7 @@ auto spp::analyse::utils::monomorphization::MakeSupInstance(
 auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
   FunctionPrototypeAst *fn_proto, Scope const *fn_scope, const TypeId args_id,
   packs::GivenPack const *given_pack, ScopeManager *sm,
-  meta::CompilerMetaData *meta) -> Tup<FunctionPrototypeAst*, Scope const*> {
+  CompilerMetaData *meta) -> Tup<FunctionPrototypeAst*, Scope const*> {
   //
   using errors::SppSecondClassBorrowViolationError;
   using type_predicates::IsTypeBorrowed;
@@ -1329,7 +1356,7 @@ auto spp::analyse::utils::monomorphization::FindOrMakeFnInstance(
     // set the non generic pointer, and detach the llvm
     // slot (sets it to nullptr).
     spp::utils::stats::Bump(spp::utils::stats::Counter::FnInstancesMade);
-    const auto _borrow_guard = meta::MetaGuard(meta);
+    const auto _borrow_guard = MetaGuard(meta);
     meta->AllowBorrowedTypeArgs = true;
     auto new_fn_proto = fn_proto->CloneSignature();
     new_fn_proto->SetNonGnImpl(fn_proto);
@@ -1441,7 +1468,7 @@ auto spp::analyse::utils::monomorphization::RequireFnInstance(
   Scope const *fn_scope,
   const TypeId args_id,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta)
+  CompilerMetaData *meta)
   -> FunctionPrototypeAst* {
   // The arguments arrive already named - they are read off a
   // "sup" block that has bound them - so there is nothing here

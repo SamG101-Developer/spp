@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterVariadicAst);
+use_common(FunctionParameterVariadicAst);
 use(spp::asts, struct TokenAst);
 
 /// A variadic parameter in a function prototype, which can

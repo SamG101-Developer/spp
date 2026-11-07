@@ -24,6 +24,8 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
+use_alias(spp::analyse::scopes, VariableKind);
+
 SPP_MOD_BEGIN
 IsExpressionAst::IsExpressionAst(
   decltype(Lhs) &&lhs,

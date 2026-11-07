@@ -44,161 +44,183 @@ import genex;
 #define FINISH_GENERICS() \
     auto generics = MakeUnique<GenericArgumentGroupAst>(nullptr, std::move(generics_list), nullptr);
 
-auto generate::common_types::F8(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::F8(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("F8");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::F16(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::F16(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("F16");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::F32(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::F32(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("F32");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::F64(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::F64(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("F64");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::F128(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::F128(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("F128");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S8(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S8(std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S8");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S16(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S16(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S16");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S32(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S32(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S32");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S64(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S64(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S64");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S128(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S128(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S128");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::S256(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::S256(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("S256");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::SSize(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SSize(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("SSize");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U8(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U8(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U8");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U16(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U16(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U16");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U32(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U32(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U32");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U64(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U64(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U64");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U128(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U128(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U128");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::U256(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::U256(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("U256");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::USize(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::USize(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("USize");
   ADD_NAMESPACE("number");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::CharType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::CharType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Char");
   ADD_NAMESPACE("char");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::VoidType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::VoidType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Void");
   ADD_NAMESPACE("void");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::BooleanType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::BooleanType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Bool");
   ADD_NAMESPACE("boolean");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::StringViewType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::StringViewType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("StrView");
   ADD_NAMESPACE("string_view");
   ADD_NAMESPACE("std");
@@ -206,7 +228,8 @@ auto generate::common_types::StringViewType(std::size_t pos) -> Shared<TypeAst> 
   FINISH_TYPE();
 }
 
-auto generate::common_types::NeverType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::NeverType(
+  std::size_t pos) -> Shared<TypeAst> {
   const auto never = MakeShared<TypeIdentifierAst>(pos, Str("Never"), nullptr);
   never->MarkNeverType();
   Shared<TypeAst> type = never;
@@ -215,14 +238,16 @@ auto generate::common_types::NeverType(std::size_t pos) -> Shared<TypeAst> {
   FINISH_TYPE();
 }
 
-auto generate::common_types::CopyType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::CopyType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Copy");
   ADD_NAMESPACE("copy");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::DropType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::DropType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Drop");
   ADD_NAMESPACE("drop");
   ADD_NAMESPACE("ops");
@@ -230,7 +255,8 @@ auto generate::common_types::DropType(std::size_t pos) -> Shared<TypeAst> {
   FINISH_TYPE();
 }
 
-auto generate::common_types::ThreadSafeType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ThreadSafeType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("ThreadSafe");
   ADD_NAMESPACE("safe");
   ADD_NAMESPACE("threading");
@@ -238,7 +264,8 @@ auto generate::common_types::ThreadSafeType(std::size_t pos) -> Shared<TypeAst> 
   FINISH_TYPE();
 }
 
-auto generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_type,
+auto spp::asts::generate::common_types::ArrayType(
+  std::size_t pos, Shared<TypeAst> elem_type,
   Unique<ExpressionAst> &&size) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(elem_type)
@@ -251,7 +278,8 @@ auto generate::common_types::ArrayType(std::size_t pos, Shared<TypeAst> elem_typ
   FINISH_TYPE()
 }
 
-auto generate::common_types::ViewU8Type(const std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ViewU8Type(
+  const std::size_t pos) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(U8(pos))
   FINISH_GENERICS()
@@ -263,8 +291,8 @@ auto generate::common_types::ViewU8Type(const std::size_t pos) -> Shared<TypeAst
   FINISH_TYPE()
 }
 
-auto generate::common_types::VariantType(std::size_t pos,
-  Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::VariantType(
+  std::size_t pos, Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_ALL_GENERICS()
   FINISH_GENERICS()
@@ -275,8 +303,8 @@ auto generate::common_types::VariantType(std::size_t pos,
   FINISH_TYPE()
 }
 
-auto generate::common_types::TupleType(std::size_t pos,
-  Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::TupleType(
+  std::size_t pos, Vec<Shared<TypeAst>> &&inner_types) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_ALL_GENERICS()
   FINISH_GENERICS()
@@ -287,7 +315,8 @@ auto generate::common_types::TupleType(std::size_t pos,
   FINISH_TYPE()
 }
 
-auto generate::common_types::TryType(std::size_t pos, Shared<TypeAst> output_type,
+auto spp::asts::generate::common_types::TryType(
+  std::size_t pos, Shared<TypeAst> output_type,
   Shared<TypeAst> residual_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(output_type)
@@ -301,7 +330,8 @@ auto generate::common_types::TryType(std::size_t pos, Shared<TypeAst> output_typ
   FINISH_TYPE()
 }
 
-auto generate::common_types::FutureType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::FutureType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(inner_type)
   FINISH_GENERICS()
@@ -312,7 +342,8 @@ auto generate::common_types::FutureType(std::size_t pos, Shared<TypeAst> inner_t
   FINISH_TYPE()
 }
 
-auto generate::common_types::ViewType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ViewType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(inner_type)
   FINISH_GENERICS()
@@ -324,7 +355,8 @@ auto generate::common_types::ViewType(std::size_t pos, Shared<TypeAst> inner_typ
   FINISH_TYPE()
 }
 
-auto generate::common_types::SomeType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SomeType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(inner_type)
   FINISH_GENERICS()
@@ -335,21 +367,24 @@ auto generate::common_types::SomeType(std::size_t pos, Shared<TypeAst> inner_typ
   FINISH_TYPE()
 }
 
-auto generate::common_types::None(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::None(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("None")
   ADD_NAMESPACE("option")
   ADD_NAMESPACE("std")
   FINISH_TYPE()
 }
 
-auto generate::common_types::GenDone(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::GenDone(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("GenDone")
   ADD_NAMESPACE("generator")
   ADD_NAMESPACE("std")
   FINISH_TYPE()
 }
 
-auto generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type,
+auto spp::asts::generate::common_types::GenType(
+  std::size_t pos, Shared<TypeAst> yield_type,
   Shared<TypeAst> send_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(yield_type)
@@ -362,7 +397,8 @@ auto generate::common_types::GenType(std::size_t pos, Shared<TypeAst> yield_type
   FINISH_TYPE()
 }
 
-auto generate::common_types::GenOnceType(std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::GenOnceType(
+  std::size_t pos, Shared<TypeAst> yield_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(yield_type))
   FINISH_GENERICS()
@@ -373,7 +409,8 @@ auto generate::common_types::GenOnceType(std::size_t pos, Shared<TypeAst> yield_
   FINISH_TYPE()
 }
 
-auto generate::common_types::IndexMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::IndexMutType(
+  std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(elem_type))
   FINISH_GENERICS()
@@ -385,7 +422,8 @@ auto generate::common_types::IndexMutType(std::size_t pos, Shared<TypeAst> elem_
   FINISH_TYPE()
 }
 
-auto generate::common_types::IndexRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::IndexRefType(
+  std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(elem_type))
   FINISH_GENERICS()
@@ -397,7 +435,8 @@ auto generate::common_types::IndexRefType(std::size_t pos, Shared<TypeAst> elem_
   FINISH_TYPE()
 }
 
-auto generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SliceMutType(
+  std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(elem_type))
   FINISH_GENERICS()
@@ -409,7 +448,8 @@ auto generate::common_types::SliceMutType(std::size_t pos, Shared<TypeAst> elem_
   FINISH_TYPE()
 }
 
-auto generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SliceRefType(
+  std::size_t pos, Shared<TypeAst> elem_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(elem_type))
   FINISH_GENERICS()
@@ -421,7 +461,8 @@ auto generate::common_types::SliceRefType(std::size_t pos, Shared<TypeAst> elem_
   FINISH_TYPE()
 }
 
-auto generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_types,
+auto spp::asts::generate::common_types::FunRefType(
+  std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(param_types))
@@ -434,7 +475,8 @@ auto generate::common_types::FunRefType(std::size_t pos, Shared<TypeAst> param_t
   FINISH_TYPE()
 }
 
-auto generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_types,
+auto spp::asts::generate::common_types::FunMutType(
+  std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(param_types))
@@ -447,7 +489,8 @@ auto generate::common_types::FunMutType(std::size_t pos, Shared<TypeAst> param_t
   FINISH_TYPE()
 }
 
-auto generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_types,
+auto spp::asts::generate::common_types::FunMovType(
+  std::size_t pos, Shared<TypeAst> param_types,
   Shared<TypeAst> ret_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(param_types))
@@ -460,7 +503,8 @@ auto generate::common_types::FunMovType(std::size_t pos, Shared<TypeAst> param_t
   FINISH_TYPE()
 }
 
-auto generate::common_types::ForwardRefType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ForwardRefType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(inner_type))
   FINISH_GENERICS()
@@ -472,7 +516,8 @@ auto generate::common_types::ForwardRefType(std::size_t pos, Shared<TypeAst> inn
   FINISH_TYPE()
 }
 
-auto generate::common_types::NonNullType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::NonNullType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(inner_type))
   FINISH_GENERICS()
@@ -484,7 +529,8 @@ auto generate::common_types::NonNullType(std::size_t pos, Shared<TypeAst> inner_
   FINISH_TYPE()
 }
 
-auto generate::common_types::SizedIntegerType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SizedIntegerType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("SizedInteger");
   ADD_NAMESPACE("sized_integer");
   ADD_NAMESPACE("num");
@@ -492,7 +538,8 @@ auto generate::common_types::SizedIntegerType(std::size_t pos) -> Shared<TypeAst
   FINISH_TYPE();
 }
 
-auto generate::common_types::SizedFloatType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SizedFloatType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("SizedFloatingPoint");
   ADD_NAMESPACE("sized_floating_point");
   ADD_NAMESPACE("num");
@@ -500,14 +547,16 @@ auto generate::common_types::SizedFloatType(std::size_t pos) -> Shared<TypeAst> 
   FINISH_TYPE();
 }
 
-auto generate::common_types::GeneratedType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::GeneratedType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Generated");
   ADD_NAMESPACE("generator");
   ADD_NAMESPACE("std");
   FINISH_TYPE();
 }
 
-auto generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::ForwardMutType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()
   ADD_TYPE_GENERIC(std::move(inner_type))
   FINISH_GENERICS()
@@ -519,7 +568,8 @@ auto generate::common_types::ForwardMutType(std::size_t pos, Shared<TypeAst> inn
   FINISH_TYPE()
 }
 
-auto generate::common_types::SelfType(std::size_t pos) -> Shared<TypeAst> {
+auto spp::asts::generate::common_types::SelfType(
+  std::size_t pos) -> Shared<TypeAst> {
   MAKE_TYPE("Self");
   FINISH_TYPE();
 }

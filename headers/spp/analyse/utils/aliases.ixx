@@ -14,6 +14,8 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeStatementAst);
+use(spp::asts::meta, struct CompilerMetaData);
+use_alias(spp::analyse::scopes, TypeId);
 
 namespace spp::analyse::utils::aliases {
   /// The result of resolving a type alias, moving through multiple aliasing
@@ -31,7 +33,7 @@ namespace spp::analyse::utils::aliases {
   /// Rejects a cyclic chain.
   SPP_EXP_FUN auto StatementTarget(
     TypeStatementAst const &alias_stmt, bool from_use_stmt,
-    Scope const *tracking_scope, ScopeManager *sm, meta::CompilerMetaData *meta)
+    Scope const *tracking_scope, ScopeManager *sm, CompilerMetaData *meta)
     -> AliasTarget;
 
   /// What an alias's instantiation stands for, by identity: the alias's target,

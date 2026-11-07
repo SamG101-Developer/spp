@@ -37,6 +37,9 @@ import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
   decltype(TokSup) &&tok_sup,

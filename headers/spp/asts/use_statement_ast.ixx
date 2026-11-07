@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(UseStatementAst);
+use_common(UseStatementAst);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeStatementAst);

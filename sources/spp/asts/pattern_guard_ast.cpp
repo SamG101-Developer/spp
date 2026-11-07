@@ -21,6 +21,8 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
+use_alias(spp::analyse::scopes, VariableSymbol);
+
 SPP_MOD_BEGIN
 PatternGuardAst::PatternGuardAst(
   decltype(TokAnd) &&tok_and,

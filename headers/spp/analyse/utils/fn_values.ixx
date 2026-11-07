@@ -16,6 +16,7 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::fn_values {
   /// A function value match struct contains information about
@@ -65,7 +66,7 @@ namespace spp::analyse::utils::fn_values {
   /// and through a tuple or an array element by element.
   SPP_EXP_FUN auto InstantiateFnValue(
     TypeRef const &value, TypeRef const &target,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> void;
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Lookup for a generic instantiation of a function based
   /// on the function's "$Type" and the function "FunMov"
@@ -81,5 +82,5 @@ namespace spp::analyse::utils::fn_values {
   /// want to return TypeAst here, or a TypeRef?
   SPP_EXP_FUN auto IndirectFnTypeOf(
     ExpressionAst &expr, ScopeManager &sm,
-    meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
+    CompilerMetaData *meta) -> Shared<const TypeAst>;
 }

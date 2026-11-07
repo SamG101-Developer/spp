@@ -10,11 +10,14 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
+use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::pattern_solver, class PatternSolver);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts::meta, struct CompilerMetaData);
+use(spp::asts::meta, enum class SubjectOnMatch);
 
 namespace spp::analyse::utils::pattern_solver {
   /// One step from a value to a part of it: into the payload of the

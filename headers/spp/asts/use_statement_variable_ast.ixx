@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(UseStatementVariableAst);
+use_common(UseStatementVariableAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct AnnotationAst);

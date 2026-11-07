@@ -13,6 +13,8 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+
 SPP_MOD_BEGIN
 LoopElseStatementAst::LoopElseStatementAst(
   decltype(TokElse) &&tok_else,

@@ -7,7 +7,7 @@ import spp.asts.mixins.type_inferrable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(UnaryExpressionOperatorAst);
+use_common(UnaryExpressionOperatorAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TypeAst);

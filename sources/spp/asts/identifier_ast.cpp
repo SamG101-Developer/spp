@@ -32,6 +32,8 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, VariableKind);
+
 SPP_MOD_BEGIN
 auto IdentifierAst::FromType(
   TypeAst const &val) -> Unique<IdentifierAst> {

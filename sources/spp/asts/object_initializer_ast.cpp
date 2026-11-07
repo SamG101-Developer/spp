@@ -37,6 +37,8 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 ObjectInitializerAst::ObjectInitializerAst(
   decltype(Type) type,

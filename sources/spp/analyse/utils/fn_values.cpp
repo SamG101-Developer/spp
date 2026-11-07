@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.fn_values;
@@ -30,6 +31,13 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
+
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, AstAs);
+use_alias(spp::asts, AstBody);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, ExprSubst);
 
 /// [CHECKED]
 auto spp::analyse::utils::fn_values::FnBlockOf(
@@ -186,7 +194,7 @@ auto spp::analyse::utils::fn_values::MatchFnValue(
 
 auto spp::analyse::utils::fn_values::InstantiateFnValue(
   TypeRef const &value, TypeRef const &target,
-  ScopeManager *sm, meta::CompilerMetaData *meta) -> void {
+  ScopeManager *sm, CompilerMetaData *meta) -> void {
 
   // A tuple or an array holds its function values element by
   // element, as "codegen::CoerceToSlot" builds them: "(f, 1)"
@@ -229,7 +237,7 @@ auto spp::analyse::utils::fn_values::FindFnValue(
 /// [CHECKED]
 auto spp::analyse::utils::fn_values::IndirectFnTypeOf(
   ExpressionAst &expr, ScopeManager &sm,
-  meta::CompilerMetaData *meta) -> Shared<const TypeAst> {
+  CompilerMetaData *meta) -> Shared<const TypeAst> {
   // Get the type of the expression, then find its functional
   // type. The functional type is the "FunRef|FunMut|FunMov" the
   // expression is or superimposes - a generic gets its one from

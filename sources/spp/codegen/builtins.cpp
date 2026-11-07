@@ -1,9 +1,14 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.codegen.builtins;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.asts.boolean_literal_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
 import spp.codegen.llvm_fn_impls;
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::codegen::builtins {
   namespace {
@@ -106,7 +111,7 @@ namespace spp::codegen::builtins {
     /// A builder that reads everything it needs off the prototype (a "&" and a "&mut" form lower alike), so it takes
     /// no return type.
     auto Untyped(
-      void (*build)(ScopeManager *, FunctionPrototypeAst const *, meta::CompilerMetaData *, LlvmCtx *))
+      void (*build)(ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *))
       -> LlvmImplFn {
       return [build](auto sm, auto proto, auto meta, auto ctx, auto) { build(sm, proto, meta, ctx); };
     }

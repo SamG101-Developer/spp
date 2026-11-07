@@ -38,6 +38,15 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, ObjectInitializerAst);
+use_alias(spp::asts, ObjectInitializerArgumentAst);
+use_alias(spp::asts, ObjectInitializerArgumentKeywordAst);
+use_alias(spp::asts, ObjectInitializerArgumentShorthandAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, TokenAst);
+
 namespace spp::analyse::utils::comp_time_intrinsics {
   namespace {
     auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {

@@ -5,7 +5,7 @@ export module spp.asts.array_literal_ast;
 import spp.asts.literal_ast;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ArrayLiteralAst);
+use_common(ArrayLiteralAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);

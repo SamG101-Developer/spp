@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentAst);
+use_common(FunctionCallArgumentAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);

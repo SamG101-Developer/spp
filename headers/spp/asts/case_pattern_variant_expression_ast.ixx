@@ -7,7 +7,7 @@ import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantExpressionAst);
+use_common(CasePatternVariantExpressionAst);
 use(spp::asts, struct ExpressionAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantExpressionAst final : CasePatternVariantAst {

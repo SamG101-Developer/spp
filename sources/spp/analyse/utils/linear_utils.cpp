@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.linear_utils;
@@ -23,6 +24,9 @@ import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
 import genex;
 import std;
+
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, LoopConditionalExpressionAst);
 
 namespace spp::analyse::utils::linear_utils {
   namespace {

@@ -5,7 +5,7 @@ export module spp.asts.primary_expression_ast;
 import spp.asts.expression_ast;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PrimaryExpressionAst);
+use_common(PrimaryExpressionAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::asts, struct ExpressionAst);

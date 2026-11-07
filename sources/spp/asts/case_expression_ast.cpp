@@ -43,6 +43,10 @@ import spp.utils.uid;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::asts::meta, SubjectOnMatch);
+
 SPP_MOD_BEGIN
 CaseExpressionAst::CaseExpressionAst(
   decltype(TokCase) &&tok_case,

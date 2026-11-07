@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.visibility_utils;
@@ -16,6 +17,9 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.visibility;
 import spp.utils.ice;
 import genex;
+
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
 
 namespace spp::analyse::utils::visibility_utils {
   namespace {

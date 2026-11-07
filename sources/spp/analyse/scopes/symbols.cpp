@@ -43,6 +43,21 @@ import spp.utils.interner;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeIdArg);
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::asts, ConventionMutAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TypePostfixExpressionAst);
+use_alias(spp::asts, TypePostfixExpressionOperatorNestedTypeAst);
+use_alias(spp::asts, TypeUnaryExpressionAst);
+use_alias(spp::asts, TypeUnaryExpressionOperatorNamespaceAst);
+
 namespace {
   using spp::analyse::scopes::Scope;
   using spp::analyse::scopes::TypeSymbol;
@@ -152,7 +167,7 @@ namespace {
   /// unbound generic safe.
   auto HasThreadSafeConstraint(
     TypeSymbol const &sym) -> bool {
-    using generate::common_types_precompiled::THREAD_SAFE;
+    using spp::asts::generate::common_types_precompiled::THREAD_SAFE;
 
     const auto scope = sym.ScopeDefinedIn != nullptr
       ? sym.ScopeDefinedIn
@@ -1038,7 +1053,7 @@ auto TypeRef::Of(
   // An identity carries its convention, and "!" is the
   // "Never" class by identity. This is the main function
   // to create a type ref.
-  using generate::common_types_precompiled::NEVER;
+  using asts::generate::common_types_precompiled::NEVER;
   const auto own_conv = id != nullptr
     ? static_cast<ConventionTag>(HeaderOf(id).Conv)
     : ConventionTag::MOV;
@@ -1151,7 +1166,7 @@ auto spp::analyse::scopes::PrecompiledTemplate(
   // Extract from the cache if its available and return the
   // value. If not, The cache will be updated at the end of
   // the function.
-  auto &cache = generate::common_types_precompiled::TEMPLATE_SYMBOLS;
+  auto &cache = asts::generate::common_types_precompiled::TEMPLATE_SYMBOLS;
   if (const auto hit = cache.find(&tmpl); hit != cache.end()) { return hit->second.second; }
 
   // Find the template symbol from the scope, and map through

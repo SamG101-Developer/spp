@@ -23,6 +23,8 @@ import spp.asts.utils.ast_utils;
 import spp.utils.strings;
 import genex;
 
+use_alias(spp::analyse::scopes, VariableKind);
+
 SPP_MOD_BEGIN
 UseStatementVariableAst::UseStatementVariableAst(
   decltype(Annotations) &&annotations,

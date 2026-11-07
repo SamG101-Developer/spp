@@ -26,6 +26,9 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 LocalVariableDestructureArrayAst::LocalVariableDestructureArrayAst(
   decltype(TokL) &&tok_l,

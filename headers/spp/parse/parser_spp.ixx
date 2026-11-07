@@ -40,7 +40,7 @@ use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct GenericParameterTypeConstraintsAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts, template <typename T> struct InnerScopeAst);
+use(spp::asts, (typename T) struct InnerScopeAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct PatternGuardAst);
 use(spp::asts, struct CasePatternVariantAst);
@@ -82,8 +82,6 @@ use(spp::asts, struct ClosureExpressionAst);
 use(spp::asts, struct ClosureExpressionCaptureAst);
 use(spp::asts, struct ClosureExpressionCaptureGroupAst);
 use(spp::asts, struct ClosureExpressionParameterAndCaptureGroupAst);
-use(spp::asts, using ClosureExpressionParameterAst = FunctionParameterAst);
-use(spp::asts, using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst);
 use(spp::asts, struct LetStatementAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LetStatementUninitializedAst);
@@ -140,7 +138,6 @@ use(spp::asts, struct SupPrototypeFunctionsAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct SupImplementationAst);
 use(spp::asts, struct SupMemberAst);
-use(spp::asts, using FunctionMemberAst = StatementAst);
 
 use(spp::parse, class ParserSpp);
 
@@ -358,8 +355,8 @@ public:
   auto ParseClosureExpressionCapture() -> Unique<ClosureExpressionCaptureAst>;
   auto ParseClosureExpressionParameterAndCaptureGroup()
     -> Unique<ClosureExpressionParameterAndCaptureGroupAst>;
-  auto ParseClosureExpressionParameterGroup() -> Unique<ClosureExpressionParameterGroupAst>;
-  auto ParseClosureExpressionParameter() -> Unique<ClosureExpressionParameterAst>;
+  auto ParseClosureExpressionParameterGroup() -> Unique<FunctionParameterGroupAst>;
+  auto ParseClosureExpressionParameter() -> Unique<FunctionParameterAst>;
 
   auto ParseTypeExpression() -> Unique<TypeAst>;
 

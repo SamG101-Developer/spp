@@ -24,12 +24,12 @@ version = "23"
 [pin.llvm-sh]
 sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
 
-# The asset name is not derivable from the tag:
-# llvmorg-23.1.0-rc3 ships clang+llvm-23.0.0.3-*.
+# Refreshed with [pin.llvm-mac] to the newest final release
+# of the [pin.llvm-lib] major.
 [pin.llvm-win]
-tag = "llvmorg-23.1.0-rc3"
-asset = "clang+llvm-23.0.0.3-x86_64-pc-windows-msvc.tar.xz"
-sha256 = "9465632c6d96e65ab6b7f6fbf7ae447621803982b2348483221812bbf4c8b6af"
+tag = "llvmorg-23.1.5"
+asset = "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.xz"
+sha256 = "62fdada7f6fa2b73856486dfbbdba3d2c1882991621615bcb55c60207611c6d4"
 
 # That Windows release names ZLIB::ZLIB, zstd::libzstd_static
 # and LibXml2::LibXml2 in its exported targets, and the runner
@@ -58,9 +58,9 @@ commit = "06e7608bfe926d2bd7176c0b02be0c98f40cced4"
 # macOS takes its whole toolchain - compiler, libc++ and dev
 # libraries - off the same release as Windows.
 [pin.llvm-mac]
-tag = "llvmorg-23.1.0-rc3"
-asset = "LLVM-23.1.0-rc3-macOS-ARM64.tar.xz"
-sha256 = "d23dc0baf29225e2975447f29bbc98b4fc3779001e91adc4a5d7d95854681e79"
+tag = "llvmorg-23.1.5"
+asset = "LLVM-23.1.5-macOS-ARM64.tar.xz"
+sha256 = "aba592b4a15e8f90c634c5367b51ec8418b8bcd2829865db331a17dc9418dcff"
 
 # macOS toolchains are tied to the Xcode app on the runner image.
 # Pin the developer directory explicitly so CI does not drift when GitHub updates the image. One key per image,
@@ -89,16 +89,16 @@ version = "3.28.0"
 sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
 [pin.qemu-user]
-tag = "spp-2026.10.26.2"
-sha256 = "7ce31b76d67578ad07c5b746d649f412552e12a251c3b832787ce3a2267b41a9"
+tag = "spp-2026.11.07"
+sha256 = "d4e897b152745bd5f4b614eea0ddaa45afd322fa86736fbf0eaedf7d223590f9"
 
 [pin.arm-gnu]
 version = "15.3.rel2"
 sha256-aarch64-be = "bdf8e9b4c62791c5c3aeeb8ba3791421d73c7d147dd04f0da502716885bcc1d2"
 
 [pin.alpine]
-version = "3.24.3"
-sha256 = "be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
+version = "3.24.4"
+sha256 = "93b41ef40b1677fce8fcc64ff4af09daddfacf5040afde618bc46c1e2d1cc7d4"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -182,18 +182,18 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "9c349b1d7c393c6bc6dbbe4191e332e3bb4100b8"
+commit = "7fc8312c64fc6a507387b228fdc1e5ae122432d0"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
 name = "tomlplusplus"
 repo = "https://github.com/marzer/tomlplusplus.git"
-commit = "1e8829b793b66ad17011732a146b8077d379b011"
+commit = "8dabfea58f66d6d141b52c56c0a096d4e2b96dd0"
 
 [[library]]
 name = "magic_enum"
 repo = "https://github.com/Neargye/magic_enum.git"
-commit = "7c58a87f7785720cfe3a9fc38115a175b5433394"
+commit = "d7b75f140707769031519fbe463449614433f285"
 cmake-flags = [
   "-DMAGIC_ENUM_OPT_BUILD_TESTS=OFF",
   "-DMAGIC_ENUM_OPT_BUILD_EXAMPLES=OFF",

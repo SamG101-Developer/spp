@@ -36,6 +36,9 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace spp::asts {
   namespace {
     using namespace spp::asts::utils;

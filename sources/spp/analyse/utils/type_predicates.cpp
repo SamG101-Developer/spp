@@ -1,5 +1,7 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
+
 module spp.analyse.utils.type_predicates;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.scope;
@@ -30,6 +32,14 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
 import std;
+
+use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, ParenthesisedExpressionAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, SpreadExpressionAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypePostfixExpressionAst);
+use_alias(spp::asts, TypeUnaryExpressionAst);
 
 /// [CHECKED]
 auto spp::analyse::utils::type_predicates::AnyTypePart(
@@ -128,36 +138,36 @@ auto spp::analyse::utils::type_predicates::IsOrExtendsTemplate(
 auto spp::analyse::utils::type_predicates::IsTypeGenerator(
   TypeRef const &ref, Scope const &scope) -> bool {
   // Either the Gen or GenOnce generator type, discarding generics.
-  using generate::common_types_precompiled::GEN;
-  using generate::common_types_precompiled::GEN_ONCE;
+  using asts::generate::common_types_precompiled::GEN;
+  using asts::generate::common_types_precompiled::GEN_ONCE;
   return ref.KindSymbol() != nullptr and (ref.IsA(*GEN, scope) or ref.IsA(*GEN_ONCE, scope));
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeTuple(
   TypeRef const &ref, Scope const &scope) -> bool {
-  using generate::common_types_precompiled::TUP;
+  using asts::generate::common_types_precompiled::TUP;
   return ref.KindSymbol() != nullptr and ref.IsA(*TUP, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeArray(
   TypeRef const &ref, Scope const &scope) -> bool {
-  using generate::common_types_precompiled::ARR;
+  using asts::generate::common_types_precompiled::ARR;
   return ref.KindSymbol() != nullptr and ref.IsA(*ARR, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeVariant(
   TypeRef const &ref, Scope const &scope) -> bool {
   // A borrowed variant is still one.
-  using generate::common_types_precompiled::VAR;
+  using asts::generate::common_types_precompiled::VAR;
   return not ref.IsNever and ref.Symbol != nullptr and ref.IsA(*VAR, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeFunction(
   TypeRef const &ref, Scope const &scope) -> bool {
   // Either the FunMov, FunMut or FunRef function type, discarding generics, or a "$" mock of one.
-  using generate::common_types_precompiled::FUN_MOV;
-  using generate::common_types_precompiled::FUN_MUT;
-  using generate::common_types_precompiled::FUN_REF;
+  using asts::generate::common_types_precompiled::FUN_MOV;
+  using asts::generate::common_types_precompiled::FUN_MUT;
+  using asts::generate::common_types_precompiled::FUN_REF;
   const auto sym = ref.KindSymbol();
   return sym != nullptr and (
     sym->IsMock() or ref.IsA(*FUN_MOV, scope) or ref.IsA(*FUN_MUT, scope) or ref.IsA(*FUN_REF, scope));
@@ -170,19 +180,19 @@ auto spp::analyse::utils::type_predicates::IsTypeCompTimeIndexable(
 
 auto spp::analyse::utils::type_predicates::IsTypeBool(
   TypeRef const &ref, Scope const &scope) -> bool {
-  using generate::common_types_precompiled::BOOL;
+  using asts::generate::common_types_precompiled::BOOL;
   return ref.KindSymbol() != nullptr and ref.IsA(*BOOL, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeVoid(
   TypeRef const &ref, Scope const &scope) -> bool {
-  using generate::common_types_precompiled::VOID;
+  using asts::generate::common_types_precompiled::VOID;
   return ref.KindSymbol() != nullptr and ref.IsA(*VOID, scope);
 }
 
 auto spp::analyse::utils::type_predicates::IsTypeTry(
   TypeRef const &ref, Scope const &scope) -> bool {
-  using generate::common_types_precompiled::TRY;
+  using asts::generate::common_types_precompiled::TRY;
   return ref.KindSymbol() != nullptr and ref.IsA(*TRY, scope);
 }
 

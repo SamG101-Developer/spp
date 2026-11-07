@@ -13,6 +13,7 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 /// What the two "sup" blocks ("sup X { .. }", "sup X ext Y { .. }") do alike at each stage, each called with the scope
 /// manager inside the block's own scope.
@@ -42,5 +43,5 @@ namespace spp::analyse::utils::sup_blocks {
   /// where an error points. Answers the base symbol.
   SPP_EXP_FUN auto LoadTarget(
     Ast const &block, Shared<TypeAst> &name, bool files_nested_mock,
-    ScopeManager &sm, meta::CompilerMetaData *meta) -> TypeSymbol*;
+    ScopeManager &sm, CompilerMetaData *meta) -> TypeSymbol*;
 }

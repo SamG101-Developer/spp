@@ -26,6 +26,8 @@ import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::analyse::scopes, BumpTypeStructureGeneration);
+
 SPP_MOD_BEGIN
 auto GenericParameterGroupAst::NewEmpty() -> Unique<GenericParameterGroupAst> {
   return MakeUnique<GenericParameterGroupAst>(

@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 constexpr auto SPP_EXT = ".spp";
 
 namespace spp::utils::files {
-  SPP_INTERNAL {
+  namespace {
     /// [CHECKED]
     /// The directories on PATH, in order. Split by the given separator (which
     /// is platform dependent).

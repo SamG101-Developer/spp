@@ -15,6 +15,8 @@ import spp.asts.ast;
 import spp.asts.type_ast;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeRef);
+
 SPP_MOD_BEGIN
 spp::analyse::utils::type_join::TypeJoin::TypeJoin(
   Shared<TypeAst> target, Scope const *target_scope, Ast const *target_site) :

@@ -4,7 +4,7 @@ module;
 export module spp.asts.convention_ast;
 import spp.asts.ast;
 
-SPP_AST_COMMON_FWD_DECL(ConventionAst);
+use_common(ConventionAst);
 
 namespace spp::asts {
   SPP_EXP_CLS enum class ConventionTag { MOV, MUT, REF };

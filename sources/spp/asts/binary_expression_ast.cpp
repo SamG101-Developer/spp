@@ -39,6 +39,8 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+
 SPP_MOD_BEGIN
 namespace {
   /// Check if the binary operation is a logical "and" or

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionAst);
+use_common(PostfixExpressionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);

@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.operator_desugaring;
@@ -37,6 +38,21 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
+
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionBranchAst);
+use_alias(spp::asts, CasePatternVariantAst);
+use_alias(spp::asts, CasePatternVariantElseAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
+use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, StatementAst);
+use_alias(spp::asts, TokenAst);
 
 namespace spp::analyse::utils::operator_desugaring {
   namespace {

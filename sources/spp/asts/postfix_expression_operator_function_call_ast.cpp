@@ -84,6 +84,10 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace {
   /// The convention a parameter is declared with: a "self"
   /// parameter keeps it in "Conv", rather than in its type.

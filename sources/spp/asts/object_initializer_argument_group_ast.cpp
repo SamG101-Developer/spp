@@ -39,6 +39,13 @@ import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import genex;
 
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, InstanceBindings);
+use_alias(spp::analyse::scopes, IsClosedTypeId);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 auto ObjectInitializerArgumentGroupAst::NewEmpty() -> Unique<ObjectInitializerArgumentGroupAst> {
   // Factory for an empty object initializer group.

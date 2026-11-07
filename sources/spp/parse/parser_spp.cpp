@@ -16,6 +16,8 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::asts, AstClone);
+
 SPP_MOD_BEGIN
 constexpr auto kBinChars = spp::StrView("01");
 constexpr auto kOctChars = spp::StrView("01234567");
@@ -1582,15 +1584,15 @@ auto ParserSpp::ParseClosureExpressionParameterAndCaptureGroup()
 }
 
 auto ParserSpp::ParseClosureExpressionParameterGroup()
-  -> Unique<ClosureExpressionParameterGroupAst> {
+  -> Unique<FunctionParameterGroupAst> {
   PARSE_ZERO_OR_MORE(p1, ParseClosureExpressionParameter, ParseTokenComma);
-  return _CreateAst<ClosureExpressionParameterGroupAst>(nullptr, p1, nullptr);
+  return _CreateAst<FunctionParameterGroupAst>(nullptr, p1, nullptr);
 }
 
 auto ParserSpp::ParseClosureExpressionParameter()
-  -> Unique<ClosureExpressionParameterAst> {
+  -> Unique<FunctionParameterAst> {
   PARSE_ALTERNATE(
-    p1, ClosureExpressionParameterAst, ParseFunctionParameterVariadic,
+    p1, FunctionParameterAst, ParseFunctionParameterVariadic,
     ParseFunctionParameterRequired);
   return FORWARD_AST(p1);
 }
@@ -1665,7 +1667,7 @@ auto ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
     auto members = Vec<Shared<TypeAst>>();
     members.emplace_back(shared_cast<TypeAst>(std::move(lhs)));
     members.emplace_back(shared_cast<TypeAst>(std::move(rhs)));
-    lhs = AstClone(generate::common_types::VariantType(pos, std::move(members)));
+    lhs = AstClone(asts::generate::common_types::VariantType(pos, std::move(members)));
   }
 
   return lhs;
@@ -1744,7 +1746,7 @@ auto ParserSpp::ParseTypeParenthesisedExpression()
 auto ParserSpp::ParseTypeNever()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenExclamationMark);
-  return AstClone(generate::common_types::NeverType(p1->PosStart()));
+  return AstClone(asts::generate::common_types::NeverType(p1->PosStart()));
 }
 
 auto ParserSpp::ParseTypeExpressionSimple()
@@ -1795,7 +1797,7 @@ auto ParserSpp::ParseTypeArray()
   PARSE_ONCE(p3, ParseTokenSemicolon);
   PARSE_ONCE(p4, ParseExpression);
   PARSE_ONCE(p5, ParseTokenRightSquareBracket);
-  return AstClone(generate::common_types::ArrayType(
+  return AstClone(asts::generate::common_types::ArrayType(
     p1->PosStart(), shared_cast<TypeAst>(std::move(p2)), std::move(p4)));
 }
 
@@ -1811,7 +1813,7 @@ auto ParserSpp::ParseTypeTuple0Types()
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   auto p2 = Vec<Shared<TypeAst>>();
   PARSE_ONCE(p3, ParseTokenRightParenthesis);
-  return AstClone(generate::common_types::TupleType(
+  return AstClone(asts::generate::common_types::TupleType(
     p1->PosStart(), std::move(p2)));
 }
 
@@ -1825,7 +1827,7 @@ auto ParserSpp::ParseTypeTuple1Types()
   auto temp = Vec<Shared<TypeAst>>();
   p2->LastTypePart()->MarkPackPosition();
   temp.emplace_back(shared_cast<TypeAst>(std::move(p2)));
-  return AstClone(generate::common_types::TupleType(p1->PosStart(), std::move(temp)));
+  return AstClone(asts::generate::common_types::TupleType(p1->PosStart(), std::move(temp)));
 }
 
 auto ParserSpp::ParseTypeTupleNTypes()
@@ -1839,7 +1841,7 @@ auto ParserSpp::ParseTypeTupleNTypes()
     x->LastTypePart()->MarkPackPosition();
     temp.emplace_back(shared_cast<TypeAst>(std::move(x)));
   }
-  return AstClone(generate::common_types::TupleType(
+  return AstClone(asts::generate::common_types::TupleType(
     p1->PosStart(), std::move(temp)));
 }
 

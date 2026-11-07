@@ -13,6 +13,10 @@ import spp.asts.token_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+
 SPP_MOD_BEGIN
 auto FunctionImplementationAst::NewEmpty() -> Unique<FunctionImplementationAst> {
   return MakeUnique<FunctionImplementationAst>(nullptr, decltype(Members)(), nullptr);

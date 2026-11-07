@@ -30,6 +30,8 @@ import genex;
 import std;
 import numex.big_int;
 
+use_alias(spp::analyse::scopes, TypeRef);
+
 SPP_MOD_BEGIN
 auto FunctionImplementationLoweredAst::NewEmpty() -> Unique<FunctionImplementationLoweredAst> {
   // Empty AST.

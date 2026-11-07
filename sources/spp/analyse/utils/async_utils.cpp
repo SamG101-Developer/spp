@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.utils.async_utils;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.symbols;
@@ -13,6 +16,8 @@ import spp.asts.statement_ast;
 import spp.asts.utils.ast_utils;
 import spp.utils.types;
 import std;
+
+use_alias(spp::asts, ConventionTag);
 
 namespace spp::analyse::utils::async_utils {
   namespace {

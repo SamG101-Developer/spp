@@ -47,6 +47,11 @@ import spp.utils.ice;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace spp::asts {
   namespace {
     /// The package a scope belongs to: its module's owner, or "" for

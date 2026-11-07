@@ -14,6 +14,8 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, TypeRef);
+
 namespace spp::analyse::utils::memory_state {
   namespace {
     /// What a borrow is compared by across paths: its place (the

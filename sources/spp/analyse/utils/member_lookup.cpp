@@ -16,6 +16,8 @@ import spp.utils.strings;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, VariableKind);
+
 namespace spp::analyse::utils::member_lookup {
   namespace {
     /// The body that both the wrapper function "ScopesDeclaringVar"

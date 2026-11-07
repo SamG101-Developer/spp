@@ -51,6 +51,11 @@ import spp.asts.type_statement_ast;
 import colex;
 import std;
 
+use_alias(spp::asts, AnnotationAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+
 /// Rules for writing error messages.
 ///
 /// How to write context / error lines:
@@ -71,7 +76,7 @@ SPP_MOD_BEGIN
 namespace spp::analyse::errors {
   namespace {
     /// "InstantiatedFrom".
-    asts::Ast const *instantiated_from = nullptr;
+    Ast const *instantiated_from = nullptr;
 
     /// [CHECKED]
     /// Owned text for the `INLINE_*` macros. A function rather

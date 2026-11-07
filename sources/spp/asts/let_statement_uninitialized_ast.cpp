@@ -19,6 +19,8 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 LetStatementUninitializedAst::LetStatementUninitializedAst(
   decltype(TokLet) &&tok_let,
@@ -104,7 +106,7 @@ auto LetStatementUninitializedAst::Stage8_CheckMemory(
 }
 
 auto LetStatementUninitializedAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
   const auto _meta_guard = MetaGuard(meta);

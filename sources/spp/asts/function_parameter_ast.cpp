@@ -28,6 +28,8 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 FunctionParameterAst::FunctionParameterAst(
   decltype(Var) &&var,
@@ -120,7 +122,7 @@ auto FunctionParameterAst::Stage8_CheckMemory(
 }
 
 auto FunctionParameterAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the local variable so that the symbol table
   // receives the alloca.
   const auto _meta_guard = MetaGuard(meta);

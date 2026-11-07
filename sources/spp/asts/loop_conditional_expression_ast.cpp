@@ -35,6 +35,10 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   decltype(TokLoop) &&tok_loop,

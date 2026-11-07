@@ -15,69 +15,71 @@ import spp.codegen.llvm_ctx;
 import spp.lsp.resolution_index;
 import genex;
 
-use_ns(spp::analyse::utils);
+use_alias(spp::analyse::scopes, Scope);
 
 SPP_MOD_BEGIN
-namespace {
-  /// For the normal caller, once we get an error, we raise it
-  /// and stop the compiler execution. If the sink is enabled
-  /// however, this is for the IDEA plugin's indexing, so we
-  /// store the error in the sink against the member, which
-  /// "poisons" it so every later stage skips it, allowing
-  /// multiple errors, from different members, to show at once.
-  /// Answers whether the member ran without an error.
-  template <typename F>
-  auto CheckMember(Ast *const member, F &&check) -> bool {
-    using namespace spp::analyse::errors;
-    namespace sink = diagnostic_sink;
-    // Normal behaviour: run the member, an error stops execution,
-    // displays the error and terminates the compiler.
-    if (not sink::IsEnabled()) {
-      check(member);
-      return true;
+namespace spp::asts {
+  namespace {
+    /// For the normal caller, once we get an error, we raise it
+    /// and stop the compiler execution. If the sink is enabled
+    /// however, this is for the IDEA plugin's indexing, so we
+    /// store the error in the sink against the member, which
+    /// "poisons" it so every later stage skips it, allowing
+    /// multiple errors, from different members, to show at once.
+    /// Answers whether the member ran without an error.
+    template <typename F>
+    auto CheckMember(Ast *const member, F &&check) -> bool {
+      using namespace spp::analyse::errors;
+      namespace sink = diagnostic_sink;
+      // Normal behaviour: run the member, an error stops execution,
+      // displays the error and terminates the compiler.
+      if (not sink::IsEnabled()) {
+        check(member);
+        return true;
+      }
+
+      // A member that an earlier stage "poisoned" (via the "report"
+      // method) is not run again.
+      if (sink::IsPoisoned(member)) { return false; }
+
+      // Otherwise, try to run the check for the member, and if it
+      // raises an error, then report it to the sink.
+      try {
+        check(member);
+        return true;
+      }
+      catch (SemanticError const &e) {
+        sink::Report(e, member);
+        return false;
+      }
     }
 
-    // A member that an earlier stage "poisoned" (via the "report"
-    // method) is not run again.
-    if (sink::IsPoisoned(member)) { return false; }
-
-    // Otherwise, try to run the check for the member, and if it
-    // raises an error, then report it to the sink.
-    try {
-      check(member);
-      return true;
+    /// Whether a member has scopes of its own for the walk to skip.
+    /// A member's scope is where it was declared unless it makes
+    /// one, and skipping past the scope the walk is already in (or
+    /// one above it) would throw away the rest of the module.
+    auto OwnsScope(Ast const &member, Scope const &walk_scope) -> bool {
+      for (auto const *s = &walk_scope; s != nullptr; s = s->Parent) {
+        if (s == member.GetAstScope()) { return false; }
+      }
+      return member.GetAstScope() != nullptr;
     }
-    catch (SemanticError const &e) {
-      sink::Report(e, member);
-      return false;
-    }
-  }
 
-  /// Whether a member has scopes of its own for the walk to skip.
-  /// A member's scope is where it was declared unless it makes
-  /// one, and skipping past the scope the walk is already in (or
-  /// one above it) would throw away the rest of the module.
-  auto OwnsScope(Ast const &member, Scope const &walk_scope) -> bool {
-    for (auto const *s = &walk_scope; s != nullptr; s = s->Parent) {
-      if (s == member.GetAstScope()) { return false; }
-    }
-    return member.GetAstScope() != nullptr;
-  }
-
-  /// "CheckMember" for a stage that walks the scopes: a member
-  /// that did not run to the end is skipped past, so the walk
-  /// continues at the next member. The walk only moves forwards,
-  /// and an error can be raised after the member has walked past
-  /// its own scopes (a value left unconsumed is found as the
-  /// function's scope is left), so it is first put back where it
-  /// stood before the member, from where the member's scopes are
-  /// all still ahead.
-  template <typename F>
-  auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
-    const auto start = sm->Position();
-    if (not CheckMember(member, std::forward<F>(stage))) {
-      sm->ReturnTo(start);
-      if (OwnsScope(*member, *start.At)) { spp::ignore = sm->SkipSubtree(member->GetAstScope()); }
+    /// "CheckMember" for a stage that walks the scopes: a member
+    /// that did not run to the end is skipped past, so the walk
+    /// continues at the next member. The walk only moves forwards,
+    /// and an error can be raised after the member has walked past
+    /// its own scopes (a value left unconsumed is found as the
+    /// function's scope is left), so it is first put back where it
+    /// stood before the member, from where the member's scopes are
+    /// all still ahead.
+    template <typename F>
+    auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
+      const auto start = sm->Position();
+      if (not CheckMember(member, std::forward<F>(stage))) {
+        sm->ReturnTo(start);
+        if (OwnsScope(*member, *start.At)) { spp::ignore = sm->SkipSubtree(member->GetAstScope()); }
+      }
     }
   }
 }

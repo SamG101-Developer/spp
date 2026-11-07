@@ -37,6 +37,15 @@ import spp.utils.ice;
 import spp.utils.interner;
 import genex;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, AstCloneShared);
+use_alias(spp::asts, LiteralAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace spp::analyse::utils::generic_inference {
   namespace {
     /// [CHECKED]
@@ -81,7 +90,7 @@ namespace spp::analyse::utils::generic_inference {
     auto CheckTypeArgConstraints(
       Vec<Pair<GenericParameterAst const*, Vec<Pair<TypeId, Shared<TypeAst>>>>> const &args,
       Scope const &written_scope, GenericSubst const &bindings,
-      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
+      ScopeManager &sm, CompilerMetaData &meta) -> void {
       using errors::SppGenericConstraintError;
       auto const &scope = *sm.CurrentScope;
       for (auto const &[param, targets] : args) {
@@ -96,7 +105,7 @@ namespace spp::analyse::utils::generic_inference {
               // checked for visibility, where the parameter is declared:
               // a module-private alias there is not visible from, say,
               // a closure argument's (global) scope, and needn't be.
-              const auto _meta_guard = meta::MetaGuard(&meta);
+              const auto _meta_guard = MetaGuard(&meta);
               meta.AllowAbstractType = true;
               meta.IgnoreAccessModifierViolations = true;
               sub->Stage7_AnalyseSemantics(&con_sm, &meta);
@@ -152,7 +161,7 @@ namespace spp::analyse::utils::generic_inference {
     /// list is keyed from them ("Scope::ArgsIdOf").
     auto NameArgs(
       Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      meta::CompilerMetaData &meta,
+      CompilerMetaData &meta,
       FuncRef<void(Vec<GenericArgumentAst*> const &)> elements,
       FuncRef<void(GenericArgumentAst &, GenericArgumentAst const &)> bind) -> void {
       const auto keyword_args = args
@@ -182,7 +191,7 @@ namespace spp::analyse::utils::generic_inference {
 
       const auto targets = type_resolution::ParamsBoundByArgs(args | genex::views::ptr | genex::to<Vec>(), params);
 
-      const auto _meta_guard = meta::MetaGuard(&meta);
+      const auto _meta_guard = MetaGuard(&meta);
       meta.TypeAnalysisTypeScope = nullptr;
 
       auto const *keyword_before = static_cast<GenericArgumentAst const*>(nullptr);
@@ -219,9 +228,9 @@ namespace spp::analyse::utils::generic_inference {
     /// is analysed once types resolve.
     auto NameTypeArgs(
       Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
+      ScopeManager &sm, CompilerMetaData &meta) -> void {
       const auto analyse = [&](GenericArgumentAst &named) {
-        if (meta.CurrentStage >= meta::CompilerStage::kResolveDeclarations) {
+        if (meta.CurrentStage >= CompilerStage::kResolveDeclarations) {
           named.TypeVal->Stage7_AnalyseSemantics(&sm, &meta);
         }
       };
@@ -242,12 +251,12 @@ namespace spp::analyse::utils::generic_inference {
     /// - but by the argument's own "AnalyseCompVal", which folds it or checks a copy.
     auto NameCompArgs(
       Vec<Unique<GenericArgumentAst>> &args, Vec<GenericParameterAst*> const &params, Ast const &owner,
-      ScopeManager &sm, meta::CompilerMetaData &meta) -> void {
+      ScopeManager &sm, CompilerMetaData &meta) -> void {
       const auto analyse = [&](GenericArgumentAst &arg) {
         auto &val = *arg.CompVal;
         const auto stage = meta.CurrentStage;
-        if (stage >= meta::CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
-          or (stage >= meta::CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
+        if (stage >= CompilerStage::kResolveDeclarations and (not comp_generics::NeedsSupScopesToType(val)
+          or (stage >= CompilerStage::kPreAnalyseSemantics and not comp_generics::IsCompOperator(val)))) {
           arg.AnalyseCompExpr(val, &sm, &meta);
         }
       };
@@ -276,7 +285,7 @@ namespace spp::analyse::utils::generic_inference {
     /// A comp pack's element, typed: one naming a template's open pack is what that pack declares each element to be
     /// ("PackInfo"), not the open tuple it is as a whole.
     auto CompElementType(
-      ExpressionAst &elem, ScopeManager &sm, meta::CompilerMetaData &meta) -> Shared<TypeAst> {
+      ExpressionAst &elem, ScopeManager &sm, CompilerMetaData &meta) -> Shared<TypeAst> {
       auto const *const name = elem.To<IdentifierAst>();
       auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
       if (sym != nullptr and sym->Pack.has_value() and sym->Pack->Open) { return sym->Pack->Element; }
@@ -371,7 +380,7 @@ struct spp::analyse::utils::generic_inference::GenericSolver::_Equation {
 };
 
 GenericSolver::GenericSolver(
-  GenericParameterGroupAst const &params, Scope const &owner_scope, ScopeManager &sm, meta::CompilerMetaData &meta) :
+  GenericParameterGroupAst const &params, Scope const &owner_scope, ScopeManager &sm, CompilerMetaData &meta) :
   _Params(&params), _OwnerScope(&owner_scope), _Sm(&sm), _Meta(&meta) {
   for (auto const *param : params.GetAllParams()) {
     auto entry = MakeUnique<_Entry>();
@@ -531,7 +540,7 @@ auto GenericSolver::_TakeSelf(
   if (_Self != nullptr) { return _Self->IsBound() ? nullptr : _Self; }
   auto entry = MakeUnique<_Entry>();
   entry->Param = nullptr;
-  entry->Name = static_shared_cast<TypeIdentifierAst>(generate::common_types::SelfType(0));
+  entry->Name = static_shared_cast<TypeIdentifierAst>(asts::generate::common_types::SelfType(0));
   entry->Name->StampTypeId(scopes::ParamTypeId(0));
   entry->Emit = emit;
   _Self = entry.get();
@@ -813,8 +822,8 @@ auto GenericSolver::_ReadCompValues() -> bool {
   // does: resolving a name earlier caches its type without them.
   auto &sm = *_Sm;
   auto &meta = *_Meta;
-  if (meta.CurrentStage < meta::CompilerStage::kResolveDeclarations) { return false; }
-  const auto sups_attached = meta.CurrentStage >= meta::CompilerStage::kAttachSupScopes;
+  if (meta.CurrentStage < CompilerStage::kResolveDeclarations) { return false; }
+  const auto sups_attached = meta.CurrentStage >= CompilerStage::kAttachSupScopes;
   auto newly_bound = false;
   for (auto const &entry : _Entries) {
     if (not entry->IsCompParam() or entry->CompVals.empty() or entry->IsCompValueRead) { continue; }
@@ -951,7 +960,7 @@ auto GenericSolver::_ApplyDefaults() -> void {
     if (entry->IsTypeParam() and entry->Param->IsOptional()) {
       auto def_type = AstCloneShared(entry->Param->TypeDefault);
       auto def_id = scopes::TypeId(nullptr);
-      if (_Meta->CurrentStage >= meta::CompilerStage::kGenTopLvlAliases) {
+      if (_Meta->CurrentStage >= CompilerStage::kGenTopLvlAliases) {
         if (not def_type->IsSelfType()) {
           def_id = _OwnerScope->TypeIdOf(*def_type);
           entry->IsTypeFromDefault = true;
@@ -1038,7 +1047,7 @@ auto GenericSolver::_CrossSubstitute() -> void {
   for (auto const &entry : _Entries) {
     const auto rewrites_type = entry->IsTypeFromDefault and entry->TypeVals[0].Id != nullptr;
     const auto rewrites_comp = entry->IsCompFromDefault
-      and _Meta->CurrentStage >= meta::CompilerStage::kGenTopLvlAliases
+      and _Meta->CurrentStage >= CompilerStage::kGenTopLvlAliases
       and entry->Param->WrittenCompDefault->To<LiteralAst>() == nullptr;
     if (not rewrites_type and not rewrites_comp) { continue; }
     auto bindings = _Bindings(entry.get());
@@ -1107,7 +1116,7 @@ auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -
     const auto needs_sups = val.IsPack
       ? genex::any_of(val.Elems, [](auto const &e) { return comp_generics::NeedsSupScopesToType(*e); })
       : comp_generics::NeedsSupScopesToType(*val.Val);
-    if (meta.CurrentStage < meta::CompilerStage::kPreAnalyseSemantics and needs_sups) { continue; }
+    if (meta.CurrentStage < CompilerStage::kPreAnalyseSemantics and needs_sups) { continue; }
     const auto p_type = type_resolution::ReadType(
       *entry->Param->CompType, ExprSubst::Across(*_OwnerScope, bindings, *sm.CurrentScope));
 
@@ -1162,8 +1171,8 @@ auto GenericSolver::Solve(
   // A comp value is typed once the "sup" scopes are attached; a type's constraints, which name super classes, from the
   // pre-analysis stage, unless a substituted type is being re-read ("SkipSubstitutedConstraintChecks").
   // Both read the solution through one binding of it.
-  const auto check_comps = _Meta->CurrentStage >= meta::CompilerStage::kAttachSupScopes;
-  const auto check_types = _Meta->CurrentStage >= meta::CompilerStage::kPreAnalyseSemantics
+  const auto check_comps = _Meta->CurrentStage >= CompilerStage::kAttachSupScopes;
+  const auto check_types = _Meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
     and not _Meta->SkipSubstitutedConstraintChecks;
   if (not check_comps and not check_types) { return; }
   const auto bindings = _Bindings();
@@ -1265,7 +1274,7 @@ SPP_MOD_END
 /// [CHECKED]
 auto spp::analyse::utils::generic_inference::NamedGnArgs(
   GenericArgumentGroupAst const &written, GenericParameterGroupAst const &p_group, Scope const *params_scope,
-  Ast const &owner, ScopeManager &sm, meta::CompilerMetaData &meta) -> Unique<GenericArgumentGroupAst> {
+  Ast const &owner, ScopeManager &sm, CompilerMetaData &meta) -> Unique<GenericArgumentGroupAst> {
   // The copy's comp arguments are given their parameters' types
   // before they are named, which analyses the positional ones.
   auto named = AstClone(&written);

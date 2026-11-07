@@ -31,6 +31,8 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, ScopeBlockName);
+
 SPP_MOD_BEGIN
 CaseExpressionBranchAst::CaseExpressionBranchAst(
   decltype(Op) &&op,

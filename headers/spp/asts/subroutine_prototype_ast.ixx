@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(SubroutinePrototypeAst);
+use_common(SubroutinePrototypeAst);
 
 SPP_EXP_CLS struct spp::asts::SubroutinePrototypeAst final : FunctionPrototypeAst {
   SPP_AST_KIND(SubroutinePrototypeAst)

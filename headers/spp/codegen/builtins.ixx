@@ -12,6 +12,7 @@ import std;
 
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct FunctionPrototypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
 use(spp::codegen::builtins, struct LoweredFnImpl);
 
 /// A lowered function implementation is an implementation
@@ -21,7 +22,7 @@ SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
   Func<void(
     ScopeManager *,
     FunctionPrototypeAst const *,
-    meta::CompilerMetaData *,
+    CompilerMetaData *,
     codegen::LlvmCtx *,
     llvm::Type *)> LlvmImpl;
   Unique<analyse::utils::comp_time_intrinsics::CompTimeFn> CompTimeImpl;

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorStaticMemberAccessAst);
+use_common(PostfixExpressionOperatorStaticMemberAccessAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);

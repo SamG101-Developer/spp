@@ -25,6 +25,7 @@ use(spp::analyse::scopes, struct PackInfo);
 use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
+use(spp::asts, struct Ast);
 use(spp::asts::mixins, struct VisibilityAst);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
@@ -35,6 +36,9 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeStatementAst);
+use(spp::asts, enum class ConventionTag);
+use(spp::asts::utils, enum class Visibility);
+use(spp::codegen, struct LlvmTypeSymbolInfo);
 
 /// What a type resolves to: the symbol of the type, and how
 /// a value of it is held. The convention is not part of the
@@ -391,7 +395,7 @@ namespace spp::analyse::scopes {
 SPP_EXP_CLS struct spp::analyse::scopes::PackInfo {
   /// The type the pack declares for each element, with its convention ("&Ts" for "..xs: &Ts", "S32" for
   /// "..xs: S32"): what "xs.N" is in a template.
-  Shared<asts::TypeAst> Element;
+  Shared<TypeAst> Element;
 
   /// Whether its length is unknown where it is read: a template's, whose spreads are resolved per length. An
   /// instance's is closed, a list of the call's elements.
@@ -399,7 +403,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::PackInfo {
 
   /// A closed pack's elements: the parameters an instance has in its place ("xs#0", "xs#1", ...), one per element, in
   /// order. "..xs" is them, and "xs.N" the Nth. Empty while open.
-  Vec<Shared<asts::IdentifierAst>> Elements;
+  Vec<Shared<IdentifierAst>> Elements;
 };
 
 /// A variable symbol is used extremely often, for class fields,
@@ -477,16 +481,16 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// The visibility of a symbol no visibility-enabled ast declares (a generic
   /// argument or parameter is public, a local private). Read through
   /// "GetVisibility".
-  asts::utils::Visibility VisibilityFallback;
+  Visibility VisibilityFallback;
 
   /// The declaration whose visibility this is, read through rather than copied:
   /// its annotations set it in stage 4 or 5, after the symbol is made. A
   /// function's mock reads its latest overload's ("FunctionPrototypeAst"), which
   /// the next overload's visibility is checked against.
-  asts::mixins::VisibilityAst const *VisibilityFrom = nullptr;
+  VisibilityAst const *VisibilityFrom = nullptr;
 
   /// The visibility: its declaration's ("VisibilityFrom"), else "VisibilityFallback".
-  SPP_ATTR_NODISCARD auto GetVisibility() const -> asts::utils::Visibility;
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> Visibility;
 
   /// The memory info for this variable, unique per symbol and
   /// used extensively in stage 8 memory analysis. Holds all move,
@@ -512,7 +516,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// The statement declaring this constant, which a fold reading it before stage 7 has reached it analyses first
   /// ("CmpStatementAst::AnalyseAhead"). Null for anything else, and for a copy made per instantiation, whose value is
   /// read through its template's.
-  asts::CmpStatementAst *Stmt = nullptr;
+  CmpStatementAst *Stmt = nullptr;
 
   VariableSymbol(
     Shared<IdentifierAst> name,
@@ -520,7 +524,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     Scope *ScopeDefinedIn,
     VariableKind kind,
     bool is_mutable = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate);
+    Visibility visibility = Visibility::kPrivate);
 
   VariableSymbol(VariableSymbol const &that);
   ~VariableSymbol() override;
@@ -699,14 +703,14 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// The visibility of a type symbol no visibility-enabled ast declares, as for
   /// a variable symbol (a generic argument or parameter is public). Read
   /// through "GetVisibility".
-  asts::utils::Visibility VisibilityFallback;
+  Visibility VisibilityFallback;
 
   /// The declaration whose visibility this is, read through rather than copied, as for a variable symbol: a class's,
   /// an alias's. An instance has none of its own, and is its template's.
-  asts::mixins::VisibilityAst const *VisibilityFrom = nullptr;
+  VisibilityAst const *VisibilityFrom = nullptr;
 
   /// The visibility: its declaration's, else its template's for an instance ("InstanceOf"), else "VisibilityFallback".
-  SPP_ATTR_NODISCARD auto GetVisibility() const -> asts::utils::Visibility;
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> Visibility;
 
   /// How a binding holds what it is bound to: the convention its
   /// argument was written with ("T=&Str" holds "Str" by "&");
@@ -716,7 +720,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// The LLVM metadata for this type, used during stage 10 and 11
   /// of the compilation pipeline. Currently, tracks the LLVM type
   /// and the field index map for S++ layout convention.
-  Shared<codegen::LlvmTypeSymbolInfo> LlvmInfo;
+  Shared<LlvmTypeSymbolInfo> LlvmInfo;
 
   /// Set when this symbol names an alias rather than a class. It
   /// contains all the alias information required.
@@ -752,7 +756,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     Scope *scope_defined_in,
     TypeKind kind,
     bool is_directly_copyable = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,
+    Visibility visibility = Visibility::kPrivate,
     ConventionTag convention = ConventionTag::MOV,
     Vec<Shared<TypeAst>> const &generic_constraints = {});
 

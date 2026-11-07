@@ -7,7 +7,7 @@ import spp.asts.primary_expression_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FoldExpressionAst);
+use_common(FoldExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);

@@ -40,6 +40,10 @@ import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, VariableKind);
+
 SPP_MOD_BEGIN
 PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
   decltype(TokDblColon) &&tok_dbl_colon,

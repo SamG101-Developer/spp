@@ -9,7 +9,7 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::utils::errors, struct AbstractError);
-use(spp::utils::errors, template <typename T> struct AbstractErrorBuilder;);
+use(spp::utils::errors, (typename T) struct AbstractErrorBuilder;);
 
 /// The lowest level error type, the abstract error: contains
 /// the key features of an error raised in the S++ compiler;

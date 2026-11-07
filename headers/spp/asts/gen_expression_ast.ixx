@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenExpressionAst);
+use_common(GenExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct TokenAst);

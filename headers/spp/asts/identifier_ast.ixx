@@ -11,13 +11,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(IdentifierAst);
+use_common(IdentifierAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::scopes, struct TypeRef);
+use_alias(spp::analyse::scopes, CompId);
 
 GCC_BUGZILLA_127341_VTABLE_TYPEINFO_MISSING
 SPP_EXP_CLS struct spp::asts::IdentifierAst final :
@@ -63,7 +64,7 @@ public:
 
   auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override;
 
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;
@@ -81,8 +82,7 @@ public:
   SPP_ATTR_NODISCARD auto ExprParts() const -> Vec<IdentifierAst*> override;
 
   SPP_ATTR_NODISCARD auto ReadExpr(
-    analyse::scopes::ExprSubst const &sub) const
-    -> Shared<ExpressionAst> override;
+    ExprSubst const &sub) const -> Shared<ExpressionAst> override;
 
   SPP_ATTR_NODISCARD auto ToView() const noexcept -> StrView;
 
@@ -108,7 +108,7 @@ public:
 
   /// Record the comp parameter this name resolved to; see
   /// "StampedCompId".
-  auto StampCompId(const analyse::scopes::CompId id) const noexcept -> void {
+  auto StampCompId(const CompId id) const noexcept -> void {
     _StampedCompId = id;
   }
 
@@ -123,7 +123,7 @@ private:
 
   utils::InternedId _NameId;
 
-  mutable analyse::scopes::CompId _StampedCompId = nullptr;
+  mutable CompId _StampedCompId = nullptr;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::IdentifierAst)

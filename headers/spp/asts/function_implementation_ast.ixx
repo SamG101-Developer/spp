@@ -6,7 +6,7 @@ import spp.asts.inner_scope_expression_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionImplementationAst);
+use_common(FunctionImplementationAst);
 use(spp::asts, struct Ast);
 
 /// The implementation of a function: the body holding the

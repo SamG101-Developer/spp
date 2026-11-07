@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ModulePrototypeAst);
+use_common(ModulePrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct ModuleImplementationAst);

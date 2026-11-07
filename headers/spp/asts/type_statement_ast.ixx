@@ -13,7 +13,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeStatementAst);
+use_common(TypeStatementAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct AnnotationAst);

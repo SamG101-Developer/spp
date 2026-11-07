@@ -7,7 +7,7 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAliasAst);
+use_common(LocalVariableSingleIdentifierAliasAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 

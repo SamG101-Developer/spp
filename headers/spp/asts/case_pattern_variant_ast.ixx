@@ -8,7 +8,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantAst);
+use_common(CasePatternVariantAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LocalVariableAst);

@@ -43,6 +43,9 @@ import spp.lsp.resolution_index;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 namespace {
   /// Whether a borrow may be written somewhere in "type": a convention

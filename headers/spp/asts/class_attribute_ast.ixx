@@ -9,7 +9,7 @@ import spp.asts.mixins.visibility_enabled_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClassAttributeAst);
+use_common(ClassAttributeAst);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);

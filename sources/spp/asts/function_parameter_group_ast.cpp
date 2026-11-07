@@ -26,6 +26,9 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 FunctionParameterGroupAst::FunctionParameterGroupAst(
   decltype(TokL) &&tok_l,

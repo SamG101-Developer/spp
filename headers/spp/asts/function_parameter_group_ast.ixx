@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterGroupAst);
+use_common(FunctionParameterGroupAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct FunctionParameterAst);
 use(spp::asts, struct FunctionParameterOptionalAst);

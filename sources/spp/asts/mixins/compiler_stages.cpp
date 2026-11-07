@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.mixins.compiler_stages;
 import spp.analyse.errors.semantic_error;
@@ -8,8 +7,6 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
-
-use_ns(spp::analyse::utils);
 
 SPP_MOD_BEGIN
 CompilerStages::CompilerStages() = default;

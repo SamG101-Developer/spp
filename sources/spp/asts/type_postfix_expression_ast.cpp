@@ -24,6 +24,8 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 TypePostfixExpressionAst::TypePostfixExpressionAst(
   decltype(Lhs) lhs,

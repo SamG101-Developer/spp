@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.utils.fn_signatures;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -26,6 +29,21 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import spp.utils.types;
 import genex;
+
+use_alias(spp::analyse::scopes, BareOf);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, AstCloneVec);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, FunctionParameterRequiredAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::fn_signatures {
   namespace {
@@ -208,7 +226,7 @@ namespace spp::analyse::utils::fn_signatures {
 auto spp::analyse::utils::fn_signatures::CheckForConflictingOverload(
   Scope const &this_scope, Scope const *target_scope,
   FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-  meta::CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*> {
+  CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*> {
   //
 
   // Get the methods that belong to this type, or any
@@ -367,7 +385,7 @@ auto spp::analyse::utils::fn_signatures::SameSignature(
 auto spp::analyse::utils::fn_signatures::CheckForConflictingOverride(
   Scope const &this_scope, Scope const *target_scope,
   FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-  meta::CompilerMetaData *meta)
+  CompilerMetaData *meta)
   -> FunctionPrototypeAst* {
   // Get the existing functions that belong to this
   // type, or any of its supertypes.

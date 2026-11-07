@@ -25,6 +25,11 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerStage);
+
 SPP_MOD_BEGIN
 namespace {
   /// The first borrow written in "type" or, at any depth, its generic arguments (a variant's too, once analysed into

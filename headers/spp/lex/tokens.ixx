@@ -5,8 +5,8 @@ export module spp.lex.tokens;
 import spp.utils.types;
 import std;
 
-use(spp::lex, enum class RawTokenType : std::uint8_t);
-use(spp::lex, enum class SppTokenType : std::uint8_t);
+use(spp::lex, enum class RawTokenType);
+use(spp::lex, enum class SppTokenType);
 use(spp::lex, class RawToken);
 
 namespace spp::lex {
@@ -17,7 +17,7 @@ namespace spp::lex {
 
 /// The raw tokens that are created from the lexer. These are non-composed, so
 /// <= is [TK_LESS_THEN TK_EQUALS].
-SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::RawTokenType {
   LX_CHARACTER,
   LX_DIGIT,
 
@@ -94,7 +94,7 @@ SPP_EXP_CLS enum class spp::lex::RawTokenType : std::uint8_t {
 /// The composed tokens that are registered on TokenAst ASTs. These are used in
 /// the parser, by taking [TK_LESS_THAN, TK_EQUALS], and giving out the token
 /// TK_LESS_THAN_EQUALS for example.
-SPP_EXP_CLS enum class spp::lex::SppTokenType : std::uint8_t {
+SPP_EXP_CLS enum class spp::lex::SppTokenType {
   LX_CHARACTER,
   LX_DIGIT,
   LX_CHAR,

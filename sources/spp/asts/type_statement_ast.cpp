@@ -36,6 +36,12 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+use_alias(spp::analyse::scopes, AliasInfo);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopePositionGuard);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 TypeStatementAst::TypeStatementAst(
   decltype(Annotations) &&annotations,

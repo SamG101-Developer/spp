@@ -26,6 +26,10 @@ import spp.codegen.llvm_type;
 import spp.utils.ice;
 import spp.utils.uid;
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
   decltype(TokMut) &&tok_mut,
@@ -180,7 +184,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
 }
 
 auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Create the alloca for the variable.
   const auto uid = "." + Uid();

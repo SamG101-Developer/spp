@@ -15,6 +15,8 @@ import spp.asts.unary_expression_operator_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 UnaryExpressionAst::UnaryExpressionAst(
   decltype(Op) &&tok_op,

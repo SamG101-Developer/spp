@@ -8,7 +8,7 @@ import spp.asts.type_postfix_expression_operator_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypePostfixExpressionOperatorNestedTypeAst);
+use_common(TypePostfixExpressionOperatorNestedTypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 

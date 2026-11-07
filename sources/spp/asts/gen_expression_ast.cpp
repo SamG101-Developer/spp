@@ -46,6 +46,8 @@ import spp.utils.ptr;
 import spp.utils.uid;
 import llvm;
 
+use_alias(spp::asts::meta, MetaGuard);
+
 SPP_MOD_BEGIN
 GenExpressionAst::GenExpressionAst(
   decltype(TokGen) &&tok_gen,

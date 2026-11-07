@@ -9,13 +9,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LetStatementInitializedAst);
+use_common(LetStatementInitializedAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LocalVariableAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 
 SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(LetStatementInitializedAst);
 
   /// The "let" token that starts this statement.
@@ -59,3 +60,5 @@ SPP_EXP_CLS struct spp::asts::LetStatementInitializedAst final : LetStatementAst
   SPP_ATTR_NODISCARD auto Diverges(
     ScopeManager *sm, CompilerMetaData *meta) -> bool override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LetStatementInitializedAst)

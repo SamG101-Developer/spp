@@ -38,6 +38,15 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+use_alias(spp::analyse::scopes, ConventionAstOf);
+use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeStructureGeneration);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+
 namespace spp::analyse::utils::type_members {
   namespace {
     auto FindHeldByValueImpl(

@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.drop_utils;
@@ -32,6 +33,10 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
 import genex;
+
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, StringLiteralAst);
 
 namespace spp::analyse::utils::drop_utils {
   namespace {
@@ -280,7 +285,7 @@ auto spp::analyse::utils::drop_utils::CheckDestructorStillReachable(
       const auto [part_ref, part_scope] = regions::DescendToPart(root, *sm.CurrentScope, path, i);
       if (part_ref.Symbol == nullptr or part_scope == nullptr) { break; }
 
-      const auto destructor = drop_utils::FindDropOverload(*part_ref.Symbol, sm, meta);
+      const auto destructor = FindDropOverload(*part_ref.Symbol, sm, meta);
       if (destructor == nullptr) { continue; }
 
       // Held in a local so the view handed to the error

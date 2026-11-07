@@ -12,6 +12,7 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct ExprSubst);
+use(spp::analyse::scopes, struct GenericSubst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
@@ -22,6 +23,7 @@ use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
+use(spp::asts::meta, struct CompilerMetaData);
 
 namespace spp::analyse::utils::type_resolution {
   /// Whether "AnalyseWrittenType" replaces "Self" from the scope,
@@ -34,7 +36,7 @@ namespace spp::analyse::utils::type_resolution {
   /// Self handling, general analysis etc. Use this when an AST
   /// needs to analyse a TypeAst field.
   SPP_EXP_FUN auto AnalyseWrittenType(
-    TypeAst const &written, ScopeManager &sm, meta::CompilerMetaData &meta,
+    TypeAst const &written, ScopeManager &sm, CompilerMetaData &meta,
     SelfPolicy self = SelfPolicy::kSubstitute) -> Shared<TypeAst>;
 
   /// Record on a written type the identity "sym" (what it

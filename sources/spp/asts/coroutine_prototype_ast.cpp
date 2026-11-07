@@ -38,6 +38,9 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+use_alias(spp::asts::meta, IsBindingsScope);
+use_alias(spp::asts::meta, MetaGuard);
+
 namespace {
   /// The runtime's allocator. A coroutine frame is allocated
   /// and released by the coroutine itself rather then through
