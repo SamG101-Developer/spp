@@ -34,9 +34,9 @@ namespace spp::utils::stats {
   SPP_EXP_CMP constexpr auto kCounterCount = static_cast<std::size_t>(
     Counter::Count_);
 
-  /// The running totals, by "Counter". Zero-initialised, so constant
-  /// initialised, which MSVC needs of an exported inline variable.
-  SPP_EXP_CMP auto Counts = Arr<std::uint64_t, kCounterCount>{};
+  /// The running totals, by "Counter". Defined in stats.cpp: MSVC emits no
+  /// definition for an exported inline variable.
+  SPP_EXP_FUN extern Arr<std::uint64_t, kCounterCount> Counts;
 
   /// Count one unit of work. Always on: one increment is cheaper than the
   /// check that would skip it.

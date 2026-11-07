@@ -114,6 +114,8 @@ namespace {
   }
 }
 
+spp::Arr<std::uint64_t, spp::utils::stats::kCounterCount> spp::utils::stats::Counts{};
+
 auto spp::utils::stats::Enable(Path file) -> void {
   auto &state = TheState();
   state = State();

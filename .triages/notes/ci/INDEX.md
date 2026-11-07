@@ -12,7 +12,7 @@
 - [MSVC has no string+string_view](msvc-lacks-string-plus-view.md) — libstdc++-only; parenthesise macros
 - [MSVC transitive namespace lookup](msvc-transitive-namespace-lookup.md) — relative `utils::` in spp::analyse hits analyse::utils; write spp::utils::
 - [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
-- [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp
+- [MSVC exported inline vars](msvc-exported-inline-vars.md) — mutable export inline vars undefined at link, even constant-initialised (stats::Counts); extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
 - [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; ci-success needs lanes
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
