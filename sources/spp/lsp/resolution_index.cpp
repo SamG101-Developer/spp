@@ -909,10 +909,16 @@ auto spp::lsp::resolution_index::RecordOverridables(
     }
   }
 
+  // The names as written, which is what an editor matches the
+  // block by: by now "LoadTarget" has qualified "ext.Name".
+  const auto as_written = [](TypeAst const &type) -> Str {
+    return type.WrittenText().empty() ? type.ToString() : type.WrittenText();
+  };
+
   // An empty list is kept too: it says the block has nothing
   // left to override, rather than that it was never looked at.
   Current().Overridables.emplace_back(OverridableList{
-    .Where = std::move(where), .Name = ext.Name->ToString(), .SuperCls = ext.SuperCls->ToString(),
+    .Where = std::move(where), .Name = as_written(*ext.Name), .SuperCls = as_written(*ext.SuperCls),
     .Methods = std::move(methods)
   });
 }
