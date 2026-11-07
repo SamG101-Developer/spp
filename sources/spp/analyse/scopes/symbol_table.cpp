@@ -11,6 +11,9 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_alias(spp::analyse::scopes, NamespaceSymbol);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TypeIdentifierAst);
 
