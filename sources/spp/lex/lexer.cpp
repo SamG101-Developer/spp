@@ -8,7 +8,7 @@ import genex;
 import magic_enum;
 
 SPP_MOD_BEGIN
-Lexer::Lexer(Str code, const StrView prelude)
+spp::lex::Lexer::Lexer(Str code, const StrView prelude)
   : _Code("\n" + std::move(code)) {
   // Add the prelude at the end so it doesn't offset line numbers from the
   // actual code. Due to the order-agnostic definition system, this is fine.
@@ -19,7 +19,7 @@ Lexer::Lexer(Str code, const StrView prelude)
   }
 }
 
-auto Lexer::Lex() -> Vec<RawToken> {
+auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
   // Define tracker variables.
   auto tokens = Vec<RawToken>();
   auto in_char = false;

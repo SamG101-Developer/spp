@@ -16,6 +16,7 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 
 SPP_EXP_CLS struct spp::asts::LoopExpressionAst : PrimaryExpressionAst {
+  SPP_GCC_VTABLE_FIX
 protected:
   /// The type the loop's "exit"s and its "else" agreed on, at stage 7
   /// ("type_join::TypeJoin"); none for a loop with no "exit".
@@ -49,3 +50,5 @@ public:
 
   auto InferTypeRef(ScopeManager *sm, CompilerMetaData *meta) -> TypeRef override;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::LoopExpressionAst)

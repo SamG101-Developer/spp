@@ -43,8 +43,14 @@ use_alias(spp::analyse::scopes, ScopeTypeIdentifierName);
 use_alias(spp::analyse::scopes, TypeKind);
 use_alias(spp::analyse::scopes, TypeRef);
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ClassPrototypeAst::ClassPrototypeAst(
+spp::asts::ClassPrototypeAst::ClassPrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCls) &&tok_cls,
   decltype(Name) name,
@@ -62,19 +68,19 @@ ClassPrototypeAst::ClassPrototypeAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
 }
 
-ClassPrototypeAst::~ClassPrototypeAst() = default;
+spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
 
-auto ClassPrototypeAst::PosStart() const -> std::size_t {
+auto spp::asts::ClassPrototypeAst::PosStart() const -> std::size_t {
   // Use the "cls" token.
   return TokCls->PosStart();
 }
 
-auto ClassPrototypeAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClassPrototypeAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClassPrototypeAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<ClassPrototypeAst>(
     AstCloneVec(Annotations),
     AstClone(TokCls),
@@ -90,7 +96,7 @@ auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ClassPrototypeAst::ToString() const -> Str {
+auto spp::asts::ClassPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -101,7 +107,7 @@ auto ClassPrototypeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ClassPrototypeAst::Stage1_PreProcess(
+auto spp::asts::ClassPrototypeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the AST by calling the base class method and
   // then processing annotations and the body.
@@ -110,7 +116,7 @@ auto ClassPrototypeAst::Stage1_PreProcess(
   Impl->Stage1_PreProcess(this);
 }
 
-auto ClassPrototypeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create the class scope, which is the scope for the class
   // prototype.
@@ -132,7 +138,7 @@ auto ClassPrototypeAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
+auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   // Register "Self" before any alias in the body is resolved,
@@ -146,7 +152,7 @@ auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage4_ResolveDeclarations(
+auto spp::asts::ClassPrototypeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Qualify the types in the class body.
   sm->MoveToNextScope();
@@ -157,7 +163,7 @@ auto ClassPrototypeAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage5_LoadSupScopes(
+auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types_precompiled::COPY;
@@ -195,7 +201,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Pre-analyse semantics for the class body.
@@ -212,7 +218,7 @@ auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Analyse semantics for the class body.
@@ -236,7 +242,7 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage8_CheckMemory(
+auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check memory for the class body.
   sm->MoveToNextScope();
@@ -245,7 +251,7 @@ auto ClassPrototypeAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage10_PreCodeGen(
+auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for the class body.
   sm->MoveToNextScope();
@@ -272,7 +278,7 @@ auto ClassPrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto ClassPrototypeAst::Stage11_CodeGen(
+auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Get the class symbol.
   sm->MoveToNextScope();
@@ -282,13 +288,13 @@ auto ClassPrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto ClassPrototypeAst::AddGnSubstitution(
+auto spp::asts::ClassPrototypeAst::AddGnSubstitution(
   GenericSubstitution &&sub) -> GenericSubstitution& {
   // Kept alive here: the instantiation's scope points into it.
   return _GnSubstitutions.emplace_back(std::move(sub));
 }
 
-auto ClassPrototypeAst::GetClsSymbol() const -> Shared<TypeSymbol> {
+auto spp::asts::ClassPrototypeAst::GetClsSymbol() const -> Shared<TypeSymbol> {
   // Getter for the class symbol.
   return _ClsSymbol;
 }
@@ -307,7 +313,7 @@ static auto IsStdNeverModule(
   return names.size() == 2 and names[0] == "never" and names[1] == "std";
 }
 
-auto ClassPrototypeAst::_GenerateSymbols(
+auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   ScopeManager *sm) -> TypeSymbol* {
   auto is_dollar_type = Name->IsCompilerGeneratedType();
   // A template is named as written ("Vec"); as a pattern it is
@@ -408,7 +414,7 @@ static auto ApplyStructLayout(
   }
 }
 
-auto ClassPrototypeAst::FillLlvmLayout(
+auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   ScopeManager const *sm, TypeSymbol const *type_sym, codegen::LlvmCtx const *ctx) const -> void {
   IMPORT_UTILS;
 

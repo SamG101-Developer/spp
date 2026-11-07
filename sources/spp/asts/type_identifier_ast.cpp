@@ -46,6 +46,15 @@ import genex;
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace {
   /// Whether a borrow may be written somewhere in "type": a convention
@@ -62,17 +71,17 @@ namespace {
   }
 }
 
-auto TypeIdentifierAst::FromIdentifier(
+auto spp::asts::TypeIdentifierAst::FromIdentifier(
   IdentifierAst const &identifier) -> Shared<TypeIdentifierAst> {
   return MakeShared<TypeIdentifierAst>(identifier.PosStart(), Str(identifier.Val), nullptr);
 }
 
-auto TypeIdentifierAst::FromString(
+auto spp::asts::TypeIdentifierAst::FromString(
   Str const &identifier) -> Shared<TypeIdentifierAst> {
   return MakeShared<TypeIdentifierAst>(0uz, Str(identifier), nullptr);
 }
 
-TypeIdentifierAst::TypeIdentifierAst(
+spp::asts::TypeIdentifierAst::TypeIdentifierAst(
   const std::size_t pos,
   decltype(Name) &&name,
   decltype(GnArgGroup) generic_arg_group) :
@@ -88,19 +97,19 @@ TypeIdentifierAst::TypeIdentifierAst(
   if (Name == "Self") { _IsSelfType = true; }
 }
 
-TypeIdentifierAst::~TypeIdentifierAst() = default;
+spp::asts::TypeIdentifierAst::~TypeIdentifierAst() = default;
 
-auto TypeIdentifierAst::operator<=>(
+auto spp::asts::TypeIdentifierAst::operator<=>(
   const TypeIdentifierAst &that) const -> Ordering {
   return EqualsTypeIdentifier(that);
 }
 
-auto TypeIdentifierAst::operator==(
+auto spp::asts::TypeIdentifierAst::operator==(
   const TypeIdentifierAst &that) const -> bool {
   return EqualsTypeIdentifier(that) == Ordering::equal;
 }
 
-auto TypeIdentifierAst::EqualsTypeIdentifier(
+auto spp::asts::TypeIdentifierAst::EqualsTypeIdentifier(
   TypeIdentifierAst const &other) const -> Ordering {
   // Equality is based on the name and generics.
   return Name == other.Name and *GnArgGroup == *other.GnArgGroup
@@ -108,19 +117,19 @@ auto TypeIdentifierAst::EqualsTypeIdentifier(
     : Ordering::less;
 }
 
-auto TypeIdentifierAst::Equals(
+auto spp::asts::TypeIdentifierAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsTypeIdentifier(*this);
 }
 
-auto TypeIdentifierAst::PosStart() const -> std::size_t {
+auto spp::asts::TypeIdentifierAst::PosStart() const -> std::size_t {
   // Use the static pos field, unless this replaces a written type.
   if (_HasSourceSpan) { return _SpanStart; }
   return _Pos;
 }
 
-auto TypeIdentifierAst::PosEnd() const -> std::size_t {
+auto spp::asts::TypeIdentifierAst::PosEnd() const -> std::size_t {
   // Use the "]" of the generic arguments written after the name,
   // else the name. Arguments the compiler filled in have no "]"
   // of their own, or one that is not after this name.
@@ -130,7 +139,7 @@ auto TypeIdentifierAst::PosEnd() const -> std::size_t {
   return tok_r != nullptr and tok_r->PosStart() >= name_end ? tok_r->PosEnd() : name_end;
 }
 
-auto TypeIdentifierAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TypeIdentifierAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypeIdentifierAst>(
     _Pos,
@@ -145,13 +154,13 @@ auto TypeIdentifierAst::Clone() const -> Unique<Ast> {
   return t;
 }
 
-auto TypeIdentifierAst::ToString() const -> Str {
+auto spp::asts::TypeIdentifierAst::ToString() const -> Str {
   // Reuse the cached stringification (identical content: Name + GnArgGroup->ToString()) to avoid rebuilding the
   // string (and recursively re-stringifying every generic argument) on each call.
   return Str(ToView());
 }
 
-auto TypeIdentifierAst::Stage7_AnalyseSemantics(
+auto spp::asts::TypeIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Todo: Add higher order generic checks into the unit tests (self and generic type).
   IMPORT_UTILS;
@@ -489,7 +498,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
   _CachedStringification.clear();
 }
 
-auto TypeIdentifierAst::_ResolvedProvisionally(
+auto spp::asts::TypeIdentifierAst::_ResolvedProvisionally(
   CompilerMetaData const *meta) const -> bool {
   IMPORT_UTILS;
   if (meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics or GnArgGroup == nullptr) { return false; }
@@ -500,7 +509,7 @@ auto TypeIdentifierAst::_ResolvedProvisionally(
   });
 }
 
-auto TypeIdentifierAst::_NamesOnly(
+auto spp::asts::TypeIdentifierAst::_NamesOnly(
   TypeSymbol &type_sym, ScopeManager *sm, CompilerMetaData *meta) const -> bool {
   IMPORT_UTILS;
   return meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
@@ -508,7 +517,7 @@ auto TypeIdentifierAst::_NamesOnly(
     and marker_sups::HoldsNoValueOfItsArgs(type_sym, *sm->CurrentScope);
 }
 
-auto TypeIdentifierAst::_AnalyseArgs(
+auto spp::asts::TypeIdentifierAst::_AnalyseArgs(
   const bool names_only, ScopeManager *sm, CompilerMetaData *meta) -> void {
   const auto _meta_guard = MetaGuard(meta);
   meta->AllowAbstractType = true;
@@ -516,7 +525,7 @@ auto TypeIdentifierAst::_AnalyseArgs(
   GnArgGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto TypeIdentifierAst::_RecheckArgs(
+auto spp::asts::TypeIdentifierAst::_RecheckArgs(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Once per stage: a check only becomes due when the stage moves on.
@@ -559,66 +568,66 @@ auto TypeIdentifierAst::_RecheckArgs(
   _CompArgsChecked = _CompArgsChecked or comps_due;
 }
 
-auto TypeIdentifierAst::IsNeverType() const noexcept -> bool {
+auto spp::asts::TypeIdentifierAst::IsNeverType() const noexcept -> bool {
   return _IsNeverType;
 }
 
-auto TypeIdentifierAst::MarkNeverType() -> void {
+auto spp::asts::TypeIdentifierAst::MarkNeverType() -> void {
   _IsNeverType = true;
 }
 
-auto TypeIdentifierAst::IsSelfType() const noexcept -> bool {
+auto spp::asts::TypeIdentifierAst::IsSelfType() const noexcept -> bool {
   return _IsSelfType;
 }
 
-auto TypeIdentifierAst::NsParts() const -> Vec<IdentifierAst const*> {
+auto spp::asts::TypeIdentifierAst::NsParts() const -> Vec<IdentifierAst const*> {
   return {};
 }
 
-auto TypeIdentifierAst::NsParts() -> Vec<IdentifierAst*> {
+auto spp::asts::TypeIdentifierAst::NsParts() -> Vec<IdentifierAst*> {
   return {};
 }
 
-auto TypeIdentifierAst::ClearSourceWritten() -> void {
+auto spp::asts::TypeIdentifierAst::ClearSourceWritten() -> void {
   _IsSourceWritten = false;
   for (auto const &arg : GnArgGroup->Args) {
     if (arg->IsTypeArg()) { arg->TypeVal->ClearPartsSourceWritten(); }
   }
 }
 
-auto TypeIdentifierAst::MarkSourceWritten() -> void {
+auto spp::asts::TypeIdentifierAst::MarkSourceWritten() -> void {
   _IsSourceWritten = true;
 }
 
-auto TypeIdentifierAst::MarkPackPosition() -> void {
+auto spp::asts::TypeIdentifierAst::MarkPackPosition() -> void {
   _IsPackPosition = true;
 }
 
-auto TypeIdentifierAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
+auto spp::asts::TypeIdentifierAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
   return {this};
 }
 
-auto TypeIdentifierAst::TypeParts() -> Vec<TypeIdentifierAst*> {
+auto spp::asts::TypeIdentifierAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   return {this};
 }
 
-auto TypeIdentifierAst::LastTypePart() const -> TypeIdentifierAst const* {
+auto spp::asts::TypeIdentifierAst::LastTypePart() const -> TypeIdentifierAst const* {
   return this;
 }
 
-auto TypeIdentifierAst::LastTypePart() -> TypeIdentifierAst* {
+auto spp::asts::TypeIdentifierAst::LastTypePart() -> TypeIdentifierAst* {
   return this;
 }
 
-auto TypeIdentifierAst::WithoutConvention() const -> Shared<const TypeAst> {
+auto spp::asts::TypeIdentifierAst::WithoutConvention() const -> Shared<const TypeAst> {
   return shared_from_this();
 }
 
-auto TypeIdentifierAst::GetConvention() const -> ConventionAst* {
+auto spp::asts::TypeIdentifierAst::GetConvention() const -> ConventionAst* {
   return nullptr;
 }
 
-auto TypeIdentifierAst::WithConvention(
+auto spp::asts::TypeIdentifierAst::WithConvention(
   Unique<ConventionAst> &&conv) const -> Shared<TypeAst> {
   if (conv == nullptr) { return AstCloneShared(this); }
 
@@ -632,7 +641,7 @@ auto TypeIdentifierAst::WithConvention(
   return wrapped;
 }
 
-auto TypeIdentifierAst::WithoutGns() const -> Shared<TypeAst> {
+auto spp::asts::TypeIdentifierAst::WithoutGns() const -> Shared<TypeAst> {
   // Use cache if available.
   if (not _CachedWithoutGns) {
     const auto stripped = MakeShared<TypeIdentifierAst>(_Pos, Str(Name), nullptr);
@@ -649,7 +658,7 @@ auto TypeIdentifierAst::WithoutGns() const -> Shared<TypeAst> {
   return _CachedWithoutGns;
 }
 
-auto TypeIdentifierAst::WithGns(
+auto spp::asts::TypeIdentifierAst::WithGns(
   Unique<GenericArgumentGroupAst> &&arg_group) const -> Shared<TypeAst> {
   // Attach the new generic argument group to a clone of this type identifier.
   arg_group = arg_group ? std::move(arg_group) : GenericArgumentGroupAst::NewEmpty();
@@ -659,17 +668,17 @@ auto TypeIdentifierAst::WithGns(
   return with_generics;
 }
 
-auto TypeIdentifierAst::IsCompilerGeneratedType() const -> bool {
+auto spp::asts::TypeIdentifierAst::IsCompilerGeneratedType() const -> bool {
   // Types starting with "$" are compiler generated: the
   // lexer has no "$" token, so no written name has one.
   return Name[0] == '$';
 }
 
-auto TypeIdentifierAst::IsTypeIdentifier() const noexcept -> bool {
+auto spp::asts::TypeIdentifierAst::IsTypeIdentifier() const noexcept -> bool {
   return true;
 }
 
-auto TypeIdentifierAst::InferType(
+auto spp::asts::TypeIdentifierAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Fully qualify this type name from the scope.
   // Have to AstClone because PostfixExpressionAst lhs (will change with removal of all shared pointers)
@@ -678,7 +687,7 @@ auto TypeIdentifierAst::InferType(
   return type_sym->FqName();
 }
 
-auto TypeIdentifierAst::InferTypeRef(
+auto spp::asts::TypeIdentifierAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The symbol this name finds where types are being analysed, read here.
   const auto type_scope = meta->TypeAnalysisTypeScope ? meta->TypeAnalysisTypeScope : sm->CurrentScope;
@@ -686,12 +695,12 @@ auto TypeIdentifierAst::InferTypeRef(
   return type_sym != nullptr ? TypeRef::Of(*type_sym, *sm->CurrentScope) : TypeRef();
 }
 
-auto TypeIdentifierAst::AnkerlHash() const -> std::size_t {
+auto spp::asts::TypeIdentifierAst::AnkerlHash() const -> std::size_t {
   // Hash based on the name only.
   return Hash<Str>()(Name);
 }
 
-auto TypeIdentifierAst::ToView() const -> StrView {
+auto spp::asts::TypeIdentifierAst::ToView() const -> StrView {
   if (GnArgGroup == nullptr or GnArgGroup->Args.empty()) {
     return Name;
   }
@@ -703,21 +712,21 @@ auto TypeIdentifierAst::ToView() const -> StrView {
   return _CachedStringification;
 }
 
-auto TypeIdentifierAst::NsPartsInto(
+auto spp::asts::TypeIdentifierAst::NsPartsInto(
   Vec<IdentifierAst const*> &) const -> void {
 }
 
-auto TypeIdentifierAst::TypePartsInto(
+auto spp::asts::TypeIdentifierAst::TypePartsInto(
   Vec<TypeIdentifierAst const*> &out) const -> void {
   out.emplace_back(this);
 }
 
-auto TypeIdentifierAst::InferFromAttributes(
+auto spp::asts::TypeIdentifierAst::InferFromAttributes(
   Vec<Tup<Shared<IdentifierAst>, Shared<TypeAst>, Shared<TypeAst>>> &&equations) -> void {
   _AttributeEquations = std::move(equations);
 }
 
-auto TypeIdentifierAst::_CheckVisibility(
+auto spp::asts::TypeIdentifierAst::_CheckVisibility(
   TypeSymbol const &type_sym, ScopeManager *sm, CompilerMetaData *meta) const
   -> void {
   IMPORT_UTILS;
@@ -741,7 +750,7 @@ auto TypeIdentifierAst::_CheckVisibility(
   }
 }
 
-auto TypeIdentifierAst::CheckPendingVisibility(
+auto spp::asts::TypeIdentifierAst::CheckPendingVisibility(
   ScopeManager *sm)
   -> void {
   auto pending = std::move(_PendingVisibility);
@@ -754,7 +763,7 @@ auto TypeIdentifierAst::CheckPendingVisibility(
   }
 }
 
-auto TypeIdentifierAst::ClearPendingVisibility() -> void {
+auto spp::asts::TypeIdentifierAst::ClearPendingVisibility() -> void {
   _PendingVisibility.clear();
 }
 

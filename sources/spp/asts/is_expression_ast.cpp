@@ -26,8 +26,14 @@ import genex;
 
 use_alias(spp::analyse::scopes, VariableKind);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-IsExpressionAst::IsExpressionAst(
+spp::asts::IsExpressionAst::IsExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -40,19 +46,19 @@ IsExpressionAst::IsExpressionAst(
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
-IsExpressionAst::~IsExpressionAst() = default;
+spp::asts::IsExpressionAst::~IsExpressionAst() = default;
 
-auto IsExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::IsExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs, or the mapped function.
   return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-auto IsExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::IsExpressionAst::PosEnd() const -> std::size_t {
   // Use the rhs, or the mapped function.
   return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto IsExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::IsExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<IsExpressionAst>(
     AstClone(Lhs),
@@ -62,7 +68,7 @@ auto IsExpressionAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto IsExpressionAst::ToString() const -> Str {
+auto spp::asts::IsExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedFn) {
     SPP_STRING_APPEND(_MappedFn);
@@ -74,7 +80,7 @@ auto IsExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto IsExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::IsExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -101,7 +107,7 @@ auto IsExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto IsExpressionAst::_DeclareExposed(
+auto spp::asts::IsExpressionAst::_DeclareExposed(
   ScopeManager &sm) const -> void {
   // Bulk declare whatever is in the "exposed" list. Used in
   // stages 8, 9 and 11, and expose the bindings.
@@ -110,7 +116,7 @@ auto IsExpressionAst::_DeclareExposed(
   }
 }
 
-auto IsExpressionAst::Stage8_CheckMemory(
+auto spp::asts::IsExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory checking to the mapped function, then
   // expose what it binds: the subject it tests is the one
@@ -119,7 +125,7 @@ auto IsExpressionAst::Stage8_CheckMemory(
   _DeclareExposed(*sm);
 }
 
-auto IsExpressionAst::Stage11_CodeGen(
+auto spp::asts::IsExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // As moving to the next scope clears ast-generated bindings
   // in that scope, we need to redeclare them for them for
@@ -144,7 +150,7 @@ auto IsExpressionAst::Stage11_CodeGen(
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto IsExpressionAst::EvaluateCompTime(
+auto spp::asts::IsExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the resolution to the mapped function, then expose
   // what it binds, as stage 8 does.
@@ -152,7 +158,7 @@ auto IsExpressionAst::EvaluateCompTime(
   _DeclareExposed(*sm);
 }
 
-auto IsExpressionAst::InferTypeRef(
+auto spp::asts::IsExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // Always return a boolean type (successful or failed
   // match)
@@ -160,7 +166,7 @@ auto IsExpressionAst::InferTypeRef(
   return TypeRef::Of(*BOOL, *sm->CurrentScope);
 }
 
-auto IsExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::IsExpressionAst::IsAllowedInDefault() const -> bool {
   // Along with "case" expressions (which an "is" maps too),
   // the "is" expression is banned in default statements. In
   // the future, they might get enabled, even if in a restricted

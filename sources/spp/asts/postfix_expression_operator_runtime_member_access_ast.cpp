@@ -52,8 +52,15 @@ import genex;
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
+spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
   decltype(TokDot) &&tok_dot,
   decltype(Name) name) :
   TokDot(std::move(tok_dot)),
@@ -68,20 +75,20 @@ PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntim
     this->TokDot, lex::SppTokenType::TK_DOT, ".", this->Name != nullptr ? this->Name->PosStart() : 0);
 }
 
-PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default
+spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default
 ;
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot->PosStart();
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, sharing the mapped
   // forwarding access so a clone taken after analysis
   // keeps it.
@@ -94,7 +101,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<As
   return ast;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDot);
   SPP_STRING_APPEND(Name);
@@ -115,7 +122,7 @@ namespace {
   }
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -289,7 +296,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   IMPORT_UTILS_AND_UID;
@@ -423,7 +430,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -461,7 +468,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
   meta->CompTimeResult = comp_time_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -476,7 +483,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   return InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // As "InferType": forwarded to the rewritten access, and
   // an element of a tuple or an array read off the left-hand
@@ -511,7 +518,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   return _Resolve(sm, meta)->TypeRefIn(*_Owner->LinkedScope);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   ScopeManager *sm, CompilerMetaData *meta) -> VariableSymbol* {
   //
   IMPORT_UTILS;
@@ -521,17 +528,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   return _Member;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {
   // The lhs of the rewritten access is the forwarding call
   // ("x.fwd_ref()") applied to the original lhs.
   return _MappedFwd != nullptr ? _MappedFwd->Lhs->To<PostfixExpressionAst>() : nullptr;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {Name.get()};
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its own.
   return true;
 }

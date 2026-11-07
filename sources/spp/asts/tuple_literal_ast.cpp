@@ -35,6 +35,12 @@ import genex;
 use_alias(spp::asts, ExpressionAst);
 use_alias(spp::asts, SpreadExpressionAst);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace {
   /// The value an element gives: a spread's tuple, or the element itself.
@@ -44,7 +50,7 @@ namespace {
   }
 }
 
-TupleLiteralAst::TupleLiteralAst(
+spp::asts::TupleLiteralAst::TupleLiteralAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,
   decltype(TokR) &&tok_r) :
@@ -53,9 +59,9 @@ TupleLiteralAst::TupleLiteralAst(
   TokR(std::move(tok_r)) {
 }
 
-TupleLiteralAst::~TupleLiteralAst() = default;
+spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
 
-auto TupleLiteralAst::EqualsTupleLiteral(
+auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
   TupleLiteralAst const &other) const -> Ordering {
   // If two tuple asts don't have the same size, they cannot be equal.
   if (Elems.size() != other.Elems.size()) { return Ordering::less; }
@@ -69,23 +75,23 @@ auto TupleLiteralAst::EqualsTupleLiteral(
   return Ordering::less;
 }
 
-auto TupleLiteralAst::Equals(
+auto spp::asts::TupleLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsTupleLiteral(*this);
 }
 
-auto TupleLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
-auto TupleLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
-auto TupleLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TupleLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, and the type stage 7 settled
   // on, as an array literal's clone does.
   auto ast = MakeUnique<TupleLiteralAst>(
@@ -97,7 +103,7 @@ auto TupleLiteralAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto TupleLiteralAst::ToString() const -> Str {
+auto spp::asts::TupleLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("(");
   SPP_STRING_EXTEND(Elems, ", ");
@@ -105,7 +111,7 @@ auto TupleLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto TupleLiteralAst::Stage7_AnalyseSemantics(
+auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -156,7 +162,7 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   _InferredType = _BuildType(sm, meta);
 }
 
-auto TupleLiteralAst::Stage8_CheckMemory(
+auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -169,7 +175,7 @@ auto TupleLiteralAst::Stage8_CheckMemory(
   }
 }
 
-auto TupleLiteralAst::Stage11_CodeGen(
+auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   for (auto const &temp : _SpreadTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
@@ -240,7 +246,7 @@ auto TupleLiteralAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
 }
 
-auto TupleLiteralAst::EvaluateCompTime(
+auto spp::asts::TupleLiteralAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values. They are
   // only read, as an array literal's are.
@@ -258,14 +264,14 @@ auto TupleLiteralAst::EvaluateCompTime(
   meta->CompTimeResult = std::move(result);
 }
 
-auto TupleLiteralAst::InferType(
+auto spp::asts::TupleLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type stage 7 settled on; a tuple not analysed yet has its
   // type built as it is.
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
-auto TupleLiteralAst::InferTypeRef(
+auto spp::asts::TupleLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The tuple type is built as syntax ("Tup[...]", "_BuildType");
   // resolved where it is read.
@@ -273,7 +279,7 @@ auto TupleLiteralAst::InferTypeRef(
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto TupleLiteralAst::_BuildType(
+auto spp::asts::TupleLiteralAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The tuple of the elements' types, analysed.
   auto tuple_type = generate::common_types::TupleType(
@@ -282,7 +288,7 @@ auto TupleLiteralAst::_BuildType(
   return tuple_type;
 }
 
-auto TupleLiteralAst::ElementTypes(
+auto spp::asts::TupleLiteralAst::ElementTypes(
   Vec<ExpressionAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta,
   const bool strip_conventions) -> Vec<Shared<TypeAst>> {
   // Iterate each element in the tuple, inferring its type and applying pack
@@ -316,7 +322,7 @@ auto TupleLiteralAst::ElementTypes(
   return types_gen;
 }
 
-auto TupleLiteralAst::ReadExpr(
+auto spp::asts::TupleLiteralAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   IMPORT_UTILS;
   // Each element is an expression so substitute them all too. An element naming
@@ -349,7 +355,7 @@ auto TupleLiteralAst::ReadExpr(
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
-auto TupleLiteralAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::TupleLiteralAst::IsAllowedInDefault() const -> bool {
   // Check every element - one bad one prevents the entire
   // ast from being allowed in this specific context.
   for (auto const &x : Elems) {

@@ -183,17 +183,30 @@ namespace {
   thread_local spp::Vec<VariableSymbol const*> resolving_constants;
 }
 
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+
 SPP_MOD_BEGIN
-CompTimeResolutionGuard::CompTimeResolutionGuard(
+spp::analyse::utils::comp_generics::CompTimeResolutionGuard::CompTimeResolutionGuard(
   VariableSymbol const *const sym) {
   resolving_constants.emplace_back(sym);
 }
 
-CompTimeResolutionGuard::~CompTimeResolutionGuard() {
+spp::analyse::utils::comp_generics::CompTimeResolutionGuard::~CompTimeResolutionGuard() {
   resolving_constants.pop_back();
 }
 
-auto CompTimeResolutionGuard::IsResolving(
+auto spp::analyse::utils::comp_generics::CompTimeResolutionGuard::IsResolving(
   VariableSymbol const *const sym) -> bool {
   return genex::contains(resolving_constants, sym);
 }

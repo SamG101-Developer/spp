@@ -30,6 +30,10 @@ use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, CompilerStage);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace {
   /// The first borrow written in "type" or, at any depth, its generic arguments (a variant's too, once analysed into
@@ -60,7 +64,7 @@ namespace {
   }
 }
 
-ClassAttributeAst::ClassAttributeAst(
+spp::asts::ClassAttributeAst::ClassAttributeAst(
   decltype(Annotations) &&annotations,
   decltype(Name) &&name,
   decltype(TokColon) &&tok_colon,
@@ -74,19 +78,19 @@ ClassAttributeAst::ClassAttributeAst(
   Source.OriginalType = AstClone(Type);
 }
 
-ClassAttributeAst::~ClassAttributeAst() = default;
+spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
 
-auto ClassAttributeAst::PosStart() const -> std::size_t {
+auto spp::asts::ClassAttributeAst::PosStart() const -> std::size_t {
   // Use the "name".
   return Name->PosStart();
 }
 
-auto ClassAttributeAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClassAttributeAst::PosEnd() const -> std::size_t {
   // Use the "type".
   return Type->PosEnd();
 }
 
-auto ClassAttributeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClassAttributeAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ClassAttributeAst>(
     AstCloneVec(Annotations),
@@ -101,7 +105,7 @@ auto ClassAttributeAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ClassAttributeAst::ToString() const -> Str {
+auto spp::asts::ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -112,7 +116,7 @@ auto ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ClassAttributeAst::Stage1_PreProcess(
+auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the AST by calling the base class method
   // and then processing annotations.
@@ -120,7 +124,7 @@ auto ClassAttributeAst::Stage1_PreProcess(
   for (auto const &a : Annotations) { a->SetAstCtx(this); }
 }
 
-auto ClassAttributeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run the generation steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -132,14 +136,14 @@ auto ClassAttributeAst::Stage2_GenTopLvlScopes(
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-auto ClassAttributeAst::Stage4_ResolveDeclarations(
+auto spp::asts::ClassAttributeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
   sm->CurrentScope->FindVarSymbol(Name.get(), true)->VisibilityFrom = this;
 }
 
-auto ClassAttributeAst::Stage5_LoadSupScopes(
+auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using type_resolution::SelfPolicy;
@@ -162,7 +166,7 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   RequireFieldNotBorrowed(*this, *sm);
 }
 
-auto ClassAttributeAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -191,7 +195,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ClassAttributeAst::Stage8_CheckMemory(
+auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // If there is a default value, check it for memory errors.
   IMPORT_UTILS;

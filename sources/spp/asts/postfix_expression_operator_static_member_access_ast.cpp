@@ -44,8 +44,16 @@ use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, GenericSubst);
 use_alias(spp::analyse::scopes, VariableKind);
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
+spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticMemberAccessAst(
   decltype(TokDblColon) &&tok_dbl_colon,
   decltype(Name) &&name) :
   TokDblColon(std::move(tok_dbl_colon)),
@@ -54,19 +62,19 @@ PostfixExpressionOperatorStaticMemberAccessAst::PostfixExpressionOperatorStaticM
   _LhsNsScope(nullptr) {
 }
 
-PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
+spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::~PostfixExpressionOperatorStaticMemberAccessAst() = default;
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosStart() const -> std::size_t {
   // Use the "::" token.
   return Name->PosStart();
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto p = MakeUnique<PostfixExpressionOperatorStaticMemberAccessAst>(
     AstClone(TokDblColon),
@@ -76,14 +84,14 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Clone() const -> Unique<Ast
   return p;
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("::");
   SPP_STRING_APPEND(Name);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -177,7 +185,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   const auto uid = "." + Uid();
@@ -237,7 +245,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::Stage11_CodeGen(
   return codegen::LoadGlobalConstant(*var_sym->LlvmInfo, "load.static_ns_member" + uid, ctx);
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Handle accessing a symbol on a type.
@@ -275,7 +283,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::EvaluateCompTime(
   meta->CompTimeResult = AstClone(sym->CompTimeValue->To<ExpressionAst>());
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -298,7 +306,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferType(
   return _MemberScope->FindTypeSymbol(sym->Type.get())->FqName();
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // A member is read where its owner (or the type it forwards to) declares it, which binds the parameters its type
   // names; a method's "$" mock is named as a nested type of the owner ("InferType"). A namespace member is read in
@@ -311,7 +319,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::InferTypeRef(
   return sym->TypeRefIn(*_MemberScope);
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
   ScopeManager const *sm) -> Scope const* {
   // Resolve the namespace once, from where the access was written. A
   // parameter default is copied into each call site, and its lhs may
@@ -323,7 +331,7 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::LhsNsScope(
   return _LhsNsScope;
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::_Resolve(
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::_Resolve(
   ScopeManager const *sm) -> VariableSymbol* {
   //
   IMPORT_UTILS;
@@ -355,12 +363,12 @@ auto PostfixExpressionOperatorStaticMemberAccessAst::_Resolve(
   return _Member;
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
   // Static member access does not have any expression parts.
   return {Name.get()};
 }
 
-auto PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorStaticMemberAccessAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its own.
   return true;
 }

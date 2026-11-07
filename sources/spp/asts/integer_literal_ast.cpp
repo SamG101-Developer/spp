@@ -22,8 +22,15 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-IntegerLiteralAst::IntegerLiteralAst(
+spp::asts::IntegerLiteralAst::IntegerLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(Val) &&val,
   Str &&type) :
@@ -31,9 +38,9 @@ IntegerLiteralAst::IntegerLiteralAst(
   Val(std::move(val)),
   Type(std::move(type)) {}
 
-IntegerLiteralAst::~IntegerLiteralAst() = default;
+spp::asts::IntegerLiteralAst::~IntegerLiteralAst() = default;
 
-auto IntegerLiteralAst::EqualsIntegerLiteral(
+auto spp::asts::IntegerLiteralAst::EqualsIntegerLiteral(
   IntegerLiteralAst const &other) const -> Ordering {
   //
   if (
@@ -45,23 +52,23 @@ auto IntegerLiteralAst::EqualsIntegerLiteral(
   return Ordering::less;
 }
 
-auto IntegerLiteralAst::Equals(
+auto spp::asts::IntegerLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch)/
   return other.EqualsIntegerLiteral(*this);
 }
 
-auto IntegerLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::IntegerLiteralAst::PosStart() const -> std::size_t {
   // Use sign token or the value.
   return TokSign ? TokSign->PosStart() : Val->PosStart();
 }
 
-auto IntegerLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::IntegerLiteralAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto IntegerLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::IntegerLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<IntegerLiteralAst>(
     AstClone(TokSign),
@@ -69,7 +76,7 @@ auto IntegerLiteralAst::Clone() const -> Unique<Ast> {
     Type.c_str());
 }
 
-auto IntegerLiteralAst::ToString() const -> Str {
+auto spp::asts::IntegerLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSign);
   SPP_STRING_APPEND(Val);
@@ -77,18 +84,18 @@ auto IntegerLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto IntegerLiteralAst::Stage7_AnalyseSemantics(
+auto spp::asts::IntegerLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = TypeOrDefault();
   ValidateBounds(*this);
 }
 
-auto IntegerLiteralAst::TypeOrDefault() const -> Str {
+auto spp::asts::IntegerLiteralAst::TypeOrDefault() const -> Str {
   return Type.empty() ? "s32" : Type;
 }
 
-auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
+auto spp::asts::IntegerLiteralAst::BigVal() const -> numex::BigInt {
   using spp::utils::strings::NormaliseIntegerString;
 
   // Same normalisation Stage7 does: underscores out, and the
@@ -102,7 +109,7 @@ auto IntegerLiteralAst::BigVal() const -> numex::BigInt {
   return value;
 }
 
-auto IntegerLiteralAst::ValidateBounds(
+auto spp::asts::IntegerLiteralAst::ValidateBounds(
   Ast const &owner) const -> void {
   using namespace spp::analyse::errors;
 
@@ -110,14 +117,14 @@ auto IntegerLiteralAst::ValidateBounds(
   // it was written down or computed by comp-time maths.
   // Read when used, not kept from start-up: "uz" and "sz" are a
   // pointer wide on the target, which is chosen after that.
-  auto const &[lower, upper] = utils::numbers::IntegerBounds().at(Type);
+  auto const &[lower, upper] = spp::utils::numbers::IntegerBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppIntegerOutOfBoundsError>(
     value < lower or value > upper,
     ERR_ARGS(owner, value, lower, upper, Type));
 }
 
-auto IntegerLiteralAst::FromBigVal(
+auto spp::asts::IntegerLiteralAst::FromBigVal(
   numex::BigInt const &value, Str const &type) -> Unique<IntegerLiteralAst> {
   // The sign travels as its own token, so the value token
   // carries the magnitude alone.
@@ -132,7 +139,7 @@ auto IntegerLiteralAst::FromBigVal(
   return MakeUnique<IntegerLiteralAst>(std::move(sign_tok), std::move(val_tok), Str(type));
 }
 
-auto IntegerLiteralAst::Stage11_CodeGen(
+auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormaliseIntegerString;
 
@@ -165,14 +172,14 @@ auto IntegerLiteralAst::Stage11_CodeGen(
   return co_int;
 }
 
-auto IntegerLiteralAst::EvaluateCompTime(
+auto spp::asts::IntegerLiteralAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the integer literal as is for compile-time
   // resolution.
   meta->CompTimeResult = AstClone(this);
 }
 
-auto IntegerLiteralAst::_PrecompiledType(
+auto spp::asts::IntegerLiteralAst::_PrecompiledType(
   ScopeManager *sm) const -> TypeAst const& {
   //
   using namespace spp::analyse::errors;
@@ -202,19 +209,19 @@ auto IntegerLiteralAst::_PrecompiledType(
   return *spp_type;
 }
 
-auto IntegerLiteralAst::InferType(
+auto spp::asts::IntegerLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // Named as written ("S32"), not as the instance the alias stands for.
   return sm->CurrentScope->FindTypeSymbol(&_PrecompiledType(sm))->FqName();
 }
 
-auto IntegerLiteralAst::InferTypeRef(
+auto spp::asts::IntegerLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   return TypeRef::Of(_PrecompiledType(sm), *sm->CurrentScope);
 }
 
 template <typename T> requires spp::utils::traits::integral<T>
-auto IntegerLiteralAst::CppVal() const -> T {
+auto spp::asts::IntegerLiteralAst::CppVal() const -> T {
   const auto raw_str = Val->ToString();
   const auto signed_str = TokSign != nullptr ? "-" + raw_str : raw_str;
   if constexpr (std::is_unsigned_v<T>) { return static_cast<T>(std::stoull(signed_str)); }
@@ -224,7 +231,7 @@ auto IntegerLiteralAst::CppVal() const -> T {
 // Manual instantiation of.CppVal function, for the widths
 // that are actually asked for: shift counts and the annotation
 // context mask.
-template auto IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
-template auto IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint32_t>() const -> std::uint32_t;
+template auto spp::asts::IntegerLiteralAst::CppVal<std::uint64_t>() const -> std::uint64_t;
 
 SPP_MOD_END

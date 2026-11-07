@@ -4,14 +4,14 @@ module;
 module spp.asts.mixins.orderable_ast;
 
 SPP_MOD_BEGIN
-OrderableAst::OrderableAst(
+spp::asts::mixins::OrderableAst::OrderableAst(
   const utils::OrderableTag order_tag) :
   _OrderTag(order_tag) {
 }
 
-OrderableAst::~OrderableAst() = default;
+spp::asts::mixins::OrderableAst::~OrderableAst() = default;
 
-auto OrderableAst::GetOrderTag() const
+auto spp::asts::mixins::OrderableAst::GetOrderTag() const
   -> utils::OrderableTag {
   // Readonly accessor to the internal ordering tag.
   return _OrderTag;

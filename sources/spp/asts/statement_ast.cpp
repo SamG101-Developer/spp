@@ -7,19 +7,24 @@ import spp.analyse.scopes.symbols;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-StatementAst::StatementAst() = default;
+spp::asts::StatementAst::StatementAst() = default;
 
-StatementAst::~StatementAst() = default;
+spp::asts::StatementAst::~StatementAst() = default;
 
-auto StatementAst::InferTypeRef(
+auto spp::asts::StatementAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // All statements are inferred as the Void type.
   using generate::common_types_precompiled::VOID;
   return TypeRef::Of(*VOID, *sm->CurrentScope);
 }
 
-auto StatementAst::Diverges(
+auto spp::asts::StatementAst::Diverges(
   ScopeManager *, CompilerMetaData *) -> bool {
   // By default, control continues past a statement.
   return false;

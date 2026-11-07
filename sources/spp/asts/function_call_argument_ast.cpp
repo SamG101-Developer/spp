@@ -25,6 +25,11 @@ import spp.utils.types;
 use_alias(spp::asts::meta, AllowPackWholeGuard);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace {
   /// An argument is its parameter's value: what the call's own
@@ -48,7 +53,7 @@ namespace {
   };
 }
 
-FunctionCallArgumentAst::FunctionCallArgumentAst(
+spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
   decltype(Conv) &&conv,
   decltype(Val) &&val,
   const utils::OrderableTag order_tag) :
@@ -57,9 +62,9 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
   Val(std::move(val)) {
 }
 
-FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
+spp::asts::FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
 
-auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -74,13 +79,13 @@ auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   common_errors::RequirePrimary(*Val, *sm);
 }
 
-auto FunctionCallArgumentAst::Stage8_CheckMemory(
+auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory status of the value expression.
   Val->Stage8_CheckMemory(sm, meta);
 }
 
-auto FunctionCallArgumentAst::Stage11_CodeGen(
+auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -88,13 +93,13 @@ auto FunctionCallArgumentAst::Stage11_CodeGen(
   return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
 }
 
-auto FunctionCallArgumentAst::EvaluateCompTime(
+auto spp::asts::FunctionCallArgumentAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Delegate comptime resolution to the value expression.
   Val->EvaluateCompTime(sm, meta);
 }
 
-auto FunctionCallArgumentAst::InferType(
+auto spp::asts::FunctionCallArgumentAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the type from the value expression.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -103,7 +108,7 @@ auto FunctionCallArgumentAst::InferType(
   return type;
 }
 
-auto FunctionCallArgumentAst::InferTypeRef(
+auto spp::asts::FunctionCallArgumentAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // Held as the argument says: a borrow of "!" is a real value.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -115,7 +120,7 @@ auto FunctionCallArgumentAst::InferTypeRef(
   return ref;
 }
 
-auto FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
   // Check the internal value of the argument.
   // Todo: Remove the nullptr guard?
   return Val == nullptr or Val->IsAllowedInDefault();

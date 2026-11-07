@@ -17,14 +17,18 @@ use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto FunctionImplementationAst::NewEmpty() -> Unique<FunctionImplementationAst> {
+auto spp::asts::FunctionImplementationAst::NewEmpty() -> Unique<FunctionImplementationAst> {
   return MakeUnique<FunctionImplementationAst>(nullptr, decltype(Members)(), nullptr);
 }
 
-FunctionImplementationAst::~FunctionImplementationAst() = default;
+spp::asts::FunctionImplementationAst::~FunctionImplementationAst() = default;
 
-auto FunctionImplementationAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionImplementationAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<FunctionImplementationAst>(
     AstClone(TokL),
     AstCloneVec(Members),
@@ -32,13 +36,13 @@ auto FunctionImplementationAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto FunctionImplementationAst::DiscardsFinalMember() const -> bool {
+auto spp::asts::FunctionImplementationAst::DiscardsFinalMember() const -> bool {
   // Values leave a function through "ret", so the final statement
   // of a body is discarded like every other statement in it.
   return true;
 }
 
-auto FunctionImplementationAst::EvaluateCompTime(
+auto spp::asts::FunctionImplementationAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // A function has one scope, shared by every call to it, so the values this call writes into that scope's symbols
   // are the caller's values as far as an enclosing call is concerned. Take them out for the duration of the call and

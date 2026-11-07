@@ -31,8 +31,15 @@ import llvm;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
+spp::asts::ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
   decltype(TokL) &&tok_l,
   decltype(Elem) &&elem,
   decltype(TokSemicolon) &&tok_semicolon,
@@ -53,9 +60,9 @@ ArrayLiteralRepeatedElementAst::ArrayLiteralRepeatedElementAst(
     this->TokR, SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
-ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
+spp::asts::ArrayLiteralRepeatedElementAst::~ArrayLiteralRepeatedElementAst() = default;
 
-auto ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
+auto spp::asts::ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
   ArrayLiteralRepeatedElementAst const &other) const -> Ordering {
   // Equality based off the element and size.
   return *Elem == *other.Elem and *Size == *other.Size
@@ -63,23 +70,23 @@ auto ArrayLiteralRepeatedElementAst::EqualsArrayLiteralRepeatedElement(
     : Ordering::less;
 }
 
-auto ArrayLiteralRepeatedElementAst::Equals(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsArrayLiteralRepeatedElement(*this);
 }
 
-auto ArrayLiteralRepeatedElementAst::PosStart() const -> std::size_t {
+auto spp::asts::ArrayLiteralRepeatedElementAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Elem->PosStart();
 }
 
-auto ArrayLiteralRepeatedElementAst::PosEnd() const -> std::size_t {
+auto spp::asts::ArrayLiteralRepeatedElementAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Size->PosEnd();
 }
 
-auto ArrayLiteralRepeatedElementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ArrayLiteralRepeatedElementAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<ArrayLiteralRepeatedElementAst>(
     AstClone(TokL),
     AstClone(Elem),
@@ -92,7 +99,7 @@ auto ArrayLiteralRepeatedElementAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ArrayLiteralRepeatedElementAst::ToString() const -> Str {
+auto spp::asts::ArrayLiteralRepeatedElementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(Elem);
@@ -102,7 +109,7 @@ auto ArrayLiteralRepeatedElementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ArrayLiteralRepeatedElementAst::SkipSizeScope(
+auto spp::asts::ArrayLiteralRepeatedElementAst::SkipSizeScope(
   ScopeManager *sm) const -> void {
   if (_SizeScope == nullptr) { return; }
   sm->MoveToNextScope();
@@ -111,7 +118,7 @@ auto ArrayLiteralRepeatedElementAst::SkipSizeScope(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types::ArrayType;
@@ -193,7 +200,7 @@ auto ArrayLiteralRepeatedElementAst::Stage7_AnalyseSemantics(
   _ArrayType->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -218,7 +225,7 @@ auto ArrayLiteralRepeatedElementAst::Stage8_CheckMemory(
   }
 }
 
-auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
+auto spp::asts::ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -318,7 +325,7 @@ auto ArrayLiteralRepeatedElementAst::Stage11_CodeGen(
   }
 }
 
-auto ArrayLiteralRepeatedElementAst::EvaluateCompTime(
+auto spp::asts::ArrayLiteralRepeatedElementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner element to a compile-time value. It is only
   // read, as an explicit array literal's elements are.
@@ -330,7 +337,7 @@ auto ArrayLiteralRepeatedElementAst::EvaluateCompTime(
     nullptr, std::move(meta->CompTimeResult), nullptr, AstClone(Size), nullptr);
 }
 
-auto ArrayLiteralRepeatedElementAst::InferType(
+auto spp::asts::ArrayLiteralRepeatedElementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   using generate::common_types::ArrayType;
 
@@ -342,14 +349,14 @@ auto ArrayLiteralRepeatedElementAst::InferType(
   return array_type;
 }
 
-auto ArrayLiteralRepeatedElementAst::InferTypeRef(
+auto spp::asts::ArrayLiteralRepeatedElementAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The array type is built as syntax ("Arr[T, n]"); resolved where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto ArrayLiteralRepeatedElementAst::ReadExpr(
+auto spp::asts::ArrayLiteralRepeatedElementAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both the repeated element and the count are expressions;
   // the count is the one that names a comp parameter.
@@ -361,7 +368,7 @@ auto ArrayLiteralRepeatedElementAst::ReadExpr(
     AstClone(TokR));
 }
 
-auto ArrayLiteralRepeatedElementAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ArrayLiteralRepeatedElementAst::IsAllowedInDefault() const -> bool {
   // Check against the element and size values as they might
   // carry non-defaultable values (particularly the element).
   return

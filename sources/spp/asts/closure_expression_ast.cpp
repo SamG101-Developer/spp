@@ -60,8 +60,13 @@ use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ClosureExpressionAst::ClosureExpressionAst(
+spp::asts::ClosureExpressionAst::ClosureExpressionAst(
   decltype(Tok) &&tok,
   decltype(PcGroup) &&pc_group,
   decltype(TokArrow) &&tok_arrow,
@@ -79,19 +84,19 @@ ClosureExpressionAst::ClosureExpressionAst(
   _TrueRetType = nullptr;
 }
 
-ClosureExpressionAst::~ClosureExpressionAst() = default;
+spp::asts::ClosureExpressionAst::~ClosureExpressionAst() = default;
 
-auto ClosureExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::ClosureExpressionAst::PosStart() const -> std::size_t {
   // Use the "cor" token if present, otherwise the pc group.
   return Tok ? Tok->PosStart() : PcGroup->PosStart();
 }
 
-auto ClosureExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClosureExpressionAst::PosEnd() const -> std::size_t {
   // Use the body.
   return Body->PosEnd();
 }
 
-auto ClosureExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClosureExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<ClosureExpressionAst>(
     AstClone(Tok),
@@ -104,7 +109,7 @@ auto ClosureExpressionAst::Clone() const -> Unique<Ast> {
   return c;
 }
 
-auto ClosureExpressionAst::ToString() const -> Str {
+auto spp::asts::ClosureExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Tok).append(" ");
   SPP_STRING_APPEND(PcGroup).append(" ");
@@ -114,7 +119,7 @@ auto ClosureExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ClosureExpressionAst::HasBorrowedCaptures() const -> bool {
+auto spp::asts::ClosureExpressionAst::HasBorrowedCaptures() const -> bool {
   if (PcGroup == nullptr or PcGroup->CaptureGroup == nullptr) {
     Ice(*this, "closure has nullptr parameter or capture group");
   }
@@ -127,7 +132,7 @@ auto ClosureExpressionAst::HasBorrowedCaptures() const -> bool {
   return false;
 }
 
-auto ClosureExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClosureExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -278,7 +283,7 @@ auto ClosureExpressionAst::Stage7_AnalyseSemantics(
   _MockType = _MakeMockType(sm, meta);
 }
 
-auto ClosureExpressionAst::Stage8_CheckMemory(
+auto spp::asts::ClosureExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Save the current scope for later resetting.
@@ -321,7 +326,7 @@ auto ClosureExpressionAst::Stage8_CheckMemory(
   sm->CurrentScope = parent_scope;
 }
 
-auto ClosureExpressionAst::_BuildDropCaptures(
+auto spp::asts::ClosureExpressionAst::_BuildDropCaptures(
   llvm::Function &closure_fn, llvm::StructType *env_ty,
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) const -> llvm::Function* {
@@ -358,7 +363,7 @@ auto ClosureExpressionAst::_BuildDropCaptures(
   return drop_fn;
 }
 
-auto ClosureExpressionAst::Stage11_CodeGen(
+auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Strategy: build an "environment" struct for the closure,
@@ -533,7 +538,7 @@ auto ClosureExpressionAst::Stage11_CodeGen(
   return ctx->Builder.CreateLoad(llvm_closure_ty, closure_alloca, "load.closure.obj." + uid);
 }
 
-auto ClosureExpressionAst::InferType(
+auto spp::asts::ClosureExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // A closure is its own special type, which superimposes the
   // functional one. Before stage 7 has minted it there is nothing
@@ -542,7 +547,7 @@ auto ClosureExpressionAst::InferType(
   return _MockType != nullptr ? _MockType : _FnType(sm, meta);
 }
 
-auto ClosureExpressionAst::InferTypeRef(
+auto spp::asts::ClosureExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The closure's type is built as syntax (its mock, or the
   // functional type); resolved where it is read.
@@ -550,7 +555,7 @@ auto ClosureExpressionAst::InferTypeRef(
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto ClosureExpressionAst::_FnType(
+auto spp::asts::ClosureExpressionAst::_FnType(
   ScopeManager *sm, CompilerMetaData *meta) const -> Shared<TypeAst> {
   using generate::common_types::FunRefType;
   using generate::common_types::FunMutType;
@@ -604,7 +609,7 @@ auto ClosureExpressionAst::_FnType(
   return ty;
 }
 
-auto ClosureExpressionAst::_MakeMockType(
+auto spp::asts::ClosureExpressionAst::_MakeMockType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS_AND_UID;
   using analyse::scopes::BumpTypeStructureGeneration;
@@ -672,17 +677,17 @@ auto ClosureExpressionAst::_MakeMockType(
   return mock_name;
 }
 
-auto ClosureExpressionAst::ClearMockAsts() -> void {
+auto spp::asts::ClosureExpressionAst::ClearMockAsts() -> void {
   // Empty the temp asts (manual memory freeing).
   _MockAsts.clear();
 }
 
-auto ClosureExpressionAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
+auto spp::asts::ClosureExpressionAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
   // Getter for the llvm function pointer.
   return _LlvmFn;
 }
 
-auto ClosureExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ClosureExpressionAst::IsAllowedInDefault() const -> bool {
   // A "ret" in a closure's body only leaves the closure, but
   // a closure still creates scopes of its own, which a copy
   // of the default would need in its use site's walk. For now,

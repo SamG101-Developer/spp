@@ -7,8 +7,12 @@ import spp.asts.token_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(
+spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst(
   decltype(Ns) ns,
   decltype(TokSep) &&tok_sep) :
   TypeUnaryExpressionOperatorAst(),
@@ -16,66 +20,66 @@ TypeUnaryExpressionOperatorNamespaceAst::TypeUnaryExpressionOperatorNamespaceAst
   TokSep(std::move(tok_sep)) {
 }
 
-TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
+spp::asts::TypeUnaryExpressionOperatorNamespaceAst::~TypeUnaryExpressionOperatorNamespaceAst() = default;
 
-auto TypeUnaryExpressionOperatorNamespaceAst::EqualsOpNamespace(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::EqualsOpNamespace(
   TypeUnaryExpressionOperatorNamespaceAst const &other) const -> Ordering {
   // Equality based on the namespace.
   return *Ns == *other.Ns ? Ordering::equal : Ordering::less;
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::Equals(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::Equals(
   TypeUnaryExpressionOperatorAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsOpNamespace(*this);
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::PosStart() const -> std::size_t {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::PosStart() const -> std::size_t {
   // Use the namespace.
   return Ns->PosStart();
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::PosEnd() const -> std::size_t {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::PosEnd() const -> std::size_t {
   // Use the namespace.
   return Ns->PosEnd();
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<TypeUnaryExpressionOperatorNamespaceAst>(
     AstCloneShared(Ns),
     AstClone(TokSep));
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::ToString() const -> Str {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Ns);
   raw_string.append("::");
   SPP_STRING_END;
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::NsParts() const -> Vec<IdentifierAst const*> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts() const -> Vec<IdentifierAst const*> {
   return {Ns.get()};
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::NsParts() -> Vec<IdentifierAst*> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsParts() -> Vec<IdentifierAst*> {
   return {Ns.get()};
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
   return {};
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::TypeParts() -> Vec<TypeIdentifierAst*> {
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   return {};
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::NsPartsInto(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::NsPartsInto(
   Vec<IdentifierAst const*> &out) const -> void {
   out.emplace_back(Ns.get());
 }
 
-auto TypeUnaryExpressionOperatorNamespaceAst::TypePartsInto(
+auto spp::asts::TypeUnaryExpressionOperatorNamespaceAst::TypePartsInto(
   Vec<TypeIdentifierAst const*>&) const -> void {
 }
 

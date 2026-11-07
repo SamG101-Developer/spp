@@ -30,8 +30,14 @@ use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
+spp::asts::LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
   decltype(TokMut) &&tok_mut,
   decltype(Name) name,
   decltype(Alias) &&alias) :
@@ -40,19 +46,19 @@ LocalVariableSingleIdentifierAst::LocalVariableSingleIdentifierAst(
   Alias(std::move(alias)) {
 }
 
-LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
+spp::asts::LocalVariableSingleIdentifierAst::~LocalVariableSingleIdentifierAst() = default;
 
-auto LocalVariableSingleIdentifierAst::PosStart() const -> std::size_t {
+auto spp::asts::LocalVariableSingleIdentifierAst::PosStart() const -> std::size_t {
   // Use the "mut" token or name.
   return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
-auto LocalVariableSingleIdentifierAst::PosEnd() const -> std::size_t {
+auto spp::asts::LocalVariableSingleIdentifierAst::PosEnd() const -> std::size_t {
   // Use the alias or name.
   return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
-auto LocalVariableSingleIdentifierAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LocalVariableSingleIdentifierAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto l = MakeUnique<LocalVariableSingleIdentifierAst>(
     AstClone(TokMut),
@@ -63,7 +69,7 @@ auto LocalVariableSingleIdentifierAst::Clone() const -> Unique<Ast> {
   return l;
 }
 
-auto LocalVariableSingleIdentifierAst::ToString() const -> Str {
+auto spp::asts::LocalVariableSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokMut).append(TokMut ? " " : "");
   SPP_STRING_APPEND(Name).append(Alias ? " " : "");
@@ -71,12 +77,12 @@ auto LocalVariableSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LocalVariableSingleIdentifierAst::BindsByMove() const -> bool {
+auto spp::asts::LocalVariableSingleIdentifierAst::BindsByMove() const -> bool {
   // A name binds what it stands for, unless it asks for it through a borrow, which leaves the value where it was.
   return Conv == nullptr;
 }
 
-auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Get the value and its type from the "meta" information.
@@ -127,7 +133,7 @@ auto LocalVariableSingleIdentifierAst::Stage7_AnalyseSemantics(
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // No value => nothing to check, only the binding to declare.
   IMPORT_UTILS;
@@ -183,7 +189,7 @@ auto LocalVariableSingleIdentifierAst::Stage8_CheckMemory(
   }
 }
 
-auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
+auto spp::asts::LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Create the alloca for the variable.
@@ -259,7 +265,7 @@ auto LocalVariableSingleIdentifierAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto LocalVariableSingleIdentifierAst::EvaluateCompTime(
+auto spp::asts::LocalVariableSingleIdentifierAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The value is resolved before this binding is declared, then assigned into it.
   const auto _meta_guard = MetaGuard(meta);
@@ -271,14 +277,14 @@ auto LocalVariableSingleIdentifierAst::EvaluateCompTime(
   }
 }
 
-auto LocalVariableSingleIdentifierAst::_Own(
+auto spp::asts::LocalVariableSingleIdentifierAst::_Own(
   ScopeManager const *sm) const -> VariableSymbol* {
   // A binding only ever analysed as a clone of another has no symbol of its own; the one its name finds is it.
   if (_Symbol != nullptr) { return _Symbol.get(); }
   return sm->CurrentScope->FindVarSymbol(Alias != nullptr ? Alias->Name.get() : Name.get());
 }
 
-auto LocalVariableSingleIdentifierAst::_Binding(
+auto spp::asts::LocalVariableSingleIdentifierAst::_Binding(
   ScopeManager const *sm) const -> VariableSymbol* {
   // A clone walked over its original's scope has no symbol of its own, and its binding is hidden until declared: it is
   // the one its original recorded there, the first of its name not already visible (the next, for a "let" shadowing
@@ -296,7 +302,7 @@ auto LocalVariableSingleIdentifierAst::_Binding(
   return _Own(sm);
 }
 
-auto LocalVariableSingleIdentifierAst::_Declare(
+auto spp::asts::LocalVariableSingleIdentifierAst::_Declare(
   ScopeManager *sm) const -> VariableSymbol* {
   // Put this binding back under its name, from here on in the scope.
   auto *const sym = _Binding(sm);
@@ -304,7 +310,7 @@ auto LocalVariableSingleIdentifierAst::_Declare(
   return sym;
 }
 
-auto LocalVariableSingleIdentifierAst::Narrow(
+auto spp::asts::LocalVariableSingleIdentifierAst::Narrow(
   Shared<VariableSymbol> const &flow, Scope &scope) -> void {
   // The scope's record follows, so entering it hides the narrowed symbol, as it did the original.
   for (auto &recorded : scope.LetBindings) { if (recorded == _Symbol) { recorded = flow; } }
@@ -312,13 +318,13 @@ auto LocalVariableSingleIdentifierAst::Narrow(
   scope.AddVarSymbol(flow);
 }
 
-auto LocalVariableSingleIdentifierAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Return the single name as a vector that can get appended to
   // from nesting.
   return {Name};
 }
 
-auto LocalVariableSingleIdentifierAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableSingleIdentifierAst::ExtractName() const -> Shared<IdentifierAst> {
   // Return the single name (identifier) for matching capability.
   return Name;
 }

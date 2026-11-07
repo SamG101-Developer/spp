@@ -910,9 +910,18 @@ auto spp::analyse::utils::pattern_solver::IsElseBranch(
       or patterns[0]->To<CasePatternVariantElseCaseAst>() != nullptr);
 }
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, CaseExpressionBranchAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+
 SPP_MOD_BEGIN
 /// [CHECKED]
-PatternSolver::PatternSolver(
+spp::analyse::utils::pattern_solver::PatternSolver::PatternSolver(
   Vec<CaseExpressionBranchAst*> branches, TypeRef const &subject,
   Shared<VariableSymbol> subject_value, Scope const &scope) :
   _Branches(std::move(branches)),
@@ -922,9 +931,9 @@ PatternSolver::PatternSolver(
 }
 
 /// [CHECKED]
-PatternSolver::~PatternSolver() = default;
+spp::analyse::utils::pattern_solver::PatternSolver::~PatternSolver() = default;
 
-auto PatternSolver::Solve(
+auto spp::analyse::utils::pattern_solver::PatternSolver::Solve(
   ScopeManager &sm, CompilerMetaData &meta) const -> MatchPlan {
   // Each pattern of each branch, once, at the subject's position,
   // and what each checks.

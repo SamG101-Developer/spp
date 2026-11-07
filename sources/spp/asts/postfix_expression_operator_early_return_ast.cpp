@@ -40,39 +40,44 @@ import spp.utils.ice;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
+spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
   decltype(TokQst) &&tok_qst) :
   TokQst(std::move(tok_qst)),
   _TransformedExpr(nullptr) {
 }
 
-PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
+spp::asts::PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
 
-auto PostfixExpressionOperatorEarlyReturnAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosStart() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosStart();
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosEnd();
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<PostfixExpressionOperatorEarlyReturnAst>(
     AstClone(TokQst));
   ast->_TransformedExpr = _TransformedExpr;
   return ast;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokQst);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -181,13 +186,13 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTargetType = nullptr;
@@ -195,13 +200,13 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   return llvm_val;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->EvaluateCompTime(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::InferType(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -219,7 +224,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferType(
   return TypeInferrableAst::InferType(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The try type's "Value" is read off the type's arguments,
   // so only the transformed expression is forwarded.
@@ -238,7 +243,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
     "early return").Symbol->TypeArgRef("Value");
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::RebuildsOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::RebuildsOperand() const -> bool {
   // The "case" is built from the "?" operand.
   return true;
 }

@@ -30,8 +30,14 @@ import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
+spp::asts::PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
   Unique<TokenAst> &&tok_l,
   Unique<TokenAst> &&tok_mut,
   Unique<ExpressionAst> &&expr_l_bound,
@@ -47,19 +53,19 @@ PostfixExpressionOperatorSliceAst::PostfixExpressionOperatorSliceAst(
   _MappedFn(nullptr) {
 }
 
-PostfixExpressionOperatorSliceAst::~PostfixExpressionOperatorSliceAst() = default;
+spp::asts::PostfixExpressionOperatorSliceAst::~PostfixExpressionOperatorSliceAst() = default;
 
-auto PostfixExpressionOperatorSliceAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorSliceAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL->PosStart();
 }
 
-auto PostfixExpressionOperatorSliceAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorSliceAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto PostfixExpressionOperatorSliceAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorSliceAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorSliceAst>(
     AstClone(TokL),
@@ -72,7 +78,7 @@ auto PostfixExpressionOperatorSliceAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorSliceAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedFn != nullptr) {
     SPP_STRING_APPEND(_MappedFn->Op);
@@ -87,7 +93,7 @@ auto PostfixExpressionOperatorSliceAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
   IMPORT_UTILS;
@@ -114,35 +120,35 @@ auto PostfixExpressionOperatorSliceAst::Stage7_AnalyseSemantics(
   _MappedFn = operator_desugaring::MapToMethodCall(*this, *Lhs, PosStart(), func_name, std::move(args), sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorSliceAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorSliceAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward to the mapped function.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto PostfixExpressionOperatorSliceAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorSliceAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the mapped function.
   _MappedFn->EvaluateCompTime(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::InferType(
+auto spp::asts::PostfixExpressionOperatorSliceAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward to the mapped function's return type.
   return _MappedFn->InferType(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorSliceAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionOperatorSliceAst::ReadExpr(
+auto spp::asts::PostfixExpressionOperatorSliceAst::ReadExpr(
   ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // Substitute the inner expressions inside the []
   // tokens. An open-ended slice ("s[to n]", "s[n to]") has
@@ -161,7 +167,7 @@ auto PostfixExpressionOperatorSliceAst::ReadExpr(
     AstClone(TokR));
 }
 
-auto PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
   // Check both the left and right bounds, which can be
   // nullptr for the unbound slicing.
   return
@@ -169,7 +175,7 @@ auto PostfixExpressionOperatorSliceAst::IsAllowedInDefault() const -> bool {
     (ExprRBound == nullptr or ExprRBound->IsAllowedInDefault());
 }
 
-auto PostfixExpressionOperatorSliceAst::WalksOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorSliceAst::WalksOperand() const -> bool {
   // Checked through "slice_ref"/"slice_mut", over the operand.
   return true;
 }

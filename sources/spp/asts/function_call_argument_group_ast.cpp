@@ -46,14 +46,19 @@ import genex;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto FunctionCallArgumentGroupAst::NewEmpty() -> Unique<FunctionCallArgumentGroupAst> {
+auto spp::asts::FunctionCallArgumentGroupAst::NewEmpty() -> Unique<FunctionCallArgumentGroupAst> {
   // Empty ast.
   return MakeUnique<FunctionCallArgumentGroupAst>(
     nullptr, decltype(Args)(), nullptr);
 }
 
-FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
+spp::asts::FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Args) &&args,
   decltype(TokR) &&tok_r) :
@@ -62,19 +67,19 @@ FunctionCallArgumentGroupAst::FunctionCallArgumentGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
+spp::asts::FunctionCallArgumentGroupAst::~FunctionCallArgumentGroupAst() = default;
 
-auto FunctionCallArgumentGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Args.empty() ? 0 : Args.front()->PosStart();
 }
 
-auto FunctionCallArgumentGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Args.empty() ? 0 : Args.back()->PosEnd();
 }
 
-auto FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<FunctionCallArgumentGroupAst>(
     AstClone(TokL),
@@ -84,7 +89,7 @@ auto FunctionCallArgumentGroupAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto FunctionCallArgumentGroupAst::ToString() const -> Str {
+auto spp::asts::FunctionCallArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("(");
   SPP_STRING_EXTEND(Args, ", ");
@@ -92,7 +97,7 @@ auto FunctionCallArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumentAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumentAst*> {
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentAst*>();
   for (auto const &arg : Args) {
@@ -101,7 +106,7 @@ auto FunctionCallArgumentGroupAst::GetAllArgs() const -> Vec<FunctionCallArgumen
   return out;
 }
 
-auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArgumentKeywordAst*> {
+auto spp::asts::FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArgumentKeywordAst*> {
   // Filter by casting.
   auto out = Vec<FunctionCallArgumentKeywordAst*>();
   for (auto const &arg : Args) {
@@ -112,7 +117,7 @@ auto FunctionCallArgumentGroupAst::GetKeywordArgs() const -> Vec<FunctionCallArg
   return out;
 }
 
-auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -176,12 +181,12 @@ auto FunctionCallArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto FunctionCallArgumentGroupAst::GenerateSpreadTemps(
+auto spp::asts::FunctionCallArgumentGroupAst::GenerateSpreadTemps(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> void {
   for (auto const &temp : SpreadTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
 }
 
-auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
+auto spp::asts::FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -374,7 +379,7 @@ auto FunctionCallArgumentGroupAst::Stage8_CheckMemory(
   }
 }
 
-auto FunctionCallArgumentGroupAst::At(
+auto spp::asts::FunctionCallArgumentGroupAst::At(
   const char *key) const -> FunctionCallArgumentAst const* {
   // Iterate the comptime arguments to find the matching key.
   for (const auto *arg : GetKeywordArgs()) {
@@ -383,7 +388,7 @@ auto FunctionCallArgumentGroupAst::At(
   return nullptr;
 }
 
-auto FunctionCallArgumentGroupAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::FunctionCallArgumentGroupAst::IsAllowedInDefault() const -> bool {
   // Check every argument - one bad one prevents the entire
   // group from being allowed in this specific context.
   for (auto const &x : Args) {

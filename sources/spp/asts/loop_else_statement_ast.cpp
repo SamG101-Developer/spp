@@ -15,41 +15,46 @@ import spp.asts.utils.ast_utils;
 
 use_alias(spp::analyse::scopes, ScopeBlockName);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LoopElseStatementAst::LoopElseStatementAst(
+spp::asts::LoopElseStatementAst::LoopElseStatementAst(
   decltype(TokElse) &&tok_else,
   decltype(Body) &&body) :
   TokElse(std::move(tok_else)),
   Body(std::move(body)) {
 }
 
-LoopElseStatementAst::~LoopElseStatementAst() = default;
+spp::asts::LoopElseStatementAst::~LoopElseStatementAst() = default;
 
-auto LoopElseStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::LoopElseStatementAst::PosStart() const -> std::size_t {
   // Use the "else" token.
   return TokElse->PosStart();
 }
 
-auto LoopElseStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::LoopElseStatementAst::PosEnd() const -> std::size_t {
   // Use the "else" token.
   return TokElse->PosEnd();
 }
 
-auto LoopElseStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LoopElseStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LoopElseStatementAst>(
     AstClone(TokElse),
     AstClone(Body));
 }
 
-auto LoopElseStatementAst::ToString() const -> Str {
+auto spp::asts::LoopElseStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokElse);
   SPP_STRING_APPEND(Body);
   SPP_STRING_END;
 }
 
-auto LoopElseStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::LoopElseStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create a scope and analyse the body.
   auto scope_name = ScopeBlockName::FromParts(
@@ -59,7 +64,7 @@ auto LoopElseStatementAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto LoopElseStatementAst::Stage8_CheckMemory(
+auto spp::asts::LoopElseStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the body for memory issues.
   sm->MoveToNextScope();
@@ -67,7 +72,7 @@ auto LoopElseStatementAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto LoopElseStatementAst::Stage11_CodeGen(
+auto spp::asts::LoopElseStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for the body.
   sm->MoveToNextScope();
@@ -76,13 +81,13 @@ auto LoopElseStatementAst::Stage11_CodeGen(
   return val;
 }
 
-auto LoopElseStatementAst::InferType(
+auto spp::asts::LoopElseStatementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type of an else statement is the type of its body.
   return Body->InferType(sm, meta);
 }
 
-auto LoopElseStatementAst::InferTypeRef(
+auto spp::asts::LoopElseStatementAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return Body->InferTypeRef(sm, meta);
 }

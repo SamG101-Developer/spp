@@ -46,14 +46,18 @@ use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto ObjectInitializerArgumentGroupAst::NewEmpty() -> Unique<ObjectInitializerArgumentGroupAst> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::NewEmpty() -> Unique<ObjectInitializerArgumentGroupAst> {
   // Factory for an empty object initializer group.
   return MakeUnique<ObjectInitializerArgumentGroupAst>(
     nullptr, decltype(Args)(), nullptr);
 }
 
-ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
+spp::asts::ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Args) &&args,
   decltype(TokR) &&tok_r) :
@@ -67,19 +71,19 @@ ObjectInitializerArgumentGroupAst::ObjectInitializerArgumentGroupAst(
     this->TokR, SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-ObjectInitializerArgumentGroupAst::~ObjectInitializerArgumentGroupAst() = default;
+spp::asts::ObjectInitializerArgumentGroupAst::~ObjectInitializerArgumentGroupAst() = default;
 
-auto ObjectInitializerArgumentGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "{" token.
   return TokL->PosStart();
 }
 
-auto ObjectInitializerArgumentGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "}" token.
   return TokR->PosEnd();
 }
 
-auto ObjectInitializerArgumentGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ObjectInitializerArgumentGroupAst>(
     AstClone(TokL),
@@ -87,7 +91,7 @@ auto ObjectInitializerArgumentGroupAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto ObjectInitializerArgumentGroupAst::ToString() const -> Str {
+auto spp::asts::ObjectInitializerArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Args, ", ");
@@ -95,7 +99,7 @@ auto ObjectInitializerArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -208,7 +212,7 @@ auto ObjectInitializerArgumentGroupAst::Stage6_PreAnalyseSemantics(
   }
 }
 
-auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -330,20 +334,20 @@ auto ObjectInitializerArgumentGroupAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
+auto spp::asts::ObjectInitializerArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the arguments.
   for (auto const &arg : Args) { arg->Stage8_CheckMemory(sm, meta); }
 }
 
-auto ObjectInitializerArgumentGroupAst::GetAllArgs() -> Vec<ObjectInitializerArgumentAst*> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::GetAllArgs() -> Vec<ObjectInitializerArgumentAst*> {
   // Get all arguments in the group.
   return Args
     | genex::views::ptr
     | genex::to<Vec>();
 }
 
-auto ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArgumentShorthandAst* {
+auto spp::asts::ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArgumentShorthandAst* {
   // Get the first shorthand argument tagged with the ".." token.
   const auto filtered = Args
     | genex::views::ptr
@@ -353,7 +357,7 @@ auto ObjectInitializerArgumentGroupAst::GetAutoFillArg() -> ObjectInitializerArg
   return filtered.empty() ? nullptr : filtered[0];
 }
 
-auto ObjectInitializerArgumentGroupAst::GetNonAutoFillArgs() -> Vec<ObjectInitializerArgumentAst*> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::GetNonAutoFillArgs() -> Vec<ObjectInitializerArgumentAst*> {
   // Get the first shorthand argument tagged with the ".." token.
   return Args
     | genex::views::ptr
@@ -361,7 +365,7 @@ auto ObjectInitializerArgumentGroupAst::GetNonAutoFillArgs() -> Vec<ObjectInitia
     | genex::to<Vec>();
 }
 
-auto ObjectInitializerArgumentGroupAst::GetShorthandArgs() -> Vec<ObjectInitializerArgumentShorthandAst*> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::GetShorthandArgs() -> Vec<ObjectInitializerArgumentShorthandAst*> {
   // Get all shorthand arguments tagged with the ".." token.
   return Args
     | genex::views::ptr
@@ -369,7 +373,7 @@ auto ObjectInitializerArgumentGroupAst::GetShorthandArgs() -> Vec<ObjectInitiali
     | genex::to<Vec>();
 }
 
-auto ObjectInitializerArgumentGroupAst::GetKeywordArgs() -> Vec<ObjectInitializerArgumentKeywordAst*> {
+auto spp::asts::ObjectInitializerArgumentGroupAst::GetKeywordArgs() -> Vec<ObjectInitializerArgumentKeywordAst*> {
   // Get all keyword arguments.
   return Args
     | genex::views::ptr
@@ -377,7 +381,7 @@ auto ObjectInitializerArgumentGroupAst::GetKeywordArgs() -> Vec<ObjectInitialize
     | genex::to<Vec>();
 }
 
-auto ObjectInitializerArgumentGroupAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ObjectInitializerArgumentGroupAst::IsAllowedInDefault() const -> bool {
   // Check every argument - one bad one prevents the entire
   // group from being allowed in this specific context.
   return not genex::any_of(

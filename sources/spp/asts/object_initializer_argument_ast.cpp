@@ -16,17 +16,22 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
+spp::asts::ObjectInitializerArgumentAst::ObjectInitializerArgumentAst(
   decltype(Name) name,
   decltype(Val) &&val) :
   Name(std::move(name)),
   Val(std::move(val)) {
 }
 
-ObjectInitializerArgumentAst::~ObjectInitializerArgumentAst() = default;
+spp::asts::ObjectInitializerArgumentAst::~ObjectInitializerArgumentAst() = default;
 
-auto ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
+auto spp::asts::ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -36,7 +41,7 @@ auto ObjectInitializerArgumentAst::Stage7_AnalyseSemantics(
   common_errors::RequirePrimary(*Val, *sm);
 }
 
-auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
+auto spp::asts::ObjectInitializerArgumentAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the value expression.
   IMPORT_UTILS;
@@ -44,24 +49,24 @@ auto ObjectInitializerArgumentAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Val, *this, *sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::EvaluateCompTime(
+auto spp::asts::ObjectInitializerArgumentAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve the value expression.
   Val->EvaluateCompTime(sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::InferType(
+auto spp::asts::ObjectInitializerArgumentAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the type of the value expression.
   return Val->InferType(sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::InferTypeRef(
+auto spp::asts::ObjectInitializerArgumentAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return Val->InferTypeRef(sm, meta);
 }
 
-auto ObjectInitializerArgumentAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ObjectInitializerArgumentAst::IsAllowedInDefault() const -> bool {
   // Check the internal value of the argument.
   // Todo: Remove the nullptr guard?
   return Val == nullptr or Val->IsAllowedInDefault();

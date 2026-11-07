@@ -3,7 +3,11 @@ module;
 
 module spp.asts.module_member_ast;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ModuleMemberAst::ModuleMemberAst() = default;
-ModuleMemberAst::~ModuleMemberAst() = default;
+spp::asts::ModuleMemberAst::ModuleMemberAst() = default;
+spp::asts::ModuleMemberAst::~ModuleMemberAst() = default;
 SPP_MOD_END

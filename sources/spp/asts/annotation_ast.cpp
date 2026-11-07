@@ -58,8 +58,12 @@ namespace spp::asts {
   }
 }
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-AnnotationAst::AnnotationAst(
+spp::asts::AnnotationAst::AnnotationAst(
   decltype(TokExclamationMark) &&tok_exclamation_mark,
   decltype(Name) &&name,
   decltype(GnArgGroup) &&gn_arg_group,
@@ -74,19 +78,19 @@ AnnotationAst::AnnotationAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
 }
 
-AnnotationAst::~AnnotationAst() = default;
+spp::asts::AnnotationAst::~AnnotationAst() = default;
 
-auto AnnotationAst::PosStart() const -> std::size_t {
+auto spp::asts::AnnotationAst::PosStart() const -> std::size_t {
   // Use the "!" token.
   return TokExclamationMark->PosStart();
 }
 
-auto AnnotationAst::PosEnd() const -> std::size_t {
+auto spp::asts::AnnotationAst::PosEnd() const -> std::size_t {
   // Use the "name" token.
   return Name->PosEnd();
 }
 
-auto AnnotationAst::Clone() const -> Unique<Ast> {
+auto spp::asts::AnnotationAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<AnnotationAst>(
     AstClone(TokExclamationMark),
@@ -101,7 +105,7 @@ auto AnnotationAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto AnnotationAst::ToString() const -> Str {
+auto spp::asts::AnnotationAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokExclamationMark);
   SPP_STRING_APPEND(Name);
@@ -110,25 +114,25 @@ auto AnnotationAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto AnnotationAst::operator==(
+auto spp::asts::AnnotationAst::operator==(
   AnnotationAst const &that) const -> bool {
   // Annotation equality is based on the name.
   return *Name == *that.Name;
 }
 
-auto AnnotationAst::Stage1_PreProcess(
+auto spp::asts::AnnotationAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Default AST processing (sets context).
   Ast::Stage1_PreProcess(ctx);
 }
 
-auto AnnotationAst::Stage2_GenTopLvlScopes(
+auto spp::asts::AnnotationAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Default AST processing (sets scope).
   Ast::Stage2_GenTopLvlScopes(sm, meta);
 }
 
-auto AnnotationAst::Stage4_ResolveDeclarations(
+auto spp::asts::AnnotationAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   // Get the fully qualified name of the annotation, to bypass
@@ -158,7 +162,7 @@ auto AnnotationAst::Stage4_ResolveDeclarations(
   }
 }
 
-auto AnnotationAst::Stage5_LoadSupScopes(
+auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -255,7 +259,7 @@ auto AnnotationAst::Stage5_LoadSupScopes(
   }
 }
 
-auto AnnotationAst::_ResolveBuiltin(
+auto spp::asts::AnnotationAst::_ResolveBuiltin(
   ScopeManager *sm) -> bool {
   const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Name).first;
   if (sym == nullptr) { return false; }
@@ -264,7 +268,7 @@ auto AnnotationAst::_ResolveBuiltin(
   return true;
 }
 
-auto AnnotationAst::Stage7_AnalyseSemantics(
+auto spp::asts::AnnotationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Todo: Validate "Void" return type on annotation + test.
@@ -298,7 +302,7 @@ auto AnnotationAst::Stage7_AnalyseSemantics(
   _CheckTarget(sm, meta);
 }
 
-auto AnnotationAst::_CheckTarget(
+auto spp::asts::AnnotationAst::_CheckTarget(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using annotation_utils::AnnotationInfo;

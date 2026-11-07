@@ -20,37 +20,42 @@ import spp.codegen.llvm_type;
 import spp.utils.ice;
 import spp.utils.uid;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
+spp::asts::PostfixExpressionOperatorDerefAst::PostfixExpressionOperatorDerefAst(
   decltype(TokDeref) &&tok_deref) :
   TokDeref(std::move(tok_deref)) {
 }
 
-PostfixExpressionOperatorDerefAst::~PostfixExpressionOperatorDerefAst() = default;
+spp::asts::PostfixExpressionOperatorDerefAst::~PostfixExpressionOperatorDerefAst() = default;
 
-auto PostfixExpressionOperatorDerefAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorDerefAst::PosStart() const -> std::size_t {
   // Use the "@" token.
   return TokDeref->PosStart();
 }
 
-auto PostfixExpressionOperatorDerefAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorDerefAst::PosEnd() const -> std::size_t {
   // Use the "@" token.
   return TokDeref->PosEnd();
 }
 
-auto PostfixExpressionOperatorDerefAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorDerefAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PostfixExpressionOperatorDerefAst>(
     AstClone(TokDeref));
 }
 
-auto PostfixExpressionOperatorDerefAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorDerefAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDeref);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -81,7 +86,7 @@ auto PostfixExpressionOperatorDerefAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Get the value underlying the borrow.
@@ -103,13 +108,13 @@ auto PostfixExpressionOperatorDerefAst::Stage11_CodeGen(
   return deref_val;
 }
 
-auto PostfixExpressionOperatorDerefAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorDerefAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // As this is cmp context, just return the "lhs" generation.
   Lhs->EvaluateCompTime(sm, meta);
 }
 
-auto PostfixExpressionOperatorDerefAst::InferType(
+auto spp::asts::PostfixExpressionOperatorDerefAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Get the right-hand-side expression's type.
   const auto lhs = Lhs;
@@ -119,14 +124,14 @@ auto PostfixExpressionOperatorDerefAst::InferType(
   return AstClone(lhs_type->WithoutConvention());
 }
 
-auto PostfixExpressionOperatorDerefAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorDerefAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   auto ref = Lhs->InferTypeRef(sm, meta);
   ref.Conv = ConventionTag::MOV;
   return ref;
 }
 
-auto PostfixExpressionOperatorDerefAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorDerefAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its
   // own.
   return true;

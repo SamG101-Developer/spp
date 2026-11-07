@@ -13,8 +13,12 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
+auto spp::asts::ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
   Unique<ExpressionAst> &&val) -> Unique<ObjectInitializerArgumentShorthandAst> {
   // Wrap the constructor with some fixed arguments.
   return MakeUnique<ObjectInitializerArgumentShorthandAst>(
@@ -22,26 +26,26 @@ auto ObjectInitializerArgumentShorthandAst::CreateAutoFillArg(
     std::move(val));
 }
 
-ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
+spp::asts::ObjectInitializerArgumentShorthandAst::ObjectInitializerArgumentShorthandAst(
   decltype(TokEllipsis) &&tok_ellipsis,
   decltype(Val) &&val) :
   ObjectInitializerArgumentAst(AstCloneShared(val->To<IdentifierAst>()), std::move(val)),
   TokEllipsis(std::move(tok_ellipsis)) {
 }
 
-ObjectInitializerArgumentShorthandAst::~ObjectInitializerArgumentShorthandAst() = default;
+spp::asts::ObjectInitializerArgumentShorthandAst::~ObjectInitializerArgumentShorthandAst() = default;
 
-auto ObjectInitializerArgumentShorthandAst::PosStart() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentShorthandAst::PosStart() const -> std::size_t {
   // Use the ".." token or value.
   return TokEllipsis != nullptr ? TokEllipsis->PosStart() : Val->PosStart();
 }
 
-auto ObjectInitializerArgumentShorthandAst::PosEnd() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentShorthandAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto ObjectInitializerArgumentShorthandAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ObjectInitializerArgumentShorthandAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ObjectInitializerArgumentShorthandAst>(
     AstClone(TokEllipsis),
@@ -51,14 +55,14 @@ auto ObjectInitializerArgumentShorthandAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ObjectInitializerArgumentShorthandAst::ToString() const -> Str {
+auto spp::asts::ObjectInitializerArgumentShorthandAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokEllipsis);
   SPP_STRING_APPEND(Val);
   SPP_STRING_END;
 }
 
-auto ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
+auto spp::asts::ObjectInitializerArgumentShorthandAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   using namespace spp::analyse::errors;
 

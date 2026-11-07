@@ -26,27 +26,34 @@ import genex;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-TypePostfixExpressionAst::TypePostfixExpressionAst(
+spp::asts::TypePostfixExpressionAst::TypePostfixExpressionAst(
   decltype(Lhs) lhs,
   decltype(TokOp) tok_op) :
   Lhs(std::move(lhs)),
   TokOp(std::move(tok_op)) {
 }
 
-TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
+spp::asts::TypePostfixExpressionAst::~TypePostfixExpressionAst() = default;
 
-auto TypePostfixExpressionAst::operator<=>(
+auto spp::asts::TypePostfixExpressionAst::operator<=>(
   TypePostfixExpressionAst const &other) const -> Ordering {
   return EqualsTypePostfixExpression(other);
 }
 
-auto TypePostfixExpressionAst::operator==(
+auto spp::asts::TypePostfixExpressionAst::operator==(
   TypePostfixExpressionAst const &other) const -> bool {
   return EqualsTypePostfixExpression(other) == Ordering::equal;
 }
 
-auto TypePostfixExpressionAst::EqualsTypePostfixExpression(
+auto spp::asts::TypePostfixExpressionAst::EqualsTypePostfixExpression(
   TypePostfixExpressionAst const &other) const -> Ordering {
   // Check the lhs and operator are the same.
   if (*Lhs == *other.Lhs && *TokOp == *other.TokOp) {
@@ -55,25 +62,25 @@ auto TypePostfixExpressionAst::EqualsTypePostfixExpression(
   return Ordering::less;
 }
 
-auto TypePostfixExpressionAst::Equals(
+auto spp::asts::TypePostfixExpressionAst::Equals(
   const ExpressionAst &other) const -> Ordering {
   // Double dispatch to the appropriate equals method.
   return other.EqualsTypePostfixExpression(*this);
 }
 
-auto TypePostfixExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs, unless this replaces a written type.
   if (_HasSourceSpan) { return _SpanStart; }
   return Lhs->PosStart();
 }
 
-auto TypePostfixExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::TypePostfixExpressionAst::PosEnd() const -> std::size_t {
   // Use the operator, unless this replaces a written type.
   if (_HasSourceSpan) { return _SpanEnd; }
   return TokOp->PosEnd();
 }
 
-auto TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto t = MakeUnique<TypePostfixExpressionAst>(
     AstClone(Lhs),
@@ -83,14 +90,14 @@ auto TypePostfixExpressionAst::Clone() const -> Unique<Ast> {
   return t;
 }
 
-auto TypePostfixExpressionAst::ToString() const -> Str {
+auto spp::asts::TypePostfixExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Lhs);
   SPP_STRING_APPEND(TokOp);
   SPP_STRING_END;
 }
 
-auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -117,18 +124,18 @@ auto TypePostfixExpressionAst::Stage7_AnalyseSemantics(
   op_nested->Name->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto TypePostfixExpressionAst::InferType(
+auto spp::asts::TypePostfixExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   return _NestedSymbol(sm, meta)->FqName();
 }
 
-auto TypePostfixExpressionAst::InferTypeRef(
+auto spp::asts::TypePostfixExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // Read here.
   return TypeRef::Of(*_NestedSymbol(sm, meta), *sm->CurrentScope);
 }
 
-auto TypePostfixExpressionAst::_NestedSymbol(
+auto spp::asts::TypePostfixExpressionAst::_NestedSymbol(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeSymbol* {
   // The nested type the left-hand side's scope declares ("A::B"). The left-hand
   // side analysed again only checks it, once resolved.
@@ -140,59 +147,59 @@ auto TypePostfixExpressionAst::_NestedSymbol(
     *lhs_type_sym->LinkedScope, *op_nested->Name);
 }
 
-auto TypePostfixExpressionAst::IsNeverType() const noexcept -> bool {
+auto spp::asts::TypePostfixExpressionAst::IsNeverType() const noexcept -> bool {
   return false;
 }
 
-auto TypePostfixExpressionAst::NsParts() const -> Vec<IdentifierAst const*> {
+auto spp::asts::TypePostfixExpressionAst::NsParts() const -> Vec<IdentifierAst const*> {
   // Concatenate the lhs and rhs namespace parts.
   auto parts = Vec<IdentifierAst const*>();
   NsPartsInto(parts);
   return parts;
 }
 
-auto TypePostfixExpressionAst::NsParts() -> Vec<IdentifierAst*> {
+auto spp::asts::TypePostfixExpressionAst::NsParts() -> Vec<IdentifierAst*> {
   // Concatenate the lhs and rhs namespace parts.
   auto parts = Lhs->NsParts();
   parts.append_range(TokOp->NsParts());
   return parts;
 }
 
-auto TypePostfixExpressionAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
+auto spp::asts::TypePostfixExpressionAst::TypeParts() const -> Vec<TypeIdentifierAst const*> {
   // Concatenate the lhs and rhs type parts.
   auto parts = Vec<TypeIdentifierAst const*>();
   TypePartsInto(parts);
   return parts;
 }
 
-auto TypePostfixExpressionAst::TypeParts() -> Vec<TypeIdentifierAst*> {
+auto spp::asts::TypePostfixExpressionAst::TypeParts() -> Vec<TypeIdentifierAst*> {
   // Concatenate the lhs and rhs type parts.
   auto parts = Lhs->TypeParts();
   parts.append_range(TokOp->TypeParts());
   return parts;
 }
 
-auto TypePostfixExpressionAst::LastTypePart() const -> TypeIdentifierAst const* {
+auto spp::asts::TypePostfixExpressionAst::LastTypePart() const -> TypeIdentifierAst const* {
   // The operator's part (if any) is appended last; otherwise the final part comes from the lhs.
   if (auto const *op_part = std::as_const(*TokOp).LastTypePart()) { return op_part; }
   return std::as_const(*Lhs).LastTypePart();
 }
 
-auto TypePostfixExpressionAst::LastTypePart() -> TypeIdentifierAst* {
+auto spp::asts::TypePostfixExpressionAst::LastTypePart() -> TypeIdentifierAst* {
   if (auto *op_part = TokOp->LastTypePart()) { return op_part; }
   return Lhs->LastTypePart();
 }
 
-auto TypePostfixExpressionAst::WithoutConvention() const -> Shared<const TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::WithoutConvention() const -> Shared<const TypeAst> {
   return shared_from_this();
 }
 
-auto TypePostfixExpressionAst::GetConvention() const -> ConventionAst* {
+auto spp::asts::TypePostfixExpressionAst::GetConvention() const -> ConventionAst* {
   // This type AST will never have a convention directly applied to it.
   return nullptr;
 }
 
-auto TypePostfixExpressionAst::WithConvention(
+auto spp::asts::TypePostfixExpressionAst::WithConvention(
   Unique<ConventionAst> &&conv) const -> Shared<TypeAst> {
   if (conv == nullptr) { return const_cast<TypePostfixExpressionAst*>(this)->shared_from_this(); }
   auto borrow_op = MakeUnique<TypeUnaryExpressionOperatorBorrowAst>(std::move(conv));
@@ -205,7 +212,7 @@ auto TypePostfixExpressionAst::WithConvention(
   return wrapped;
 }
 
-auto TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
+auto spp::asts::TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   // Use cache if available.
   if (not _CachedWithoutGns) {
     const auto rhs = TokOp->As<TypePostfixExpressionOperatorNestedTypeAst>();
@@ -216,20 +223,20 @@ auto TypePostfixExpressionAst::WithoutGns() const -> Shared<TypeAst> {
   return _CachedWithoutGns;
 }
 
-auto TypePostfixExpressionAst::IsCompilerGeneratedType() const -> bool {
+auto spp::asts::TypePostfixExpressionAst::IsCompilerGeneratedType() const -> bool {
   // A method's "$" mock is named through its owner
   // ("main::A::$Method"), so check the nested part.
   return LastTypePart()->IsCompilerGeneratedType();
 }
 
-auto TypePostfixExpressionAst::NsPartsInto(
+auto spp::asts::TypePostfixExpressionAst::NsPartsInto(
   Vec<IdentifierAst const*> &out) const -> void {
   // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
   std::as_const(*Lhs).NsPartsInto(out);
   std::as_const(*TokOp).NsPartsInto(out);
 }
 
-auto TypePostfixExpressionAst::TypePartsInto(
+auto spp::asts::TypePostfixExpressionAst::TypePartsInto(
   Vec<TypeIdentifierAst const*> &out) const -> void {
   // Both sides append into the caller's buffer, so a chain of any depth is one allocation.
   std::as_const(*Lhs).TypePartsInto(out);

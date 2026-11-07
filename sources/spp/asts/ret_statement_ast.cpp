@@ -40,8 +40,12 @@ import spp.utils.uid;
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-RetStatementAst::RetStatementAst(
+spp::asts::RetStatementAst::RetStatementAst(
   decltype(TokRet) &&tok_ret,
   decltype(Expr) &&val) :
   TokRet(std::move(tok_ret)),
@@ -51,33 +55,33 @@ RetStatementAst::RetStatementAst(
   Source._OriginalRetType = nullptr;
 }
 
-RetStatementAst::~RetStatementAst() = default;
+spp::asts::RetStatementAst::~RetStatementAst() = default;
 
-auto RetStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::RetStatementAst::PosStart() const -> std::size_t {
   // Use the "ret" token.
   return TokRet->PosStart();
 }
 
-auto RetStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::RetStatementAst::PosEnd() const -> std::size_t {
   // Use the expression if it exists, otherwise use the "ret" token.
   return Expr ? Expr->PosEnd() : TokRet->PosEnd();
 }
 
-auto RetStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::RetStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<RetStatementAst>(
     AstClone(TokRet),
     AstClone(Expr));
 }
 
-auto RetStatementAst::ToString() const -> Str {
+auto spp::asts::RetStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokRet).append(" ");
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto RetStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::RetStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -154,7 +158,7 @@ auto RetStatementAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto RetStatementAst::Stage8_CheckMemory(
+auto spp::asts::RetStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -182,12 +186,12 @@ auto RetStatementAst::Stage8_CheckMemory(
     *TokRet, "Return", *sm, meta);
 }
 
-auto RetStatementAst::Stage11_CodeGen(
+auto spp::asts::RetStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   return EmitReturn(Expr.get(), _RetType, *this, sm, meta, ctx);
 }
 
-auto RetStatementAst::EvaluateCompTime(
+auto spp::asts::RetStatementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Mark the frame as returned either way, so the statements after the "case" this "ret" may sit inside are not
   // resolved on top of it.
@@ -198,7 +202,7 @@ auto RetStatementAst::EvaluateCompTime(
   Expr->EvaluateCompTime(sm, meta);
 }
 
-auto RetStatementAst::EmitReturn(
+auto spp::asts::RetStatementAst::EmitReturn(
   ExpressionAst *const expr, Shared<TypeAst> const &ret_type_written, Ast const &site, ScopeManager *sm,
   CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
@@ -270,7 +274,7 @@ auto RetStatementAst::EmitReturn(
   return nullptr;
 }
 
-auto RetStatementAst::Diverges(
+auto spp::asts::RetStatementAst::Diverges(
   ScopeManager *, CompilerMetaData *) -> bool {
   // A "ret" always leaves the function.
   return true;

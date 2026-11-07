@@ -22,6 +22,7 @@ use(spp::asts, struct TypeAst);
 /// "ret" - including the one the "?" operator generates - or a
 /// loop "exit" or "skip".
 SPP_EXP_CLS struct spp::asts::DeferStatementAst final : StatementAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(DeferStatementAst);
 
   /// The "defer" token that starts this statement.
@@ -62,3 +63,5 @@ private:
   analyse::scopes::Scope *_DeferScope = nullptr;
   Opt<analyse::scopes::ScopePosition> _DeferPosition;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::DeferStatementAst)

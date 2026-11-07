@@ -181,7 +181,7 @@ private:
       if (quotes and ErrorFormatter::Owning(it->Ast) == site_file) { return; }
       if (it->Kind == ErrorInformationKind::FOOTER and footer == error.ErrorInfo.end()) { footer = it; }
     }
-    error.ErrorInfo.insert(footer, {.Ast = site, .Kind = ErrorInformationKind::CONTEXT, .Tag = "Instantiated here"});
+    error.ErrorInfo.insert(footer, {.Ast = site, .Kind = ErrorInformationKind::CONTEXT, .Tag = "Instantiated here", .Msg = ""});
   }
 
   static auto _StringifyErrorInformation(

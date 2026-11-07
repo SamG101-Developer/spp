@@ -36,14 +36,18 @@ use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto ClosureExpressionCaptureGroupAst::NewEmpty() -> Unique<ClosureExpressionCaptureGroupAst> {
+auto spp::asts::ClosureExpressionCaptureGroupAst::NewEmpty() -> Unique<ClosureExpressionCaptureGroupAst> {
   // Empty.
   return MakeUnique<ClosureExpressionCaptureGroupAst>(
     nullptr, decltype(Captures)());
 }
 
-ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
+spp::asts::ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
   decltype(TokCaps) &&tok_caps,
   decltype(Captures) &&captures) :
   TokCaps(std::move(tok_caps)),
@@ -53,33 +57,33 @@ ClosureExpressionCaptureGroupAst::ClosureExpressionCaptureGroupAst(
     this->TokCaps, SppTokenType::KW_CAPS, "caps");
 }
 
-ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
+spp::asts::ClosureExpressionCaptureGroupAst::~ClosureExpressionCaptureGroupAst() = default;
 
-auto ClosureExpressionCaptureGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureGroupAst::PosStart() const -> std::size_t {
   // Use the "caps" token.
   return TokCaps != nullptr ? TokCaps->PosStart() : Captures.empty() ? 0 : Captures.front()->PosStart();
 }
 
-auto ClosureExpressionCaptureGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClosureExpressionCaptureGroupAst::PosEnd() const -> std::size_t {
   // Use the final capture.
   return not Captures.empty() ? Captures.back()->PosEnd() : TokCaps != nullptr ? TokCaps->PosEnd() : 0;
 }
 
-auto ClosureExpressionCaptureGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClosureExpressionCaptureGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ClosureExpressionCaptureGroupAst>(
     AstClone(TokCaps),
     AstCloneVec(Captures));
 }
 
-auto ClosureExpressionCaptureGroupAst::ToString() const -> Str {
+auto spp::asts::ClosureExpressionCaptureGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokCaps).append(" ");
   SPP_STRING_EXTEND(Captures, ", ");
   SPP_STRING_END;
 }
 
-auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Add the capture variables after analysis, otherwise their
   // symbol checks refer to the new captures, not the original
@@ -114,7 +118,7 @@ auto ClosureExpressionCaptureGroupAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
+auto spp::asts::ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Any borrowed captures need pinning and marking as extended
@@ -165,7 +169,7 @@ auto ClosureExpressionCaptureGroupAst::Stage8_CheckMemory(
   }
 }
 
-auto ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
+auto spp::asts::ClosureExpressionCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Build the variable bindings from the environment object.

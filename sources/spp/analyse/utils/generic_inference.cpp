@@ -294,12 +294,28 @@ namespace spp::analyse::utils::generic_inference {
   }
 }
 
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+
 SPP_MOD_BEGIN
 /// A type a parameter is offered. Its identity is what the solver compares, substitutes and checks; it is null only
 /// for a type given that does not key (yet), which is passed on as written. "Written" is the type as given, or the
 /// default as declared; "Site" what an inferred type, or a default, is read back pointing at. One "Written" with no
 /// "Site" is shown as given.
-struct GenericSolver::_TypeVal {
+struct spp::analyse::utils::generic_inference::GenericSolver::_TypeVal {
   TypeId Id = nullptr;
   Shared<TypeAst> Written;
   Shared<TypeAst> Site;
@@ -312,7 +328,7 @@ struct GenericSolver::_TypeVal {
 /// A comp value a parameter is offered, and for one inferred, the type of what it was read off ("Site"), pointing at
 /// where that was given, so an error names it there; a comp value has no position of its own once read back from its
 /// identity.
-struct GenericSolver::_CompVal {
+struct spp::analyse::utils::generic_inference::GenericSolver::_CompVal {
   /// The value; null for a pack's, which is a list.
   Shared<ExpressionAst> Val;
   Shared<TypeAst> Site;
@@ -325,7 +341,7 @@ struct GenericSolver::_CompVal {
 
 /// Everything one generic parameter (or a name given alongside
 /// the parameters, like a pinned "Self") is offered.
-struct GenericSolver::_Entry {
+struct spp::analyse::utils::generic_inference::GenericSolver::_Entry {
   /// The parameter, or @c nullptr for a given name that is not
   /// one ("Self", or a parameter of another declaration).
   GenericParameterAst const *Param;
@@ -379,7 +395,7 @@ struct spp::analyse::utils::generic_inference::GenericSolver::_Equation {
   scopes::TypeId DeclaredId = nullptr;
 };
 
-GenericSolver::GenericSolver(
+spp::analyse::utils::generic_inference::GenericSolver::GenericSolver(
   GenericParameterGroupAst const &params, Scope const &owner_scope, ScopeManager &sm, CompilerMetaData &meta) :
   _Params(&params), _OwnerScope(&owner_scope), _Sm(&sm), _Meta(&meta) {
   for (auto const *param : params.GetAllParams()) {
@@ -391,9 +407,9 @@ GenericSolver::GenericSolver(
   }
 }
 
-GenericSolver::~GenericSolver() = default;
+spp::analyse::utils::generic_inference::GenericSolver::~GenericSolver() = default;
 
-auto GenericSolver::_FindById(
+auto spp::analyse::utils::generic_inference::GenericSolver::_FindById(
   const std::uint64_t pid) const -> _Entry* {
   // The entry of the parameter "pid", if this declaration declares it.
   if (pid == 0) { return nullptr; }
@@ -403,7 +419,7 @@ auto GenericSolver::_FindById(
   return nullptr;
 }
 
-auto GenericSolver::_Find(
+auto spp::analyse::utils::generic_inference::GenericSolver::_Find(
   TypeIdentifierAst const &name) const -> _Entry* {
   // By identity: a name stamped as one of this declaration's parameters ("TypeParam", a binding of it included) is
   // that parameter's entry. Every name a solver is given records one ("NameArgs" and
@@ -417,7 +433,7 @@ auto GenericSolver::_Find(
   return nullptr;
 }
 
-auto GenericSolver::_AstOf(
+auto spp::analyse::utils::generic_inference::GenericSolver::_AstOf(
   _TypeVal const &val) const -> Shared<TypeAst> {
   // A type given, or one that does not key (a default's own copy), as it was written; anything else read back from its
   // identity, on a copy, as the solution is analysed in place. A default is shown as the type it was declared as; an
@@ -428,7 +444,7 @@ auto GenericSolver::_AstOf(
   return val.Written != nullptr ? type->WithSourceSpanOf(*val.Site) : type->WithSourceSpanAt(*val.Site);
 }
 
-auto GenericSolver::_Bindings(
+auto spp::analyse::utils::generic_inference::GenericSolver::_Bindings(
   _Entry const *except) const -> scopes::GenericSubst {
   // Every parameter bound so far, by identity, but "except": what a type or value written in the declaration's terms
   // is read with. A comp value is keyed where it was given.
@@ -445,7 +461,7 @@ auto GenericSolver::_Bindings(
   return out;
 }
 
-auto GenericSolver::Give(
+auto spp::analyse::utils::generic_inference::GenericSolver::Give(
   Vec<Unique<GenericArgumentAst>> args) -> void {
   // Taken by value, so the caller's list is emptied rather
   // than left holding moved-from arguments. A type pack's elements
@@ -531,7 +547,7 @@ auto GenericSolver::Give(
   _AnyGiven = true;
 }
 
-auto GenericSolver::_TakeSelf(
+auto spp::analyse::utils::generic_inference::GenericSolver::_TakeSelf(
   const bool emit) -> _Entry* {
   // The "Self" entry, made (after every entry made so far, so the
   // solution's order is the order things were given) the first
@@ -548,7 +564,7 @@ auto GenericSolver::_TakeSelf(
   return _Self;
 }
 
-auto GenericSolver::PinSelf(
+auto spp::analyse::utils::generic_inference::GenericSolver::PinSelf(
   Shared<TypeAst> type, const bool emit) -> void {
   // Held as "Give" holds a type given. The argument is kept with
   // the others given, as a declaration with no parameters answers
@@ -561,7 +577,7 @@ auto GenericSolver::PinSelf(
   _AnyGiven = true;
 }
 
-auto GenericSolver::Give(
+auto spp::analyse::utils::generic_inference::GenericSolver::Give(
   GenericSubst const &bindings) -> void {
   // As "Give" does for arguments, each binding under its parameter (by identity), held as the identity it is; a layer
   // given earlier outranks it.
@@ -590,7 +606,7 @@ auto GenericSolver::Give(
   }
 }
 
-auto GenericSolver::Unify(
+auto spp::analyse::utils::generic_inference::GenericSolver::Unify(
   Shared<IdentifierAst> const &name, Shared<TypeAst> source, Shared<TypeAst> target) -> void {
   auto eq = MakeUnique<_Equation>();
   eq->Name = name;
@@ -599,7 +615,7 @@ auto GenericSolver::Unify(
   _Equations.emplace_back(std::move(eq));
 }
 
-auto GenericSolver::UnifyPack(
+auto spp::analyse::utils::generic_inference::GenericSolver::UnifyPack(
   Shared<IdentifierAst> const &name, Vec<Shared<TypeAst>> const &source_elems, Shared<TypeAst> const &target,
   Shared<TypeAst> site) -> void {
   // Keyed now, as lists: the given elements where the call is (an element naming a bound pack spliced in), the
@@ -615,12 +631,12 @@ auto GenericSolver::UnifyPack(
   _Equations.emplace_back(std::move(eq));
 }
 
-auto GenericSolver::ReadDeclaredWith(
+auto spp::analyse::utils::generic_inference::GenericSolver::ReadDeclaredWith(
   scopes::GenericSubst reading) -> void {
   _DeclaredReading = std::move(reading);
 }
 
-auto GenericSolver::KnownBindings(
+auto spp::analyse::utils::generic_inference::GenericSolver::KnownBindings(
   GenericParameterGroupAst const &params) const -> Opt<GenericSubst> {
   // What was given, by the parameter each binds (as
   // "BindingsOfArgs" binds over the given layers), packs marked;
@@ -656,7 +672,7 @@ auto GenericSolver::KnownBindings(
   return out;
 }
 
-auto GenericSolver::_EntryParamId(
+auto spp::analyse::utils::generic_inference::GenericSolver::_EntryParamId(
   _Entry const &entry) const -> std::uint64_t {
   // The parameter an entry's argument is keyed by ("Scope::ArgsIdOf"): the one its name records, else its own.
   if (const auto stamped = entry.Name->StampedTypeId(); stamped != nullptr) {
@@ -668,7 +684,7 @@ auto GenericSolver::_EntryParamId(
   return entry.Id;
 }
 
-auto GenericSolver::_EntryTypeId(
+auto spp::analyse::utils::generic_inference::GenericSolver::_EntryTypeId(
   _Entry const &entry) const -> scopes::TypeId {
   // Its type's identity; one given as written that does not resolve yet ("Wrap[3_uz]::doubled" read before the block
   // declaring it is attached) keyed as written, what does not resolve spelled ("Scope::PartialTypeIdOf").
@@ -677,12 +693,12 @@ auto GenericSolver::_EntryTypeId(
   return val.Written != nullptr ? _Sm->CurrentScope->PartialTypeIdOf(*val.Written) : nullptr;
 }
 
-auto GenericSolver::_EntryCompId(
+auto spp::analyse::utils::generic_inference::GenericSolver::_EntryCompId(
   _Entry const &entry) const -> scopes::CompId {
   return _ValCompId(entry.CompVals[0]);
 }
 
-auto GenericSolver::_ValCompId(
+auto spp::analyse::utils::generic_inference::GenericSolver::_ValCompId(
   _CompVal const &val) const -> scopes::CompId {
   // A value's identity; a pack's is its list ("CompKey::OfPack"), an element naming a bound pack spliced in.
   auto const &scope = *_Sm->CurrentScope;
@@ -698,7 +714,7 @@ auto GenericSolver::_ValCompId(
   return scopes::InternCompKey(scopes::CompKey::OfPack(std::move(elems)));
 }
 
-auto GenericSolver::_CompValOf(
+auto spp::analyse::utils::generic_inference::GenericSolver::_CompValOf(
   _Entry const &entry, const scopes::CompId id, Shared<TypeAst> site) const -> _CompVal {
   // A value read back from its identity. A pack's is its list, each element spelled ("Scope::CompAstOf"); an identity
   // that is no list (a template's pack forwarded whole) is its one element.
@@ -718,7 +734,7 @@ auto GenericSolver::_CompValOf(
   return out;
 }
 
-auto GenericSolver::_ShownCompVal(
+auto spp::analyse::utils::generic_inference::GenericSolver::_ShownCompVal(
   _CompVal const &val) const -> Shared<ExpressionAst> {
   // What an error shows for a value: a pack as the tuple of its elements ("(..n)").
   if (not val.IsPack) { return val.Val; }
@@ -727,7 +743,7 @@ auto GenericSolver::_ShownCompVal(
   return MakeShared<TupleLiteralAst>(nullptr, std::move(elems), nullptr);
 }
 
-auto GenericSolver::_OfferAll(
+auto spp::analyse::utils::generic_inference::GenericSolver::_OfferAll(
   scopes::GenericSubst const &inferred, Shared<TypeAst> const &site, FuncRef<bool(_Entry const &)> skip) -> bool {
   // Each parameter of this declaration that a match bound is offered what it was bound to, by "ParamId"; a parameter
   // of anything else the match named (a class's, read through) is not this solve's.
@@ -750,7 +766,7 @@ auto GenericSolver::_OfferAll(
   return newly_bound;
 }
 
-auto GenericSolver::_Match(
+auto spp::analyse::utils::generic_inference::GenericSolver::_Match(
   TypeAst const &source, TypeAst const &target) const -> scopes::GenericSubst {
   // Match the type of what was given against the type it was given for, by identity, binding the generics the target
   // names. Conventions are not part of it ("x: &T" given "&Str" binds "T" to "Str"). Either side not keying binds
@@ -758,7 +774,7 @@ auto GenericSolver::_Match(
   return _MatchIds(_Sm->CurrentScope->TypeIdOf(source), _OwnerScope->TypeIdOf(target));
 }
 
-auto GenericSolver::_MatchIds(
+auto spp::analyse::utils::generic_inference::GenericSolver::_MatchIds(
   const scopes::TypeId given, scopes::TypeId declared) const -> scopes::GenericSubst {
   // "_Match", by identity: "given" keyed where the call is, "declared" where the declaration is.
   auto const &scope = *_Sm->CurrentScope;
@@ -788,7 +804,7 @@ auto GenericSolver::_MatchIds(
   return inferred;
 }
 
-auto GenericSolver::_SeedFromOwner() -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_SeedFromOwner() -> void {
   // A parameter the declaration's own scope binds already (an instantiation's, or a block whose parameters stand for
   // it) is read there as what it is bound to, so no declared type names it, and a match never binds it: what it is
   // bound to is its value, unless something was given for it.
@@ -812,7 +828,7 @@ auto GenericSolver::_SeedFromOwner() -> void {
   }
 }
 
-auto GenericSolver::_ReadCompValues() -> bool {
+auto spp::analyse::utils::generic_inference::GenericSolver::_ReadCompValues() -> bool {
   // Comp-to-type inference: a comp argument's value has a type, which binds the type parameters its parameter's
   // declared type names ("A[n=1_uz]" for "[T, cmp n: T]" binds "T" to "USize"). Only fills what nothing else has
   // bound, so a comp value of the wrong type is still reported against its parameter ("_CheckCompArgs"), not as a
@@ -864,7 +880,7 @@ auto GenericSolver::_ReadCompValues() -> bool {
   return newly_bound;
 }
 
-auto GenericSolver::_ReadConstraints() -> bool {
+auto spp::analyse::utils::generic_inference::GenericSolver::_ReadConstraints() -> bool {
   // Constraint-based inference: "[U, F: FunRef[(), U]]" infers "U" from the return type of whichever of the type
   // bound to "F" and its super classes is the "FunRef".
   using errors::SppGenericConstraintError;
@@ -936,7 +952,7 @@ auto GenericSolver::_ReadConstraints() -> bool {
   return newly_bound;
 }
 
-auto GenericSolver::_SelfForDefault(
+auto spp::analyse::utils::generic_inference::GenericSolver::_SelfForDefault(
   const bool as_value) const -> Shared<TypeAst> {
   // What "Self" stands for in a default, decided in one place for both kinds. What the use pinned "Self" to (a call's
   // receiver) comes first. Otherwise a value named through it ("Self::mo_seq_cst") is looked up in the type the owner
@@ -949,7 +965,7 @@ auto GenericSolver::_SelfForDefault(
   return self_type != nullptr and not self_type->IsSelfType() ? self_type : nullptr;
 }
 
-auto GenericSolver::_ApplyDefaults() -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_ApplyDefaults() -> void {
   // An optional parameter nothing has bound takes its default, and a pack nothing has bound is empty. A default is
   // written in the declaration's own terms: it is read in
   // the use site's, with everything bound, by "_CrossSubstitute". A type default is keyed where it is written ("Self"
@@ -992,7 +1008,7 @@ auto GenericSolver::_ApplyDefaults() -> void {
   }
 }
 
-auto GenericSolver::_EnforceNoConflicts() const -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_EnforceNoConflicts() const -> void {
   // A parameter reached through several arguments, or through an argument and a constraint, has to be offered the
   // same thing by each: the same type, and the same value (the same "CompId", by identity rather than spelling:
   // "0x2_uz" and "2_uz" are one value). A type that does not key has nothing to compare.
@@ -1018,7 +1034,7 @@ auto GenericSolver::_EnforceNoConflicts() const -> void {
   }
 }
 
-auto GenericSolver::_EnforceAllInferred(
+auto spp::analyse::utils::generic_inference::GenericSolver::_EnforceAllInferred(
   Ast const &owner) const -> void {
   // Every parameter must be bound to something of its own kind, type parameters reported first.
   using errors::SppGenericParameterNotInferredError;
@@ -1031,7 +1047,7 @@ auto GenericSolver::_EnforceAllInferred(
   }
 }
 
-auto GenericSolver::_CrossSubstitute() -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_CrossSubstitute() -> void {
   // Read each default, written in the declaration's own terms, in the use site's, with everything else bound (each
   // skipping itself): a type default by identity, so "Vec[T, A=Alloc[T]]" receives the actual "T"; a comp default
   // from its written form, so "m = n + 1_uz" receives the "n" bound with it and "Self::mo_seq_cst" the "Self" the use
@@ -1076,7 +1092,7 @@ auto GenericSolver::_CrossSubstitute() -> void {
   }
 }
 
-auto GenericSolver::_CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_CheckTypeArgs(scopes::GenericSubst const &bindings) const -> void {
   // Check each type argument against its parameter's constraints, read with every binding substituted in. A pack's
   // constraints hold for each of its elements: each shown as given, else read back from its identity, pointed at what
   // it was inferred from.
@@ -1100,7 +1116,7 @@ auto GenericSolver::_CheckTypeArgs(scopes::GenericSubst const &bindings) const -
   CheckTypeArgConstraints(args, *_OwnerScope, bindings, *_Sm, *_Meta);
 }
 
-auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -> void {
+auto spp::analyse::utils::generic_inference::GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -> void {
   // Type-check each comp argument against its parameter's type, with every binding substituted in. The value was
   // given at the use site, so its type is resolved there - and so is the parameter's type, which the substitution has
   // written in the use site's terms (the arguments given there).
@@ -1140,7 +1156,7 @@ auto GenericSolver::_CheckCompArgs(scopes::GenericSubst const &bindings) const -
   }
 }
 
-auto GenericSolver::Solve(
+auto spp::analyse::utils::generic_inference::GenericSolver::Solve(
   Ast const &owner) -> void {
   // A declaration with no parameters of its own has nothing to solve: what was given is the answer, whatever it names.
   if (_Params->Params.empty()) {
@@ -1180,7 +1196,7 @@ auto GenericSolver::Solve(
   if (check_types) { _CheckTypeArgs(bindings); }
 }
 
-auto GenericSolver::InferredParams() const -> Vec<std::uint64_t> {
+auto spp::analyse::utils::generic_inference::GenericSolver::InferredParams() const -> Vec<std::uint64_t> {
   auto out = Vec<std::uint64_t>();
   for (auto const &entry : _Entries) {
     if (entry->Param == nullptr or not entry->IsBound()) { continue; }
@@ -1191,7 +1207,7 @@ auto GenericSolver::InferredParams() const -> Vec<std::uint64_t> {
   return out;
 }
 
-auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
+auto spp::analyse::utils::generic_inference::GenericSolver::SolvedArgsId() const -> scopes::TypeId {
   // As "Scope::ArgsIdOf" keys a keyword argument: the parameter its name stamps, else the entry's, "Self" as 0; then
   // the value's identity, a comp value keyed where the call is.
   using scopes::TypeKey;
@@ -1225,7 +1241,7 @@ auto GenericSolver::SolvedArgsId() const -> scopes::TypeId {
   return scopes::InternTypeKey(std::move(key));
 }
 
-auto GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
+auto spp::analyse::utils::generic_inference::GenericSolver::TakeArgs() -> Vec<Unique<GenericArgumentAst>> {
   // With nothing solved, the given arguments are the answer as they were given.
   if (_Trivial) { return std::move(_Given); }
 

@@ -30,8 +30,12 @@ import spp.utils.uid;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionParameterAst::FunctionParameterAst(
+spp::asts::FunctionParameterAst::FunctionParameterAst(
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type,
@@ -52,9 +56,9 @@ FunctionParameterAst::FunctionParameterAst(
   Source.OriginalType = AstClone(Type);
 }
 
-FunctionParameterAst::~FunctionParameterAst() = default;
+spp::asts::FunctionParameterAst::~FunctionParameterAst() = default;
 
-auto FunctionParameterAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionParameterAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the type. "Self" is kept, and substituted per
   // call.
@@ -111,7 +115,7 @@ auto FunctionParameterAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto FunctionParameterAst::Stage8_CheckMemory(
+auto spp::asts::FunctionParameterAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   // Check the memory of each name.
@@ -121,7 +125,7 @@ auto FunctionParameterAst::Stage8_CheckMemory(
   }
 }
 
-auto FunctionParameterAst::Stage11_CodeGen(
+auto spp::asts::FunctionParameterAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the local variable so that the symbol table
   // receives the alloca.
@@ -135,12 +139,12 @@ auto FunctionParameterAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto FunctionParameterAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::FunctionParameterAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Forward to the variable declaration.
   return Var->ExtractNames();
 }
 
-auto FunctionParameterAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::FunctionParameterAst::ExtractName() const -> Shared<IdentifierAst> {
   // Forward to the variable declaration.
   return Var->ExtractName();
 }

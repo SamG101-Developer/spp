@@ -254,6 +254,18 @@ auto spp::analyse::scopes::BumpTypeStructureGeneration() -> void {
   ++_TypeStructureGeneration;
 }
 
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, DeferStatementAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::compiler, Module);
+use_alias(spp::utils::errors, ErrorFormatter);
+
 SPP_MOD_BEGIN
 namespace {
   using spp::Pair;
@@ -845,7 +857,7 @@ namespace spp::analyse::scopes {
   }
 }
 
-Scope::Scope(
+spp::analyse::scopes::Scope::Scope(
   ScopeName name, Scope *parent, Ast *ast,
   ErrorFormatter *error_formatter) :
   Name(std::move(name)),
@@ -858,11 +870,11 @@ Scope::Scope(
   spp::utils::stats::Bump(spp::utils::stats::Counter::ScopesCreated);
 }
 
-Scope::Scope(Scope const &other) :
+spp::analyse::scopes::Scope::Scope(Scope const &other) :
   Scope(other, std::numeric_limits<std::size_t>::max()) {
 }
 
-Scope::Scope(Scope const &other, const std::size_t depth) :
+spp::analyse::scopes::Scope::Scope(Scope const &other, const std::size_t depth) :
   Name(other.Name),
   Parent(other.Parent),
   AstNode(other.AstNode),
@@ -883,10 +895,10 @@ Scope::Scope(Scope const &other, const std::size_t depth) :
   }
 }
 
-Scope::~Scope() = default;
+spp::analyse::scopes::Scope::~Scope() = default;
 
 /// [CHECKED]
-auto Scope::NewGlobal(Module const &mod)
+auto spp::analyse::scopes::Scope::NewGlobal(Module const &mod)
   -> Shared<Scope> {
   // Create a new global scope (no parent or ast for the global
   // scope). This is a master scope for all scope managers.
@@ -906,7 +918,7 @@ auto Scope::NewGlobal(Module const &mod)
   return glob_scope;
 }
 
-auto Scope::Tree() const -> ScopeTree* {
+auto spp::analyse::scopes::Scope::Tree() const -> ScopeTree* {
   // Up to the global scope, which knows its tree.
   auto const *scope = this;
   while (scope->Parent != nullptr) { scope = scope->Parent; }
@@ -914,7 +926,7 @@ auto Scope::Tree() const -> ScopeTree* {
 }
 
 /// [CHECKED]
-auto Scope::GetErrorFormatter() const -> ErrorFormatter* {
+auto spp::analyse::scopes::Scope::GetErrorFormatter() const -> ErrorFormatter* {
   // Return this scope's error formatter, or the parent's if
   // it doesn't exist.
   const auto this_formatter = _ErrorFormatter;
@@ -924,7 +936,7 @@ auto Scope::GetErrorFormatter() const -> ErrorFormatter* {
 }
 
 /// [CHECKED]
-auto Scope::IsFromPrelude(
+auto spp::analyse::scopes::Scope::IsFromPrelude(
   Ast const &ast) const -> bool {
   // The prelude is appended behind the author's code, so a
   // position past what they wrote is one of its nodes. Read in
@@ -933,7 +945,7 @@ auto Scope::IsFromPrelude(
   return formatter != nullptr and formatter->IsPastUserSource(ast.PosStart());
 }
 
-auto Scope::IsInTemplate() const -> bool {
+auto spp::analyse::scopes::Scope::IsInTemplate() const -> bool {
   for (auto const *s = this; s != nullptr; s = s->Parent) {
     if (genex::any_of(s->GetAllTypeSymbols(true), [](auto const *sym) { return sym->Kind == TypeKind::GnTypeParam; })) {
       return true;
@@ -946,7 +958,7 @@ auto Scope::IsInTemplate() const -> bool {
 }
 
 /// [CHECKED]
-auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
+auto spp::analyse::scopes::Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
   // Create the symbols list. Each binding is kept beside the depth
   // of the scope declaring the parameter it binds, which orders
   // them: an enclosing declaration's generics (a "sup" block's)
@@ -1001,7 +1013,7 @@ auto Scope::GetGns() const -> Vec<Unique<GenericArgumentAst>> {
 }
 
 /// [CHECKED]
-auto Scope::AddVarSymbol(
+auto spp::analyse::scopes::Scope::AddVarSymbol(
   Shared<VariableSymbol> const &sym)
   -> void {
   // Add a variable symbol to the corresponding symbol table.
@@ -1009,7 +1021,7 @@ auto Scope::AddVarSymbol(
 }
 
 /// [CHECKED]
-auto Scope::AddVarSymbolCheckConflict(
+auto spp::analyse::scopes::Scope::AddVarSymbolCheckConflict(
   Shared<VariableSymbol> const &sym)
   -> void {
   // Cannot allow for duplicate comp definitions. A variable
@@ -1029,7 +1041,7 @@ auto Scope::AddVarSymbolCheckConflict(
 }
 
 /// [CHECKED]
-auto Scope::AddTypeSymbol(
+auto spp::analyse::scopes::Scope::AddTypeSymbol(
   Shared<TypeSymbol> const &sym)
   -> void {
   // Add a type symbol to the corresponding symbol table.
@@ -1037,7 +1049,7 @@ auto Scope::AddTypeSymbol(
 }
 
 /// [CHECKED]
-auto Scope::AddTypeSymbolCheckConflict(
+auto spp::analyse::scopes::Scope::AddTypeSymbolCheckConflict(
   Shared<TypeSymbol> const &sym)
   -> void {
   // Cannot allow for duplicate type definitions. Unlike a
@@ -1057,14 +1069,14 @@ auto Scope::AddTypeSymbolCheckConflict(
 }
 
 /// [CHECKED]
-auto Scope::AddNsSymbol(
+auto spp::analyse::scopes::Scope::AddNsSymbol(
   Shared<NamespaceSymbol> const &sym) -> void {
   // Add a namespace symbol to the symbol table.
   InternalTable.NsTable.Add(sym->Name.get(), sym);
 }
 
 /// [CHECKED]
-auto Scope::AddNsSymbolCheckConflict(
+auto spp::analyse::scopes::Scope::AddNsSymbolCheckConflict(
   Shared<NamespaceSymbol> const &sym) -> void {
   // A namespace may not be declared twice in one scope,
   // so if it is found in the immediate parent (exclusive)
@@ -1077,14 +1089,14 @@ auto Scope::AddNsSymbolCheckConflict(
 }
 
 /// [CHECKED]
-auto Scope::RemVarSymbol(
+auto spp::analyse::scopes::Scope::RemVarSymbol(
   IdentifierAst const *sym_name) -> Shared<VariableSymbol> {
   // Remove a variable symbol from the symbol table.
   return InternalTable.VarTable.Rem(sym_name);
 }
 
 /// [CHECKED]
-auto Scope::RecordLetBinding(Shared<VariableSymbol> const &sym) -> void {
+auto spp::analyse::scopes::Scope::RecordLetBinding(Shared<VariableSymbol> const &sym) -> void {
   // A "let" re-analysed (a loop's second pass) records the
   // same binding once (cleared at the end of the scope).
   // Created from "let" and "is" statements/expressions.
@@ -1092,7 +1104,7 @@ auto Scope::RecordLetBinding(Shared<VariableSymbol> const &sym) -> void {
 }
 
 /// [CHECKED]
-auto Scope::HideLetBindings() -> void {
+auto spp::analyse::scopes::Scope::HideLetBindings() -> void {
   // Earlier shadows have already been replaced, so remove the
   // instance from this symbol table that remains.
   for (auto const &sym : LetBindings) {
@@ -1103,7 +1115,7 @@ auto Scope::HideLetBindings() -> void {
 }
 
 /// [CHECKED]
-auto Scope::RevealLetBindings() -> void {
+auto spp::analyse::scopes::Scope::RevealLetBindings() -> void {
   // Replenish the bindings, from the last binding back, so
   // a name ends up meaning the last binding of it (and only
   // the last binding is put back, earlier ones of the same
@@ -1123,7 +1135,7 @@ auto Scope::RevealLetBindings() -> void {
 }
 
 /// [CHECKED]
-auto Scope::RevealNestedLetBindings() -> void {
+auto spp::analyse::scopes::Scope::RevealNestedLetBindings() -> void {
   // The same as the normal symbol revealer, but for child
   // scopes, recursively.
   for (auto const &child : Children) {
@@ -1133,7 +1145,7 @@ auto Scope::RevealNestedLetBindings() -> void {
 }
 
 /// [CHECKED]
-auto Scope::UnrecordLetBinding(IdentifierAst const &name) -> void {
+auto spp::analyse::scopes::Scope::UnrecordLetBinding(IdentifierAst const &name) -> void {
   // Remove a binding by matching it on the name. Closures use
   // this to hide the captures post-processing.
   LetBindings |= genex::actions::remove_if(
@@ -1141,35 +1153,35 @@ auto Scope::UnrecordLetBinding(IdentifierAst const &name) -> void {
 }
 
 /// [CHECKED]
-auto Scope::RemTypeSymbol(
+auto spp::analyse::scopes::Scope::RemTypeSymbol(
   TypeIdentifierAst const *sym_name) -> Shared<TypeSymbol> {
   // Remove a type symbol from the symbol table.
   return InternalTable.TypeTable.Rem(sym_name);
 }
 
 /// [CHECKED]
-auto Scope::RemNsSymbol(
+auto spp::analyse::scopes::Scope::RemNsSymbol(
   IdentifierAst const *sym_name) -> Shared<NamespaceSymbol> {
   // Remove a namespace symbol from the symbol table.
   return InternalTable.NsTable.Rem(sym_name);
 }
 
 /// [CHECKED]
-auto Scope::GetAllVarSymbols(
+auto spp::analyse::scopes::Scope::GetAllVarSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<VariableSymbol*> {
   return AllSymbols<VariableSymbol>(
     *this, &SymbolTable::VarTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
-auto Scope::GetAllTypeSymbols(
+auto spp::analyse::scopes::Scope::GetAllTypeSymbols(
   const bool exclusive, const bool sup_scope_search) const -> Vec<TypeSymbol*> {
   return AllSymbols<TypeSymbol>(
     *this, &SymbolTable::TypeTable, exclusive, sup_scope_search);
 }
 
 /// [CHECKED]
-auto Scope::GetAllNsSymbols(
+auto spp::analyse::scopes::Scope::GetAllNsSymbols(
   const bool exclusive) const -> Vec<NamespaceSymbol*> {
   // A namespace has no super scopes to search.
   return AllSymbols<NamespaceSymbol>(
@@ -1177,28 +1189,28 @@ auto Scope::GetAllNsSymbols(
 }
 
 /// [CHECKED]
-auto Scope::HasVarSymbol(
+auto spp::analyse::scopes::Scope::HasVarSymbol(
   IdentifierAst const *sym_name, const bool exclusive) const -> bool {
   // Check if getting the symbol returns nullptr or not.
   return FindVarSymbol(sym_name, exclusive) != nullptr;
 }
 
 /// [CHECKED]
-auto Scope::HasTypeSymbol(
+auto spp::analyse::scopes::Scope::HasTypeSymbol(
   TypeAst const *sym_name, const bool exclusive) const -> bool {
   // Check if getting the symbol returns nullptr or not.
   return FindTypeSymbol(sym_name, exclusive) != nullptr;
 }
 
 /// [CHECKED]
-auto Scope::HasNsSymbol(
+auto spp::analyse::scopes::Scope::HasNsSymbol(
   IdentifierAst const *sym_name, const bool exclusive) const -> bool {
   // Check if getting the symbol returns nullptr or not.
   return FindNsSymbol(sym_name, exclusive) != nullptr;
 }
 
 /// [CHECKED]
-auto Scope::FindVarSymbol(
+auto spp::analyse::scopes::Scope::FindVarSymbol(
   IdentifierAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> VariableSymbol* {
   if (sym_name == nullptr) { return nullptr; }
@@ -1230,7 +1242,7 @@ auto Scope::FindVarSymbol(
 }
 
 /// [CHECKED]
-auto Scope::FindBoundVarSymbolById(
+auto spp::analyse::scopes::Scope::FindBoundVarSymbolById(
   const CompId written) const -> VariableSymbol* {
   // Only a parameter has a symbol: get the variable symbol of
   // the generic parameter its identity names, then canon it into
@@ -1242,7 +1254,7 @@ auto Scope::FindBoundVarSymbolById(
 }
 
 /// [CHECKED]
-auto Scope::FindVarSymbolOutermost(
+auto spp::analyse::scopes::Scope::FindVarSymbolOutermost(
   Ast const &expr) const -> Pair<VariableSymbol*, Scope const*> {
   if (IsRuntimeMemberAccess(&expr)) {
     // Keep moving into the left-hand-side until there is
@@ -1287,7 +1299,7 @@ auto Scope::FindVarSymbolOutermost(
 }
 
 /// [CHECKED]
-auto Scope::FindTypeSymbol(
+auto spp::analyse::scopes::Scope::FindTypeSymbol(
   TypeAst const *sym_name, const bool exclusive,
   const bool sup_scope_search) const -> TypeSymbol* {
   if (sym_name == nullptr) { return nullptr; }
@@ -1352,7 +1364,7 @@ auto Scope::FindTypeSymbol(
 }
 
 /// [CHECKED]
-auto Scope::FindBoundTypeSymbolById(
+auto spp::analyse::scopes::Scope::FindBoundTypeSymbolById(
   const TypeId type_id) const -> TypeSymbol* {
   // Lookup the symbol as if it were in this scope; find it
   // normally, and then canon it into the scope.
@@ -1362,14 +1374,14 @@ auto Scope::FindBoundTypeSymbolById(
 }
 
 /// [CHECKED]
-auto Scope::FindSelfSymbol(
+auto spp::analyse::scopes::Scope::FindSelfSymbol(
   const bool exclusive) const -> TypeSymbol* {
   using asts::generate::common_types_precompiled::SELF_TYPE;
   return FindTypeSymbol(SELF_TYPE.get(), exclusive);
 }
 
 /// [CHECKED]
-auto Scope::FindHeadSymbol(
+auto spp::analyse::scopes::Scope::FindHeadSymbol(
   TypeAst const &type, const bool exclusive) const -> TypeSymbol* {
   // To find the symbol for the head of a type, strip the
   // generics, find the stripped symbol, and pass through
@@ -1378,7 +1390,7 @@ auto Scope::FindHeadSymbol(
 }
 
 /// [CHECKED]
-auto Scope::FindNsSymbol(
+auto spp::analyse::scopes::Scope::FindNsSymbol(
   IdentifierAst const *sym_name, const bool exclusive) const -> NamespaceSymbol* {
   // Get the symbol from the symbol table if it exists.
   if (sym_name == nullptr) { return nullptr; }
@@ -1396,7 +1408,7 @@ auto Scope::FindNsSymbol(
 }
 
 /// [CHECKED]
-auto Scope::ReadIn(const TypeId written) const -> TypeId {
+auto spp::analyse::scopes::Scope::ReadIn(const TypeId written) const -> TypeId {
   // If the type id doesn't hold any generic parameters under
   // it, then there is no changes to be made, so early return.
   if (written == nullptr) { return nullptr; }
@@ -1408,7 +1420,7 @@ auto Scope::ReadIn(const TypeId written) const -> TypeId {
   return SubstituteTypeId(written, _BindingsOf(ParamsNamedBy(written)));
 }
 
-auto Scope::ReadCompIn(const CompId written) const -> CompId {
+auto spp::analyse::scopes::Scope::ReadCompIn(const CompId written) const -> CompId {
   // The comp parameters it names, each replaced by what this scope binds it to.
   if (written == nullptr) { return nullptr; }
   auto params = TypeIdParams();
@@ -1417,7 +1429,7 @@ auto Scope::ReadCompIn(const CompId written) const -> CompId {
   return SubstituteCompId(written, _BindingsOf(params));
 }
 
-auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
+auto spp::analyse::scopes::Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
   auto subst = GenericSubst();
 
   // For every type parameter, get the type symbol for each
@@ -1467,7 +1479,7 @@ auto Scope::_BindingsOf(TypeIdParams const &params) const -> GenericSubst {
 }
 
 /// [CHECKED]
-auto Scope::ArgsIdOf(
+auto spp::analyse::scopes::Scope::ArgsIdOf(
   Vec<GenericArgumentAst*> const &args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Start with an empty instance key. This will get built upon
@@ -1570,7 +1582,7 @@ auto Scope::ArgsIdOf(
   return InternTypeKey(std::move(key));
 }
 
-auto Scope::PackIdOfElements(
+auto spp::analyse::scopes::Scope::PackIdOfElements(
   Vec<TypeAst const*> const &elems) const -> TypeId {
   auto ids = Vec<TypeId>();
   for (auto const *elem : elems) {
@@ -1582,7 +1594,7 @@ auto Scope::PackIdOfElements(
 }
 
 /// [CHECKED]
-auto Scope::InstanceIdOf(
+auto spp::analyse::scopes::Scope::InstanceIdOf(
   TypeSymbol const &named, Vec<GenericArgumentAst*> const &args,
   GenericParameterGroupAst const *params) const -> TypeId {
   // Keyed under the template its instances are filed under: through
@@ -1620,7 +1632,7 @@ auto Scope::InstanceIdOf(
 }
 
 /// [CHECKED]
-auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
+auto spp::analyse::scopes::Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
   if (id == nullptr or id->HasUnresolved) { return nullptr; }
 
   // Branch on the kind of the identity's head ("HeaderOf"); its
@@ -1658,7 +1670,7 @@ auto Scope::FindTypeSymbolById(const TypeId id) const -> TypeSymbol* {
 }
 
 /// [CHECKED]
-auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
+auto spp::analyse::scopes::Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
   using asts::generate::common_types_precompiled::SELF_TYPE;
   if (id == nullptr) { return nullptr; }
   auto const &head = HeaderOf(id);
@@ -1760,7 +1772,7 @@ auto Scope::TypeAstOf(const TypeId id) const -> Shared<TypeAst> {
 }
 
 /// [CHECKED]
-auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
+auto spp::analyse::scopes::Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
   if (id == nullptr) { return nullptr; }
   auto const &node = *id;
   switch (node.Kind) {
@@ -1833,7 +1845,7 @@ auto Scope::CompAstOf(const CompId id) const -> Unique<ExpressionAst> {
 }
 
 /// [CHECKED]
-auto Scope::FoldedCompAstOf(
+auto spp::analyse::scopes::Scope::FoldedCompAstOf(
   ExpressionAst const &value) const -> Unique<ExpressionAst> {
   // Key the value (folding it), and read back only a value: an
   // identity naming anything open would read back as itself.
@@ -1842,14 +1854,14 @@ auto Scope::FoldedCompAstOf(
 }
 
 /// [CHECKED]
-auto Scope::PartialTypeIdOf(TypeAst const &type) const -> TypeId {
+auto spp::analyse::scopes::Scope::PartialTypeIdOf(TypeAst const &type) const -> TypeId {
   // Convert the type into an instance key, and then intern that
   // into the TypeId.
   return InternTypeKey(_TypeKey(type));
 }
 
 /// [CHECKED]
-auto Scope::TypeIdOf(TypeAst const &type) const -> TypeId {
+auto spp::analyse::scopes::Scope::TypeIdOf(TypeAst const &type) const -> TypeId {
   // Convert the type into an instance key. If the type is fully
   // resolved, intern it into the TypeId, otherwise return nullptr.
   auto key = _TypeKey(type);
@@ -1857,7 +1869,7 @@ auto Scope::TypeIdOf(TypeAst const &type) const -> TypeId {
 }
 
 /// [CHECKED]
-auto Scope::CompIdOf(ExpressionAst const &value) const -> CompId {
+auto spp::analyse::scopes::Scope::CompIdOf(ExpressionAst const &value) const -> CompId {
   // Convert the comp into a comp node, and then intern that into
   // the CompId.
   auto key = _CompKey(value);
@@ -1865,7 +1877,7 @@ auto Scope::CompIdOf(ExpressionAst const &value) const -> CompId {
 }
 
 /// [CHECKED]
-auto Scope::TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId {
+auto spp::analyse::scopes::Scope::TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId {
   // Key the type symbol into the scope, and read off the "Key"
   // field (ignore unused "VariantMembers".
   auto key = RawTypeKey(nullptr, &sym, *this).Key;
@@ -1873,7 +1885,7 @@ auto Scope::TypeIdOfSymbol(TypeSymbol const &sym) const -> TypeId {
 }
 
 /// [CHECKED]
-auto Scope::CompIdOfSymbol(VariableSymbol const &sym) const -> CompId {
+auto spp::analyse::scopes::Scope::CompIdOfSymbol(VariableSymbol const &sym) const -> CompId {
   // If there is a comp val bound to the symbol, get its comp
   // id. Otherwise, work off of the param id.
   if (sym.BoundCompId != nullptr) { return sym.BoundCompId; }
@@ -1882,7 +1894,7 @@ auto Scope::CompIdOfSymbol(VariableSymbol const &sym) const -> CompId {
 }
 
 /// [CHECKED]
-auto Scope::DepthDiff(const Scope *scope) const -> sys::ssize_t {
+auto spp::analyse::scopes::Scope::DepthDiff(const Scope *scope) const -> sys::ssize_t {
   // Create an internal function to call recursively with
   // a counter.
   auto func = [](this auto &&self, Scope const *source, Scope const *target, const sys::ssize_t depth) -> sys::ssize_t {
@@ -1899,7 +1911,7 @@ auto Scope::DepthDiff(const Scope *scope) const -> sys::ssize_t {
 }
 
 /// [CHECKED]
-auto Scope::GetFinalChildScope() const -> Scope const* {
+auto spp::analyse::scopes::Scope::GetFinalChildScope() const -> Scope const* {
   // If there are no children, return this scope (base case
   // for the recursion). Otherwise, return the final child
   // scope (recursively searching).
@@ -1909,7 +1921,7 @@ auto Scope::GetFinalChildScope() const -> Scope const* {
 }
 
 /// [CHECKED]
-auto Scope::GetAncestors() const -> Vec<Scope const*> {
+auto spp::analyse::scopes::Scope::GetAncestors() const -> Vec<Scope const*> {
   // Get all ancestor scopes, including this scope, and the
   // global scope.
   auto scopes = Vec<Scope const*>();
@@ -1920,25 +1932,25 @@ auto Scope::GetAncestors() const -> Vec<Scope const*> {
 }
 
 /// [CHECKED]
-auto Scope::GetParentModule() -> Scope* {
+auto spp::analyse::scopes::Scope::GetParentModule() -> Scope* {
   return ParentModuleOf(this);
 }
 
-auto Scope::GetParentModule() const -> Scope const* {
+auto spp::analyse::scopes::Scope::GetParentModule() const -> Scope const* {
   return ParentModuleOf(this);
 }
 
 /// [CHECKED]
-auto Scope::GetTopLevelParentModule() -> Scope* {
+auto spp::analyse::scopes::Scope::GetTopLevelParentModule() -> Scope* {
   return TopLevelParentModuleOf(this);
 }
 
-auto Scope::GetTopLevelParentModule() const -> Scope const* {
+auto spp::analyse::scopes::Scope::GetTopLevelParentModule() const -> Scope const* {
   return TopLevelParentModuleOf(this);
 }
 
 /// [CHECKED]
-auto Scope::FindEnclosingSelfType(
+auto spp::analyse::scopes::Scope::FindEnclosingSelfType(
   CompilerMetaData const &meta) const -> Shared<TypeAst> {
   // If we are already in a module scope, there is no self
   // type. Easy shortcut (and downstream error prevention).
@@ -2001,7 +2013,7 @@ auto Scope::FindEnclosingSelfType(
 }
 
 /// [CHECKED]
-auto Scope::GetSupScopes() const -> SupScopeList {
+auto spp::analyse::scopes::Scope::GetSupScopes() const -> SupScopeList {
   // Get all super scopes, recursively, yielding each one once.
   // Use the cache if available, saving on a massive number of
   // allocations.
@@ -2035,7 +2047,7 @@ auto Scope::GetSupScopes() const -> SupScopeList {
 }
 
 /// [CHECKED]
-auto Scope::FindNsScope(
+auto spp::analyse::scopes::Scope::FindNsScope(
   Vec<IdentifierAst const*> const &parts) const -> Scope const* {
   // Starting from this scope (acting current scope), find each
   // part in the list, ["a", "b", "c"] from the below example,
@@ -2050,7 +2062,7 @@ auto Scope::FindNsScope(
 }
 
 /// [CHECKED]
-auto Scope::FindNsScope(
+auto spp::analyse::scopes::Scope::FindNsScope(
   ExpressionAst const *postfix_ast) const -> Scope const* {
   // For the static member access like "a::b::c", this is stored
   // as "(a::b)::c", which is read as "c", "b", "a".
@@ -2074,7 +2086,7 @@ auto Scope::FindNsScope(
 }
 
 /// [CHECKED]
-auto Scope::NameAsString() const -> Str {
+auto spp::analyse::scopes::Scope::NameAsString() const -> Str {
   // Identifier based scope name (get the "std::string"
   // field via the "ToString()" call).
   if (holds_alternative<ScopeIdentifierName>(Name)) {
@@ -2096,7 +2108,7 @@ auto Scope::NameAsString() const -> Str {
 }
 
 /// [CHECKED]
-auto Scope::FixChildrenToParentPointer() -> void {
+auto spp::analyse::scopes::Scope::FixChildrenToParentPointer() -> void {
   // Iterate all children, setting their parent pointer to
   // this scope. Recurse into them. This runs over a scope
   // tree that has already been read from, so anything cached
@@ -2109,13 +2121,13 @@ auto Scope::FixChildrenToParentPointer() -> void {
 }
 
 /// [CHECKED]
-auto Scope::ClearOpaqueCompValues() -> void {
+auto spp::analyse::scopes::Scope::ClearOpaqueCompValues() -> void {
   // Clear the opaque values from the static list.
   OpaqueValues().clear();
 }
 
 /// [CHECKED]
-auto Scope::_TypeKey(TypeAst const &type) const -> TypeKey {
+auto spp::analyse::scopes::Scope::_TypeKey(TypeAst const &type) const -> TypeKey {
   // Create a raw instance key group for the type, and as this
   // isn't for variants specifically, just take the type key
   // of it.
@@ -2123,13 +2135,13 @@ auto Scope::_TypeKey(TypeAst const &type) const -> TypeKey {
 }
 
 /// [CHECKED]
-auto Scope::_CompKey(ExpressionAst const &expr) const -> CompKey {
+auto spp::analyse::scopes::Scope::_CompKey(ExpressionAst const &expr) const -> CompKey {
   // Key the expression here, folded as it is built.
   return RawCompKey(expr, *this);
 }
 
 /// [CHECKED]
-auto Scope::_CanonType(TypeSymbol &sym) const -> TypeSymbol* {
+auto spp::analyse::scopes::Scope::_CanonType(TypeSymbol &sym) const -> TypeSymbol* {
   // A generic parameter, or a binding of one, is the binding
   // of that parameter here.
   if (const auto param = sym.ParamId(); param != 0) {
@@ -2170,7 +2182,7 @@ auto Scope::_CanonType(TypeSymbol &sym) const -> TypeSymbol* {
 }
 
 /// [CHECKED]
-auto Scope::_CanonVar(VariableSymbol &sym) const -> VariableSymbol* {
+auto spp::analyse::scopes::Scope::_CanonVar(VariableSymbol &sym) const -> VariableSymbol* {
   // Like the canon type function, without the template, alias, and
   // open vs closed type logic.
   const auto param = sym.ParamId();

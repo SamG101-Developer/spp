@@ -7,8 +7,11 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 
+use_alias(spp::parse::errors, SppSyntaxError);
+use_alias(spp::parse::errors, SyntacticErrorBuilder);
+
 SPP_MOD_BEGIN
-ParserBase::ParserBase(Vec<lex::RawToken> tokens,
+spp::parse::ParserBase::ParserBase(Vec<lex::RawToken> tokens,
   Shared<utils::errors::ErrorFormatter> const &error_formatter) :
   _Tokens(std::move(tokens)),
   _TokensLen(_Tokens.size()),
@@ -17,5 +20,5 @@ ParserBase::ParserBase(Vec<lex::RawToken> tokens,
   _ErrorBuilder->WithErrorFormatter(_ErrorFormatter.get());
 }
 
-ParserBase::~ParserBase() = default;
+spp::parse::ParserBase::~ParserBase() = default;
 SPP_MOD_END

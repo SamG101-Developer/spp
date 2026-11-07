@@ -23,8 +23,12 @@ import genex;
 
 use_alias(spp::analyse::scopes, VariableSymbol);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PatternGuardAst::PatternGuardAst(
+spp::asts::PatternGuardAst::PatternGuardAst(
   decltype(TokAnd) &&tok_and,
   decltype(Expr) &&expression) :
   TokAnd(std::move(tok_and)),
@@ -32,33 +36,33 @@ PatternGuardAst::PatternGuardAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAnd, lex::SppTokenType::KW_AND, "and", Expr ? Expr->PosStart() : 0);
 }
 
-PatternGuardAst::~PatternGuardAst() = default;
+spp::asts::PatternGuardAst::~PatternGuardAst() = default;
 
-auto PatternGuardAst::PosStart() const -> std::size_t {
+auto spp::asts::PatternGuardAst::PosStart() const -> std::size_t {
   // Use the "and" token.
   return TokAnd->PosStart();
 }
 
-auto PatternGuardAst::PosEnd() const -> std::size_t {
+auto spp::asts::PatternGuardAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto PatternGuardAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PatternGuardAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PatternGuardAst>(
     AstClone(TokAnd),
     AstClone(Expr));
 }
 
-auto PatternGuardAst::ToString() const -> Str {
+auto spp::asts::PatternGuardAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokAnd);
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto PatternGuardAst::Stage7_AnalyseSemantics(
+auto spp::asts::PatternGuardAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -74,7 +78,7 @@ auto PatternGuardAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PatternGuardAst::Stage8_CheckMemory(
+auto spp::asts::PatternGuardAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -102,13 +106,13 @@ auto PatternGuardAst::Stage8_CheckMemory(
   }
 }
 
-auto PatternGuardAst::Stage11_CodeGen(
+auto spp::asts::PatternGuardAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto PatternGuardAst::EvaluateCompTime(
+auto spp::asts::PatternGuardAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Resolve the expression at compile-time.
   Expr->EvaluateCompTime(sm, meta);

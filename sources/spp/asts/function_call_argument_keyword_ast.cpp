@@ -11,8 +11,12 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.lex.tokens;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
+spp::asts::FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
   decltype(Name) name,
   decltype(TokAssign) &&tok_assign,
   decltype(Conv) &&conv,
@@ -25,19 +29,19 @@ FunctionCallArgumentKeywordAst::FunctionCallArgumentKeywordAst(
     this->TokAssign, SppTokenType::TK_ASSIGN, "=");
 }
 
-FunctionCallArgumentKeywordAst::~FunctionCallArgumentKeywordAst() = default;
+spp::asts::FunctionCallArgumentKeywordAst::~FunctionCallArgumentKeywordAst() = default;
 
-auto FunctionCallArgumentKeywordAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentKeywordAst::PosStart() const -> std::size_t {
   // Use the name.
   return Name->PosStart();
 }
 
-auto FunctionCallArgumentKeywordAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentKeywordAst::PosEnd() const -> std::size_t {
   // Use the val.
   return Val->PosEnd();
 }
 
-auto FunctionCallArgumentKeywordAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionCallArgumentKeywordAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<FunctionCallArgumentKeywordAst>(
     AstCloneShared(Name),
@@ -47,7 +51,7 @@ auto FunctionCallArgumentKeywordAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto FunctionCallArgumentKeywordAst::ToString() const -> Str {
+auto spp::asts::FunctionCallArgumentKeywordAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Name);
   SPP_STRING_APPEND(TokAssign);

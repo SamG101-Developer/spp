@@ -34,13 +34,21 @@ import llvm;
 
 use_alias(spp::analyse::scopes, VariableKind);
 
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto IdentifierAst::FromType(
+auto spp::asts::IdentifierAst::FromType(
   TypeAst const &val) -> Unique<IdentifierAst> {
   return MakeUnique<IdentifierAst>(val.PosStart(), Str(val.LastTypePart()->Name));
 }
 
-IdentifierAst::IdentifierAst(
+spp::asts::IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val) :
   Val(std::move(val)),
@@ -48,7 +56,7 @@ IdentifierAst::IdentifierAst(
   _NameId(spp::utils::Intern(Val)) {
 }
 
-IdentifierAst::IdentifierAst(
+spp::asts::IdentifierAst::IdentifierAst(
   const std::size_t pos,
   decltype(Val) val,
   const spp::utils::InternedId name_id) :
@@ -57,7 +65,7 @@ IdentifierAst::IdentifierAst(
   _NameId(name_id) {
 }
 
-auto IdentifierAst::MappedFromTok(
+auto spp::asts::IdentifierAst::MappedFromTok(
   TokenAst const &tok, decltype(Val) val) -> Unique<IdentifierAst> {
   //
   // As many raw tokens as the token covers, which is not always
@@ -67,24 +75,24 @@ auto IdentifierAst::MappedFromTok(
   return id;
 }
 
-IdentifierAst::~IdentifierAst() = default;
+spp::asts::IdentifierAst::~IdentifierAst() = default;
 
-auto IdentifierAst::operator<=>(
+auto spp::asts::IdentifierAst::operator<=>(
   IdentifierAst const &that) const -> Ordering {
   return Val <=> that.Val;
 }
 
-auto IdentifierAst::operator==(
+auto spp::asts::IdentifierAst::operator==(
   IdentifierAst const &that) const -> bool {
   return EqualsIdentifier(that) == Ordering::equal;
 }
 
-auto IdentifierAst::operator==(
+auto spp::asts::IdentifierAst::operator==(
   ExpressionAst const &that) const -> bool {
   return Equals(that) == Ordering::equal;
 }
 
-auto IdentifierAst::EqualsIdentifier(
+auto spp::asts::IdentifierAst::EqualsIdentifier(
   IdentifierAst const &other) const -> Ordering {
   // Compare the interned identifiers.
   return _NameId == other._NameId
@@ -92,23 +100,23 @@ auto IdentifierAst::EqualsIdentifier(
     : Ordering::less;
 }
 
-auto IdentifierAst::Equals(
+auto spp::asts::IdentifierAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Into reverse hook.
   return other.EqualsIdentifier(*this);
 }
 
-auto IdentifierAst::PosStart() const -> std::size_t {
+auto spp::asts::IdentifierAst::PosStart() const -> std::size_t {
   // Raw position field.
   return _Pos;
 }
 
-auto IdentifierAst::PosEnd() const -> std::size_t {
+auto spp::asts::IdentifierAst::PosEnd() const -> std::size_t {
   // Raw position field incremented by the token data length.
   return _ForTok ? _Pos + _ForTok : _Pos + Val.length();
 }
 
-auto IdentifierAst::Clone() const -> Unique<Ast> {
+auto spp::asts::IdentifierAst::Clone() const -> Unique<Ast> {
   // The copy spells the same name, so it carries the
   // id over rather than interning the string again. A
   // name mapped from a token keeps that token's length.
@@ -118,24 +126,24 @@ auto IdentifierAst::Clone() const -> Unique<Ast> {
   return id;
 }
 
-auto IdentifierAst::ToString() const -> Str {
+auto spp::asts::IdentifierAst::ToString() const -> Str {
   // Just use the internal value.
   return Val;
 }
 
-auto IdentifierAst::operator+(
+auto spp::asts::IdentifierAst::operator+(
   IdentifierAst const &that) const -> IdentifierAst {
   // Append another identifier into this one.
   return IdentifierAst(_Pos, Val + that.Val);
 }
 
-auto IdentifierAst::operator+(
+auto spp::asts::IdentifierAst::operator+(
   Str const &that) const -> IdentifierAst {
   // Append a raw string into this one.
   return IdentifierAst(_Pos, Val + that);
 }
 
-auto IdentifierAst::Stage7_AnalyseSemantics(
+auto spp::asts::IdentifierAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -187,7 +195,7 @@ auto IdentifierAst::Stage7_AnalyseSemantics(
   lsp::resolution_index::RecordIdentifier(*this, *sm, *meta, sym);
 }
 
-auto IdentifierAst::Stage8_CheckMemory(
+auto spp::asts::IdentifierAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   // A name evaluated as a value uses what it names: a holder
@@ -198,7 +206,7 @@ auto IdentifierAst::Stage8_CheckMemory(
   }
 }
 
-auto IdentifierAst::Stage11_CodeGen(
+auto spp::asts::IdentifierAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -255,7 +263,7 @@ auto IdentifierAst::Stage11_CodeGen(
   return ctx->Builder.CreateLoad(llvm_type, var_sym->LlvmInfo->Alloca, "load.flow" + uid);
 }
 
-auto IdentifierAst::EvaluateCompTime(
+auto spp::asts::IdentifierAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -297,7 +305,7 @@ auto IdentifierAst::EvaluateCompTime(
   value->EvaluateCompTime(&tm, meta);
 }
 
-auto IdentifierAst::InferType(
+auto spp::asts::IdentifierAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // Extract the symbol from the current scope, as a variable
   // symbol.
@@ -305,7 +313,7 @@ auto IdentifierAst::InferType(
   return var_sym ? var_sym->Type : nullptr;
 }
 
-auto IdentifierAst::InferTypeRef(
+auto spp::asts::IdentifierAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The variable's type, resolved here as its "InferType"
   // would be read.
@@ -313,7 +321,7 @@ auto IdentifierAst::InferTypeRef(
   return var_sym ? var_sym->TypeRefIn(*sm->CurrentScope) : TypeRef{};
 }
 
-auto IdentifierAst::ToFnIdentifier() const -> Unique<IdentifierAst> {
+auto spp::asts::IdentifierAst::ToFnIdentifier() const -> Unique<IdentifierAst> {
   // The name as written behind the compiler-only "$" prefix
   // (the lexer has no "$" token, so it cannot be written):
   // "func_name" becomes "$func_name". Kept verbatim, so each
@@ -321,18 +329,18 @@ auto IdentifierAst::ToFnIdentifier() const -> Unique<IdentifierAst> {
   return MakeUnique<IdentifierAst>(_Pos, "$" + Val);
 }
 
-auto IdentifierAst::AnkerlHash() const -> std::size_t {
+auto spp::asts::IdentifierAst::AnkerlHash() const -> std::size_t {
   // Consistent with "EqualsIdentifier", which decides
   // equality on the id, and a multiply rather than a
   // pass over the string.
   return Hash<spp::utils::InternedId>()(_NameId);
 }
 
-auto IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::IdentifierAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {const_cast<IdentifierAst*>(this)};
 }
 
-auto IdentifierAst::ReadExpr(
+auto spp::asts::IdentifierAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   IMPORT_UTILS;
   // A comp parameter (or a binding of one) is read by its identity where it was written, with the bindings applied
@@ -340,11 +348,11 @@ auto IdentifierAst::ReadExpr(
   return type_resolution::ReadComp(*this, sub);
 }
 
-auto IdentifierAst::ToView() const noexcept -> StrView {
+auto spp::asts::IdentifierAst::ToView() const noexcept -> StrView {
   return Val;
 }
 
-auto IdentifierAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::IdentifierAst::IsAllowedInDefault() const -> bool {
   // A name reads a value.
   return true;
 }

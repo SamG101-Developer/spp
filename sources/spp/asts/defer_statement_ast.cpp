@@ -23,8 +23,13 @@ import genex;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-DeferStatementAst::DeferStatementAst(
+spp::asts::DeferStatementAst::DeferStatementAst(
   decltype(TokDefer) &&tok_defer,
   decltype(Expr) &&expr) :
   TokDefer(std::move(tok_defer)),
@@ -34,33 +39,33 @@ DeferStatementAst::DeferStatementAst(
     this->TokDefer, SppTokenType::KW_DEFER, "defer", Expr ? Expr->PosStart() : 0);
 }
 
-DeferStatementAst::~DeferStatementAst() = default;
+spp::asts::DeferStatementAst::~DeferStatementAst() = default;
 
-auto DeferStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::DeferStatementAst::PosStart() const -> std::size_t {
   // Use the "defer" token.
   return TokDefer->PosStart();
 }
 
-auto DeferStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::DeferStatementAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto DeferStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::DeferStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<DeferStatementAst>(
     AstClone(TokDefer),
     AstClone(Expr));
 }
 
-auto DeferStatementAst::ToString() const -> Str {
+auto spp::asts::DeferStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDefer).append(" ");
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto DeferStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::DeferStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -88,7 +93,7 @@ auto DeferStatementAst::Stage7_AnalyseSemantics(
   expr_utils::ValidateDiscardedValue(*Expr, sm->CurrentScope, *sm, meta);
 }
 
-auto DeferStatementAst::Stage8_CheckMemory(
+auto spp::asts::DeferStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
@@ -117,7 +122,7 @@ auto DeferStatementAst::Stage8_CheckMemory(
   memory_state::RestoreSnapshot(saved);
 }
 
-auto DeferStatementAst::CheckAtExit(
+auto spp::asts::DeferStatementAst::CheckAtExit(
   Ast const &exit_point, const StrView exit_what, ScopeManager &sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Running the expression at this exit is checked as running it
@@ -141,7 +146,7 @@ auto DeferStatementAst::CheckAtExit(
   Expr->Stage8_CheckMemory(&tm, meta);
 }
 
-auto DeferStatementAst::Stage11_CodeGen(
+auto spp::asts::DeferStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing is emitted here: the expression is generated at
   // each of the scope's exits, by "EmitScopeExit". What
@@ -153,7 +158,7 @@ auto DeferStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto DeferStatementAst::EvaluateCompTime(
+auto spp::asts::DeferStatementAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   IMPORT_UTILS;
 

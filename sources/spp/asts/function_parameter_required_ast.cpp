@@ -10,8 +10,12 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionParameterRequiredAst::FunctionParameterRequiredAst(
+spp::asts::FunctionParameterRequiredAst::FunctionParameterRequiredAst(
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type) :
@@ -20,19 +24,19 @@ FunctionParameterRequiredAst::FunctionParameterRequiredAst(
     utils::OrderableTag::kRequiredParam) {
 }
 
-FunctionParameterRequiredAst::~FunctionParameterRequiredAst() = default;
+spp::asts::FunctionParameterRequiredAst::~FunctionParameterRequiredAst() = default;
 
-auto FunctionParameterRequiredAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionParameterRequiredAst::PosStart() const -> std::size_t {
   // Use the variable.
   return Var->PosStart();
 }
 
-auto FunctionParameterRequiredAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionParameterRequiredAst::PosEnd() const -> std::size_t {
   // Use the type.
   return Source.OriginalType->PosEnd();
 }
 
-auto FunctionParameterRequiredAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionParameterRequiredAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FunctionParameterRequiredAst>(
     AstClone(Var),
@@ -40,7 +44,7 @@ auto FunctionParameterRequiredAst::Clone() const -> Unique<Ast> {
     AstCloneShared(Type));
 }
 
-auto FunctionParameterRequiredAst::ToString() const -> Str {
+auto spp::asts::FunctionParameterRequiredAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Var);
   SPP_STRING_APPEND(TokColon).append(" ");

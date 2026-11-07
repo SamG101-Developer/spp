@@ -10,7 +10,9 @@ spp::asts::X` after an edit that does not touch its virtual functions. On 2026-1
 `postfix_expression_ast.ixx`. The object of the class's own `.cpp` then held the vtable only as `U` (`nm -C`), so
 nothing emitted it. On 2026-11-07 the switch of `use()` from `using namespace` to a using-declaration did it to
 `ExpressionAst`, `ClassPrototypeAst`, `LetStatementInitializedAst` and `PostfixExpressionOperatorFunctionCallAst` at
-once; touching and rebuilding did not help, the fix below did.
+once; touching and rebuilding did not help, the fix below did. Qualifying the `.cpp` definitions for MSVC
+(`auto spp::asts::X::F`, the same day) then did it to `LoopExpressionAst`, `DeferStatementAst` and `CmpStatementAst`;
+putting one destructor's definition back to the bare name did not bring its vtable back.
 
 **Why:** GCC emits a polymorphic class's vtable where its key function is defined, and with modules that decision can
 fall between the interface and its implementation unit.

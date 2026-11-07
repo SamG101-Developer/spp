@@ -50,14 +50,21 @@ namespace spp::asts {
   }
 }
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto GenericArgumentGroupAst::NewEmpty() -> Unique<GenericArgumentGroupAst> {
+auto spp::asts::GenericArgumentGroupAst::NewEmpty() -> Unique<GenericArgumentGroupAst> {
   // Empty ast.
   return MakeUnique<GenericArgumentGroupAst>(
     nullptr, decltype(Args)(), nullptr);
 }
 
-auto GenericArgumentGroupAst::FromParams(
+auto spp::asts::GenericArgumentGroupAst::FromParams(
   GenericParameterGroupAst const &generic_params) -> Unique<GenericArgumentGroupAst> {
   // Create the list of arguments, initially empty.
   auto mapped_args = Vec<Unique<GenericArgumentAst>>();
@@ -87,7 +94,7 @@ auto GenericArgumentGroupAst::FromParams(
   return arg_group;
 }
 
-GenericArgumentGroupAst::GenericArgumentGroupAst(
+spp::asts::GenericArgumentGroupAst::GenericArgumentGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Args) &&args,
   decltype(TokR) &&tok_r) :
@@ -96,19 +103,19 @@ GenericArgumentGroupAst::GenericArgumentGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
+spp::asts::GenericArgumentGroupAst::~GenericArgumentGroupAst() = default;
 
-auto GenericArgumentGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::GenericArgumentGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Args.empty() ? 0 : Args.front()->PosStart();
 }
 
-auto GenericArgumentGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenericArgumentGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Args.empty() ? 0 : Args.back()->PosEnd();
 }
 
-auto GenericArgumentGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenericArgumentGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenericArgumentGroupAst>(
     AstClone(TokL),
@@ -116,7 +123,7 @@ auto GenericArgumentGroupAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto GenericArgumentGroupAst::ToString() const -> Str {
+auto spp::asts::GenericArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   if (not Args.empty()) {
     // Separators go between the arguments only, so there is no
@@ -131,7 +138,7 @@ auto GenericArgumentGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenericArgumentGroupAst::operator==(
+auto spp::asts::GenericArgumentGroupAst::operator==(
   GenericArgumentGroupAst const &other) const -> bool {
   if (Args.size() != other.Args.size()) {
     return false;
@@ -144,7 +151,7 @@ auto GenericArgumentGroupAst::operator==(
   return true;
 }
 
-auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -175,13 +182,13 @@ auto GenericArgumentGroupAst::Stage7_AnalyseSemantics(
   for (auto const &x : Args) { x->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto GenericArgumentGroupAst::Stage8_CheckMemory(
+auto spp::asts::GenericArgumentGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the arguments for memory issues.
   for (auto const &x : Args) { x->Stage8_CheckMemory(sm, meta); }
 }
 
-auto GenericArgumentGroupAst::At(
+auto spp::asts::GenericArgumentGroupAst::At(
   const char *key) const -> GenericArgumentAst const* {
   // Find the keyword argument with the matching key. A type and a comp parameter cannot share a name, so neither can
   // their arguments.
@@ -191,7 +198,7 @@ auto GenericArgumentGroupAst::At(
   return nullptr;
 }
 
-auto GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
+auto spp::asts::GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by the kind of value.
   return Args
     | genex::views::filter([](auto const &arg) { return arg->IsTypeArg(); })
@@ -199,7 +206,7 @@ auto GenericArgumentGroupAst::GetTypeArgs() const -> Vec<GenericArgumentAst*> {
     | genex::to<Vec>();
 }
 
-auto GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
+auto spp::asts::GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by the kind of value.
   return Args
     | genex::views::filter([](auto const &arg) { return arg->IsCompArg(); })
@@ -207,7 +214,7 @@ auto GenericArgumentGroupAst::GetCompArgs() const -> Vec<GenericArgumentAst*> {
     | genex::to<Vec>();
 }
 
-auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*> {
+auto spp::asts::GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*> {
   // Filter by whether the argument is named.
   return Args
     | genex::views::filter([](auto const &arg) { return arg->KeywordName() != nullptr; })
@@ -215,7 +222,7 @@ auto GenericArgumentGroupAst::GetKeywordArgs() const -> Vec<GenericArgumentAst*>
     | genex::to<Vec>();
 }
 
-auto GenericArgumentGroupAst::GetAllArgs() const -> Vec<GenericArgumentAst*> {
+auto spp::asts::GenericArgumentGroupAst::GetAllArgs() const -> Vec<GenericArgumentAst*> {
   // Convert args to raw pointers.
   return Args
     | genex::views::transform([](auto const &arg) { return arg.get(); })

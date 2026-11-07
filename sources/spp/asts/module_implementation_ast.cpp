@@ -17,6 +17,10 @@ import genex;
 
 use_alias(spp::analyse::scopes, Scope);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace spp::asts {
   namespace {
@@ -84,36 +88,36 @@ namespace spp::asts {
   }
 }
 
-ModuleImplementationAst::ModuleImplementationAst(
+spp::asts::ModuleImplementationAst::ModuleImplementationAst(
   decltype(Members) &&members) :
   Members(std::move(members)) {
 }
 
-ModuleImplementationAst::~ModuleImplementationAst() = default;
+spp::asts::ModuleImplementationAst::~ModuleImplementationAst() = default;
 
-auto ModuleImplementationAst::PosStart() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::PosStart() const -> std::size_t {
   // Use the first member.
   return Members.empty() ? 0 : Members.front()->PosStart();
 }
 
-auto ModuleImplementationAst::PosEnd() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::PosEnd() const -> std::size_t {
   // Use the last member.
   return Members.empty() ? 0 : Members.back()->PosEnd();
 }
 
-auto ModuleImplementationAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ModuleImplementationAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ModuleImplementationAst>(
     AstCloneVec(Members));
 }
 
-auto ModuleImplementationAst::ToString() const -> Str {
+auto spp::asts::ModuleImplementationAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Members, "\n");
   SPP_STRING_END;
 }
 
-auto ModuleImplementationAst::Stage1_PreProcess(
+auto spp::asts::ModuleImplementationAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Shift to members (copy because function pre-processing
   // edits this module's member).
@@ -121,31 +125,31 @@ auto ModuleImplementationAst::Stage1_PreProcess(
   for (auto *member : members_ptrs) { member->Stage1_PreProcess(ctx); }
 }
 
-auto ModuleImplementationAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ModuleImplementationAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage3_GenTopLvlAliases(
+auto spp::asts::ModuleImplementationAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage3_GenTopLvlAliases(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage4_ResolveDeclarations(
+auto spp::asts::ModuleImplementationAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage4_ResolveDeclarations(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage5_LoadSupScopes(
+auto spp::asts::ModuleImplementationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage5_LoadSupScopes(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ModuleImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -153,7 +157,7 @@ auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
   }
 }
 
-auto ModuleImplementationAst::Stage7_AnalyseSemantics(
+auto spp::asts::ModuleImplementationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -168,7 +172,7 @@ auto ModuleImplementationAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ModuleImplementationAst::Stage8_CheckMemory(
+auto spp::asts::ModuleImplementationAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -176,21 +180,21 @@ auto ModuleImplementationAst::Stage8_CheckMemory(
   }
 }
 
-auto ModuleImplementationAst::Stage10_PreCodeGen(
+auto spp::asts::ModuleImplementationAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to members.
   for (auto const &member : Members) { member->Stage10_PreCodeGen(sm, meta, ctx); }
   return nullptr;
 }
 
-auto ModuleImplementationAst::Stage11_CodeGen(
+auto spp::asts::ModuleImplementationAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to members.
   for (auto const &member : Members) { member->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;
 }
 
-auto ModuleImplementationAst::CheckExtensionMembers(
+auto spp::asts::ModuleImplementationAst::CheckExtensionMembers(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the members of each extension block against its super
   // class. Nothing walks the scopes here, so there is nothing to

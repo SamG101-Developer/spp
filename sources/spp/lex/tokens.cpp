@@ -4,7 +4,7 @@ module;
 module spp.lex.tokens;
 
 SPP_MOD_BEGIN
-RawToken::RawToken(const RawTokenType type, Str data) :
+spp::lex::RawToken::RawToken(const RawTokenType type, Str data) :
   Type(type),
   Data(std::move(data)) {
 }

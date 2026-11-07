@@ -72,6 +72,8 @@ use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
 /// How to write help lines:
 /// - Describe exactly what to do by token or keyword.
 
+use_alias(spp::asts, Ast);
+
 SPP_MOD_BEGIN
 namespace spp::analyse::errors {
   namespace {
@@ -183,7 +185,7 @@ spp::analyse::errors::InstantiatedFromGuard::~InstantiatedFromGuard() {
   if (_Marked) { instantiated_from = nullptr; }
 }
 
-auto SemanticError::AddHeader(
+auto spp::analyse::errors::SemanticError::AddHeader(
   const std::size_t err_code, Str &&msg) -> void {
   // Add a header to the error.
   ErrorInfo.push_back({
@@ -194,7 +196,7 @@ auto SemanticError::AddHeader(
   });
 }
 
-auto SemanticError::AddErr(
+auto spp::analyse::errors::SemanticError::AddErr(
   Ast const *ast, Str &&tag) -> void {
   // Add an error information entry for the given AST and tag.
   ErrorInfo.push_back({
@@ -205,7 +207,7 @@ auto SemanticError::AddErr(
   });
 }
 
-auto SemanticError::AddErrExact(
+auto spp::analyse::errors::SemanticError::AddErrExact(
   Ast const *ast, Str &&tag) -> void {
   // Add an error information entry for the given AST and tag,
   // without narrowing a call to its argument group.
@@ -217,7 +219,7 @@ auto SemanticError::AddErrExact(
   });
 }
 
-auto SemanticError::AddCtxForErr(
+auto spp::analyse::errors::SemanticError::AddCtxForErr(
   Ast const *ast, Str &&tag) -> void {
   // Add a context information entry for the given AST and tag.
   ErrorInfo.push_back({
@@ -228,7 +230,7 @@ auto SemanticError::AddCtxForErr(
   });
 }
 
-auto SemanticError::AddFooter(
+auto spp::analyse::errors::SemanticError::AddFooter(
   Str &&note, Str &&help) -> void {
   // Add a footer to the error with the given note and help
   // message.
@@ -240,7 +242,7 @@ auto SemanticError::AddFooter(
   });
 }
 
-auto SemanticError::AddWrapped(
+auto spp::analyse::errors::SemanticError::AddWrapped(
   Str &&msg) -> void {
   // Add a wrapped error information entry.
   ErrorInfo.push_back({
@@ -251,7 +253,7 @@ auto SemanticError::AddWrapped(
   });
 }
 
-SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
+spp::analyse::errors::SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
   Ast const &expr) {
   AddHeader(0, "Invalid Primary Expression Error");
   AddErr(&expr, "Primary expression introduced here");
@@ -260,7 +262,7 @@ SppInvalidPrimaryExpressionError::SppInvalidPrimaryExpressionError(
     "Change the expression to a different value expression.");
 }
 
-SppTypeMismatchError::SppTypeMismatchError(
+spp::analyse::errors::SppTypeMismatchError::SppTypeMismatchError(
   Ast const &lhs, Ast const &lhs_ty, Ast const &rhs, Ast const &rhs_ty) {
   AddHeader(1, "Type Mismatch Error");
   AddCtxForErr(&lhs, "Expected type " + INLINE_INFO(TypeForMessage(lhs_ty)));
@@ -280,7 +282,7 @@ SppTypeMismatchError::SppTypeMismatchError(
     "expressions, so the broader variant is on the left of the comparison.");
 }
 
-SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
+spp::analyse::errors::SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
   Ast const &expr, Ast const &type, const StrView ctx) {
   AddHeader(2, "Second-Class Borrow Violation Error");
   AddCtxForErr(&type, "Second-class borrow type declared here");
@@ -290,7 +292,7 @@ SppSecondClassBorrowViolationError::SppSecondClassBorrowViolationError(
     "Use a first-class type ensuring ownership in this context.");
 }
 
-SppCompTimeConstantError::SppCompTimeConstantError(
+spp::analyse::errors::SppCompTimeConstantError::SppCompTimeConstantError(
   Ast const &expr) {
   AddHeader(3, "SPP Compile-Time Constant Error");
   AddErr(&expr, "Non compile-time expression defined here");
@@ -299,7 +301,7 @@ SppCompTimeConstantError::SppCompTimeConstantError(
     "Ensure the expression can be evaluated at compile time.");
 }
 
-SppInvalidMutationError::SppInvalidMutationError(
+spp::analyse::errors::SppInvalidMutationError::SppInvalidMutationError(
   Ast const &sym, Ast const &mutator, Ast const &initialization_location, const StrView extra) {
   AddHeader(4, "Invalid Mutation Error");
   AddCtxForErr(&sym, "Symbol immutably defined here");
@@ -310,7 +312,7 @@ SppInvalidMutationError::SppInvalidMutationError(
     "Declare the symbol as mutable or remove the mutation.");
 }
 
-SppUninitializedMemoryUseError::SppUninitializedMemoryUseError(
+spp::analyse::errors::SppUninitializedMemoryUseError::SppUninitializedMemoryUseError(
   Ast const &ast, Ast const &init_location, Ast const &move_location) {
   AddHeader(5, "Uninitialized Memory Use Error");
   AddCtxForErr(&init_location, "Memory initialized here");
@@ -321,7 +323,7 @@ SppUninitializedMemoryUseError::SppUninitializedMemoryUseError(
     "Reinitialize the variable, or use a different variable.");
 }
 
-SppPartiallyInitializedMemoryUseError::SppPartiallyInitializedMemoryUseError(
+spp::analyse::errors::SppPartiallyInitializedMemoryUseError::SppPartiallyInitializedMemoryUseError(
   Ast const &ast, Ast const &, Ast const &partial_move_location) {
   AddHeader(6, "Partially Initialized Memory Use Error");
   AddCtxForErr(&partial_move_location, "Partial memory move here");
@@ -331,7 +333,7 @@ SppPartiallyInitializedMemoryUseError::SppPartiallyInitializedMemoryUseError(
     "Fully initialize the symbol before using it.");
 }
 
-SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryError(
+spp::analyse::errors::SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryError(
   Ast const &ast, Ast const &, Ast const &borrow_location) {
   AddHeader(7, "Move From Borrowed Memory Error");
   AddCtxForErr(&borrow_location, "Memory was borrowed here");
@@ -341,7 +343,7 @@ SppMoveFromBorrowedMemoryError::SppMoveFromBorrowedMemoryError(
     "Ensure the memory is not borrowed when moving from it, or clone it.");
 }
 
-SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
+spp::analyse::errors::SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUseError(
   Ast const &ast, Ast const &branch_1, Ast const &branch_2, const StrView what) {
   AddHeader(8, "Inconsistently Initialized Memory Use Error");
   AddCtxForErr(&branch_1, "In this branch, the memory is " + INLINE_INFO(what));
@@ -352,7 +354,7 @@ SppInconsistentlyInitializedMemoryUseError::SppInconsistentlyInitializedMemoryUs
     "Ensure the memory is " + INLINE_HELP(what) + " in all branches before use.");
 }
 
-SppInconsistentlyEscapingBorrows::SppInconsistentlyEscapingBorrows(
+spp::analyse::errors::SppInconsistentlyEscapingBorrows::SppInconsistentlyEscapingBorrows(
   Ast const &ast, Ast const &branch_1, Ast const &branch_2) {
   AddHeader(9, "SPP Inconsistently Escaping Borrows");
   AddCtxForErr(&ast, "Expression using inconsistently escape-borrowed memory defined here");
@@ -363,7 +365,7 @@ SppInconsistentlyEscapingBorrows::SppInconsistentlyEscapingBorrows(
     "Ensure the memory is consistently escapingly borrowed in all branches before use.");
 }
 
-SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
+spp::analyse::errors::SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
   Ast const &lhs, Ast const &lhs_type, Ast const &access_op) {
   AddHeader(10, "Member Access Non-Indexable Error");
   AddCtxForErr(&lhs, "Type inferred as " + INLINE_INFO(TypeForMessage(lhs_type)));
@@ -373,7 +375,7 @@ SppMemberAccessNonIndexableError::SppMemberAccessNonIndexableError(
     "Ensure the left-hand side is an indexable type (e.g., array or tuple).");
 }
 
-SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
+spp::analyse::errors::SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
   Ast const &lhs, Ast const &, const std::size_t n, Ast const &access_op) {
   AddHeader(11, "Member Access Out Of Bounds Error");
   AddCtxForErr(&lhs, "Type has " + INLINE_NOTE(std::to_string(n)) + " elements");
@@ -383,7 +385,7 @@ SppMemberAccessOutOfBoundsError::SppMemberAccessOutOfBoundsError(
     "Ensure the accessed member exists within the bounds of the type");
 }
 
-SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
+spp::analyse::errors::SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
   Ast const &non_last_else_branch, Ast const &last_branch) {
   AddHeader(12, "Case Branch Else Not Last Error");
   AddCtxForErr(&non_last_else_branch, "Non-last " + INLINE_INFO("else") + " branch defined here");
@@ -393,7 +395,7 @@ SppCaseBranchElseNotLastError::SppCaseBranchElseNotLastError(
     "Move the " + INLINE_HELP("else") + " branch to be the last branch");
 }
 
-SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
+spp::analyse::errors::SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
   Ast const &case_expr, Ast const &last_branch) {
   AddHeader(13, "Case Branch Missing Else Error");
   AddCtxForErr(&case_expr, "Case expression introduced here");
@@ -403,7 +405,7 @@ SppCaseBranchMissingElseError::SppCaseBranchMissingElseError(
     "Add an " + INLINE_HELP("else") + " branch to the case expression.");
 }
 
-SppIdentifierDuplicateError::SppIdentifierDuplicateError(
+spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
   Ast const &first_identifier, Ast const &duplicate_identifier, const StrView what) {
   AddHeader(14, "Identifier Duplicate Error");
   AddCtxForErr(&first_identifier,
@@ -417,7 +419,7 @@ SppIdentifierDuplicateError::SppIdentifierDuplicateError(
     "Rename or remove the duplicate identifier");
 }
 
-SppIdentifierDuplicateError::SppIdentifierDuplicateError(
+spp::analyse::errors::SppIdentifierDuplicateError::SppIdentifierDuplicateError(
   Ast const &duplicate_identifier, const StrView what, const bool is_import) {
   AddHeader(14, "Identifier Duplicate Error");
   AddErr(
@@ -430,7 +432,7 @@ SppIdentifierDuplicateError::SppIdentifierDuplicateError(
     : "Rename this declaration; a prelude name cannot be shadowed");
 }
 
-SppRecursiveTypeError::SppRecursiveTypeError(
+spp::analyse::errors::SppRecursiveTypeError::SppRecursiveTypeError(
   Ast const &type, Ast const &recursion) {
   AddHeader(15, "Recursive Type Error");
   AddCtxForErr(&type, "Type defined here");
@@ -440,7 +442,7 @@ SppRecursiveTypeError::SppRecursiveTypeError(
     "Remove the attribute, change the type, or use smart pointers to prevent the type recursion.");
 }
 
-SppGenericInstantiationDepthError::SppGenericInstantiationDepthError(
+spp::analyse::errors::SppGenericInstantiationDepthError::SppGenericInstantiationDepthError(
   Ast const &type) {
   AddHeader(109, "Generic Instantiation Depth Error");
   AddErr(&type, "Generic instantiation nested too deeply here");
@@ -449,7 +451,7 @@ SppGenericInstantiationDepthError::SppGenericInstantiationDepthError(
     "Break the cycle, for example by not naming the type inside its own generic arguments.");
 }
 
-SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
+spp::analyse::errors::SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
   Ast const &literal, numex::BigDec const &value, numex::BigDec const &lower, numex::BigDec const &upper,
   const StrView what) {
   AddHeader(16, "Float Out Of Bounds Error");
@@ -460,7 +462,7 @@ SppFloatOutOfBoundsError::SppFloatOutOfBoundsError(
     INLINE_HELP(upper.Decimal()) + INLINE_HELP("]") + ".");
 }
 
-SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
+spp::analyse::errors::SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
   Ast const &literal, numex::BigInt const &value, numex::BigInt const &lower, numex::BigInt const &upper,
   const StrView what) {
   AddHeader(17, "Integer Out Of Bounds Error");
@@ -471,7 +473,7 @@ SppIntegerOutOfBoundsError::SppIntegerOutOfBoundsError(
     INLINE_HELP(upper.ToString()) + INLINE_HELP("]") + ".");
 }
 
-SppOrderInvalidError::SppOrderInvalidError(
+spp::analyse::errors::SppOrderInvalidError::SppOrderInvalidError(
   const StrView first_what, Ast const &first, const StrView second_what, Ast const &second) {
   AddHeader(18, "Order Invalid Error");
   AddCtxForErr(&first, INLINE_INFO(first_what) + " defined here");
@@ -481,7 +483,7 @@ SppOrderInvalidError::SppOrderInvalidError(
     "Switch the order of these asts.");
 }
 
-SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
+spp::analyse::errors::SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
   Ast const &unpack, Ast const &ast, Ast const &type) {
   AddHeader(19, "Expansion Of Non-Tuple Error");
   AddCtxForErr(&ast, "Expression defined here with type " + INLINE_INFO(TypeForMessage(type)));
@@ -491,7 +493,7 @@ SppExpansionOfNonTupleError::SppExpansionOfNonTupleError(
     "Ensure the expression is of tuple type before expanding.");
 }
 
-SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
+spp::analyse::errors::SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
   Ast const &ast, Ast const &overlap_ast) {
   AddHeader(20, "Memory Overlap Usage Error");
   AddCtxForErr(&ast, "Memory region used here");
@@ -501,7 +503,7 @@ SppMemoryOverlapUsageError::SppMemoryOverlapUsageError(
     "Ensure the memory regions do not overlap.");
 }
 
-SppMultipleSelfParametersError::SppMultipleSelfParametersError(
+spp::analyse::errors::SppMultipleSelfParametersError::SppMultipleSelfParametersError(
   Ast const &first_self, Ast const &second_self) {
   AddHeader(21, "Multiple Self Parameters Error");
   AddCtxForErr(&first_self, "First " + INLINE_INFO("self") + " parameter defined here");
@@ -511,7 +513,7 @@ SppMultipleSelfParametersError::SppMultipleSelfParametersError(
     "Remove the second " + INLINE_HELP("self") + " parameters.");
 }
 
-SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
+spp::analyse::errors::SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
   Ast const &first_variadic, Ast const &second_variadic) {
   AddHeader(22, "Multiple Variadic Parameters Error");
   AddCtxForErr(&first_variadic, "First " + INLINE_INFO("variadic") + " parameter defined here");
@@ -521,7 +523,7 @@ SppMultipleVariadicParametersError::SppMultipleVariadicParametersError(
     "Remove one of the " + INLINE_HELP("variadic") + " parameters.");
 }
 
-SppFunctionPrototypeConflictError::SppFunctionPrototypeConflictError(
+spp::analyse::errors::SppFunctionPrototypeConflictError::SppFunctionPrototypeConflictError(
   Ast const &first_proto, Ast const &second_proto) {
   AddHeader(23, "Function Prototype Conflict Error");
   AddCtxForErr(&first_proto, "First function prototype defined here");
@@ -531,7 +533,7 @@ SppFunctionPrototypeConflictError::SppFunctionPrototypeConflictError(
     "Rename or modify one of the function prototypes' signature.");
 }
 
-SppFunctionSubroutineContainsGenExpressionError::SppFunctionSubroutineContainsGenExpressionError(
+spp::analyse::errors::SppFunctionSubroutineContainsGenExpressionError::SppFunctionSubroutineContainsGenExpressionError(
   Ast const &fun_tag, Ast const &gen_expr) {
   AddHeader(24, "Function Subroutine Contains Generator Expression Error");
   AddCtxForErr(&fun_tag, "Subroutine defined here");
@@ -542,7 +544,7 @@ SppFunctionSubroutineContainsGenExpressionError::SppFunctionSubroutineContainsGe
     "" + INLINE_HELP("fun") + " with " + INLINE_HELP("cor"));
 }
 
-SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
+spp::analyse::errors::SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
   Ast const &lhs, Ast const &lhs_ty, Ast const &rhs, Ast const &rhs_ty) {
   AddHeader(25, "Yielded Type Mismatch Error");
   AddCtxForErr(&lhs, "Yielded type inferred as " + INLINE_INFO(TypeForMessage(lhs_ty)));
@@ -552,7 +554,7 @@ SppYieldedTypeMismatchError::SppYieldedTypeMismatchError(
     "Ensure the yielded value matches the expected type");
 }
 
-SppIdentifierUnknownError::SppIdentifierUnknownError(
+spp::analyse::errors::SppIdentifierUnknownError::SppIdentifierUnknownError(
   Ast const &name, const StrView what, Opt<Str> const &closest) {
   const auto extra = closest ? " (did you mean '" + *closest + "'?)" : "";
   AddHeader(26, "Identifier Unknown Error");
@@ -562,7 +564,7 @@ SppIdentifierUnknownError::SppIdentifierUnknownError(
     "Define the identifier or correct its name.");
 }
 
-SppSelfIdentifierInvalidContextError::SppSelfIdentifierInvalidContextError(
+spp::analyse::errors::SppSelfIdentifierInvalidContextError::SppSelfIdentifierInvalidContextError(
   Ast const &self) {
   AddHeader(27, "Self Identifier Invalid Context");
   AddErr(&self, "Invalid " + INLINE_INFO("self") + " identifier introduced here");
@@ -571,7 +573,7 @@ SppSelfIdentifierInvalidContextError::SppSelfIdentifierInvalidContextError(
     "Ensure the " + INLINE_HELP("self") + " identifier is used in a valid context, or remove it.");
 }
 
-SppUnreachableCodeError::SppUnreachableCodeError(
+spp::analyse::errors::SppUnreachableCodeError::SppUnreachableCodeError(
   Ast const &member, Ast const &next_member) {
   AddHeader(28, "Unreachable Code Error");
   AddCtxForErr(&member, "Terminating statement introduced here");
@@ -581,7 +583,7 @@ SppUnreachableCodeError::SppUnreachableCodeError(
     "Remove the unreachable code, or the terminating statement.");
 }
 
-SppInvalidLocalVariableTypeAnnotationError::SppInvalidLocalVariableTypeAnnotationError(
+spp::analyse::errors::SppInvalidLocalVariableTypeAnnotationError::SppInvalidLocalVariableTypeAnnotationError(
   Ast const &type, Ast const &var) {
   AddHeader(29, "Invalid Local Variable Type Annotation Error");
   AddCtxForErr(&var, "Variable introduced here");
@@ -591,7 +593,7 @@ SppInvalidLocalVariableTypeAnnotationError::SppInvalidLocalVariableTypeAnnotatio
     "Remove this type annotation.");
 }
 
-SppMultipleRestPatternsError::SppMultipleRestPatternsError(
+spp::analyse::errors::SppMultipleRestPatternsError::SppMultipleRestPatternsError(
   Ast const &var, Ast const &pattern_1, Ast const &pattern_2) {
   AddHeader(30, "Multiple Rest Patterns Error");
   AddCtxForErr(&var, "Variable destructure introduced here");
@@ -602,7 +604,7 @@ SppMultipleRestPatternsError::SppMultipleRestPatternsError(
     "Remove one of the skip multi-arguments.");
 }
 
-SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
+spp::analyse::errors::SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureArrayTypeMismatchError(
   Ast const &var, Ast const &val, Ast const &val_type) {
   AddHeader(31, "Variable Array Destructure Array Type Mismatch Error");
   AddCtxForErr(&var, "Array destructure introduced here");
@@ -612,7 +614,7 @@ SppVariableArrayDestructureArrayTypeMismatchError::SppVariableArrayDestructureAr
     "Change the target to an array, or change the destructure.");
 }
 
-SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
+spp::analyse::errors::SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureArraySizeMismatchError(
   Ast const &var, const std::size_t var_size, Ast const &val, const std::size_t val_size) {
   AddHeader(32, "Variable Array Destructure Array Size Mismatch Error");
   AddCtxForErr(&var, "Array destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
@@ -623,7 +625,7 @@ SppVariableArrayDestructureArraySizeMismatchError::SppVariableArrayDestructureAr
     "Change the size of the destructure pattern" + extra + ".");
 }
 
-SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
+spp::analyse::errors::SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTupleTypeMismatchError(
   Ast const &var, Ast const &val, Ast const &val_type) {
   AddHeader(33, "Variable Tuple Destructure Tuple Type Mismatch Error");
   AddCtxForErr(&var, "Tuple destructure introduced here");
@@ -633,7 +635,7 @@ SppVariableTupleDestructureTupleTypeMismatchError::SppVariableTupleDestructureTu
     "Change the target to an tuple, or change the destructure.");
 }
 
-SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
+spp::analyse::errors::SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTupleSizeMismatchError(
   Ast const &var, const std::size_t var_size, Ast const &val, const std::size_t val_size) {
   AddHeader(34, "Variable Tuple Destructure Tuple Size Mismatch Error");
   AddCtxForErr(&var, "Tuple destructure introduced with " + INLINE_INFO(std::to_string(var_size)) + " elements");
@@ -644,7 +646,7 @@ SppVariableTupleDestructureTupleSizeMismatchError::SppVariableTupleDestructureTu
     "Change the size of the destructure pattern" + extra + ".");
 }
 
-SppVariableObjectDestructureWithBoundRestPatternError::SppVariableObjectDestructureWithBoundRestPatternError(
+spp::analyse::errors::SppVariableObjectDestructureWithBoundRestPatternError::SppVariableObjectDestructureWithBoundRestPatternError(
   Ast const &var, Ast const &rest_pattern) {
   AddHeader(35, "Variable Object Destructure With Bound Rest Pattern Error");
   AddCtxForErr(&var, "Object destructure introduced here");
@@ -654,7 +656,7 @@ SppVariableObjectDestructureWithBoundRestPatternError::SppVariableObjectDestruct
     "Remove the bound rest pattern from the destructure.");
 }
 
-SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
+spp::analyse::errors::SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
   Ast const &destructure, Ast const &value, const StrView part) {
   AddHeader(105, "Destructure Skips Owned Part Error");
   AddCtxForErr(&value, "Value taken apart here");
@@ -664,7 +666,7 @@ SppDestructureSkipsOwnedPartError::SppDestructureSkipsOwnedPartError(
     "Bind " + INLINE_HELP(part) + " and use it, or bind it and drop it explicitly.");
 }
 
-SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
+spp::analyse::errors::SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
   Ast const &exit_point, Ast const &move, Ast const &destructor, const StrView type_name) {
   AddHeader(106, "Partial Move Of Destructible Value Error");
   AddCtxForErr(&destructor, "" + INLINE_INFO(type_name) + " is destroyed here");
@@ -676,7 +678,7 @@ SppPartialMoveOfDestructibleValueError::SppPartialMoveOfDestructibleValueError(
     "Assign the part back, or destructure the whole value instead of taking it apart a piece at a time.");
 }
 
-SppExpressionNotBooleanError::SppExpressionNotBooleanError(
+spp::analyse::errors::SppExpressionNotBooleanError::SppExpressionNotBooleanError(
   Ast const &expr, Ast const &expr_type, const StrView what) {
   AddHeader(36, "Expression Not Boolean Error");
   AddErr(&expr, "Type inferred as " + INLINE_INFO(TypeForMessage(expr_type)));
@@ -685,7 +687,7 @@ SppExpressionNotBooleanError::SppExpressionNotBooleanError(
     "Change this expression to a boolean type expression, or take one out of a borrow with " + INLINE_HELP("@") + ".");
 }
 
-SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
+spp::analyse::errors::SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
   Ast const &expr, Ast const &expr_type, const StrView what) {
   AddHeader(37, "Expression Not Generator Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(TypeForMessage(expr_type)));
@@ -694,7 +696,7 @@ SppExpressionNotGeneratorError::SppExpressionNotGeneratorError(
     "Change the expression/type to a generator or a type that superimposes it.");
 }
 
-SppYieldTypeContainsGenDoneError::SppYieldTypeContainsGenDoneError(
+spp::analyse::errors::SppYieldTypeContainsGenDoneError::SppYieldTypeContainsGenDoneError(
   Ast const &expr, Ast const &yield_type, const StrView what) {
   AddHeader(110, "Yield Type Contains GenDone Error");
   AddErr(&expr, "Generator yields " + INLINE_INFO(TypeForMessage(yield_type)));
@@ -704,7 +706,7 @@ SppYieldTypeContainsGenDoneError::SppYieldTypeContainsGenDoneError(
     "Remove " + INLINE_HELP("GenDone") + " from the generator's yield type.");
 }
 
-SppExpressionNotTryError::SppExpressionNotTryError(
+spp::analyse::errors::SppExpressionNotTryError::SppExpressionNotTryError(
   Ast const &expr, Ast const &type) {
   AddHeader(48, "Expression Not Try Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(TypeForMessage(type)));
@@ -713,7 +715,7 @@ SppExpressionNotTryError::SppExpressionNotTryError(
     "Change the expression to have a try type.");
 }
 
-SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
+spp::analyse::errors::SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
   Ast const &expr, Ast const &expr_type, const StrView what) {
   AddHeader(38, "SPP Expression Ambiguous Generator Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(TypeForMessage(expr_type)));
@@ -722,7 +724,7 @@ SppExpressionAmbiguousGeneratorError::SppExpressionAmbiguousGeneratorError(
     "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
 
-SppExpressionAmbiguousTryError::SppExpressionAmbiguousTryError(
+spp::analyse::errors::SppExpressionAmbiguousTryError::SppExpressionAmbiguousTryError(
   Ast const &expr, Ast const &expr_type, const StrView what) {
   AddHeader(38, "SPP Expression Ambiguous Generator Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO(TypeForMessage(expr_type)));
@@ -731,7 +733,7 @@ SppExpressionAmbiguousTryError::SppExpressionAmbiguousTryError(
     "Ensure the expression has a clear and unambiguous generator type (only superimpose one).");
 }
 
-SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsError(
+spp::analyse::errors::SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsError(
   Ast const &tok_loop, Ast const &stmt, const std::size_t num_controls, const std::size_t loop_depth) {
   AddHeader(40, "Loop Too Many Control Flow Statements Error");
   if (loop_depth == 0) {
@@ -748,7 +750,7 @@ SppLoopTooManyControlFlowStatementsError::SppLoopTooManyControlFlowStatementsErr
     "Reduce the number of control flow statements or increase the loop depth");
 }
 
-SppObjectInitializerMultipleAutofillArgumentsError::SppObjectInitializerMultipleAutofillArgumentsError(
+spp::analyse::errors::SppObjectInitializerMultipleAutofillArgumentsError::SppObjectInitializerMultipleAutofillArgumentsError(
   Ast const &arg1, Ast const &arg2) {
   AddHeader(41, "Object Initializer Multiple Autofill Arguments Error");
   AddCtxForErr(&arg1, "First autofill argument introduced here");
@@ -758,7 +760,7 @@ SppObjectInitializerMultipleAutofillArgumentsError::SppObjectInitializerMultiple
     "Remove one of the autofill arguments.");
 }
 
-SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentError(
+spp::analyse::errors::SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentError(
   Ast const &arg) {
   AddHeader(42, "Object Initializer Invalid Argument Error");
   AddErr(&arg, "Non-identifier shorthand argument defined here");
@@ -768,7 +770,7 @@ SppObjectInitializerInvalidArgumentError::SppObjectInitializerInvalidArgumentErr
     "attribute. Otherwise, use the keyword format " + INLINE_HELP("attr=value") + ".");
 }
 
-SppObjectInitializerVariantError::SppObjectInitializerVariantError(
+spp::analyse::errors::SppObjectInitializerVariantError::SppObjectInitializerVariantError(
   Ast const &type) {
   AddHeader(43, "Object Initializer Variant Error");
   AddCtxForErr(&type, "Variant initialized here");
@@ -777,7 +779,7 @@ SppObjectInitializerVariantError::SppObjectInitializerVariantError(
     "Use the layout: " + INLINE_HELP("let x: VariantType = InnerType()") + ".");
 }
 
-SppObjectInitializerZeroTypeError::SppObjectInitializerZeroTypeError(
+spp::analyse::errors::SppObjectInitializerZeroTypeError::SppObjectInitializerZeroTypeError(
   Ast const &initializer, Ast const &type) {
   AddHeader(115, "Object Initializer Zero Type Error");
   AddErr(&initializer, "Zero type initialized here");
@@ -786,7 +788,7 @@ SppObjectInitializerZeroTypeError::SppObjectInitializerZeroTypeError(
     "Write " + INLINE_HELP(type.ToString()) + ", not " + INLINE_HELP(type.ToString() + "()") + ".");
 }
 
-SppObjectInitializerGeneratorError::SppObjectInitializerGeneratorError(
+spp::analyse::errors::SppObjectInitializerGeneratorError::SppObjectInitializerGeneratorError(
   Ast const &type, Ast const &generator_type) {
   AddHeader(44, "Object Initializer Generator Error");
   AddCtxForErr(&type, "Generator initialized here");
@@ -798,7 +800,7 @@ SppObjectInitializerGeneratorError::SppObjectInitializerGeneratorError(
     "Produce this type from a " + INLINE_HELP("cor") + " that yields the values, rather than constructing it.");
 }
 
-SppAbstractTypeUseError::SppAbstractTypeUseError(
+spp::analyse::errors::SppAbstractTypeUseError::SppAbstractTypeUseError(
   Ast const &type, Ast const &unimplemented) {
   AddHeader(45, "Abstract Type Use Error");
   AddCtxForErr(&unimplemented, "Abstract method defined here");
@@ -809,7 +811,7 @@ SppAbstractTypeUseError::SppAbstractTypeUseError(
     "Implement the absent abstract method.");
 }
 
-SppArgumentNameInvalidError::SppArgumentNameInvalidError(
+spp::analyse::errors::SppArgumentNameInvalidError::SppArgumentNameInvalidError(
   Ast const &target, const StrView target_what, Ast const &source, const StrView source_what) {
   AddHeader(46, "Argument Name Invalid Error");
   AddCtxForErr(&target, INLINE_INFO(target_what) + " introduced here");
@@ -819,7 +821,7 @@ SppArgumentNameInvalidError::SppArgumentNameInvalidError(
     "Change the " + INLINE_HELP(source_what) + " to a name that is a " + INLINE_HELP(target_what) + ".");
 }
 
-SppArgumentMissingError::SppArgumentMissingError(
+spp::analyse::errors::SppArgumentMissingError::SppArgumentMissingError(
   Ast const &target, const StrView target_what, Ast const &source, const StrView source_what) {
   AddHeader(47, "Argument Missing Error");
   AddCtxForErr(&target, "Missing " + INLINE_INFO(target_what) + " defined here");
@@ -829,7 +831,7 @@ SppArgumentMissingError::SppArgumentMissingError(
     "Provide the missing argument.");
 }
 
-SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
+spp::analyse::errors::SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
   Ast const &proto, Ast const &call) {
   AddHeader(49, "SPP Function Call Abstract Function Error");
   AddCtxForErr(&proto, "Abstract function prototype defined here");
@@ -839,7 +841,7 @@ SppFunctionCallAbstractFunctionError::SppFunctionCallAbstractFunctionError(
     "Ensure the function being called is not abstract");
 }
 
-SppFunctionCallTooManyArgumentsError::SppFunctionCallTooManyArgumentsError(
+spp::analyse::errors::SppFunctionCallTooManyArgumentsError::SppFunctionCallTooManyArgumentsError(
   Ast const &proto, const std::size_t proto_proto_count, Ast const &call, const std::size_t call_arg_count) {
   AddHeader(50, "SPP Function Call Too Many Arguments Error");
   AddCtxForErr(
@@ -851,7 +853,7 @@ SppFunctionCallTooManyArgumentsError::SppFunctionCallTooManyArgumentsError(
     "Reduce the number of arguments in the function call to match the prototype.");
 }
 
-SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
+spp::analyse::errors::SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
   Ast const &call, const StrView sigs, const StrView attempted) {
   AddHeader(51, "Function Call No Valid Signatures Error");
   AddErr(&call, "Function call defined here");
@@ -861,7 +863,7 @@ SppFunctionCallNoValidSignaturesError::SppFunctionCallNoValidSignaturesError(
     "Adjust the arguments to match one of the available signatures. See candidates in more detail below.");
 }
 
-SppFunctionCallOverloadAmbiguousError::SppFunctionCallOverloadAmbiguousError(
+spp::analyse::errors::SppFunctionCallOverloadAmbiguousError::SppFunctionCallOverloadAmbiguousError(
   Ast const &call, const StrView sigs, const StrView attempted) {
   AddHeader(52, "Function Call Overload Ambiguous Error");
   AddErr(&call, "Function call introduced here");
@@ -871,7 +873,7 @@ SppFunctionCallOverloadAmbiguousError::SppFunctionCallOverloadAmbiguousError(
     "Specify types or adjust arguments to resolve the ambiguity.");
 }
 
-SppMemberAccessStaticOperatorExpectedError::SppMemberAccessStaticOperatorExpectedError(
+spp::analyse::errors::SppMemberAccessStaticOperatorExpectedError::SppMemberAccessStaticOperatorExpectedError(
   Ast const &lhs, Ast const &access, const StrView what) {
   AddHeader(53, "Member Access Static Operator Expected Error");
   AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
@@ -881,7 +883,7 @@ SppMemberAccessStaticOperatorExpectedError::SppMemberAccessStaticOperatorExpecte
     "Use the " + INLINE_HELP("::") + " operator, or change the type to a value.");
 }
 
-SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
+spp::analyse::errors::SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpectedError(
   Ast const &lhs, Ast const &access, const StrView what) {
   AddHeader(54, "Member Access Runtime Operator Expected Error");
   AddCtxForErr(&lhs, "" + INLINE_INFO(what) + " identifier introduced here");
@@ -891,7 +893,7 @@ SppMemberAccessRuntimeOperatorExpectedError::SppMemberAccessRuntimeOperatorExpec
     "Use the " + INLINE_HELP(".") + " operator.");
 }
 
-SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
+spp::analyse::errors::SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
   Ast const &gen_name, Ast const &gen_val, const StrView what) {
   AddHeader(55, "Generic Type Invalid Usage Error");
   AddCtxForErr(&gen_name, "Generic type defined here");
@@ -901,7 +903,7 @@ SppGenericTypeInvalidUsageError::SppGenericTypeInvalidUsageError(
     "Correct the usage of the generic type.");
 }
 
-SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessError(
+spp::analyse::errors::SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessError(
   Ast const &found_field_1, Ast const &found_field_2, Ast const &field_access) {
   AddHeader(56, "Ambiguous Member Access Error");
   AddCtxForErr(&found_field_1, "First matching field defined here");
@@ -912,7 +914,7 @@ SppAmbiguousMemberAccessError::SppAmbiguousMemberAccessError(
     "Not supported at the moment.");
 }
 
-SppCoroutineContainsReturnStatementError::SppCoroutineContainsReturnStatementError(
+spp::analyse::errors::SppCoroutineContainsReturnStatementError::SppCoroutineContainsReturnStatementError(
   Ast const &fun_tag, Ast const &ret_stmt) {
   AddHeader(57, "Function Coroutine Contains Return Statement Error");
   AddCtxForErr(&fun_tag, "Coroutine introduced here");
@@ -922,7 +924,7 @@ SppCoroutineContainsReturnStatementError::SppCoroutineContainsReturnStatementErr
     "Use " + INLINE_HELP("gen") + " expressions instead or change the function to a subroutine.");
 }
 
-SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingReturnStatementError(
+spp::analyse::errors::SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingReturnStatementError(
   Ast const &final_member, Ast const &return_type_definition, Ast const &return_type) {
   AddHeader(58, "Function Subroutine Missing Return Statement Error");
   AddCtxForErr(&return_type_definition, "Return type introduced as " + INLINE_INFO(TypeForMessage(return_type)));
@@ -932,7 +934,7 @@ SppFunctionSubroutineMissingReturnStatementError::SppFunctionSubroutineMissingRe
     "Add a return statement with an expression at the end of the subroutine.");
 }
 
-SppSuperimpositionCyclicExtensionError::SppSuperimpositionCyclicExtensionError(
+spp::analyse::errors::SppSuperimpositionCyclicExtensionError::SppSuperimpositionCyclicExtensionError(
   Ast const &first_extension, Ast const &second_extension) {
   AddHeader(59, "Superimposition Cyclic Extension Error");
   AddCtxForErr(&first_extension, "First extension introduced here");
@@ -942,7 +944,7 @@ SppSuperimpositionCyclicExtensionError::SppSuperimpositionCyclicExtensionError(
     "Break the cycle by adjusting the extensions.");
 }
 
-SppShiftAmountOutOfBoundsError::SppShiftAmountOutOfBoundsError(
+spp::analyse::errors::SppShiftAmountOutOfBoundsError::SppShiftAmountOutOfBoundsError(
   Ast const &operation, Ast const &amount, const StrView type, const std::size_t width) {
   AddHeader(91, "Shift Amount Out Of Bounds Error");
   if (&amount != &operation) { AddCtxForErr(&amount, "Shift amount introduced here"); }
@@ -954,7 +956,7 @@ SppShiftAmountOutOfBoundsError::SppShiftAmountOutOfBoundsError(
     "Use a shift amount in the range [0, " + width_str + ").");
 }
 
-SppDivisionByZeroError::SppDivisionByZeroError(
+spp::analyse::errors::SppDivisionByZeroError::SppDivisionByZeroError(
   Ast const &operation, Ast const &divisor) {
   AddHeader(90, "Division By Zero Error");
   if (&divisor != &operation) { AddCtxForErr(&divisor, "Divisor evaluates to zero here"); }
@@ -964,7 +966,7 @@ SppDivisionByZeroError::SppDivisionByZeroError(
     "Guard the divisor, or use a divisor that cannot be zero.");
 }
 
-SppTypeAliasCyclicError::SppTypeAliasCyclicError(
+spp::analyse::errors::SppTypeAliasCyclicError::SppTypeAliasCyclicError(
   Ast const &first_alias, Ast const &cyclic_alias) {
   AddHeader(89, "Type Alias Cyclic Error");
   AddCtxForErr(&first_alias, "Alias chain starts here");
@@ -974,7 +976,7 @@ SppTypeAliasCyclicError::SppTypeAliasCyclicError(
     "Break the cycle by pointing one of the aliases at a class.");
 }
 
-SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
+spp::analyse::errors::SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
   Ast const &first_extension, Ast const &second_extension) {
   AddHeader(60, "Superimposition Double Extension Error");
   AddCtxForErr(&first_extension, "First extension introduced here");
@@ -984,7 +986,7 @@ SppSuperimpositionDoubleExtensionError::SppSuperimpositionDoubleExtensionError(
     "Remove one of the extensions or merge the blocks.");
 }
 
-SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
+spp::analyse::errors::SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
   Ast const &first_extension, Ast const &second_extension) {
   AddHeader(61, "Superimposition Self Extension Error");
   AddCtxForErr(&first_extension, "Extension introduced here");
@@ -994,7 +996,7 @@ SppSuperimpositionSelfExtensionError::SppSuperimpositionSelfExtensionError(
     "Remove the self-extension or use a normal " + INLINE_HELP("sup") + " block.");
 }
 
-SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarkerExtensionError(
+spp::analyse::errors::SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarkerExtensionError(
   Ast const &type, Ast const &marker) {
   AddHeader(111, "Superimposition External Marker Extension Error");
   AddCtxForErr(&type, "Type superimposed over here");
@@ -1005,7 +1007,7 @@ SppSuperimpositionExternalMarkerExtensionError::SppSuperimpositionExternalMarker
     "Superimpose the marker where the type is declared, or wrap the type in one this package owns.");
 }
 
-SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
+spp::analyse::errors::SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethodInvalidError(
   Ast const &new_method, Ast const &super_class) {
   AddHeader(62, "Superimposition Extension Method Invalid Error");
   AddCtxForErr(&super_class, "Super class extended here");
@@ -1015,7 +1017,7 @@ SppSuperimpositionExtensionMethodInvalidError::SppSuperimpositionExtensionMethod
     "Remove or correct the invalid method.");
 }
 
-SppSuperimpositionExtensionNonVirtualMethodOverriddenError::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(
+spp::analyse::errors::SppSuperimpositionExtensionNonVirtualMethodOverriddenError::SppSuperimpositionExtensionNonVirtualMethodOverriddenError(
   Ast const &new_method, Ast const &base_method, Ast const &super_class) {
   AddHeader(63, "Superimposition Extension Non-Virtual Method Overridden Error");
   AddCtxForErr(&base_method, "Base non-virtual method of " + INLINE_INFO(super_class.ToString()) + " defined here");
@@ -1026,7 +1028,7 @@ SppSuperimpositionExtensionNonVirtualMethodOverriddenError::SppSuperimpositionEx
     "Make the base method virtual or remove the override.");
 }
 
-SppSuperimpositionOptionalGenericParameterError::SppSuperimpositionOptionalGenericParameterError(
+spp::analyse::errors::SppSuperimpositionOptionalGenericParameterError::SppSuperimpositionOptionalGenericParameterError(
   Ast const &param) {
   AddHeader(64, "Superimposition Optional Generic Parameter Error");
   AddErr(&param, "Optional generic parameter defined here");
@@ -1035,7 +1037,7 @@ SppSuperimpositionOptionalGenericParameterError::SppSuperimpositionOptionalGener
     "Make the parameter required or remove it.");
 }
 
-SppSuperimpositionUnconstrainedGenericParameterError::SppSuperimpositionUnconstrainedGenericParameterError(
+spp::analyse::errors::SppSuperimpositionUnconstrainedGenericParameterError::SppSuperimpositionUnconstrainedGenericParameterError(
   Ast const &param) {
   AddHeader(65, "Superimposition Unconstrained Generic Parameter Error");
   AddErr(&param, "Unconstrained generic parameter defined here");
@@ -1044,7 +1046,7 @@ SppSuperimpositionUnconstrainedGenericParameterError::SppSuperimpositionUnconstr
     "Ensure the generic is being used by the type or supertype, otherwise remove it.");
 }
 
-SppSuperimpositionExtensionTypeStatementInvalidError::SppSuperimpositionExtensionTypeStatementInvalidError(
+spp::analyse::errors::SppSuperimpositionExtensionTypeStatementInvalidError::SppSuperimpositionExtensionTypeStatementInvalidError(
   Ast const &stmt, Ast const &super_class) {
   AddHeader(66, "Superimposition Extension Type Statement Invalid Error");
   AddCtxForErr(&super_class, "Super class defined here");
@@ -1054,7 +1056,7 @@ SppSuperimpositionExtensionTypeStatementInvalidError::SppSuperimpositionExtensio
     "Remove or correct the type statement.");
 }
 
-SppSuperimpositionExtensionCmpStatementInvalidError::SppSuperimpositionExtensionCmpStatementInvalidError(
+spp::analyse::errors::SppSuperimpositionExtensionCmpStatementInvalidError::SppSuperimpositionExtensionCmpStatementInvalidError(
   Ast const &stmt, Ast const &super_class) {
   AddHeader(67, "Superimposition Extension Cmp Statement Invalid Error");
   AddCtxForErr(&super_class, "Super class defined here");
@@ -1064,7 +1066,7 @@ SppSuperimpositionExtensionCmpStatementInvalidError::SppSuperimpositionExtension
     "Remove or correct the cmp statement.");
 }
 
-SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunctionCallError(
+spp::analyse::errors::SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunctionCallError(
   Ast const &async_op, Ast const &rhs) {
   AddHeader(68, "Async Target Not Function Call Error");
   AddCtxForErr(&async_op, "Async operator defined here");
@@ -1074,7 +1076,7 @@ SppAsyncTargetNotFunctionCallError::SppAsyncTargetNotFunctionCallError(
     "Change the target to a function call operation, or remove " + INLINE_HELP("async") + ".");
 }
 
-SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError(
+spp::analyse::errors::SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError(
   Ast const &await_op, Ast const &lhs, Ast const &type) {
   AddHeader(107, "Await Target Not Future Error");
   AddCtxForErr(&await_op, "Await operator defined here");
@@ -1084,7 +1086,7 @@ SppAwaitTargetNotFutureError::SppAwaitTargetNotFutureError(
     "Await the result of an " + INLINE_HELP("async") + " call, or remove " + INLINE_HELP("await") + ".");
 }
 
-SppInvalidDefaultValueError::SppInvalidDefaultValueError(
+spp::analyse::errors::SppInvalidDefaultValueError::SppInvalidDefaultValueError(
   Ast const &default_val, const StrView owner, const StrView use_site) {
   AddHeader(108, "Invalid Default Value Error");
   AddErr(&default_val, "Default value defined here");
@@ -1096,7 +1098,7 @@ SppInvalidDefaultValueError::SppInvalidDefaultValueError(
     "Compute the value in a function, and call that from the default.");
 }
 
-SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
+spp::analyse::errors::SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
   Ast const &tok_deref, Ast const &expr, Ast const &type) {
   AddHeader(69, "Dereference Non-Borrowed Type Error");
   AddCtxForErr(&tok_deref, "Dereference operator introduced here");
@@ -1106,7 +1108,7 @@ SppDereferenceNonBorrowedTypeError::SppDereferenceNonBorrowedTypeError(
     "Ensure the expression has a borrowable type (e.g., a reference).");
 }
 
-SppNonCopyableTypeError::SppNonCopyableTypeError(
+spp::analyse::errors::SppNonCopyableTypeError::SppNonCopyableTypeError(
   Ast const &ctx, Ast const &expr, Ast const &type) {
   AddHeader(70, "Invalid Expression Non-Copyable Type Error");
   AddCtxForErr(&ctx, "Ast requires a copyable type");
@@ -1116,12 +1118,12 @@ SppNonCopyableTypeError::SppNonCopyableTypeError(
     "Change the expression or superimpose " + INLINE_HELP("Copy") + " over the type.");
 }
 
-SppGenericParameterConflictError::SppGenericParameterConflictError(
+spp::analyse::errors::SppGenericParameterConflictError::SppGenericParameterConflictError(
   Ast const &param, Ast const &first_infer, Ast const &second_infer) :
   SppGenericParameterConflictError(param, first_infer, second_infer, first_infer, second_infer) {
 }
 
-SppGenericParameterConflictError::SppGenericParameterConflictError(
+spp::analyse::errors::SppGenericParameterConflictError::SppGenericParameterConflictError(
   Ast const &param, Ast const &first_infer, Ast const &second_infer, Ast const &first_at, Ast const &second_at) {
   AddHeader(71, "Generic Parameter Inferred Conflict Inferred Error");
   AddCtxForErr(&param, "Generic parameter defined here");
@@ -1132,7 +1134,7 @@ SppGenericParameterConflictError::SppGenericParameterConflictError(
     "Resolve the inference conflict.");
 }
 
-SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
+spp::analyse::errors::SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
   Ast const &param, Ast const &use) {
   AddHeader(72, "Generic Parameter Not Inferred Error");
   AddCtxForErr(&param, "Generic parameter declared here");
@@ -1142,7 +1144,7 @@ SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
     "Provide an explicit type argument for the generic parameter.");
 }
 
-SppGenericArgumentTooManyError::SppGenericArgumentTooManyError(
+spp::analyse::errors::SppGenericArgumentTooManyError::SppGenericArgumentTooManyError(
   Ast const &param, Ast const &owner, Ast const &arg) {
   AddHeader(73, "Generic Argument Too Many Error");
   AddCtxForErr(&param, "Generic parameter defined here");
@@ -1153,14 +1155,14 @@ SppGenericArgumentTooManyError::SppGenericArgumentTooManyError(
     "Remove the extra generic argument.");
 }
 
-SppMissingMainFunctionError::SppMissingMainFunctionError() {
+spp::analyse::errors::SppMissingMainFunctionError::SppMissingMainFunctionError() {
   AddHeader(74, "Missing Main Function Error");
   AddFooter(
     "The module is missing a 'main' function, which is required as the entry point of the program.",
     "Define a 'main' function in the module");
 }
 
-SppInvalidVoidValueError::SppInvalidVoidValueError(
+spp::analyse::errors::SppInvalidVoidValueError::SppInvalidVoidValueError(
   Ast const &expr, const StrView what) {
   AddHeader(75, "Invalid Void Value Error");
   AddErr(&expr, "Expression inferred as " + INLINE_INFO("Void"));
@@ -1169,7 +1171,7 @@ SppInvalidVoidValueError::SppInvalidVoidValueError(
     "Ensure the expression has a valid non-void type, or move it out of the " + INLINE_HELP(what) + " context.");
 }
 
-SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
+spp::analyse::errors::SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
   Ast const &extension_ast, Ast const &lhs_init_definition, Ast const &rhs_borrow_definition) {
   AddHeader(76, "Borrow Lifetime Increase Error");
   AddCtxForErr(&lhs_init_definition, "Left-hand side initialized here");
@@ -1180,7 +1182,7 @@ SppBorrowLifetimeIncreaseError::SppBorrowLifetimeIncreaseError(
     "Ensure the borrow lifetime does not exceed the initialization lifetime.");
 }
 
-SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
+spp::analyse::errors::SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
   Ast const &ast) {
   AddHeader(77, "Invalid Comptime Operation Error");
   AddErr(&ast, "Expression introduced here");
@@ -1189,7 +1191,7 @@ SppInvalidCompTimeOperationError::SppInvalidCompTimeOperationError(
     "Modify the expression/target to be compile-time compatible.");
 }
 
-SppGenericConstraintError::SppGenericConstraintError(
+spp::analyse::errors::SppGenericConstraintError::SppGenericConstraintError(
   Ast const &constraint, Ast const &concrete_type) {
   AddHeader(78, "Generic Constraint Error");
   AddCtxForErr(&constraint, "Generic constraint introduced here as " + INLINE_INFO(constraint.ToString()));
@@ -1199,7 +1201,7 @@ SppGenericConstraintError::SppGenericConstraintError(
     "Ensure the concrete type meets all requirements of the generic constraint.");
 }
 
-SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(
+spp::analyse::errors::SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError(
   Ast const &call_site, Ast const &target_definition) {
   AddHeader(79, "Annotation Target Not An Annotation Error");
   AddCtxForErr(&target_definition, "Function defined here is missing " + INLINE_INFO("!annotation") + " tag");
@@ -1209,7 +1211,7 @@ SppAnnotationTargetNotAnAnnotationError::SppAnnotationTargetNotAnAnnotationError
     "Ensure the target function is defined with the '!annotation' tag.");
 }
 
-SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
+spp::analyse::errors::SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError(
   Ast const &annotation_marker, Ast const &non_function_ast) {
   AddHeader(80, "Annotation Not A Cmp Function Error");
   AddCtxForErr(&non_function_ast, "Non-cmp-function defined here");
@@ -1219,7 +1221,7 @@ SppAnnotationTargetNotACmpFunctionError::SppAnnotationTargetNotACmpFunctionError
     "Ensure the annotation is applied to a cmp function.");
 }
 
-SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
+spp::analyse::errors::SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalidAstError(
   Ast const &invalid_ast, Ast const &annotation_call, Ast const &annotation_definition) {
   AddHeader(81, "Called Annotation Applied To Invalid Ast Error");
   AddCtxForErr(&annotation_definition, "Annotation & possible targets defined here");
@@ -1230,7 +1232,7 @@ SppCalledAnnotationAppliedToInvalidAstError::SppCalledAnnotationAppliedToInvalid
     "Remove the annotation, or add the AST's type to the annotation's targets.");
 }
 
-SppUnitTestInvalidSignatureError::SppUnitTestInvalidSignatureError(
+spp::analyse::errors::SppUnitTestInvalidSignatureError::SppUnitTestInvalidSignatureError(
   Ast const &annotation, Ast const &fun_name, const StrView requirement) {
   AddHeader(92, "Unit Test Invalid Signature Error");
   AddCtxForErr(&annotation, "Marked as a unit test here");
@@ -1243,7 +1245,7 @@ SppUnitTestInvalidSignatureError::SppUnitTestInvalidSignatureError(
       "fun name() -> Void") + ".");
 }
 
-SppFfiGenericParameterError::SppFfiGenericParameterError(
+spp::analyse::errors::SppFfiGenericParameterError::SppFfiGenericParameterError(
   Ast const &annotation, Ast const &generic_parameter, const StrView symbol) {
   AddHeader(101, "Ffi Generic Parameter Error");
   AddCtxForErr(&annotation, "Bound to " + Str(symbol) + " here");
@@ -1258,7 +1260,7 @@ SppFfiGenericParameterError::SppFfiGenericParameterError(
     "receives, which " + INLINE_NOTE("CClosure::from") + " makes from a closure.");
 }
 
-SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
+spp::analyse::errors::SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
   Ast const &annotation, Ast const &member, const StrView what, const StrView reason) {
   AddHeader(102, "Empty Body Required Error");
   AddCtxForErr(&annotation, "Marked as " + Str(what) + " here");
@@ -1270,7 +1272,7 @@ SppEmptyBodyRequiredError::SppEmptyBodyRequiredError(
     "Empty the body, or remove the " + INLINE_HELP(std::move(marker)) + " annotation.");
 }
 
-SppUnitTestNotCallableError::SppUnitTestNotCallableError(
+spp::analyse::errors::SppUnitTestNotCallableError::SppUnitTestNotCallableError(
   Ast const &call_site, Ast const &annotation) {
   AddHeader(93, "Unit Test Not Callable Error");
   AddCtxForErr(&annotation, "Marked as a unit test here");
@@ -1281,7 +1283,7 @@ SppUnitTestNotCallableError::SppUnitTestNotCallableError(
     "Move the shared code into an ordinary function and call that from both.");
 }
 
-SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
+spp::analyse::errors::SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
   Ast const &expr, Ast const &tup_type, const std::size_t tup_num_elems) {
   AddHeader(82, "Invalid Binary Fold Expression Error");
   AddCtxForErr(&expr, "Fold operand expression inferred as: " + INLINE_INFO(TypeForMessage(tup_type)));
@@ -1291,7 +1293,7 @@ SppInvalidBinaryFoldExpressionError::SppInvalidBinaryFoldExpressionError(
     "Ensure the fold expression is applied to a tuple with 2 or more elements.");
 }
 
-SppAccessViolationError::SppAccessViolationError(
+spp::analyse::errors::SppAccessViolationError::SppAccessViolationError(
   Ast const &access_site, Ast const &symbol_definition, const StrView visibility, const StrView what) {
   AddHeader(83, "Access Violation Error");
   AddCtxForErr(&symbol_definition,
@@ -1303,7 +1305,7 @@ SppAccessViolationError::SppAccessViolationError(
     "Move the access inside the appropriate type/module scope, or increase the symbol's visibility.");
 }
 
-SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
+spp::analyse::errors::SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatchError(
   Ast const &first_annotation, Ast const &conflicting_overload, Ast const &conflicting_annotation) {
   AddHeader(84, "Function Overload Visibility Mismatch Error");
   AddCtxForErr(
@@ -1318,7 +1320,7 @@ SppFunctionOverloadVisibilityMismatchError::SppFunctionOverloadVisibilityMismatc
     "Ensure every overload of this function uses the same visibility modifier.");
 }
 
-SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
+spp::analyse::errors::SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
   Ast const &container, Ast const &where_moved) {
   AddHeader(85, "Moving Escaping Borrow Memory Error");
   AddCtxForErr(&container, "Escaping borrow contained by this symbol");
@@ -1328,7 +1330,7 @@ SppMovingEscapingBorrowedMemoryError::SppMovingEscapingBorrowedMemoryError(
     "Remove the move operation, make the type copyable, or restructure your borrows");
 }
 
-SppMovingCompTimeConstantMemoryError::SppMovingCompTimeConstantMemoryError(
+spp::analyse::errors::SppMovingCompTimeConstantMemoryError::SppMovingCompTimeConstantMemoryError(
   Ast const &ast, Ast const &move_location) {
   AddHeader(86, "Moving Compile-Time Constant Memory Error");
   AddCtxForErr(&ast, "Compile-time constant defined here");
@@ -1338,7 +1340,7 @@ SppMovingCompTimeConstantMemoryError::SppMovingCompTimeConstantMemoryError(
     "Remove the move operation or ensure the value is not a compile-time constant.");
 }
 
-SppHigherOrderGenericsNotSupportedError::SppHigherOrderGenericsNotSupportedError(
+spp::analyse::errors::SppHigherOrderGenericsNotSupportedError::SppHigherOrderGenericsNotSupportedError(
   Ast const &ast, Ast const &generic_arg_group) {
   AddHeader(87, "Higher-Order Generics Not Supported Error");
   AddCtxForErr(&ast, "Generic type used here");
@@ -1348,7 +1350,7 @@ SppHigherOrderGenericsNotSupportedError::SppHigherOrderGenericsNotSupportedError
     "Remove the generic argument group from the generic type.");
 }
 
-SppGeneratedCodeError::SppGeneratedCodeError(
+spp::analyse::errors::SppGeneratedCodeError::SppGeneratedCodeError(
   Ast const &ast, Str &&wrapped_error) {
   AddHeader(1001, "Generated Code Error");
   AddWrapped(std::move(wrapped_error));
@@ -1358,7 +1360,7 @@ SppGeneratedCodeError::SppGeneratedCodeError(
     "Refer to the wrapped error.");
 }
 
-SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
+spp::analyse::errors::SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
   Ast const &literal, const std::uint32_t code_point) {
   AddHeader(88, "Char Literal Out Of Bounds Error");
   AddErr(
@@ -1369,7 +1371,7 @@ SppCharLiteralOutOfBoundsError::SppCharLiteralOutOfBoundsError(
     "Remove the " + INLINE_HELP("b") + " byte-prefix, or use a character whose code point fits in a single byte.");
 }
 
-SppCharLiteralLengthError::SppCharLiteralLengthError(
+spp::analyse::errors::SppCharLiteralLengthError::SppCharLiteralLengthError(
   Ast const &literal) {
   AddHeader(112, "Char Literal Length Error");
   AddErr(&literal, "Char literal introduced here");
@@ -1378,7 +1380,7 @@ SppCharLiteralLengthError::SppCharLiteralLengthError(
     "Use a string literal for more than one character.");
 }
 
-SppDefaultValueNamesParameterError::SppDefaultValueNamesParameterError(
+spp::analyse::errors::SppDefaultValueNamesParameterError::SppDefaultValueNamesParameterError(
   Ast const &identifier) {
   AddHeader(113, "Default Value Names Parameter Error");
   AddErr(&identifier, "Parameter named in a default value here");
@@ -1388,7 +1390,7 @@ SppDefaultValueNamesParameterError::SppDefaultValueNamesParameterError(
     "Make the parameter required, or overload the function without it.");
 }
 
-SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
+spp::analyse::errors::SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
   Ast const &guard, Ast const &symbol_definition) {
   AddHeader(114, "Pattern Guard Moves Value Error");
   AddCtxForErr(&symbol_definition, "Value introduced here");
@@ -1399,7 +1401,7 @@ SppPatternGuardMovesValueError::SppPatternGuardMovesValueError(
     "Borrow the value in the guard, or move it inside the branch body instead.");
 }
 
-SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
   Ast const &symbol_definition, Ast const &exit_point, const StrView symbol_name, const StrView type_name,
   const StrView exit_what) {
   AddHeader(94, "Linear Value Not Consumed Error");
@@ -1412,7 +1414,7 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
     + INLINE_HELP("let " + Str(type_name) + "(..) = " + Str(symbol_name)) + ".");
 }
 
-SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
   Ast const &temporary, Ast const &use, const StrView type_name, const StrView use_what) {
   AddHeader(94, "Linear Value Not Consumed Error");
   AddCtxForErr(&temporary, "Temporary of type " + INLINE_INFO(type_name) + " made here");
@@ -1423,7 +1425,7 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
     "Bind it with " + INLINE_HELP("let") + " and consume it after, or pass it by value.");
 }
 
-SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
   Ast const &write, const StrView type_name) {
   AddHeader(94, "Linear Value Not Consumed Error");
   AddErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
@@ -1433,7 +1435,7 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
     "Exchange it with " + INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
 }
 
-SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
+spp::analyse::errors::SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
   Ast const &write, Ast const &call, const StrView type_name) {
   AddHeader(94, "Linear Value Not Consumed Error");
   AddCtxForErr(&write, "Writes over a value of type " + INLINE_INFO(type_name) + " through a borrow, dropping it");
@@ -1445,7 +1447,7 @@ SppLinearValueNotConsumedError::SppLinearValueNotConsumedError(
     INLINE_HELP("std::mem::ops::replace") + ", which hands the old value back to consume.");
 }
 
-SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
+spp::analyse::errors::SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
   Ast const &branch, Ast const &covering_branch) {
   AddHeader(116, "Case Branch Unreachable Error");
   AddCtxForErr(&covering_branch, "Everything the branch matches is matched by here");
@@ -1456,7 +1458,7 @@ SppCaseBranchUnreachableError::SppCaseBranchUnreachableError(
     "Remove the branch.");
 }
 
-SppLoopMissingElseError::SppLoopMissingElseError(
+spp::analyse::errors::SppLoopMissingElseError::SppLoopMissingElseError(
   Ast const &loop, Ast const &exit_value) {
   AddHeader(117, "Loop Missing Else Error");
   AddCtxForErr(&exit_value, "Loop value given here");
@@ -1468,7 +1470,7 @@ SppLoopMissingElseError::SppLoopMissingElseError(
     INLINE_HELP("exit") + ".");
 }
 
-SppCfgUnknownKeyError::SppCfgUnknownKeyError(
+spp::analyse::errors::SppCfgUnknownKeyError::SppCfgUnknownKeyError(
   Ast const &arg, const StrView key) {
   AddHeader(118, "Cfg Unknown Key Error");
   AddErr(&arg, key.empty() ? Str("Condition with no key here") : "Unknown key '" + Str(key) + "' here");
@@ -1480,7 +1482,7 @@ SppCfgUnknownKeyError::SppCfgUnknownKeyError(
     INLINE_HELP("endian") + ".");
 }
 
-SppCfgInvalidValueError::SppCfgInvalidValueError(
+spp::analyse::errors::SppCfgInvalidValueError::SppCfgInvalidValueError(
   Ast const &value, const StrView key, const StrView why) {
   AddHeader(119, "Cfg Invalid Value Error");
   AddErr(&value, "Invalid value for '" + Str(key) + "' here");
@@ -1490,7 +1492,7 @@ SppCfgInvalidValueError::SppCfgInvalidValueError(
     "leading " + INLINE_HELP("!") + " to match all others, spelled as the target's folder name spells them.");
 }
 
-SppDiscardedValueError::SppDiscardedValueError(
+spp::analyse::errors::SppDiscardedValueError::SppDiscardedValueError(
   Ast const &expr, const StrView type_name) {
   AddHeader(95, "Discarded Value Error");
   AddErrExact(&expr, "Expression of type " + INLINE_INFO(type_name) + " produces a value nothing takes");
@@ -1501,7 +1503,7 @@ SppDiscardedValueError::SppDiscardedValueError(
     "expression.");
 }
 
-SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError(
+spp::analyse::errors::SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError(
   Ast const &skip, Ast const &destructure, const StrView attr_name, const StrView type_name) {
   AddHeader(96, "Linear Value Skipped In Destructure Error");
   AddCtxForErr(&destructure, "Destructure of " + INLINE_INFO(destructure.ToString()) + " here");
@@ -1511,7 +1513,7 @@ SppLinearValueSkippedInDestructureError::SppLinearValueSkippedInDestructureError
     "Bind " + INLINE_HELP(attr_name) + " explicitly in the destructure instead of skipping it.");
 }
 
-SppDeferTerminatesError::SppDeferTerminatesError(
+spp::analyse::errors::SppDeferTerminatesError::SppDeferTerminatesError(
   Ast const &tok_defer, Ast const &expr) {
   AddHeader(97, "Defer Terminates Error");
   AddCtxForErr(&tok_defer, "Deferred here");
@@ -1522,7 +1524,7 @@ SppDeferTerminatesError::SppDeferTerminatesError(
     + INLINE_HELP("?") + " from the deferred expression; handle the failure where the value is still in hand.");
 }
 
-SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
+spp::analyse::errors::SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
   const NotYetSupportedFeature feature, Ast const &context, Ast const &site) {
   auto const &text = NotYetSupportedTexts().at(feature);
   AddHeader(100, "Feature Not Yet Supported Error");
@@ -1531,7 +1533,7 @@ SppFeatureNotYetSupportedError::SppFeatureNotYetSupportedError(
   AddFooter(Str(text.Note), Str(text.Help));
 }
 
-SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
+spp::analyse::errors::SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
   Ast const &deferred, Ast const &consumed_at, Ast const &exit_point, const StrView symbol_name,
   const StrView exit_what) {
   AddHeader(99, "Defer Consumes Moved Value Error");
@@ -1547,7 +1549,7 @@ SppDeferConsumesMovedValueError::SppDeferConsumesMovedValueError(
     "not already consume it, rather than deferring it for all of them.");
 }
 
-SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
+spp::analyse::errors::SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
   Ast const &tok_defer) {
   AddHeader(98, "Defer In Compile-Time Function Error");
   AddErr(&tok_defer, "Deferred here, inside a function evaluated at compile time");
@@ -1556,7 +1558,7 @@ SppDeferInCompTimeFunctionError::SppDeferInCompTimeFunctionError(
     "Run the expression where it is needed instead of deferring it, or make the function a runtime one.");
 }
 
-SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
+spp::analyse::errors::SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
   Ast const &ret_stmt) {
   AddHeader(104, "GenOnce Finishes Without Yielding Error");
   AddErr(&ret_stmt, "Finishes the coroutine here, on a path that has not yielded");
@@ -1566,7 +1568,7 @@ SppGenOnceFinishesWithoutYieldingError::SppGenOnceFinishesWithoutYieldingError(
     "Yield a value on this path before returning, or make the coroutine a 'Gen', which may yield nothing.");
 }
 
-SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
+spp::analyse::errors::SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
   Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
   AddHeader(120, "Ffi Package Not Owned Error");
   AddErr(&access_site, "Use of the ffi package " + INLINE_INFO(package) + " here");
@@ -1577,7 +1579,7 @@ SppFfiPackageNotOwnedError::SppFfiPackageNotOwnedError(
     "'s own functions.");
 }
 
-SppDependencyNotDeclaredError::SppDependencyNotDeclaredError(
+spp::analyse::errors::SppDependencyNotDeclaredError::SppDependencyNotDeclaredError(
   Ast const &access_site, const StrView package, const StrView package_owner, const StrView accessing_owner) {
   AddHeader(121, "Dependency Not Declared Error");
   AddErr(&access_site, "Use of the package " + INLINE_INFO(package) + " here");
@@ -1587,7 +1589,7 @@ SppDependencyNotDeclaredError::SppDependencyNotDeclaredError(
     "Declare it under [vcs] in the 'spp.toml' of " + Str(accessing_owner) + " to use it directly.");
 }
 
-SppSpreadNotLastError::SppSpreadNotLastError(
+spp::analyse::errors::SppSpreadNotLastError::SppSpreadNotLastError(
   Ast const &spread, Ast const &after) {
   AddHeader(122, "Spread Not Last Error");
   AddCtxForErr(&spread, "Spread into a variadic parameter here");
@@ -1597,7 +1599,7 @@ SppSpreadNotLastError::SppSpreadNotLastError(
     "Move the spread after the other positional arguments, or pass them by keyword.");
 }
 
-SppPackNotValueError::SppPackNotValueError(
+spp::analyse::errors::SppPackNotValueError::SppPackNotValueError(
   Ast const &use, Ast const &param) {
   AddHeader(123, "Pack Not A Value Error");
   AddCtxForErr(&param, "Pack declared here");
@@ -1608,7 +1610,7 @@ SppPackNotValueError::SppPackNotValueError(
     "Spread it with " + INLINE_HELP("..xs") + ", or collect it into a tuple with " + INLINE_HELP("(..xs)") + ".");
 }
 
-SppSpreadInFoldError::SppSpreadInFoldError(
+spp::analyse::errors::SppSpreadInFoldError::SppSpreadInFoldError(
   Ast const &spread, Ast const &fold) {
   AddHeader(125, "Spread In Fold Error");
   AddCtxForErr(&fold, "Fold here");
@@ -1619,7 +1621,7 @@ SppSpreadInFoldError::SppSpreadInFoldError(
     "Give the tuple or pack whole: " + INLINE_HELP("f(xs)..") + ", not " + INLINE_HELP("f(..xs)..") + ".");
 }
 
-SppFoldLengthMismatchError::SppFoldLengthMismatchError(
+spp::analyse::errors::SppFoldLengthMismatchError::SppFoldLengthMismatchError(
   Ast const &first, const std::size_t first_length, Ast const &other, const std::size_t other_length) {
   AddHeader(126, "Fold Length Mismatch Error");
   AddCtxForErr(&first, "Folded here with " + std::to_string(first_length) + " element(s)");
@@ -1629,7 +1631,7 @@ SppFoldLengthMismatchError::SppFoldLengthMismatchError(
     "Fold packs of one length, or spread the longer one where its extra elements go.");
 }
 
-SppPackNotTypeError::SppPackNotTypeError(
+spp::analyse::errors::SppPackNotTypeError::SppPackNotTypeError(
   Ast const &use, Ast const &param) {
   AddHeader(124, "Pack Not A Type Error");
   AddCtxForErr(&param, "Type pack declared here");

@@ -22,8 +22,15 @@ import spp.utils.strings;
 import spp.utils.types;
 import llvm;
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FloatLiteralAst::FloatLiteralAst(
+spp::asts::FloatLiteralAst::FloatLiteralAst(
   decltype(TokSign) &&tok_sign,
   decltype(IntVal) &&int_val,
   decltype(TokDot) &&tok_dot,
@@ -36,9 +43,9 @@ FloatLiteralAst::FloatLiteralAst(
   Type(std::move(type)) {
 }
 
-FloatLiteralAst::~FloatLiteralAst() = default;
+spp::asts::FloatLiteralAst::~FloatLiteralAst() = default;
 
-auto FloatLiteralAst::EqualsFloatLiteral(
+auto spp::asts::FloatLiteralAst::EqualsFloatLiteral(
   FloatLiteralAst const &other) const -> Ordering {
   // Equality based on the sign, integer part, fractional
   // part, and type postfix. Todo: Tidy by inverting with
@@ -53,23 +60,23 @@ auto FloatLiteralAst::EqualsFloatLiteral(
   return Ordering::less;
 }
 
-auto FloatLiteralAst::Equals(
+auto spp::asts::FloatLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsFloatLiteral(*this);
 }
 
-auto FloatLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::FloatLiteralAst::PosStart() const -> std::size_t {
   // Use the sign token or the integer part.
   return TokSign ? TokSign->PosStart() : IntVal->PosStart();
 }
 
-auto FloatLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::FloatLiteralAst::PosEnd() const -> std::size_t {
   // Use the fractional part.
   return FracVal->PosEnd();
 }
 
-auto FloatLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FloatLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FloatLiteralAst>(
     AstClone(TokSign),
@@ -79,7 +86,7 @@ auto FloatLiteralAst::Clone() const -> Unique<Ast> {
     Type.c_str());
 }
 
-auto FloatLiteralAst::ToString() const -> Str {
+auto spp::asts::FloatLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSign);
   SPP_STRING_APPEND(IntVal);
@@ -89,18 +96,18 @@ auto FloatLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FloatLiteralAst::Stage7_AnalyseSemantics(
+auto spp::asts::FloatLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // Check the written value is one the type can hold.
   Type = TypeOrDefault();
   ValidateBounds(*this);
 }
 
-auto FloatLiteralAst::TypeOrDefault() const -> Str {
+auto spp::asts::FloatLiteralAst::TypeOrDefault() const -> Str {
   return Type.empty() ? "f32" : Type;
 }
 
-auto FloatLiteralAst::BigVal() const -> numex::BigDec {
+auto spp::asts::FloatLiteralAst::BigVal() const -> numex::BigDec {
   using spp::utils::strings::NormalizeFloatString;
 
   // The sign is a separate token, so it is applied after
@@ -112,20 +119,20 @@ auto FloatLiteralAst::BigVal() const -> numex::BigDec {
   return value;
 }
 
-auto FloatLiteralAst::ValidateBounds(
+auto spp::asts::FloatLiteralAst::ValidateBounds(
   Ast const &owner) const -> void {
   using namespace spp::analyse::errors;
 
   // A value the type cannot hold is the same error whether
   // it was written down or computed by comp-time arithmetic.
-  auto const &[lower, upper] = utils::numbers::FloatBounds().at(Type);
+  auto const &[lower, upper] = spp::utils::numbers::FloatBounds().at(Type);
   const auto value = BigVal();
   RaiseIf<SppFloatOutOfBoundsError>(
     value < lower or value > upper,
     ERR_ARGS(owner, value, lower, upper, Type));
 }
 
-auto FloatLiteralAst::FromBigVal(
+auto spp::asts::FloatLiteralAst::FromBigVal(
   numex::BigDec const &value, Str const &type) -> Unique<FloatLiteralAst> {
   // "Decimal" gives the exact decimal, not in fraction form.
   const auto is_negative = value.IsNegative();
@@ -133,7 +140,7 @@ auto FloatLiteralAst::FromBigVal(
   return FromText((is_negative ? "-" : "") + digits, type);
 }
 
-auto FloatLiteralAst::FromText(
+auto spp::asts::FloatLiteralAst::FromText(
   Str const &text, Str const &type) -> Unique<FloatLiteralAst> {
   const auto is_negative = text.starts_with('-');
   const auto digits = is_negative ? text.substr(1) : text;
@@ -153,7 +160,7 @@ auto FloatLiteralAst::FromText(
     Str(type));
 }
 
-auto FloatLiteralAst::Stage11_CodeGen(
+auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using spp::utils::strings::NormalizeFloatString;
 
@@ -183,14 +190,14 @@ auto FloatLiteralAst::Stage11_CodeGen(
   return llvm::ConstantFP::get(*ctx->Context, value);
 }
 
-auto FloatLiteralAst::EvaluateCompTime(
+auto spp::asts::FloatLiteralAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time
   // resolution.
   meta->CompTimeResult = AstClone(this);
 }
 
-auto FloatLiteralAst::_PrecompiledType(
+auto spp::asts::FloatLiteralAst::_PrecompiledType(
   ScopeManager *sm) const -> TypeAst const& {
   //
   using namespace spp::analyse::errors;
@@ -211,13 +218,13 @@ auto FloatLiteralAst::_PrecompiledType(
   return *spp_type;
 }
 
-auto FloatLiteralAst::InferType(
+auto spp::asts::FloatLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // Named as written ("S32"), not as the instance the alias stands for.
   return sm->CurrentScope->FindTypeSymbol(&_PrecompiledType(sm))->FqName();
 }
 
-auto FloatLiteralAst::InferTypeRef(
+auto spp::asts::FloatLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   return TypeRef::Of(_PrecompiledType(sm), *sm->CurrentScope);
 }

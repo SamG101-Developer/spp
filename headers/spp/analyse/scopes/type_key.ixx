@@ -24,7 +24,7 @@ namespace spp::analyse::scopes {
   inline auto TextWord(const StrView text) -> Word {
     // Call the low level intern function and cast the result
     // from an "InternId" into a "Word" (raw, hashable number).
-    return static_cast<Word>(utils::Intern(text));
+    return static_cast<Word>(spp::utils::Intern(text));
   }
 
   SPP_EXP_CLS struct TypeKey;

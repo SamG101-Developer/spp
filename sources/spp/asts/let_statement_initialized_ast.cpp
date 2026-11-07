@@ -38,8 +38,12 @@ use_alias(spp::asts, LocalVariableDestructureTupleAst);
 use_alias(spp::asts, LocalVariableSingleIdentifierAst);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LetStatementInitializedAst::LetStatementInitializedAst(
+spp::asts::LetStatementInitializedAst::LetStatementInitializedAst(
   decltype(TokLet) &&tok_let,
   decltype(Var) &&var,
   decltype(Type) type,
@@ -57,19 +61,19 @@ LetStatementInitializedAst::LetStatementInitializedAst(
     this->TokAssign, SppTokenType::TK_ASSIGN, "=");
 }
 
-LetStatementInitializedAst::~LetStatementInitializedAst() = default;
+spp::asts::LetStatementInitializedAst::~LetStatementInitializedAst() = default;
 
-auto LetStatementInitializedAst::PosStart() const -> std::size_t {
+auto spp::asts::LetStatementInitializedAst::PosStart() const -> std::size_t {
   // Use the "let" token.
   return TokLet->PosStart();
 }
 
-auto LetStatementInitializedAst::PosEnd() const -> std::size_t {
+auto spp::asts::LetStatementInitializedAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto LetStatementInitializedAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LetStatementInitializedAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LetStatementInitializedAst>(
     AstClone(TokLet),
@@ -79,7 +83,7 @@ auto LetStatementInitializedAst::Clone() const -> Unique<Ast> {
     AstClone(Val));
 }
 
-auto LetStatementInitializedAst::ToString() const -> Str {
+auto spp::asts::LetStatementInitializedAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokLet).append(" ");
   SPP_STRING_APPEND(Var);
@@ -120,7 +124,7 @@ namespace {
   }
 }
 
-auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
+auto spp::asts::LetStatementInitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -193,7 +197,7 @@ auto LetStatementInitializedAst::Stage7_AnalyseSemantics(
   Var->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto LetStatementInitializedAst::Stage8_CheckMemory(
+auto spp::asts::LetStatementInitializedAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the variable's memory (which in turn checks the
   // value's memory - must be done this way for destructuring).
@@ -203,7 +207,7 @@ auto LetStatementInitializedAst::Stage8_CheckMemory(
   Var->Stage8_CheckMemory(sm, meta);
 }
 
-auto LetStatementInitializedAst::Stage11_CodeGen(
+auto spp::asts::LetStatementInitializedAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
@@ -226,7 +230,7 @@ auto LetStatementInitializedAst::Stage11_CodeGen(
   return alloca;
 }
 
-auto LetStatementInitializedAst::EvaluateCompTime(
+auto spp::asts::LetStatementInitializedAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The value is resolved before the binding is declared (the
   // variable declares it once the value is done).
@@ -239,7 +243,7 @@ auto LetStatementInitializedAst::EvaluateCompTime(
   Var->EvaluateCompTime(sm, meta);
 }
 
-auto LetStatementInitializedAst::Diverges(
+auto spp::asts::LetStatementInitializedAst::Diverges(
   ScopeManager *sm, CompilerMetaData *meta) -> bool {
   // The variable is "Void" typed when its value is "!", so the
   // value is what is asked.

@@ -12,8 +12,12 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
+spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestructureSkipMultipleArgumentsAst(
   decltype(TokEllipsis) &&tok_ellipsis,
   Unique<CasePatternVariantAst> &&binding) :
   TokEllipsis(std::move(tok_ellipsis)),
@@ -21,34 +25,34 @@ CasePatternVariantDestructureSkipMultipleArgumentsAst::CasePatternVariantDestruc
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
-CasePatternVariantDestructureSkipMultipleArgumentsAst::~CasePatternVariantDestructureSkipMultipleArgumentsAst()
+spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::~CasePatternVariantDestructureSkipMultipleArgumentsAst()
 = default;
 
-auto CasePatternVariantDestructureSkipMultipleArgumentsAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::PosStart() const -> std::size_t {
   // Use the ".." token.
   return TokEllipsis->PosStart();
 }
 
-auto CasePatternVariantDestructureSkipMultipleArgumentsAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::PosEnd() const -> std::size_t {
   // Use the binding or the ".." token.
   return Binding ? Binding->PosEnd() : TokEllipsis->PosEnd();
 }
 
-auto CasePatternVariantDestructureSkipMultipleArgumentsAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CasePatternVariantDestructureSkipMultipleArgumentsAst>(
     AstClone(TokEllipsis),
     AstClone(Binding));
 }
 
-auto CasePatternVariantDestructureSkipMultipleArgumentsAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokEllipsis);
   SPP_STRING_APPEND(Binding);
   SPP_STRING_END;
 }
 
-auto CasePatternVariantDestructureSkipMultipleArgumentsAst::ConvToVar(
+auto spp::asts::CasePatternVariantDestructureSkipMultipleArgumentsAst::ConvToVar(
   CompilerMetaData *meta) -> Unique<LocalVariableAst> {
   // Create the local variable destructure attribute binding AST.
   auto var = MakeUnique<LocalVariableDestructureSkipMultipleArgumentsAst>(

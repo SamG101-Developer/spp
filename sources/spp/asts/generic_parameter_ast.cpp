@@ -57,8 +57,13 @@ use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-GenericParameterAst::GenericParameterAst(
+spp::asts::GenericParameterAst::GenericParameterAst(
   decltype(TokCmp) &&tok_cmp,
   decltype(TokEllipsis) &&tok_ellipsis,
   decltype(Name) name,
@@ -99,32 +104,32 @@ GenericParameterAst::GenericParameterAst(
   }
 }
 
-GenericParameterAst::~GenericParameterAst() = default;
+spp::asts::GenericParameterAst::~GenericParameterAst() = default;
 
-auto GenericParameterAst::IsTypeParam() const -> bool {
+auto spp::asts::GenericParameterAst::IsTypeParam() const -> bool {
   return CompType == nullptr;
 }
 
-auto GenericParameterAst::IsCompParam() const -> bool {
+auto spp::asts::GenericParameterAst::IsCompParam() const -> bool {
   return CompType != nullptr;
 }
 
-auto GenericParameterAst::IsVariadic() const -> bool {
+auto spp::asts::GenericParameterAst::IsVariadic() const -> bool {
   return TokEllipsis != nullptr;
 }
 
-auto GenericParameterAst::IsOptional() const -> bool {
+auto spp::asts::GenericParameterAst::IsOptional() const -> bool {
   return TypeDefault != nullptr or CompDefault != nullptr;
 }
 
-auto GenericParameterAst::PosStart() const -> std::size_t {
+auto spp::asts::GenericParameterAst::PosStart() const -> std::size_t {
   // Use the first token: "cmp", "..", or the name.
   if (TokCmp != nullptr) { return TokCmp->PosStart(); }
   if (IsVariadic()) { return TokEllipsis->PosStart(); }
   return Name->PosStart();
 }
 
-auto GenericParameterAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenericParameterAst::PosEnd() const -> std::size_t {
   // Use the default, then a comp parameter's type, then the
   // ".." of a variadic type parameter, then the name.
   if (TypeDefault != nullptr) { return TypeDefault->PosEnd(); }
@@ -134,12 +139,12 @@ auto GenericParameterAst::PosEnd() const -> std::size_t {
   return Name->PosEnd();
 }
 
-auto GenericParameterAst::ShareParamId(
+auto spp::asts::GenericParameterAst::ShareParamId(
   GenericParameterAst const &that) -> void {
   _ParamId = that._ParamId;
 }
 
-auto GenericParameterAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenericParameterAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<GenericParameterAst>(
     AstClone(TokCmp),
@@ -157,7 +162,7 @@ auto GenericParameterAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto GenericParameterAst::ToString() const -> Str {
+auto spp::asts::GenericParameterAst::ToString() const -> Str {
   SPP_STRING_START;
   if (IsCompParam()) {
     SPP_STRING_APPEND(TokCmp).append(" ");
@@ -183,7 +188,7 @@ auto GenericParameterAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenericParameterAst::Stage2_GenTopLvlScopes(
+auto spp::asts::GenericParameterAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   using utils::Visibility;
@@ -248,7 +253,7 @@ auto GenericParameterAst::Stage2_GenTopLvlScopes(
     std::move(dummy_scope));
 }
 
-auto GenericParameterAst::Stage4_ResolveDeclarations(
+auto spp::asts::GenericParameterAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -290,7 +295,7 @@ auto GenericParameterAst::Stage4_ResolveDeclarations(
   common_errors::RequireNotBorrowed(*CompType, *CompType, "generic comp argument", *sm);
 }
 
-auto GenericParameterAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenericParameterAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -351,7 +356,7 @@ auto GenericParameterAst::Stage7_AnalyseSemantics(
   CompDefault->EvaluateCompTime(&tm, meta);
 }
 
-auto GenericParameterAst::Stage11_CodeGen(
+auto spp::asts::GenericParameterAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Only a comp parameter generates anything.
   if (IsTypeParam()) { return Ast::Stage11_CodeGen(sm, meta, ctx); }
@@ -369,12 +374,12 @@ auto GenericParameterAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto GenericParameterAst::GetDummyScopes() const -> Span<Scope* const> {
+auto spp::asts::GenericParameterAst::GetDummyScopes() const -> Span<Scope* const> {
   // View the dummy scope vector.
   return _DummyScopes;
 }
 
-auto GenericParameterAst::ClearDummyScopes() -> void {
+auto spp::asts::GenericParameterAst::ClearDummyScopes() -> void {
   // Clear the dummy scopes.
   _DummyScopeAsts.clear();
 }

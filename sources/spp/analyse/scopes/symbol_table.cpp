@@ -11,6 +11,9 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeIdentifierAst);
+
 SPP_MOD_BEGIN
 namespace spp::analyse::scopes {
   namespace {
@@ -32,12 +35,12 @@ namespace spp::analyse::scopes {
 }
 
 template <typename I, typename S>
-IndividualSymbolTable<I, S>::IndividualSymbolTable() :
+spp::analyse::scopes::IndividualSymbolTable<I, S>::IndividualSymbolTable() :
   _Table() {
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::IndexParam(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::IndexParam(
   S *sym) -> void {
   // A binding outranks the parameter it binds, which a cloned table may also hold. A namespace is neither.
   if constexpr (std::is_same_v<S, NamespaceSymbol>) { return; }
@@ -50,7 +53,7 @@ auto IndividualSymbolTable<I, S>::IndexParam(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::UnindexParam(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::UnindexParam(
   S const *sym) -> void {
   if constexpr (std::is_same_v<S, NamespaceSymbol>) { return; }
   else {
@@ -66,23 +69,23 @@ auto IndividualSymbolTable<I, S>::UnindexParam(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::ReindexParams() -> void {
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::ReindexParams() -> void {
   _ByParam.clear();
   for (auto const &[_, sym] : _Table) { IndexParam(sym.get()); }
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::FindByParam(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::FindByParam(
   const std::uint64_t id) const -> S* {
   const auto it = _ByParam.find(id);
   return it != _ByParam.end() ? it->second : nullptr;
 }
 
 template <typename I, typename S>
-IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
+spp::analyse::scopes::IndividualSymbolTable<I, S>::~IndividualSymbolTable() = default;
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::ShallowCopyFrom(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::ShallowCopyFrom(
   IndividualSymbolTable const &that) -> void {
   // Copying the map copies the shared pointers, so both
   // tables name the same symbol objects.
@@ -91,7 +94,7 @@ auto IndividualSymbolTable<I, S>::ShallowCopyFrom(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::DeepCopyFrom(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::DeepCopyFrom(
   IndividualSymbolTable const &that) -> void {
   // Copy each symbol that a substitution goes on to rewrite,
   // so that neither table can be changed through the other,
@@ -106,7 +109,7 @@ auto IndividualSymbolTable<I, S>::DeepCopyFrom(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::Add(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Add(
   I const *sym_name, Shared<S> const &sym) -> void {
   // Add a symbol to the table, keyed heterogeneously so that
   // nothing is materialised for the find.
@@ -123,7 +126,7 @@ auto IndividualSymbolTable<I, S>::Add(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::Rem(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Rem(
   I const *sym_name) -> Shared<S> {
   // Remove a symbol from the table.
   auto it = _Table.find(SymbolKey(sym_name));
@@ -137,7 +140,7 @@ auto IndividualSymbolTable<I, S>::Rem(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::Find(
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::Find(
   I const *sym_name) const -> S* {
   // Get a symbol from the table, borrowed rather than owned,
   // so a lookup costs no refcount traffic.
@@ -148,18 +151,18 @@ auto IndividualSymbolTable<I, S>::Find(
 }
 
 template <typename I, typename S>
-auto IndividualSymbolTable<I, S>::GetAll() const -> Vec<S*> {
+auto spp::analyse::scopes::IndividualSymbolTable<I, S>::GetAll() const -> Vec<S*> {
   // Generate all symbols in the table.
   return _Table
     | genex::views::transform([](auto const &pair) { return pair.second.get(); })
     | genex::to<Vec>();
 }
 
-SymbolTable::SymbolTable() = default;
+spp::analyse::scopes::SymbolTable::SymbolTable() = default;
 
-SymbolTable::~SymbolTable() = default;
+spp::analyse::scopes::SymbolTable::~SymbolTable() = default;
 
-auto SymbolTable::ShallowCopyFrom(
+auto spp::analyse::scopes::SymbolTable::ShallowCopyFrom(
   SymbolTable const &that) -> void {
   // Share the symbols of every table.
   NsTable.ShallowCopyFrom(that.NsTable);
@@ -167,7 +170,7 @@ auto SymbolTable::ShallowCopyFrom(
   VarTable.ShallowCopyFrom(that.VarTable);
 }
 
-auto SymbolTable::DeepCopyFrom(
+auto spp::analyse::scopes::SymbolTable::DeepCopyFrom(
   SymbolTable const &that) -> void {
   // Copy the symbols of every table.
   NsTable.DeepCopyFrom(that.NsTable);

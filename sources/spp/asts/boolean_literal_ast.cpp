@@ -16,20 +16,25 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto BooleanLiteralAst::FromCppVal(
+auto spp::asts::BooleanLiteralAst::FromCppVal(
   const bool val) -> Unique<BooleanLiteralAst> {
   return val ? True(0) : False(0);
 }
 
-BooleanLiteralAst::BooleanLiteralAst(
+spp::asts::BooleanLiteralAst::BooleanLiteralAst(
   decltype(TokBool) &&tok_bool) :
   TokBool(std::move(tok_bool)) {
 }
 
-BooleanLiteralAst::~BooleanLiteralAst() = default;
+spp::asts::BooleanLiteralAst::~BooleanLiteralAst() = default;
 
-auto BooleanLiteralAst::EqualsBooleanLiteral(
+auto spp::asts::BooleanLiteralAst::EqualsBooleanLiteral(
   BooleanLiteralAst const &other) const -> Ordering {
   // Equality is based off the bool value.
   return *TokBool == *other.TokBool
@@ -37,35 +42,35 @@ auto BooleanLiteralAst::EqualsBooleanLiteral(
     : Ordering::less;
 }
 
-auto BooleanLiteralAst::Equals(
+auto spp::asts::BooleanLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsBooleanLiteral(*this);
 }
 
-auto BooleanLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::BooleanLiteralAst::PosStart() const -> std::size_t {
   // Use the bool token.
   return TokBool->PosStart();
 }
 
-auto BooleanLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::BooleanLiteralAst::PosEnd() const -> std::size_t {
   // Use the bool token.
   return TokBool->PosEnd();
 }
 
-auto BooleanLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::BooleanLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<BooleanLiteralAst>(
     AstClone(TokBool));
 }
 
-auto BooleanLiteralAst::ToString() const -> Str {
+auto spp::asts::BooleanLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokBool);
   SPP_STRING_END;
 }
 
-auto BooleanLiteralAst::True(
+auto spp::asts::BooleanLiteralAst::True(
   const std::size_t pos) -> Unique<BooleanLiteralAst> {
   // Create a boolean literal AST representing the "true" value.
   auto tok = MakeUnique<TokenAst>(
@@ -73,7 +78,7 @@ auto BooleanLiteralAst::True(
   return MakeUnique<BooleanLiteralAst>(std::move(tok));
 }
 
-auto BooleanLiteralAst::False(
+auto spp::asts::BooleanLiteralAst::False(
   const std::size_t pos) -> Unique<BooleanLiteralAst> {
   // Create a boolean literal AST representing the "false" value.
   auto tok = MakeUnique<TokenAst>(
@@ -81,17 +86,17 @@ auto BooleanLiteralAst::False(
   return MakeUnique<BooleanLiteralAst>(std::move(tok));
 }
 
-auto BooleanLiteralAst::IsTrue() const -> bool {
+auto spp::asts::BooleanLiteralAst::IsTrue() const -> bool {
   // Check if the boolean literal represents a true value.
   return TokBool->TokenType == lex::SppTokenType::KW_TRUE;
 }
 
-auto BooleanLiteralAst::CppVal() const -> bool {
+auto spp::asts::BooleanLiteralAst::CppVal() const -> bool {
   // Return the C++ boolean value of the boolean literal.
   return IsTrue();
 }
 
-auto BooleanLiteralAst::Stage11_CodeGen(
+auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   using lex::SppTokenType;
   SPP_ASSERT(
@@ -115,14 +120,14 @@ auto BooleanLiteralAst::Stage11_CodeGen(
   return llvm::ConstantInt::get(llvm_type, value);
 }
 
-auto BooleanLiteralAst::EvaluateCompTime(
+auto spp::asts::BooleanLiteralAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the boolean literal as is for compile-time
   // resolution.
   meta->CompTimeResult = AstClone(this);
 }
 
-auto BooleanLiteralAst::InferTypeRef(
+auto spp::asts::BooleanLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   return TypeRef::Of(
     *generate::common_types_precompiled::BOOL, *sm->CurrentScope);

@@ -103,8 +103,15 @@ namespace {
   };
 }
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+use_alias(spp::codegen, LlvmFnWrapper);
+
 SPP_MOD_BEGIN
-FunctionPrototypeAst::FunctionPrototypeAst(
+spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -141,24 +148,24 @@ FunctionPrototypeAst::FunctionPrototypeAst(
   _LlvmFn = MakeShared<Shared<codegen::LlvmFnWrapper>>(nullptr);
 }
 
-FunctionPrototypeAst::~FunctionPrototypeAst() = default;
+spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
 
-auto FunctionPrototypeAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::PosStart() const -> std::size_t {
   // Use the "fun"/"cor" token.
   return TokCmp ? TokCmp->PosStart() : TokFun->PosStart();
 }
 
-auto FunctionPrototypeAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::PosEnd() const -> std::size_t {
   // Use the return type.
   return ReturnType->PosEnd();
 }
 
-auto FunctionPrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionPrototypeAst::Clone() const -> Unique<Ast> {
   // FunctionPrototypeAst is abstract, so cloning it is not allowed.
   Ice(*this, "FunctionPrototypeAst is abstract: clone the SubroutinePrototypeAst or CoroutinePrototypeAst");
 }
 
-auto FunctionPrototypeAst::ToString() const -> Str {
+auto spp::asts::FunctionPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n")
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -173,7 +180,7 @@ auto FunctionPrototypeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FunctionPrototypeAst::GenerateLlvmDeclaration(
+auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> Shared<codegen::LlvmFnWrapper> {
   IMPORT_UTILS;
   // Generate the return and parameter types.
@@ -303,7 +310,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
   return *_LlvmFn;
 }
 
-auto FunctionPrototypeAst::Stage1_PreProcess(
+auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Get the name of either the module, sup, or sup-ext context name.
   Ast::Stage1_PreProcess(ctx);
@@ -396,7 +403,7 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
   }
 }
 
-auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using analyse::scopes::ScopeBlockName;
@@ -423,7 +430,7 @@ auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage3_GenTopLvlAliases(
+auto spp::asts::FunctionPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // Skip the function scope, as it is already generated.
   sm->MoveToNextScope();
@@ -431,7 +438,7 @@ auto FunctionPrototypeAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage4_ResolveDeclarations(
+auto spp::asts::FunctionPrototypeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Skip the function scope, as it is already qualified.
   sm->MoveToNextScope();
@@ -442,7 +449,7 @@ auto FunctionPrototypeAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage5_LoadSupScopes(
+auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -481,7 +488,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types_precompiled::SELF_VAR;
@@ -549,7 +556,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::_InstallLoweredImpl(
+auto spp::asts::FunctionPrototypeAst::_InstallLoweredImpl(
   ScopeManager *sm) -> void {
   IMPORT_UTILS;
   //
@@ -582,7 +589,7 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
   }
 }
 
-auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -640,7 +647,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // method, and finish the analysis themselves.
 }
 
-auto FunctionPrototypeAst::Stage8_CheckMemory(
+auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the function scope, as it is now ready for
   // memory checking.
@@ -682,7 +689,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage10_PreCodeGen(
+auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Create the declaration, but not the definition, of the
   // function. This allows for order-agnostic behaviour.
@@ -710,7 +717,7 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
+auto spp::asts::FunctionPrototypeAst::_CodeGenGnSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void {
   // Emit the bodies of this prototype's instantiations. Their own bodies
   // were analysed by the monomorphisation stage, which ran to a fixed
@@ -726,12 +733,12 @@ auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
 }
 
 /// [CHECKED]
-auto FunctionPrototypeAst::AnalysingGnSubstitution()
+auto spp::asts::FunctionPrototypeAst::AnalysingGnSubstitution()
   -> GenericSubstitution const* {
   return analysing_gn_substitution;
 }
 
-auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
+auto spp::asts::FunctionPrototypeAst::AnalysePendingGnSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Iterating while appending is deliberate, and is why the
@@ -820,7 +827,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
   }
 }
 
-auto FunctionPrototypeAst::AnalyseAhead(
+auto spp::asts::FunctionPrototypeAst::AnalyseAhead(
   Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
   IMPORT_UTILS;
   // Analysed already, by the walk or ahead of it.
@@ -839,7 +846,7 @@ auto FunctionPrototypeAst::AnalyseAhead(
   _Stage7 = _Stage7Progress::kAnalysedAhead;
 }
 
-auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
+auto spp::asts::FunctionPrototypeAst::_SkipIfAnalysedAhead(
   ScopeManager *sm) -> bool {
   // The scopes "AnalyseAhead" built are where this walk would
   // have built them, so it only has to step past them.
@@ -851,7 +858,7 @@ auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
   return true;
 }
 
-auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
+auto spp::asts::FunctionPrototypeAst::_EnsureDropsForBuiltin(
   FunctionPrototypeAst const &sub_proto, ScopeManager &tm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
@@ -871,7 +878,7 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   drop_utils::EnsureDropInstantiated(TypeRef::Of(*t_ast, *tm.CurrentScope), tm, meta);
 }
 
-auto FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
+auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
   // The "symbol" argument of the "!ffi" annotation, when it is
   // a non-empty string literal.
   if (FfiAnnotation == nullptr) { return Nullopt; }
@@ -884,11 +891,11 @@ auto FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
   return symbol;
 }
 
-auto FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
+auto spp::asts::FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
   return *_LlvmFn;
 }
 
-auto FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
+auto spp::asts::FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
   // Walk to the template this was substituted from, which is
   // what carries the stamp when this is an instantiation minted
   // after Stage10. "_NonGnImpl" is self-referential on a
@@ -900,13 +907,13 @@ auto FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
   return nullptr;
 }
 
-auto FunctionPrototypeAst::DetachLlvmFnSlot() -> void {
+auto spp::asts::FunctionPrototypeAst::DetachLlvmFnSlot() -> void {
   // Break the slot shared with the prototype this was cloned
   // from, so this function gets its own llvm target.
   _LlvmFn = MakeShared<Shared<codegen::LlvmFnWrapper>>(nullptr);
 }
 
-auto FunctionPrototypeAst::PrintSignature(
+auto spp::asts::FunctionPrototypeAst::PrintSignature(
   Str const &) const -> Str {
   SPP_STRING_START.append(Name->Val);
   SPP_STRING_APPEND(GnParamGroup);
@@ -916,19 +923,19 @@ auto FunctionPrototypeAst::PrintSignature(
   SPP_STRING_END;
 }
 
-auto FunctionPrototypeAst::GetDeclarationScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GetDeclarationScope() const -> Scope* {
   return _OwnGnSubstitution != nullptr ? _OwnGnSubstitution->ProtoScope() : GetAstScope();
 }
 
-auto FunctionPrototypeAst::GenericSubstitution::WalkScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::WalkScope() const -> Scope* {
   return OwnedScope.get();
 }
 
-auto FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
   return OwnedScope->Children[0].get();
 }
 
-auto FunctionPrototypeAst::GenericSubstitution::OutermostRequest() const
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::OutermostRequest() const
   -> GenericSubstitution const* {
   auto const *sub = this;
   while (sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
@@ -937,7 +944,7 @@ auto FunctionPrototypeAst::GenericSubstitution::OutermostRequest() const
   return sub;
 }
 
-auto FunctionPrototypeAst::_CloneStateInto(
+auto spp::asts::FunctionPrototypeAst::_CloneStateInto(
   FunctionPrototypeAst &ast) const -> void {
   IMPORT_UTILS;
   ast._AnnotationInfo = _AnnotationInfo
@@ -958,7 +965,7 @@ auto FunctionPrototypeAst::_CloneStateInto(
   for (auto const &a : ast.Annotations) { a->SetAstCtx(&ast); }
 }
 
-auto FunctionPrototypeAst::AddGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::AddGnSubstitution(
   GenericSubstitution &&sub) -> GenericSubstitution& {
   // Store the scope for object persistence (and codegen), keyed
   // by the arguments that produced it, and point the instantiation
@@ -969,7 +976,7 @@ auto FunctionPrototypeAst::AddGnSubstitution(
   return filed;
 }
 
-auto FunctionPrototypeAst::RequireGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::RequireGnSubstitution(
   Ast const *at, Scope *in) const -> void {
   IMPORT_UTILS;
   const auto tmpl = GetNonGnImpl();
@@ -994,33 +1001,33 @@ auto FunctionPrototypeAst::RequireGnSubstitution(
   monomorphization::EnqueueInstantiation(tmpl);
 }
 
-auto FunctionPrototypeAst::FindGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::FindGnSubstitution(
   analyse::scopes::TypeId const args_id) -> GenericSubstitution* {
   // Get the generic implementation for arguments of this identity.
   const auto it = _GnSubstitutionsById.find(args_id);
   return it != _GnSubstitutionsById.end() ? it->second : nullptr;
 }
 
-auto FunctionPrototypeAst::SetNonGnImpl(
+auto spp::asts::FunctionPrototypeAst::SetNonGnImpl(
   FunctionPrototypeAst *impl) -> void {
   _NonGnImpl = impl;
 }
 
-auto FunctionPrototypeAst::GetNonGnImpl() const -> FunctionPrototypeAst* {
+auto spp::asts::FunctionPrototypeAst::GetNonGnImpl() const -> FunctionPrototypeAst* {
   return _NonGnImpl;
 }
 
-auto FunctionPrototypeAst::MarkAsAnnotation() -> void {
+auto spp::asts::FunctionPrototypeAst::MarkAsAnnotation() -> void {
   IMPORT_UTILS;
   // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
   _AnnotationInfo = MakeUnique<annotation_utils::AnnotationInfo>();
 }
 
-auto FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo* {
+auto spp::asts::FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo* {
   return _AnnotationInfo.get();
 }
 
-auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str> {
+auto spp::asts::FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str> {
   IMPORT_UTILS;
   //
   using generate::common_types::FunMovType;
@@ -1063,7 +1070,7 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
   Ice(*FnParamGroup->GetSelfParam(), "unhandled \"self\" convention");
 }
 
-auto FunctionPrototypeAst::_IsPureGn(
+auto spp::asts::FunctionPrototypeAst::_IsPureGn(
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx const *ctx) const -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   //
@@ -1117,7 +1124,7 @@ auto FunctionPrototypeAst::_IsPureGn(
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 
-auto FunctionPrototypeAst::AnalysePendingDefaults(
+auto spp::asts::FunctionPrototypeAst::AnalysePendingDefaults(
   ScopeManager *sm) -> void {
   // Parameter defaults are analysed here: after every module's
   // stage 6, and before any body.
@@ -1134,7 +1141,7 @@ auto FunctionPrototypeAst::AnalysePendingDefaults(
   }
 }
 
-auto FunctionPrototypeAst::ClearPendingDefaults() -> void {
+auto spp::asts::FunctionPrototypeAst::ClearPendingDefaults() -> void {
   _PendingDefaults.clear();
 }
 

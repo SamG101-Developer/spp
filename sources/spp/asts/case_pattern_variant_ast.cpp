@@ -52,33 +52,37 @@ namespace {
   }
 }
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantAst::CasePatternVariantAst() :
+spp::asts::CasePatternVariantAst::CasePatternVariantAst() :
   _MappedLet(nullptr) {
 }
 
-CasePatternVariantAst::~CasePatternVariantAst() = default;
+spp::asts::CasePatternVariantAst::~CasePatternVariantAst() = default;
 
-auto CasePatternVariantAst::EvaluateCompTime(
+auto spp::asts::CasePatternVariantAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   // No behaviour but c++ module issues require this be
   // defined here (maybe GCC bug).
 }
 
-auto CasePatternVariantAst::BindsByMove() const -> bool {
+auto spp::asts::CasePatternVariantAst::BindsByMove() const -> bool {
   // Only the patterns that name something take anything;
   // every other kind is a test.
   return false;
 }
 
-auto CasePatternVariantAst::ConvToVar(
+auto spp::asts::CasePatternVariantAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Default implementation for case pattern variants
   // that do not create variables.
   return nullptr;
 }
 
-auto CasePatternVariantAst::AnalyseDestructure(
+auto spp::asts::CasePatternVariantAst::AnalyseDestructure(
   ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -96,7 +100,7 @@ auto CasePatternVariantAst::AnalyseDestructure(
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto CasePatternVariantAst::EvaluateCompTimeDestructure(
+auto spp::asts::CasePatternVariantAst::EvaluateCompTimeDestructure(
   ScopeManager *sm, CompilerMetaData *meta) const -> void {
   // Resolve the "let" statement introducing the symbols. The
   // literals the pattern tests are the "case"'s plan's.
@@ -104,7 +108,7 @@ auto CasePatternVariantAst::EvaluateCompTimeDestructure(
   meta->CompTimeResult = BooleanLiteralAst::True(PosStart());
 }
 
-auto CasePatternVariantAst::CodeGenDestructure(
+auto spp::asts::CasePatternVariantAst::CodeGenDestructure(
   ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) const -> llvm::Value* {
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function. The literals the pattern

@@ -30,8 +30,12 @@ use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, IsBindingsScope);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-SubroutinePrototypeAst::SubroutinePrototypeAst(
+spp::asts::SubroutinePrototypeAst::SubroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -48,17 +52,17 @@ SubroutinePrototypeAst::SubroutinePrototypeAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun");
 }
 
-SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
-auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
   return _CloneWithImpl(AstClone(Impl));
 }
 
-auto SubroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
+auto spp::asts::SubroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
   return _CloneWithImpl(nullptr);
 }
 
-auto SubroutinePrototypeAst::_CloneWithImpl(
+auto spp::asts::SubroutinePrototypeAst::_CloneWithImpl(
   decltype(Impl) &&impl) const -> Unique<SubroutinePrototypeAst> {
   IMPORT_UTILS;
   auto ast = MakeUnique<SubroutinePrototypeAst>(
@@ -75,7 +79,7 @@ auto SubroutinePrototypeAst::_CloneWithImpl(
   return ast;
 }
 
-auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -134,7 +138,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   _Stage7 = _Stage7Progress::kDone;
 }
 
-auto SubroutinePrototypeAst::Stage11_CodeGen(
+auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Build the function body.
@@ -224,7 +228,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto SubroutinePrototypeAst::IsCoroutine() const -> bool {
+auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const -> bool {
   return false;
 }
 

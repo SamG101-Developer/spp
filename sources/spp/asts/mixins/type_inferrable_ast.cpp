@@ -8,11 +8,15 @@ import spp.analyse.scopes.symbols;
 import spp.asts.ast;
 import spp.asts.type_ast;
 
-SPP_MOD_BEGIN
-TypeInferrableAst::TypeInferrableAst() = default;
-TypeInferrableAst::~TypeInferrableAst() = default;
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
 
-auto TypeInferrableAst::InferType(
+SPP_MOD_BEGIN
+spp::asts::mixins::TypeInferrableAst::TypeInferrableAst() = default;
+spp::asts::mixins::TypeInferrableAst::~TypeInferrableAst() = default;
+
+auto spp::asts::mixins::TypeInferrableAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The resolved type's name, placed at this expression rather
   // than where its class is declared, so a message pointing at

@@ -48,8 +48,13 @@ import llvm;
 
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-GenExpressionAst::GenExpressionAst(
+spp::asts::GenExpressionAst::GenExpressionAst(
   decltype(TokGen) &&tok_gen,
   decltype(Conv) &&conv,
   decltype(Expr) &&expr) :
@@ -62,19 +67,19 @@ GenExpressionAst::GenExpressionAst(
   Source.OriginalPosEnd = Expr ? Expr->PosEnd() : Conv ? Conv->PosEnd() : TokGen->PosEnd();
 }
 
-GenExpressionAst::~GenExpressionAst() = default;
+spp::asts::GenExpressionAst::~GenExpressionAst() = default;
 
-auto GenExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::GenExpressionAst::PosStart() const -> std::size_t {
   // Use the "gen" token.
   return TokGen->PosStart();
 }
 
-auto GenExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression, or where it ended once it was moved.
   return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto GenExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto g = MakeUnique<GenExpressionAst>(
     AstClone(TokGen),
@@ -87,7 +92,7 @@ auto GenExpressionAst::Clone() const -> Unique<Ast> {
   return g;
 }
 
-auto GenExpressionAst::ToString() const -> Str {
+auto spp::asts::GenExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokGen).append(" ");
   SPP_STRING_APPEND(Conv);
@@ -95,7 +100,7 @@ auto GenExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types::GenType;
@@ -155,7 +160,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   ResolveYield(meta->EnclosingFnRetType, std::move(expr_type), sm, meta);
 }
 
-auto GenExpressionAst::ResolveYield(
+auto spp::asts::GenExpressionAst::ResolveYield(
   Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
   -> void {
   IMPORT_UTILS;
@@ -213,7 +218,7 @@ auto GenExpressionAst::ResolveYield(
   }
 }
 
-auto GenExpressionAst::Stage8_CheckMemory(
+auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -259,12 +264,12 @@ auto GenExpressionAst::Stage8_CheckMemory(
   record_owned();
 }
 
-auto GenExpressionAst::Diverges(
+auto spp::asts::GenExpressionAst::Diverges(
   ScopeManager *, CompilerMetaData *meta) -> bool {
   return meta->EnclosingFnFlavour != nullptr and meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN;
 }
 
-auto GenExpressionAst::Stage11_CodeGen(
+auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // In a lowered "GenOnce", the "gen" is the return.
@@ -374,7 +379,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   return llvm_recv_val;
 }
 
-auto GenExpressionAst::InferTypeRef(
+auto spp::asts::GenExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The generator's "Send" argument, off its identity; "Void" for a "GenOnce", which has none.
   using generate::common_types_precompiled::VOID;

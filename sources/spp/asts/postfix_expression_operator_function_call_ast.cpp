@@ -97,8 +97,16 @@ namespace {
   }
 }
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
+spp::asts::PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallAst(
   decltype(GnArgGroup) &&generic_arg_group,
   decltype(FnArgGroup) &&arg_group,
   decltype(Fold) &&fold) :
@@ -115,19 +123,19 @@ PostfixExpressionOperatorFunctionCallAst::PostfixExpressionOperatorFunctionCallA
   Source.OriginalExpr = this;
 }
 
-PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
+spp::asts::PostfixExpressionOperatorFunctionCallAst::~PostfixExpressionOperatorFunctionCallAst() = default;
 
-auto PostfixExpressionOperatorFunctionCallAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosStart() const -> std::size_t {
   // Use the generic argument group.
   return not GnArgGroup->Args.empty() ? GnArgGroup->PosStart() : FnArgGroup->PosStart();
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::PosEnd() const -> std::size_t {
   // Use the fold or function argument group.
   return Fold ? Fold->PosEnd() : FnArgGroup->PosEnd();
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     AstClone(GnArgGroup),
@@ -156,7 +164,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(GnArgGroup);
   SPP_STRING_APPEND(FnArgGroup);
@@ -164,7 +172,7 @@ auto PostfixExpressionOperatorFunctionCallAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -393,7 +401,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // If a fold is taking place, analyse the folded
@@ -458,7 +466,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage8_CheckMemory(
   FnArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   IMPORT_UTILS_AND_UID;
@@ -744,7 +752,7 @@ auto PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
 }
 
 /// [CLEAN] -> Move param/arg writebacks (&mut) into helper probably
-auto PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -896,7 +904,7 @@ auto PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
 
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::InferType(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
   //
@@ -965,7 +973,7 @@ auto PostfixExpressionOperatorFunctionCallAst::InferType(
   return AstCloneShared(ret_type);
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   IMPORT_UTILS;
   if (_OpenSpreadType != nullptr) { return TypeRef::Of(*_OpenSpreadType, *sm->CurrentScope); }
@@ -1001,12 +1009,12 @@ auto PostfixExpressionOperatorFunctionCallAst::InferTypeRef(
   return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope);
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::MarkAsAsync(
   Ast *async_token) -> void {
   _IsAsync = async_token;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::Target() const -> FunctionPrototypeAst* {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Target() const -> FunctionPrototypeAst* {
   if (not _OverloadInfo.has_value()) { return nullptr; }
   const auto target_proto = _OverloadInfo->Proto;
   if (const auto coro_proto = target_proto->To<CoroutinePrototypeAst>(); coro_proto != nullptr and coro_proto->
@@ -1020,24 +1028,24 @@ auto PostfixExpressionOperatorFunctionCallAst::Target() const -> FunctionPrototy
   return target_proto;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::HasReceiver() const -> bool {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::HasReceiver() const -> bool {
   return _OverloadInfo.has_value() and _OverloadInfo->HasReceiver;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::IsReceiverArg(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsReceiverArg(
   FunctionCallArgumentAst const &arg) const -> bool {
   return HasReceiver() and not FnArgGroup->Args.empty() and FnArgGroup->Args.front().get() == &arg;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::ResolvedProto() const -> FunctionPrototypeAst* {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ResolvedProto() const -> FunctionPrototypeAst* {
   return _OverloadInfo.has_value() ? _OverloadInfo->Proto : nullptr;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::IsAsync() const -> bool {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAsync() const -> bool {
   return _IsAsync != nullptr;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::_SkipFoldArgsScope(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_SkipFoldArgsScope(
   ScopeManager *sm) const -> void {
   if (_FoldArgsScope == nullptr) { return; }
   sm->MoveToNextScope();
@@ -1046,7 +1054,7 @@ auto PostfixExpressionOperatorFunctionCallAst::_SkipFoldArgsScope(
   sm->MoveOutOfCurrentScope();
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
   ScopeManager *sm, CompilerMetaData *meta, Vec<Shared<IdentifierAst>> &unconsumed) -> Vec<Unique<PostfixExpressionAst>> {
   IMPORT_UTILS;
   // The arguments folded over: each tuple, by its length, and each pack named whole (pack-design.md phase 7). A
@@ -1136,7 +1144,7 @@ auto PostfixExpressionOperatorFunctionCallAst::_HandleFnFolding(
   return transformed_asts;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::ReadExpr(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   IMPORT_UTILS;
   // Handle the generic type and comp arguments that
@@ -1164,19 +1172,19 @@ auto PostfixExpressionOperatorFunctionCallAst::ReadExpr(
     std::move(gn_arg_group), std::move(fn_arg_group), AstClone(Fold));
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::IsAllowedInDefault() const -> bool {
   // A call is allowed when its arguments are. Folding
   // isn't allowed here (too complex right now).
   return
     FnArgGroup->IsAllowedInDefault() and Fold == nullptr;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::WalksOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::WalksOperand() const -> bool {
   // A method call checks its receiver as its "self" argument.
   return HasReceiver();
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::_CallWith(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_CallWith(
   Unique<FunctionCallArgumentGroupAst> group) const -> Unique<PostfixExpressionOperatorFunctionCallAst> {
   // What the parent set before this call's analysis carries over; nothing this call's analysis worked out does.
   auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(AstClone(GnArgGroup), std::move(group), nullptr);
@@ -1186,7 +1194,7 @@ auto PostfixExpressionOperatorFunctionCallAst::_CallWith(
   return call;
 }
 
-auto PostfixExpressionOperatorFunctionCallAst::_ResolveOpenSpread(
+auto spp::asts::PostfixExpressionOperatorFunctionCallAst::_ResolveOpenSpread(
   const std::size_t spread_index, const std::size_t max_params,
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;

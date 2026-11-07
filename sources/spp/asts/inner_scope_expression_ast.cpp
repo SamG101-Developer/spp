@@ -33,14 +33,19 @@ import genex;
 use_alias(spp::analyse::scopes, ScopeBlockName);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto InnerScopeExpressionAst::NewEmpty() -> Unique<InnerScopeExpressionAst> {
+auto spp::asts::InnerScopeExpressionAst::NewEmpty() -> Unique<InnerScopeExpressionAst> {
   // Empty AST.
   return MakeUnique<InnerScopeExpressionAst>(
     nullptr, decltype(Members)(), nullptr);
 }
 
-InnerScopeExpressionAst::InnerScopeExpressionAst(
+spp::asts::InnerScopeExpressionAst::InnerScopeExpressionAst(
   decltype(TokL) &&tok_l,
   decltype(Members) &&members,
   decltype(TokR) &&tok_r) :
@@ -51,19 +56,19 @@ InnerScopeExpressionAst::InnerScopeExpressionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_CURLY_BRACE, "}");
 }
 
-InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
+spp::asts::InnerScopeExpressionAst::~InnerScopeExpressionAst() = default;
 
-auto InnerScopeExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::InnerScopeExpressionAst::PosStart() const -> std::size_t {
   // Use the "{" token.
   return TokL != nullptr ? TokL->PosStart() : Members.empty() ? 0 : Members.front()->PosStart();
 }
 
-auto InnerScopeExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::InnerScopeExpressionAst::PosEnd() const -> std::size_t {
   // Use the "}" token.
   return TokR != nullptr ? TokR->PosEnd() : Members.empty() ? 0 : Members.back()->PosEnd();
 }
 
-auto InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto i = MakeUnique<InnerScopeExpressionAst>(
     AstClone(TokL),
@@ -73,7 +78,7 @@ auto InnerScopeExpressionAst::Clone() const -> Unique<Ast> {
   return i;
 }
 
-auto InnerScopeExpressionAst::ToString() const -> Str {
+auto spp::asts::InnerScopeExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("{");
   SPP_STRING_APPEND_RAW(not Members.empty() ? "\n" : "");
@@ -83,13 +88,13 @@ auto InnerScopeExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto InnerScopeExpressionAst::DiscardsFinalMember() const -> bool {
+auto spp::asts::InnerScopeExpressionAst::DiscardsFinalMember() const -> bool {
   // A block's value is its final statement, handed to whoever
   // wrote the block.
   return false;
 }
 
-auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -150,7 +155,7 @@ auto InnerScopeExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto InnerScopeExpressionAst::Stage8_CheckMemory(
+auto spp::asts::InnerScopeExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -214,7 +219,7 @@ auto InnerScopeExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto InnerScopeExpressionAst::Stage11_CodeGen(
+auto spp::asts::InnerScopeExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
@@ -270,7 +275,7 @@ auto InnerScopeExpressionAst::Stage11_CodeGen(
   return ret_val;
 }
 
-auto InnerScopeExpressionAst::EvaluateCompTime(
+auto spp::asts::InnerScopeExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Comptime resolve each member of the inner scope.
   sm->MoveToNextScope();
@@ -283,7 +288,7 @@ auto InnerScopeExpressionAst::EvaluateCompTime(
   sm->MoveOutOfCurrentScope();
 }
 
-auto InnerScopeExpressionAst::InferType(
+auto spp::asts::InnerScopeExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // If there are any members, return the last member's
   // inferred type.
@@ -296,7 +301,7 @@ auto InnerScopeExpressionAst::InferType(
   return generate::common_types_precompiled::VoidAt(PosStart());
 }
 
-auto InnerScopeExpressionAst::InferTypeRef(
+auto spp::asts::InnerScopeExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   if (not this->Members.empty()) {
     auto tm = sm->NewManagerAt(GetAstScope());
@@ -305,7 +310,7 @@ auto InnerScopeExpressionAst::InferTypeRef(
   return TypeRef::Of(*generate::common_types_precompiled::VOID, *sm->CurrentScope);
 }
 
-auto InnerScopeExpressionAst::Diverges(
+auto spp::asts::InnerScopeExpressionAst::Diverges(
   ScopeManager *sm, CompilerMetaData *meta) -> bool {
   // Read in the block's own scope. Its type alone misses a
   // trailing "let" bound to a "!" value, which is typed "Void".
@@ -314,11 +319,11 @@ auto InnerScopeExpressionAst::Diverges(
   return Members.back()->Diverges(&tm, meta);
 }
 
-auto InnerScopeExpressionAst::FinalMember() const -> Ast* {
+auto spp::asts::InnerScopeExpressionAst::FinalMember() const -> Ast* {
   return Members.empty() ? TokR->To<Ast>() : Members.back()->template To<Ast>();
 }
 
-auto InnerScopeExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::InnerScopeExpressionAst::IsAllowedInDefault() const -> bool {
   // A block creates a scope, which a default cannot.
   // Banned for now.
   return false;

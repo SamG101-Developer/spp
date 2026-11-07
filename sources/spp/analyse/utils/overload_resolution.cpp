@@ -1439,8 +1439,22 @@ namespace spp::analyse::utils::overload_resolution {
   }
 }
 
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, ConventionAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
+use_alias(spp::asts, FunctionParameterAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, TypeAst);
+
 SPP_MOD_BEGIN
-OverloadSolver::OverloadSolver(
+spp::analyse::utils::overload_resolution::OverloadSolver::OverloadSolver(
   PostfixExpressionOperatorFunctionCallAst &fn_call,
   ExpressionAst &callee, ScopeManager &sm,
   CompilerMetaData &meta) :
@@ -1451,10 +1465,10 @@ OverloadSolver::OverloadSolver(
   _Candidates(RetrieveAllOverloads(_Site, &sm, &meta)) {
 }
 
-OverloadSolver::~OverloadSolver() = default;
+spp::analyse::utils::overload_resolution::OverloadSolver::~OverloadSolver() = default;
 
 /// [CHECKED]
-auto OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
+auto spp::analyse::utils::overload_resolution::OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
   // Build the "out" list the same size as the number of args
   // going in (1-to-1 arg/type map, or nullptr, so same size).
   using type_compare::TypeEq;
@@ -1526,7 +1540,7 @@ auto OverloadSolver::ExpectedArgTypes() const -> Vec<Shared<TypeRef>> {
   return out;
 }
 
-auto OverloadSolver::ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>> {
+auto spp::analyse::utils::overload_resolution::OverloadSolver::ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>> {
   // As "ExpectedArgTypes": every candidate has to agree on the
   // type, and have one of its own there ("cmp n: T" has none,
   // nor does a pack, whose type is its elements').
@@ -1565,7 +1579,7 @@ auto OverloadSolver::ExpectedCompArgTypes() const -> Vec<Shared<TypeRef>> {
   return out;
 }
 
-auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
+auto spp::analyse::utils::overload_resolution::OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   auto const &fn_call = _Call;
   const auto sm = _Sm;
   const auto meta = _Meta;
@@ -1606,7 +1620,7 @@ auto OverloadSolver::Resolve() -> Pair<PassedOverload, Shared<TypeAst const>> {
   return {std::move(pass_overloads[0]), candidates.IndirectFnType};
 }
 
-auto OverloadSolver::MaxParams() const -> std::size_t {
+auto spp::analyse::utils::overload_resolution::OverloadSolver::MaxParams() const -> std::size_t {
   auto most = 0uz;
   for (auto const &candidate : _Candidates.Overloads) {
     auto const &group = *candidate.Proto->FnParamGroup;
@@ -1618,7 +1632,7 @@ auto OverloadSolver::MaxParams() const -> std::size_t {
   return most;
 }
 
-auto OverloadSolver::_Check(
+auto spp::analyse::utils::overload_resolution::OverloadSolver::_Check(
   FnOverload &candidate)
   -> Expected<PassedOverload, FailedOverload> {
   // A check that raises part way has its "meta" changes put back

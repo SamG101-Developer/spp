@@ -18,12 +18,144 @@ import std;
 
 use_alias(spp::asts, AstClone);
 
+use_alias(spp::asts, AnnotationAst);
+use_alias(spp::asts, ArrayLiteralAst);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
+use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
+use_alias(spp::asts, AssignmentStatementAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionAst);
+use_alias(spp::asts, CaseExpressionBranchAst);
+use_alias(spp::asts, CasePatternVariantAst);
+use_alias(spp::asts, CasePatternVariantDestructureArrayAst);
+use_alias(spp::asts, CasePatternVariantDestructureAttributeBindingAst);
+use_alias(spp::asts, CasePatternVariantDestructureObjectAst);
+use_alias(spp::asts, CasePatternVariantDestructureSkipMultipleArgumentsAst);
+use_alias(spp::asts, CasePatternVariantDestructureSkipSingleArgumentAst);
+use_alias(spp::asts, CasePatternVariantDestructureTupleAst);
+use_alias(spp::asts, CasePatternVariantElseAst);
+use_alias(spp::asts, CasePatternVariantElseCaseAst);
+use_alias(spp::asts, CasePatternVariantExpressionAst);
+use_alias(spp::asts, CasePatternVariantLiteralAst);
+use_alias(spp::asts, CasePatternVariantSingleIdentifierAst);
+use_alias(spp::asts, CharLiteralAst);
+use_alias(spp::asts, ClassAttributeAst);
+use_alias(spp::asts, ClassImplementationAst);
+use_alias(spp::asts, ClassMemberAst);
+use_alias(spp::asts, ClassPrototypeAst);
+use_alias(spp::asts, ClosureExpressionAst);
+use_alias(spp::asts, ClosureExpressionCaptureAst);
+use_alias(spp::asts, ClosureExpressionCaptureGroupAst);
+use_alias(spp::asts, ClosureExpressionParameterAndCaptureGroupAst);
+use_alias(spp::asts, CmpStatementAst);
+use_alias(spp::asts, ConventionAst);
+use_alias(spp::asts, ConventionMutAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, CoroutinePrototypeAst);
+use_alias(spp::asts, DeferStatementAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FloatLiteralAst);
+use_alias(spp::asts, FoldExpressionAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
+use_alias(spp::asts, FunctionCallArgumentKeywordAst);
+use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, FunctionImplementationAst);
+use_alias(spp::asts, FunctionParameterAst);
+use_alias(spp::asts, FunctionParameterGroupAst);
+use_alias(spp::asts, FunctionParameterOptionalAst);
+use_alias(spp::asts, FunctionParameterRequiredAst);
+use_alias(spp::asts, FunctionParameterSelfAst);
+use_alias(spp::asts, FunctionParameterVariadicAst);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts, GenExpressionAst);
+use_alias(spp::asts, GenWithExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, GenericParameterTypeConstraintsAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, InnerScopeAst);
+use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts, IntegerLiteralAst);
+use_alias(spp::asts, IsExpressionAst);
+use_alias(spp::asts, LetStatementAst);
+use_alias(spp::asts, LetStatementInitializedAst);
+use_alias(spp::asts, LetStatementUninitializedAst);
+use_alias(spp::asts, LiteralAst);
+use_alias(spp::asts, LocalVariableAst);
+use_alias(spp::asts, LocalVariableDestructureArrayAst);
+use_alias(spp::asts, LocalVariableDestructureAttributeBindingAst);
+use_alias(spp::asts, LocalVariableDestructureObjectAst);
+use_alias(spp::asts, LocalVariableDestructureSkipMultipleArgumentsAst);
+use_alias(spp::asts, LocalVariableDestructureSkipSingleArgumentAst);
+use_alias(spp::asts, LocalVariableDestructureTupleAst);
+use_alias(spp::asts, LocalVariableSingleIdentifierAliasAst);
+use_alias(spp::asts, LocalVariableSingleIdentifierAst);
+use_alias(spp::asts, LoopConditionalExpressionAst);
+use_alias(spp::asts, LoopControlFlowStatementAst);
+use_alias(spp::asts, LoopElseStatementAst);
+use_alias(spp::asts, LoopExpressionAst);
+use_alias(spp::asts, LoopIterableExpressionAst);
+use_alias(spp::asts, ModuleImplementationAst);
+use_alias(spp::asts, ModuleMemberAst);
+use_alias(spp::asts, ModulePrototypeAst);
+use_alias(spp::asts, ObjectInitializerArgumentAst);
+use_alias(spp::asts, ObjectInitializerArgumentGroupAst);
+use_alias(spp::asts, ObjectInitializerArgumentKeywordAst);
+use_alias(spp::asts, ObjectInitializerArgumentShorthandAst);
+use_alias(spp::asts, ObjectInitializerAst);
+use_alias(spp::asts, ParenthesisedExpressionAst);
+use_alias(spp::asts, PatternGuardAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorAst);
+use_alias(spp::asts, PostfixExpressionOperatorDerefAst);
+use_alias(spp::asts, PostfixExpressionOperatorEarlyReturnAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorIndexAst);
+use_alias(spp::asts, PostfixExpressionOperatorKeywordAwaitAst);
+use_alias(spp::asts, PostfixExpressionOperatorKeywordNotAst);
+use_alias(spp::asts, PostfixExpressionOperatorKeywordResAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, PostfixExpressionOperatorSliceAst);
+use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+use_alias(spp::asts, PrimaryExpressionAst);
+use_alias(spp::asts, RetStatementAst);
+use_alias(spp::asts, SpreadExpressionAst);
+use_alias(spp::asts, StatementAst);
+use_alias(spp::asts, StringLiteralAst);
+use_alias(spp::asts, SubroutinePrototypeAst);
+use_alias(spp::asts, SupImplementationAst);
+use_alias(spp::asts, SupMemberAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TokenAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts, TypePostfixExpressionAst);
+use_alias(spp::asts, TypePostfixExpressionOperatorAst);
+use_alias(spp::asts, TypePostfixExpressionOperatorNestedTypeAst);
+use_alias(spp::asts, TypeStatementAst);
+use_alias(spp::asts, TypeUnaryExpressionAst);
+use_alias(spp::asts, TypeUnaryExpressionOperatorAst);
+use_alias(spp::asts, TypeUnaryExpressionOperatorBorrowAst);
+use_alias(spp::asts, TypeUnaryExpressionOperatorNamespaceAst);
+use_alias(spp::asts, UnaryExpressionAst);
+use_alias(spp::asts, UnaryExpressionOperatorAst);
+use_alias(spp::asts, UnaryExpressionOperatorAsyncAst);
+use_alias(spp::asts, UseStatementAst);
+use_alias(spp::asts, UseStatementVariableAst);
+
 SPP_MOD_BEGIN
 constexpr auto kBinChars = spp::StrView("01");
 constexpr auto kOctChars = spp::StrView("01234567");
 constexpr auto kHexChars = spp::StrView("0123456789abcdef");
 
-auto ParserSpp::Parse() -> Unique<ModulePrototypeAst> {
+auto spp::parse::ParserSpp::Parse() -> Unique<ModulePrototypeAst> {
   auto root = ParseRoot();
   if (root == nullptr) {
     _ErrorBuilder->Raise();
@@ -31,13 +163,13 @@ auto ParserSpp::Parse() -> Unique<ModulePrototypeAst> {
   return root;
 }
 
-auto ParserSpp::ParseRoot() -> Unique<ModulePrototypeAst> {
+auto spp::parse::ParserSpp::ParseRoot() -> Unique<ModulePrototypeAst> {
   PARSE_ONCE(p1, ParseModulePrototype)
   PARSE_ONCE(_a, ParseEof);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseEof() -> Unique<TokenAst> {
+auto spp::parse::ParserSpp::ParseEof() -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] {
     return ParseTokenRaw(
       lex::RawTokenType::SP_EOF, lex::SppTokenType::SP_NO_TOK);
@@ -45,19 +177,19 @@ auto ParserSpp::ParseEof() -> Unique<TokenAst> {
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseModulePrototype()
+auto spp::parse::ParserSpp::ParseModulePrototype()
   -> Unique<ModulePrototypeAst> {
   PARSE_ONCE(p1, ParseModuleImplementation);
   return _CreateAst<ModulePrototypeAst>(p1);
 }
 
-auto ParserSpp::ParseModuleImplementation()
+auto spp::parse::ParserSpp::ParseModuleImplementation()
   -> Unique<ModuleImplementationAst> {
   PARSE_ZERO_OR_MORE(p1, ParseModuleMember, ParseNewline);
   return _CreateAst<ModuleImplementationAst>(p1);
 }
 
-auto ParserSpp::ParseModuleMember()
+auto spp::parse::ParserSpp::ParseModuleMember()
   -> Unique<Ast> {
   PARSE_ALTERNATE(
     p1, Ast, ParseFunctionPrototype, ParseClassPrototype,
@@ -67,7 +199,7 @@ auto ParserSpp::ParseModuleMember()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseClassPrototype()
+auto spp::parse::ParserSpp::ParseClassPrototype()
   -> Unique<ClassPrototypeAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseKeywordCls);
@@ -78,7 +210,7 @@ auto ParserSpp::ParseClassPrototype()
     p1, p2, TypeIdentifierAst::FromIdentifier(*p3), p4, p5);
 }
 
-auto ParserSpp::ParseClassImplementation()
+auto spp::parse::ParserSpp::ParseClassImplementation()
   -> Unique<ClassImplementationAst> {
   PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);
   PARSE_ZERO_OR_MORE(p2, ParseClassMember, ParseNewline);
@@ -86,13 +218,13 @@ auto ParserSpp::ParseClassImplementation()
   return _CreateAst<ClassImplementationAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseClassMember()
+auto spp::parse::ParserSpp::ParseClassMember()
   -> Unique<Ast> {
   PARSE_ALTERNATE(p1, Ast, ParseClassAttribute);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseClassAttribute()
+auto spp::parse::ParserSpp::ParseClassAttribute()
   -> Unique<ClassAttributeAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseIdentifier);
@@ -102,14 +234,14 @@ auto ParserSpp::ParseClassAttribute()
   return _CreateAst<ClassAttributeAst>(p1, p2, p3, p4, p5);
 }
 
-auto ParserSpp::ParseClassAttributeDefaultValue()
+auto spp::parse::ParserSpp::ParseClassAttributeDefaultValue()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParseTokenAssign);
   PARSE_ONCE(p2, ParseExpression);
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseSupPrototypeFunctions()
+auto spp::parse::ParserSpp::ParseSupPrototypeFunctions()
   -> Unique<SupPrototypeFunctionsAst> {
   PARSE_ONCE(p1, ParseKeywordSup);
   PARSE_OPTIONAL(p2, ParseGenericParameterGroup);
@@ -118,7 +250,7 @@ auto ParserSpp::ParseSupPrototypeFunctions()
   return _CreateAst<SupPrototypeFunctionsAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseSupPrototypeExtension()
+auto spp::parse::ParserSpp::ParseSupPrototypeExtension()
   -> Unique<SupPrototypeExtensionAst> {
   PARSE_ONCE(p1, ParseKeywordSup);
   PARSE_OPTIONAL(p2, ParseGenericParameterGroup);
@@ -129,7 +261,7 @@ auto ParserSpp::ParseSupPrototypeExtension()
   return _CreateAst<SupPrototypeExtensionAst>(p1, p2, p3, p4, p5, p6);
 }
 
-auto ParserSpp::ParseSupImplementation()
+auto spp::parse::ParserSpp::ParseSupImplementation()
   -> Unique<SupImplementationAst> {
   PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);
   PARSE_ZERO_OR_MORE(p2, ParseSupMember, ParseNewline);
@@ -137,7 +269,7 @@ auto ParserSpp::ParseSupImplementation()
   return _CreateAst<SupImplementationAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseSupMember()
+auto spp::parse::ParserSpp::ParseSupMember()
   -> Unique<Ast> {
   PARSE_ALTERNATE(
     p1, Ast, ParseFunctionPrototype, ParseSupTypeStatement,
@@ -145,7 +277,7 @@ auto ParserSpp::ParseSupMember()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseSupTypeStatement()
+auto spp::parse::ParserSpp::ParseSupTypeStatement()
   -> Unique<TypeStatementAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseTypeStatement);
@@ -153,7 +285,7 @@ auto ParserSpp::ParseSupTypeStatement()
   return p2;
 }
 
-auto ParserSpp::ParseSupCmpStatement()
+auto spp::parse::ParserSpp::ParseSupCmpStatement()
   -> Unique<CmpStatementAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseCmpStatement);
@@ -161,7 +293,7 @@ auto ParserSpp::ParseSupCmpStatement()
   return p2;
 }
 
-auto ParserSpp::ParseFunctionPrototype()
+auto spp::parse::ParserSpp::ParseFunctionPrototype()
   -> Unique<FunctionPrototypeAst> {
   PARSE_ALTERNATE(
     p1, FunctionPrototypeAst, ParseSubroutinePrototype,
@@ -169,7 +301,7 @@ auto ParserSpp::ParseFunctionPrototype()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseSubroutinePrototype()
+auto spp::parse::ParserSpp::ParseSubroutinePrototype()
   -> Unique<SubroutinePrototypeAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_OPTIONAL(p2, ParseKeywordCmp);
@@ -184,7 +316,7 @@ auto ParserSpp::ParseSubroutinePrototype()
     p1, p2, p3, p4, p5, p6, p7, p8, p9);
 }
 
-auto ParserSpp::ParseCoroutinePrototype()
+auto spp::parse::ParserSpp::ParseCoroutinePrototype()
   -> Unique<CoroutinePrototypeAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseKeywordCor);
@@ -198,7 +330,7 @@ auto ParserSpp::ParseCoroutinePrototype()
     p1, nullptr, p2, p3, p4, p5, p6, p7, p8);
 }
 
-auto ParserSpp::ParseFunctionImplementation()
+auto spp::parse::ParserSpp::ParseFunctionImplementation()
   -> Unique<FunctionImplementationAst> {
   PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);
   PARSE_ZERO_OR_MORE(p2, ParseFunctionMember, ParseNewline);
@@ -206,13 +338,13 @@ auto ParserSpp::ParseFunctionImplementation()
   return _CreateAst<FunctionImplementationAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFunctionMember()
+auto spp::parse::ParserSpp::ParseFunctionMember()
   -> Unique<StatementAst> {
   PARSE_ONCE(p1, ParseStatement);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseFunctionParameterGroup()
+auto spp::parse::ParserSpp::ParseFunctionParameterGroup()
   -> Unique<FunctionParameterGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ZERO_OR_MORE(p2, ParseFunctionParameter, ParseTokenComma);
@@ -220,7 +352,7 @@ auto ParserSpp::ParseFunctionParameterGroup()
   return _CreateAst<FunctionParameterGroupAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFunctionParameter()
+auto spp::parse::ParserSpp::ParseFunctionParameter()
   -> Unique<FunctionParameterAst> {
   PARSE_ALTERNATE(
     p1, FunctionParameterAst, ParseFunctionParameterVariadic,
@@ -229,7 +361,7 @@ auto ParserSpp::ParseFunctionParameter()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseFunctionParameterSelf()
+auto spp::parse::ParserSpp::ParseFunctionParameterSelf()
   -> Unique<FunctionParameterSelfAst> {
   PARSE_ALTERNATE(
     p1, FunctionParameterSelfAst,
@@ -238,7 +370,7 @@ auto ParserSpp::ParseFunctionParameterSelf()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseFunctionParameterSelfWithConvention()
+auto spp::parse::ParserSpp::ParseFunctionParameterSelfWithConvention()
   -> Unique<FunctionParameterSelfAst> {
   PARSE_ONCE(p1, ParseConvention);
   PARSE_ONCE(p2, ParseSelfIdentifier);
@@ -247,7 +379,7 @@ auto ParserSpp::ParseFunctionParameterSelfWithConvention()
       nullptr, p2, nullptr));
 }
 
-auto ParserSpp::ParseFunctionParameterSelfWithoutConvention()
+auto spp::parse::ParserSpp::ParseFunctionParameterSelfWithoutConvention()
   -> Unique<FunctionParameterSelfAst> {
   PARSE_OPTIONAL(p1, ParseKeywordMut)
   PARSE_ONCE(p2, ParseSelfIdentifier);
@@ -256,7 +388,7 @@ auto ParserSpp::ParseFunctionParameterSelfWithoutConvention()
       p1, p2, nullptr));
 }
 
-auto ParserSpp::ParseFunctionParameterRequired()
+auto spp::parse::ParserSpp::ParseFunctionParameterRequired()
   -> Unique<FunctionParameterRequiredAst> {
   PARSE_ONCE(p1, ParseLocalVariable);
   PARSE_ONCE(p2, ParseTokenColon);
@@ -264,7 +396,7 @@ auto ParserSpp::ParseFunctionParameterRequired()
   return _CreateAst<FunctionParameterRequiredAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFunctionParameterOptional()
+auto spp::parse::ParserSpp::ParseFunctionParameterOptional()
   -> Unique<FunctionParameterOptionalAst> {
   PARSE_ONCE(p1, ParseLocalVariable);
   PARSE_ONCE(p2, ParseTokenColon);
@@ -274,7 +406,7 @@ auto ParserSpp::ParseFunctionParameterOptional()
   return _CreateAst<FunctionParameterOptionalAst>(p1, p2, p3, p4, p5);
 }
 
-auto ParserSpp::ParseFunctionParameterVariadic()
+auto spp::parse::ParserSpp::ParseFunctionParameterVariadic()
   -> Unique<FunctionParameterVariadicAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_ONCE(p2, ParseLocalVariable);
@@ -284,7 +416,7 @@ auto ParserSpp::ParseFunctionParameterVariadic()
   return _CreateAst<FunctionParameterVariadicAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseFunctionCallArgumentGroup()
+auto spp::parse::ParserSpp::ParseFunctionCallArgumentGroup()
   -> Unique<FunctionCallArgumentGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ZERO_OR_MORE(p2, ParseFunctionCallArgument, ParseTokenComma);
@@ -292,7 +424,7 @@ auto ParserSpp::ParseFunctionCallArgumentGroup()
   return _CreateAst<FunctionCallArgumentGroupAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFunctionCallArgument()
+auto spp::parse::ParserSpp::ParseFunctionCallArgument()
   -> Unique<FunctionCallArgumentAst> {
   PARSE_ALTERNATE(
     p1, FunctionCallArgumentAst, ParseFunctionCallArgumentKeyword,
@@ -300,7 +432,7 @@ auto ParserSpp::ParseFunctionCallArgument()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseFunctionCallArgumentPositional()
+auto spp::parse::ParserSpp::ParseFunctionCallArgumentPositional()
   -> Unique<FunctionCallArgumentPositionalAst> {
   PARSE_OPTIONAL(p1, ParseConvention);
   PARSE_OPTIONAL(p2, ParseTokenDoubleDot)
@@ -308,7 +440,7 @@ auto ParserSpp::ParseFunctionCallArgumentPositional()
   return _CreateAst<FunctionCallArgumentPositionalAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFunctionCallArgumentKeyword()
+auto spp::parse::ParserSpp::ParseFunctionCallArgumentKeyword()
   -> Unique<FunctionCallArgumentKeywordAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -317,7 +449,7 @@ auto ParserSpp::ParseFunctionCallArgumentKeyword()
   return _CreateAst<FunctionCallArgumentKeywordAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseGenericParameterGroup()
+auto spp::parse::ParserSpp::ParseGenericParameterGroup()
   -> Unique<GenericParameterGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ONE_OR_MORE(p2, ParseGenericParameter, ParseTokenComma);
@@ -325,7 +457,7 @@ auto ParserSpp::ParseGenericParameterGroup()
   return _CreateAst<GenericParameterGroupAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseGenericParameter()
+auto spp::parse::ParserSpp::ParseGenericParameter()
   -> Unique<GenericParameterAst> {
   PARSE_ALTERNATE(
     p1, GenericParameterAst, ParseGenericParameterType,
@@ -333,7 +465,7 @@ auto ParserSpp::ParseGenericParameter()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericParameterComp()
+auto spp::parse::ParserSpp::ParseGenericParameterComp()
   -> Unique<GenericParameterAst> {
   PARSE_ALTERNATE(
     p1, GenericParameterAst, ParseGenericParameterCompVariadic,
@@ -341,7 +473,7 @@ auto ParserSpp::ParseGenericParameterComp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericParameterCompRequired()
+auto spp::parse::ParserSpp::ParseGenericParameterCompRequired()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseKeywordCmp);
   PARSE_ONCE(p2, ParseIdentifier);
@@ -352,7 +484,7 @@ auto ParserSpp::ParseGenericParameterCompRequired()
     nullptr, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseGenericParameterCompOptional()
+auto spp::parse::ParserSpp::ParseGenericParameterCompOptional()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseKeywordCmp);
   PARSE_ONCE(p2, ParseIdentifier);
@@ -365,7 +497,7 @@ auto ParserSpp::ParseGenericParameterCompOptional()
     p5, nullptr, p6);
 }
 
-auto ParserSpp::ParseGenericParameterCompVariadic()
+auto spp::parse::ParserSpp::ParseGenericParameterCompVariadic()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseKeywordCmp);
   PARSE_ONCE(p2, ParseTokenDoubleDot);
@@ -377,7 +509,7 @@ auto ParserSpp::ParseGenericParameterCompVariadic()
     nullptr, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseGenericParameterType()
+auto spp::parse::ParserSpp::ParseGenericParameterType()
   -> Unique<GenericParameterAst> {
   PARSE_ALTERNATE(
     p1, GenericParameterAst, ParseGenericParameterTypeVariadic,
@@ -385,7 +517,7 @@ auto ParserSpp::ParseGenericParameterType()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericParameterTypeRequired()
+auto spp::parse::ParserSpp::ParseGenericParameterTypeRequired()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseTypeIdentifier);
   PARSE_OPTIONAL(p2, ParseGenericParameterTypeConstraints);
@@ -393,7 +525,7 @@ auto ParserSpp::ParseGenericParameterTypeRequired()
     nullptr, nullptr, p1, p2, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseGenericParameterTypeOptional()
+auto spp::parse::ParserSpp::ParseGenericParameterTypeOptional()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseTypeIdentifier);
   PARSE_OPTIONAL(p2, ParseGenericParameterTypeConstraints);
@@ -403,7 +535,7 @@ auto ParserSpp::ParseGenericParameterTypeOptional()
     nullptr, nullptr, p1, p2, nullptr, nullptr, p3, p4, nullptr);
 }
 
-auto ParserSpp::ParseGenericParameterTypeVariadic()
+auto spp::parse::ParserSpp::ParseGenericParameterTypeVariadic()
   -> Unique<GenericParameterAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_ONCE(p2, ParseTypeIdentifier);
@@ -413,14 +545,14 @@ auto ParserSpp::ParseGenericParameterTypeVariadic()
     nullptr, p1, p2, p3, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseGenericParameterTypeConstraints()
+auto spp::parse::ParserSpp::ParseGenericParameterTypeConstraints()
   -> Unique<GenericParameterTypeConstraintsAst> {
   PARSE_ONCE(p1, ParseTokenColon);
   PARSE_ONE_OR_MORE(p2, ParseTypeExpression, ParseTokenBitAnd);
   return _CreateAst<GenericParameterTypeConstraintsAst>(p1, p2);
 }
 
-auto ParserSpp::ParseGenericArgumentGroup()
+auto spp::parse::ParserSpp::ParseGenericArgumentGroup()
   -> Unique<GenericArgumentGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ONE_OR_MORE(p2, ParseGenericArgument, ParseTokenComma);
@@ -428,7 +560,7 @@ auto ParserSpp::ParseGenericArgumentGroup()
   return _CreateAst<GenericArgumentGroupAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseGenericArgument()
+auto spp::parse::ParserSpp::ParseGenericArgument()
   -> Unique<GenericArgumentAst> {
   PARSE_ALTERNATE(
     p1, GenericArgumentAst, ParseGenericArgumentType,
@@ -436,7 +568,7 @@ auto ParserSpp::ParseGenericArgument()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericArgumentComp()
+auto spp::parse::ParserSpp::ParseGenericArgumentComp()
   -> Unique<GenericArgumentAst> {
   PARSE_ALTERNATE(
     p1, GenericArgumentAst, ParseGenericArgumentCompKeyword,
@@ -444,13 +576,13 @@ auto ParserSpp::ParseGenericArgumentComp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericArgumentCompPositional()
+auto spp::parse::ParserSpp::ParseGenericArgumentCompPositional()
   -> Unique<GenericArgumentAst> {
   PARSE_ONCE(p1, ParseExpression);
   return GenericArgumentAst::NewComp(nullptr, std::move(p1));
 }
 
-auto ParserSpp::ParseGenericArgumentCompKeyword()
+auto spp::parse::ParserSpp::ParseGenericArgumentCompKeyword()
   -> Unique<GenericArgumentAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -459,7 +591,7 @@ auto ParserSpp::ParseGenericArgumentCompKeyword()
     TypeIdentifierAst::FromIdentifier(*p1), p2, nullptr, p3);
 }
 
-auto ParserSpp::ParseGenericArgumentType()
+auto spp::parse::ParserSpp::ParseGenericArgumentType()
   -> Unique<GenericArgumentAst> {
   PARSE_ALTERNATE(
     p1, GenericArgumentAst, ParseGenericArgumentTypeKeyword,
@@ -469,7 +601,7 @@ auto ParserSpp::ParseGenericArgumentType()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenericArgumentTypePositional()
+auto spp::parse::ParserSpp::ParseGenericArgumentTypePositional()
   -> Unique<GenericArgumentAst> {
   // 1964
   PARSE_ONCE(p1, ParseTypeExpression);
@@ -477,7 +609,7 @@ auto ParserSpp::ParseGenericArgumentTypePositional()
   return GenericArgumentAst::NewType(nullptr, AstClone(p1));
 }
 
-auto ParserSpp::ParseGenericArgumentTypeKeyword()
+auto spp::parse::ParserSpp::ParseGenericArgumentTypeKeyword()
   -> Unique<GenericArgumentAst> {
   PARSE_ONCE(p1, ParseUpperIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -487,14 +619,14 @@ auto ParserSpp::ParseGenericArgumentTypeKeyword()
     TypeIdentifierAst::FromIdentifier(*p1), p2, p3, nullptr);
 }
 
-auto ParserSpp::ParseAnnotation()
+auto spp::parse::ParserSpp::ParseAnnotation()
   -> Unique<AnnotationAst> {
   PARSE_ALTERNATE(p1, AnnotationAst, ParseAnnotationCall,
   ParseAnnotationNoCall);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseAnnotationCall()
+auto spp::parse::ParserSpp::ParseAnnotationCall()
   -> Unique<AnnotationAst> {
   PARSE_ONCE(p1, ParseTokenExclamationMark);
   PARSE_ONCE(p2, ParsePostfixExpressionStrictlyStaticAccessZero)
@@ -503,20 +635,20 @@ auto ParserSpp::ParseAnnotationCall()
   return _CreateAst<AnnotationAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseAnnotationNoCall()
+auto spp::parse::ParserSpp::ParseAnnotationNoCall()
   -> Unique<AnnotationAst> {
   PARSE_ONCE(p1, ParseTokenExclamationMark);
   PARSE_ONCE(p2, ParsePostfixExpressionStrictlyStaticAccessZero);
   return _CreateAst<AnnotationAst>(p1, p2, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseExpression()
+auto spp::parse::ParserSpp::ParseExpression()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParseBinaryExpression);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
+auto spp::parse::ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
   -> Unique<ExpressionAst> {
   using RT = lex::RawTokenType;
 
@@ -635,7 +767,7 @@ auto ParserSpp::ParseBinaryExpression(const std::uint8_t min_prec)
   return lhs;
 }
 
-auto ParserSpp::ParseUnaryExpression()
+auto spp::parse::ParserSpp::ParseUnaryExpression()
   -> Unique<ExpressionAst> {
   PARSE_ZERO_OR_MORE(p1, ParseUnaryExpressionOp, ParseNothing);
   PARSE_ONCE(p2, ParsePostfixExpression);
@@ -646,20 +778,20 @@ auto ParserSpp::ParseUnaryExpression()
     });
 }
 
-auto ParserSpp::ParseUnaryExpressionOp()
+auto spp::parse::ParserSpp::ParseUnaryExpressionOp()
   -> Unique<UnaryExpressionOperatorAst> {
   PARSE_ALTERNATE(
     p1, UnaryExpressionOperatorAst, ParseUnaryExpressionOpAsync);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseUnaryExpressionOpAsync()
+auto spp::parse::ParserSpp::ParseUnaryExpressionOpAsync()
   -> Unique<UnaryExpressionOperatorAsyncAst> {
   PARSE_ONCE(p1, ParseKeywordAsync);
   return _CreateAst<UnaryExpressionOperatorAsyncAst>(p1);
 }
 
-auto ParserSpp::ParsePostfixExpression()
+auto spp::parse::ParserSpp::ParsePostfixExpression()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParsePrimaryExpression);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixExpressionOp, ParseNothing);
@@ -670,7 +802,7 @@ auto ParserSpp::ParsePostfixExpression()
     });
 }
 
-auto ParserSpp::ParsePostfixExpressionOp()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOp()
   -> Unique<PostfixExpressionOperatorAst> {
   PARSE_ALTERNATE(
     p1, PostfixExpressionOperatorAst, ParsePostfixExpressionOpDeref,
@@ -683,20 +815,20 @@ auto ParserSpp::ParsePostfixExpressionOp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpDeref()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpDeref()
   -> Unique<PostfixExpressionOperatorDerefAst> {
   PARSE_ONCE(p1, ParseTokenDeref);
   PARSE_NEGATE(lex::RawTokenType::LX_CHARACTER)
   return _CreateAst<PostfixExpressionOperatorDerefAst>(p1);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpEarlyReturn()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpEarlyReturn()
   -> Unique<PostfixExpressionOperatorEarlyReturnAst> {
   PARSE_ONCE(p1, ParseTokenQuestionMark);
   return _CreateAst<PostfixExpressionOperatorEarlyReturnAst>(p1);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpFunctionCall()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpFunctionCall()
   -> Unique<PostfixExpressionOperatorFunctionCallAst> {
   if (_LineFeedAhead()) { return nullptr; }
   PARSE_OPTIONAL(p1, ParseGenericArgumentGroup);
@@ -705,7 +837,7 @@ auto ParserSpp::ParsePostfixExpressionOpFunctionCall()
   return _CreateAst<PostfixExpressionOperatorFunctionCallAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpRuntimeMemberAccess()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpRuntimeMemberAccess()
   -> Unique<PostfixExpressionOperatorRuntimeMemberAccessAst> {
   PARSE_ONCE(p1, ParseTokenDot);
   PARSE_ALTERNATE(
@@ -714,7 +846,7 @@ auto ParserSpp::ParsePostfixExpressionOpRuntimeMemberAccess()
     p1, p2);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpStaticMemberAccess()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpStaticMemberAccess()
   -> Unique<PostfixExpressionOperatorStaticMemberAccessAst> {
   PARSE_ONCE(p1, ParseTokenDoubleColon);
   PARSE_ONCE(p2, ParseIdentifier);
@@ -722,21 +854,21 @@ auto ParserSpp::ParsePostfixExpressionOpStaticMemberAccess()
     p1, p2);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpKeywordNot()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpKeywordNot()
   -> Unique<PostfixExpressionOperatorKeywordNotAst> {
   PARSE_ONCE(p1, ParseTokenDot);
   PARSE_ONCE(p2, ParseKeywordNot);
   return _CreateAst<PostfixExpressionOperatorKeywordNotAst>(p1, p2);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpKeywordAwait()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpKeywordAwait()
   -> Unique<PostfixExpressionOperatorKeywordAwaitAst> {
   PARSE_ONCE(p1, ParseTokenDot);
   PARSE_ONCE(p2, ParseKeywordAwait);
   return _CreateAst<PostfixExpressionOperatorKeywordAwaitAst>(p1, p2);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpKeywordRes()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpKeywordRes()
   -> Unique<PostfixExpressionOperatorKeywordResAst> {
   PARSE_ONCE(p1, ParseTokenDot);
   PARSE_ONCE(p2, ParseKeywordRes);
@@ -744,7 +876,7 @@ auto ParserSpp::ParsePostfixExpressionOpKeywordRes()
   return _CreateAst<PostfixExpressionOperatorKeywordResAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpIndex()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpIndex()
   -> Unique<PostfixExpressionOperatorIndexAst> {
   if (_LineFeedAhead()) { return nullptr; }
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
@@ -754,7 +886,7 @@ auto ParserSpp::ParsePostfixExpressionOpIndex()
   return _CreateAst<PostfixExpressionOperatorIndexAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParsePostfixExpressionOpSlice()
+auto spp::parse::ParserSpp::ParsePostfixExpressionOpSlice()
   -> Unique<PostfixExpressionOperatorSliceAst> {
   if (_LineFeedAhead()) { return nullptr; }
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
@@ -767,7 +899,7 @@ auto ParserSpp::ParsePostfixExpressionOpSlice()
     p1, p2, p3, p4, p5, p6);
 }
 
-auto ParserSpp::ParsePostfixExpressionStrictlyStaticAccessZero()
+auto spp::parse::ParserSpp::ParsePostfixExpressionStrictlyStaticAccessZero()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParseIdentifierAsExpression);
   PARSE_ZERO_OR_MORE(
@@ -779,7 +911,7 @@ auto ParserSpp::ParsePostfixExpressionStrictlyStaticAccessZero()
     });
 }
 
-auto ParserSpp::ParsePostfixExpressionStrictlyStaticAccessOne()
+auto spp::parse::ParserSpp::ParsePostfixExpressionStrictlyStaticAccessOne()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParseIdentifierAsExpression);
   PARSE_ONE_OR_MORE(
@@ -792,7 +924,7 @@ auto ParserSpp::ParsePostfixExpressionStrictlyStaticAccessOne()
     });
 }
 
-auto ParserSpp::ParsePrimaryExpression()
+auto spp::parse::ParserSpp::ParsePrimaryExpression()
   -> Unique<ExpressionAst> {
   PARSE_ALTERNATE(
     p1, PrimaryExpressionAst, ParseClosureExpression,
@@ -804,7 +936,7 @@ auto ParserSpp::ParsePrimaryExpression()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseParenthesisedExpression()
+auto spp::parse::ParserSpp::ParseParenthesisedExpression()
   -> Unique<ParenthesisedExpressionAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseExpression);
@@ -812,20 +944,20 @@ auto ParserSpp::ParseParenthesisedExpression()
   return _CreateAst<ParenthesisedExpressionAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseFoldExpression()
+auto spp::parse::ParserSpp::ParseFoldExpression()
   -> Unique<FoldExpressionAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   return _CreateAst<FoldExpressionAst>(p1);
 }
 
-auto ParserSpp::ParseSpreadExpression()
+auto spp::parse::ParserSpp::ParseSpreadExpression()
   -> Unique<SpreadExpressionAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_ONCE(p2, ParseExpression);
   return _CreateAst<SpreadExpressionAst>(p1, p2);
 }
 
-auto ParserSpp::ParseCaseExpression()
+auto spp::parse::ParserSpp::ParseCaseExpression()
   -> Unique<CaseExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordCase);
   PARSE_ONCE(p2, ParseExpression);
@@ -835,7 +967,7 @@ auto ParserSpp::ParseCaseExpression()
     std::move(p1), std::move(p2), std::move(p3), std::move(p4));
 }
 
-auto ParserSpp::ParseCaseExpressionBranch()
+auto spp::parse::ParserSpp::ParseCaseExpressionBranch()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ALTERNATE(
     p1, CaseExpressionBranchAst, ParseCaseExpressionBranchElseCase,
@@ -843,7 +975,7 @@ auto ParserSpp::ParseCaseExpressionBranch()
   return p1;
 }
 
-auto ParserSpp::ParseCaseExpressionBranchElse()
+auto spp::parse::ParserSpp::ParseCaseExpressionBranchElse()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ONCE(p1, ParseCaseExpressionPatternVariantElse);
   PARSE_ONCE(p2, [this] { return ParseInnerScopeExpression([this] { return ParseStatement(); }); })
@@ -853,7 +985,7 @@ auto ParserSpp::ParseCaseExpressionBranchElse()
   return _CreateAst<CaseExpressionBranchAst>(nullptr, std::move(temp), nullptr, p2);
 }
 
-auto ParserSpp::ParseCaseExpressionBranchElseCase()
+auto spp::parse::ParserSpp::ParseCaseExpressionBranchElseCase()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ONCE(p1, ParseCaseExpressionPatternVariantElseCase);
 
@@ -870,7 +1002,7 @@ auto ParserSpp::ParseCaseExpressionBranchElseCase()
   return _CreateAst<CaseExpressionBranchAst>(nullptr, temp_2, nullptr, else_case_body);
 }
 
-auto ParserSpp::ParseCaseOfExpression()
+auto spp::parse::ParserSpp::ParseCaseOfExpression()
   -> Unique<CaseExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordCase);
   PARSE_ONCE(p2, ParseExpression);
@@ -881,7 +1013,7 @@ auto ParserSpp::ParseCaseOfExpression()
   return _CreateAst<CaseExpressionAst>(p1, p2, p3, p5);
 }
 
-auto ParserSpp::ParseCaseOfExpressionBranch()
+auto spp::parse::ParserSpp::ParseCaseOfExpressionBranch()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ALTERNATE(
     p1, CaseExpressionBranchAst, ParseCaseOfExpressionBranchDestructuring,
@@ -890,7 +1022,7 @@ auto ParserSpp::ParseCaseOfExpressionBranch()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseOfExpressionBranchDestructuring()
+auto spp::parse::ParserSpp::ParseCaseOfExpressionBranchDestructuring()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ONCE(p1, ParseKeywordIs);
   PARSE_ONCE(p2, ParseCaseExpressionPatternVariantDestructure);
@@ -901,7 +1033,7 @@ auto ParserSpp::ParseCaseOfExpressionBranchDestructuring()
   return _CreateAst<CaseExpressionBranchAst>(p1, temp, p3, p4);
 }
 
-auto ParserSpp::ParseCaseOfExpressionBranchComparing()
+auto spp::parse::ParserSpp::ParseCaseOfExpressionBranchComparing()
   -> Unique<CaseExpressionBranchAst> {
   PARSE_ONCE(p1, ParseBooleanComparisonOp)
   PARSE_ONE_OR_MORE(
@@ -910,7 +1042,7 @@ auto ParserSpp::ParseCaseOfExpressionBranchComparing()
   return _CreateAst<CaseExpressionBranchAst>(p1, p2, nullptr, p3);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructure()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructure()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -920,7 +1052,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructure()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureArray()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureArray()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ZERO_OR_MORE(
@@ -930,7 +1062,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructureArray()
     p1, p2, p3);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureObject()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureObject()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseTypeExpressionSimple)
   PARSE_ONCE(p2, ParseTokenLeftParenthesis);
@@ -941,7 +1073,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructureObject()
     p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureTuple()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureTuple()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ZERO_OR_MORE(
@@ -951,14 +1083,14 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructureTuple()
     p1, p2, p3);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureSkipSingleArgument()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureSkipSingleArgument()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseTokenUnderscore);
   return _CreateAst<CasePatternVariantDestructureSkipSingleArgumentAst>(
     p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureSkipMultipleArguments()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureSkipMultipleArguments()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_OPTIONAL(p2, ParseCaseExpressionPatternVariantSingleIdentifier);
@@ -966,7 +1098,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructureSkipMultipleArgument
     p1, p2);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantDestructureAttributeBinding()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantDestructureAttributeBinding()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -975,7 +1107,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantDestructureAttributeBinding()
     p1, p2, p3);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifier()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifier()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -984,21 +1116,21 @@ auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifier()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierWithConvention()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierWithConvention()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseConvention);
   PARSE_ONCE(p2, ParseIdentifier);
   return _CreateAst<CasePatternVariantSingleIdentifierAst>(p1, nullptr, p2, nullptr);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierWithoutConvention()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierWithoutConvention()
   -> Unique<CasePatternVariantAst> {
   PARSE_OPTIONAL(p1, ParseKeywordMut);
   PARSE_ONCE(p2, ParseIdentifier);
   return _CreateAst<CasePatternVariantSingleIdentifierAst>(nullptr, p1, p2, nullptr);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierAliasable()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierAliasable()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseCaseExpressionPatternVariantSingleIdentifier);
   PARSE_OPTIONAL(p2, ParseLocalVariableSingleIdentifierAlias);
@@ -1006,7 +1138,7 @@ auto ParserSpp::ParseCaseExpressionPatternVariantSingleIdentifierAliasable()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantLiteral()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantLiteral()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, LiteralAst, ParseLiteralFloat, ParseLiteralInteger, ParseLiteralChar,
@@ -1014,26 +1146,26 @@ auto ParserSpp::ParseCaseExpressionPatternVariantLiteral()
   return _CreateAst<CasePatternVariantLiteralAst>(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantExpression()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantExpression()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseExpression);
   return _CreateAst<CasePatternVariantExpressionAst>(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantElse()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantElse()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseKeywordElse);
   return _CreateAst<CasePatternVariantElseAst>(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternVariantElseCase()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternVariantElseCase()
   -> Unique<CasePatternVariantAst> {
   PARSE_ONCE(p1, ParseKeywordElse);
   PARSE_ONCE(p2, ParseCaseExpression);
   return _CreateAst<CasePatternVariantElseCaseAst>(p1, p2);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureArray()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternNestedForDestructureArray()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -1047,7 +1179,7 @@ auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureArray()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureObject()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternNestedForDestructureObject()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -1057,7 +1189,7 @@ auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureObject()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureTuple()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternNestedForDestructureTuple()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -1071,7 +1203,7 @@ auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureTuple()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureAttributeBinding()
+auto spp::parse::ParserSpp::ParseCaseExpressionPatternNestedForDestructureAttributeBinding()
   -> Unique<CasePatternVariantAst> {
   PARSE_ALTERNATE(
     p1, CasePatternVariantAst,
@@ -1082,14 +1214,14 @@ auto ParserSpp::ParseCaseExpressionPatternNestedForDestructureAttributeBinding()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParsePatternGuard()
+auto spp::parse::ParserSpp::ParsePatternGuard()
   -> Unique<PatternGuardAst> {
   PARSE_ONCE(p1, ParseKeywordAnd);
   PARSE_ONCE(p2, ParseExpression);
   return _CreateAst<PatternGuardAst>(p1, p2);
 }
 
-auto ParserSpp::ParseBooleanComparisonOp()
+auto spp::parse::ParserSpp::ParseBooleanComparisonOp()
   -> Unique<TokenAst> {
   PARSE_ALTERNATE(
     p1, TokenAst, ParseTokenEquals, ParseTokenNotEquals,
@@ -1098,7 +1230,7 @@ auto ParserSpp::ParseBooleanComparisonOp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLoopExpression()
+auto spp::parse::ParserSpp::ParseLoopExpression()
   -> Unique<LoopExpressionAst> {
   PARSE_ALTERNATE(
     p1, LoopExpressionAst, ParseLoopConditionalExpression,
@@ -1106,7 +1238,7 @@ auto ParserSpp::ParseLoopExpression()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLoopConditionalExpression()
+auto spp::parse::ParserSpp::ParseLoopConditionalExpression()
   -> Unique<LoopConditionalExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordLoop);
   PARSE_ONCE(p2, ParseExpression);
@@ -1115,7 +1247,7 @@ auto ParserSpp::ParseLoopConditionalExpression()
   return _CreateAst<LoopConditionalExpressionAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseLoopIterableExpression()
+auto spp::parse::ParserSpp::ParseLoopIterableExpression()
   -> Unique<LoopIterableExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordLoop);
   PARSE_ONCE(p2, ParseLocalVariable);
@@ -1126,14 +1258,14 @@ auto ParserSpp::ParseLoopIterableExpression()
   return _CreateAst<LoopIterableExpressionAst>(p1, p2, p3, p4, p5, p6);
 }
 
-auto ParserSpp::ParseLoopElseStatement()
+auto spp::parse::ParserSpp::ParseLoopElseStatement()
   -> Unique<LoopElseStatementAst> {
   PARSE_ONCE(p1, ParseKeywordElse);
   PARSE_ONCE(p2, [this] { return ParseInnerScopeExpression([this] { return ParseStatement(); }); })
   return _CreateAst<LoopElseStatementAst>(p1, p2);
 }
 
-auto ParserSpp::ParseGenExpression()
+auto spp::parse::ParserSpp::ParseGenExpression()
   -> Unique<GenExpressionAst> {
   PARSE_ALTERNATE(
     p1, GenExpressionAst, ParseGenExpressionWithExpression,
@@ -1141,7 +1273,7 @@ auto ParserSpp::ParseGenExpression()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseGenExpressionWithExpression()
+auto spp::parse::ParserSpp::ParseGenExpressionWithExpression()
   -> Unique<GenExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordGen);
   PARSE_OPTIONAL(p2, ParseConvention);
@@ -1149,13 +1281,13 @@ auto ParserSpp::ParseGenExpressionWithExpression()
   return _CreateAst<GenExpressionAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseGenExpressionWithoutExpression()
+auto spp::parse::ParserSpp::ParseGenExpressionWithoutExpression()
   -> Unique<GenExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordGen);
   return _CreateAst<GenExpressionAst>(p1, nullptr, nullptr);
 }
 
-auto ParserSpp::ParseGenUnrollExpression()
+auto spp::parse::ParserSpp::ParseGenUnrollExpression()
   -> Unique<GenWithExpressionAst> {
   PARSE_ONCE(p1, ParseKeywordGen);
   PARSE_ONCE(p2, ParseKeywordWith);
@@ -1163,7 +1295,7 @@ auto ParserSpp::ParseGenUnrollExpression()
   return _CreateAst<GenWithExpressionAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseInnerScopeExpression(auto &&parser)
+auto spp::parse::ParserSpp::ParseInnerScopeExpression(auto &&parser)
   -> Unique<InnerScopeExpressionAst> {
   PARSE_ONCE(p1, ParseTokenLeftCurlyBrace);
   PARSE_ZERO_OR_MORE(p2, parser, ParseNewline);
@@ -1171,7 +1303,7 @@ auto ParserSpp::ParseInnerScopeExpression(auto &&parser)
   return _CreateAst<InnerScopeExpressionAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseStatement()
+auto spp::parse::ParserSpp::ParseStatement()
   -> Unique<StatementAst> {
   PARSE_ALTERNATE(
     p1, StatementAst, ParseTypeStatement, ParseLetStatement, ParseRetStatement,
@@ -1181,7 +1313,7 @@ auto ParserSpp::ParseStatement()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseAssignmentStatement()
+auto spp::parse::ParserSpp::ParseAssignmentStatement()
   -> Unique<AssignmentStatementAst> {
   PARSE_ONE_OR_MORE(p1, ParseAssignmentTarget, ParseTokenComma);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -1189,14 +1321,14 @@ auto ParserSpp::ParseAssignmentStatement()
   return _CreateAst<AssignmentStatementAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseAssignmentTarget()
+auto spp::parse::ParserSpp::ParseAssignmentTarget()
   -> Unique<ExpressionAst> {
   // Skip binary expression on lhs of assignment.
   PARSE_ONCE(p1, ParseAssignmentTargetPostfixExpression);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseAssignmentTargetPostfixExpression()
+auto spp::parse::ParserSpp::ParseAssignmentTargetPostfixExpression()
   -> Unique<ExpressionAst> {
   PARSE_ONCE(p1, ParseAssignmentTargetPrimaryExpression);
   PARSE_ZERO_OR_MORE(
@@ -1208,7 +1340,7 @@ auto ParserSpp::ParseAssignmentTargetPostfixExpression()
     });
 }
 
-auto ParserSpp::ParseAssignmentTargetPostfixExpressionOp()
+auto spp::parse::ParserSpp::ParseAssignmentTargetPostfixExpressionOp()
   -> Unique<PostfixExpressionOperatorAst> {
   PARSE_ALTERNATE(
     p1, PostfixExpressionOperatorAst,
@@ -1219,62 +1351,62 @@ auto ParserSpp::ParseAssignmentTargetPostfixExpressionOp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseAssignmentTargetPrimaryExpression()
+auto spp::parse::ParserSpp::ParseAssignmentTargetPrimaryExpression()
   -> Unique<ExpressionAst> {
   PARSE_ALTERNATE(
     p1, PrimaryExpressionAst, ParseIdentifier, ParseSelfIdentifier);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseDeferStatement()
+auto spp::parse::ParserSpp::ParseDeferStatement()
   -> Unique<DeferStatementAst> {
   PARSE_ONCE(p1, ParseKeywordDefer);
   PARSE_ONCE(p2, ParseExpression);
   return _CreateAst<DeferStatementAst>(p1, p2);
 }
 
-auto ParserSpp::ParseRetStatement()
+auto spp::parse::ParserSpp::ParseRetStatement()
   -> Unique<RetStatementAst> {
   PARSE_ONCE(p1, ParseKeywordRet);
   PARSE_OPTIONAL(p2, ParseExpression);
   return _CreateAst<RetStatementAst>(p1, p2);
 }
 
-auto ParserSpp::ParseExitStatement()
+auto spp::parse::ParserSpp::ParseExitStatement()
   -> Unique<LoopControlFlowStatementAst> {
   PARSE_ONE_OR_MORE(p1, ParseKeywordExit, ParseSpace);
   PARSE_ONCE(p2, ParseKeywordSkip);
   return _CreateAst<LoopControlFlowStatementAst>(p1, p2, nullptr);
 }
 
-auto ParserSpp::ParseExitStatementWithValue()
+auto spp::parse::ParserSpp::ParseExitStatementWithValue()
   -> Unique<LoopControlFlowStatementAst> {
   PARSE_ONE_OR_MORE(p1, ParseKeywordExit, ParseSpace);
   PARSE_OPTIONAL(p2, ParseExpression)
   return _CreateAst<LoopControlFlowStatementAst>(p1, nullptr, p2);
 }
 
-auto ParserSpp::ParseSkipStatement()
+auto spp::parse::ParserSpp::ParseSkipStatement()
   -> Unique<LoopControlFlowStatementAst> {
   PARSE_ONCE(p1, ParseKeywordSkip);
   return _CreateAst<LoopControlFlowStatementAst>(NO_TOKENS, p1, nullptr);
 }
 
-auto ParserSpp::ParseUseStatement()
+auto spp::parse::ParserSpp::ParseUseStatement()
   -> Unique<UseStatementAst> {
   PARSE_ONCE(p1, ParseKeywordUse);
   PARSE_ONCE(p2, ParseTypeExpressionSimple)
   return _CreateAst<UseStatementAst>(NO_ANNOTATIONS, p1, p2);
 }
 
-auto ParserSpp::ParseUseVarStatement()
+auto spp::parse::ParserSpp::ParseUseVarStatement()
   -> Unique<UseStatementVariableAst> {
   PARSE_ONCE(p1, ParseKeywordUse);
   PARSE_ONCE(p2, ParsePostfixExpressionStrictlyStaticAccessOne);
   return _CreateAst<UseStatementVariableAst>(NO_ANNOTATIONS, p1, p2);
 }
 
-auto ParserSpp::ParseTypeStatement()
+auto spp::parse::ParserSpp::ParseTypeStatement()
   -> Unique<TypeStatementAst> {
   PARSE_ONCE(p1, ParseKeywordType);
   PARSE_ONCE(p2, ParseUpperIdentifier);
@@ -1285,7 +1417,7 @@ auto ParserSpp::ParseTypeStatement()
     NO_ANNOTATIONS, p1, TypeIdentifierAst::FromIdentifier(*p2), p3, p4, p5);
 }
 
-auto ParserSpp::ParseCmpStatement()
+auto spp::parse::ParserSpp::ParseCmpStatement()
   -> Unique<CmpStatementAst> {
   PARSE_ONCE(p1, ParseKeywordCmp);
   PARSE_ONCE(p2, ParseIdentifier);
@@ -1296,13 +1428,13 @@ auto ParserSpp::ParseCmpStatement()
   return _CreateAst<CmpStatementAst>(NO_ANNOTATIONS, p1, p2, p3, p4, p5, p6);
 }
 
-auto ParserSpp::ParseLetStatement()
+auto spp::parse::ParserSpp::ParseLetStatement()
   -> Unique<LetStatementAst> {
   PARSE_ALTERNATE(p1, LetStatementAst, ParseLetStatementInitialized, ParseLetStatementUninitialized);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLetStatementInitialized()
+auto spp::parse::ParserSpp::ParseLetStatementInitialized()
   -> Unique<LetStatementAst> {
   PARSE_ONCE(p1, ParseKeywordLet);
   PARSE_ONCE(p2, ParseLocalVariable);
@@ -1312,14 +1444,14 @@ auto ParserSpp::ParseLetStatementInitialized()
   return _CreateAst<LetStatementInitializedAst>(p1, p2, p3, p4, p5);
 }
 
-auto ParserSpp::ParseLetStatementInitializedExplicitType()
+auto spp::parse::ParserSpp::ParseLetStatementInitializedExplicitType()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenColon);
   PARSE_ONCE(p2, ParseTypeExpression);
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseLetStatementUninitialized()
+auto spp::parse::ParserSpp::ParseLetStatementUninitialized()
   -> Unique<LetStatementAst> {
   PARSE_ONCE(p1, ParseKeywordLet);
   PARSE_ONCE(p2, ParseLocalVariable);
@@ -1328,7 +1460,7 @@ auto ParserSpp::ParseLetStatementUninitialized()
   return _CreateAst<LetStatementUninitializedAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseGlobalUseStatement()
+auto spp::parse::ParserSpp::ParseGlobalUseStatement()
   -> Unique<UseStatementAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseUseStatement);
@@ -1336,7 +1468,7 @@ auto ParserSpp::ParseGlobalUseStatement()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseGlobalUseVarStatement()
+auto spp::parse::ParserSpp::ParseGlobalUseVarStatement()
   -> Unique<UseStatementVariableAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseUseVarStatement);
@@ -1344,7 +1476,7 @@ auto ParserSpp::ParseGlobalUseVarStatement()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseGlobalTypeStatement()
+auto spp::parse::ParserSpp::ParseGlobalTypeStatement()
   -> Unique<TypeStatementAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseTypeStatement);
@@ -1352,7 +1484,7 @@ auto ParserSpp::ParseGlobalTypeStatement()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseGlobalCmpStatement()
+auto spp::parse::ParserSpp::ParseGlobalCmpStatement()
   -> Unique<CmpStatementAst> {
   PARSE_ZERO_OR_MORE(p1, ParseAnnotation, ParseNothing);
   PARSE_ONCE(p2, ParseCmpStatement);
@@ -1360,7 +1492,7 @@ auto ParserSpp::ParseGlobalCmpStatement()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseLocalVariable()
+auto spp::parse::ParserSpp::ParseLocalVariable()
   -> Unique<LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, LocalVariableAst, ParseLocalVariableDestructureArray,
@@ -1369,7 +1501,7 @@ auto ParserSpp::ParseLocalVariable()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureArray()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureArray()
   -> Unique<LocalVariableDestructureArrayAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ZERO_OR_MORE(p2, ParseLocalVariableNestedForDestructureArray, ParseTokenComma);
@@ -1377,7 +1509,7 @@ auto ParserSpp::ParseLocalVariableDestructureArray()
   return _CreateAst<LocalVariableDestructureArrayAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureObject()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureObject()
   -> Unique<LocalVariableDestructureObjectAst> {
   PARSE_ONCE(p1, ParseTypeExpressionSimple);
   PARSE_ONCE(p2, ParseTokenLeftParenthesis);
@@ -1386,7 +1518,7 @@ auto ParserSpp::ParseLocalVariableDestructureObject()
   return _CreateAst<LocalVariableDestructureObjectAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureTuple()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureTuple()
   -> Unique<LocalVariableDestructureTupleAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ZERO_OR_MORE(p2, ParseLocalVariableNestedForDestructureTuple, ParseTokenComma);
@@ -1394,20 +1526,20 @@ auto ParserSpp::ParseLocalVariableDestructureTuple()
   return _CreateAst<LocalVariableDestructureTupleAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureSkipSingleArgument()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureSkipSingleArgument()
   -> Unique<LocalVariableDestructureSkipSingleArgumentAst> {
   PARSE_ONCE(p1, ParseTokenUnderscore);
   return _CreateAst<LocalVariableDestructureSkipSingleArgumentAst>(p1);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureSkipMultipleArguments()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureSkipMultipleArguments()
   -> Unique<LocalVariableDestructureSkipMultipleArgumentsAst> {
   PARSE_ONCE(p1, ParseTokenDoubleDot);
   PARSE_OPTIONAL(p2, ParseLocalVariableSingleIdentifier);
   return _CreateAst<LocalVariableDestructureSkipMultipleArgumentsAst>(p1, p2);
 }
 
-auto ParserSpp::ParseLocalVariableDestructureAttributeBinding()
+auto spp::parse::ParserSpp::ParseLocalVariableDestructureAttributeBinding()
   -> Unique<LocalVariableDestructureAttributeBindingAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -1415,14 +1547,14 @@ auto ParserSpp::ParseLocalVariableDestructureAttributeBinding()
   return _CreateAst<LocalVariableDestructureAttributeBindingAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseLocalVariableSingleIdentifier()
+auto spp::parse::ParserSpp::ParseLocalVariableSingleIdentifier()
   -> Unique<LocalVariableSingleIdentifierAst> {
   PARSE_OPTIONAL(p1, ParseKeywordMut);
   PARSE_ONCE(p2, ParseIdentifier);
   return _CreateAst<LocalVariableSingleIdentifierAst>(p1, p2, nullptr);
 }
 
-auto ParserSpp::ParseLocalVariableSingleIdentifierAliasable()
+auto spp::parse::ParserSpp::ParseLocalVariableSingleIdentifierAliasable()
   -> Unique<LocalVariableSingleIdentifierAst> {
   PARSE_ONCE(p1, ParseLocalVariableSingleIdentifier);
   PARSE_OPTIONAL(p2, ParseLocalVariableSingleIdentifierAlias);
@@ -1430,14 +1562,14 @@ auto ParserSpp::ParseLocalVariableSingleIdentifierAliasable()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLocalVariableSingleIdentifierAlias()
+auto spp::parse::ParserSpp::ParseLocalVariableSingleIdentifierAlias()
   -> Unique<LocalVariableSingleIdentifierAliasAst> {
   PARSE_ONCE(p1, ParseKeywordAs);
   PARSE_ONCE(p2, ParseIdentifier);
   return _CreateAst<LocalVariableSingleIdentifierAliasAst>(p1, p2);
 }
 
-auto ParserSpp::ParseLocalVariableNestedForDestructureArray()
+auto spp::parse::ParserSpp::ParseLocalVariableNestedForDestructureArray()
   -> Unique<LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, LocalVariableAst, ParseLocalVariableDestructureSkipSingleArgument,
@@ -1447,7 +1579,7 @@ auto ParserSpp::ParseLocalVariableNestedForDestructureArray()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLocalVariableNestedForDestructureObject()
+auto spp::parse::ParserSpp::ParseLocalVariableNestedForDestructureObject()
   -> Unique<LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, LocalVariableAst, ParseLocalVariableDestructureSkipMultipleArguments,
@@ -1455,7 +1587,7 @@ auto ParserSpp::ParseLocalVariableNestedForDestructureObject()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLocalVariableNestedForDestructureTuple()
+auto spp::parse::ParserSpp::ParseLocalVariableNestedForDestructureTuple()
   -> Unique<LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, LocalVariableAst, ParseLocalVariableDestructureSkipSingleArgument,
@@ -1465,7 +1597,7 @@ auto ParserSpp::ParseLocalVariableNestedForDestructureTuple()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLocalVariableNestedForDestructureAttributeBinding()
+auto spp::parse::ParserSpp::ParseLocalVariableNestedForDestructureAttributeBinding()
   -> Unique<LocalVariableAst> {
   PARSE_ALTERNATE(
     p1, LocalVariableAst, ParseLocalVariableDestructureArray,
@@ -1473,26 +1605,26 @@ auto ParserSpp::ParseLocalVariableNestedForDestructureAttributeBinding()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseConvention()
+auto spp::parse::ParserSpp::ParseConvention()
   -> Unique<ConventionAst> {
   PARSE_ALTERNATE(p1, ConventionAst, ParseConventionMut, ParseConventionRef);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseConventionRef()
+auto spp::parse::ParserSpp::ParseConventionRef()
   -> Unique<ConventionRefAst> {
   PARSE_ONCE(p1, ParseTokenBorrow);
   return _CreateAst<ConventionRefAst>(p1);
 }
 
-auto ParserSpp::ParseConventionMut()
+auto spp::parse::ParserSpp::ParseConventionMut()
   -> Unique<ConventionMutAst> {
   PARSE_ONCE(p1, ParseTokenBorrow);
   PARSE_ONCE(p2, ParseKeywordMut);
   return _CreateAst<ConventionMutAst>(p1, p2);
 }
 
-auto ParserSpp::ParseObjectInitializer()
+auto spp::parse::ParserSpp::ParseObjectInitializer()
   -> Unique<ObjectInitializerAst> {
   PARSE_ONCE(p1, ParseTypeExpressionSimple);
   PARSE_ONCE(p2, ParseObjectInitializerArgumentGroup);
@@ -1501,7 +1633,7 @@ auto ParserSpp::ParseObjectInitializer()
   return ast;
 }
 
-auto ParserSpp::ParseObjectInitializerArgumentGroup()
+auto spp::parse::ParserSpp::ParseObjectInitializerArgumentGroup()
   -> Unique<ObjectInitializerArgumentGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ZERO_OR_MORE(p2, ParseObjectInitializerArgument, ParseTokenComma);
@@ -1509,7 +1641,7 @@ auto ParserSpp::ParseObjectInitializerArgumentGroup()
   return _CreateAst<ObjectInitializerArgumentGroupAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseObjectInitializerArgument()
+auto spp::parse::ParserSpp::ParseObjectInitializerArgument()
   -> Unique<ObjectInitializerArgumentAst> {
   PARSE_ALTERNATE(
     p1, ObjectInitializerArgumentAst, ParseObjectInitializerArgumentKeyword,
@@ -1517,7 +1649,7 @@ auto ParserSpp::ParseObjectInitializerArgument()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseObjectInitializerArgumentKeyword()
+auto spp::parse::ParserSpp::ParseObjectInitializerArgumentKeyword()
   -> Unique<ObjectInitializerArgumentKeywordAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenAssign);
@@ -1525,14 +1657,14 @@ auto ParserSpp::ParseObjectInitializerArgumentKeyword()
   return _CreateAst<ObjectInitializerArgumentKeywordAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseObjectInitializerArgumentShorthand()
+auto spp::parse::ParserSpp::ParseObjectInitializerArgumentShorthand()
   -> Unique<ObjectInitializerArgumentShorthandAst> {
   PARSE_OPTIONAL(p1, ParseTokenDoubleDot);
   PARSE_ONCE(p2, ParseExpression);
   return _CreateAst<ObjectInitializerArgumentShorthandAst>(p1, p2);
 }
 
-auto ParserSpp::ParseClosureExpression()
+auto spp::parse::ParserSpp::ParseClosureExpression()
   -> Unique<ClosureExpressionAst> {
   PARSE_ALTERNATE(
     p1, ClosureExpressionAst, ParseClosureExpressionWithReturnType,
@@ -1540,7 +1672,7 @@ auto ParserSpp::ParseClosureExpression()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseClosureExpressionWithReturnType()
+auto spp::parse::ParserSpp::ParseClosureExpressionWithReturnType()
   -> Unique<ClosureExpressionAst> {
   PARSE_OPTIONAL(p1, ParseKeywordCor);
   PARSE_ONCE(p2, ParseClosureExpressionParameterAndCaptureGroup);
@@ -1550,7 +1682,7 @@ auto ParserSpp::ParseClosureExpressionWithReturnType()
   return _CreateAst<ClosureExpressionAst>(p1, p2, p3, p4, p5);
 }
 
-auto ParserSpp::ParseClosureExpressionWithoutReturnType()
+auto spp::parse::ParserSpp::ParseClosureExpressionWithoutReturnType()
   -> Unique<ClosureExpressionAst> {
   PARSE_OPTIONAL(p1, ParseKeywordCor);
   PARSE_ONCE(p2, ParseClosureExpressionParameterAndCaptureGroup);
@@ -1560,21 +1692,21 @@ auto ParserSpp::ParseClosureExpressionWithoutReturnType()
   return _CreateAst<ClosureExpressionAst>(p1, p2, nullptr, nullptr, p3);
 }
 
-auto ParserSpp::ParseClosureExpressionCaptureGroup()
+auto spp::parse::ParserSpp::ParseClosureExpressionCaptureGroup()
   -> Unique<ClosureExpressionCaptureGroupAst> {
   PARSE_ONCE(p1, ParseKeywordCaps);
   PARSE_ONE_OR_MORE(p2, ParseClosureExpressionCapture, ParseTokenComma);
   return _CreateAst<ClosureExpressionCaptureGroupAst>(p1, p2);
 }
 
-auto ParserSpp::ParseClosureExpressionCapture()
+auto spp::parse::ParserSpp::ParseClosureExpressionCapture()
   -> Unique<ClosureExpressionCaptureAst> {
   PARSE_OPTIONAL(p1, ParseConvention);
   PARSE_ALTERNATE(p2, IdentifierAst, ParseIdentifier, ParseSelfIdentifier);
   return _CreateAst<ClosureExpressionCaptureAst>(p1, p2);
 }
 
-auto ParserSpp::ParseClosureExpressionParameterAndCaptureGroup()
+auto spp::parse::ParserSpp::ParseClosureExpressionParameterAndCaptureGroup()
   -> Unique<ClosureExpressionParameterAndCaptureGroupAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseClosureExpressionParameterGroup);
@@ -1583,13 +1715,13 @@ auto ParserSpp::ParseClosureExpressionParameterAndCaptureGroup()
   return _CreateAst<ClosureExpressionParameterAndCaptureGroupAst>(p1, p2, p3, p4);
 }
 
-auto ParserSpp::ParseClosureExpressionParameterGroup()
+auto spp::parse::ParserSpp::ParseClosureExpressionParameterGroup()
   -> Unique<FunctionParameterGroupAst> {
   PARSE_ZERO_OR_MORE(p1, ParseClosureExpressionParameter, ParseTokenComma);
   return _CreateAst<FunctionParameterGroupAst>(nullptr, p1, nullptr);
 }
 
-auto ParserSpp::ParseClosureExpressionParameter()
+auto spp::parse::ParserSpp::ParseClosureExpressionParameter()
   -> Unique<FunctionParameterAst> {
   PARSE_ALTERNATE(
     p1, FunctionParameterAst, ParseFunctionParameterVariadic,
@@ -1597,7 +1729,7 @@ auto ParserSpp::ParseClosureExpressionParameter()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTypeExpression()
+auto spp::parse::ParserSpp::ParseTypeExpression()
   -> Unique<TypeAst> {
   PARSE_ALTERNATE(
     p1, TypeAst, ParseTypeNever, ParseTypeParenthesisedExpression, ParseTypeArray, ParseTypeTuple,
@@ -1605,7 +1737,7 @@ auto ParserSpp::ParseTypeExpression()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
+auto spp::parse::ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
   -> Unique<TypeAst> {
   using RT = lex::RawTokenType;
 
@@ -1673,7 +1805,7 @@ auto ParserSpp::ParseBinaryTypeExpression(const std::uint8_t min_prec)
   return lhs;
 }
 
-auto ParserSpp::ParseUnaryTypeExpression()
+auto spp::parse::ParserSpp::ParseUnaryTypeExpression()
   -> Unique<TypeAst> {
   PARSE_OPTIONAL(p1, ParseUnaryTypeExpressionOpBorrow)
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
@@ -1688,7 +1820,7 @@ auto ParserSpp::ParseUnaryTypeExpression()
     });
 }
 
-auto ParserSpp::ParseUnaryTypeExpressionOp()
+auto spp::parse::ParserSpp::ParseUnaryTypeExpressionOp()
   -> Unique<TypeUnaryExpressionOperatorAst> {
   PARSE_ALTERNATE(
     p1, TypeUnaryExpressionOperatorAst, ParseUnaryTypeExpressionOpBorrow,
@@ -1696,20 +1828,20 @@ auto ParserSpp::ParseUnaryTypeExpressionOp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseUnaryTypeExpressionOpBorrow()
+auto spp::parse::ParserSpp::ParseUnaryTypeExpressionOpBorrow()
   -> Unique<TypeUnaryExpressionOperatorBorrowAst> {
   PARSE_ONCE(p1, ParseConvention);
   return _CreateAst<TypeUnaryExpressionOperatorBorrowAst>(p1);
 }
 
-auto ParserSpp::ParseUnaryTypeExpressionOpNamespace()
+auto spp::parse::ParserSpp::ParseUnaryTypeExpressionOpNamespace()
   -> Unique<TypeUnaryExpressionOperatorNamespaceAst> {
   PARSE_ONCE(p1, ParseIdentifier);
   PARSE_ONCE(p2, ParseTokenDoubleColon);
   return _CreateAst<TypeUnaryExpressionOperatorNamespaceAst>(p1, p2);
 }
 
-auto ParserSpp::ParsePostfixTypeExpression()
+auto spp::parse::ParserSpp::ParsePostfixTypeExpression()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseUnaryTypeExpression);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixTypeExpressionOp, ParseNothing);
@@ -1720,7 +1852,7 @@ auto ParserSpp::ParsePostfixTypeExpression()
     });
 }
 
-auto ParserSpp::ParsePostfixTypeExpressionOp()
+auto spp::parse::ParserSpp::ParsePostfixTypeExpressionOp()
   -> Unique<TypePostfixExpressionOperatorAst> {
   PARSE_ALTERNATE(
     p1, TypePostfixExpressionOperatorAst,
@@ -1728,14 +1860,14 @@ auto ParserSpp::ParsePostfixTypeExpressionOp()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParsePostfixTypeExpressionOpNested()
+auto spp::parse::ParserSpp::ParsePostfixTypeExpressionOpNested()
   -> Unique<TypePostfixExpressionOperatorNestedTypeAst> {
   PARSE_ONCE(p1, ParseTokenDoubleColon);
   PARSE_ONCE(p2, ParseTypeIdentifier);
   return _CreateAst<TypePostfixExpressionOperatorNestedTypeAst>(p1, p2);
 }
 
-auto ParserSpp::ParseTypeParenthesisedExpression()
+auto spp::parse::ParserSpp::ParseTypeParenthesisedExpression()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseTypeExpression);
@@ -1743,19 +1875,19 @@ auto ParserSpp::ParseTypeParenthesisedExpression()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseTypeNever()
+auto spp::parse::ParserSpp::ParseTypeNever()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenExclamationMark);
   return AstClone(asts::generate::common_types::NeverType(p1->PosStart()));
 }
 
-auto ParserSpp::ParseTypeExpressionSimple()
+auto spp::parse::ParserSpp::ParseTypeExpressionSimple()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParsePostfixTypeExpressionSimple)
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParsePostfixTypeExpressionSimple()
+auto spp::parse::ParserSpp::ParsePostfixTypeExpressionSimple()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseUnaryTypeExpressionSimple);
   PARSE_ZERO_OR_MORE(p2, ParsePostfixTypeExpressionOp, ParseNothing);
@@ -1766,7 +1898,7 @@ auto ParserSpp::ParsePostfixTypeExpressionSimple()
     });
 }
 
-auto ParserSpp::ParseUnaryTypeExpressionSimple()
+auto spp::parse::ParserSpp::ParseUnaryTypeExpressionSimple()
   -> Unique<TypeAst> {
   PARSE_OPTIONAL(p1, ParseUnaryTypeExpressionOpBorrow)
   PARSE_ZERO_OR_MORE(p2, ParseUnaryTypeExpressionOp, ParseNothing);
@@ -1781,7 +1913,7 @@ auto ParserSpp::ParseUnaryTypeExpressionSimple()
     });
 }
 
-auto ParserSpp::ParseTypeIdentifier()
+auto spp::parse::ParserSpp::ParseTypeIdentifier()
   -> Unique<TypeIdentifierAst> {
   PARSE_ONCE(p1, ParseLexemeUpperIdentifier);
   PARSE_OPTIONAL(p2, ParseGenericArgumentGroup);
@@ -1790,7 +1922,7 @@ auto ParserSpp::ParseTypeIdentifier()
   return t;
 }
 
-auto ParserSpp::ParseTypeArray()
+auto spp::parse::ParserSpp::ParseTypeArray()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
   PARSE_ONCE(p2, ParseTypeExpression);
@@ -1801,14 +1933,14 @@ auto ParserSpp::ParseTypeArray()
     p1->PosStart(), shared_cast<TypeAst>(std::move(p2)), std::move(p4)));
 }
 
-auto ParserSpp::ParseTypeTuple()
+auto spp::parse::ParserSpp::ParseTypeTuple()
   -> Unique<TypeAst> {
   PARSE_ALTERNATE(
     p1, TypeAst, ParseTypeTuple0Types, ParseTypeTuple1Types, ParseTypeTupleNTypes);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTypeTuple0Types()
+auto spp::parse::ParserSpp::ParseTypeTuple0Types()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   auto p2 = Vec<Shared<TypeAst>>();
@@ -1817,7 +1949,7 @@ auto ParserSpp::ParseTypeTuple0Types()
     p1->PosStart(), std::move(p2)));
 }
 
-auto ParserSpp::ParseTypeTuple1Types()
+auto spp::parse::ParserSpp::ParseTypeTuple1Types()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseTypeExpression);
@@ -1830,7 +1962,7 @@ auto ParserSpp::ParseTypeTuple1Types()
   return AstClone(asts::generate::common_types::TupleType(p1->PosStart(), std::move(temp)));
 }
 
-auto ParserSpp::ParseTypeTupleNTypes()
+auto spp::parse::ParserSpp::ParseTypeTupleNTypes()
   -> Unique<TypeAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_TWO_OR_MORE(p2, ParseTypeExpression, ParseTokenComma);
@@ -1845,38 +1977,38 @@ auto ParserSpp::ParseTypeTupleNTypes()
     p1->PosStart(), std::move(temp)));
 }
 
-auto ParserSpp::ParseIdentifier()
+auto spp::parse::ParserSpp::ParseIdentifier()
   -> Unique<IdentifierAst> {
   PARSE_ONCE(p1, ParseLexemeIdentifier);
   return _CreateAst<IdentifierAst>(p1->PosStart(), p1->TokenData);
 }
 
-auto ParserSpp::ParseNumericIdentifier()
+auto spp::parse::ParserSpp::ParseNumericIdentifier()
   -> Unique<IdentifierAst> {
   PARSE_ONCE(p1, ParseLexemeDecInteger);
   return _CreateAst<IdentifierAst>(p1->PosStart(), p1->TokenData);
 }
 
-auto ParserSpp::ParseSelfIdentifier()
+auto spp::parse::ParserSpp::ParseSelfIdentifier()
   -> Unique<IdentifierAst> {
   PARSE_ONCE(p1, ParseKeywordSelf);
   return IdentifierAst::MappedFromTok(*p1, p1->TokenData);
 }
 
-auto ParserSpp::ParseUpperIdentifier()
+auto spp::parse::ParserSpp::ParseUpperIdentifier()
   -> Unique<IdentifierAst> {
   PARSE_ONCE(p1, ParseLexemeUpperIdentifier);
   if (p1 == nullptr) { return nullptr; }
   return _CreateAst<IdentifierAst>(p1->PosStart(), p1->TokenData);
 }
 
-auto ParserSpp::ParseIdentifierAsExpression()
+auto spp::parse::ParserSpp::ParseIdentifierAsExpression()
   -> Unique<ExpressionAst> {
   PARSE_ALTERNATE(p1, IdentifierAst, ParseIdentifier, ParseSelfIdentifier);
   return unique_cast<ExpressionAst>(std::move(p1));
 }
 
-auto ParserSpp::ParseLiteral()
+auto spp::parse::ParserSpp::ParseLiteral()
   -> Unique<LiteralAst> {
   PARSE_ALTERNATE(
     p1, LiteralAst, ParseLiteralChar, ParseLiteralString, ParseLiteralFloat, ParseLiteralInteger,
@@ -1887,27 +2019,27 @@ auto ParserSpp::ParseLiteral()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralChar()
+auto spp::parse::ParserSpp::ParseLiteralChar()
   -> Unique<CharLiteralAst> {
   PARSE_OPTIONAL(p1, ParseBytePrefixType)
   PARSE_ONCE(p2, ParseLexemeSingleQuoteChar);
   return _CreateAst<CharLiteralAst>(p1, p2);
 }
 
-auto ParserSpp::ParseLiteralString()
+auto spp::parse::ParserSpp::ParseLiteralString()
   -> Unique<StringLiteralAst> {
   PARSE_OPTIONAL(p1, ParseBytePrefixType)
   PARSE_ONCE(p2, ParseLexemeDoubleQuoteString);
   return _CreateAst<StringLiteralAst>(p1, p2);
 }
 
-auto ParserSpp::ParseLiteralFloat()
+auto spp::parse::ParserSpp::ParseLiteralFloat()
   -> Unique<FloatLiteralAst> {
   PARSE_ONCE(p1, ParseLiteralFloatB10);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralInteger()
+auto spp::parse::ParserSpp::ParseLiteralInteger()
   -> Unique<IntegerLiteralAst> {
   PARSE_ALTERNATE(
     p1, IntegerLiteralAst, ParseLiteralIntegerB02, ParseLiteralIntegerB08, ParseLiteralIntegerB16,
@@ -1915,13 +2047,13 @@ auto ParserSpp::ParseLiteralInteger()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralBoolean()
+auto spp::parse::ParserSpp::ParseLiteralBoolean()
   -> Unique<BooleanLiteralAst> {
   PARSE_ALTERNATE(p1, TokenAst, ParseKeywordTrue, ParseKeywordFalse);
   return _CreateAst<BooleanLiteralAst>(p1);
 }
 
-auto ParserSpp::ParseLiteralTuple(
+auto spp::parse::ParserSpp::ParseLiteralTuple(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<TupleLiteralAst> {
   auto parser_1 = [elem_parser, this] mutable { return ParseLiteralTuple1Element(std::move(elem_parser)); };
@@ -1930,7 +2062,7 @@ auto ParserSpp::ParseLiteralTuple(
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralArray(
+auto spp::parse::ParserSpp::ParseLiteralArray(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<ArrayLiteralAst> {
   auto parser_e = [elem_parser, this] mutable { return ParseLiteralArrayExplicitElements(std::move(elem_parser)); };
@@ -1939,7 +2071,7 @@ auto ParserSpp::ParseLiteralArray(
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralFloatB10()
+auto spp::parse::ParserSpp::ParseLiteralFloatB10()
   -> Unique<FloatLiteralAst> {
   PARSE_OPTIONAL(p1, ParseNumericPrefixOp);
   PARSE_ONCE(p2, ParseLexemeDecInteger);
@@ -1949,7 +2081,7 @@ auto ParserSpp::ParseLiteralFloatB10()
   return _CreateAst<FloatLiteralAst>(p1, p2, p3, p4, p5 ? p5->TokenData : "");
 }
 
-auto ParserSpp::ParseLiteralIntegerB02()
+auto spp::parse::ParserSpp::ParseLiteralIntegerB02()
   -> Unique<IntegerLiteralAst> {
   PARSE_OPTIONAL(p1, ParseNumericPrefixOp);
   PARSE_ONCE(p2, ParseLexemeBinInteger);
@@ -1957,7 +2089,7 @@ auto ParserSpp::ParseLiteralIntegerB02()
   return _CreateAst<IntegerLiteralAst>(p1, p2, p3 ? p3->TokenData : "");
 }
 
-auto ParserSpp::ParseLiteralIntegerB08()
+auto spp::parse::ParserSpp::ParseLiteralIntegerB08()
   -> Unique<IntegerLiteralAst> {
   PARSE_OPTIONAL(p1, ParseNumericPrefixOp);
   PARSE_ONCE(p2, ParseLexemeOctInteger);
@@ -1965,7 +2097,7 @@ auto ParserSpp::ParseLiteralIntegerB08()
   return _CreateAst<IntegerLiteralAst>(p1, p2, p3 ? p3->TokenData : "");
 }
 
-auto ParserSpp::ParseLiteralIntegerB10()
+auto spp::parse::ParserSpp::ParseLiteralIntegerB10()
   -> Unique<IntegerLiteralAst> {
   PARSE_OPTIONAL(p1, ParseNumericPrefixOp);
   PARSE_ONCE(p2, ParseLexemeDecInteger);
@@ -1973,7 +2105,7 @@ auto ParserSpp::ParseLiteralIntegerB10()
   return _CreateAst<IntegerLiteralAst>(p1, p2, p3 ? p3->TokenData : "");
 }
 
-auto ParserSpp::ParseLiteralIntegerB16()
+auto spp::parse::ParserSpp::ParseLiteralIntegerB16()
   -> Unique<IntegerLiteralAst> {
   PARSE_OPTIONAL(p1, ParseNumericPrefixOp);
   PARSE_ONCE(p2, ParseLexemeHexInteger);
@@ -1981,13 +2113,13 @@ auto ParserSpp::ParseLiteralIntegerB16()
   return _CreateAst<IntegerLiteralAst>(p1, p2, p3 ? p3->TokenData : "");
 }
 
-auto ParserSpp::ParseNumericPrefixOp()
+auto spp::parse::ParserSpp::ParseNumericPrefixOp()
   -> Unique<TokenAst> {
   PARSE_ALTERNATE(p1, TokenAst, ParseTokenAdd, ParseTokenSub);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseFloatSuffixType()
+auto spp::parse::ParserSpp::ParseFloatSuffixType()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, ParseTokenUnderscore)
   PARSE_ALTERNATE(
@@ -2001,7 +2133,7 @@ auto ParserSpp::ParseFloatSuffixType()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseIntegerSuffixType()
+auto spp::parse::ParserSpp::ParseIntegerSuffixType()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, ParseTokenUnderscore);
   PARSE_ALTERNATE(
@@ -2023,13 +2155,13 @@ auto ParserSpp::ParseIntegerSuffixType()
   return FORWARD_AST(p2);
 }
 
-auto ParserSpp::ParseBytePrefixType()
+auto spp::parse::ParserSpp::ParseBytePrefixType()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseSpecificCharacter('b'); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralTuple1Element(
+auto spp::parse::ParserSpp::ParseLiteralTuple1Element(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<TupleLiteralAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
@@ -2042,7 +2174,7 @@ auto ParserSpp::ParseLiteralTuple1Element(
   return _CreateAst<TupleLiteralAst>(p1, temp, p4);
 }
 
-auto ParserSpp::ParseLiteralTupleNElements(
+auto spp::parse::ParserSpp::ParseLiteralTupleNElements(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<TupleLiteralAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
@@ -2051,13 +2183,13 @@ auto ParserSpp::ParseLiteralTupleNElements(
   return _CreateAst<TupleLiteralAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseLiteralTupleElement()
+auto spp::parse::ParserSpp::ParseLiteralTupleElement()
   -> Unique<ExpressionAst> {
   PARSE_ALTERNATE(p1, ExpressionAst, ParseSpreadExpression, ParseExpression);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLiteralTupleSpread()
+auto spp::parse::ParserSpp::ParseLiteralTupleSpread()
   -> Unique<TupleLiteralAst> {
   PARSE_ONCE(p1, ParseTokenLeftParenthesis);
   PARSE_ONCE(p2, ParseSpreadExpression);
@@ -2067,7 +2199,7 @@ auto ParserSpp::ParseLiteralTupleSpread()
   return _CreateAst<TupleLiteralAst>(p1, temp, p3);
 }
 
-auto ParserSpp::ParseLiteralArrayRepeatedElement(
+auto spp::parse::ParserSpp::ParseLiteralArrayRepeatedElement(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<ArrayLiteralRepeatedElementAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
@@ -2078,7 +2210,7 @@ auto ParserSpp::ParseLiteralArrayRepeatedElement(
   return _CreateAst<ArrayLiteralRepeatedElementAst>(p1, p2, p3, p4, p5);
 }
 
-auto ParserSpp::ParseLiteralArrayExplicitElements(
+auto spp::parse::ParserSpp::ParseLiteralArrayExplicitElements(
   Func<Unique<ExpressionAst>()> &&elem_parser)
   -> Unique<ArrayLiteralExplicitElementsAst> {
   PARSE_ONCE(p1, ParseTokenLeftSquareBracket);
@@ -2087,7 +2219,7 @@ auto ParserSpp::ParseLiteralArrayExplicitElements(
   return _CreateAst<ArrayLiteralExplicitElementsAst>(p1, p2, p3);
 }
 
-auto ParserSpp::ParseSpecificCharacters(Str &&s)
+auto spp::parse::ParserSpp::ParseSpecificCharacters(Str &&s)
   -> Unique<TokenAst> {
   auto identifier = Str();
   PARSE_ONCE(_, ParseNothing);
@@ -2104,7 +2236,7 @@ auto ParserSpp::ParseSpecificCharacters(Str &&s)
     identifier);
 }
 
-auto ParserSpp::ParseSpecificCharacter(const char16_t c)
+auto spp::parse::ParserSpp::ParseSpecificCharacter(const char16_t c)
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   PARSE_ONCE(p1, ParseLexemeCharacterOrDigit)
@@ -2112,32 +2244,32 @@ auto ParserSpp::ParseSpecificCharacter(const char16_t c)
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLexemeCharacter()
+auto spp::parse::ParserSpp::ParseLexemeCharacter()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::LX_CHARACTER, lex::SppTokenType::LX_CHARACTER); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLexemeDigit()
+auto spp::parse::ParserSpp::ParseLexemeDigit()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::LX_DIGIT, lex::SppTokenType::LX_DIGIT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLexemeCharacterOrDigit()
+auto spp::parse::ParserSpp::ParseLexemeCharacterOrDigit()
   -> Unique<TokenAst> {
   PARSE_ALTERNATE(p1, TokenAst, ParseLexemeCharacter, ParseLexemeDigit);
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLexemeCharacterOrDigitOrUnderscore()
+auto spp::parse::ParserSpp::ParseLexemeCharacterOrDigitOrUnderscore()
   -> Unique<TokenAst> {
   PARSE_ALTERNATE(
     p1, TokenAst, ParseLexemeCharacter, ParseLexemeDigit, ParseTokenUnderscore)
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseLexemeBinInteger()
+auto spp::parse::ParserSpp::ParseLexemeBinInteger()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2163,7 +2295,7 @@ auto ParserSpp::ParseLexemeBinInteger()
   return out;
 }
 
-auto ParserSpp::ParseLexemeOctInteger()
+auto spp::parse::ParserSpp::ParseLexemeOctInteger()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2189,7 +2321,7 @@ auto ParserSpp::ParseLexemeOctInteger()
   return out;
 }
 
-auto ParserSpp::ParseLexemeDecInteger()
+auto spp::parse::ParserSpp::ParseLexemeDecInteger()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2207,7 +2339,7 @@ auto ParserSpp::ParseLexemeDecInteger()
   return out;
 }
 
-auto ParserSpp::ParseLexemeHexInteger()
+auto spp::parse::ParserSpp::ParseLexemeHexInteger()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2233,7 +2365,7 @@ auto ParserSpp::ParseLexemeHexInteger()
   return out;
 }
 
-auto ParserSpp::ParseLexemeSingleQuoteChar()
+auto spp::parse::ParserSpp::ParseLexemeSingleQuoteChar()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2254,7 +2386,7 @@ auto ParserSpp::ParseLexemeSingleQuoteChar()
   return out;
 }
 
-auto ParserSpp::ParseLexemeDoubleQuoteString()
+auto spp::parse::ParserSpp::ParseLexemeDoubleQuoteString()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2275,7 +2407,7 @@ auto ParserSpp::ParseLexemeDoubleQuoteString()
   return out;
 }
 
-auto ParserSpp::ParseLexemeIdentifier()
+auto spp::parse::ParserSpp::ParseLexemeIdentifier()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2297,7 +2429,7 @@ auto ParserSpp::ParseLexemeIdentifier()
   return out;
 }
 
-auto ParserSpp::ParseLexemeUpperIdentifier()
+auto spp::parse::ParserSpp::ParseLexemeUpperIdentifier()
   -> Unique<TokenAst> {
   PARSE_ONCE(_, ParseNothing);
   auto out = _CreateAst<TokenAst>(
@@ -2318,25 +2450,25 @@ auto ParserSpp::ParseLexemeUpperIdentifier()
   return out;
 }
 
-auto ParserSpp::ParseNothing()
+auto spp::parse::ParserSpp::ParseNothing()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::SP_NO_TOK, lex::SppTokenType::SP_NO_TOK); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseNewline()
+auto spp::parse::ParserSpp::ParseNewline()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LINE_FEED, lex::SppTokenType::TK_NEWLINE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseSpace()
+auto spp::parse::ParserSpp::ParseSpace()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_SPACE, lex::SppTokenType::TK_SPACE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenLeftCurlyBrace()
+auto spp::parse::ParserSpp::ParseTokenLeftCurlyBrace()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LEFT_CURLY_BRACE, lex::SppTokenType::TK_LEFT_CURLY_BRACE);
@@ -2344,7 +2476,7 @@ auto ParserSpp::ParseTokenLeftCurlyBrace()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRightCurlyBrace()
+auto spp::parse::ParserSpp::ParseTokenRightCurlyBrace()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_RIGHT_CURLY_BRACE, lex::SppTokenType::TK_RIGHT_CURLY_BRACE
@@ -2352,7 +2484,7 @@ auto ParserSpp::ParseTokenRightCurlyBrace()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenLeftSquareBracket()
+auto spp::parse::ParserSpp::ParseTokenLeftSquareBracket()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LEFT_SQUARE_BRACKET, lex::SppTokenType::
@@ -2360,7 +2492,7 @@ auto ParserSpp::ParseTokenLeftSquareBracket()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenLeftParenthesis()
+auto spp::parse::ParserSpp::ParseTokenLeftParenthesis()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LEFT_PARENTHESIS, lex::SppTokenType::TK_LEFT_PARENTHESIS);
@@ -2368,7 +2500,7 @@ auto ParserSpp::ParseTokenLeftParenthesis()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRightParenthesis()
+auto spp::parse::ParserSpp::ParseTokenRightParenthesis()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_RIGHT_PARENTHESIS, lex::SppTokenType::TK_RIGHT_PARENTHESIS
@@ -2376,7 +2508,7 @@ auto ParserSpp::ParseTokenRightParenthesis()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRightSquareBracket()
+auto spp::parse::ParserSpp::ParseTokenRightSquareBracket()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_RIGHT_SQUARE_BRACKET, lex::SppTokenType::
@@ -2384,105 +2516,105 @@ auto ParserSpp::ParseTokenRightSquareBracket()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenColon()
+auto spp::parse::ParserSpp::ParseTokenColon()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_COLON); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenComma()
+auto spp::parse::ParserSpp::ParseTokenComma()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_COMMA, lex::SppTokenType::TK_COMMA); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenAssign()
+auto spp::parse::ParserSpp::ParseTokenAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ASSIGN); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenUnderscore()
+auto spp::parse::ParserSpp::ParseTokenUnderscore()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_UNDERSCORE, lex::SppTokenType::TK_UNDERSCORE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenLessThan()
+auto spp::parse::ParserSpp::ParseTokenLessThan()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenGreaterThan()
+auto spp::parse::ParserSpp::ParseTokenGreaterThan()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenAdd()
+auto spp::parse::ParserSpp::ParseTokenAdd()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenSub()
+auto spp::parse::ParserSpp::ParseTokenSub()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenMul()
+auto spp::parse::ParserSpp::ParseTokenMul()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDiv()
+auto spp::parse::ParserSpp::ParseTokenDiv()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRem()
+auto spp::parse::ParserSpp::ParseTokenRem()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitIor()
+auto spp::parse::ParserSpp::ParseTokenBitIor()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitXor()
+auto spp::parse::ParserSpp::ParseTokenBitXor()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitAnd()
+auto spp::parse::ParserSpp::ParseTokenBitAnd()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDot()
+auto spp::parse::ParserSpp::ParseTokenDot()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenQuestionMark()
+auto spp::parse::ParserSpp::ParseTokenQuestionMark()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_QUESTION_MARK, lex::SppTokenType::TK_QUESTION_MARK); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenExclamationMark()
+auto spp::parse::ParserSpp::ParseTokenExclamationMark()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_EXCLAMATION_MARK);
@@ -2490,39 +2622,39 @@ auto ParserSpp::ParseTokenExclamationMark()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDeref()
+auto spp::parse::ParserSpp::ParseTokenDeref()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_AT_SIGN, lex::SppTokenType::TK_DEREF); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBorrow()
+auto spp::parse::ParserSpp::ParseTokenBorrow()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BORROW); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenSemicolon()
+auto spp::parse::ParserSpp::ParseTokenSemicolon()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_SEMICOLON, lex::SppTokenType::TK_SEMICOLON); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenSingleQuote()
+auto spp::parse::ParserSpp::ParseTokenSingleQuote()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_APOSTROPHE, lex::SppTokenType::TK_APOSTROPHE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDoubleQuote()
+auto spp::parse::ParserSpp::ParseTokenDoubleQuote()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_QUOTATION_MARK, lex::SppTokenType::TK_QUOTATION_MARK); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenArrowRight()
+auto spp::parse::ParserSpp::ParseTokenArrowRight()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_ARROW_RIGHT); });
   PARSE_ONCE(
@@ -2531,7 +2663,7 @@ auto ParserSpp::ParseTokenArrowRight()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDoubleDot()
+auto spp::parse::ParserSpp::ParseTokenDoubleDot()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERIOD, lex::SppTokenType::TK_DOUBLE_DOT); });
@@ -2539,7 +2671,7 @@ auto ParserSpp::ParseTokenDoubleDot()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDoubleColon()
+auto spp::parse::ParserSpp::ParseTokenDoubleColon()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_COLON, lex::SppTokenType::TK_DOUBLE_COLON); });
@@ -2547,7 +2679,7 @@ auto ParserSpp::ParseTokenDoubleColon()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenEquals()
+auto spp::parse::ParserSpp::ParseTokenEquals()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_EQ); });
@@ -2555,7 +2687,7 @@ auto ParserSpp::ParseTokenEquals()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenNotEquals()
+auto spp::parse::ParserSpp::ParseTokenNotEquals()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EXCLAMATION_MARK, lex::SppTokenType::TK_NE); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_NE); });
@@ -2563,7 +2695,7 @@ auto ParserSpp::ParseTokenNotEquals()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenLessThanEquals()
+auto spp::parse::ParserSpp::ParseTokenLessThanEquals()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_LE); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_LE); });
@@ -2571,7 +2703,7 @@ auto ParserSpp::ParseTokenLessThanEquals()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenGreaterThanEquals()
+auto spp::parse::ParserSpp::ParseTokenGreaterThanEquals()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_GE); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_GE); });
@@ -2579,7 +2711,7 @@ auto ParserSpp::ParseTokenGreaterThanEquals()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenAddAssign()
+auto spp::parse::ParserSpp::ParseTokenAddAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PLUS_SIGN, lex::SppTokenType::TK_ADD_ASSIGN); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_ADD_ASSIGN); });
@@ -2587,7 +2719,7 @@ auto ParserSpp::ParseTokenAddAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenSubAssign()
+auto spp::parse::ParserSpp::ParseTokenSubAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_HYPHEN, lex::SppTokenType::TK_SUB_ASSIGN); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_SUB_ASSIGN); });
@@ -2595,7 +2727,7 @@ auto ParserSpp::ParseTokenSubAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenMulAssign()
+auto spp::parse::ParserSpp::ParseTokenMulAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_MUL_ASSIGN); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_MUL_ASSIGN); });
@@ -2603,7 +2735,7 @@ auto ParserSpp::ParseTokenMulAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenDivAssign()
+auto spp::parse::ParserSpp::ParseTokenDivAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_SLASH, lex::SppTokenType::TK_DIV_ASSIGN); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_EQUALS_TO, lex::SppTokenType::TK_DIV_ASSIGN); });
@@ -2611,7 +2743,7 @@ auto ParserSpp::ParseTokenDivAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRemAssign()
+auto spp::parse::ParserSpp::ParseTokenRemAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_PERCENT_SIGN, lex::SppTokenType::TK_REM_ASSIGN); });
@@ -2620,7 +2752,7 @@ auto ParserSpp::ParseTokenRemAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenPow()
+auto spp::parse::ParserSpp::ParseTokenPow()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW); });
@@ -2628,7 +2760,7 @@ auto ParserSpp::ParseTokenPow()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitShl()
+auto spp::parse::ParserSpp::ParseTokenBitShl()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL); });
@@ -2636,7 +2768,7 @@ auto ParserSpp::ParseTokenBitShl()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitShr()
+auto spp::parse::ParserSpp::ParseTokenBitShr()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR); });
@@ -2644,7 +2776,7 @@ auto ParserSpp::ParseTokenBitShr()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitIorAssign()
+auto spp::parse::ParserSpp::ParseTokenBitIorAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_VERTICAL_BAR, lex::SppTokenType::TK_BIT_IOR_ASSIGN); });
@@ -2654,7 +2786,7 @@ auto ParserSpp::ParseTokenBitIorAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitXorAssign()
+auto spp::parse::ParserSpp::ParseTokenBitXorAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_CARET, lex::SppTokenType::TK_BIT_XOR_ASSIGN); });
   PARSE_ONCE(
@@ -2663,7 +2795,7 @@ auto ParserSpp::ParseTokenBitXorAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitAndAssign()
+auto spp::parse::ParserSpp::ParseTokenBitAndAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_AMPERSAND, lex::SppTokenType::TK_BIT_AND_ASSIGN); });
@@ -2673,7 +2805,7 @@ auto ParserSpp::ParseTokenBitAndAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenPowAssign()
+auto spp::parse::ParserSpp::ParseTokenPowAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
   PARSE_ONCE(p2, [this] { return ParseTokenRaw(lex::RawTokenType::TK_ASTERISK, lex::SppTokenType::TK_POW_ASSIGN); });
@@ -2682,7 +2814,7 @@ auto ParserSpp::ParseTokenPowAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitShlAssign()
+auto spp::parse::ParserSpp::ParseTokenBitShlAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_LESS_THAN, lex::SppTokenType::TK_BIT_SHL_ASSIGN); });
@@ -2694,7 +2826,7 @@ auto ParserSpp::ParseTokenBitShlAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenBitShrAssign()
+auto spp::parse::ParserSpp::ParseTokenBitShrAssign()
   -> Unique<TokenAst> {
   PARSE_ONCE(
     p1, [this] { return ParseTokenRaw(lex::RawTokenType::TK_GREATER_THAN, lex::SppTokenType::TK_BIT_SHR_ASSIGN); });
@@ -2706,211 +2838,211 @@ auto ParserSpp::ParseTokenBitShrAssign()
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordCls()
+auto spp::parse::ParserSpp::ParseKeywordCls()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_CLS, lex::SppTokenType::KW_CLS); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordFun()
+auto spp::parse::ParserSpp::ParseKeywordFun()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_FUN, lex::SppTokenType::KW_FUN); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordCor()
+auto spp::parse::ParserSpp::ParseKeywordCor()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_COR, lex::SppTokenType::KW_COR); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordSup()
+auto spp::parse::ParserSpp::ParseKeywordSup()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_SUP, lex::SppTokenType::KW_SUP); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordExt()
+auto spp::parse::ParserSpp::ParseKeywordExt()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_EXT, lex::SppTokenType::KW_EXT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordMut()
+auto spp::parse::ParserSpp::ParseKeywordMut()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_MUT, lex::SppTokenType::KW_MUT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordUse()
+auto spp::parse::ParserSpp::ParseKeywordUse()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_USE, lex::SppTokenType::KW_USE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordCmp()
+auto spp::parse::ParserSpp::ParseKeywordCmp()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_CMP, lex::SppTokenType::KW_CMP); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordLet()
+auto spp::parse::ParserSpp::ParseKeywordLet()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_LET, lex::SppTokenType::KW_LET); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordType()
+auto spp::parse::ParserSpp::ParseKeywordType()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_TYPE, lex::SppTokenType::KW_TYPE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordSelf()
+auto spp::parse::ParserSpp::ParseKeywordSelf()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_SELF, lex::SppTokenType::KW_SELF); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordCase()
+auto spp::parse::ParserSpp::ParseKeywordCase()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_CASE, lex::SppTokenType::KW_CASE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordOf()
+auto spp::parse::ParserSpp::ParseKeywordOf()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_OF, lex::SppTokenType::KW_OF); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordLoop()
+auto spp::parse::ParserSpp::ParseKeywordLoop()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_LOOP, lex::SppTokenType::KW_LOOP); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordIn()
+auto spp::parse::ParserSpp::ParseKeywordIn()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_IN, lex::SppTokenType::KW_IN); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordTo()
+auto spp::parse::ParserSpp::ParseKeywordTo()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_TO, lex::SppTokenType::KW_TO); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordElse()
+auto spp::parse::ParserSpp::ParseKeywordElse()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_ELSE, lex::SppTokenType::KW_ELSE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordGen()
+auto spp::parse::ParserSpp::ParseKeywordGen()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_GEN, lex::SppTokenType::KW_GEN); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordWith()
+auto spp::parse::ParserSpp::ParseKeywordWith()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_WITH, lex::SppTokenType::KW_WITH); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordDefer()
+auto spp::parse::ParserSpp::ParseKeywordDefer()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_DEFER, lex::SppTokenType::KW_DEFER); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordRet()
+auto spp::parse::ParserSpp::ParseKeywordRet()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_RET, lex::SppTokenType::KW_RET); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordExit()
+auto spp::parse::ParserSpp::ParseKeywordExit()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_EXIT, lex::SppTokenType::KW_EXIT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordSkip()
+auto spp::parse::ParserSpp::ParseKeywordSkip()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_SKIP, lex::SppTokenType::KW_SKIP); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordIs()
+auto spp::parse::ParserSpp::ParseKeywordIs()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_IS, lex::SppTokenType::KW_IS); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordAs()
+auto spp::parse::ParserSpp::ParseKeywordAs()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_AS, lex::SppTokenType::KW_AS); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordOr()
+auto spp::parse::ParserSpp::ParseKeywordOr()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_OR, lex::SppTokenType::KW_OR); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordAnd()
+auto spp::parse::ParserSpp::ParseKeywordAnd()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_AND, lex::SppTokenType::KW_AND); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordNot()
+auto spp::parse::ParserSpp::ParseKeywordNot()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_NOT, lex::SppTokenType::KW_NOT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordAsync()
+auto spp::parse::ParserSpp::ParseKeywordAsync()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_ASYNC, lex::SppTokenType::KW_ASYNC); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordTrue()
+auto spp::parse::ParserSpp::ParseKeywordTrue()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_TRUE, lex::SppTokenType::KW_TRUE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordFalse()
+auto spp::parse::ParserSpp::ParseKeywordFalse()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_FALSE, lex::SppTokenType::KW_FALSE); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordAwait()
+auto spp::parse::ParserSpp::ParseKeywordAwait()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_AWAIT, lex::SppTokenType::KW_AWAIT); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordRes()
+auto spp::parse::ParserSpp::ParseKeywordRes()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_RES, lex::SppTokenType::KW_RES); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseKeywordCaps()
+auto spp::parse::ParserSpp::ParseKeywordCaps()
   -> Unique<TokenAst> {
   PARSE_ONCE(p1, [this] { return ParseTokenRaw(lex::RawTokenType::KW_CAPS, lex::SppTokenType::KW_CAPS); });
   return FORWARD_AST(p1);
 }
 
-auto ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppTokenType mapped_tok)
+auto spp::parse::ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppTokenType mapped_tok)
   -> Unique<TokenAst> {
   if (_Pos > _Tokens.size()) {
     return nullptr;
@@ -2971,7 +3103,7 @@ auto ParserSpp::ParseTokenRaw(const lex::RawTokenType tok, lex::SppTokenType map
     mapped_tok, _Tokens[_Pos - 1].Data.data());
 }
 
-auto ParserSpp::_StoreError(
+auto spp::parse::ParserSpp::_StoreError(
   const std::size_t pos,
   Str &&err_str) const
   -> bool {
@@ -2984,7 +3116,7 @@ auto ParserSpp::_StoreError(
   return false;
 }
 
-auto ParserSpp::_StoreSpecificError(
+auto spp::parse::ParserSpp::_StoreSpecificError(
   const std::size_t pos,
   Str &&err_str) const
   -> void {
@@ -2995,7 +3127,7 @@ auto ParserSpp::_StoreSpecificError(
   }
 }
 
-auto ParserSpp::_LineFeedAhead() const
+auto spp::parse::ParserSpp::_LineFeedAhead() const
   -> bool {
   auto pos = _Pos;
   while (pos < _TokensLen and _Tokens[pos].Type == lex::RawTokenType::TK_SPACE) {

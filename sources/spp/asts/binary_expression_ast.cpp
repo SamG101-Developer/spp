@@ -41,6 +41,12 @@ import llvm;
 
 use_alias(spp::asts::meta, AllowPackWholeGuard);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace {
   /// Check if the binary operation is a logical "and" or
@@ -59,7 +65,7 @@ namespace {
   }
 }
 
-BinaryExpressionAst::BinaryExpressionAst(
+spp::asts::BinaryExpressionAst::BinaryExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -73,19 +79,19 @@ BinaryExpressionAst::BinaryExpressionAst(
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
-BinaryExpressionAst::~BinaryExpressionAst() = default;
+spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
-auto BinaryExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::BinaryExpressionAst::PosStart() const -> std::size_t {
   // Use the left hand side operand.
   return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-auto BinaryExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::BinaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the right hand side operand.
   return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<BinaryExpressionAst>(
     AstClone(Lhs),
@@ -99,7 +105,7 @@ auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto BinaryExpressionAst::ToString() const -> Str {
+auto spp::asts::BinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (Lhs != nullptr) {
     raw_string.append("(");
@@ -113,13 +119,13 @@ auto BinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
+auto spp::asts::BinaryExpressionAst::IsLogicalOperator() const -> bool {
   // Simple getter on the flag determining if this is a
   // logic operation.
   return _IsLogical;
 }
 
-auto BinaryExpressionAst::_BindFoldOperand(
+auto spp::asts::BinaryExpressionAst::_BindFoldOperand(
   Unique<ExpressionAst> &operand, ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Each element is read off it, so it is evaluated once ("HoistOnce"): a place where it is, anything else into a
   // temporary.
@@ -133,7 +139,7 @@ auto BinaryExpressionAst::_BindFoldOperand(
   operand->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto BinaryExpressionAst::_FoldElements(
+auto spp::asts::BinaryExpressionAst::_FoldElements(
   Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm, CompilerMetaData *meta)
   -> Vec<Unique<ExpressionAst>> {
   IMPORT_UTILS;
@@ -192,7 +198,7 @@ auto BinaryExpressionAst::_FoldElements(
   return elements_of();
 }
 
-auto BinaryExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -296,7 +302,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto BinaryExpressionAst::Stage8_CheckMemory(
+auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Run memory analysis on the temporary materialized
@@ -331,7 +337,7 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto BinaryExpressionAst::Stage11_CodeGen(
+auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Forward the code generation to the mapped function. The common
@@ -397,7 +403,7 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   return llvm_res;
 }
 
-auto BinaryExpressionAst::EvaluateCompTime(
+auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run comptime resolution on the temporary materialized
   // comparison chain values (checks validity).
@@ -418,7 +424,7 @@ auto BinaryExpressionAst::EvaluateCompTime(
   _MappedFn->EvaluateCompTime(sm, meta);
 }
 
-auto BinaryExpressionAst::InferType(
+auto spp::asts::BinaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // A logical operator is boolean by construction - both
   // operands are required to be, and the result is one of
@@ -446,7 +452,7 @@ auto BinaryExpressionAst::InferType(
   return _MappedFn->InferType(sm, meta);
 }
 
-auto BinaryExpressionAst::InferTypeRef(
+auto spp::asts::BinaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // A logical operator is boolean by construction. Before
   // analysis maps it onto a function, a comparison is boolean
@@ -465,7 +471,7 @@ auto BinaryExpressionAst::InferTypeRef(
   return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*> {
+auto spp::asts::BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*> {
   if (Lhs != nullptr and Rhs != nullptr) { return {Lhs.get(), Rhs.get()}; }
   if (_MappedFn == nullptr) { return {nullptr, nullptr}; }
   // "lhs.add(rhs)" as converted, or "Type::add(self=lhs, that=rhs)" once the call is elaborated.
@@ -478,7 +484,7 @@ auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, Express
   return {nullptr, nullptr};
 }
 
-auto BinaryExpressionAst::ReadExpr(
+auto spp::asts::BinaryExpressionAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both operands are expressions, read where they are written or where analysis moved them.
   const auto [lhs, rhs] = Operands();
@@ -489,7 +495,7 @@ auto BinaryExpressionAst::ReadExpr(
     AstClone(rhs->ReadExpr(sub)));
 }
 
-auto BinaryExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::BinaryExpressionAst::IsAllowedInDefault() const -> bool {
   // Check the left-hand-side and right-hand-side elems.
   return
     (Lhs == nullptr or Lhs->IsAllowedInDefault()) and

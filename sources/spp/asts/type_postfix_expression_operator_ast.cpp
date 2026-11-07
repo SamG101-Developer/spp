@@ -3,22 +3,26 @@ module;
 
 module spp.asts.type_postfix_expression_operator_ast;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-TypePostfixExpressionOperatorAst::TypePostfixExpressionOperatorAst() = default;
+spp::asts::TypePostfixExpressionOperatorAst::TypePostfixExpressionOperatorAst() = default;
 
-TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
+spp::asts::TypePostfixExpressionOperatorAst::~TypePostfixExpressionOperatorAst() = default;
 
-auto TypePostfixExpressionOperatorAst::operator<=>(
+auto spp::asts::TypePostfixExpressionOperatorAst::operator<=>(
   TypePostfixExpressionOperatorAst const &that) const -> Ordering {
   return Equals(that);
 }
 
-auto TypePostfixExpressionOperatorAst::operator==(
+auto spp::asts::TypePostfixExpressionOperatorAst::operator==(
   TypePostfixExpressionOperatorAst const &that) const -> bool {
   return Equals(that) == Ordering::equal;
 }
 
-auto TypePostfixExpressionOperatorAst::EqualsNestedType(
+auto spp::asts::TypePostfixExpressionOperatorAst::EqualsNestedType(
   TypePostfixExpressionOperatorNestedTypeAst const &) const -> Ordering {
   return Ordering::less;
 }

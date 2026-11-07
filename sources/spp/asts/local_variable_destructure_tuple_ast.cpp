@@ -26,8 +26,12 @@ import genex;
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, MetaGuard);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
+spp::asts::LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
   decltype(TokR) &&tok_r) :
@@ -39,19 +43,19 @@ LocalVariableDestructureTupleAst::LocalVariableDestructureTupleAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-LocalVariableDestructureTupleAst::~LocalVariableDestructureTupleAst() = default;
+spp::asts::LocalVariableDestructureTupleAst::~LocalVariableDestructureTupleAst() = default;
 
-auto LocalVariableDestructureTupleAst::PosStart() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureTupleAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto LocalVariableDestructureTupleAst::PosEnd() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureTupleAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto LocalVariableDestructureTupleAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LocalVariableDestructureTupleAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<LocalVariableDestructureTupleAst>(
     AstClone(TokL),
@@ -62,7 +66,7 @@ auto LocalVariableDestructureTupleAst::Clone() const -> Unique<Ast> {
   return c;
 }
 
-auto LocalVariableDestructureTupleAst::ToString() const -> Str {
+auto spp::asts::LocalVariableDestructureTupleAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Elems, ", ");
@@ -70,14 +74,14 @@ auto LocalVariableDestructureTupleAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LocalVariableDestructureTupleAst::BindsByMove() const -> bool {
+auto spp::asts::LocalVariableDestructureTupleAst::BindsByMove() const -> bool {
   // A destructure binds if any of its elements does. An empty
   // one, or one made only of skips, is a shape test and takes
   // nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
+auto spp::asts::LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // A tuple, whose length is its number of type arguments.
@@ -98,7 +102,7 @@ auto LocalVariableDestructureTupleAst::Stage7_AnalyseSemantics(
     *this, Elems, shape, _TmpName, _NewAsts, _FromCasePattern, sm, meta);
 }
 
-auto LocalVariableDestructureTupleAst::Stage8_CheckMemory(
+auto spp::asts::LocalVariableDestructureTupleAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Use the shared helper.
@@ -106,7 +110,7 @@ auto LocalVariableDestructureTupleAst::Stage8_CheckMemory(
     *this, Elems, _NewAsts, _TmpName, nullptr, _FromCasePattern, *sm, meta);
 }
 
-auto LocalVariableDestructureTupleAst::Stage11_CodeGen(
+auto spp::asts::LocalVariableDestructureTupleAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the value into the hidden temporary once, before
   // the elements index it.
@@ -125,7 +129,7 @@ auto LocalVariableDestructureTupleAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto LocalVariableDestructureTupleAst::EvaluateCompTime(
+auto spp::asts::LocalVariableDestructureTupleAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Use the shared helper.
@@ -133,13 +137,13 @@ auto LocalVariableDestructureTupleAst::EvaluateCompTime(
     _NewAsts, _TmpName, nullptr, *sm, meta);
 }
 
-auto LocalVariableDestructureTupleAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::LocalVariableDestructureTupleAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // Walk the nested bindings for variable names.
   IMPORT_UTILS;
   return destructure_utils::GetNestedBindingIdentifiers(Elems);
 }
 
-auto LocalVariableDestructureTupleAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableDestructureTupleAst::ExtractName() const -> Shared<IdentifierAst> {
   // No single identifier for destructured bindings.
   IMPORT_UTILS;
   return destructure_utils::UnmatchableSingleIdentifier(PosStart());

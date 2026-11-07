@@ -24,8 +24,12 @@ import genex;
 
 use_alias(spp::analyse::scopes, ScopeBlockName);
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
+spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptureGroupAst(
   decltype(TokL) &&tok_l,
   decltype(ParamGroup) &&param_group,
   decltype(CaptureGroup) &&capture_group,
@@ -37,19 +41,19 @@ ClosureExpressionParameterAndCaptureGroupAst::ClosureExpressionParameterAndCaptu
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->CaptureGroup)
 }
 
-ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
+spp::asts::ClosureExpressionParameterAndCaptureGroupAst::~ClosureExpressionParameterAndCaptureGroupAst() = default;
 
-auto ClosureExpressionParameterAndCaptureGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL->PosStart();
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ClosureExpressionParameterAndCaptureGroupAst>(
     AstClone(TokL),
@@ -58,7 +62,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Clone() const -> Unique<Ast> 
     AstClone(TokR));
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::ToString() const -> Str {
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(ParamGroup);
@@ -95,7 +99,7 @@ namespace spp::asts {
   }
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the arguments against the outer scope's symbols
   // (temp move asts).
@@ -120,7 +124,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage7_AnalyseSemantics(
   CaptureGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse the arguments against the outer scope's symbols
   // (temp move asts).
@@ -140,7 +144,7 @@ auto ClosureExpressionParameterAndCaptureGroupAst::Stage8_CheckMemory(
   CaptureGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
+auto spp::asts::ClosureExpressionParameterAndCaptureGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Generate the parameters into the current scope.
   sm->MoveToNextScope();

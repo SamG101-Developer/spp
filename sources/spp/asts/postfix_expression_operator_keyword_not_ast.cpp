@@ -19,41 +19,46 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ice;
 import spp.utils.uid;
 
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
+spp::asts::PostfixExpressionOperatorKeywordNotAst::PostfixExpressionOperatorKeywordNotAst(
   decltype(TokDot) &&tok_dot,
   decltype(TokNot) &&tok_not) :
   TokDot(std::move(tok_dot)),
   TokNot(std::move(tok_not)) {
 }
 
-PostfixExpressionOperatorKeywordNotAst::~PostfixExpressionOperatorKeywordNotAst() = default;
+spp::asts::PostfixExpressionOperatorKeywordNotAst::~PostfixExpressionOperatorKeywordNotAst() = default;
 
-auto PostfixExpressionOperatorKeywordNotAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot->PosStart();
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::PosEnd() const -> std::size_t {
   // Use the "not" token.
   return TokNot->PosEnd();
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<PostfixExpressionOperatorKeywordNotAst>(
     AstClone(TokDot),
     AstClone(TokNot));
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDot);
   SPP_STRING_APPEND(TokNot);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -65,7 +70,7 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Generate the left-hand-side expression, which analysis has
@@ -83,7 +88,7 @@ auto PostfixExpressionOperatorKeywordNotAst::Stage11_CodeGen(
   return ctx->Builder.CreateNot(lhs_val, "not" + uid);
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The "lhs" will be boolean based on previous analysis.
   Lhs->EvaluateCompTime(sm, meta);
@@ -94,12 +99,12 @@ auto PostfixExpressionOperatorKeywordNotAst::EvaluateCompTime(
   meta->CompTimeResult = cmp_lhs_bool->IsTrue() ? BooleanLiteralAst::False(p) : BooleanLiteralAst::True(p);
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   return TypeRef::Of(*generate::common_types_precompiled::BOOL, *sm->CurrentScope);
 }
 
-auto PostfixExpressionOperatorKeywordNotAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorKeywordNotAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of
   // its own.
   return true;

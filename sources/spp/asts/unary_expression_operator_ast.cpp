@@ -4,16 +4,21 @@ module;
 module spp.asts.unary_expression_operator_ast;
 import spp.asts.expression_ast;
 
-SPP_MOD_BEGIN
-UnaryExpressionOperatorAst::UnaryExpressionOperatorAst() = default;
-UnaryExpressionOperatorAst::~UnaryExpressionOperatorAst() = default;
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
-auto UnaryExpressionOperatorAst::RebuildsOperand() const -> bool {
+SPP_MOD_BEGIN
+spp::asts::UnaryExpressionOperatorAst::UnaryExpressionOperatorAst() = default;
+spp::asts::UnaryExpressionOperatorAst::~UnaryExpressionOperatorAst() = default;
+
+auto spp::asts::UnaryExpressionOperatorAst::RebuildsOperand() const -> bool {
   // Most operators work on their analysed operand.
   return false;
 }
 
-auto UnaryExpressionOperatorAst::WalksOperand() const -> bool {
+auto spp::asts::UnaryExpressionOperatorAst::WalksOperand() const -> bool {
   // The expression walks the operand, unless it was never
   // analysed in place.
   return RebuildsOperand();
