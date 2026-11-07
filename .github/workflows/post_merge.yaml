@@ -167,6 +167,7 @@ jobs:
     with:
       artifact: ${{ needs.linux-gcc.outputs.artifact }}
       spp-sha256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+      tests-sha256: ${{ needs.linux-gcc.outputs.tests-sha256 }}
       base: ${{ github.event.before }}
 
   # Apart from the run so that only this job can write. Concurrency

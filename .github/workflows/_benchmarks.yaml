@@ -24,6 +24,11 @@ on:
         description: "sha256 of the lane's staged spp, from its build job's outputs."
         required: true
         type: string
+      tests-sha256:
+        description: "sha256 of the lane's staged spp_tests, from its build job's outputs. Empty when it staged none."
+        required: false
+        type: string
+        default: ""
       base:
         description: "Commit whose records to compare against; the newest master records when it has none."
         required: false
@@ -59,6 +64,7 @@ jobs:
         with:
           artifact: ${{ inputs.artifact }}
           spp-sha256: ${{ inputs.spp-sha256 }}
+          tests-sha256: ${{ inputs.tests-sha256 }}
 
       - name: Cache valgrind
         id: valgrind-cache
@@ -122,6 +128,7 @@ jobs:
         with:
           artifact: ${{ inputs.artifact }}
           spp-sha256: ${{ inputs.spp-sha256 }}
+          tests-sha256: ${{ inputs.tests-sha256 }}
 
       - name: Fetch llvm.sh
         run: bash .github/scripts/setup/fetch-llvm-sh.sh

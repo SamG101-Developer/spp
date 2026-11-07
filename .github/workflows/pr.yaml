@@ -250,6 +250,7 @@ jobs:
     with:
       artifact: ${{ needs.linux-gcc.outputs.artifact }}
       spp-sha256: ${{ needs.linux-gcc.outputs.spp-sha256 }}
+      tests-sha256: ${{ needs.linux-gcc.outputs.tests-sha256 }}
       base: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
   # Independent of the compilation chain: doc breakage is worth
