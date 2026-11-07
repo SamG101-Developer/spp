@@ -172,6 +172,14 @@ namespace spp::cli {
       return compiler::dependencies::Declared(cwd).has_value();
     }
 
+    /// The build type the project's "spp.toml" names. Only call this after
+    /// "ValidateProject", which checks the key is there and a known type.
+    auto ProjectBuildType() -> compiler::BuildType {
+      const auto toml = toml::parse_file(CONFIG_FILE);
+      const auto name = toml["project"].as_table()->at("build").value<Str>();
+      return *compiler::TypeFromName(*name);
+    }
+
     /// Iterate a directory that may not be there. The optional
     /// folders are only created inside this project, so a
     /// dependency legitimately has none of them and walking one
@@ -791,16 +799,10 @@ auto spp::cli::HandleBuild(
     return false;
   }
 
-  // Extract the build type ("lib" vs "exe") from the toml config (a required
-  // key).
-  const auto build_type =
-    *toml::parse_file(
-      CONFIG_FILE)["project"].as_table()->at("build").value<Str>();
-
-  // Compile the code. Call the resolution index hooks depending on what is
-  // being indexed (project, specific files, etc).
-  auto c = compiler::Compiler(
-    build_mode, *compiler::TypeFromName(build_type));
+  // Compile the code, as the "lib" or "exe" the toml config says. Call the
+  // resolution index hooks depending on what is being indexed (project,
+  // specific files, etc).
+  auto c = compiler::Compiler(build_mode, ProjectBuildType());
 
   // If this is an analysis-only build, mark the compiler as that, to restrict
   // the stages, otherwise enable indexing for the marked files.
@@ -821,6 +823,17 @@ auto spp::cli::HandleBuild(
 /// [CHECKED]
 auto spp::cli::HandleRun(
   const compiler::BuildMode mode, Str const &target) -> bool {
+  // A library has no entry point, so there is nothing to run. Say so before
+  // the fetch and compile, rather than after them as a missing executable.
+  SPP_VALIDATE_PROJECT_OR(false, false);
+  if (ProjectBuildType() == compiler::BuildType::LIB) {
+    std::cerr
+      << "Error: This project is a library ('build = \"lib\"' in spp.toml), "
+      << "so there is nothing to run. Use 'spp build' to build it, or "
+      << "'spp test' to run its tests.\n";
+    return false;
+  }
+
   // Build the project first (skip VCS). Don't run the old binary when the
   // current code causes an error.
   if (not HandleBuild(mode, target, false)) { return false; }

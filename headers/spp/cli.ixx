@@ -34,8 +34,9 @@ namespace spp::cli {
     bool analyse_only = false, Vec<Str> const &index_files = {},
     bool index_project = false, Str const &stats_file = "") -> bool;
 
-  /// Compile the project and run what it produced. Only a host build can be
-  /// run. "target" is a target triple, or empty for the host. Only ever returns
+  /// Compile the project and run what it produced. Only a host build of an
+  /// "exe" project can be run; a library is refused before anything is built.
+  /// "target" is a target triple, or empty for the host. Only ever returns
   /// false, and only when there was nothing to run. Once the program runs, it
   /// exits with its own status.
   SPP_EXP_FUN auto HandleRun(
