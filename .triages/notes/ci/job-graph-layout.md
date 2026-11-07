@@ -1,7 +1,7 @@
 ---
 name: job-graph-layout
 description: "GitHub flattens called workflows into the caller's graph, columns by needs depth; one lane call per platform (build then tests, one row); ci-success needs lanes"
-updated: 2026-10-27
+updated: 2026-11-07
 ---
 
 The run's job graph does not draw a box around a reusable workflow call: it flattens the called jobs into the
@@ -13,9 +13,12 @@ columns, one row per lane; only a single job (build then tests) would make one c
 draws the same, so the lanes call the shared workflows:
 - `_build.yaml` (one job) builds, stages and plans the test matrix (`plan-tests.sh`); its outputs are all a test job
   needs, handed on as `build: ${{ toJSON(needs.build.outputs) }}`. `_test.yaml` is that matrix job.
-- `_lane.yaml`: `_build.yaml` then `_test.yaml`, inputs passed through with the same defaults (`modes: rel`,
-  `shard-count: 1`, `pack: true`); a new input to either has to be added here too. Outputs: the build's `artifact`
-  and digests.
+- `_lane.yaml`: `_build.yaml` then `_test.yaml`, inputs passed through with the same defaults (`modes: rel dev`,
+  valgrind, codegen and differential on, `shard-count: 1`, `pack: true`); a new input to either has to be added here
+  too. Outputs: the build's `artifact` and digests. Every lane runs these defaults (2026-11-07: Linux GCC lost its
+  shards, its unpacked cells and its extra suites), so a lane's cells are "GTest Rel" and "GTest Dev + STL + ...";
+  only the nightly sanitizer lane narrows them (rel only, no extras, 4 shards). The extras are Linux-only in
+  `plan-tests.sh`, and valgrind's cache key carries `runner.arch`, as the ARM lanes run it too.
 - `_coverage.yaml` (post_merge): `_build.yaml`, `_test.yaml`, then an inline report job that waits on every cell to
   merge their profiles. Outputs `coverage-report` (empty when it did not upload) for Sonar.
 - `_cross_codegen.yaml` (pr): `_build.yaml` (all targets), then the inline emit matrix (which also runs the s++

@@ -24,10 +24,6 @@ jobs:
       compiler: clang
       variant: coverage
       coverage: true
-      shard-count: 2
-      pack: false
-      codegen: true
-      differential: true
 
   test:
     name: Test

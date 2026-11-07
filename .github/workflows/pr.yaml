@@ -135,7 +135,8 @@ jobs:
   # `needs`, because cppcheck has its own filter and can be
   # skipped while this runs; a skipped need would otherwise skip
   # the lane too. Red cppcheck still stops it. The anchors here
-  # are reused by every lane.
+  # are reused by every lane. Every lane runs the same tests,
+  # _lane.yaml's defaults; only the platform differs.
   linux-gcc:
     name: Linux GCC
     needs: &lane-needs [ changes, cppcheck ]
@@ -147,13 +148,6 @@ jobs:
     permissions: &read
       contents: read
     uses: ./.github/workflows/_lane.yaml
-    with:
-      modes: rel dev
-      shard-count: 2
-      pack: false
-      valgrind: true
-      codegen: true
-      differential: true
 
   linux-clang:
     name: Linux Clang

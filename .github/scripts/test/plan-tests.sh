@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Expand a lane's test matrix: one entry per gtest mode and
-# shard (each carrying the shard count), then STL conformance,
-# valgrind, the codegen checks and the differential suite where
-# the lane asks for them, all against one build. With PACK, those ride in the last gtest
-# cell instead, where the test job runs every suite of a cell in
+# Expand a lane's test matrix: one entry per gtest mode, and per
+# shard where the lane shards (each carrying the shard count),
+# then STL conformance, valgrind, the codegen checks and the
+# differential suite where the lane asks for them, all against
+# one build. With PACK, those ride in the last gtest cell
+# instead, where the test job runs every suite of a cell in
 # parallel.
 set -euo pipefail
 
@@ -44,7 +45,8 @@ for mode in "${mode_list[@]}"; do
   esac
   for ((shard = 0; shard < SHARD_COUNT; shard++)); do
     suites="gtest"
-    label="GTest ${mode_label} $((shard + 1))/${SHARD_COUNT}"
+    label="GTest ${mode_label}"
+    [ "$SHARD_COUNT" -gt 1 ] && label+=" $((shard + 1))/${SHARD_COUNT}"
     timeout=90
     # A packed cell is advisory only if every suite in it is;
     # with gtest in it, it never is.

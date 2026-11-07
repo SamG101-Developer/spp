@@ -146,11 +146,6 @@ jobs:
       contents: read
     uses: ./.github/workflows/_lane.yaml
     with:
-      modes: rel dev
-      shard-count: 2
-      pack: false
-      codegen: true
-      differential: true
       check-floor: ${{ needs.release-gate.outputs.release == 'true' }}
 
   # The benchmark record of this commit, against the one before it,

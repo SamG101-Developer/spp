@@ -88,7 +88,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.tools/valgrind
-          key: valgrind-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+          key: valgrind-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
 
       - name: Install valgrind (cache miss)
         if: contains(matrix.suites, 'valgrind') && steps.valgrind-cache.outputs.cache-hit != 'true'

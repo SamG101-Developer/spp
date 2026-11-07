@@ -36,7 +36,7 @@ on:
       modes:
         required: false
         type: string
-        default: "rel"
+        default: "rel dev"
       shard-count:
         required: false
         type: number
@@ -48,15 +48,15 @@ on:
       valgrind:
         required: false
         type: boolean
-        default: false
+        default: true
       codegen:
         required: false
         type: boolean
-        default: false
+        default: true
       differential:
         required: false
         type: boolean
-        default: false
+        default: true
       pack:
         required: false
         type: boolean
