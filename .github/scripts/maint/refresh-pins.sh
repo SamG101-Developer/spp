@@ -92,6 +92,25 @@ echo
 echo "gtest-parallel (${MANIFEST})"
 set_pin pin.gtest-parallel.commit "$(git ls-remote https://github.com/google/gtest-parallel.git HEAD 2> /dev/null | cut -f 1)"
 
+# STD (the benchmarks' std commit). Kept in benchmarks/std.rev
+# rather than the manifest; a bump makes the next benchmark run
+# compare nothing, as every workload's hash changes.
+echo
+echo "std (benchmarks/std.rev)"
+std_old="$(cat benchmarks/std.rev)"
+std_new="$(git ls-remote https://github.com/SamG101-Developer/SPP-STL.git HEAD 2> /dev/null | cut -f 1)"
+if [ "${#std_new}" -ne 40 ]; then
+  echo "::error::could not resolve HEAD for SPP-STL"
+  status=1
+elif [ "$std_old" = "$std_new" ]; then
+  echo "  std.rev unchanged"
+else
+  echo "$std_new" > benchmarks/std.rev
+  echo "  std.rev"
+  echo "    ${std_old}"
+  echo " -> ${std_new}"
+fi
+
 # LLVM.SH
 echo
 echo "apt.llvm.org installer (${MANIFEST})"
