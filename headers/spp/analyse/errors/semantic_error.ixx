@@ -631,7 +631,7 @@ SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterConflictError final 
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericParameterNotInferredError final : SemanticError {
-  explicit SppGenericParameterNotInferredError(Ast const &param, Ast const &ctx);
+  explicit SppGenericParameterNotInferredError(Ast const &param, Ast const &use);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppGenericArgumentTooManyError final : SemanticError {

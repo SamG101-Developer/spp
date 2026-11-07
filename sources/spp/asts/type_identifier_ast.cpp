@@ -380,7 +380,7 @@ auto TypeIdentifierAst::Stage7_AnalyseSemantics(
       for (auto &&[name, source, target] : std::exchange(_AttributeEquations, {})) {
         solver.Unify(name, std::move(source), std::move(target));
       }
-      solver.Solve(*type_sym->FqName());
+      solver.Solve(*this);
       _TypeArgsChecked = meta->CurrentStage >= CompilerStage::kPreAnalyseSemantics
         and not meta->SkipSubstitutedConstraintChecks;
       _CompArgsChecked = meta->CurrentStage >= CompilerStage::kAttachSupScopes;
@@ -550,7 +550,7 @@ auto TypeIdentifierAst::_RecheckArgs(
       named->Stage7_AnalyseSemantics(sm, meta);
     }
     solver.Give(std::move(named->Args));
-    solver.Solve(*_ResolvedSym->FqName());
+    solver.Solve(*this);
   }
   _TypeArgsChecked = _TypeArgsChecked or types_due;
   _CompArgsChecked = _CompArgsChecked or comps_due;

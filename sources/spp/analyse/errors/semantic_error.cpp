@@ -1128,10 +1128,10 @@ SppGenericParameterConflictError::SppGenericParameterConflictError(
 }
 
 SppGenericParameterNotInferredError::SppGenericParameterNotInferredError(
-  Ast const &param, Ast const &ctx) {
+  Ast const &param, Ast const &use) {
   AddHeader(72, "Generic Parameter Not Inferred Error");
-  AddCtxForErr(&ctx, "Context parameter introduced here");
-  AddErr(&param, "Generic parameter not inferred here");
+  AddCtxForErr(&param, "Generic parameter declared here");
+  AddErr(&use, "Generic parameter not inferred here");
   AddFooter(
     "The type for this generic parameter could not be inferred.",
     "Provide an explicit type argument for the generic parameter.");

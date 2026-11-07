@@ -210,6 +210,49 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_object_initializer_with_nothing_to_infer_from,
+  SppGenericParameterNotInferredError, "Box", R"(
+    cls Box[T] {
+        val: T
+    }
+
+    fun g() -> Void {
+        let x = Box()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_std_type_initializer_with_nothing_to_infer_from,
+  SppGenericParameterNotInferredError, "Pass", R"(
+    fun g() -> Res[Void, Bool] {
+        ret Pass()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_type_annotation_missing_its_generic_argument,
+  SppGenericParameterNotInferredError, "Box", R"(
+    cls Box[T] {
+        val: T
+    }
+
+    fun g(b: Box) -> Void {
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_NotInferred,
+  test_valid_std_type_initializer_with_the_generic_written, R"(
+    fun g() -> Res[Void, Bool] {
+        ret Pass[Void]()
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestGenericInference_Conflict,
   test_invalid_too_many_explicit_generic_arguments,

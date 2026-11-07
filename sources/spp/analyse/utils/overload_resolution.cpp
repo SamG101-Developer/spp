@@ -809,7 +809,7 @@ namespace spp::analyse::utils::overload_resolution {
         }
       }
 
-      solver.Solve(*site.Written->InferType(sm, meta));
+      solver.Solve(*site.Written);
     }
 
     /**
