@@ -524,6 +524,13 @@ auto spp::cli::RunCli(
     "Run the test executable under this command, e.g. \"valgrind "
     "--error-exitcode=9\" (lifts the memory cap)");
 
+  auto test_mode = Str("rel");
+  const auto test_cmd_mode_option = test_cmd->add_option(
+    "-m,--mode", test_mode,
+    "Test mode");
+  test_cmd_mode_option->check(CLI::IsMember(compiler::ModeNames()));
+  test_cmd_mode_option->default_val("rel");
+
   auto test_target = Str();
   test_cmd->add_option(
     "-t,--target", test_target,
@@ -531,8 +538,8 @@ auto spp::cli::RunCli(
 
   test_cmd->callback([&] {
     HandleTest(
-      test_name_filter, test_group_filter, Vec(test_libs), test_all_libs,
-      test_runner, test_target);
+      *compiler::ModeFromName(test_mode), test_name_filter, test_group_filter,
+      Vec(test_libs), test_all_libs, test_runner, test_target);
   });
 
   // The "spp validate" command, validates the project structure, and the vcs
@@ -924,8 +931,9 @@ auto spp::cli::HandleClean(
 
 /// [CHECKED] [TIDY]
 auto spp::cli::HandleTest(
-  Str const &name_filter, Str const &group_filter, Vec<Str> const &libs,
-  const bool all_libs, Str const &runner, Str const &target) -> void {
+  const compiler::BuildMode mode, Str const &name_filter,
+  Str const &group_filter, Vec<Str> const &libs, const bool all_libs,
+  Str const &runner, Str const &target) -> void {
   // Validate the project structure first.
   SPP_VALIDATE_PROJECT(false);
 
@@ -956,11 +964,11 @@ auto spp::cli::HandleTest(
   }
   if (not LoadProjectFeatures()) { std::exit(1); }
 
-  // A test build compiles at "rel", so it must look for its executable there
+  // A test build compiles in "mode", so it must look for its executable there
   // too - see the Compiler constructed below.
   const auto cwd = std::filesystem::current_path();
   const auto out = compiler::OutLayout{
-    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = compiler::BuildMode::REL
+    .Root = cwd, .Target = codegen::TargetFolderName(), .Mode = mode
   };
   std::filesystem::create_directories(out.OutRoot());
 
@@ -981,15 +989,13 @@ auto spp::cli::HandleTest(
   }
 
   /// Create a test scope with the provided library information from the flags,
-  /// and invoke a compiler instance with the scope. Currently always in release
-  /// mode and as an executable. Todo: Dev mode testing?
+  /// and invoke a compiler instance with the scope, in the chosen mode and as an
+  /// executable.
   const auto scope = compiler::TestScope{
     .Project = true, .AllLibs = all_libs, .Libs = libs
   };
   auto c = compiler::Compiler(
-    compiler::BuildMode::REL,
-    compiler::BuildType::EXE,
-    scope);
+    mode, compiler::BuildType::EXE, scope);
   c.SetTestFilters(name_filter, group_filter);
   if (not CompileReportingErrors(c)) { std::exit(1); }
 

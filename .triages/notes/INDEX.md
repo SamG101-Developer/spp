@@ -50,7 +50,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
 - [Binary memory cap](build/spp-run-binary-memory-cap.md) — ulimit -v guard in cli.cpp; keep it
 - [Every codegen part has a benchmark](build/every-codegen-part-has-a-benchmark.md) — new AST with codegen or codegen module: a `covers` entry or exempt.txt reason; pre-commit checks
-- [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test is rel+LTO; virtual base, no prior call
+- [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test defaults to rel+LTO (`-m dev` keeps it); virtual base, no prior call
 
 ## Areas (open the area's INDEX.md when the work touches it)
 - [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (16)

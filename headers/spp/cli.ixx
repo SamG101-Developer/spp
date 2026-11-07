@@ -48,11 +48,12 @@ namespace spp::cli {
     Opt<compiler::BuildMode> mode, Str const &target = "") -> void;
 
   /// Build the project together with its "tst" folder and run the unit tests it
-  /// declares. There are filter flags for the test name or group, library
-  /// constraints, and a "runner" (ie test in Valgrind or QEMU).
+  /// declares, under a build mode. There are filter flags for the test name or
+  /// group, library constraints, and a "runner" (ie test in Valgrind or QEMU).
   SPP_EXP_FUN auto HandleTest(
-    Str const &name_filter = "", Str const &group_filter = "",
-    Vec<Str> const &libs = {}, bool all_libs = false, Str const &runner = "",
+    compiler::BuildMode mode, Str const &name_filter = "",
+    Str const &group_filter = "", Vec<Str> const &libs = {},
+    bool all_libs = false, Str const &runner = "",
     Str const &target = "") -> void;
 
   /// Check the current directory has the structure a project needs, and that
