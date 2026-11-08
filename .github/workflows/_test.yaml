@@ -72,6 +72,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Exclude the workspace from Defender (Windows)
+        if: runner.os == 'Windows'
+        run: bash .github/scripts/setup/exclude-defender-windows.sh
+
       - name: Fetch and verify binaries
         uses: ./.github/actions/setup-runtime
         with:
