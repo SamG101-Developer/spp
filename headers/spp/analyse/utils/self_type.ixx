@@ -11,9 +11,9 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
-use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts, struct TypeAst);
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::self_type {
   /// "type" with "Self" read as "self": parameter 0 bound to it

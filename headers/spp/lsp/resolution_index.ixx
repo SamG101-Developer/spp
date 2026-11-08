@@ -28,8 +28,9 @@ use(spp::lsp::resolution_index, struct Overridable);
 use(spp::lsp::resolution_index, struct OverridableList);
 use(spp::lsp::resolution_index, struct ResolvedName);
 use(spp::lsp::resolution_index, struct Signature);
-use(spp::utils::errors, class ErrorFormatter);
-use(spp::utils::errors, struct SourceSpan);
+
+use_alias(spp::utils::errors, ErrorFormatter);
+use_alias(spp::utils::errors, SourceSpan);
 
 /// One name in the source and what it turned out to mean:
 /// where it is written, what kind of thing it named, what

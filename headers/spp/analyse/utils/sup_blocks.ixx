@@ -13,7 +13,8 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// What the two "sup" blocks ("sup X { .. }", "sup X ext Y { .. }") do alike at each stage, each called with the scope
 /// manager inside the block's own scope.

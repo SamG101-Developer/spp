@@ -11,8 +11,6 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct ExprSubst);
-use(spp::analyse::scopes, struct GenericSubst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
@@ -23,7 +21,10 @@ use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::type_resolution {
   /// Whether "AnalyseWrittenType" replaces "Self" from the scope,

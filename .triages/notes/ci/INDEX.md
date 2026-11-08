@@ -23,5 +23,6 @@
 - [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
 - [LLVM Windows/macOS pins](llvm-win-mac-pins-refreshed.md) — fixed tags that refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt
 - [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify
-- [MSVC: imported enum redeclared](msvc-opaque-enum-redeclared-across-modules.md) — C1117 'already been defined': use(…, enum class X) while importing X's module; use use_alias
+- [MSVC: imported type redeclared](msvc-imported-type-redeclared.md) — use(…, struct/enum X) while importing X's module: C1117 (enum) / C2027 (struct); use use_alias
+- [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply; apply re-export removed; reproducers in the buildlog artifact
 - [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4

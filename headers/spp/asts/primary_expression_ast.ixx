@@ -8,13 +8,14 @@ import std;
 use_common(PrimaryExpressionAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
-use(spp::asts, struct ExpressionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
+
+use_alias(spp::asts, ExpressionAst);
 
 SPP_EXP_CLS struct spp::asts::PrimaryExpressionAst : ExpressionAst {
   PrimaryExpressionAst();

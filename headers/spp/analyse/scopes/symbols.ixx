@@ -15,7 +15,6 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct AliasInfo);
-use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct Symbol);
 use(spp::analyse::scopes, struct NamespaceSymbol);
 use(spp::analyse::scopes, struct TypeRef);
@@ -25,21 +24,22 @@ use(spp::analyse::scopes, struct PackInfo);
 use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
-use(spp::asts, struct Ast);
 use(spp::asts::mixins, struct VisibilityAst);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
-use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeStatementAst);
-use(spp::codegen, struct LlvmTypeSymbolInfo);
 
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ConventionAst);
 use_alias(spp::asts, ConventionTag);
 use_alias(spp::asts::utils, Visibility);
+use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
 /// What a type resolves to: the symbol of the type, and how
 /// a value of it is held. The convention is not part of the

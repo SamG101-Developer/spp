@@ -9,7 +9,8 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct FunctionPrototypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// Comparing function signatures: whether a new overload conflicts
 /// with one already declared, and whether a method is a genuine

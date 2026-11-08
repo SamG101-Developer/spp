@@ -17,9 +17,10 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct TypeIdentifierAst);
+
+use_alias(spp::asts, TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX

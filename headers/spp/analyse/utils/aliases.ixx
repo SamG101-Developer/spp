@@ -14,8 +14,8 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeStatementAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::aliases {
   /// The result of resolving a type alias, moving through multiple aliasing

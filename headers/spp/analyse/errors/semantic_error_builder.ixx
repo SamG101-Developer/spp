@@ -16,8 +16,9 @@ import std;
 
 use(spp::asts, struct Ast);
 use(spp::asts, struct TypeAst);
-use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
+
+use_alias(spp::analyse::scopes, Scope);
 
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ

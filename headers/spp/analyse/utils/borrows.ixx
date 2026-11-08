@@ -13,7 +13,8 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct FunctionCallArgumentAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::borrows {
   /// "conflict" with "loan", met now: raised at once, unless the

@@ -27,9 +27,9 @@ use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
-use(spp::codegen, struct LlvmFnWrapper);
 use(spp::analyse::scopes, class Scope);
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::codegen, LlvmFnWrapper);
 
 /// The prototype of a function: its name, parameters and
 /// return type. The body is held in the implementation ast.

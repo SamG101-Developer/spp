@@ -11,7 +11,8 @@ use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::mem_utils {
   /// What "ValidateSymbolMemory" checks and records for a use: everything by default.

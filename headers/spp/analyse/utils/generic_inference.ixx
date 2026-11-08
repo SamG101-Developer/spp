@@ -12,7 +12,6 @@ import std;
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::analyse::scopes, struct TypeSymbol);
-use(spp::analyse::scopes, struct GenericSubst);
 use(spp::analyse::utils::generic_inference, class GenericSolver);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
@@ -23,9 +22,10 @@ use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, GenericSubst);
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// Solves the generic arguments of one use of a generic declaration: a call of a generic function, or a generic
 /// type named with (or without) its arguments. Everything a parameter is offered is collected against that parameter

@@ -17,8 +17,9 @@ use(spp::analyse::utils::pattern_solver, struct SubjectEdges);
 use(spp::asts, struct Ast);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use(spp::codegen, struct LlvmCtx);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::case_utils {
   /// The match edge of "branch", once its patterns and guard have

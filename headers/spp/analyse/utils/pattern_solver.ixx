@@ -10,14 +10,14 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeRef);
-use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::utils::pattern_solver, class PatternSolver);
 use(spp::asts, struct CaseExpressionBranchAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts::meta, struct CompilerMetaData);
 
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, SubjectOnMatch);
 
 namespace spp::analyse::utils::pattern_solver {

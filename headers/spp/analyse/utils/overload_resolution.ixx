@@ -22,8 +22,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::overload_resolution {
   /// A function overload struct contains information about

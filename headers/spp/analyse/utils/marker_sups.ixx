@@ -16,7 +16,8 @@ use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::marker_sups {
   /// Whether "kind" ("TypeRef::ForKindCheck", read in "scope") is the "Copy" marker, which makes a type's values

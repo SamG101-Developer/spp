@@ -9,8 +9,6 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeRef);
-use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::type_members, struct TypePart);
 use(spp::asts, struct ClassAttributeAst);
 use(spp::asts, struct ClassPrototypeAst);
@@ -18,6 +16,9 @@ use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
+
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 
 /// A uniform way to handle "parts" of types, making attribute
 /// vs indexing a lot easier / cleaner. Provides one way to

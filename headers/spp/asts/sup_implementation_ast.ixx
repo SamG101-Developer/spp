@@ -10,8 +10,9 @@ import spp.utils.types;
 import llvm;
 import std;
 
+use_alias(spp::asts, Ast);
+
 use_common(SupImplementationAst);
-use(spp::asts, struct Ast);
 
 SPP_EXP_CLS struct spp::asts::SupImplementationAst final : InnerScopeAst<Unique<Ast>> {
   SPP_AST_KIND(SupImplementationAst)

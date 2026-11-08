@@ -16,9 +16,9 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
-use(spp::asts::meta, struct CompilerMetaData);
 
 use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 
 namespace spp::analyse::utils::monomorphization {

@@ -12,10 +12,11 @@ import llvm;
 import std;
 
 use_common(InnerScopeExpressionAst);
-use(spp::asts, struct Ast);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+
+use_alias(spp::asts, Ast);
 
 SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(InnerScopeExpressionAst);

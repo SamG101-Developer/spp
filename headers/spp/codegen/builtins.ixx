@@ -12,8 +12,9 @@ import std;
 
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct FunctionPrototypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
 use(spp::codegen::builtins, struct LoweredFnImpl);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// A lowered function implementation is an implementation
 /// written with LLVM IR directly. Typically this is to use

@@ -26,7 +26,8 @@ use(spp::asts, struct FloatLiteralAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct IntegerLiteralAst);
 use(spp::asts, struct ObjectInitializerAst);
-use(spp::asts::meta, struct CompTimeCallArgs);
+
+use_alias(spp::asts::meta, CompTimeCallArgs);
 
 namespace spp {
   /// An argument as the intrinsic's parameter type. Analysis

@@ -16,7 +16,8 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts::meta, struct CompilerMetaData);
+
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::fn_values {
   /// A function value match struct contains information about

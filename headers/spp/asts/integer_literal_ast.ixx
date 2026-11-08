@@ -19,9 +19,10 @@ import numex.big_int;
 use_common(IntegerLiteralAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct TokenAst);
-use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
+
+use_alias(spp::asts, TypeAst);
 
 SPP_EXP_CLS struct spp::asts::IntegerLiteralAst final : LiteralAst {
 
