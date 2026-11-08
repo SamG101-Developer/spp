@@ -79,17 +79,30 @@ namespace spp::compiler {
       utils::stats::Record(prefix + "instructions", instructions);
     }
 
-    /// [CHECKED]
     /// The command the link runs, followed by the arguments after it. Either
-    /// the one "[target.linkers]" names for the target, otherwise "cc" for the
-    /// host, and for another target its GNU cross compiler, or the newest
-    /// versioned one. Nothing, reported, when none is on PATH.
+    /// the one "[target.linkers]" names for the target, otherwise "lld-link"
+    /// for an MSVC target, "cc" for the host, and for another target its GNU
+    /// cross compiler, or the newest versioned one. Nothing, reported, when
+    /// none is on PATH.
     auto LinkerCommand() -> Opt<Str> {
       // Get the linker for the target, either specified in the toml file, or
       // "cc" for the host target.
       const auto folder = Str(codegen::TargetFolderName());
       const auto named = utils::features::Linker(folder);
       if (named.has_value()) { return named; }
+
+      // The object is built against the MSVC runtime ("__security_cookie",
+      // "__C_specific_handler"); "cc" on Windows is whatever GNU toolchain is
+      // on PATH, whose runtime has neither. lld-link finds the MSVC and Windows
+      // SDK libraries itself.
+      if (codegen::TargetTriple().isWindowsMSVCEnvironment()) {
+        if (utils::files::FindProgram("lld-link").has_value()) { return Str("lld-link"); }
+        std::cerr
+          << "Error: no linker for " << folder << ": 'lld-link' is not on PATH.\n"
+          << "  Install LLVM (lld-link ships with it), or name one under [target.linkers] in spp.toml, as "
+          << folder << " = \"link\" from a Visual Studio developer prompt.\n";
+        return Nullopt;
+      }
       if (codegen::TargetIsHost()) { return Str("cc"); }
 
       // Create a target specific "gcc" program name, and if it is found on the
@@ -112,6 +125,142 @@ namespace spp::compiler {
         << "'), or name one under [target.linkers] in spp.toml, as "
         << folder << " = \"...\".\n";
       return Nullopt;
+    }
+
+    /// Link for an MSVC target, with lld-link's options (which link.exe shares).
+    /// Each ffi library is linked through its import library ("sppc.lib") and
+    /// its DLL copied beside the executable, where Windows looks for it first:
+    /// there is no rpath. The C runtime is the static one, as the object names
+    /// none itself ("__security_cookie" and "__C_specific_handler" come from
+    /// it), so the executable needs no Visual C++ redistributable.
+    auto LinkMsvcExecutable(
+      OutLayout const &out, Str const &linker, Vec<Path> const &libraries) -> bool {
+      const auto exe_file = out.ExecutablePath();
+      auto command = linker
+        + " /nologo /subsystem:console"
+        + " /out:" + utils::shell::Quote(utils::files::NativeString(exe_file))
+        + " " + utils::shell::Quote(utils::files::NativeString(out.ObjectFile()));
+
+      for (auto const &lib : libraries) {
+        const auto import = ffi::ImportLibraryOf(lib);
+        SPP_ASSERT(import.has_value());
+        std::filesystem::copy_file(
+          lib, exe_file.parent_path() / lib.filename(), std::filesystem::copy_options::overwrite_existing);
+        command += " " + utils::shell::Quote(utils::files::NativeString(*import));
+      }
+      command += " libcmt.lib libvcruntime.lib libucrt.lib kernel32.lib";
+
+      std::cout << "Linking: " << exe_file << std::endl;
+      if (const auto status = utils::shell::Run(command); status != 0) {
+        llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
+        return false;
+      }
+      return true;
+    }
+
+    /// Link with a cc-like driver (gcc, clang, a cross gcc): ELF, Mach-O and
+    /// MinGW. Each ffi library is staged into "lib/" beside the executable and
+    /// found there through the runpath; on ELF the executable is then checked
+    /// for the segment hardening the linker was asked for.
+    auto LinkCcExecutable(
+      OutLayout const &out, Str const &linker, Vec<Path> const &libraries) -> bool {
+      const auto obj_file = out.ObjectFile();
+      const auto exe_file = out.ExecutablePath();
+      const auto lib_dir = out.LibRoot();
+      const auto &triple = codegen::TargetTriple();
+      std::filesystem::create_directories(lib_dir);
+
+      // Add arguments to the linker for the object files' locations, and executable
+      // file's location.
+      auto obj_filepath = utils::files::NativeString(obj_file);
+      auto exe_filepath = utils::files::NativeString(exe_file);
+      auto command = linker
+        + " -o " + utils::shell::Quote(exe_filepath)
+        + " " + utils::shell::Quote(obj_filepath);
+      // Every ffi library is a direct dependency on ELF, used or not. One may need
+      // another ("libssl.so.4" needs "libcrypto.so.4"), and the executable's
+      // "$ORIGIN/lib" runpath does not apply to a library's own dependencies: if
+      // "--as-needed" (the default of many distributions' cc) dropped the one the
+      // program never calls, the loader would look for it everywhere but beside the
+      // executable, and pick up another build of it or none.
+      const auto elf = triple.isOSBinFormatELF();
+      if (elf and not libraries.empty()) { command += " -Wl,--push-state,--no-as-needed"; }
+      for (auto const &lib : libraries) {
+        // Staged beside the executable rather than linked where it sits, so
+        // that what the loader needs travels with what was built and the path baked
+        // into it is a relative one. A versioned library keeps its version, the
+        // name its SONAME gives and so the one the loader is asked for.
+        const auto staged = lib_dir / lib.filename();
+        std::filesystem::copy_file(
+          lib, staged, std::filesystem::copy_options::overwrite_existing);
+        command += " " + utils::shell::Quote(utils::files::NativeString(staged));
+      }
+      if (elf and not libraries.empty()) { command += " -Wl,--pop-state"; }
+
+      // Add the "libm" math library flag for everything except COFF objects, which
+      // carry their own math functions.
+      if (not triple.isOSBinFormatCOFF()) { command += " -lm"; }
+
+      // Add the "libatomic" library for linux when the compiled program actually
+      // needs it (when LLVM cannot lower atomics to intrinsics - on some
+      // cross-codegen esoteric systems).
+      if (triple.isOSLinux() and codegen::ImportsAtomicLibcalls(obj_filepath.c_str())) {
+        command += " -latomic";
+      }
+
+      // Tell the executable to look for the shared libraries in a lib folder next
+      // to the executable.
+      if (triple.isOSBinFormatELF()) { command += " -Wl,-rpath,'$ORIGIN/lib'"; }
+      if (triple.isOSBinFormatMachO()) { command += " -Wl,-rpath,@loader_path/lib"; }
+
+      // Binary hardening, done by attaching flags to the linker. ELF only: ld64
+      // already does each by default.
+      if (triple.isOSBinFormatELF()) {
+        // Asked for whether or not hardening is on: a gcc configured to default to
+        // PIE would otherwise link a fixed-address object as one.
+        if (not codegen::TargetIsPositionIndependent()) { command += " -no-pie"; }
+        FEATURE_GATE(BinaryLinkHarden) {
+          if (codegen::TargetIsPositionIndependent()) {
+            command += " -pie"; // No fixed load address to write an exploit against.
+          }
+          command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
+          command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
+          command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
+          command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
+          command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
+        }
+      }
+
+      // Output the linking progress, and run the link command that has been
+      // progressively built up. If it fails, print the error and return.
+      std::cout << "Linking: " << exe_file << std::endl;
+      if (const auto status = utils::shell::Run(command); status != 0) {
+        llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
+        return false;
+      }
+
+      // Checked in the output rather than asked of the linker: binutils before 2.39
+      // has no "--error-rwx-segments", and before 2.31 ignores "-z separate-code"
+      // with a warning.
+      FEATURE_GATE(BinaryLinkHarden) {
+        const auto fault = codegen::UnhardenedSegments(exe_filepath.c_str());
+        if (not fault) {
+          std::cerr
+            << "Error: cannot read the linked " << exe_file
+            << ": " << fault.error() << "\n";
+          return false;
+        }
+
+        if (fault->has_value()) {
+          std::cerr
+            << "Error: " << exe_file << " was linked with " << **fault << ".\n"
+            << "  The linker does not separate code from data:"
+            << "use binutils 2.31 or newer (on RHEL 8, gcc-toolset-12), or set"
+            << "'harden = false' under [binary.link] in spp.toml.\n";
+          return false;
+        }
+      }
+      return true;
     }
   }
 }
@@ -671,17 +820,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   return linked;
 }
 
-/// [CHECKED]
 auto spp::compiler::CompilerBoot::_LinkExecutable(
   OutLayout const &out) -> bool {
   // The object holds calls into the ffi runtime and nothing else external, so
   // the link is the object plus whatever shared libraries the project's
   // packages ship.
-  const auto obj_file = out.ObjectFile();
-  const auto exe_file = out.ExecutablePath();
-  const auto lib_dir = out.LibRoot();
-  std::filesystem::create_directories(lib_dir);
-
   // Determine the linker command, and ensure that it exists (that a linker was
   // found).
   const auto linker = LinkerCommand();
@@ -706,104 +849,12 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     if (not ffi::CheckSegments(out.Root, *libraries)) { return false; }
   }
 
-  // Add arguments to the linker for the object files' locations, and executable
-  // file's location.
-  auto obj_filepath = utils::files::NativeString(obj_file);
-  auto exe_filepath = utils::files::NativeString(exe_file);
-  auto command = *linker
-    + " -o " + utils::shell::Quote(exe_filepath)
-    + " " + utils::shell::Quote(obj_filepath);
-  // Every ffi library is a direct dependency on ELF, used or not. One may need
-  // another ("libssl.so.4" needs "libcrypto.so.4"), and the executable's
-  // "$ORIGIN/lib" runpath does not apply to a library's own dependencies: if
-  // "--as-needed" (the default of many distributions' cc) dropped the one the
-  // program never calls, the loader would look for it everywhere but beside the
-  // executable, and pick up another build of it or none.
-  const auto elf = codegen::TargetTriple().isOSBinFormatELF();
-  if (elf and not libraries->empty()) { command += " -Wl,--push-state,--no-as-needed"; }
-  for (auto const &lib : *libraries) {
-    // Staged beside the executable rather than linked where it sits, so
-    // that what the loader needs travels with what was built and the path baked
-    // into it is a relative one. A versioned library keeps its version, the
-    // name its SONAME gives and so the one the loader is asked for.
-    const auto staged = lib_dir / lib.filename();
-    std::filesystem::copy_file(
-      lib, staged, std::filesystem::copy_options::overwrite_existing);
-    command += " " + utils::shell::Quote(utils::files::NativeString(staged));
-  }
-  if (elf and not libraries->empty()) { command += " -Wl,--pop-state"; }
-
-  // Todo: a COFF link also needs a linker other than "cc", an ".exe" name, and
-  //  the staged DLLs beside the executable.
-
-  // Add the "libm" math library flag for everything except COFF objects, which
-  // carry their own math functions.
-  const auto &triple = codegen::TargetTriple();
-  if (not triple.isOSBinFormatCOFF()) { command += " -lm"; }
-
-  // Add the "libatomic" library for linux when the compiled program actually
-  // needs it (when LLVM cannot lower atomics to intrinsics - on some
-  // cross-codegen esoteric systems).
-  if (triple.isOSLinux() and codegen::ImportsAtomicLibcalls(obj_filepath.c_str())) {
-    command += " -latomic";
-  }
-
-  // Tell the executable to look for the shared libraries in a lib folder next
-  // to the executable.
-  if (triple.isOSBinFormatELF()) { command += " -Wl,-rpath,'$ORIGIN/lib'"; }
-  if (triple.isOSBinFormatMachO()) { command += " -Wl,-rpath,@loader_path/lib"; }
-
-  // Binary hardening, done by attaching flags to the linker. ELF only: ld64
-  // already does each by default.
-  if (triple.isOSBinFormatELF()) {
-    // Asked for whether or not hardening is on: a gcc configured to default to
-    // PIE would otherwise link a fixed-address object as one.
-    if (not codegen::TargetIsPositionIndependent()) { command += " -no-pie"; }
-    FEATURE_GATE(BinaryLinkHarden) {
-      if (codegen::TargetIsPositionIndependent()) {
-        command += " -pie"; // No fixed load address to write an exploit against.
-      }
-      command += " -Wl,-z,relro,-z,now"; // Read-only after startup, and nothing left to bind later.
-      command += " -Wl,-z,noexecstack"; // The stack is data; say so in the header rather than by accident.
-      command += " -Wl,-z,separate-code"; // Code in its own mapping, so no data shares a page with it.
-      command += " -Wl,-z,defs"; // A symbol nothing defines is a link error, not a run-time surprise.
-      command += " -Wl,-z,text"; // A text relocation is a link error, so code is never writable at load.
-    }
-  }
-
-  // Output the linking progress, and run the link command that has been
-  // progressively built up. If it fails, print the error and return.
-  std::cout << "Linking: " << exe_file << std::endl;
-  if (const auto status = utils::shell::Run(command); status != 0) {
-    llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
-    return false;
-  }
-
-  // Checked in the output rather than asked of the linker: binutils before 2.39
-  // has no "--error-rwx-segments", and before 2.31 ignores "-z separate-code"
-  // with a warning.
-  FEATURE_GATE(BinaryLinkHarden) {
-    const auto fault = codegen::UnhardenedSegments(exe_filepath.c_str());
-    if (not fault) {
-      std::cerr
-        << "Error: cannot read the linked " << exe_file
-        << ": " << fault.error() << "\n";
-      return false;
-    }
-
-    if (fault->has_value()) {
-      std::cerr
-        << "Error: " << exe_file << " was linked with " << **fault << ".\n"
-        << "  The linker does not separate code from data:"
-        << "use binutils 2.31 or newer (on RHEL 8, gcc-toolset-12), or set"
-        << "'harden = false' under [binary.link] in spp.toml.\n";
-      return false;
-    }
-  }
-
-  // At the point, the linking is complete, and the executable is ready. Notify
-  // to console, and return true.
-  std::cout << "Built executable: " << exe_file << std::endl;
+  // Link the way the target's linker takes it, then report the executable.
+  const auto linked = codegen::TargetTriple().isWindowsMSVCEnvironment()
+    ? LinkMsvcExecutable(out, *linker, *libraries)
+    : LinkCcExecutable(out, *linker, *libraries);
+  if (not linked) { return false; }
+  std::cout << "Built executable: " << out.ExecutablePath() << std::endl;
   return true;
 }
 
