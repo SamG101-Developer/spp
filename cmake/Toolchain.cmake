@@ -9,8 +9,13 @@ set(
 
 # /EHsc is explicit because CI's -DCMAKE_CXX_FLAGS replaces
 # CMake's MSVC default flags, which is where it came from.
+# clang-cl's preprocessor already conforms and ignores
+# /Zc:preprocessor with a warning per file.
 if (MSVC)
-  add_compile_options(/Zc:preprocessor /EHsc)
+  add_compile_options(/EHsc)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/Zc:preprocessor)
+  endif ()
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 else ()
   add_compile_options(-fvisibility-inlines-hidden)
