@@ -177,7 +177,6 @@ jobs:
       os: ubuntu-24.04-arm
       compiler: clang
 
-  # Not in ci-success until its spp_tests abort is fixed.
   # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
   macos-clang:
     name: macOS Clang
@@ -190,7 +189,6 @@ jobs:
       compiler: clang
       off: sls
 
-  # Not in ci-success until sppc builds for Windows.
   # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   windows-msvc:
     name: Windows MSVC
@@ -213,6 +211,19 @@ jobs:
     with:
       os: windows-2025
       compiler: clang-cl
+      advisory: true
+      off: *msvc-off
+
+  # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
+  windows-arm-msvc:
+    name: Windows ARM MSVC (Advisory)
+    needs: *lane-needs
+    if: *lane-gate
+    permissions: *read
+    uses: ./.github/workflows/_lane.yaml
+    with:
+      os: windows-11-arm
+      compiler: msvc
       advisory: true
       off: *msvc-off
 
@@ -332,6 +343,8 @@ jobs:
       - linux-clang
       - linux-arm-gcc
       - linux-arm-clang
+      - macos-clang
+      - windows-msvc
       - analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 5

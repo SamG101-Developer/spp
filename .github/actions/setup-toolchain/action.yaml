@@ -67,9 +67,12 @@ runs:
         SPP_CI_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup/select-xcode-macos.sh
 
+    # The action defaults to x64 tools, which windows-11-arm would run emulated, building x64.
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      with:
+        arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
 
     - name: Select Windows compiler
       if: runner.os == 'Windows'
@@ -123,7 +126,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm
-        key: llvm-win-${{ env.LLVM_WIN_SHA256 }}
+        key: ${{ runner.arch == 'ARM64' && format('llvm-win-arm64-{0}', env.LLVM_WIN_ARM_SHA256) || format('llvm-win-{0}', env.LLVM_WIN_SHA256) }}
 
     - name: Install LLVM dev libraries (Windows, cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
@@ -136,7 +139,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm-deps
-        key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-llvm-deps-windows.sh') }}
+        key: llvm-deps-win-${{ runner.arch == 'ARM64' && 'arm64-' || '' }}${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-llvm-deps-windows.sh') }}
 
     - name: Install the Windows-only dependencies (cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-deps-win-cache.outputs.cache-hit != 'true'

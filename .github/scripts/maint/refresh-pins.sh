@@ -174,8 +174,10 @@ if [ -z "$sccache_tag" ]; then
   status=1
 else
   set_pin pin.sccache.version "${sccache_tag#v}"
-  set_pin pin.sccache.sha256 \
-    "$(asset_digest mozilla/sccache "$sccache_tag" "sccache-${sccache_tag}-x86_64-pc-windows-msvc.tar.gz")"
+  for arch in x86_64:x86-64 aarch64:aarch64; do
+    set_pin "pin.sccache.sha256-${arch#*:}" \
+      "$(asset_digest mozilla/sccache "$sccache_tag" "sccache-${sccache_tag}-${arch%%:*}-pc-windows-msvc.tar.gz")"
+  done
 fi
 
 # CPPCHECK
@@ -294,17 +296,22 @@ if [ -z "$llvm_tag" ]; then
 else
   llvm_version="${llvm_tag#llvmorg-}"
   win_asset="clang+llvm-${llvm_version}-x86_64-pc-windows-msvc.tar.xz"
+  win_arm_asset="clang+llvm-${llvm_version}-aarch64-pc-windows-msvc.tar.xz"
   mac_asset="LLVM-${llvm_version}-macOS-ARM64.tar.xz"
   win_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$win_asset")"
+  win_arm_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$win_arm_asset")"
   mac_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$mac_asset")"
-  if [ -z "$win_digest" ] || [ -z "$mac_digest" ]; then
-    echo "::error::${llvm_tag} publishes no digest for ${win_asset} or ${mac_asset}; leaving both pins alone"
-    echo "  pick a tag that ships both builds and move tag, asset and sha256 under [pin.llvm-win] and [pin.llvm-mac] by hand"
+  if [ -z "$win_digest" ] || [ -z "$win_arm_digest" ] || [ -z "$mac_digest" ]; then
+    echo "::error::${llvm_tag} publishes no digest for ${win_asset}, ${win_arm_asset} or ${mac_asset}; leaving the pins alone"
+    echo "  pick a tag that ships all three builds and move tag, asset and sha256 under [pin.llvm-win], [pin.llvm-win-arm] and [pin.llvm-mac] by hand"
     status=1
   else
     set_pin pin.llvm-win.tag "$llvm_tag"
     set_pin pin.llvm-win.asset "$win_asset"
     set_pin pin.llvm-win.sha256 "$win_digest"
+    set_pin pin.llvm-win-arm.tag "$llvm_tag"
+    set_pin pin.llvm-win-arm.asset "$win_arm_asset"
+    set_pin pin.llvm-win-arm.sha256 "$win_arm_digest"
     set_pin pin.llvm-mac.tag "$llvm_tag"
     set_pin pin.llvm-mac.asset "$mac_asset"
     set_pin pin.llvm-mac.sha256 "$mac_digest"

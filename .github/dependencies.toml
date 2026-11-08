@@ -31,6 +31,12 @@ tag = "llvmorg-23.1.5"
 asset = "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.xz"
 sha256 = "62fdada7f6fa2b73856486dfbbdba3d2c1882991621615bcb55c60207611c6d4"
 
+# The same release for the windows-11-arm runner.
+[pin.llvm-win-arm]
+tag = "llvmorg-23.1.5"
+asset = "clang+llvm-23.1.5-aarch64-pc-windows-msvc.tar.xz"
+sha256 = "f06382f2c99c68a4e80f7044446df1fcf52bc3cc05158626bd0b966d51a5369a"
+
 # That Windows release names ZLIB::ZLIB, zstd::libzstd_static
 # and LibXml2::LibXml2 in its exported targets, and the runner
 # image has none of the three to resolve them with. Built from
@@ -115,7 +121,8 @@ sha256-darwin = "cf240009630b605b775c7c5c7b7105a3b196c79f31af322c1557969aa28003f
 
 [pin.sccache]
 version = "0.19.0"
-sha256 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353"
+sha256-x86-64 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c7698353"
+sha256-aarch64 = "a680e8e6058b033cd6ff56d56b2219ca13f1c1a45f50fb3b04f4ed80851f5c2b"
 
 [pin.osv-scanner]
 version = "2.7.0"
@@ -143,6 +150,7 @@ macos = "macos-26"
 macos-old = "macos-15"
 windows = "windows-2025"
 windows-old = "windows-2022"
+windows-arm = "windows-11-arm"
 
 [floor]
 glibc = "2.28"

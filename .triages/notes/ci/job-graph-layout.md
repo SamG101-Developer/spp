@@ -1,7 +1,7 @@
 ---
 name: job-graph-layout
 description: "GitHub flattens called workflows into the caller's graph, columns by needs depth; one lane call per platform (build then tests, one row); ci-success needs lanes"
-updated: 2026-11-07
+updated: 2026-11-08
 ---
 
 The run's job graph does not draw a box around a reusable workflow call: it flattens the called jobs into the
@@ -27,7 +27,7 @@ draws the same, so the lanes call the shared workflows:
   zizmor and `classify-changes.py check` all accept them. Merge keys (`<<:`) are not supported by GitHub.
 
 A call job's result is `failure` if any job inside failed, so a failed build fails its lane instead of skipping its
-tests. `ci-success` therefore needs just the gating lanes (the 4 Linux ones), with no extra "did the tests run" step;
+tests. `ci-success` therefore needs just the gating lanes (the 4 Linux ones, macOS Clang and Windows MSVC; clang-cl and Windows ARM MSVC stay advisory), with no extra "did the tests run" step;
 `collect-release` needs the release lanes and reads their outputs. post_merge's Sonar waits on the Linux GCC lane (to
 restore that run's tree) and runs unless the lane's build did not stage: `result == 'skipped' || outputs.artifact != ''`,
 so a test failure alone does not skip it. `continue-on-error` is not allowed on a call job; advisory lanes pass

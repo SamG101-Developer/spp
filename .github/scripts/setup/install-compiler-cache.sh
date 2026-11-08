@@ -7,10 +7,18 @@ set -euo pipefail
 source .github/scripts/lib/verified-fetch.sh
 
 if [ "$RUNNER_OS" = "Windows" ]; then
-  asset="sccache-v${SCCACHE_VERSION}-x86_64-pc-windows-msvc"
+  case "$RUNNER_ARCH" in
+    X64) arch=x86_64 want="$SCCACHE_SHA256_X86_64" ;;
+    ARM64) arch=aarch64 want="$SCCACHE_SHA256_AARCH64" ;;
+    *)
+      echo "::error::no sccache release is pinned for Windows-${RUNNER_ARCH}"
+      exit 1
+      ;;
+  esac
+  asset="sccache-v${SCCACHE_VERSION}-${arch}-pc-windows-msvc"
   verified_install_bin \
     "https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/${asset}.tar.gz" \
-    "$SCCACHE_SHA256" sccache.exe "${asset}/sccache.exe"
+    "$want" sccache.exe "${asset}/sccache.exe"
   exit 0
 fi
 
