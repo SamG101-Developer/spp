@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.compiler.out_layout;
+import spp.codegen.llvm_target;
 import spp.utils.files;
 import genex;
 import magic_enum;
@@ -101,7 +102,8 @@ auto spp::compiler::OutLayout::ExecutablePath() const -> Path {
 
 /// [CHECKED]
 auto spp::compiler::OutLayout::ExecutableName() const -> Str {
-  return utils::files::NativeString(Root.filename());
+  return utils::files::NativeString(Root.filename())
+    + codegen::ExecutableSuffix(Target.c_str());
 }
 
 SPP_MOD_END

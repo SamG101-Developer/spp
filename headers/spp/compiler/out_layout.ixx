@@ -82,6 +82,6 @@ SPP_EXP_CLS struct spp::compiler::OutLayout {
   SPP_ATTR_NODISCARD auto ExecutablePath() const -> Path;
 
   /// The name the linked executable is given: the project's own folder name, so
-  /// a project in "foo/" builds "foo".
+  /// a project in "foo/" builds "foo" ("foo.exe" for a Windows target).
   SPP_ATTR_NODISCARD auto ExecutableName() const -> Str;
 };
