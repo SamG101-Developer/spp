@@ -1287,6 +1287,7 @@ EXCLUDED: dict[str, str] = {
     "std.allocator.": "allocation",
     "std.abort.": "aborting",
     "std.hints.black_box": "an optimisation barrier with no compile-time form",
+    "std.hints.cold_path": "a branch hint with no value; its weights are checked by check-branch-hints.sh",
 }
 
 # -- Known failures ---------------------------------------------------------------------------------------------------

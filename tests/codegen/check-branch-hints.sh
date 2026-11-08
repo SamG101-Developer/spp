@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
-# End-to-end check of std::hints::likely and std::hints::unlikely.
-# Builds a scratch project at rel and asserts, in the optimised lto.ll:
+# End-to-end check of std::hints::likely, std::hints::unlikely and
+# std::hints::cold_path. Builds a scratch project at rel and asserts, in the
+# optimised lto.ll:
 #   - a "case" on likely(c) weights its branch 2000:1 and unlikely(c) 1:2000;
 #   - the hint survives a short-circuit condition, a guard and a "loop" condition;
+#   - cold_path() in a branch weights the branch into it 1:2000, past a merge
+#     block and in a "case ... of" "else" arm too;
+#   - cold_path() with no branch leading to it marks the function "cold";
 #   - the same "case" with no hint has no weights (negative control);
 #   - the program still takes the branches the conditions choose.
 # The hint is lost unless its "llvm.expect" is in the branch's own block
@@ -76,12 +80,55 @@ fun hint_loop(n: S32) -> S32 {
     ret i
 }
 
+!no_inline
+fun cold_plain(x: S32) -> S32 {
+    case x > 10 {
+        std::hints::cold_path()
+        std::console::println("big")
+        ret 1
+    }
+    ret 2
+}
+
+!no_inline
+fun cold_after_merge(a: S32, b: S32) -> S32 {
+    case a > 10 {
+        case b > 10 { std::console::println("b") }
+        std::hints::cold_path()
+        std::console::println("a")
+        ret 1
+    }
+    ret 2
+}
+
+!no_inline
+fun cold_arm(x: Opt[S32]) -> S32 {
+    case x of {
+        is Some[S32](val) { ret val }
+        else {
+            std::hints::cold_path()
+            std::console::println("none")
+            ret 0
+        }
+    }
+}
+
+!no_inline
+fun cold_whole(x: S32) -> S32 {
+    std::hints::cold_path()
+    std::console::println("whole")
+    ret x
+}
+
 fun main() -> Void {
     let v = std::hints::black_box(500)
+    let w = std::hints::black_box(4)
     let total = hint_likely(std::hints::black_box(20)) + hint_unlikely(std::hints::black_box(5))
         + hint_none(std::hints::black_box(20)) + hint_and(std::hints::black_box(20), std::hints::black_box(5))
         + hint_guard(Some[S32](val=v)) + hint_loop(std::hints::black_box(2))
-    case total == 9 { std::console::println("ok") }
+        + cold_plain(std::hints::black_box(5)) + cold_after_merge(std::hints::black_box(5), std::hints::black_box(5))
+        + cold_arm(Some[S32](val=w)) + cold_whole(std::hints::black_box(5))
+    case total == 22 { std::console::println("ok") }
 }
 EOF
 
@@ -104,6 +151,17 @@ expect_weights() {
     fi
 }
 
+# Whether "fn"'s definition carries the "cold" attribute, through its attribute group.
+expect_cold() {
+    local fn="$1" ir="$2" group
+    group="$(grep -E "^define .*::${fn}\\$" "${ir}" | grep -o '#[0-9]*' | tail -1)"
+    if [[ -n "${group}" ]] && grep -E "^attributes ${group} = \\{" "${ir}" | grep -qw cold; then
+        ok "${fn}: marked cold"
+    else
+        fail "${fn}: expected the \"cold\" attribute (group '${group:-none}')"
+    fi
+}
+
 if build_project "hints" "${dir}" rel; then
     run_exe "${EXE}" "${dir}/run.log"
     if (( RC != 0 )) || ! grep -qx "ok" "${dir}/run.log"; then
@@ -120,6 +178,16 @@ if build_project "hints" "${dir}" rel; then
     expect_weights hint_guard '^1:[0-9]+$' "${ir}"
     # Loop rotation rescales the loop's weights, so only their presence is checked: an unhinted loop has none.
     expect_weights hint_loop '[0-9]+:[0-9]+' "${ir}"
+    expect_weights cold_plain '^1:2000$' "${ir}"
+    # The inner "case" leads only to cold code, so only the outer branch is weighted.
+    expect_weights cold_after_merge '^1:2000$' "${ir}"
+    expect_weights cold_arm '^2000:1$' "${ir}"
+    expect_cold cold_whole "${ir}"
+    if grep -q 'spp.hint.cold_path' "${ir}"; then
+        fail "cold_path: a marker call was left in the module"
+    else
+        ok "cold_path: every marker call was removed"
+    fi
 else
     failures=$((failures + 1))
 fi

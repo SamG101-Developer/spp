@@ -16,23 +16,19 @@ use(spp::codegen::builtins, struct LoweredFnImpl);
 
 use_alias(spp::asts::meta, CompilerMetaData);
 
-/// A lowered function implementation is an implementation
-/// written with LLVM IR directly. Typically this is to use
-/// intrinsic functions, or non s++ expressible logic.
+/// A lowered function implementation is an implementation written with LLVM IR
+/// directly. Typically, this is to use intrinsic functions, or logic that is
+/// not expressible in s++.
 SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
   Func<void(
-    ScopeManager *,
-    FunctionPrototypeAst const *,
-    CompilerMetaData *,
-    codegen::LlvmCtx *,
+    ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *,
     llvm::Type *)> LlvmImpl;
   Unique<analyse::utils::comp_time_intrinsics::CompTimeFn> CompTimeImpl;
   Str Name;
 
-  /// The generic parameter whose destructor the lowering calls,
-  /// if any ("T" for "drop" and "drop_in_place"). No call site
-  /// resolves that destructor, so each instantiation of the
-  /// builtin has to make sure it exists.
+  /// The generic parameter whose destructor the lowering calls, if any ("T" for
+  /// "drop"). No call site resolves that destructor, so each instantiation of
+  /// the builtin has to make sure it exists.
   Str DropsGn;
 
   /// Lowers a direct call in place of the call, from the argument values, for a

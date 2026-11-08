@@ -567,6 +567,9 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     BooleanLiteralAst const &condition)
     -> Unique<BooleanLiteralAst>;
 
+  SPP_EXP_FUN auto StdHintsColdPath()
+    -> void;
+
   SPP_EXP_FUN auto StdMemOpsAlignOf(
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)

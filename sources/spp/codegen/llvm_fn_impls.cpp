@@ -1,5 +1,6 @@
 module;
 #include <spp/macros.hpp>
+#include <spp/codegen/llvm_pipeline.hpp>
 
 module spp.codegen.llvm_fn_impls;
 import spp.analyse.scopes.comp_key;
@@ -2288,25 +2289,6 @@ auto spp::codegen::fn_impls::StdMemOpsDrop(
   ctx->Builder.CreateRetVoid();
 }
 
-auto spp::codegen::fn_impls::StdMemOpsDropInPlace(
-  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
-  // Todo: delete once SPP-STL drops its "drop_in_place" declaration (replaced by "NonNull.from_mut" + "read"); kept so
-  //  the std the test harness and CI clone still compiles in the meantime.
-  // "ptr" is "&mut T" - a borrow, so its slot holds the
-  // address of the value rather than the value (see
-  // "StdMemOpsReplace" for the same shape). That
-  // address is what the value is destroyed through.
-  const auto ptr_param = proto->FnParamGroup->GetAllParams()[0];
-  const auto ptr_sym = sm->CurrentScope->FindVarSymbol(ptr_param->ExtractName().get());
-  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto target_ptr = ctx->Builder.CreateLoad(ptr_ty, ptr_sym->LlvmInfo->Alloca, "drop_in_place.ptr");
-
-  // The pointee type is the "T" this instantiation was
-  // made for, the parameter's type without its borrow.
-  EmitDrop(ptr_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention(), target_ptr, sm, meta, ctx);
-  ctx->Builder.CreateRetVoid();
-}
-
 auto spp::codegen::fn_impls::StdHintsBlackBox(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
   // An empty asm that takes an address and clobbers memory: llvm must assume the asm read and rewrote what is there.
@@ -2354,6 +2336,27 @@ auto spp::codegen::fn_impls::StdHintsExpect(
   const auto cond = args[0];
   return ctx->Builder.CreateIntrinsic(
     llvm::Intrinsic::expect, {cond->getType()}, {cond, ctx->Builder.getInt1(expected)}, {}, "hint.expect");
+}
+
+auto spp::codegen::fn_impls::StdHintsColdPath(
+  analyse::scopes::ScopeManager *, asts::FunctionPrototypeAst const *, asts::meta::CompilerMetaData *,
+  LlvmCtx *ctx, llvm::Type *) -> void {
+  // "cold_path" is lowered at the call site ("StdHintsColdPathMarker"). This wrapper is reached only by an indirect
+  // call, whose block is the wrapper's own, so there is no caller's branch to hint.
+  ctx->Builder.CreateRetVoid();
+}
+
+auto spp::codegen::fn_impls::StdHintsColdPathMarker(
+  Vec<llvm::Value*> const &, LlvmCtx *ctx) -> llvm::Value* {
+  // A call to a bodiless declaration, left in the caller's block for "ApplyColdPathHints" (llvm_pipeline) to find
+  // and remove.
+  const auto void_ty = llvm::Type::getVoidTy(*ctx->Context);
+  auto marker = ctx->Module->getOrInsertFunction(
+    kColdPathMarker, llvm::FunctionType::get(void_ty, false));
+  if (const auto fn = llvm::dyn_cast<llvm::Function>(marker.getCallee())) {
+    fn->setDoesNotThrow();
+  }
+  return ctx->Builder.CreateCall(marker);
 }
 
 auto spp::codegen::fn_impls::StdThreadingAtomicIsLockFree(

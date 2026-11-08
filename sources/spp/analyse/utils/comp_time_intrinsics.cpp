@@ -759,6 +759,11 @@ auto spp::analyse::utils::comp_time_intrinsics::StdHintsBranch(
   return BooleanLiteralAst::FromCppVal(condition.CppVal());
 }
 
+auto spp::analyse::utils::comp_time_intrinsics::StdHintsColdPath()
+  -> void {
+  // "cold_path" hints the optimiser only; at compile time there is no branch to hint.
+}
+
 auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsSizeOf(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)

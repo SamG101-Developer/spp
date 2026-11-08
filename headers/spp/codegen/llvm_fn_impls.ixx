@@ -279,11 +279,12 @@ export namespace spp::codegen::fn_impls {
   auto StdMemOpsReplace(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsSwap(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdMemOpsDrop(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
-  auto StdMemOpsDropInPlace(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   auto StdHintsBlackBox(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdHintsBranch(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdHintsExpect(Vec<llvm::Value*> const &args, LlvmCtx *ctx, bool expected) -> llvm::Value*;
+  auto StdHintsColdPath(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdHintsColdPathMarker(Vec<llvm::Value*> const &args, LlvmCtx *ctx) -> llvm::Value*;
 
   auto StdThreadingAtomicIsLockFree(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdThreadingAtomicFenceInner(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;

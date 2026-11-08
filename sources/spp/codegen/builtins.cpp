@@ -189,7 +189,6 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   Register(map, "std.mem.ops.replace", fn_impls::StdMemOpsReplace);
   Register(map, "std.mem.ops.swap", fn_impls::StdMemOpsSwap);
   Register(map, "std.mem.ops.drop", fn_impls::StdMemOpsDrop, nullptr, "T");
-  Register(map, "std.mem.ops.drop_in_place", fn_impls::StdMemOpsDropInPlace, nullptr, "T");
 
   Register(map, "std.hints.black_box", fn_impls::StdHintsBlackBox);
   Register(map, "std.hints.black_box_ref", fn_impls::StdHintsBlackBox);
@@ -197,6 +196,9 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
     map, "std.hints.likely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(true));
   Register(
     map, "std.hints.unlikely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(false));
+  Register(
+    map, "std.hints.cold_path", fn_impls::StdHintsColdPath, ct::MakeCompTimeFn(ct::StdHintsColdPath), "",
+    fn_impls::StdHintsColdPathMarker);
 
   Register(
     map, "std.intrinsics.sadd", Binop(BinOp::SAddChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsAdd));

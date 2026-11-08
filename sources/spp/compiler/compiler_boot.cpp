@@ -569,8 +569,10 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
 
     // Run the coroutine and optimization pipelines over verified codegen.
     // Coroutine lowering only: optimizing a module here would be undone by
-    // optimizing the combined module below.
+    // optimizing the combined module below. The "cold_path" markers go first,
+    // while each is still in the block it was emitted into.
     if (verify("")) {
+      codegen::ApplyColdPathHints(ctx->Module.get());
       codegen::RunCoroLoweringPipeline(ctx->Module.get());
     }
 

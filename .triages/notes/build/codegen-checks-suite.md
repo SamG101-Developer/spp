@@ -1,7 +1,7 @@
 ---
 name: codegen-checks-suite
 description: "tests/codegen/run.sh runs the check-*.sh hardening checks (~3 min, ~60 builds); new checks go on lib.sh; not part of gtest"
-updated: 2026-10-27
+updated: 2026-11-08
 ---
 
 Since 2026-10-18 (codegen-test-plan.md P1-P4) the tests are split by suite: `tests/compiler/` is the gtest suite
@@ -29,6 +29,10 @@ judge), 61 programs x dev/rel, ~2.5 min at `JOBS=6`. Its known bugs live in `KNO
 intrinsic in `codegen/builtins.cpp` fails it until it has cases or an `EXCLUDED` reason. lib.sh's `WORK` is deleted on
 exit, so to read a failing program's build log, re-emit and build it by hand.
 
+A check that calls a new std intrinsic fails with E26 until the SPP-STL side merges: every project copies std from
+`tests/test_outputs/vcs` (pulled to upstream master) and `lib.sh` has no override. To verify before then, copy `lib.sh`
+and the check into `<scratch>/tests/codegen/`, put a std with the declaration at `<scratch>/tests/test_outputs/vcs/std`,
+and run the copied check with the spp path; `ROOT` resolves to the scratch tree (done for `cold_path`, 2026-11-08).
 **How to apply:** a new hardening measure gets a `check-<measure>.sh` on `lib.sh`, with a negative control (the
 key off) - see `one-hardening-measure-at-a-time`. Run the one check while iterating, `run.sh` before handing over.
 Related: [[build-workflow]], [[spp-test-harness-stale-std]].

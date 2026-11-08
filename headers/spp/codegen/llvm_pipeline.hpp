@@ -8,6 +8,23 @@
 /// code generation is a module.
 
 namespace spp::codegen {
+  /// The bodiless declaration a call to "std::hints::cold_path"
+  /// is lowered to. "ApplyColdPathHints" removes every call to
+  /// it, so the name never reaches an object file.
+  inline constexpr auto kColdPathMarker = "spp.hint.cold_path";
+
+  /// Turn the "cold_path" markers in an "llvm::Module" (passed
+  /// as an opaque pointer) into branch weights, then remove
+  /// them. A block is cold if it holds a marker, or if every
+  /// way out of it other than unwinding is cold; each branch
+  /// with both a cold and a hot successor is weighted against
+  /// the cold one, as "unlikely" would weight it, and a
+  /// function whose entry block is cold is marked "cold". Runs
+  /// on every module, at every optimisation level, before
+  /// anything (coroutine splitting, inlining) moves code out
+  /// of the block it was emitted into.
+  auto ApplyColdPathHints(void *llvm_module) -> void;
+
   /// Lower the coroutine intrinsics in an "llvm::Module"
   /// (passed as an opaque pointer) into real state machines,
   /// and move generator frames into their callers. Not an
