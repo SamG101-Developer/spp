@@ -17,9 +17,9 @@ draws the same, so the lanes call the shared workflows:
   valgrind, codegen and differential on, `shard-count: 1`); a new input to either has to be added here too. Outputs:
   the build's `artifact` and digests. A lane's cells (2026-11-08) are a gtest cell per mode and shard ("GTest Rel",
   or "GTest Rel 1/3" when sharded) plus one cell for the rest ("STL + Valgrind + Codegen + Differential" on Linux,
-  "STL Conformance" elsewhere); a gtest cell never holds anything else, so its shards take equal time. Shards per lane
-  (`pr.yaml`): 3 for the Windows lanes, 2 for macOS and Linux Clang, 1 otherwise. The nightly sanitizer lane narrows
-  them (rel only, no extras, 4 shards). The extras are Linux-only in `plan-tests.sh` apart from STL, and valgrind's
+  "STL Conformance" elsewhere); a gtest cell never holds anything else, so its shards take equal time. `_lane.yaml` runs the test cells only when the build staged binaries (`needs.build.outputs.artifact`), as an advisory build's failure still reads as a success. Shards: 2
+  for every lane in `pr.yaml` (Windows had 3 until 2026-11-08: its ~16-min shards sat in the queue behind Linux's),
+  1 elsewhere. The nightly sanitizer lane narrows them (rel only, no extras, 4 shards). The extras are Linux-only in `plan-tests.sh` apart from STL, and valgrind's
   cache key carries `runner.arch`, as the ARM lanes run it too.
 - `_coverage.yaml` (post_merge): `_build.yaml`, `_test.yaml`, then an inline report job that waits on every cell to
   merge their profiles. Outputs `coverage-report` (empty when it did not upload) for Sonar.

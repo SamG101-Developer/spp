@@ -1,6 +1,6 @@
 ---
 name: msvc-target-link-and-seh
-description: "An *-windows-msvc target links with lld-link (import .lib, DLL beside the .exe, static CRT) and guards FFI calls with SEH cleanuppads, not __gcc_personality_v0"
+description: "An *-windows-msvc target links with lld-link (import .lib, DLL beside the .exe, static CRT), guards FFI calls with SEH cleanuppads, and gets no probe-stack attribute (__chkstk instead)"
 updated: 2026-11-08
 ---
 
@@ -15,6 +15,9 @@ An MSVC target (`isWindowsMSVCEnvironment`) is not linked or unwound the GNU way
   the `.exe`, not into `lib/`: Windows has no rpath. `ffi::Validate` requires the `.lib` beside the `.dll` for such a
   target folder.
 - **Executable name:** `OutLayout::ExecutableName` adds `codegen::ExecutableSuffix` (`.exe` on Windows).
+- **Stack-clash probes:** `ApplyStackClashProtection` stamps nothing on a Windows target. Windows' x86 backend has no
+  inline probe and takes `"probe-stack"`'s value as the probe function's name, so `"inline-asm"` became an undefined
+  symbol in any frame over a page (first seen in a rel `main`); the ABI's `__chkstk` probes those frames anyway.
 - **FFI unwind guard:** `ApplyFfiUnwindGuard` uses `__C_specific_handler` (`_except_handler3` on 32-bit x86) and a
   `cleanuppad` whose `sppc_check_failed` call carries the `funclet` bundle; the guard runs after the module is
   verified, so a malformed funclet would only show in codegen.

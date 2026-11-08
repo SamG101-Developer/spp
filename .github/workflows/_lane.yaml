@@ -108,9 +108,13 @@ jobs:
       differential: ${{ inputs.differential }}
       advisory: ${{ inputs.advisory }}
 
+  # An advisory build that fails still reads as a success here
+  # (continue-on-error), so the test cells wait for staged
+  # binaries rather than for the job's result.
   test:
     name: Test
     needs: [ build ]
+    if: needs.build.outputs.artifact != ''
     permissions:
       contents: read
     uses: ./.github/workflows/_test.yaml

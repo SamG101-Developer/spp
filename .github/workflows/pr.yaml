@@ -148,6 +148,8 @@ jobs:
     permissions: &read
       contents: read
     uses: ./.github/workflows/_lane.yaml
+    with:
+      shard-count: 2
 
   linux-clang:
     name: Linux Clang
@@ -167,6 +169,7 @@ jobs:
     uses: ./.github/workflows/_lane.yaml
     with:
       os: ubuntu-24.04-arm
+      shard-count: 2
 
   linux-arm-clang:
     name: Linux ARM Clang
@@ -177,6 +180,7 @@ jobs:
     with:
       os: ubuntu-24.04-arm
       compiler: clang
+      shard-count: 2
 
   # Todo: drop "off" once LLVM's AArch64 SLS thunks link on Mach-O; see .triages/upstream-watch.md U16.
   macos-clang:
@@ -202,7 +206,7 @@ jobs:
       os: windows-2025
       compiler: msvc
       off: &msvc-off memory.stack.split
-      shard-count: 3
+      shard-count: 2
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
   windows-clang-cl:
@@ -216,7 +220,7 @@ jobs:
       compiler: clang-cl
       advisory: true
       off: *msvc-off
-      shard-count: 3
+      shard-count: 2
 
   # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
   windows-arm-msvc:
@@ -230,7 +234,7 @@ jobs:
       compiler: msvc
       advisory: true
       off: *msvc-off
-      shard-count: 3
+      shard-count: 2
 
   # Todo: Add to ci-success once more stable.
   cross-codegen:
