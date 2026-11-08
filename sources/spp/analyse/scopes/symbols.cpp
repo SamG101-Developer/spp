@@ -46,6 +46,7 @@ import genex;
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeIdArg);
 use_alias(spp::analyse::scopes, TypeKey);
+use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, AnnotationAst);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, ClassPrototypeAst);

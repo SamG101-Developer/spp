@@ -20,7 +20,7 @@ time.
 
 **How to apply:** a new `.cpp` that uses a name from its interface's `use(...)` declares it again with `use_alias`
 (add `module;` + `#include <spp/macros.hpp>` if the fragment lacks it). That includes names from the file's own
-namespace used at global scope, outside its `namespace … {` block: in a global anonymous `namespace {` (`CasePatternVariantAst` in `case_pattern_variant_ast.cpp`, `Scope` in `substitution_unify.cpp`) or as explicit instantiation arguments
+namespace used at global scope, outside its `namespace … {` block: in a global anonymous `namespace {` (`CasePatternVariantAst` in `case_pattern_variant_ast.cpp`, `Scope` in `substitution_unify.cpp`; a `using namespace` inside an earlier function there does not cover it) or as explicit instantiation arguments
 (`template class spp::analyse::scopes::IndividualSymbolTable<IdentifierAst, TypeSymbol>;` in `symbol_table.cpp`). In a class template, write names from other
 namespaces qualified so they resolve from the template's own namespace (`asts::meta::CompTimeCallArgs` from
 `spp::analyse::utils`), and keep such qualifications when tidying. Related: [[msvc-exported-inline-vars]].
