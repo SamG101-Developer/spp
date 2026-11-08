@@ -22,6 +22,12 @@ namespace spp::compiler::ffi {
   /// library may carry its version ("libssl.so.4"), and keeps it when staged.
   SPP_EXP_FUN auto Libraries(Path const &root) -> Opt<Vec<Path>>;
 
+  /// The import library a library from "Libraries()" is linked through, beside
+  /// it under the same name ("sppc.lib" for "sppc.dll"), on a target that links
+  /// one (an MSVC target); nothing where the library itself is linked. On such
+  /// a target "Validate" has checked it is there.
+  SPP_EXP_FUN auto ImportLibraryOf(Path const &library) -> Opt<Path>;
+
   /// Check every library from "Libraries()" was built with fortified libc
   /// calls, reporting the first that was not, with what it calls unchecked and
   /// how to fix it, and answering false.

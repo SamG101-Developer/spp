@@ -127,6 +127,18 @@ namespace spp::compiler::ffi {
             << "  Keep the one to link against.\n";
           return false;
         }
+
+        // An MSVC link reads the DLL's import library, not the DLL, so a
+        // target that needs one has to ship it beside the DLL.
+        if (const auto ext = spp::codegen::ImportLibraryExtension(found.c_str()); ext != nullptr) {
+          const auto import = spp::Path(libraries[0]).replace_extension(ext);
+          if (not std::filesystem::exists(import)) {
+            std::cerr
+              << "Error: " << Shown(root, entry.path()) << " has '" << Name(libraries[0]) << "' but no '"
+              << Name(import) << "' to link it through.\n";
+            return false;
+          }
+        }
         targets += 1;
       }
 
@@ -195,6 +207,14 @@ auto spp::compiler::ffi::Libraries(Path const &root) -> Opt<Vec<Path>> {
     return Nullopt;
   }
   return libraries;
+}
+
+auto spp::compiler::ffi::ImportLibraryOf(
+  Path const &library) -> Opt<Path> {
+  const auto folder = utils::files::NativeString(library.parent_path().filename());
+  const auto ext = codegen::ImportLibraryExtension(folder.c_str());
+  if (ext == nullptr) { return Nullopt; }
+  return Path(library).replace_extension(ext);
 }
 
 auto spp::compiler::ffi::CheckFortified(
