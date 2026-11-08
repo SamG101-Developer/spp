@@ -207,8 +207,16 @@ auto spp::codegen::ApplyFfiUnwindGuard(
   // is, and it is libgcc's, which every program already loads.
   // An exception nothing catches is never handed to a cleanup,
   // and ends in "std::terminate" instead - an abort either way.
+  // An MSVC target unwinds with SEH instead: its C personality
+  // is the MSVC runtime's, and a cleanup there is a funclet
+  // ("cleanuppad"), not a landing pad.
+  const auto &triple = TargetTriple();
+  const auto seh = triple.isWindowsMSVCEnvironment();
+  const auto personality_name = not seh
+    ? "__gcc_personality_v0"
+    : triple.getArch() == llvm::Triple::x86 ? "_except_handler3" : "__C_specific_handler";
   auto personality = llvm_mod.getOrInsertFunction(
-    "__gcc_personality_v0", llvm::FunctionType::get(i32_ty, {}, true));
+    personality_name, llvm::FunctionType::get(i32_ty, {}, true));
   auto check_failed = llvm_mod.getOrInsertFunction(
     "sppc_check_failed", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), {i32_ty, i64_ty, i64_ty}, false));
   if (const auto fn = llvm::dyn_cast<llvm::Function>(check_failed.getCallee())) {
@@ -225,13 +233,23 @@ auto spp::codegen::ApplyFfiUnwindGuard(
     if (not fn->hasPersonalityFn()) { fn->setPersonalityFn(llvm::cast<llvm::Constant>(personality.getCallee())); }
     const auto pad_bb = llvm::BasicBlock::Create(ctx, "ffi.unwound", fn);
     auto builder = llvm::IRBuilder(pad_bb);
-    builder.CreateLandingPad(llvm::StructType::get(ptr_ty, i32_ty), 0)->setCleanup(true);
+    auto bundles = llvm::SmallVector<llvm::OperandBundleDef, 1>();
+    if (seh) {
+      // A call inside a funclet names it, or WinEHPrepare drops
+      // the call as unreachable.
+      const auto pad = builder.CreateCleanupPad(llvm::ConstantTokenNone::get(ctx), {});
+      bundles.emplace_back("funclet", llvm::ArrayRef<llvm::Value*>(pad));
+    }
+    else {
+      builder.CreateLandingPad(
+        llvm::StructType::get(ptr_ty, i32_ty), 0)->setCleanup(true);
+    }
     const auto name = builder.CreateGlobalString(call->getCalledFunction()->getName(), "ffi.name");
     builder.CreateCall(
       check_failed, {
         llvm::ConstantInt::get(i32_ty, 7), builder.CreatePtrToInt(name, i64_ty),
         llvm::ConstantInt::get(i64_ty, 0)
-      })->setDoesNotReturn();
+      }, bundles)->setDoesNotReturn();
     builder.CreateUnreachable();
     llvm::changeToInvokeAndSplitBasicBlock(call, pad_bb);
   }
