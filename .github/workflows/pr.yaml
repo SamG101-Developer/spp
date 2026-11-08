@@ -237,9 +237,12 @@ jobs:
       shard-count: 2
 
   # Todo: Add to ci-success once more stable.
+  # After the Linux lanes, finished or not: its 20-odd short jobs
+  # otherwise take runner slots just as every lane's test shards
+  # queue, and it still ends before the Windows and macOS lanes.
   cross-codegen:
     name: Cross Codegen (Advisory)
-    needs: *lane-needs
+    needs: [ changes, cppcheck, linux-gcc, linux-clang, linux-arm-gcc, linux-arm-clang ]
     if: |
       !cancelled()
       && needs.cppcheck.result != 'failure'

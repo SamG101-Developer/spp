@@ -23,7 +23,8 @@ draws the same, so the lanes call the shared workflows:
   cache key carries `runner.arch`, as the ARM lanes run it too.
 - `_coverage.yaml` (post_merge): `_build.yaml`, `_test.yaml`, then an inline report job that waits on every cell to
   merge their profiles. Outputs `coverage-report` (empty when it did not upload) for Sonar.
-- `_cross_codegen.yaml` (pr): `_build.yaml` (all targets), then the inline emit matrix (which also runs the s++
+- `_cross_codegen.yaml` (pr; since 2026-11-08 it waits for the four Linux lanes to finish, pass or fail, so its ~23
+  short jobs stop taking runner slots while the lanes' test shards queue): `_build.yaml` (all targets), then the inline emit matrix (which also runs the s++
   conformance).
 - pr.yaml's lane `if`/`needs` are YAML anchors (`&lane-gate`, `&lane-needs`, `*read`); GitHub, actionlint 1.7.12,
   zizmor and `classify-changes.py check` all accept them. Merge keys (`<<:`) are not supported by GitHub.
