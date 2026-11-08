@@ -116,6 +116,14 @@ auto spp::utils::files::FindProgram(const StrView name) -> Opt<Path> {
     if (const auto candidate = dir / name; IsExecutable(candidate)) {
       return candidate;
     }
+#if SPP_PLATFORM_WINDOWS
+    // A shell there finds "lld-link" as "lld-link.exe".
+    if (not Path(name).has_extension()) {
+      if (const auto candidate = dir / (Str(name) + ".exe"); IsExecutable(candidate)) {
+        return candidate;
+      }
+    }
+#endif
   }
   return Nullopt;
 }
