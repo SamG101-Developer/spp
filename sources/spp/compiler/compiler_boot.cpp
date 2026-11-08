@@ -88,7 +88,7 @@ namespace spp::compiler {
       // Get the linker for the target, either specified in the toml file, or
       // "cc" for the host target.
       const auto folder = Str(codegen::TargetFolderName());
-      const auto named = utils::features::Linker(folder);
+      auto named = utils::features::Linker(folder);
       if (named.has_value()) { return named; }
 
       // The object is built against the MSVC runtime ("__security_cookie",
@@ -107,7 +107,7 @@ namespace spp::compiler {
 
       // Create a target specific "gcc" program name, and if it is found on the
       // system, return it.
-      const auto gcc = Str(codegen::TargetGnuTriple()) + "-gcc";
+      auto gcc = Str(codegen::TargetGnuTriple()) + "-gcc";
       if (utils::files::FindProgram(gcc).has_value()) { return gcc; }
 
       // Otherwise, find the newest version of the gcc on the system (like
@@ -150,7 +150,7 @@ namespace spp::compiler {
       }
       command += " libcmt.lib libvcruntime.lib libucrt.lib kernel32.lib";
 
-      std::cout << "Linking: " << exe_file << std::endl;
+      std::cout << "Linking: " << exe_file << '\n';
       if (const auto status = utils::shell::Run(command); status != 0) {
         llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
         return false;
@@ -233,7 +233,7 @@ namespace spp::compiler {
 
       // Output the linking progress, and run the link command that has been
       // progressively built up. If it fails, print the error and return.
-      std::cout << "Linking: " << exe_file << std::endl;
+      std::cout << "Linking: " << exe_file << '\n';
       if (const auto status = utils::shell::Run(command); status != 0) {
         llvm::errs() << "Linking failed (" << status << "): " << command << "\n";
         return false;
@@ -547,7 +547,7 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
   const auto &out = tree.Out();
   if (not VerifyOnly) {
     std::filesystem::create_directories(out.LlvmRoot());
-    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << std::endl;
+    std::cout << "Writing LLVM IR to: " << out.LlvmRoot() << '\n';
   }
 
   // Every module is verified before any of them stops the run, so one bad
@@ -799,11 +799,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   if (not codegen::TargetIsHost()) {
     std::cout
       << "Built object for " << codegen::TargetFolderName() << ": "
-      << utils::files::DisplayString(object_file) << std::endl;
+      << utils::files::DisplayString(object_file) << '\n';
     if (not codegen::TargetIsLinux()) {
       std::cout
         << "Not linking: only a Linux target is linked here, and "
-        << codegen::TargetFolderName() << " is not one." << std::endl;
+        << codegen::TargetFolderName() << " is not one." << '\n';
       return true;
     }
   }
@@ -854,7 +854,7 @@ auto spp::compiler::CompilerBoot::_LinkExecutable(
     ? LinkMsvcExecutable(out, *linker, *libraries)
     : LinkCcExecutable(out, *linker, *libraries);
   if (not linked) { return false; }
-  std::cout << "Built executable: " << out.ExecutablePath() << std::endl;
+  std::cout << "Built executable: " << out.ExecutablePath() << '\n';
   return true;
 }
 
