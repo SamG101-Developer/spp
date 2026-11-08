@@ -1,6 +1,6 @@
 ---
 name: clang-cl-std-apply-mangling-crash
-description: "clang-cl 23.1.5 segfaults mangling std::apply mid-template-instantiation (comp_key.ixx, lsp/diagnostic.cpp); not caused by the apply re-export; reproducers need the BMIs"
+description: "clang-cl 23.1.5 segfaults mangling std::apply mid-template-instantiation (comp_key.ixx, lsp/diagnostic.cpp); not caused by the apply re-export; reproducers + BMIs in the buildlog artifact"
 updated: 2026-11-08
 ---
 
@@ -13,4 +13,4 @@ in `lsp/diagnostic.cpp:320`. clang on Linux and macOS (Itanium mangling) does no
 
 **How to apply:** don't remove the `apply` re-export again for this. On a crash, the
 failed-build artifact `buildlog-<os>-<compiler>-<variant>` has `crash/` with clang's `.cppm`/`.cpp` and `.sh`
-reproducers (`collect-crash-reproducers.sh`). The `.sh` names ~160 module BMIs (std, genex, numex, spp) that are not included, so it does not replay on its own. When reading a run, check the file was compiled at all: ninja stops at the first failure.
+reproducers (`collect-crash-reproducers.sh`). The `.sh` names ~160 module BMIs (std, genex, numex, spp); the collector copies them to the same paths (relative to the build tree) under `crash/`, so the `.sh` replays from that folder, given the same MSVC STL and LLVM headers the BMIs were built against. Nothing calls `std::apply`: frames 14-15 are CodeGen being handed its declaration mid-instantiation, which fits a decl deserialized from the std module and wrongly taken as must-emit (unconfirmed). When reading a run, check the file was compiled at all: ninja stops at the first failure.
