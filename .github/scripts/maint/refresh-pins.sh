@@ -318,6 +318,52 @@ else
   fi
 fi
 
+# XCODE (report only): [pin.xcode] holds one developer dir per
+# macOS image and is deliberately not moved with the image's
+# default, which is the drift it exists to stop. Read each image's
+# list from actions/runner-images (the arm64 images CI runs on):
+# a pin the image no longer ships fails CI, and a newer default is
+# worth moving to by hand once a run on it passes.
+echo
+echo "Xcode (report only; ${MANIFEST})"
+while IFS=$'\t' read -r image dir; do
+  pinned_version="$(sed -nE 's|.*/Xcode_([0-9.]+)\.app/.*|\1|p' <<< "$dir")"
+  readme="https://raw.githubusercontent.com/actions/runner-images/main/images/macos/${image}-arm64-Readme.md"
+  listed="$(fetch "$readme" 2> /dev/null | python3 -c '
+import re, sys
+text = sys.stdin.read()
+section = text.split("### Xcode", 1)[1].split("####", 1)[0] if "### Xcode" in text else ""
+for row in section.splitlines():
+    m = re.match(r"\|\s*([0-9][0-9.]*)\s*(\(default\))?\s*\|", row)
+    if m:
+        print(m[1], "default" if m[2] else "")
+')"
+  if [ -z "$listed" ] || [ -z "$pinned_version" ]; then
+    echo "::error::could not read the Xcode list for ${image} (${readme}) or the version in ${dir}"
+    status=1
+    continue
+  fi
+  default_version="$(awk '$2 == "default" { print $1 }' <<< "$listed")"
+  if ! awk '{ print $1 }' <<< "$listed" | grep -qxF "$pinned_version"; then
+    echo "::error::${image} no longer ships Xcode ${pinned_version}; move pin.xcode.developer-dir-${image} to one it lists"
+    echo "  it lists: $(awk '{ print $1 }' <<< "$listed" | tr '\n' ' ')"
+    status=1
+  elif [ "$default_version" = "$pinned_version" ]; then
+    echo "  developer-dir-${image}: Xcode ${pinned_version}, the image's default"
+  elif [ "$(printf '%s\n%s\n' "$pinned_version" "$default_version" | sort -V | tail -1)" = "$default_version" ]; then
+    echo "  note: ${image} now defaults to Xcode ${default_version}; the pin is ${pinned_version}"
+    echo "        move pin.xcode.developer-dir-${image} by hand once a run on ${default_version} passes"
+  else
+    echo "  developer-dir-${image}: Xcode ${pinned_version} (the image's default is the older ${default_version})"
+  fi
+done < <(python3 -c '
+import tomllib
+with open(".github/dependencies.toml", "rb") as f:
+    for key, value in tomllib.load(f)["pin"]["xcode"].items():
+        if key.startswith("developer-dir-"):
+            print(key.removeprefix("developer-dir-"), value, sep="\t")
+')
+
 echo
 if [ "$status" -eq 0 ]; then
   echo "done; review 'git diff' and commit"
