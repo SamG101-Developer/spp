@@ -35,6 +35,12 @@ auto spp::codegen::ApplyStackClashProtection(
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
 
+  // Windows probes every frame larger than a page already (the
+  // ABI's "__chkstk"), and its backends have no inline probe: there
+  // the attribute's value is taken as the name of the function to
+  // call instead, so "inline-asm" would be an undefined symbol.
+  if (llvm_mod.getTargetTriple().isOSWindows()) { return 0; }
+
   // The module flag as well as the attribute, because a function
   // a later pass clones or outlines reads the flag; without it a
   // frame created after this point would inherit nothing.

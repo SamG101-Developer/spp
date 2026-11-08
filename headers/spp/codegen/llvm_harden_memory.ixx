@@ -23,7 +23,8 @@ namespace spp::codegen {
   /// write into the new frame hits memory the function was
   /// never given - the "stack clash" shape, and the one hole a
   /// canary cannot see, because nothing was overwritten on the
-  /// way past. Answers how many functions were given one.
+  /// way past. Answers how many functions were given one: none
+  /// on Windows, whose ABI probes large frames already.
   SPP_EXP_FUN auto ApplyStackClashProtection(void *llvm_module) -> unsigned long;
 
   /// Split every function's frame in two: the objects a callee
