@@ -26,3 +26,4 @@
 - [MSVC: imported type redeclared](msvc-imported-type-redeclared.md) — use(…, struct/enum X) while importing X's module: C1117 (enum) / C2027 (struct); use use_alias
 - [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply in comp_key.ixx and diagnostic.cpp; unfixed; reproducer + BMIs in the buildlog artifact
 - [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4
+- [Defender already off on x64](windows-defender-already-off-x64.md) — windows-2025 x64 runs with real-time scan off (ARM on); exclusions can't speed the x64 shards
