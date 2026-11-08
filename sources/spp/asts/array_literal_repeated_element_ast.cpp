@@ -29,6 +29,7 @@ import spp.utils.ice;
 import spp.utils.uid;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);

@@ -8,6 +8,7 @@ import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
 import spp.codegen.llvm_fn_impls;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);

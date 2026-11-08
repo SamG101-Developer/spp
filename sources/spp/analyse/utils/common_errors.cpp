@@ -18,6 +18,7 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, VariableSymbol);
 use_alias(spp::asts, Ast);

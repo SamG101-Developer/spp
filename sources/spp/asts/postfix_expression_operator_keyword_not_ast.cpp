@@ -19,6 +19,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ice;
 import spp.utils.uid;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);

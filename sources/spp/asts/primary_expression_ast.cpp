@@ -3,6 +3,7 @@ module;
 
 module spp.asts.primary_expression_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);

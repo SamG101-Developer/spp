@@ -28,6 +28,7 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);

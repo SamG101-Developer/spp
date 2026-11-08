@@ -8,6 +8,7 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);

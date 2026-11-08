@@ -9,6 +9,7 @@ import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);

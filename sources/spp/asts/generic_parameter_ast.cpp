@@ -44,6 +44,7 @@ import spp.asts.utils.orderable;
 import spp.asts.utils.visibility;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, NameTypeIdOf);
 use_alias(spp::analyse::scopes, NextGnParamId);
 use_alias(spp::analyse::scopes, ParamCompId);

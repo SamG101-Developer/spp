@@ -4,6 +4,7 @@ module;
 module spp.asts.unary_expression_operator_ast;
 import spp.asts.expression_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts::meta, CompilerMetaData);

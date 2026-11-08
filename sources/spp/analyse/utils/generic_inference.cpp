@@ -37,6 +37,7 @@ import spp.utils.ice;
 import spp.utils.interner;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, CompId);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, GenericSubst);

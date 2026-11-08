@@ -9,6 +9,7 @@ import spp.analyse.scopes.symbols;
 import spp.utils.ice;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
 use_alias(spp::utils::errors, ErrorFormatter);
 

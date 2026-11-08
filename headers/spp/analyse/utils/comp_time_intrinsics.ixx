@@ -43,26 +43,29 @@ namespace spp {
     using Type = void;
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<true, false, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<false, true, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<true, true, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
@@ -102,6 +105,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     }
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_CLS template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
   struct CompTimeFnImpl final : CompTimeFn {
     using FnPtr = DetermineCompTimeFnSig<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>;
@@ -111,17 +115,17 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     }
 
     auto Invoke(
-      Vec<Unique<ExpressionAst>> const &args)
-      -> Unique<ExpressionAst> override {
+      Vec<Unique<asts::ExpressionAst>> const &args)
+      -> Unique<asts::ExpressionAst> override {
       return _InvokeImpl(args, std::index_sequence_for<Args...>{});
     }
 
   private:
     template <std::size_t... I>
     auto _InvokeImpl(
-      Vec<Unique<ExpressionAst>> const &args,
+      Vec<Unique<asts::ExpressionAst>> const &args,
       std::index_sequence<I...>)
-      -> Unique<ExpressionAst> {
+      -> Unique<asts::ExpressionAst> {
       if constexpr (HasGnTypeArgs and HasGnCompArgs) {
         INVOKE_PATTERN(*Sm, GnTypeArgs, GnCompArgs);
       }
@@ -150,33 +154,36 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     return MakeUnique<CompTimeFnImpl<false, false, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and not HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, false, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (not HasGnTypeArgs and HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<false, true, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
+      analyse::scopes::ScopeManager const &,
       decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))

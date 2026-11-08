@@ -27,6 +27,7 @@ import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);

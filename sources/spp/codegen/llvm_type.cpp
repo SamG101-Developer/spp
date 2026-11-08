@@ -40,6 +40,7 @@ import std;
 // vector/extended precision territory, which the layout code does not model either.
 constexpr std::uint64_t kMaxVariantPayloadAlign = 16;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);

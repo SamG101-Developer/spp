@@ -63,3 +63,9 @@
 
 #define MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ \
   /* https://developercommunity.visualstudio.com/t/Out-of-class-method-definition-does-not/11096133 */
+
+#define MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL \
+  /* Developer Community 11179619 */
+
+#define MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL \
+  /* Developer Community 11179620 */

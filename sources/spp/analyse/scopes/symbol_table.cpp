@@ -11,6 +11,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, NamespaceSymbol);
 use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::analyse::scopes, VariableSymbol);

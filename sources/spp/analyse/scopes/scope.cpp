@@ -67,6 +67,7 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, TypeKey);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, AstCloneShared);

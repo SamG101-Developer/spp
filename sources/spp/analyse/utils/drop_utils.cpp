@@ -34,6 +34,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);

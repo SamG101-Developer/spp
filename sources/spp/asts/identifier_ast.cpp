@@ -32,6 +32,7 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, CompId);
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, ScopeManager);

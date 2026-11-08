@@ -27,6 +27,7 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts::meta, CompilerMetaData);

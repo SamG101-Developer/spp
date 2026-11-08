@@ -38,6 +38,8 @@ Each entry gives:
 | U19 | qemu             | loongarch64 sigreturn CFA register and return column (vDSO)     | 2026-11-07   |
 | U20 | LLVM             | ARMv5 sub-word `__sync_*` results sign- vs zero-extended        | 2026-10-27   |
 | U21 | LLVM             | m68k 16-bit PC-relative and PLT relocations in large programs   | 2026-10-27   |
+| U22 | MSVC             | Implementation units see the interface's using-declarations     | 2026-11-08   |
+| U23 | MSVC             | Templates keep using-declared names when instantiated elsewhere | 2026-11-08   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -463,6 +465,33 @@ Each entry gives:
 - **Check:** `spp test --all-libs --target m68k-unknown-linux-gnu` links.
 - **When it lands:** nothing to undo; the m68k unit-test step goes green on the LLVM bump.
 - **Last checked:** 2026-10-27.
+
+## U22. MSVC: a module implementation unit misses the interface's using-declarations
+
+- **Library:** MSVC (VS 18 / 14.51.36231, windows-2025 runner). Developer Community 11179619.
+- **Want:** a module implementation unit sees the non-exported `using ns::X;` declarations of its primary interface,
+  as GCC and clang do.
+- **Why:** `use(ns, X)` in an interface would then serve its `.cpp` too.
+- **Meanwhile:** every module `.cpp` repeats the names it uses in a `use_alias` block, marked
+  `MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL` (191 files). See `notes/ci/msvc-interface-names-not-inherited.md`.
+- **Status (2026-11-08):** filed. Repro: `tickets/msvc-impl-unit-misses-interface-using-decl/`.
+- **Check:** `build.bat` in the repro folder prints `ok` with the runner's toolset.
+- **When it lands:** the marked `use_alias` lines a `.cpp` only needs for its interface's names can go.
+- **Last checked:** 2026-11-08.
+
+## U23. MSVC: a template loses using-declared names when another module instantiates it
+
+- **Library:** MSVC (VS 18 / 14.51.36231, windows-2025 runner). Developer Community 11179620. Possibly related:
+  11164692 (a using-directive in a GMF header's template, lost in an importer).
+- **Want:** a class or function template's non-dependent names, found through a non-exported `using ns::X;`, stay
+  bound to the definition when another module instantiates it.
+- **Why:** templates in interfaces could use the short names like the rest of the interface.
+- **Meanwhile:** those names are qualified inside the templates, marked `MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL`
+  (`comp_time_intrinsics.ixx`, `inner_scope_ast.ixx`).
+- **Status (2026-11-08):** filed. Repro: `tickets/msvc-template-instantiation-misses-using-decl/`.
+- **Check:** `build.bat` in the repro folder prints `ok` with the runner's toolset.
+- **When it lands:** the marked qualifications can be shortened again.
+- **Last checked:** 2026-11-08.
 
 ## Resolved
 

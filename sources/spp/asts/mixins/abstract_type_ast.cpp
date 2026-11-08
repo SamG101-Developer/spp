@@ -4,6 +4,7 @@ module;
 module spp.asts.mixins.abstract_type_ast;
 import spp.asts.type_identifier_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 
 SPP_MOD_BEGIN

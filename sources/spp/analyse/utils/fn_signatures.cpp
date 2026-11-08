@@ -30,6 +30,7 @@ import spp.utils.ptr;
 import spp.utils.types;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, BareOf);
 use_alias(spp::analyse::scopes, GenericSubst);
 use_alias(spp::analyse::scopes, Scope);

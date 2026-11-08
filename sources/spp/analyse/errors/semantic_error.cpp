@@ -51,6 +51,7 @@ import spp.asts.type_statement_ast;
 import colex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, AnnotationAst);
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, PostfixExpressionAst);

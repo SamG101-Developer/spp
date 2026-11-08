@@ -58,6 +58,7 @@ import spp.utils.types;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, AliasInfo);
 use_alias(spp::analyse::scopes, CompId);
 use_alias(spp::analyse::scopes, ExprSubst);

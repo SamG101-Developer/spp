@@ -8,6 +8,7 @@ import genex;
 import magic_enum;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
 use_alias(spp::asts::mixins, OrderableAst);
 

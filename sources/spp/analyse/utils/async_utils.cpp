@@ -17,6 +17,7 @@ import spp.asts.utils.ast_utils;
 import spp.utils.types;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::asts, ClosureExpressionCaptureAst);
 use_alias(spp::asts, ConventionAst);

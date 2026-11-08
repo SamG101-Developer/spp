@@ -13,6 +13,7 @@ import spp.asts.object_initializer_ast;
 import spp.asts.type_identifier_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);

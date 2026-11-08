@@ -7,6 +7,7 @@ import spp.asts.expression_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

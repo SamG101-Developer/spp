@@ -14,6 +14,7 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableSymbol);

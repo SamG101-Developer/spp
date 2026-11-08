@@ -5,6 +5,7 @@ module spp.asts.local_variable_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::codegen, LlvmCtx);

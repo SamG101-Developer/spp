@@ -36,6 +36,7 @@ import spp.asts.utils.visibility;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);

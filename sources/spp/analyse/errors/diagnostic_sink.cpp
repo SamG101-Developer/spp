@@ -6,6 +6,7 @@ import spp.analyse.errors.semantic_error;
 import spp.utils.types;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
 
 namespace spp::analyse::errors::diagnostic_sink {

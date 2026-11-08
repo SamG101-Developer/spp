@@ -39,6 +39,7 @@ import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, GenericSubst);
 use_alias(spp::analyse::scopes, InstanceBindings);
 use_alias(spp::analyse::scopes, IsClosedTypeId);

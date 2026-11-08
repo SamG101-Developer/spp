@@ -38,6 +38,7 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);

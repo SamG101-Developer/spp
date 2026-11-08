@@ -8,6 +8,7 @@ import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
 import spp.utils.ptr;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::asts, Ast);
 use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TypeAst);

@@ -26,6 +26,7 @@ import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, BumpTypeStructureGeneration);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::asts::meta, CompilerMetaData);
