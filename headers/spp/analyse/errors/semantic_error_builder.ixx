@@ -80,7 +80,7 @@ namespace spp {
       }
       else { return std::forward<T>(arg); }
     };
-    std::apply(
+    apply(
       [&]<typename... Args2>(Args2 &&... unpacked_args) {
         analyse::errors::SemanticErrorBuilder<E>()
           .WithSubErrors(std::move(sub_errors))

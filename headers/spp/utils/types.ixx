@@ -129,6 +129,7 @@ namespace spp {
   SPP_EXP_FUN using std::get_if;
   SPP_EXP_FUN using std::holds_alternative;
   SPP_EXP_FUN using std::visit;
+  SPP_EXP_FUN using std::apply;
   SPP_EXP_FUN using std::tie;
   SPP_EXP_FUN using std::tuple_cat;
   SPP_EXP_FUN using std::forward_as_tuple;
