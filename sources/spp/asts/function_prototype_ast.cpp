@@ -860,7 +860,8 @@ auto spp::asts::FunctionPrototypeAst::_SkipIfAnalysedAhead(
 }
 
 auto spp::asts::FunctionPrototypeAst::_EnsureDropsForBuiltin(
-  FunctionPrototypeAst const &sub_proto, ScopeManager &tm, CompilerMetaData *meta) -> void {
+  FunctionPrototypeAst const &sub_proto, ScopeManager &tm,
+  CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
   if (sub_proto.BuiltinAnnotation == nullptr) { return; }

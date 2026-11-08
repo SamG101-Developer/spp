@@ -20,10 +20,18 @@ use_alias(spp::asts::meta, CompilerMetaData);
 /// directly. Typically, this is to use intrinsic functions, or logic that is
 /// not expressible in s++.
 SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
+  /// The function that upon calling, provides the llvm implementation via the
+  /// llvm builder mechanic.
   Func<void(
     ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *,
     llvm::Type *)> LlvmImpl;
+
+  /// The wrapper around the c++ comptime executor for the intrinsic, should it
+  /// exist (nullptr for no "cmp" implementation).
   Unique<analyse::utils::comp_time_intrinsics::CompTimeFn> CompTimeImpl;
+
+  /// The intrinsics name, as seen in "!intrinsic(name="a.b.c")", which is used
+  /// to index the builtin-functions map below.
   Str Name;
 
   /// The generic parameter whose destructor the lowering calls, if any ("T" for
@@ -32,23 +40,19 @@ SPP_EXP_CLS struct spp::codegen::builtins::LoweredFnImpl {
   Str DropsGn;
 
   /// Lowers a direct call in place of the call, from the argument values, for a
-  /// lowering that has to sit in the caller's own code: a branch hint must feed
+  /// lowering that has to sit in the caller's own code, like a branch hint.
   /// Effectively a function that doesn't have even an IR body, but rather
-  /// lowers to a callsite modifier.
+  /// lowers to a call-site modifier.
   Func<llvm::Value*(Vec<llvm::Value*> const &, LlvmCtx *)> CallSiteImpl;
 };
 
 namespace spp::codegen::builtins {
-  /// Generate the mapping of all S++ functions tagged with
-  /// "!intrinsic(name="some.ns.name")" to the llvm function
-  /// generator, and optionally the c++ comptime function
-  /// generator. This allows, given the intrinsic name, to
-  /// lookup the function that produces the IR, and the
-  /// function that computes the operation in the C++
-  /// compile-time context.
+  /// Generate the mapping of all S++ functions tagged with "!intrinsic" to the
+  /// llvm function generator, and optionally the c++ comptime function
+  /// generator.
   auto MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl>;
 
-  /// Create the static const map that will be used so that
-  /// the lookup map only has to be generated once.
+  /// The static const map that will hold the lookup map, so that it only has to
+  /// be generated once.
   SPP_EXP_FUN extern const Map<Str, LoweredFnImpl> kBuiltinFuncs;
 }
