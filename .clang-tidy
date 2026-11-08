@@ -1,0 +1,12 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-reserved-identifier,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-command-processor,
+  clang-analyzer-*,
+  -clang-analyzer-optin.performance.Padding,
+  performance-*,
+  -performance-enum-size
+HeaderFilterRegex: '.*/(headers|sources)/spp/.*'
+WarningsAsErrors: ''

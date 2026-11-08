@@ -47,11 +47,12 @@ extend-ignore-re = ["(?Rm)^.*spellchecker:disable-line$"]
 compex = "compex" # Compare exchange (atomics)
 olt = "olt"       # Ordered less than
 Cpy = "Cpy"       # Part of "MemCpy"
+optin = "optin"   # Option in clang-tidy
 
 [tool.typos.files]
 extend-exclude = ["Doxyfile", ".vale/**", "*.svg", "tests/gtest-parallel/**"]
 
 [tool.codespell]
-ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics,ScriptIn"
+ignore-words-list = "CreateOr,CreateMemCpy,olt,compex,ReadIn,PositionOf,isELF,ArchType,statics,ScriptIn,optin"
 skip = "./.vale,./tests/gtest-parallel,*.svg"
 ignore-regex = ".*spellchecker:disable-line"
