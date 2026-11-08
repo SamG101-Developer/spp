@@ -65,9 +65,9 @@ spp::asts::CaseExpressionAst::CaseExpressionAst(
   Branches(std::move(branches)) {
   using lex::SppTokenType;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokCase, SppTokenType::KW_CASE, "case", cond ? cond->PosStart() : 0);
+    this->TokCase, SppTokenType::KW_CASE, "case", this->Cond ? this->Cond->PosStart() : 0);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokOf, SppTokenType::KW_OF, "of", cond ? cond->PosEnd() : 0);
+    this->TokOf, SppTokenType::KW_OF, "of", this->Cond ? this->Cond->PosEnd() : 0);
 }
 
 spp::asts::CaseExpressionAst::~CaseExpressionAst() = default;

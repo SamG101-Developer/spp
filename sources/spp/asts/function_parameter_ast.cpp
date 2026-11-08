@@ -45,7 +45,7 @@ spp::asts::FunctionParameterAst::FunctionParameterAst(
   Type(std::move(type)) {
   using lex::SppTokenType;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokColon, SppTokenType::TK_COLON, ":", var ? var->PosEnd() : 0);
+    this->TokColon, SppTokenType::TK_COLON, ":", this->Var ? this->Var->PosEnd() : 0);
   if (this->Var == nullptr) {
     const auto uid = spp::utils::Uid();
     const auto pos = this->Type ? this->Type->PosStart() : 0uz;
