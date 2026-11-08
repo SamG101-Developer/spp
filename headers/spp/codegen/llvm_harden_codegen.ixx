@@ -47,7 +47,19 @@ namespace spp::codegen {
   /// A load and a compare per call. x86 and AArch64 only: on
   /// any other target this reports the key that turns it off
   /// and answers false, which fails the build.
-  SPP_EXP_FUN auto ApplyCfi(void *llvm_module) -> bool;
+  ///
+  /// This half types the functions, turning the "spp.cfi"
+  /// records into llvm's "kcfi_type", and must run before the
+  /// optimiser: llvm's passes keep "kcfi_type" on what they
+  /// rebuild (a MergeFunctions thunk, a clone), but not s++'s
+  /// own metadata, so a function rebuilt before typing would be
+  /// left untyped and every indirect call to it would trap.
+  SPP_EXP_FUN auto ApplyCfiTypes(void *llvm_module) -> bool;
+
+  /// The other half of "ApplyCfiTypes", run after the optimiser:
+  /// an Ice for any indirect call left without a "kcfi" bundle,
+  /// as that call would go unchecked.
+  SPP_EXP_FUN auto CheckCfiCalls(void *llvm_module) -> void;
 
   /// Keep every switch in an "llvm::Module" (passed as an opaque
   /// pointer) from jumping through an entry past the end of its

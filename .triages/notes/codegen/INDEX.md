@@ -14,7 +14,7 @@
 - [Link flags per object format](link-flags-per-object-format.md) — ELF -z + $ORIGIN; Mach-O @loader_path, no -z; COFF link unwired; MSVC refuses protect+split (U15)
 - [SLS thunks on Mach-O](sls-thunks-macho.md) — LLVM calls AArch64 SLS thunks unprefixed on Mach-O; sls refused on arm64 macOS (U16)
 - [Single abort path](spp-single-abort-path.md) — checks call sppc_check_failed; no frontend willreturn
-- [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; optimiser drops custom call md
+- [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; fns typed before the optimiser (thunks drop spp.cfi)
 - [Hardening needs a feature gate](hardening-needs-feature-gate.md) — default on behind a key, fail loudly; old kernels via build-time floor (RHEL 8), never runtime skip
 - [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly

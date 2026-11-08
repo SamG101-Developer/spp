@@ -12,6 +12,9 @@
 #   - the program still takes the branches the conditions choose.
 # The hint is lost unless its "llvm.expect" is in the branch's own block
 # (LowerExpectIntrinsic removes the block's expects after its branch).
+# Each function prints its own text: bodies differing only in their hints are
+# identical once lowered, and MergeFunctions (rel) would fold them into one,
+# keeping one copy's weights, as it does not compare them.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-branch-hints.sh [path/to/spp]
 
@@ -26,7 +29,7 @@ use std::llvm::no_inline
 !no_inline
 fun hint_likely(x: S32) -> S32 {
     case std::hints::likely(x > 10) {
-        std::console::println("big")
+        std::console::println("big (likely)")
         ret 1
     }
     ret 2
@@ -35,7 +38,7 @@ fun hint_likely(x: S32) -> S32 {
 !no_inline
 fun hint_unlikely(x: S32) -> S32 {
     case std::hints::unlikely(x > 10) {
-        std::console::println("big")
+        std::console::println("big (unlikely)")
         ret 1
     }
     ret 2
@@ -44,7 +47,7 @@ fun hint_unlikely(x: S32) -> S32 {
 !no_inline
 fun hint_none(x: S32) -> S32 {
     case x > 10 {
-        std::console::println("big")
+        std::console::println("big (no hint)")
         ret 1
     }
     ret 2
@@ -84,7 +87,7 @@ fun hint_loop(n: S32) -> S32 {
 fun cold_plain(x: S32) -> S32 {
     case x > 10 {
         std::hints::cold_path()
-        std::console::println("big")
+        std::console::println("big (cold)")
         ret 1
     }
     ret 2

@@ -105,7 +105,7 @@ auto spp::codegen::ApplyRegisterScrubbing(
   return true;
 }
 
-auto spp::codegen::ApplyCfi(
+auto spp::codegen::ApplyCfiTypes(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
@@ -134,6 +134,16 @@ auto spp::codegen::ApplyCfi(
     }
   }
 
+  // The backend emits each function's type, and each call's
+  // check, only for a module that asks for them.
+  llvm_mod.addModuleFlag(llvm::Module::Override, "kcfi", 1);
+  return true;
+}
+
+auto spp::codegen::CheckCfiCalls(
+  void *llvm_module) -> void {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
   // The calls carry their checks from where they were emitted
   // ("CfiFnCallBundles", "CfiGenCallBundles"). One that does not
   // would be the call an attacker could take anywhere, so it
@@ -147,11 +157,6 @@ auto spp::codegen::ApplyCfi(
       }
     }
   }
-
-  // The backend emits each function's type, and each call's
-  // check, only for a module that asks for them.
-  llvm_mod.addModuleFlag(llvm::Module::Override, "kcfi", 1);
-  return true;
 }
 
 auto spp::codegen::ApplyJumpTableBounds(

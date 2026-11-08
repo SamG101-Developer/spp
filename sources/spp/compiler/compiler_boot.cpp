@@ -725,6 +725,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::RunInternalizePass(lto_module.get(), &preserved, 1);
   }
 
+  // Control-flow integrity types its functions before optimising, as llvm's
+  // passes keep "kcfi_type" on a function they rebuild but not s++'s own
+  // records; its calls are checked with the rest of the hardening below.
+  FEATURE_GATE(BinaryCodegenCfi, has_entry_point) {
+    if (not codegen::ApplyCfiTypes(lto_module.get())) { return false; }
+  }
+
   // Run the standard optimization pipeline across the LTO module, using the
   // optimization level from "rel" (O3) vs "dev" (O0).
   RecordIrSize(*lto_module, "before_opt");
@@ -767,7 +774,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     if (not codegen::ApplyRegisterScrubbing(lto_module.get())) { return false; }
   }
   FEATURE_GATE(BinaryCodegenCfi) {
-    if (not codegen::ApplyCfi(lto_module.get())) { return false; }
+    codegen::CheckCfiCalls(lto_module.get());
   }
   FEATURE_GATE(BinaryCodegenJumpTableBounds) {
     if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; }

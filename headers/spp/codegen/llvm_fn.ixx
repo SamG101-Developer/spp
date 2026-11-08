@@ -163,7 +163,7 @@ namespace spp::codegen {
   SPP_EXP_CLS enum class CoroEdge { Resume, Destroy };
 
   /// Record that "fn" is called indirectly as a value whose
-  /// function type is "fn_sup" ("FindFnSup"), which "ApplyCfi"
+  /// function type is "fn_sup" ("FindFnSup"), which "ApplyCfiTypes"
   /// turns into the type a call checks for. Recorded as
   /// "metadata" on the function. The type is a hash of the
   /// function type's "Args" and "Out", the s++ signature, not
@@ -174,7 +174,7 @@ namespace spp::codegen {
 
   /// Record a coroutine's generator. The lowering splits it into
   /// the functions resuming and destroying it, which keep this,
-  /// and "ApplyCfi" types each of them by which it is.
+  /// and "ApplyCfiTypes" types each of them by which it is.
   SPP_EXP_FUN auto StampCfiCoroutine(
     llvm::Function &ramp, TypeRef const &gen_sup) -> void;
 
