@@ -31,6 +31,7 @@ import spp.lex.tokens;
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, LocalVariableAst);
 use_alias(spp::asts, LocalVariableDestructureArrayAst);
 use_alias(spp::asts, LocalVariableDestructureAttributeBindingAst);
 use_alias(spp::asts, LocalVariableDestructureObjectAst);

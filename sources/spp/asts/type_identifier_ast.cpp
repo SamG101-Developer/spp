@@ -49,6 +49,7 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
 use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);

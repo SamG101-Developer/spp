@@ -29,6 +29,8 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
 use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ClassAttributeAst);
+use_alias(spp::asts, TypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::codegen, LlvmCtx);

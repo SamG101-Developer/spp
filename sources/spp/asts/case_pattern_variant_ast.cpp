@@ -24,6 +24,7 @@ import genex;
 import llvm;
 
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, CasePatternVariantAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, MetaGuard);
 use_alias(spp::codegen, LlvmCtx);

@@ -75,6 +75,7 @@ use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts::meta, CompilerMetaData);
 use_alias(spp::asts::meta, CompilerStage);
 use_alias(spp::asts::meta, MetaGuard);

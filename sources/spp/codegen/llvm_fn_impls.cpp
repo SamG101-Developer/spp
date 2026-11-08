@@ -61,6 +61,7 @@ use_alias(spp::asts, IdentifierAst);
 use_alias(spp::asts, TypeAst);
 use_alias(spp::asts, TypeIdentifierAst);
 use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 use_alias(spp::codegen::fn_impls, AtomicRmwOp);
 use_alias(spp::codegen::fn_impls, BinOp);
 use_alias(spp::codegen::fn_impls, ConvOp);
