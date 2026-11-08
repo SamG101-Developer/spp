@@ -128,8 +128,7 @@ namespace spp::codegen::builtins {
   }
 }
 
-auto spp::codegen::builtins::MakeBuiltinFnMap()
-  -> Map<Str, LoweredFnImpl> {
+auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   auto map = Map<Str, LoweredFnImpl>{};
 
   Register(map, "std.array.Arr.new", fn_impls::StdArrayNew);
