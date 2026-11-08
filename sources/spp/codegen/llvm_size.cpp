@@ -21,6 +21,7 @@ import spp.asts.utils.ast_utils;
 import genex;
 
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
 
 namespace spp::codegen {
   struct Layout {

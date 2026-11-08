@@ -26,6 +26,7 @@ import llvm;
 import std;
 
 use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
 
 namespace spp::codegen {
   namespace {
