@@ -1,8 +1,7 @@
 # The test matrix _build.yaml planned, against its digest-checked
-# binaries: gtest (mode x shard), STL conformance, and on Linux
-# valgrind, the codegen checks and the differential suite when
-# asked for, each in a cell of its own or, with `pack`, beside
-# the last gtest shard.
+# binaries: a gtest cell per mode and shard, then one cell for
+# STL conformance and, on Linux, valgrind, the codegen checks and
+# the differential suite when asked for.
 
 name: test
 
@@ -115,13 +114,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/prof"
           echo "LLVM_PROFILE_FILE=$RUNNER_TEMP/prof/%8m.profraw" >> "$GITHUB_ENV"
 
-      # Every suite the cell holds, side by side: a packed cell
-      # (`pack`) lets the short suites finish while gtest runs on.
-      # A failure fails the job at the group's implicit wait, after
-      # the others have finished. Valgrind, the codegen checks and
-      # the differential suite sharing a cell stay advisory through
-      # their own continue-on-error; alone, the job-level one covers
-      # them.
+      # Every suite the cell holds, side by side: a gtest cell holds
+      # only gtest, the other cell the rest. A failure fails the job
+      # at the group's implicit wait, after the others have finished.
+      # Valgrind, the codegen checks and the differential suite
+      # sharing a cell stay advisory through their own
+      # continue-on-error; alone, the job-level one covers them.
       - parallel:
           - name: Run tests
             id: tests

@@ -157,6 +157,7 @@ jobs:
     uses: ./.github/workflows/_lane.yaml
     with:
       compiler: clang
+      shard-count: 2
 
   linux-arm-gcc:
     name: Linux ARM GCC
@@ -188,6 +189,7 @@ jobs:
       os: macos-15
       compiler: clang
       off: sls
+      shard-count: 2
 
   # Todo: drop "off" once LLVM's split stack checks MSVC's canary; see .triages/upstream-watch.md U15.
   windows-msvc:
@@ -200,6 +202,7 @@ jobs:
       os: windows-2025
       compiler: msvc
       off: &msvc-off memory.stack.split
+      shard-count: 3
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
   windows-clang-cl:
@@ -213,6 +216,7 @@ jobs:
       compiler: clang-cl
       advisory: true
       off: *msvc-off
+      shard-count: 3
 
   # Todo: drop advisory once it builds and passes as the x64 lane does; see .triages/next-steps.md N15.
   windows-arm-msvc:
@@ -226,6 +230,7 @@ jobs:
       compiler: msvc
       advisory: true
       off: *msvc-off
+      shard-count: 3
 
   # Todo: Add to ci-success once more stable.
   cross-codegen:

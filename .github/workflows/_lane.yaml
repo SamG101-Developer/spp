@@ -57,10 +57,6 @@ on:
         required: false
         type: boolean
         default: true
-      pack:
-        required: false
-        type: boolean
-        default: true
       advisory:
         required: false
         type: boolean
@@ -110,7 +106,6 @@ jobs:
       valgrind: ${{ inputs.valgrind }}
       codegen: ${{ inputs.codegen }}
       differential: ${{ inputs.differential }}
-      pack: ${{ inputs.pack }}
       advisory: ${{ inputs.advisory }}
 
   test:

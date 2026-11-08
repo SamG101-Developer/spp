@@ -72,11 +72,6 @@ on:
         required: false
         type: boolean
         default: true
-      pack:
-        description: "Run STL conformance, valgrind, the codegen checks and the differential suite in the last gtest cell, in parallel with it, rather than in cells of their own."
-        required: false
-        type: boolean
-        default: true
       advisory:
         description: "Let the build and its tests fail without failing the run, for a toolchain not expected to work yet."
         required: false
@@ -159,7 +154,6 @@ jobs:
           VALGRIND: ${{ inputs.valgrind }}
           CODEGEN: ${{ inputs.codegen }}
           DIFFERENTIAL: ${{ inputs.differential }}
-          PACK: ${{ inputs.pack }}
         run: bash .github/scripts/test/plan-tests.sh
 
       - name: Build

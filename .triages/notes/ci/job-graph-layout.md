@@ -14,11 +14,13 @@ draws the same, so the lanes call the shared workflows:
 - `_build.yaml` (one job) builds, stages and plans the test matrix (`plan-tests.sh`); its outputs are all a test job
   needs, handed on as `build: ${{ toJSON(needs.build.outputs) }}`. `_test.yaml` is that matrix job.
 - `_lane.yaml`: `_build.yaml` then `_test.yaml`, inputs passed through with the same defaults (`modes: rel dev`,
-  valgrind, codegen and differential on, `shard-count: 1`, `pack: true`); a new input to either has to be added here
-  too. Outputs: the build's `artifact` and digests. Every lane runs these defaults (2026-11-07: Linux GCC lost its
-  shards, its unpacked cells and its extra suites), so a lane's cells are "GTest Rel" and "GTest Dev + STL + ...";
-  only the nightly sanitizer lane narrows them (rel only, no extras, 4 shards). The extras are Linux-only in
-  `plan-tests.sh`, and valgrind's cache key carries `runner.arch`, as the ARM lanes run it too.
+  valgrind, codegen and differential on, `shard-count: 1`); a new input to either has to be added here too. Outputs:
+  the build's `artifact` and digests. A lane's cells (2026-11-08) are a gtest cell per mode and shard ("GTest Rel",
+  or "GTest Rel 1/3" when sharded) plus one cell for the rest ("STL + Valgrind + Codegen + Differential" on Linux,
+  "STL Conformance" elsewhere); a gtest cell never holds anything else, so its shards take equal time. Shards per lane
+  (`pr.yaml`): 3 for the Windows lanes, 2 for macOS and Linux Clang, 1 otherwise. The nightly sanitizer lane narrows
+  them (rel only, no extras, 4 shards). The extras are Linux-only in `plan-tests.sh` apart from STL, and valgrind's
+  cache key carries `runner.arch`, as the ARM lanes run it too.
 - `_coverage.yaml` (post_merge): `_build.yaml`, `_test.yaml`, then an inline report job that waits on every cell to
   merge their profiles. Outputs `coverage-report` (empty when it did not upload) for Sonar.
 - `_cross_codegen.yaml` (pr): `_build.yaml` (all targets), then the inline emit matrix (which also runs the s++

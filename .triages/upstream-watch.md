@@ -25,10 +25,10 @@ Each entry gives:
 | U6  | MSVC STL         | `std::string + std::string_view` (P2591)                        | 2026-11-07   |
 | U7  | MSVC             | Inline bodies from a GMF instantiated in importers              | 2026-09-11   |
 | U8  | CMake            | `vs_link_exe` treating a leading `@` as a response file         | 2026-11-07   |
-| U9  | ccache-action    | `append-timestamp: false`                                       | 2026-11-07   |
+| U9  | ccache-action    | `append-timestamp: false`                                       | 2026-11-08   |
 | U10 | Ubuntu toolchain | A current GCC release for the runner images                     | 2026-11-07   |
-| U11 | ccache, sccache  | Caching C++20 module compiles from GCC                          | 2026-11-07   |
-| U12 | sccache          | Caching C++20 module compiles from cl.exe                       | 2026-11-07   |
+| U11 | ccache, sccache  | Caching C++20 module compiles from GCC                          | 2026-11-08   |
+| U12 | sccache          | Caching C++20 module compiles from cl.exe                       | 2026-11-08   |
 | U13 | LLVM             | PC-relative EH pointers on m68k under PIC                       | 2026-11-07   |
 | U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-11-07   |
 | U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-11-07   |
@@ -199,11 +199,11 @@ Each entry gives:
 - **Why:** cache keys without a timestamp.
 - **Meanwhile:** the default (timestamped keys) and no sha in the key; `prune-caches.sh` groups `ccache-`/`sccache-`
   keys with `:3`, as the ISO date splits into three dash segments.
-- **Status:** broken in v1.2.24, still the latest release, and on `main` (`core.getInput`, 2026-11-07).
+- **Status:** broken in v1.2.24, still the latest release, and on `main` (`core.getInput`, 2026-11-08).
 - **Check:** on each ccache-action bump, read `restore.ts` for the string test.
 - **When it lands:** switching to `append-timestamp: false` is possible; keep the prune segment count in step with the
   key shape.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-08.
 
 ## U10. Ubuntu toolchain: a current GCC for the runner images
 
@@ -237,20 +237,22 @@ Each entry gives:
 - **When it lands:** bump `[pin.ccache]`/`[pin.sccache]`. Before trusting it, check that a change to a module interface
   alone makes its importers miss: export `f(int)`, compile an importer through the cache, change it to
   `f(int, int = 0)`, rebuild the module and the importer, and `nm` must show the new mangling (`_ZW1m1fii`).
-- **Last checked:** 2026-11-07 (ccache 4.14.2 and sccache 0.19.0 still latest; #1523 untouched since 2026-02).
+- **Last checked:** 2026-11-08 (ccache 4.14.2 and sccache 0.19.0 still latest; #1523 untouched since 2026-02, sccache#2630
+  since 2026-03).
 
 ## U12. sccache: caching cl.exe's C++20 module compiles
 
 - **Library:** sccache (#2629, PR #2934).
 - **Want:** cl.exe module compiles (`/interface`, `/ifcOutput`, `/reference`, `@<file>.modmap`) cached, with the
   imported IFCs hashed.
-- **Why:** the Windows MSVC job gets a 0% hit rate. The clang-cl job is already cached (sccache #2876, in 0.19.0).
+- **Why:** the Windows MSVC jobs (x64 and, since 2026-11-08, arm64) get a 0% hit rate. The clang-cl job is already cached (sccache #2876, in 0.19.0).
 - **Meanwhile:** none needed for correctness. sccache 0.19.0 refuses every cl.exe module flag, so these compile fresh.
   Do not move Windows to ccache: before ccache PR #1837 it caches MSVC module compiles and can return stale objects.
-- **Status:** PR #2934 opened 2026-10-23, still open and unreviewed (2026-11-07). `/headerUnit` would stay uncacheable.
+- **Status:** PR #2934 opened 2026-10-23, still open and unreviewed (2026-11-08). `/headerUnit` would stay uncacheable.
+  ccache#1837 (stop ccache caching MSVC module compiles) is still open, last touched 2026-11-04.
 - **Check:** the sccache release notes for #2934, then the MSVC job's sccache stats on a second build.
 - **When it lands:** bump `[pin.sccache]` and confirm that a module-interface-only change makes importers miss.
-- **Last checked:** 2026-11-07 (sccache 0.19.0 still latest).
+- **Last checked:** 2026-11-08 (sccache 0.19.0 still latest).
 
 ## U13. LLVM: PC-relative EH pointers on m68k under PIC
 
