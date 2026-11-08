@@ -6,6 +6,7 @@
 #include <llvm/IR/ProfDataUtils.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/Coroutines/CoroAnnotationElide.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
@@ -180,7 +181,7 @@ auto spp::codegen::RunCoroLoweringPipeline(
 }
 
 auto spp::codegen::RunOptimizationPipeline(
-  void *llvm_module, const unsigned opt_level) -> void {
+  void *llvm_module, void *target_machine, const unsigned opt_level) -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
   auto loop_am = llvm::LoopAnalysisManager();
@@ -188,7 +189,11 @@ auto spp::codegen::RunOptimizationPipeline(
   auto cgscc_am = llvm::CGSCCAnalysisManager();
   auto module_am = llvm::ModuleAnalysisManager();
 
-  auto pass_builder = llvm::PassBuilder();
+  // The target machine is what supplies the cost model
+  // ("TargetIRAnalysis") the vectorisers, unroller and inliner
+  // read; the module's triple and data layout alone do not.
+  auto pass_builder = llvm::PassBuilder(
+    static_cast<llvm::TargetMachine*>(target_machine));
   pass_builder.registerModuleAnalyses(module_am);
   pass_builder.registerCGSCCAnalyses(cgscc_am);
   pass_builder.registerFunctionAnalyses(func_am);

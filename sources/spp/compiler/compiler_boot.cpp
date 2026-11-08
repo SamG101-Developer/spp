@@ -729,7 +729,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // optimization level from "rel" (O3) vs "dev" (O0).
   RecordIrSize(*lto_module, "before_opt");
   utils::stats::BeginPhase("optimise");
-  codegen::RunOptimizationPipeline(lto_module.get(), opt_level);
+  codegen::RunOptimizationPipeline(
+    lto_module.get(), codegen::SelectedTargetMachine(), opt_level);
   RecordIrSize(*lto_module, "after_opt");
   utils::stats::BeginPhase("write-ir-and-harden");
 

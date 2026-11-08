@@ -124,6 +124,11 @@ namespace spp::codegen {
   /// with the selected target's triple and data layout.
   SPP_EXP_FUN auto ApplyTargetToModule(void *llvm_module) -> void;
 
+  /// The selected target's machine, built once on first use;
+  /// every module is built against it. Null when no backend
+  /// serves the selected triple.
+  SPP_EXP_FUN auto SelectedTargetMachine() -> llvm::TargetMachine*;
+
   /// Emit an "llvm::Module" (passed as an opaque pointer) as a
   /// native object file at "path". Answers whether the object
   /// file was written.

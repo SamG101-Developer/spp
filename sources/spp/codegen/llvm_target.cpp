@@ -124,62 +124,6 @@ namespace spp::codegen {
       return printed;
     }
 
-    /// Get the target machine from the target triple. Every
-    /// module is built against this target machine. Done at
-    /// startup.
-    auto SelectedTargetMachine() -> llvm::TargetMachine* {
-      static const auto machine = []() -> llvm::TargetMachine* {
-        // Initialize all the backends for the configuration.
-        // This makes target machines available.
-        InitializeAllBackends();
-
-        // Get the target triple (what we are compiling for),
-        // and lookup the target for it.
-        auto error = Str();
-        const auto &triple = TargetTriple();
-        const auto *target = llvm::TargetRegistry::lookupTarget(triple, error);
-        if (target == nullptr) {
-          llvm::errs() << "No llvm target for " << triple.str() << ": " << error << "\n";
-          return nullptr;
-        }
-
-        // The baseline the target's distributions build for, where
-        // LLVM's generic CPU is less: on riscv64 Linux that is
-        // rv64gc, with floating-point arguments in float registers
-        // (lp64d), as its libc and every library are built. On
-        // 32-bit PowerPC Linux it is the secure PLT, as gcc is
-        // configured: LLVM's default puts the PLT in a writable,
-        // executable segment, which the W^X link check rejects.
-        auto features = Str();
-        auto options = llvm::TargetOptions();
-        if (triple.isRISCV64() and triple.isOSLinux()) {
-          features = "+m,+a,+f,+d,+c";
-          options.MCOptions.ABIName = "lp64d";
-        }
-        else if (triple.getArch() == llvm::Triple::ppc and triple.isOSLinux()) {
-          features = "+secure-plt";
-        }
-
-        // LLVM's "generic" CPU is each target's baseline, but on
-        // sparc64 it is the 32-bit V8, which cannot load 64 bits:
-        // there, V9, as LLVM itself picks when given no CPU.
-        const auto cpu = triple.isSPARC64() ? "v9" : "generic";
-
-        // Fixed addresses need a code model that reaches the whole
-        // program: the small one still uses 16-bit offsets.
-        if (not TargetIsPositionIndependent()) {
-          return target->createTargetMachine(
-            triple, cpu, features, options, llvm::Reloc::Static, llvm::CodeModel::Large);
-        }
-
-        // "Position independent" because the program is linked as
-        // a PIE, with the runtime as a shared library.
-        return target->createTargetMachine(
-          triple, cpu, features, options, llvm::Reloc::PIC_);
-      }();
-      return machine;
-    }
-
     /// Create the folder for the triple: "<arch>-<os>[-<env>]",
     /// built from the parsed enums.
     auto FolderOf(
@@ -206,6 +150,59 @@ namespace spp::codegen {
       return llvm::Triple(llvm::Triple::normalize(folder));
     }
   }
+}
+
+auto spp::codegen::SelectedTargetMachine() -> llvm::TargetMachine* {
+  static const auto machine = []() -> llvm::TargetMachine* {
+    // Initialize all the backends for the configuration.
+    // This makes target machines available.
+    InitializeAllBackends();
+
+    // Get the target triple (what we are compiling for),
+    // and lookup the target for it.
+    auto error = Str();
+    const auto &triple = TargetTriple();
+    const auto *target = llvm::TargetRegistry::lookupTarget(triple, error);
+    if (target == nullptr) {
+      llvm::errs() << "No llvm target for " << triple.str() << ": " << error << "\n";
+      return nullptr;
+    }
+
+    // The baseline the target's distributions build for, where
+    // LLVM's generic CPU is less: on riscv64 Linux that is
+    // rv64gc, with floating-point arguments in float registers
+    // (lp64d), as its libc and every library are built. On
+    // 32-bit PowerPC Linux it is the secure PLT, as gcc is
+    // configured: LLVM's default puts the PLT in a writable,
+    // executable segment, which the W^X link check rejects.
+    auto features = Str();
+    auto options = llvm::TargetOptions();
+    if (triple.isRISCV64() and triple.isOSLinux()) {
+      features = "+m,+a,+f,+d,+c";
+      options.MCOptions.ABIName = "lp64d";
+    }
+    else if (triple.getArch() == llvm::Triple::ppc and triple.isOSLinux()) {
+      features = "+secure-plt";
+    }
+
+    // LLVM's "generic" CPU is each target's baseline, but on
+    // sparc64 it is the 32-bit V8, which cannot load 64 bits:
+    // there, V9, as LLVM itself picks when given no CPU.
+    const auto cpu = triple.isSPARC64() ? "v9" : "generic";
+
+    // Fixed addresses need a code model that reaches the whole
+    // program: the small one still uses 16-bit offsets.
+    if (not TargetIsPositionIndependent()) {
+      return target->createTargetMachine(
+        triple, cpu, features, options, llvm::Reloc::Static, llvm::CodeModel::Large);
+    }
+
+    // "Position independent" because the program is linked as
+    // a PIE, with the runtime as a shared library.
+    return target->createTargetMachine(
+      triple, cpu, features, options, llvm::Reloc::PIC_);
+  }();
+  return machine;
 }
 
 /// [CHECKED]

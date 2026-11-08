@@ -42,7 +42,14 @@ namespace spp::codegen {
   /// optimisation" is itself a pipeline in llvm
   /// ("buildO0DefaultPipeline"), and the per-module builder
   /// rejects being asked for O0.
-  auto RunOptimizationPipeline(void *llvm_module, unsigned opt_level) -> void;
+  ///
+  /// "target_machine" is the selected "llvm::TargetMachine" (an
+  /// opaque pointer, from "SelectedTargetMachine"). Without it the
+  /// middle-end costs everything with llvm's target-less model,
+  /// which guesses: it vectorises where the real target has no
+  /// cheap vector form, and unrolls where it should not (or not
+  /// where it should).
+  auto RunOptimizationPipeline(void *llvm_module, void *target_machine, unsigned opt_level) -> void;
 
   /// Copy "src_module" into "dest_module" (both opaque
   /// "llvm::Module" pointers, sharing one context), so the
