@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Point the toolchain at the Xcode pinned for this runner
 # image. Keyed on the image rather than taking the default,
-# because the images share no default Xcode: macos-15 boots
-# on 16.4 and macos-26 on 26.6, and the SDK that comes with
-# each is what clang links against.
+# because images share no default Xcode (macos-26 boots on
+# 26.6), and the SDK that comes with each is what clang links
+# against.
 set -euo pipefail
 
 if [ -z "${SPP_CI_RUNNER_IMAGE:-}" ]; then

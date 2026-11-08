@@ -70,10 +70,9 @@ sha256 = "aba592b4a15e8f90c634c5367b51ec8418b8bcd2829865db331a17dc9418dcff"
 
 # macOS toolchains are tied to the Xcode app on the runner image.
 # Pin the developer directory explicitly so CI does not drift when GitHub updates the image. One key per image,
-# because the two do not overlap at the default: macos-15 boots on 16.4 and macos-26 on 26.6. refresh-pins.sh
-# reports a newer image default or a pin the image dropped, but never moves these.
+# because images do not share a default Xcode (macos-26 boots on 26.6). refresh-pins.sh reports a newer image
+# default or a pin the image dropped, but never moves these.
 [pin.xcode]
-developer-dir-macos-15 = "/Applications/Xcode_16.4.app/Contents/Developer"
 developer-dir-macos-26 = "/Applications/Xcode_26.6.app/Contents/Developer"
 
 # Rust for the run-time benchmarks' comparison programs: the standalone
@@ -145,12 +144,9 @@ commit = "a436ca35ed1887bee789765122b65ed2d7a7e045"
 [runner]
 linux = "ubuntu-24.04"
 linux-arm = "ubuntu-24.04-arm"
-linux-old = "ubuntu-22.04"
-linux-old-arm = "ubuntu-22.04-arm"
 macos = "macos-26"
-macos-old = "macos-15"
 windows = "windows-2025"
-windows-old = "windows-2022"
+windows-vs2026 = "windows-2025-vs2026"
 windows-arm = "windows-11-arm"
 
 [floor]

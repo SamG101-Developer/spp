@@ -1,7 +1,7 @@
 ---
 name: ci-runner-core-topology
 description: "ARM CI is faster than x86 because ubuntu-24.04 gives 2 physical cores and ubuntu-24.04-arm gives 4; not a config bug"
-updated: 2026-11-02
+updated: 2026-11-08
 ---
 
 GitHub's `ubuntu-24.04` and `ubuntu-24.04-arm` both advertise 4 vCPU, but they are not
@@ -10,7 +10,7 @@ comparable. Printed by the CPU topology line in `.github/scripts/test/gtest.sh`:
 - `ubuntu-24.04-arm`: Neoverse-N2, 1 thread/core -> **4 physical cores**, same silicon every job.
 - `ubuntu-24.04`: 2 threads/core -> **2 physical cores**, on a pool that varies per job: EPYC
   7763, 9V74, 9V45, Xeon 8370C, Xeon 857x seen.
-- `macos-15`: M1 (Virtual), **3 workers**. `windows-2025`: 4 logical, topology not probed.
+- `macos-15` (no lane since 2026-11-08; macos-26 not yet probed): M1 (Virtual), **3 workers**. `windows-2025`: 4 logical, topology not probed.
 
 The test sweep (3310 tests on 2026-11-02) is independent process spawns at `cpu_count()` workers,
 so it scales with cores. Whole-sweep minutes over three PR runs, 2026-11-01/02: ARM 30-35, x86

@@ -209,6 +209,7 @@ jobs:
       shard-count: 2
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
+  # On the VS 2026 image, to try the newer MSVC STL before the MSVC lanes move.
   windows-clang-cl:
     name: Windows clang-cl (Advisory)
     needs: *lane-needs
@@ -216,7 +217,7 @@ jobs:
     permissions: *read
     uses: ./.github/workflows/_lane.yaml
     with:
-      os: windows-2025
+      os: windows-2025-vs2026
       compiler: clang-cl
       advisory: true
       off: *msvc-off
