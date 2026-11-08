@@ -426,6 +426,21 @@ auto spp::codegen::SharedLibraryExtension(
 }
 
 /// [CHECKED]
+auto spp::codegen::ImportLibraryExtension(
+  char const *folder) -> char const* {
+  const auto triple = TripleOfFolder(folder);
+  SPP_ASSERT(triple.has_value());
+  return triple->isWindowsMSVCEnvironment() ? "lib" : nullptr;
+}
+
+/// [CHECKED]
+auto spp::codegen::ExecutableSuffix(
+  char const *folder) -> char const* {
+  const auto triple = TripleOfFolder(folder);
+  return triple.has_value() and triple->isOSWindows() ? ".exe" : "";
+}
+
+/// [CHECKED]
 auto spp::codegen::ApplyTargetToModule(
   void *llvm_module) -> void {
   // Both off the same machine, rather than off the selected triple

@@ -107,6 +107,19 @@ namespace spp::codegen {
   /// "dll". "folder" must pass "IsTargetFolderName".
   SPP_EXP_FUN auto SharedLibraryExtension(char const *folder) -> char const*;
 
+  /// The extension of the import library a shared library is
+  /// linked through on the target a folder names, without the
+  /// leading dot: "lib" on an MSVC target, which links
+  /// "sppc.lib" and loads "sppc.dll". Null where the shared
+  /// library itself is linked. "folder" must pass
+  /// "IsTargetFolderName".
+  SPP_EXP_FUN auto ImportLibraryExtension(char const *folder) -> char const*;
+
+  /// What an executable's name ends in on the target a folder
+  /// names: ".exe" on Windows, nothing elsewhere. Nothing for a
+  /// folder that names no target.
+  SPP_EXP_FUN auto ExecutableSuffix(char const *folder) -> char const*;
+
   /// Stamp an "llvm::Module" (passed as an opaque pointer)
   /// with the selected target's triple and data layout.
   SPP_EXP_FUN auto ApplyTargetToModule(void *llvm_module) -> void;
