@@ -27,6 +27,18 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
     AstSupCmpStatementAst,
+    test_invalid_void_value,
+    SppInvalidVoidValueError, R"(
+    cmp fun nothing() -> Void { }
+
+    cls MyType { }
+    sup MyType {
+        !public cmp n: Void = nothing()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+    AstSupCmpStatementAst,
     test_invalid_duplicate_name_in_sup,
     SppIdentifierDuplicateError, R"(
     cls MyType { }

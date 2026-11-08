@@ -281,6 +281,13 @@ auto spp::asts::CmpStatementAst::_AnalyseValue(
     Raise<SppTypeMismatchError>(ERR_ARGS(*Type, *Type, *Value, *inferred_type));
   }
 
+  // A constant holds a value, which "Void" is not: there is nothing
+  // to fold into it or to emit as its global.
+  if (not IsFromUseStatement() and type_predicates::IsTypeVoid(
+    TypeRef::Of(*Type, *sm->CurrentScope), *sm->CurrentScope)) {
+    Raise<SppInvalidVoidValueError>(ERR_ARGS(*Value, "compile-time constant"));
+  }
+
   // The value is folded, and its symbol takes the result, for any
   // fold reading the constant from here on. One naming a parameter
   // of a generic "sup" block it is declared in ("cmp n: USize = k +
