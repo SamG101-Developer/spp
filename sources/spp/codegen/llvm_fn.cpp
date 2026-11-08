@@ -172,7 +172,13 @@ auto spp::codegen::CAbiParamsOf(
   const auto &triple = TargetTriple();
   const auto arch = triple.getArch();
   const auto by_val = arch == llvm::Triple::ppc or arch == llvm::Triple::ppcle or arch == llvm::Triple::m68k;
+  // s390x and Windows x64 share a rule: a struct of 1, 2, 4 or 8
+  // bytes travels as an integer of that size, any other as a
+  // pointer to the caller's copy. (Windows arm64 passes up to 16
+  // bytes in registers, as other AArch64 targets do: direct.)
   const auto s390x = arch == llvm::Triple::systemz;
+  const auto win64 = arch == llvm::Triple::x86_64 and triple.isOSWindows();
+  const auto int_or_ptr = s390x or win64;
   const auto &layout = module.getDataLayout();
 
   auto params = Vec<CAbiParam>();
@@ -183,9 +189,9 @@ auto spp::codegen::CAbiParamsOf(
       .How = CAbiParam::Kind::Direct, .Value = type, .Declared = type,
       .Extend = CAbiExtendOf(type, i < is_signed.size() and is_signed[i])
     };
-    if (IsCStruct(type) and (by_val or s390x)) {
+    if (IsCStruct(type) and (by_val or int_or_ptr)) {
       const auto size = layout.getTypeAllocSize(type).getFixedValue();
-      if (s390x and (size == 1 or size == 2 or size == 4 or size == 8)) {
+      if (int_or_ptr and (size == 1 or size == 2 or size == 4 or size == 8)) {
         param.How = CAbiParam::Kind::Coerce;
         param.Declared = llvm::IntegerType::get(type->getContext(), static_cast<unsigned>(size * 8));
       }
@@ -225,8 +231,8 @@ auto spp::codegen::CAbiAdaptArgs(
     if (value->getType() == declared or not IsCStruct(value->getType())) { continue; }
 
     // The copy is the caller's, made for this call: "byval" lets
-    // the callee write it, and s390x's pointer is to a copy the
-    // callee owns.
+    // the callee write it, and s390x's and Windows x64's pointer is
+    // to a copy the callee owns.
     const auto slot = LlvmEntryAlloca(value->getType(), "cabi.arg", ctx);
     ctx->Builder.CreateStore(value, slot);
     args[i] = declared->isPointerTy() ? static_cast<llvm::Value*>(slot)

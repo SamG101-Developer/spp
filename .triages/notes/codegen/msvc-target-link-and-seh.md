@@ -18,6 +18,11 @@ An MSVC target (`isWindowsMSVCEnvironment`) is not linked or unwound the GNU way
 - **Stack-clash probes:** `ApplyStackClashProtection` stamps nothing on a Windows target. Windows' x86 backend has no
   inline probe and takes `"probe-stack"`'s value as the probe function's name, so `"inline-asm"` became an undefined
   symbol in any frame over a page (first seen in a rel `main`); the ABI's `__chkstk` probes those frames anyway.
+- **C structs by value (Windows x64, msvc and gnu):** `CAbiParamsOf` takes s390x's rule there: 1/2/4/8 bytes as an
+  integer, anything else as a pointer to the caller's copy. Before, `sppc_closure` (16 bytes) went in two registers,
+  so sppc read the struct pointer from the first and `out` from the second (the closure's env): a capture-less
+  thread wrote its handle to address 0. Windows arm64 passes up to 16 bytes in registers, as direct. Checked by
+  `tests/codegen/check-c-abi.sh` (cross-codegen lane).
 - **FFI unwind guard:** `ApplyFfiUnwindGuard` uses `__C_specific_handler` (`_except_handler3` on 32-bit x86) and a
   `cleanuppad` whose `sppc_check_failed` call carries the `funclet` bundle; the guard runs after the module is
   verified, so a malformed funclet would only show in codegen.

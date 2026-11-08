@@ -38,9 +38,9 @@ namespace spp::codegen {
   /// so only one of two or more fields is a C struct. Most
   /// targets pass a small one as its fields, which the value as
   /// it is already does; 32-bit PowerPC and m68k take it "byval"
-  /// (a pointer to a copy the callee may write), and s390x one of
-  /// 1, 2, 4 or 8 bytes as an integer that size, and any other
-  /// as a pointer to a copy. A small integer is extended to its
+  /// (a pointer to a copy the callee may write), and s390x and
+  /// Windows x64 one of 1, 2, 4 or 8 bytes as an integer that
+  /// size, and any other as a pointer to a copy. A small integer is extended to its
   /// register as "CAbiExtendOf" says. Todo: a returned C struct
   /// ("sret") is not lowered; sppc returns none.
   SPP_EXP_CLS struct CAbiParam {

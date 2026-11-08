@@ -3,10 +3,11 @@
 # Check that "!ffi" functions are declared as the target's C calling convention takes their parameters, not as their
 # LLVM values, each as clang lowers that prototype for the target:
 #  - a struct by value: "sppc_pthread_create" takes "sppc_closure" (two pointers), which 32-bit PowerPC takes "byval",
-#    s390x as a pointer to a copy, and x86_64 as the struct itself;
+#    s390x and Windows x64 as a pointer to a copy, and x86_64 Linux and Windows arm64 as the struct itself;
 #  - a small integer: s390x extends an "int" by its signedness ("sppc_open"'s flags and mode), riscv64 sign-extends
 #    either, and x86_64 neither; the "int" returned is extended where its argument is.
 # Without either, sppc read garbage on ppc32 and s390x: every thread crashed, and clocks and sockets failed by chance.
+# On Windows x64 the closure's environment was read as "out", so a capture-less thread wrote its handle to address 0.
 # Only emitted, not linked or run, so no cross toolchain is needed; skipped by an spp without those backends (the
 # default build: "-DSPP_ALL_TARGETS=ON" links them), so it is run in the cross-codegen lane.
 #
@@ -83,5 +84,9 @@ check x86_64-unknown-linux-gnu \
     '@sppc_pthread_create({ ptr, ptr } noundef, ' \
     'noundef i32 @sppc_open(ptr noundef, i32 noundef, i32 noundef, ' \
     'noundef i32 @sppc_clock_gettime(i32 noundef, '
+check x86_64-pc-windows-msvc \
+    '@sppc_pthread_create(ptr noundef, '
+check aarch64-pc-windows-msvc \
+    '@sppc_pthread_create({ ptr, ptr } noundef, '
 
 finish
