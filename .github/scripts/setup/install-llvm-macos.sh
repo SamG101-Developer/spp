@@ -23,13 +23,15 @@ tar tf "$tarball" > "$listing"
 
 # LLVMExports names every file find_package(LLVM) checks
 # for - a missing one is a fatal configure error - and
-# nothing else is needed.
+# besides the compiler, only its linker (ld64.lld, which
+# Toolchain.cmake asks for) is needed.
 tar xf "$tarball" -C "$prefix" --strip-components=1 "${root}/lib/cmake/llvm"
 grep -o '_IMPORT_PREFIX}/[^"]*' "${prefix}/lib/cmake/llvm/LLVMExports-release.cmake" \
   | sed 's|_IMPORT_PREFIX}/||' | sort -u > "$exported"
 
 grep -E \
   -e "^${root}/bin/clang(\+\+|-[0-9]+|-scan-deps)?$" \
+  -e "^${root}/bin/(lld|ld64\.lld)$" \
   -e "^${root}/(lib/clang/|include/c\+\+/|lib/c\+\+/|lib/libc\+\+|lib/libunwind|lib/libLTO\.|share/libc\+\+/)" \
   "$listing" > "${files}.compiler"
 
@@ -50,7 +52,7 @@ rm -f "$tarball"
 # A missing piece surfaces much later as something inscrutable:
 # a configure that falls back to the system clang, a link that
 # cannot read the archives.
-for needed in bin/clang++ bin/clang-scan-deps lib/libLTO.dylib; do
+for needed in bin/clang++ bin/clang-scan-deps bin/ld64.lld lib/libLTO.dylib; do
   if [ ! -e "${prefix}/${needed}" ]; then
     echo "::error::${LLVM_MAC_ASSET} has no ${needed}; macOS cannot build against this release" >&2
     exit 1

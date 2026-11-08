@@ -38,6 +38,7 @@ if (SPP_USE_DEV_RPATH)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif ()
 
-if (NOT APPLE)
-  set(CMAKE_LINKER_TYPE LLD)
-endif ()
+# LLD everywhere, macOS included (ld64.lld): Apple's linker
+# took ~7.5 min to link spp and spp_tests against the LLVM
+# static libraries on a 3-core runner.
+set(CMAKE_LINKER_TYPE LLD)

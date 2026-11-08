@@ -1,7 +1,7 @@
 ---
 name: macos-libcxxabi-link
 description: "macOS links the pinned LLVM release's libc++ and libc++abi statically via LDFLAGS; as dylibs, dyld bound the system libc++ at run time and crashed in static init"
-updated: 2026-09-11
+updated: 2026-11-08
 ---
 
 macOS CI builds with the LLVM release tarball unpacked at `$SPP_CI_LLVM_MAC_PREFIX`
@@ -34,6 +34,11 @@ on stderr, so not a malloc/libc++/terminate message). Ruled out: stale
 `~/.local` gtest (rebuilt 09-09, after the LLVM 23 switch), init_priority on
 Mach-O (clang accepts it). Root cause still unknown; keep `DISCOVERY_MODE
 PRE_TEST` and the lldb block in run-tests.sh until a backtrace names it.
+
+**Linker (2026-11-08):** macOS now links with LLVM's `ld64.lld` (`CMAKE_LINKER_TYPE LLD` for every platform in
+`cmake/Toolchain.cmake`; `install-llvm-macos.sh` extracts `bin/lld` and `bin/ld64.lld`), not Apple's linker, which
+took ~7.5 min to relink `spp` and `spp_tests`. `-load_hidden` is an lld option too; if the static runtime breaks
+after the switch, compare against Apple's linker first.
 
 **How to apply:** if a macOS binary's `otool -L` shows `@rpath/libc++`,
 `libc++abi` or `libunwind` again, the static flags were lost (cached build
