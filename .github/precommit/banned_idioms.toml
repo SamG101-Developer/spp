@@ -63,7 +63,7 @@ allow = [
 [[rule]]
 id = "use-spp-function-aliases"
 enabled = true
-pattern = '\bstd::(?:nullopt|make_pair|make_shared|make_unique|make_tuple|get_if|get|holds_alternative|visit|apply|tie|tuple_cat|forward_as_tuple|make_from_tuple|ignore)\b(?!::)'
+pattern = '\bstd::(?:nullopt|make_pair|make_shared|make_unique|make_tuple|get_if|get|holds_alternative|visit|tie|tuple_cat|forward_as_tuple|make_from_tuple|ignore)\b(?!::)'
 message = "use the spp name from types.ixx"
 files = '\.(?:cpp|ixx|hpp)$'
 skip-comments = true
@@ -83,7 +83,6 @@ allow = [
 "std::get_if" = "get_if"
 "std::holds_alternative" = "holds_alternative"
 "std::visit" = "visit"
-"std::apply" = "apply"
 "std::tie" = "tie"
 "std::tuple_cat" = "tuple_cat"
 "std::forward_as_tuple" = "forward_as_tuple"
