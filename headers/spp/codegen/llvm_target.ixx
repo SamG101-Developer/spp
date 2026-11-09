@@ -17,6 +17,14 @@ namespace spp::codegen {
   /// check. Normalized for short names too.
   SPP_EXP_FUN auto SelectTarget(char const *triple) -> bool;
 
+  /// Choose the CPU the program is built for ("[target.floor] cpu"):
+  /// "generic", the target's baseline (the default), "native", this
+  /// machine's CPU when building for it, or an LLVM CPU name for the
+  /// target ("x86-64-v3", "apple-m1"). Must come before anything builds
+  /// the target machine. Answers false, having said why, for a CPU the
+  /// target does not have, or "native" when cross compiling.
+  SPP_EXP_FUN auto SelectCpu(char const *cpu) -> bool;
+
   /// Whether the selected target is the machine this compiler
   /// is running on. Only a host build can be run here; another
   /// Linux target is linked with its cross linker.
@@ -123,6 +131,14 @@ namespace spp::codegen {
   /// Stamp an "llvm::Module" (passed as an opaque pointer)
   /// with the selected target's triple and data layout.
   SPP_EXP_FUN auto ApplyTargetToModule(void *llvm_module) -> void;
+
+  /// Give every function defined in "llvm_module" (an opaque pointer)
+  /// the selected CPU and its features, as the "target-cpu" and
+  /// "target-features" LLVM reads each function's target from. A
+  /// function's own features are kept, after the program's, so they
+  /// win: where a function built for a wider CPU than the program's
+  /// would say so.
+  SPP_EXP_FUN auto ApplyTargetToFunctions(void *llvm_module) -> void;
 
   /// The selected target's machine, built once on first use;
   /// every module is built against it. Null when no backend

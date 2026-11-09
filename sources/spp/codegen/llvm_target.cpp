@@ -28,6 +28,20 @@ namespace spp::codegen {
       return triple;
     }
 
+    /// The CPU chosen by "SelectCpu": "generic", "native" or an LLVM
+    /// CPU name.
+    auto SelectedCpu() -> Str& {
+      static auto cpu = Str("generic");
+      return cpu;
+    }
+
+    /// Whether the target machine has been built, after which the CPU
+    /// can no longer change.
+    auto IsMachineBuilt() -> bool& {
+      static auto built = false;
+      return built;
+    }
+
     /// The triple the host llvm was configured for, normalised
     /// once. Read from llvm so that an arm64 or windows build
     /// asks its own backend for a layout and code generator
@@ -156,6 +170,7 @@ auto spp::codegen::SelectedTargetMachine() -> llvm::TargetMachine* {
   static const auto machine = []() -> llvm::TargetMachine* {
     // Initialize all the backends for the configuration.
     // This makes target machines available.
+    IsMachineBuilt() = true;
     InitializeAllBackends();
 
     // Get the target triple (what we are compiling for),
@@ -187,8 +202,17 @@ auto spp::codegen::SelectedTargetMachine() -> llvm::TargetMachine* {
 
     // LLVM's "generic" CPU is each target's baseline, but on
     // sparc64 it is the 32-bit V8, which cannot load 64 bits:
-    // there, V9, as LLVM itself picks when given no CPU.
-    const auto cpu = triple.isSPARC64() ? "v9" : "generic";
+    // there, V9, as LLVM itself picks when given no CPU. "native"
+    // is this machine's CPU, with the features it reports, on top
+    // of the baseline's; any other is a CPU name "SelectCpu" checked.
+    auto cpu = Str(triple.isSPARC64() ? "v9" : "generic");
+    if (SelectedCpu() == "native") {
+      cpu = llvm::sys::getHostCPUName().str();
+      for (auto const &feature : llvm::sys::getHostCPUFeatures()) {
+        features += (features.empty() ? "" : ",") + Str(feature.getValue() ? "+" : "-") + feature.getKey().str();
+      }
+    }
+    else if (SelectedCpu() != "generic") { cpu = SelectedCpu(); }
 
     // Fixed addresses need a code model that reaches the whole
     // program: the small one still uses 16-bit offsets.
@@ -488,6 +512,63 @@ auto spp::codegen::AssertIntrinsicNamingIsSound() -> void {
   }();
 
   SPP_ASSERT(checked);
+}
+
+auto spp::codegen::SelectCpu(
+  char const *cpu) -> bool {
+  if (IsMachineBuilt()) { spp::Ice("the CPU was chosen after the target machine was built"); }
+  const auto name = StrView(cpu);
+  if (name == "generic") {
+    SelectedCpu() = Str(name);
+    return true;
+  }
+
+  // "native" is this machine's CPU, which says nothing about another
+  // target's.
+  if (name == "native") {
+    if (not TargetIsHost()) {
+      llvm::errs()
+        << "'native' names this machine's CPU, so it cannot be used when building for another target.\n"
+        << "  Set cpu under [target.floor] in spp.toml to one of " << TargetTriple().str() << "'s CPUs, or 'generic'.\n";
+      return false;
+    }
+    SelectedCpu() = Str(name);
+    return true;
+  }
+
+  // Any other must be a CPU the target knows. An unknown one would
+  // otherwise only be warned about, and the baseline used instead.
+  auto error = Str();
+  const auto &triple = TargetTriple();
+  InitializeAllBackends();
+  const auto target = llvm::TargetRegistry::lookupTarget(triple, error);
+  const auto info = target == nullptr
+    ? Unique<llvm::MCSubtargetInfo>() : Unique<llvm::MCSubtargetInfo>(target->createMCSubtargetInfo(triple, name, ""));
+  if (info == nullptr or not info->isCPUStringValid(name)) {
+    llvm::errs()
+      << "'" << name << "' is not a CPU of " << triple.str() << ".\n"
+      << "  Set cpu under [target.floor] in spp.toml to 'generic', 'native', or one listed by "
+      << "'llc -mtriple=" << triple.str() << " -mcpu=help'.\n";
+    return false;
+  }
+  SelectedCpu() = Str(name);
+  return true;
+}
+
+auto spp::codegen::ApplyTargetToFunctions(
+  void *llvm_module) -> void {
+  const auto machine = SelectedTargetMachine();
+  if (machine == nullptr) { return; }
+  const auto cpu = machine->getTargetCPU();
+  const auto features = machine->getTargetFeatureString();
+  for (auto &fn : *static_cast<llvm::Module*>(llvm_module)) {
+    if (fn.isDeclaration()) { continue; }
+    if (not fn.hasFnAttribute("target-cpu")) { fn.addFnAttr("target-cpu", cpu); }
+    const auto own = fn.getFnAttribute("target-features").getValueAsString();
+    if (not features.empty()) {
+      fn.addFnAttr("target-features", own.empty() ? features.str() : (features + "," + own).str());
+    }
+  }
 }
 
 auto spp::codegen::EmitObjectFile(
