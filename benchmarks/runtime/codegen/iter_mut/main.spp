@@ -1,0 +1,31 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(4096_uz)
+  let passes = black_box(50000_u64)
+  let mut state = black_box(12345_u64)
+  let mut v = Vec[U64]::new_with_capacity(n)
+  let mut i = 0_uz
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    v.append(state >> 16_u32)
+    i += 1_uz
+  }
+
+  let mut pass = 0_u64
+  loop pass < passes {
+    loop x in v.iter_mut() { x@ = x@.mul_wrapping(3_u64).add_wrapping(pass) }
+    pass += 1_u64
+  }
+
+  # Read back by index, so only the writes go through the iterator.
+  let mut sum = 0_u64
+  i = 0_uz
+  loop i < n {
+    sum = sum.add_wrapping(v[i]@)
+    i += 1_uz
+  }
+  println("{}", sum)
+  drop(v)
+}

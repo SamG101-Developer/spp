@@ -1,0 +1,4 @@
+description = "iter_ref then map, filter and fold over a 4096-element Vec[U64], 50K times (205M elements, in L1); C is the hand-fused loop and Rust the same adapter chain, so the gap is the coroutine adapters'"
+layer = "std"
+output = "exact"
+covers = ["codegen:llvm_coros"]

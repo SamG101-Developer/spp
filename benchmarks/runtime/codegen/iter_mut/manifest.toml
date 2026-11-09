@@ -1,0 +1,4 @@
+description = "A 4096-element Vec[U64] rewritten in place through iter_mut 50K times (205M elements, in L1); the C and Rust equivalents are a pointer loop and slice::iter_mut, so the gap is the coroutine iterator's"
+layer = "std"
+output = "exact"
+covers = ["codegen:llvm_coros"]
