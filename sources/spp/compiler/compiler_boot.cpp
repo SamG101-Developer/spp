@@ -731,6 +731,13 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     if (not codegen::ApplyCfiTypes(lto_module.get())) { return false; }
   }
 
+  // Every function is built for the chosen CPU ("[target.floor] cpu"),
+  // named on it, as a function's own target features would be; and
+  // sppc's allocation functions are named as such, so LLVM treats them
+  // as "malloc" and "free".
+  codegen::ApplyTargetToFunctions(lto_module.get());
+  codegen::ApplyRuntimeAllocatorAttrs(lto_module.get());
+
   // Run the standard optimization pipeline across the LTO module, using the
   // optimization level from "rel" (O3) vs "dev" (O0).
   RecordIrSize(*lto_module, "before_opt");
@@ -739,7 +746,8 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     and utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenCfi);
   codegen::RunOptimizationPipeline(
     lto_module.get(), codegen::SelectedTargetMachine(), opt_level,
-    cfi ? &codegen::ApplyCfiCoroTypes : nullptr);
+    cfi ? &codegen::ApplyCfiCoroTypes : nullptr,
+    utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenAirIntegers));
   RecordIrSize(*lto_module, "after_opt");
   utils::stats::BeginPhase("write-ir-and-harden");
 

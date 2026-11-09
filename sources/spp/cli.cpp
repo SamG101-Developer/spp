@@ -244,11 +244,13 @@ namespace spp::cli {
         .Folder = codegen::TargetFolderName()
       };
 
+      // The CPU is chosen once the config is known, before anything
+      // builds the target machine; "SelectCpu" reports its own error.
       if (
         utils::features::Load(config_file, config_errors)
         and utils::features::CheckFloor(target, config_errors)
         and utils::features::CheckTargetSupport(target, config_errors)) {
-        return true;
+        return codegen::SelectCpu(utils::features::Text(utils::features::ConfigKey::TargetFloorCpu).c_str());
       }
 
       // One (or more) of the loading functions have failed, so print the errors
