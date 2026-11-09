@@ -33,6 +33,27 @@ head_version="$(read_version)"
 base_version="$(git show "${base}:${VERSION_FILE}" 2>/dev/null | tr -d '[:space:]' || true)"
 base_version="${base_version:-0.0.0}"
 
+# A version up to the base's is released, or is being released
+# by the base: its notes became the release body when it was
+# published, so editing or removing its entry would only make
+# the two disagree. Against the merge base, so a later change on
+# the base branch is not this branch's; renames split so moving
+# an entry away counts as removing it.
+frozen=()
+while read -r path; do
+  version="$(basename "$path" .md)"
+  is_semver "$version" || continue
+  if [ "$(printf '%s\n%s\n' "$version" "$base_version" | sort -V | tail -1)" = "$base_version" ]; then
+    frozen+=("$path")
+  fi
+done < <(git diff --name-only --no-renames "${base}...HEAD" -- "$CHANGELOG_DIR")
+if [ "${#frozen[@]}" -gt 0 ]; then
+  for path in "${frozen[@]}"; do
+    echo "::error file=${path}::${path} belongs to released $(basename "$path" .md); put the change in the entry for ${VERSION_FILE}'s version"
+  done
+  fail "released changelog entries changed: ${frozen[*]}"
+fi
+
 is_semver "$head_version" \
   || fail "${VERSION_FILE} contains '${head_version}', which is not a MAJOR.MINOR.PATCH version"
 
