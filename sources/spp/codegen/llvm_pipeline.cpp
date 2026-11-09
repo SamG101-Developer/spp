@@ -7,10 +7,10 @@
 #include <llvm/Linker/Linker.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Target/TargetMachine.h>
-#include <llvm/Transforms/Coroutines/CoroAnnotationElide.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Utils/Mem2Reg.h>
 
 #include <spp/macros.hpp>
 #include <spp/codegen/llvm_pipeline.hpp>
@@ -42,6 +42,36 @@ namespace spp::codegen {
       }
       return pending;
     }
+
+    /// Stop on any coroutine intrinsic the pipeline left behind.
+    /// That is coroutine ir llvm could not lower, a fault in what
+    /// codegen emitted: it would reach the backend as a call to an
+    /// intrinsic nothing lowers, and every coroutine would trap on
+    /// entry for want of a frame. The Ice names what was left.
+    auto CheckCoroutinesLowered(llvm::Module const &llvm_mod) -> void {
+      const auto pending = PendingCoroUses(llvm_mod);
+      if (pending == 0) { return; }
+      auto left = Str();
+      for (auto const &fn : llvm_mod) {
+        if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix) or fn.use_empty()) { continue; }
+        left += (left.empty() ? "" : ", ") + fn.getName().str() + " (" + std::to_string(fn.getNumUses()) + ")";
+      }
+      spp::Ice(
+        "coroutine lowering left " + std::to_string(pending) + " intrinsic call(s) in " + llvm_mod.getName().str() +
+        ": " + left);
+    }
+
+    /// A module pass running "hook" over the module, at the point
+    /// of the pipeline it is added at. Only metadata changes, so
+    /// every analysis survives it.
+    struct AfterCoroSplitPass : llvm::PassInfoMixin<AfterCoroSplitPass> {
+      void (*hook)(void *llvm_module);
+
+      auto run(llvm::Module &llvm_mod, llvm::ModuleAnalysisManager &) -> llvm::PreservedAnalyses {
+        hook(&llvm_mod);
+        return llvm::PreservedAnalyses::all();
+      }
+    };
   }
 }
 
@@ -137,51 +167,9 @@ auto spp::codegen::ApplyColdPathHints(
   marker->eraseFromParent();
 }
 
-auto spp::codegen::RunCoroLoweringPipeline(
-  void *llvm_module) -> void {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-
-  // One run lowers everything: the O0 pipeline holds the whole
-  // chain, from "CoroEarly" (a resume or destroy becomes a
-  // "coro.subfn.addr" and an indirect call) through "CoroSplit"
-  // to "CoroCleanup" (which lowers what is left of that).
-  auto loop_am = llvm::LoopAnalysisManager();
-  auto func_am = llvm::FunctionAnalysisManager();
-  auto cgscc_am = llvm::CGSCCAnalysisManager();
-  auto module_am = llvm::ModuleAnalysisManager();
-
-  auto pass_builder = llvm::PassBuilder();
-  pass_builder.registerModuleAnalyses(module_am);
-  pass_builder.registerCGSCCAnalyses(cgscc_am);
-  pass_builder.registerFunctionAnalyses(func_am);
-  pass_builder.registerLoopAnalyses(loop_am);
-  pass_builder.crossRegisterProxies(loop_am, func_am, cgscc_am, module_am);
-
-  // O0 - "the minimal semantically required passes". Coroutine
-  // lowering is a correctness requirement.
-  auto module_pm = pass_builder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
-  module_pm.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(llvm::CoroAnnotationElidePass()));
-  module_pm.run(llvm_mod, module_am);
-
-  // Anything left is coroutine ir llvm could not lower, which
-  // is a fault in what codegen emitted: it would reach the
-  // backend as a call to an intrinsic nothing lowers, and every
-  // coroutine would trap on entry for want of a frame. Stop
-  // here instead, naming what was left.
-  if (const auto pending = PendingCoroUses(llvm_mod); pending != 0) {
-    auto left = Str();
-    for (auto const &fn : llvm_mod) {
-      if (not fn.isDeclaration() or not fn.getName().starts_with(kCoroIntrinsicPrefix) or fn.use_empty()) { continue; }
-      left += (left.empty() ? "" : ", ") + fn.getName().str() + " (" + std::to_string(fn.getNumUses()) + ")";
-    }
-    spp::Ice(
-      "coroutine lowering left " + std::to_string(pending) + " intrinsic call(s) in " + llvm_mod.getName().str() +
-      ": " + left);
-  }
-}
-
 auto spp::codegen::RunOptimizationPipeline(
-  void *llvm_module, void *target_machine, const unsigned opt_level) -> void {
+  void *llvm_module, void *target_machine, const unsigned opt_level,
+  void (*after_coro_split)(void *llvm_module)) -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
   auto loop_am = llvm::LoopAnalysisManager();
@@ -206,6 +194,33 @@ auto spp::codegen::RunOptimizationPipeline(
   pass_builder.registerLoopAnalyses(loop_am);
   pass_builder.crossRegisterProxies(loop_am, func_am, cgscc_am, module_am);
 
+  // Every coroutine is split by the time the optimiser proper
+  // starts: "CoroSplit" runs with the inliner, so a coroutine is
+  // inlined into its caller first, which is what lets "CoroElide"
+  // put its frame on the caller's stack and call its resume
+  // directly. The hook runs there, before MergeFunctions. O0's
+  // pipeline has no such point, nor MergeFunctions: it runs last.
+  if (after_coro_split != nullptr and opt_level > 0) {
+    pass_builder.registerOptimizerEarlyEPCallback(
+      [after_coro_split](llvm::ModulePassManager &mpm, llvm::OptimizationLevel, llvm::ThinOrFullLTOPhase) {
+        mpm.addPass(AfterCoroSplitPass{.hook = after_coro_split});
+      });
+  }
+
+  // An elided coroutine frame's suspend index is an "i2" field,
+  // and SROA does not promote an integer narrower than the byte
+  // it is stored in, so the index stays in memory and every
+  // iteration of a loop over the coroutine stores and reloads it:
+  // the loop never reduces to a counted one, nor vectorises
+  // ("iter_mut", 2x C before). "mem2reg" promotes it. Peephole
+  // points come after each InstCombine of the inliner's function
+  // walk, which is where the frames are elided, and early enough
+  // for the loop passes to see the promoted index.
+  if (opt_level > 0) {
+    pass_builder.registerPeepholeEPCallback(
+      [](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { fpm.addPass(llvm::PromotePass()); });
+  }
+
   // The per-module pipeline, which is also what the combined
   // module gets: once the modules are linked there is only one
   // of them, and the ordinary pipeline is what sees across the
@@ -224,6 +239,8 @@ auto spp::codegen::RunOptimizationPipeline(
     ? pass_builder.buildO0DefaultPipeline(level)
     : pass_builder.buildPerModuleDefaultPipeline(level);
   module_pm.run(llvm_mod, module_am);
+  if (after_coro_split != nullptr and opt_level == 0) { after_coro_split(&llvm_mod); }
+  CheckCoroutinesLowered(llvm_mod);
 }
 
 auto spp::codegen::LinkIntoLtoModule(
@@ -239,7 +256,9 @@ auto spp::codegen::RunInternalizePass(
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
   auto preserved = llvm::StringSet<>();
-  for (auto i = 0UL; i < preserved_count; ++i) { preserved.insert(preserved_names[i]); }
+  for (auto i = 0UL; i < preserved_count; ++i) {
+    preserved.insert(preserved_names[i]);
+  }
 
   auto loop_am = llvm::LoopAnalysisManager();
   auto func_am = llvm::FunctionAnalysisManager();

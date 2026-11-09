@@ -25,19 +25,18 @@ namespace spp::codegen {
   /// of the block it was emitted into.
   auto ApplyColdPathHints(void *llvm_module) -> void;
 
-  /// Lower the coroutine intrinsics in an "llvm::Module"
-  /// (passed as an opaque pointer) into real state machines,
-  /// and move generator frames into their callers. Not an
-  /// optimisation step: without it the "llvm.coro.*"
-  /// intrinsics survive into the emitted module, and every
-  /// coroutine traps on entry for want of a frame.
-  auto RunCoroLoweringPipeline(void *llvm_module) -> void;
-
   /// Run the optimisation pipeline over an "llvm::Module"
-  /// (passed as an opaque pointer). Separate from the coroutine
-  /// lowering above, which is a correctness step that has to
-  /// happen either way - this one only changes how good the
-  /// generated code is. "opt_level" runs from 0 (none) to 3
+  /// (passed as an opaque pointer): the combined module, once
+  /// every s++ module is linked into it. It also lowers the
+  /// coroutines, at every level, which is a correctness step:
+  /// without it the "llvm.coro.*" intrinsics reach the backend
+  /// and every coroutine traps on entry (an Ice if any are
+  /// left). Lowering here rather than per module is what makes
+  /// iteration fast: a coroutine defined in another file (every
+  /// std iterator) can only be inlined into its caller, and its
+  /// frame put on the caller's stack, before it is split, and
+  /// before linking its body is not there to inline. "opt_level"
+  /// runs from 0 (none) to 3
   /// (full). Level 0 still runs a pipeline, because "no
   /// optimisation" is itself a pipeline in llvm
   /// ("buildO0DefaultPipeline"), and the per-module builder
@@ -49,7 +48,14 @@ namespace spp::codegen {
   /// which guesses: it vectorises where the real target has no
   /// cheap vector form, and unrolls where it should not (or not
   /// where it should).
-  auto RunOptimizationPipeline(void *llvm_module, void *target_machine, unsigned opt_level) -> void;
+  ///
+  /// "after_coro_split" (may be null) is run over the module once
+  /// every coroutine is split into its ".resume", ".destroy" and
+  /// ".cleanup" functions, and before MergeFunctions: what types
+  /// those for control-flow integrity ("ApplyCfiCoroTypes").
+  auto RunOptimizationPipeline(
+    void *llvm_module, void *target_machine, unsigned opt_level,
+    void (*after_coro_split)(void *llvm_module)) -> void;
 
   /// Copy "src_module" into "dest_module" (both opaque
   /// "llvm::Module" pointers, sharing one context), so the

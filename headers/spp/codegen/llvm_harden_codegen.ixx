@@ -56,6 +56,14 @@ namespace spp::codegen {
   /// left untyped and every indirect call to it would trap.
   SPP_EXP_FUN auto ApplyCfiTypes(void *llvm_module) -> bool;
 
+  /// The rest of "ApplyCfiTypes": types the functions coroutine
+  /// lowering split each coroutine into (".resume", ".destroy",
+  /// ".cleanup"), which only exist part-way through the optimiser.
+  /// Runs there, as "RunOptimizationPipeline"'s "after_coro_split"
+  /// hook: after the split, and before MergeFunctions could fold a
+  /// part into a thunk that keeps no s++ record.
+  SPP_EXP_FUN auto ApplyCfiCoroTypes(void *llvm_module) -> void;
+
   /// The other half of "ApplyCfiTypes", run after the optimiser:
   /// an Ice for any indirect call left without a "kcfi" bundle,
   /// as that call would go unchecked.

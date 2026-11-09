@@ -32,6 +32,7 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_alloca;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
@@ -326,25 +327,31 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     Ice(*this, *sm->CurrentScope, bad_shape_msg);
   }
 
+  // Both edges write the one result slot, and the join loads it
+  // once. A phi of the two whole variants instead hides a
+  // reference payload from the optimiser as an integer, so a
+  // loop over the generator can never reduce to a counted loop
+  // and vectorise ("StoreVariant").
+  const auto llvm_res_slot = codegen::LlvmEntryAlloca(llvm_res_ty, "gen.res" + uid + ".slot", ctx);
+
   // The resumption just made put this value in the slot.
   ctx->Builder.SetInsertPoint(yielded_bb);
   const auto llvm_yielded_val = read_yielded_val();
-  const auto llvm_some = yield_tag.has_value()
-    ? codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx)
-    : codegen::CoerceToSlot(llvm_yielded_val, res_ref, yield_ref, *sm, "gen.some" + uid, ctx);
-  const auto some_from_bb = ctx->Builder.GetInsertBlock();
+  if (yield_tag.has_value()) {
+    codegen::StoreVariant(llvm_res_slot, llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx);
+  }
+  else {
+    ctx->Builder.CreateStore(
+      codegen::CoerceToSlot(llvm_yielded_val, res_ref, yield_ref, *sm, "gen.some" + uid, ctx), llvm_res_slot);
+  }
   ctx->Builder.CreateBr(joined_bb);
 
   ctx->Builder.SetInsertPoint(exhausted_bb);
-  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *done_tag, "gen.done" + uid, ctx);
-  const auto none_from_bb = ctx->Builder.GetInsertBlock();
+  codegen::StoreVariant(llvm_res_slot, nullptr, llvm_res_ty, *done_tag, "gen.done" + uid, ctx);
   ctx->Builder.CreateBr(joined_bb);
 
   ctx->Builder.SetInsertPoint(joined_bb);
-  const auto llvm_res = ctx->Builder.CreatePHI(llvm_res_ty, 2, "gen.res" + uid);
-  llvm_res->addIncoming(llvm_some, some_from_bb);
-  llvm_res->addIncoming(llvm_none, none_from_bb);
-  return llvm_res;
+  return ctx->Builder.CreateLoad(llvm_res_ty, llvm_res_slot, "gen.res" + uid);
 }
 
 auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferTypeRef(

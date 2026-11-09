@@ -567,17 +567,16 @@ auto spp::compiler::CompilerBoot::Stage11_CodeGen(
       return false;
     };
 
-    // Run the coroutine and optimization pipelines over verified codegen.
-    // Coroutine lowering only: optimizing a module here would be undone by
-    // optimizing the combined module below. The "cold_path" markers go first,
-    // while each is still in the block it was emitted into.
+    // Turn the "cold_path" markers into branch weights over verified codegen,
+    // while each is still in the block it was emitted into. Nothing else runs
+    // per module: coroutines are lowered with the combined module, where a
+    // coroutine from another file can be inlined and its frame elided.
     if (verify("")) {
       codegen::ApplyColdPathHints(ctx->Module.get());
-      codegen::RunCoroLoweringPipeline(ctx->Module.get());
     }
 
-    // Written last, so the file on disk is the module as it will actually be
-    // built.
+    // Written last: the module as codegen left it, hints applied. It is
+    // linked, lowered and optimised with the rest ("lto.ll" holds the result).
     if (VerifyOnly) { continue; }
     const auto file = tree.LlvmOutPathFor(mod->FilePath);
     std::filesystem::create_directories(file.parent_path());
@@ -736,8 +735,11 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   // optimization level from "rel" (O3) vs "dev" (O0).
   RecordIrSize(*lto_module, "before_opt");
   utils::stats::BeginPhase("optimise");
+  const auto cfi = has_entry_point
+    and utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenCfi);
   codegen::RunOptimizationPipeline(
-    lto_module.get(), codegen::SelectedTargetMachine(), opt_level);
+    lto_module.get(), codegen::SelectedTargetMachine(), opt_level,
+    cfi ? &codegen::ApplyCfiCoroTypes : nullptr);
   RecordIrSize(*lto_module, "after_opt");
   utils::stats::BeginPhase("write-ir-and-harden");
 

@@ -52,6 +52,29 @@ namespace spp::codegen {
     auto CfiTypeAt(llvm::MDNode const &md, const unsigned i) -> llvm::ConstantInt* {
       return llvm::mdconst::extract<llvm::ConstantInt>(md.getOperand(i));
     }
+
+    /// Give every function in "llvm_mod" with a control-flow record
+    /// its "kcfi_type": the type it is called as. The functions a
+    /// coroutine is split into share its record, and are told apart
+    /// by the suffix the split names them with: the frame's resume
+    /// slot holds ".resume", and its destroy slot ".destroy", or
+    /// ".cleanup" when the frame was not allocated. A ramp has no
+    /// suffix and is left untyped: it is only ever called directly.
+    auto TypeCfiFunctions(llvm::Module &llvm_mod) -> void {
+      auto &ctx = llvm_mod.getContext();
+      for (auto &fn : llvm_mod) {
+        auto type = static_cast<llvm::ConstantInt*>(nullptr);
+        if (const auto md = fn.getMetadata(kCfiMd)) { type = CfiTypeAt(*md, 0); }
+        else if (const auto coro = fn.getMetadata(kCfiCoroMd)) {
+          const auto name = fn.getName();
+          if (name.ends_with(".resume")) { type = CfiTypeAt(*coro, 0); }
+          else if (name.ends_with(".destroy") or name.ends_with(".cleanup")) { type = CfiTypeAt(*coro, 1); }
+        }
+        if (type != nullptr) {
+          fn.setMetadata(llvm::LLVMContext::MD_kcfi_type, llvm::MDNode::get(ctx, llvm::ConstantAsMetadata::get(type)));
+        }
+      }
+    }
   }
 }
 
@@ -108,7 +131,6 @@ auto spp::codegen::ApplyRegisterScrubbing(
 auto spp::codegen::ApplyCfiTypes(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  auto &ctx = llvm_mod.getContext();
   if (not TargetHasKcfi()) {
     llvm::errs()
       << "This target cannot check indirect calls by type.\n"
@@ -116,28 +138,22 @@ auto spp::codegen::ApplyCfiTypes(
     return false;
   }
 
-  // The functions: each records the type it is called as. The
-  // ones a coroutine is split into share its record, and are
-  // told apart by the suffix the split names them with: the
-  // frame's resume slot holds ".resume", and its destroy slot
-  // ".destroy", or ".cleanup" when the frame was not allocated.
-  for (auto &fn : llvm_mod) {
-    auto type = static_cast<llvm::ConstantInt*>(nullptr);
-    if (const auto md = fn.getMetadata(kCfiMd)) { type = CfiTypeAt(*md, 0); }
-    else if (const auto coro = fn.getMetadata(kCfiCoroMd)) {
-      const auto name = fn.getName();
-      if (name.ends_with(".resume")) { type = CfiTypeAt(*coro, 0); }
-      else if (name.ends_with(".destroy") or name.ends_with(".cleanup")) { type = CfiTypeAt(*coro, 1); }
-    }
-    if (type != nullptr) {
-      fn.setMetadata(llvm::LLVMContext::MD_kcfi_type, llvm::MDNode::get(ctx, llvm::ConstantAsMetadata::get(type)));
-    }
-  }
+  // The functions that exist before optimising: the coroutines
+  // are not split yet, so their parts are typed by
+  // "ApplyCfiCoroTypes" once they are.
+  TypeCfiFunctions(llvm_mod);
 
   // The backend emits each function's type, and each call's
   // check, only for a module that asks for them.
   llvm_mod.addModuleFlag(llvm::Module::Override, "kcfi", 1);
   return true;
+}
+
+auto spp::codegen::ApplyCfiCoroTypes(
+  void *llvm_module) -> void {
+  // Retyping the functions typed before is harmless; the module
+  // flag is not added again, as a second one fails verification.
+  TypeCfiFunctions(*static_cast<llvm::Module*>(llvm_module));
 }
 
 auto spp::codegen::CheckCfiCalls(

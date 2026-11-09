@@ -45,6 +45,22 @@ namespace spp::codegen {
     LlvmCtx *ctx)
     -> llvm::Value*;
 
+  /// "BuildVariant" written into "slot" (a variant of
+  /// "variant_llvm_type") rather than into a slot of its own and
+  /// loaded back. For a variant built on several edges and
+  /// joined: each edge writes the one slot, and the join loads
+  /// it once. A phi of whole variants instead hides a pointer
+  /// payload from the optimiser as an integer (the payload cells
+  /// are "i64"), which stops a generator loop vectorising.
+  SPP_EXP_FUN auto StoreVariant(
+    llvm::Value *slot,
+    llvm::Value *member_val,
+    llvm::Type *variant_llvm_type,
+    std::uint64_t tag,
+    Str const &name,
+    LlvmCtx *ctx)
+    -> void;
+
   /// The reverse of widening: read the variant at "source_ptr" as
   /// "target", a variant made of some of its members ("Opt[S32]"
   /// out of "Some[S32] or None or GenDone"). Gives the check that

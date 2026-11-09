@@ -88,6 +88,18 @@ auto spp::codegen::BuildVariant(
   // variant is ever copied out of the program. Everything the
   // "stores" below cover is dead-store-eliminated.
   const auto slot = LlvmEntryAlloca(variant_llvm_type, name + ".slot", ctx);
+  StoreVariant(slot, member_val, variant_llvm_type, tag, name, ctx);
+  return ctx->Builder.CreateLoad(variant_llvm_type, slot, name);
+}
+
+auto spp::codegen::StoreVariant(
+  llvm::Value *slot,
+  llvm::Value *member_val,
+  llvm::Type *variant_llvm_type,
+  const std::uint64_t tag,
+  Str const &name,
+  LlvmCtx *ctx)
+  -> void {
   ctx->Builder.CreateStore(
     llvm::Constant::getNullValue(variant_llvm_type), slot);
 
@@ -100,8 +112,6 @@ auto spp::codegen::BuildVariant(
   if (member_val != nullptr and not IsValuelessType(member_val->getType())) {
     ctx->Builder.CreateStore(member_val, GetVariantPayloadPtr(slot, variant_llvm_type, name + ".payload.ptr", ctx));
   }
-
-  return ctx->Builder.CreateLoad(variant_llvm_type, slot, name);
 }
 
 auto spp::codegen::NarrowVariant(
