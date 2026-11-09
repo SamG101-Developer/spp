@@ -301,10 +301,12 @@ auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // not one member, so it binds the value re-tagged as that
       // narrower variant.
       if (not tag.has_value()) {
-        const auto [is_member, narrowed] = codegen::NarrowVariant(
+        // The pattern's tag check has already tested that the subject
+        // holds one of the pattern's members.
+        const auto narrowed = codegen::NarrowVariant(
           current_ptr, TypeRef::Of(*subject_type->WithoutConvention(), *sm->CurrentScope),
           pattern_ref.WithoutConvention(), *sm->CurrentScope, "case.pattern.narrow" + level_uid, ctx);
-        if (is_member != nullptr) { current_ptr = narrowed; }
+        if (narrowed != nullptr) { current_ptr = narrowed; }
         break;
       }
 
