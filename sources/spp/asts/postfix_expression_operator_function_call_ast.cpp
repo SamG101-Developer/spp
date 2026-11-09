@@ -714,13 +714,18 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   if (llvm_func->getReturnType()->isVoidTy()) {
     return ctx->Builder.CreateCall(llvm_func, llvm_func_args);
   }
-  const auto llvm_call = ctx->Builder.CreateCall(
+  const auto llvm_raw_call = ctx->Builder.CreateCall(
     llvm_func, llvm_func_args, "call" + uid);
+
+  // An ffi function returns a one-field struct as its scalar; the
+  // caller's value is the struct.
+  const auto llvm_call = codegen::CAbiAdaptReturn(
+    *llvm_func, llvm_raw_call, codegen::GetLlvmTypeOf(InferTypeRef(sm, meta), ctx), ctx);
 
   // A coroutine's frame may live in the caller's frame when the handle does not escape it: LLVM's "CoroElide" only
   // does that for a call marked safe to elide.
   if (is_coroutine_call) {
-    llvm_call->addFnAttr(llvm::Attribute::CoroElideSafe);
+    llvm_raw_call->addFnAttr(llvm::Attribute::CoroElideSafe);
   }
 
   // A generator is either bound to something ("let g = f()",
