@@ -7,6 +7,7 @@
 #   - with neither, the build fails naming both, and the key;
 #   - with "-z relro -z lazy" it fails naming BIND_NOW alone;
 #   - with neither, and "relro_ffi = false", it links and runs.
+#   - with the library cut short, which cannot be read, the build fails saying so.
 # The check is made at link time, the same at dev and rel, so rel alone runs.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-relro-ffi.sh [path/to/spp]
@@ -82,5 +83,11 @@ check_refused "relro, lazy binding" "-Wl,-z,relro,-z,lazy" "BIND_NOW"
 check_runs "no relro, check off" "-Wl,-z,norelro,-z,lazy" "
 [binary.link]
 relro_ffi = false"
+
+make_project "${WORK}/unreadable/relro" "-Wl,-z,relro,-z,now" "
+[binary.link]
+fortified_ffi = false
+segments_ffi = false"
+check_unreadable_ffi "unreadable library" "${WORK}/unreadable/relro" probe
 
 finish

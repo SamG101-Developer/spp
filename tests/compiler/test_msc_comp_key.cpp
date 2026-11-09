@@ -586,14 +586,26 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
-// A right shift in a comp argument is logical, as at run time: "-8 >> 1" in an "S32" is 2147483644.
+// A right shift of a signed comp argument is arithmetic, as at run time: "-8 >> 1" in an "S32" is -4.
 SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestCompKey,
-    test_valid_right_shift_of_a_negative_comp_argument_is_logical, R"(
+    test_valid_right_shift_of_a_negative_comp_argument_is_arithmetic, R"(
     cls A[cmp n: S32] { }
     fun h[cmp n: S32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
     fun g() -> Void {
-        let x: A[2147483644_s32] = h[-8_s32]()
+        let x: A[-4_s32] = h[-8_s32]()
+        std::mem::ops::drop(x)
+    }
+)");
+
+// Of an unsigned one it stays logical: "0x80000000 >> 1" in a "U32" is 0x40000000.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+    TestCompKey,
+    test_valid_right_shift_of_an_unsigned_comp_argument_is_logical, R"(
+    cls A[cmp n: U32] { }
+    fun h[cmp n: U32]() -> A[n >> 1_u32] { ret A[n >> 1_u32]() }
+    fun g() -> Void {
+        let x: A[1073741824_u32] = h[2147483648_u32]()
         std::mem::ops::drop(x)
     }
 )");

@@ -78,9 +78,9 @@ namespace spp::codegen {
     /// What an ELF file lacks of full RELRO: a "PT_GNU_RELRO"
     /// segment, and binding every symbol at load ("BIND_NOW", in
     /// any of the three places a linker may say so). Empty when it
-    /// has both, or its headers cannot be read.
+    /// has both; an error when its headers cannot be read.
     template <class ELFT>
-    auto RelroGaps(llvm::object::ELFFile<ELFT> const &elf) -> Str {
+    auto RelroGaps(llvm::object::ELFFile<ELFT> const &elf) -> Expected<Str, Str> {
       // Assume RELRO to be false.
       auto relro = false;
 
@@ -92,11 +92,9 @@ namespace spp::codegen {
         }
       }
 
-      // Otherwise, consume the error and return an empty string, as
-      // there is no handling to be done.
+      // Otherwise the file cannot be vouched for: an error, not a pass.
       else {
-        llvm::consumeError(headers.takeError());
-        return Str();
+        return Unexpected(llvm::toString(headers.takeError()));
       }
 
       // For each entry in the ELF file's entries, get the tag and the
@@ -114,11 +112,9 @@ namespace spp::codegen {
         }
       }
 
-      // If there are no entries, consume the error and return an empty
-      // string - no handling.
+      // Likewise for dynamic entries that cannot be read.
       else {
-        llvm::consumeError(entries.takeError());
-        return Str();
+        return Unexpected(llvm::toString(entries.takeError()));
       }
 
       // Based on the RELRO and NOW flags, return the correct value
@@ -127,6 +123,44 @@ namespace spp::codegen {
       if (not relro) { return "PT_GNU_RELRO"; }
       if (not now) { return "BIND_NOW"; }
       return Str();
+    }
+
+    /// The plain libc call an ELF file imports where a checked one
+    /// was available, as "UnfortifiedImport" describes; empty when
+    /// it imports any checked ("__*_chk") call, or no plain one
+    /// libc could have checked. A library built with fortification
+    /// imports a checked call wherever it could tell a buffer's
+    /// size, so one importing any is taken as fortified. A symbol
+    /// whose name cannot be read is skipped: the answer turns on
+    /// whether any checked import exists, which one entry does not
+    /// decide. Its tables not reading is an error.
+    template <class ELFT>
+    auto PlainFortifiableImport(llvm::object::ELFFile<ELFT> const &elf) -> Expected<Str, Str> {
+      auto sections = elf.sections();
+      if (not sections) { return Unexpected(llvm::toString(sections.takeError())); }
+
+      auto const &fortifiable = FortifiableByLibc();
+      auto plain = Str();
+      for (auto const &sec : *sections) {
+        if (sec.sh_type != llvm::ELF::SHT_DYNSYM) { continue; }
+        auto symbols = elf.symbols(&sec);
+        if (not symbols) { return Unexpected(llvm::toString(symbols.takeError())); }
+        auto strings = elf.getStringTableForSymtab(sec);
+        if (not strings) { return Unexpected(llvm::toString(strings.takeError())); }
+
+        // Imports are the undefined symbols.
+        for (auto const &sym : *symbols) {
+          if (sym.st_shndx != llvm::ELF::SHN_UNDEF) { continue; }
+          auto name = sym.getName(*strings);
+          if (not name) {
+            llvm::consumeError(name.takeError());
+            continue;
+          }
+          if (name->starts_with("__") and name->ends_with("_chk")) { return Str(); }
+          if (plain.empty() and fortifiable.contains(*name)) { plain = name->str(); }
+        }
+      }
+      return plain;
     }
 
     /// The first fault in an ELF file's loadable segments, as
@@ -165,41 +199,71 @@ namespace spp::codegen {
       return Str();
     }
 
-    /// "f" applied to "data" read as an ELF file of class "ELFT";
-    /// none when it cannot be read as one.
+    /// "f" (a check answering a finding, or an error) applied to "data" read
+    /// as an ELF file of class "ELFT"; an error when it cannot be read as one.
     template <class ELFT, class F>
-    auto VisitElfAs(const llvm::StringRef data, F &&f)
-      -> Opt<std::invoke_result_t<F, llvm::object::ELFFile<ELFT> const&>> {
+    auto VisitElfAs(const llvm::StringRef data, F &&f) -> Expected<Str, Str> {
       auto elf = llvm::object::ELFFile<ELFT>::create(data);
-      if (not elf) {
-        llvm::consumeError(elf.takeError());
-        return Nullopt;
-      }
+      if (not elf) { return Unexpected(llvm::toString(elf.takeError())); }
       return f(*elf);
     }
 
-    /// "f" applied to "object" as whichever of the four ELF
-    /// classes and byte orders it is; none when it is not ELF.
-    /// Read through ELFFile, not ELFObjectFile: ELFFile is compiled
-    /// into LLVM's libraries, while instantiating ELFObjectFile here
-    /// names ELF.h's TU-local defaultWarningHandler, which MSVC
-    /// rejects across the llvm module (C2065).
+    /// "f" applied to "object" as whichever of the four ELF classes and byte
+    /// orders it is; none when it is not ELF, and an error when it is but
+    /// cannot be read.
     template <class F>
-    auto VisitElf(llvm::object::ObjectFile const *object, F &&f)
-      -> Opt<std::invoke_result_t<F, llvm::object::ELFFile<llvm::object::ELF64LE> const&>> {
+    auto VisitElf(
+      llvm::object::ObjectFile const *object, F &&f) -> Opt<Expected<Str, Str>> {
       if (not object->isELF()) { return Nullopt; }
       const auto data = object->getData();
       const auto wide = object->getBytesInAddress() == 8;
-      if (object->isLittleEndian()) {
-        return wide ? VisitElfAs<llvm::object::ELF64LE>(data, f) : VisitElfAs<llvm::object::ELF32LE>(data, f);
-      }
-      return wide ? VisitElfAs<llvm::object::ELF64BE>(data, f) : VisitElfAs<llvm::object::ELF32BE>(data, f);
+
+      // Hook into whichever ELF variation, based on 32- vs 64-bit and LE vs BE
+      // endianness.
+      return object->isLittleEndian()
+        ? (wide ? VisitElfAs<llvm::object::ELF64LE>(data, f) : VisitElfAs<llvm::object::ELF32LE>(data, f))
+        : (wide ? VisitElfAs<llvm::object::ELF64BE>(data, f) : VisitElfAs<llvm::object::ELF32BE>(data, f));
+    }
+
+    /// The ELF check "f" run over the file at "path", as the "Unhardened..."
+    /// functions answer: none when it finds nothing or the file is not ELF, the
+    /// finding otherwise, and an error when the file cannot be read (a
+    /// hardening check fails closed).
+    template <class F> // Todo: Constrain F?
+    auto ElfFinding(char const *path, F &&f) -> Expected<Opt<Str>, Str> {
+      auto object = llvm::object::ObjectFile::createObjectFile(path);
+      if (not object) { return Unexpected(llvm::toString(object.takeError())); }
+
+      const auto finding = VisitElf(object->getBinary(), f);
+      if (not finding) { return Nullopt; }
+      if (not *finding) { return Unexpected(finding->error()); }
+      if ((*finding)->empty()) { return Nullopt; }
+      return **finding;
     }
 
     /// [CHECKED]
     /// "n" rounded up to the four bytes every part of an ELF note is padded to.
     constexpr auto NotePadded(const std::size_t n) -> std::size_t {
       return (n + 3) & ~3uz;
+    }
+
+    /// Append "v" to "bytes" as four bytes, in the target's byte
+    /// order ("little" endian or big): an ELF note's header words.
+    auto Put32(Str &bytes, const std::uint32_t v, const bool little) -> void {
+      for (auto i = 0U; i < 4U; ++i) {
+        bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i))));
+      }
+    }
+
+    /// The inverse of "Put32": the four bytes of "data" at "at", in
+    /// the given byte order, read back as one word.
+    auto Get32(const llvm::StringRef data, const std::size_t at, const bool little) -> std::uint32_t {
+      auto v = std::uint32_t{0};
+      for (auto i = 0U; i < 4U; ++i) {
+        const auto byte = static_cast<std::uint32_t>(static_cast<unsigned char>(data[at + i]));
+        v |= byte << (8U * (little ? i : 3U - i));
+      }
+      return v;
     }
   }
 }
@@ -215,6 +279,8 @@ auto spp::codegen::EmitHardeningRecord(
   const auto &triple = TargetTriple();
   const auto text = llvm::StringRef(record);
 
+  // The bytes is the final padded and generated hardening record, version
+  // controlled and metadata complete.
   auto bytes = Str();
   auto section = llvm::StringRef();
 
@@ -223,18 +289,13 @@ auto spp::codegen::EmitHardeningRecord(
   // note's type. All done in the target's byte order.
   if (triple.isOSBinFormatELF()) {
     const auto little = llvm_mod.getDataLayout().isLittleEndian();
-    const auto put32 = [&](const std::uint32_t v) {
-      for (auto i = 0U; i < 4U; ++i) {
-        bytes.push_back(static_cast<char>(v >> (8U * (little ? i : 3U - i))));
-      }
-    };
     constexpr auto owner_size = kHardeningNoteOwner.size() + 1;
-    put32(static_cast<std::uint32_t>(owner_size));  // 4 bytes sizeof owner
-    put32(static_cast<std::uint32_t>(text.size())); // 4 bytes sizeof record
-    put32(kHardeningNoteType);                      // 4 bytes version
-    bytes += kHardeningNoteOwner;                   // n bytes owner
+    Put32(bytes, static_cast<std::uint32_t>(owner_size), little);  // 4 bytes sizeof owner
+    Put32(bytes, static_cast<std::uint32_t>(text.size()), little); // 4 bytes sizeof record
+    Put32(bytes, kHardeningNoteType, little);                      // 4 bytes version
+    bytes += kHardeningNoteOwner;                                  // n bytes owner
     bytes.resize(12 + NotePadded(owner_size), '\0');
-    bytes += text;                                  // n bytes record
+    bytes += text;                                                 // n bytes record
     bytes.resize(12 + NotePadded(owner_size) + NotePadded(text.size()), '\0');
     section = kHardeningNoteSection;
   }
@@ -250,11 +311,11 @@ auto spp::codegen::EmitHardeningRecord(
 
   // Nothing refers to it, so it is kept by being "used". Mock up a global
   // variable with private linkage to hold the "init" for the "bytes", and then
-  // set its section into the specialized area. Force 4-byte alignment.
-  const auto init = llvm::ConstantDataArray::getString(
-    ctx, bytes, false);
+  // set its section into the specialised area. Force 4-byte alignment.
+  const auto init = llvm::ConstantDataArray::getString(ctx, bytes, false);
   const auto global = new llvm::GlobalVariable(
-    llvm_mod, init->getType(), true, llvm::GlobalValue::PrivateLinkage, init,
+    llvm_mod, init->getType(), true,
+    llvm::GlobalValue::PrivateLinkage, init,
     "spp.hardening");
   global->setSection(section);
   global->setAlignment(llvm::Align(4));
@@ -271,18 +332,19 @@ auto spp::codegen::ReadHardeningRecord(
   auto record = Str();
 
   // Convert the object file into its binary, allowing access to the sections of
-  // it. We can the filter by the specialised section name.
+  // it, allowing filtering by the specialised section name.
   auto const &file = *object->getBinary();
   for (auto const &sec : file.sections()) {
     auto name = sec.getName();
 
-    // Unnameable section.
+    // Unnameable section. Ignore it and continue onto the next section.
     if (not name) {
       llvm::consumeError(name.takeError());
       continue;
     }
 
-    // Non-specialised section.
+    // Non-specialised section (check against all three as the tool can check
+    // spp binary from any platform).
     if (*name != kHardeningNoteSection
       and *name != kHardeningMachOSection
       and *name != kHardeningCoffSection) {
@@ -296,23 +358,16 @@ auto spp::codegen::ReadHardeningRecord(
       return Unexpected(llvm::toString(contents.takeError()));
     }
 
-    // An ELF note's record follows its header and owner's name.
+    // An ELF note's record follows its header and owner's name, read back with
+    // "Get32".
     auto data = *contents;
     if (file.isELF()) {
-      const auto get32 = [&](const std::size_t at) {
-        auto v = std::uint32_t{0};
-        for (auto i = 0U; i < 4U; ++i) {
-          const auto byte = static_cast<std::uint32_t>(static_cast<unsigned char>(data[at + i]));
-          v |= byte << (8U * (file.isLittleEndian() ? i : 3U - i));
-        }
-        return v;
-      };
-
       // If the data is too small, stop processing (prevent index errors). This
       // is a present but no-key record. Otherwise, get the data.
       if (data.size() < 12) { break; }
-      const auto desc_at = 12 + NotePadded(get32(0));
-      const auto desc_size = get32(4);
+      const auto little = file.isLittleEndian();
+      const auto desc_at = 12 + NotePadded(Get32(data, 0, little));
+      const auto desc_size = Get32(data, 4, little);
       if (desc_at + desc_size > data.size()) { break; }
       data = data.substr(desc_at, desc_size);
     }
@@ -324,39 +379,6 @@ auto spp::codegen::ReadHardeningRecord(
   // Coff)
   if (record.empty()) { return Nullopt; }
   return record;
-}
-
-auto spp::codegen::UnfortifiedImport(
-  char const *path) -> Opt<Str> {
-  auto object = llvm::object::ObjectFile::createObjectFile(path);
-  if (not object) {
-    llvm::consumeError(object.takeError());
-    return Nullopt;
-  }
-  const auto elf = llvm::dyn_cast<llvm::object::ELFObjectFileBase>(object->getBinary());
-  if (elf == nullptr) { return Nullopt; }
-
-  // A library built with fortification imports a checked
-  // function wherever it could tell a buffer's size, so one
-  // that imports any is taken as fortified; the plain calls left
-  // are those it could not check. One importing only plain ones
-  // that libc could have checked was built without.
-  auto const &fortifiable = FortifiableByLibc();
-  auto plain = Str();
-  for (auto const &sym : elf->getDynamicSymbolIterators()) {
-    auto flags = sym.getFlags();
-    auto name = sym.getName();
-    if (not flags or not name) {
-      if (not flags) { llvm::consumeError(flags.takeError()); }
-      if (not name) { llvm::consumeError(name.takeError()); }
-      continue;
-    }
-    if ((*flags & llvm::object::SymbolRef::SF_Undefined) == 0) { continue; }
-    if (name->starts_with("__") and name->ends_with("_chk")) { return Nullopt; }
-    if (plain.empty() and fortifiable.contains(*name)) { plain = name->str(); }
-  }
-  if (plain.empty()) { return Nullopt; }
-  return plain;
 }
 
 auto spp::codegen::ImportsAtomicLibcalls(
@@ -379,32 +401,17 @@ auto spp::codegen::ImportsAtomicLibcalls(
   return false;
 }
 
-auto spp::codegen::UnhardenedLink(
-  char const *path) -> Opt<Str> {
-  // If llvm failed to make an object file then consume the error
-  // and return nullopt.
-  auto object = llvm::object::ObjectFile::createObjectFile(path);
-  if (not object) {
-    llvm::consumeError(object.takeError());
-    return Nullopt;
-  }
+auto spp::codegen::UnfortifiedImport(
+  char const *path) -> Expected<Opt<Str>, Str> {
+  return ElfFinding(path, [](auto const &e) { return PlainFortifiableImport(e); });
+}
 
-  // Anything that is not ELF has no RELRO to check, and no gaps
-  // means nothing to report.
-  const auto gaps = VisitElf(object->getBinary(), [](auto const &e) { return RelroGaps(e); });
-  if (not gaps or gaps->empty()) { return Nullopt; }
-  return *gaps;
+auto spp::codegen::UnhardenedLink(
+  char const *path) -> Expected<Opt<Str>, Str> {
+  return ElfFinding(path, [](auto const &e) { return RelroGaps(e); });
 }
 
 auto spp::codegen::UnhardenedSegments(
-  char const *path)
-  -> Expected<Opt<Str>, Str> {
-  auto object = llvm::object::ObjectFile::createObjectFile(path);
-  if (not object) { return Unexpected(llvm::toString(object.takeError())); }
-
-  const auto faults = VisitElf(object->getBinary(), [](auto const &e) { return SegmentFaults(e); });
-  if (not faults) { return Nullopt; }
-  if (not *faults) { return Unexpected(faults->error()); }
-  if ((*faults)->empty()) { return Nullopt; }
-  return **faults;
+  char const *path) -> Expected<Opt<Str>, Str> {
+  return ElfFinding(path, [](auto const &e) { return SegmentFaults(e); });
 }

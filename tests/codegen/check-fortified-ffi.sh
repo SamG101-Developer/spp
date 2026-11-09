@@ -8,6 +8,7 @@
 #   - built without, the build fails naming the call and the key;
 #   - built without, with "fortified_ffi = false", it links and runs;
 #   - a library without a call to fortify links, however it was built.
+#   - with the library cut short, which cannot be read, the build fails saying so.
 # The check is made at link time, the same at dev and rel, so rel alone runs.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-fortified-ffi.sh [path/to/spp]
@@ -105,5 +106,11 @@ check_runs "unfortified library, check off" "${WORK}/copy.c" "${UNFORTIFIED}" "
 [binary.link]
 fortified_ffi = false"
 check_runs "nothing to fortify" "${WORK}/plain.c" "${UNFORTIFIED}"
+
+make_project "${WORK}/unreadable/fortified" "${WORK}/copy.c" "${FORTIFIED}" "
+[binary.link]
+relro_ffi = false
+segments_ffi = false"
+check_unreadable_ffi "unreadable library" "${WORK}/unreadable/fortified" probe
 
 finish

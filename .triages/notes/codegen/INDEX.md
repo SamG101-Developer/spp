@@ -16,6 +16,7 @@
 - [Single abort path](spp-single-abort-path.md) — checks call sppc_check_failed; no frontend willreturn
 - [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; fns typed before the optimiser (thunks drop spp.cfi)
 - [Hardening needs a feature gate](hardening-needs-feature-gate.md) — default on behind a key, fail loudly; old kernels via build-time floor (RHEL 8), never runtime skip
+- [Hardening checks fail closed](hardening-checks-fail-closed.md) — artefact checks answer Expected<Opt<Str>, Str>; unreadable = refused; check_unreadable_ffi case
 - [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
 - [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()

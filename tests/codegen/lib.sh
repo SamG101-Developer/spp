@@ -98,6 +98,22 @@ build_project() {
     fi
 }
 
+# The ffi library "pkg" in "dir" cut to its first 100 bytes, which LLVM cannot
+# read as an object, then a rel build that must fail saying so: a hardening
+# check that cannot read a library refuses it rather than passing it.
+check_unreadable_ffi() {
+    local name="$1" dir="$2" pkg="$3"
+    local lib="${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so"
+    head -c 100 "${lib}" > "${lib}.cut" && mv "${lib}.cut" "${lib}"
+    if (cd "${dir}" && "${SPP}" build -m rel > "${dir}/build.log" 2>&1); then
+        fail "${name}: the build succeeded" "${dir}/build.log"
+    elif tr '\r' '\n' < "${dir}/build.log" | grep -qF "cannot read 'ffi/${pkg}/${HOST_FFI}/lib${pkg}.so'"; then
+        ok "${name}: the build failed, saying it cannot read the library"
+    else
+        fail "${name}: the build failed without saying it cannot read the library" "${dir}/build.log"
+    fi
+}
+
 # Run "exe" with its output in "log" and its exit code in RC. Never through a
 # pipe, which would report the pipe's status and hide a crash. A run still
 # going after RUN_TIMEOUT seconds (60) is killed and failed here: no check

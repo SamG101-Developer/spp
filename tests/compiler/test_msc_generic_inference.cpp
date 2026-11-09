@@ -92,7 +92,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Nested,
   test_valid_infer_comp_from_array_size, R"(
-    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::unreachable() }
+    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::abort() }
 
     fun g() -> Void {
         let mut x = f([1, 2, 3])

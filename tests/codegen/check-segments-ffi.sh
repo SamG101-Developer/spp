@@ -6,6 +6,7 @@
 #   - with "-z separate-code" the program links and runs;
 #   - with "-z noseparate-code" the build fails naming the fault, and the key;
 #   - with "-z noseparate-code" and "segments_ffi = false", it links and runs.
+#   - with the library cut short, which cannot be read, the build fails saying so.
 # The check is made at link time, the same at dev and rel, so rel alone runs.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-segments-ffi.sh [path/to/spp]
@@ -82,5 +83,11 @@ check_refused "shared code page" "-Wl,-z,noseparate-code" "code sharing a page w
 check_runs "shared code page, check off" "-Wl,-z,noseparate-code" "
 [binary.link]
 segments_ffi = false"
+
+make_project "${WORK}/unreadable/segments" "-Wl,-z,separate-code" "
+[binary.link]
+fortified_ffi = false
+relro_ffi = false"
+check_unreadable_ffi "unreadable library" "${WORK}/unreadable/segments" probe
 
 finish
