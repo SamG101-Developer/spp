@@ -24,7 +24,7 @@ The rules, each a hard error:
 - A top-level namespace is one package (`ModuleTree::CheckNamespaces`, before parsing), and not both an ffi package and
   source. So `NamespaceSymbol::Owner` and `Declares`, which are per top-level namespace, are always the module's own.
 
-See `.triages/vcs-dependency-model.md` for why, and what is out of scope (`ns`, lockfiles).
+See `../../docs_closed/vcs-dependency-model.md` for why, and what is out of scope (`ns`, lockfiles).
 
 **Why:** the compiler used to have no such list. Each reader worked dependencies out from folders and paths, at different
 depths, so removed dependencies still compiled, stray `.spp` files compiled, and a project under a folder named `vcs`
