@@ -1929,7 +1929,7 @@ auto spp::codegen::fn_impls::StdNonNullWrite(
 auto spp::codegen::fn_impls::StdNonNullRaw(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
-  llvm::Type *ty)
+  llvm::Type *)
   -> void {
   //
   using asts::generate::common_types_precompiled::SELF_VAR;
@@ -1938,11 +1938,8 @@ auto spp::codegen::fn_impls::StdNonNullRaw(
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "non_null.raw.self");
   const auto data_ptr = ctx->Builder.CreateLoad(ptr_ty, self_ptr, "non_null.raw.data_ptr");
 
-  const auto ptr_struct_ty = llvm::cast<llvm::StructType>(ty);
-  const auto addr_val = ctx->Builder.CreatePtrToInt(data_ptr, ptr_struct_ty->getElementType(0), "non_null.raw.addr");
-  const auto poison = llvm::PoisonValue::get(ptr_struct_ty);
-  const auto result = ctx->Builder.CreateInsertValue(poison, addr_val, {0}, "non_null.raw.result");
-  ctx->Builder.CreateRet(result);
+  // "Ptr" and "NonNull" are both pointers: the same bits.
+  ctx->Builder.CreateRet(data_ptr);
 }
 
 auto spp::codegen::fn_impls::StdNonNullEraseType(
@@ -1967,20 +1964,54 @@ auto spp::codegen::fn_impls::StdNonNullCast(
 auto spp::codegen::fn_impls::StdNonNullFromPtrInner(
   SPP_LLVM_FUNC_INFO,
   LlvmCtx *ctx,
-  llvm::Type *ty)
+  llvm::Type *)
   -> void {
-  //
+  // A "Ptr" is the same bits as a "NonNull" ("from_ptr" checked it
+  // is not null).
   const auto ptr_param = proto->FnParamGroup->GetAllParams()[0];
   const auto ptr_sym = sm->CurrentScope->FindVarSymbol(ptr_param->ExtractName().get());
-  const auto ptr_struct_ty = llvm::cast<llvm::StructType>(
-    GetLlvmTypeOf(TypeRef::Of(*ptr_param->Type, *sm->CurrentScope).WithoutConvention(), ctx));
-  const auto addr_field_ptr = ctx->Builder.CreateStructGEP(
-    ptr_struct_ty, ptr_sym->LlvmInfo->Alloca, 0, "non_null.from_ptr.addr_field");
-  const auto addr_val = ctx->Builder.CreateLoad(
-    ptr_struct_ty->getElementType(0), addr_field_ptr, "non_null.from_ptr.addr");
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  ctx->Builder.CreateRet(ctx->Builder.CreateLoad(ptr_ty, ptr_sym->LlvmInfo->Alloca, "non_null.from_ptr.ptr"));
+}
 
-  const auto data_ptr = ctx->Builder.CreateIntToPtr(addr_val, ty, "non_null.from_ptr.data_ptr");
-  ctx->Builder.CreateRet(data_ptr);
+auto spp::codegen::fn_impls::StdNonNullDangling(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // "T"'s alignment as an address: a non-zero power of two, so
+  // non-null and aligned, and never one of an allocation. Made
+  // from nothing the caller passes, so no address can be forged.
+  const auto t_ast = TypeIdentifierAst::FromString("T");
+  const auto align = AlignOf(*sm, TypeRef::Of(*t_ast, *sm->CurrentScope));
+  const auto size_ty = TargetSizeType(*ctx->Context);
+  ctx->Builder.CreateRet(ctx->Builder.CreateIntToPtr(llvm::ConstantInt::get(size_ty, align), ty, "non_null.dangling"));
+}
+
+auto spp::codegen::fn_impls::StdPtrNull(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // The null pointer, from nothing the caller passes.
+  ctx->Builder.CreateRet(llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(ty)));
+}
+
+auto spp::codegen::fn_impls::StdPtrIsNull(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "&self": the borrow, then the pointer it borrows.
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "ptr.is_null.self");
+  const auto value = ctx->Builder.CreateLoad(ptr_ty, self_ptr, "ptr.is_null.value");
+  ctx->Builder.CreateRet(ctx->Builder.CreateIsNull(value, "ptr.is_null"));
+}
+
+auto spp::codegen::fn_impls::StdPtrAddr(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void {
+  // Read only: the address, as a "USize". Nothing makes a pointer
+  // from one.
+  using asts::generate::common_types_precompiled::SELF_VAR;
+  const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
+  const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+  const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "ptr.addr.self");
+  const auto value = ctx->Builder.CreateLoad(ptr_ty, self_ptr, "ptr.addr.value");
+  ctx->Builder.CreateRet(ctx->Builder.CreatePtrToInt(value, ty, "ptr.addr"));
 }
 
 auto spp::codegen::fn_impls::StdNonNullFromMut(
