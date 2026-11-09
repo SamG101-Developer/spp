@@ -1,6 +1,7 @@
 ---
 name: llvm-passes-plain-tu
-description: "Only llvm_pipeline.hpp/.cpp is a plain TU (PassBuilder.h exposes a TU-local entity); the rest of the old llvm_passes is modules since 2026-10-19"
+description: "Only llvm_pipeline and llvm_air are plain TUs (PassBuilder.h exposes a TU-local entity); the rest of the old llvm_passes is modules since 2026-10-19"
+updated: 2026-11-09
 ---
 
 `llvm_passes.hpp/.cpp` was split on 2026-10-19 into six parts. Only `llvm_pipeline.hpp/.cpp` (coroutine lowering,
@@ -13,6 +14,10 @@ exports `TargetTriple()`), `llvm_entry` (C main, runtime shims), `llvm_harden_me
 
 The plain TU still imports spp modules (`spp.utils.types`), so it uses `Str`/`Vec`/`Opt` and the banned-idiom alias
 rules apply to it; `llvm_pipeline.hpp` is the allowlisted header (included into GMFs).
+
+`llvm_air.hpp/.cpp` (2026-11-09, AIR integers: `.triages/air-integer-model.md`) is a second plain TU for the same
+reason: it defines passes (`PassInfoMixin`, loop and alias analyses). Its header is included by `llvm_pipeline.cpp`
+alone, which calls `AddAirPasses(fpm)` at the vectoriser-start point.
 
 **How to apply:** new LLVM code goes in a module and gets what it needs exported from `headers/wrappers/llvm.ixx`,
 including free operators (`operator==`/`+` on StringRef/Twine are exported there; ADL needs them). Only code that
