@@ -516,6 +516,19 @@ auto spp::asts::generate::common_types::ForwardRefType(
   FINISH_TYPE()
 }
 
+auto spp::asts::generate::common_types::PtrType(
+  std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
+  MAKE_GENERICS()
+  ADD_TYPE_GENERIC(std::move(inner_type))
+  FINISH_GENERICS()
+
+  MAKE_TYPE_WITH_GN("Ptr")
+  ADD_NAMESPACE("pointer")
+  ADD_NAMESPACE("mem")
+  ADD_NAMESPACE("std")
+  FINISH_TYPE()
+}
+
 auto spp::asts::generate::common_types::NonNullType(
   std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst> {
   MAKE_GENERICS()

@@ -33,6 +33,7 @@ namespace spp::asts::generate::common_types_precompiled {
   SPP_EXP_CMP Shared<TypeAst> FWD_MUT = nullptr;
   SPP_EXP_CMP Shared<TypeAst> FWD_REF = nullptr;
   SPP_EXP_CMP Shared<TypeAst> NON_NULL = nullptr;
+  SPP_EXP_CMP Shared<TypeAst> PTR = nullptr;
   SPP_EXP_CMP Shared<TypeAst> SIZED_INTEGER = nullptr;
   SPP_EXP_CMP Shared<TypeAst> SIZED_FLOAT = nullptr;
   SPP_EXP_CMP Shared<TypeAst> GENERATED = nullptr;

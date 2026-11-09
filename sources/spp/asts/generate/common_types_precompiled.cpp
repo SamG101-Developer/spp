@@ -46,6 +46,7 @@ auto spp::asts::generate::common_types_precompiled::ClearTypes() -> void {
   FWD_MUT = nullptr;
   FWD_REF = nullptr;
   NON_NULL = nullptr;
+  PTR = nullptr;
   SIZED_INTEGER = nullptr;
   SIZED_FLOAT = nullptr;
   GENERATED = nullptr;
@@ -101,6 +102,7 @@ auto spp::asts::generate::common_types_precompiled::InitTypes() -> void {
   FWD_MUT = common_types::ForwardMutType(0, common_types::VoidType(0))->WithoutGns();
   FWD_REF = common_types::ForwardRefType(0, common_types::VoidType(0))->WithoutGns();
   NON_NULL = common_types::NonNullType(0, common_types::VoidType(0))->WithoutGns();
+  PTR = common_types::PtrType(0, common_types::VoidType(0))->WithoutGns();
   SIZED_INTEGER = common_types::SizedIntegerType(0);
   SIZED_FLOAT = common_types::SizedFloatType(0);
   GENERATED = common_types::GeneratedType(0);
