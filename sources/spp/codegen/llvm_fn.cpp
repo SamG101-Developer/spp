@@ -129,6 +129,47 @@ namespace {
     }
     return false;
   }
+
+  /// The C scalar a struct of one field stands for (the field,
+  /// however deeply wrapped), or null for anything else.
+  auto CScalarOf(llvm::Type *type) -> llvm::Type* {
+    if (not llvm::isa<llvm::StructType>(type)) { return nullptr; }
+    while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+      if (st->getNumElements() != 1) { return nullptr; }
+      type = st->getElementType(0);
+    }
+    return type;
+  }
+
+  /// The indices from a one-field struct chain of @p type down to
+  /// its scalar: one 0 per level.
+  auto CScalarPath(llvm::Type const *type) -> spp::Vec<unsigned> {
+    auto path = spp::Vec<unsigned>();
+    while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
+      path.emplace_back(0u);
+      type = st->getElementType(0);
+    }
+    return path;
+  }
+}
+
+auto spp::codegen::CAbiReturnOf(
+  llvm::Type *type) -> llvm::Type* {
+  const auto scalar = CScalarOf(type);
+  return scalar != nullptr ? scalar : type;
+}
+
+auto spp::codegen::CAbiAdaptReturn(
+  llvm::Function const &callee,
+  llvm::Value *result,
+  llvm::Type *expected,
+  LlvmCtx *ctx)
+  -> llvm::Value* {
+  // Its scalar, wrapped back up into the one-field struct the
+  // S++ type is.
+  if (not callee.hasFnAttribute(kFfiFnAttr) or expected == nullptr or result->getType() == expected) { return result; }
+  if (CScalarOf(expected) != result->getType()) { return result; }
+  return ctx->Builder.CreateInsertValue(llvm::PoisonValue::get(expected), result, CScalarPath(expected), "cabi.ret");
 }
 
 auto spp::codegen::CAbiExtendOf(
@@ -189,7 +230,12 @@ auto spp::codegen::CAbiParamsOf(
       .How = CAbiParam::Kind::Direct, .Value = type, .Declared = type,
       .Extend = CAbiExtendOf(type, i < is_signed.size() and is_signed[i])
     };
-    if (IsCStruct(type) and (by_val or int_or_ptr)) {
+    if (const auto scalar = CScalarOf(type); scalar != nullptr) {
+      param.How = CAbiParam::Kind::Unwrap;
+      param.Declared = scalar;
+      param.Extend = CAbiExtendOf(scalar, i < is_signed.size() and is_signed[i]);
+    }
+    else if (IsCStruct(type) and (by_val or int_or_ptr)) {
       const auto size = layout.getTypeAllocSize(type).getFixedValue();
       if (int_or_ptr and (size == 1 or size == 2 or size == 4 or size == 8)) {
         param.How = CAbiParam::Kind::Coerce;
@@ -228,7 +274,14 @@ auto spp::codegen::CAbiAdaptArgs(
   for (auto i = 0u; i < args.size() and i < fn_type->getNumParams(); ++i) {
     const auto declared = fn_type->getParamType(i);
     const auto value = args[i];
-    if (value->getType() == declared or not IsCStruct(value->getType())) { continue; }
+    if (value->getType() == declared) { continue; }
+
+    // A one-field struct passes as its scalar.
+    if (CScalarOf(value->getType()) == declared) {
+      args[i] = ctx->Builder.CreateExtractValue(value, CScalarPath(value->getType()), "cabi.arg.scalar");
+      continue;
+    }
+    if (not IsCStruct(value->getType())) { continue; }
 
     // The copy is the caller's, made for this call: "byval" lets
     // the callee write it, and s390x's and Windows x64's pointer is

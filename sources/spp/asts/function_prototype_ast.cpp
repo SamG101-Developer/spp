@@ -214,8 +214,11 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // tuple value ahead of time, so the callee is an ordinary
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
+    const auto declared_ret_type = ffi_symbol.has_value()
+      ? codegen::CAbiReturnOf(llvm_ret_type)
+      : llvm_ret_type;
     const auto llvm_fun_type = llvm::FunctionType::get(
-      llvm_ret_type, declared_param_types, false);
+      declared_ret_type, declared_param_types, false);
 
     // Shortcut for ffi functions: only ever one symbol
     // because of the C ABI compatibility. Enforced by the
@@ -242,7 +245,7 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     else {
       func->Target->addFnAttr(codegen::kFfiFnAttr);
       codegen::CAbiAddParamAttrs(*func->Target, c_abi);
-      if (const auto ext = codegen::CAbiExtendOf(llvm_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
+      if (const auto ext = codegen::CAbiExtendOf(declared_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
         func->Target->addRetAttr(ext);
       }
     }

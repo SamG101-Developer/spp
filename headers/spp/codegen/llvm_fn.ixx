@@ -35,7 +35,9 @@ namespace spp::codegen {
   /// parameter of an "!ffi" function, where that differs from
   /// passing its LLVM value as it is. A struct of one field
   /// stands for that field's C scalar ("NonNull" is a pointer),
-  /// so only one of two or more fields is a C struct. Most
+  /// so it is declared as that scalar on every target ("Unwrap":
+  /// the C form, and what lets LLVM read a pointer as a pointer),
+  /// and only one of two or more fields is a C struct. Most
   /// targets pass a small one as its fields, which the value as
   /// it is already does; 32-bit PowerPC and m68k take it "byval"
   /// (a pointer to a copy the callee may write), and s390x and
@@ -44,7 +46,7 @@ namespace spp::codegen {
   /// register as "CAbiExtendOf" says. Todo: a returned C struct
   /// ("sret") is not lowered; sppc returns none.
   SPP_EXP_CLS struct CAbiParam {
-    enum class Kind { Direct, ByVal, Indirect, Coerce };
+    enum class Kind { Direct, Unwrap, ByVal, Indirect, Coerce };
     Kind How = Kind::Direct;
     /// The parameter's LLVM value type, as S++ lays it out.
     llvm::Type *Value = nullptr;
@@ -92,6 +94,23 @@ namespace spp::codegen {
     llvm::Function const &callee,
     Vec<llvm::Value*> &args,
     LlvmCtx *ctx) -> void;
+
+  /// The type an "!ffi" function declares it returns, for a
+  /// return of LLVM value type @p type: the scalar a struct of one
+  /// field stands for, as for a parameter ("CAbiParam"), else
+  /// @p type itself.
+  SPP_EXP_FUN auto CAbiReturnOf(
+    llvm::Type *type) -> llvm::Type*;
+
+  /// The value of a call @p result to @p callee, as the S++ type
+  /// it returns (LLVM type @p expected): an "!ffi" function's
+  /// scalar wrapped back into the one-field struct it stands for.
+  /// Anything else is @p result itself.
+  SPP_EXP_FUN auto CAbiAdaptReturn(
+    llvm::Function const &callee,
+    llvm::Value *result,
+    llvm::Type *expected,
+    LlvmCtx *ctx) -> llvm::Value*;
 
   /// The global constant equivalent of the above function;
   /// "cmp" statements can be defined in one module, and accessed
