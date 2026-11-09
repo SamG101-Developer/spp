@@ -6,6 +6,9 @@ import spp.codegen.llvm_ctx;
 import spp.utils.types;
 import llvm;
 
+/// All variable stack allocation logic that is used by multiple places in the
+/// ast analysis. Currently limited to the alloca instruction generation at the
+/// correct position.
 namespace spp::codegen {
   /// Create a stack slot in the entry block of the function currently being
   /// generated, rather than at the builder's current insert block. Every
