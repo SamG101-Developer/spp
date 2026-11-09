@@ -178,6 +178,10 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
 
   Register(map, "std.mem.pointer.NonNull.cast", fn_impls::StdNonNullCast);
   Register(map, "std.mem.pointer.NonNull.from_ptr_inner", fn_impls::StdNonNullFromPtrInner);
+  Register(map, "std.mem.pointer.NonNull.dangling", fn_impls::StdNonNullDangling);
+  Register(map, "std.mem.pointer.Ptr.null", fn_impls::StdPtrNull);
+  Register(map, "std.mem.pointer.Ptr.is_null", fn_impls::StdPtrIsNull);
+  Register(map, "std.mem.pointer.Ptr.addr", fn_impls::StdPtrAddr);
   Register(map, "std.mem.pointer.NonNull.from_mut", fn_impls::StdNonNullFromMut);
   Register(map, "std.mem.pointer.NonNull.fwd_mut", Untyped(fn_impls::SimpleCoroNonNullFwd));
   Register(map, "std.mem.pointer.NonNull.fwd_ref", Untyped(fn_impls::SimpleCoroNonNullFwd));
