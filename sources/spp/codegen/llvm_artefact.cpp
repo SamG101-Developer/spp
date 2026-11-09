@@ -199,6 +199,7 @@ namespace spp::codegen {
       return Str();
     }
 
+    /// [CHECKED]
     /// "f" (a check answering a finding, or an error) applied to "data" read
     /// as an ELF file of class "ELFT"; an error when it cannot be read as one.
     template <class ELFT, class F>
@@ -208,6 +209,7 @@ namespace spp::codegen {
       return f(*elf);
     }
 
+    /// [CHECKED]
     /// "f" applied to "object" as whichever of the four ELF classes and byte
     /// orders it is; none when it is not ELF, and an error when it is but
     /// cannot be read.
@@ -225,6 +227,7 @@ namespace spp::codegen {
         : (wide ? VisitElfAs<llvm::object::ELF64BE>(data, f) : VisitElfAs<llvm::object::ELF32BE>(data, f));
     }
 
+    /// [CHECKED]
     /// The ELF check "f" run over the file at "path", as the "Unhardened..."
     /// functions answer: none when it finds nothing or the file is not ELF, the
     /// finding otherwise, and an error when the file cannot be read (a
@@ -247,6 +250,7 @@ namespace spp::codegen {
       return (n + 3) & ~3uz;
     }
 
+    /// [CHECKED]
     /// Append "v" to "bytes" as four bytes, in the target's byte
     /// order ("little" endian or big): an ELF note's header words.
     auto Put32(Str &bytes, const std::uint32_t v, const bool little) -> void {
@@ -255,6 +259,7 @@ namespace spp::codegen {
       }
     }
 
+    /// [CHECKED]
     /// The inverse of "Put32": the four bytes of "data" at "at", in
     /// the given byte order, read back as one word.
     auto Get32(const llvm::StringRef data, const std::size_t at, const bool little) -> std::uint32_t {
@@ -381,13 +386,18 @@ auto spp::codegen::ReadHardeningRecord(
   return record;
 }
 
-auto spp::codegen::ImportsAtomicLibcalls(
-  char const *path) -> bool {
+/// [CHECKED]
+auto spp::codegen::ImportsAtomicLibcalls(char const *path) -> bool {
+  // Create an object file for the path. If this fails, then no processing can
+  // be done, so no atomics are found; return false.
   auto object = llvm::object::ObjectFile::createObjectFile(path);
   if (not object) {
     llvm::consumeError(object.takeError());
     return false;
   }
+
+  // Iterate through the object file's symbols. If the symbol is missing a flag
+  // or name, ignore and skip.
   for (auto const &sym : object->getBinary()->symbols()) {
     auto flags = sym.getFlags();
     auto name = sym.getName();
@@ -396,21 +406,29 @@ auto spp::codegen::ImportsAtomicLibcalls(
       if (not name) { llvm::consumeError(name.takeError()); }
       continue;
     }
-    if ((*flags & llvm::object::SymbolRef::SF_Undefined) != 0 and name->starts_with("__atomic_")) { return true; }
+
+    // If the symbol is both undefined, and the name starts with "__atomic_",
+    // then we have found an "imported" (different module / not found) "atomic"
+    // lib call.
+    const auto is_undefined = *flags & llvm::object::SymbolRef::SF_Undefined;
+    if (is_undefined and name->starts_with("__atomic_")) { return true; }
   }
   return false;
 }
 
+/// [CHECKED]
 auto spp::codegen::UnfortifiedImport(
   char const *path) -> Expected<Opt<Str>, Str> {
   return ElfFinding(path, [](auto const &e) { return PlainFortifiableImport(e); });
 }
 
+/// [CHECKED]
 auto spp::codegen::UnhardenedLink(
   char const *path) -> Expected<Opt<Str>, Str> {
   return ElfFinding(path, [](auto const &e) { return RelroGaps(e); });
 }
 
+/// [CHECKED]
 auto spp::codegen::UnhardenedSegments(
   char const *path) -> Expected<Opt<Str>, Str> {
   return ElfFinding(path, [](auto const &e) { return SegmentFaults(e); });
