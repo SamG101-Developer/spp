@@ -196,6 +196,27 @@ auto spp::utils::numbers::ShiftRightLogical(
   return WrapToInteger(bits >> count, type);
 }
 
+auto spp::utils::numbers::ShiftRightArithmetic(
+  numex::BigInt const &value, const std::uint32_t count,
+  Str const &type) -> Opt<numex::BigInt> {
+  // Read the value as its type's bits taken as signed (the top
+  // bit set is negative, even for an unsigned type), and floor
+  // it by 2^count. A negative one is floored through its
+  // magnitude, -((-s - 1) >> count) - 1, so only non-negative
+  // values are ever shifted.
+  const auto bounds = IntegerBounds().find(type);
+  if (bounds == IntegerBounds().end()) { return Nullopt; }
+  auto const &[lower, upper] = bounds->second;
+  const auto modulus = upper - lower + numex::BigInt(1);
+  const auto one = numex::BigInt(1);
+  auto bits = value % modulus;
+  if (bits.IsNegative()) { bits = bits + modulus; }
+  const auto floored = bits >= modulus / numex::BigInt(2)
+    ? -(((modulus - bits) - one) >> count) - one
+    : bits >> count;
+  return WrapToInteger(floored, type);
+}
+
 auto spp::utils::numbers::FloatSemantics(
   Str const &type) -> llvm::fltSemantics const& {
   // An unsuffixed literal is an "f32".

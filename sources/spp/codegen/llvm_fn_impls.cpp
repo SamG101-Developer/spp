@@ -95,6 +95,9 @@ namespace {
     UnsignedSub = 0x13,
     SignedMul = 0x14,
     UnsignedMul = 0x15,
+    DivideByZero = 0x16,
+    RemainderByZero = 0x17,
+    SignedDiv = 0x18,
   };
 
   /// [CHECKED]
@@ -211,9 +214,13 @@ namespace {
     // this is the "before" check.
     const auto too_wide = ctx->Builder.CreateICmpUGE(b, width, "shift.wide" + uid);
     const auto safe = ctx->Builder.CreateSelect(too_wide, max, b, "shift.safe" + uid);
-    const auto raw = op == BinOp::Shl
-      ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
-      : ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid);
+    const auto raw = op == BinOp::Shl ? ctx->Builder.CreateShl(a, safe, "shift.raw" + uid)
+      : op == BinOp::LShr ? ctx->Builder.CreateLShr(a, safe, "shift.raw" + uid)
+      : ctx->Builder.CreateAShr(a, safe, "shift.raw" + uid);
+
+    // An arithmetic shift by the clamped distance is already
+    // the answer past the width: every bit is the sign bit.
+    if (op == BinOp::AShr) { return raw; }
 
     // Do a width check afterwards too on the result. This is
     // the completion of the "<<" and ">>" safety.
@@ -358,6 +365,59 @@ namespace {
     return value;
   }
 
+  /// A division or remainder, checked as "+" is: it aborts only
+  /// when the true result does not exist or does not fit. A zero
+  /// divisor fails, and so does the signed "MIN / -1", whose
+  /// quotient is one past the maximum. Its remainder is 0, which
+  /// fits, so "srem" is given a divisor of 1 there (any "x % -1"
+  /// is 0) rather than failing; a bare "srem" is UB for it.
+  auto EmitCheckedDivRem(
+    LlvmCtx *ctx, const BinOp op,
+    llvm::Value *a, llvm::Value *b) -> llvm::Value* {
+    const auto uid = "." + spp::utils::Uid();
+    const auto ty = a->getType();
+    const auto fn = ctx->Builder.GetInsertBlock()->getParent();
+    const auto neg_one = llvm::ConstantInt::getSigned(ty, -1);
+
+    // Branch to a failed check when "failed" is set, and carry
+    // on in a fresh block otherwise.
+    const auto fail_if = [&](llvm::Value *failed, const RuntimeCheck check) {
+      const auto ok_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.ok" + uid, fn);
+      const auto fail_bb = llvm::BasicBlock::Create(*ctx->Context, "divrem.fail" + uid, fn);
+      ctx->Builder.CreateCondBr(failed, fail_bb, ok_bb);
+      ctx->Builder.SetInsertPoint(fail_bb);
+      EmitCheckFailed(ctx, check);
+      ctx->Builder.SetInsertPoint(ok_bb);
+    };
+
+    const auto is_div = op == BinOp::SDiv or op == BinOp::UDiv;
+    fail_if(
+      ctx->Builder.CreateICmpEQ(b, llvm::ConstantInt::get(ty, 0), "divrem.by_zero" + uid),
+      is_div ? RuntimeCheck::DivideByZero : RuntimeCheck::RemainderByZero);
+
+    switch (op) {
+      case BinOp::UDiv: return ctx->Builder.CreateUDiv(a, b, "divrem.result" + uid);
+      case BinOp::URem: return ctx->Builder.CreateURem(a, b, "divrem.result" + uid);
+      case BinOp::SDiv: {
+        const auto min = llvm::ConstantInt::get(ty, llvm::APInt::getSignedMinValue(ty->getIntegerBitWidth()));
+        const auto overflows = ctx->Builder.CreateAnd(
+          ctx->Builder.CreateICmpEQ(a, min, "divrem.is_min" + uid),
+          ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid),
+          "divrem.overflows" + uid);
+        fail_if(overflows, RuntimeCheck::SignedDiv);
+        return ctx->Builder.CreateSDiv(a, b, "divrem.result" + uid);
+      }
+      case BinOp::SRem: {
+        const auto by_neg_one = ctx->Builder.CreateICmpEQ(b, neg_one, "divrem.by_neg_one" + uid);
+        const auto divisor = ctx->Builder.CreateSelect(
+          by_neg_one, llvm::ConstantInt::get(ty, 1), b, "divrem.divisor" + uid);
+        return ctx->Builder.CreateSRem(a, divisor, "divrem.result" + uid);
+      }
+      default:
+        spp::Ice(std::format("not a division BinOp: {}", static_cast<int>(op)));
+    }
+  }
+
   /// The format an "F8" is stored in, FP8 E4M3, as llvm's
   /// arbitrary float conversions name it.
   auto F8Format(LlvmCtx *ctx) -> llvm::Value* {
@@ -436,7 +496,8 @@ auto spp::codegen::fn_impls::IsShiftBinOp(
   const BinOp op) -> bool {
   switch (op) {
     case BinOp::Shl:
-    case BinOp::LShr: return true;
+    case BinOp::LShr:
+    case BinOp::AShr: return true;
     default: return false;
   }
 }
@@ -474,12 +535,13 @@ auto spp::codegen::fn_impls::ApplyBinOp(
     case BinOp::Add: return ctx->Builder.CreateAdd(a, b, name);
     case BinOp::Sub: return ctx->Builder.CreateSub(a, b, name);
     case BinOp::Mul: return ctx->Builder.CreateMul(a, b, name);
-    case BinOp::SDiv: return ctx->Builder.CreateSDiv(a, b, name);
-    case BinOp::UDiv: return ctx->Builder.CreateUDiv(a, b, name);
-    case BinOp::SRem: return ctx->Builder.CreateSRem(a, b, name);
-    case BinOp::URem: return ctx->Builder.CreateURem(a, b, name);
+    case BinOp::SDiv:
+    case BinOp::UDiv:
+    case BinOp::SRem:
+    case BinOp::URem: return EmitCheckedDivRem(ctx, op, a, b);
     case BinOp::Shl:
-    case BinOp::LShr: return EmitDefinedShift(ctx, op, a, b);
+    case BinOp::LShr:
+    case BinOp::AShr: return EmitDefinedShift(ctx, op, a, b);
     case BinOp::Or: return ctx->Builder.CreateOr(a, b, name);
     case BinOp::And: return ctx->Builder.CreateAnd(a, b, name);
     case BinOp::Xor: return ctx->Builder.CreateXor(a, b, name);
@@ -909,6 +971,49 @@ auto spp::codegen::fn_impls::SimpleUnaryIntrinsicCall(
   const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
   const auto result = ctx->Builder.CreateCall(intrinsic_fn, {operand}, "intrinsic.result" + uid);
   ctx->Builder.CreateRet(result);
+}
+
+auto spp::codegen::fn_impls::SimpleBitCount(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  // "ty" (per the dispatcher) is the return type "U32" - "T" is read off the "value" parameter instead, as each count
+  // is declared at, and counts in, the operand's width.
+  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
+  const auto value_ty = GetLlvmTypeOf(
+    TypeRef::Of(*value_param->Type, *sm->CurrentScope).WithoutConvention(), ctx);
+
+  // "ctlz" and "cttz" take whether zero is poison, and it is not:
+  // zero counts the width. "ctpop" has no such flag. A count is
+  // at most 256, so it fits the "U32" either way.
+  const auto uid = "." + utils::Uid();
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{value_ty});
+  auto args = Vec<llvm::Value*>{fn->arg_begin()};
+  if (intrinsic != llvm::Intrinsic::ctpop) { args.emplace_back(ctx->Builder.getFalse()); }
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {value_ty});
+  const auto count = ctx->Builder.CreateCall(intrinsic_fn, args, "intrinsic.result" + uid);
+  ctx->Builder.CreateRet(ctx->Builder.CreateZExtOrTrunc(count, ty, "intrinsic.count" + uid));
+}
+
+auto spp::codegen::fn_impls::SimpleFunnelShift(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty, const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void {
+  // "ty" (per the dispatcher) is the return type "T". The distance is separately typed, as a shift's is
+  // ("fshl[T, U](hi: T, lo: T, by: U)"), and llvm wants it as "T". The intrinsic takes it modulo the width, so a wider
+  // one is reduced modulo the width first: truncating alone keeps it modulo 2^w, which only agrees for a power-of-two
+  // width (llvm folds the "urem" to a mask there).
+  const auto by_param = proto->FnParamGroup->GetNonSelfParams()[2];
+  const auto by_ty = GetLlvmTypeOf(
+    TypeRef::Of(*by_param->Type, *sm->CurrentScope).WithoutConvention(), ctx);
+
+  const auto uid = "." + utils::Uid();
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty, ty, by_ty});
+  llvm::Value *by = fn->arg_begin() + 2;
+  const auto width = ty->getIntegerBitWidth();
+  if (by_ty->getIntegerBitWidth() > width) {
+    by = ctx->Builder.CreateURem(by, llvm::ConstantInt::get(by_ty, width), "intrinsic.shift.mod" + uid);
+  }
+  by = ctx->Builder.CreateZExtOrTrunc(by, ty, "intrinsic.shift.by" + uid);
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), intrinsic, {ty});
+  ctx->Builder.CreateRet(ctx->Builder.CreateCall(
+    intrinsic_fn, {fn->arg_begin(), fn->arg_begin() + 1, by}, "intrinsic.result" + uid));
 }
 
 auto spp::codegen::fn_impls::SimpleGetValue(
@@ -1562,27 +1667,25 @@ auto spp::codegen::fn_impls::StdIntrinsicsUshlSaturating(
 }
 
 // =========================================================================================================
-// Layer 3: one-operand intrinsics with a shape of their own ("ctlz", the debug breakpoint)
+// Layer 3: one-operand intrinsics with a shape of their own ("bswap", the debug breakpoint)
 // =========================================================================================================
 
-auto spp::codegen::fn_impls::StdIntrinsicsCtlz(
+auto spp::codegen::fn_impls::StdIntrinsicsBswap(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty)
   -> void {
-  // "(value: T) -> U32"; "ty" (per the dispatcher) is the return type "U32" - "T" is read off the "value" parameter
-  // instead, as "llvm.ctlz" is declared at, and counts in, the operand's width.
-  const auto value_param = proto->FnParamGroup->GetNonSelfParams()[0];
-  const auto value_ty = GetLlvmTypeOf(
-    TypeRef::Of(*value_param->Type, *sm->CurrentScope).WithoutConvention(), ctx);
-
-  // Zero is not poison: "ctlz(0)" is the width. The count is at
-  // most 256, so it fits the "U32" either way.
+  // "(value: T) -> T". "llvm.bswap" only takes a whole number of byte pairs; a one-byte value is its own swap, so it
+  // is returned as it is.
   const auto uid = "." + utils::Uid();
-  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{value_ty});
-  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(
-    ctx->Module.get(), llvm::Intrinsic::ctlz, {value_ty});
-  const auto count = ctx->Builder.CreateCall(
-    intrinsic_fn, {fn->arg_begin(), ctx->Builder.getFalse()}, "intrinsic.result" + uid);
-  ctx->Builder.CreateRet(ctx->Builder.CreateZExtOrTrunc(count, ty, "intrinsic.count" + uid));
+  const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{ty});
+  const auto width = ty->getIntegerBitWidth();
+  if (width == 8) {
+    ctx->Builder.CreateRet(fn->arg_begin());
+    return;
+  }
+  if (width % 16 != 0) { Ice(std::format("bswap of a {}-bit integer: not a whole number of byte pairs", width)); }
+
+  const auto intrinsic_fn = llvm::Intrinsic::getOrInsertDeclaration(ctx->Module.get(), llvm::Intrinsic::bswap, {ty});
+  ctx->Builder.CreateRet(ctx->Builder.CreateCall(intrinsic_fn, {fn->arg_begin()}, "intrinsic.result" + uid));
 }
 
 auto spp::codegen::fn_impls::StdDebugBreakpointInternal(

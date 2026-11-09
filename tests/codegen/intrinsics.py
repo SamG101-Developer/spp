@@ -318,6 +318,35 @@ def int_cases() -> None:
                             e,
                         )
                     )
+        # The arithmetic shift copies the top bit in, for an unsigned type too.
+        covers("bit_ashr", "bit_ashr_assign")
+        for a in int_vals(t):
+            s = wrap(t, a) if signed else (a - (1 << w) if a >> (w - 1) else a)
+            for by in sorted({0, 1, 3, w - 1}):
+                la, lb = int_lit(t, a), f"{by}_u32"
+                CASES.append(
+                    Case(
+                        prog,
+                        f"bit_ashr {t} ({a}, {by})",
+                        t,
+                        f"std::intrinsics::bit_ashr({la}, {lb})",
+                        [],
+                        f"std::intrinsics::bit_ashr(hide({la}), hide({lb}))",
+                        wrap(t, s >> by),
+                    )
+                )
+                HELPERS.setdefault(prog, {})["asg_bit_ashr"] = assign_fun("bit_ashr", t, [t, "U32"])
+                CASES.append(
+                    Case(
+                        prog,
+                        f"bit_ashr_assign {t} ({a}, {by})",
+                        t,
+                        f"asg_bit_ashr_{t}({la}, {lb})",
+                        [f"let mut x = hide({la})", f"std::intrinsics::bit_ashr_assign(&mut x, hide({lb}))"],
+                        "x",
+                        wrap(t, s >> by),
+                    )
+                )
         covers("bit_not", "bit_not_assign")
         HELPERS.setdefault(prog, {})["asg_bit_not"] = (
             f"cmp fun asg_bit_not_{t}(p0: {t}) -> {t} {{\n    let mut x = p0\n"
@@ -775,6 +804,65 @@ def runtime_int_cases() -> None:
             CASES.append(
                 Case(prog, f"ctlz {t} ({a})", "U32", None, [], f"std::intrinsics::ctlz(hide({la}))", w - u.bit_length())
             )
+            # Past the width the arithmetic shift is all sign bits: 0 or -1 (E91 at compile time).
+            CASES.append(
+                Case(
+                    prog,
+                    f"bit_ashr {t} ({a}, {w}) past the width",
+                    t,
+                    None,
+                    [],
+                    f"std::intrinsics::bit_ashr(hide({la}), hide({w}_u32))",
+                    wrap(t, -(u >> (w - 1))),
+                )
+            )
+            covers("cttz", "ctpop", "bswap", "fshl", "fshr")
+            CASES.append(
+                Case(
+                    prog,
+                    f"cttz {t} ({a})",
+                    "U32",
+                    None,
+                    [],
+                    f"std::intrinsics::cttz(hide({la}))",
+                    w if u == 0 else (u & -u).bit_length() - 1,
+                )
+            )
+            CASES.append(
+                Case(prog, f"ctpop {t} ({a})", "U32", None, [], f"std::intrinsics::ctpop(hide({la}))", u.bit_count())
+            )
+            CASES.append(
+                Case(
+                    prog,
+                    f"bswap {t} ({a})",
+                    t,
+                    None,
+                    [],
+                    f"std::intrinsics::bswap(hide({la}))",
+                    wrap(t, int.from_bytes(u.to_bytes(w // 8, "little"), "big")),
+                )
+            )
+            # A rotate (both halves the value) and a funnel with a different low half; the distance is modulo the width.
+            lo_half = 1
+            for by in sorted({0, 1, 3, w - 1, w, w + 1}):
+                r = by % w
+                for hi_v, lo_v, kind in ((u, u, "rotate"), (u, lo_half, "funnel")):
+                    pair = (hi_v << w) | lo_v
+                    mask = (1 << w) - 1
+                    expect = {"fshl": ((pair << r) >> w) & mask, "fshr": (pair >> r) & mask}
+                    for op in ("fshl", "fshr"):
+                        lo_lit = la if kind == "rotate" else int_lit(t, lo_half)
+                        CASES.append(
+                            Case(
+                                prog,
+                                f"{op} {t} {kind} ({a}, {by})",
+                                t,
+                                None,
+                                [],
+                                f"std::intrinsics::{op}(hide({la}), hide({lo_lit}), hide({by}_u32))",
+                                wrap(t, expect[op]),
+                            )
+                        )
     # Integer conversions between widths, both ways.
     covers("strunc", "utrunc", "szext", "uzext", "bit_cast")
     for src, dst, op in (

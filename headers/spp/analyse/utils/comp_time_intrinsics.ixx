@@ -306,6 +306,16 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     IntegerLiteralAst const &rhs)
     -> void;
 
+  SPP_EXP_FUN auto StdIntrinsicsBitAShr(
+    IntegerLiteralAst const &lhs,
+    IntegerLiteralAst const &rhs)
+    -> Unique<IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto StdIntrinsicsBitAShrAssign(
+    IntegerLiteralAst &lhs,
+    IntegerLiteralAst const &rhs)
+    -> void;
+
   SPP_EXP_FUN auto StdIntrinsicsBitIor(
     ExpressionAst const &lhs,
     ExpressionAst const &rhs)

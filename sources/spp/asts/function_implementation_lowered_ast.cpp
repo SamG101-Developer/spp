@@ -102,6 +102,7 @@ auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
   static const auto shifting_builtins = Vec<Str>{
     "std.intrinsics.bit_shl", "std.intrinsics.bit_shl_assign",
     "std.intrinsics.bit_shr", "std.intrinsics.bit_shr_assign",
+    "std.intrinsics.bit_ashr", "std.intrinsics.bit_ashr_assign",
   };
   if (not genex::contains(shifting_builtins, _Builtin->Name) or args.size() < 2) { return; }
 

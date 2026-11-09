@@ -93,6 +93,18 @@ namespace spp::codegen::builtins {
       };
     }
 
+    auto BitCount(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+        fn_impls::SimpleBitCount(sm, proto, meta, ctx, ty, intrinsic);
+      };
+    }
+
+    auto FunnelShift(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+        fn_impls::SimpleFunnelShift(sm, proto, meta, ctx, ty, intrinsic);
+      };
+    }
+
     auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn {
       return [op](auto sm, auto proto, auto meta, auto ctx, auto) {
         fn_impls::SimpleAtomicFetchRmw(sm, proto, meta, ctx, op);
@@ -250,6 +262,10 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   Register(
     map, "std.intrinsics.bit_shr_assign", BinopAssign(BinOp::LShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitShrAssign));
   Register(
+    map, "std.intrinsics.bit_ashr", Binop(BinOp::AShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitAShr));
+  Register(
+    map, "std.intrinsics.bit_ashr_assign", BinopAssign(BinOp::AShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitAShrAssign));
+  Register(
     map, "std.intrinsics.bit_ior", Binop(BinOp::Or), ct::MakeCompTimeFn(ct::StdIntrinsicsBitIor));
   Register(
     map, "std.intrinsics.bit_ior_assign", BinopAssign(BinOp::Or), ct::MakeCompTimeFn(ct::StdIntrinsicsBitIorAssign));
@@ -403,8 +419,12 @@ auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
     ct::MakeCompTimeFn(ct::StdIntrinsicsFround));
   Register(
     map, "std.intrinsics.bitreverse", UnaryIntrinsic(llvm::Intrinsic::bitreverse));
-  Register(
-    map, "std.intrinsics.ctlz", fn_impls::StdIntrinsicsCtlz);
+  Register(map, "std.intrinsics.bswap", fn_impls::StdIntrinsicsBswap);
+  Register(map, "std.intrinsics.ctlz", BitCount(llvm::Intrinsic::ctlz));
+  Register(map, "std.intrinsics.cttz", BitCount(llvm::Intrinsic::cttz));
+  Register(map, "std.intrinsics.ctpop", BitCount(llvm::Intrinsic::ctpop));
+  Register(map, "std.intrinsics.fshl", FunnelShift(llvm::Intrinsic::fshl));
+  Register(map, "std.intrinsics.fshr", FunnelShift(llvm::Intrinsic::fshr));
 
   Register(map, "std.intrinsics.sadd_overflow", OverflowIntrinsic(llvm::Intrinsic::sadd_with_overflow));
   Register(map, "std.intrinsics.uadd_overflow", OverflowIntrinsic(llvm::Intrinsic::uadd_with_overflow));

@@ -168,6 +168,8 @@ export namespace llvm {
     using ::llvm::ELF::PF_X;
     using ::llvm::ELF::PT_GNU_RELRO;
     using ::llvm::ELF::PT_LOAD;
+    using ::llvm::ELF::SHN_UNDEF;
+    using ::llvm::ELF::SHT_DYNSYM;
   }
 
   namespace PICLevel {

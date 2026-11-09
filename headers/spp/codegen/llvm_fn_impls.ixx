@@ -19,7 +19,7 @@ export namespace spp::codegen::fn_impls {
   /// is "checked" for safety. Shareable across the signature
   /// "(T, T) -> T" or "(T, T) -> Bool".
   enum class BinOp {
-    Add, Sub, Mul, SDiv, UDiv, SRem, URem, Shl, LShr, Or, And, Xor,
+    Add, Sub, Mul, SDiv, UDiv, SRem, URem, Shl, LShr, AShr, Or, And, Xor,
     ICmpEQ, ICmpNE, ICmpSLT, ICmpULT, ICmpSLE, ICmpULE, ICmpSGT, ICmpUGT, ICmpSGE, ICmpUGE,
     FCmpOEQ, FCmpONE, FCmpOLT, FCmpOLE, FCmpOGT, FCmpOGE,
     FAdd, FSub, FMul, FDiv, FRem,
@@ -150,6 +150,18 @@ export namespace spp::codegen::fn_impls {
   auto SimpleUnaryIntrinsicCall(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty,
     llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
 
+  /// "(value: T) -> U32": count bits with "llvm.ctlz", "cttz"
+  /// or "ctpop", in the operand's width. Zero is never poison:
+  /// it has the width's worth of leading or trailing zeros.
+  auto SimpleBitCount(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty,
+    llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
+
+  /// "(hi: T, lo: T, by: U) -> T": "llvm.fshl" or "fshr", the
+  /// distance converted to "T" (it is taken modulo the width,
+  /// so a rotate is "hi" and "lo" the same value).
+  auto SimpleFunnelShift(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty,
+    llvm::Intrinsic::IndependentIntrinsics intrinsic) -> void;
+
   /// "(T) -> T", ignoring the argument entirely: always return
   /// the given (already-computed) constant value. Used for
   /// every "zero-arg" builtin (neg_one/zero/one/two/min_val/
@@ -236,7 +248,7 @@ export namespace spp::codegen::fn_impls {
   auto StdIntrinsicsUshlSaturating(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // One-operand intrinsics with a shape of their own
-  auto StdIntrinsicsCtlz(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
+  auto StdIntrinsicsBswap(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
   auto StdDebugBreakpointInternal(SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *ty) -> void;
 
   // Three-way integer comparisons (bespoke: two-type-overloaded intrinsic, operand type read off "this")

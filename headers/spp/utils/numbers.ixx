@@ -47,6 +47,14 @@ namespace spp::utils::numbers {
   SPP_EXP_FUN auto ShiftRightLogical(
     numex::BigInt const &value, std::uint32_t count, Str const &type) -> Opt<numex::BigInt>;
 
+  /// The "value" shifted right by "count" as the bits of the
+  /// integer "type" (its literal suffix): an arithmetic shift,
+  /// the top bit copied in whatever the type's signedness, as
+  /// the run-time one is. Past the width it is 0 or all ones.
+  /// Nothing for an unknown type.
+  SPP_EXP_FUN auto ShiftRightArithmetic(
+    numex::BigInt const &value, std::uint32_t count, Str const &type) -> Opt<numex::BigInt>;
+
   /// The format of the float "type" (its literal suffix): IEEE
   /// binary16, 32, 64 and 128, and "f8" as FP8 E4M3 (no infinity,
   /// largest 448). Comp-time float arithmetic is done in it, so
