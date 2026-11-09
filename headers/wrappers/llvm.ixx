@@ -73,6 +73,7 @@ export namespace llvm {
   using ::llvm::CallBase;
   using ::llvm::CallInst;
   using ::llvm::CodeGenFileType;
+  using ::llvm::CodeGenOptLevel;
   using ::llvm::Constant;
   using ::llvm::ConstantAsMetadata;
   using ::llvm::ConstantArray;

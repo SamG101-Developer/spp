@@ -794,7 +794,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
 
   const auto obj_file_name = utils::files::NativeString(object_file);
   utils::stats::BeginPhase("emit-object");
-  if (not codegen::EmitObjectFile(lto_module.get(), obj_file_name.c_str())) {
+  if (not codegen::EmitObjectFile(lto_module.get(), obj_file_name.c_str(), opt_level)) {
     return false;
   }
   if (utils::stats::Enabled()) {

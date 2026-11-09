@@ -491,10 +491,23 @@ auto spp::codegen::AssertIntrinsicNamingIsSound() -> void {
 }
 
 auto spp::codegen::EmitObjectFile(
-  void *llvm_module, char const *path) -> bool {
+  void *llvm_module, char const *path, const unsigned opt_level) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto *machine = SelectedTargetMachine();
   if (machine == nullptr) { return false; }
+
+  // The machine is built once and shared, so its level is set
+  // for each emission: one process can build at several (the
+  // test suite does). Left alone it is LLVM's default (O2) for
+  // every mode, so dev paid for a full backend it did not want.
+  machine->setOptLevel([opt_level] {
+    switch (opt_level) {
+      case 0: return llvm::CodeGenOptLevel::None;
+      case 1: return llvm::CodeGenOptLevel::Less;
+      case 2: return llvm::CodeGenOptLevel::Default;
+      default: return llvm::CodeGenOptLevel::Aggressive;
+    }
+  }());
 
   // Check we can open the given path.
   auto ec = std::error_code();

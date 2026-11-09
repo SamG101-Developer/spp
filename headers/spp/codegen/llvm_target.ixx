@@ -131,8 +131,10 @@ namespace spp::codegen {
 
   /// Emit an "llvm::Module" (passed as an opaque pointer) as a
   /// native object file at "path". Answers whether the object
-  /// file was written.
-  SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
+  /// file was written. "opt_level" (0 to 3, as the optimisation
+  /// pipeline takes it) sets how hard the backend works:
+  /// instruction selection and register allocation.
+  SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path, unsigned opt_level) -> bool;
 
   /// Check that all the intrinsic names are sound, ie spelled correctly and
   /// non-corrupted. This is because of some LLVM and GCC bugs causing mangled
