@@ -5,6 +5,7 @@
 - [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
+- [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
 - [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file
 - [MSVC GMF inline bodies](msvc-gmf-inline-bodies-in-importers.md) — CLI11 sentry; CLI11_COMPILE + plain TU
@@ -21,7 +22,7 @@
 - [Python CodeQL alerts frozen](python-codeql-alerts-frozen.md) — old py/* alerts date from the removed default setup; codeql-python ignores tests, so dismiss gtest-parallel ones
 - [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
 - [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
-- [LLVM Windows/macOS pins](llvm-win-mac-pins-refreshed.md) — fixed tags that refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt
+- [LLVM Windows pins](llvm-win-mac-pins-refreshed.md) — fixed tags refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt, macOS on brew llvm
 - [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify
 - [MSVC: imported type redeclared](msvc-imported-type-redeclared.md) — use(…, struct/enum X) while importing X's module: C1117 (enum) / C2027 (struct); use use_alias
 - [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply in comp_key.ixx and diagnostic.cpp; unfixed; reproducer + BMIs in the buildlog artifact
