@@ -346,7 +346,29 @@ namespace {
     // function, and destructure the results. The "overflowed"
     // flag will be used to branch.
     const auto fn = ctx->Builder.GetInsertBlock()->getParent();
-    const auto [value, overflowed] = EmitOverflowPair(ctx, op, a, b);
+    const auto overflowed = EmitOverflowPair(ctx, op, a, b).second;
+
+    // The result, as the plain operation flagged as not wrapping
+    // ("nuw" or "nsw"), rather than the intrinsic's value: on the
+    // path that uses it there was no overflow, so the flag holds,
+    // and it is what LLVM's analyses read. The intrinsic's value is
+    // opaque to them, so "(lo + 16) - lo" did not fold to 16, a
+    // loop bound built with checked arithmetic had no trip count,
+    // and checks it already proves (that subtraction cannot
+    // underflow) stayed. The flagged op is poison if it wraps, but
+    // it is only used past the check. Only the intrinsic's bit is
+    // used, which the backend fuses back with the op ("add", "jo").
+    const auto flagged = [&]() -> llvm::Value* {
+      const auto name = "arith.result" + uid;
+      switch (op) {
+        case BinOp::SAddChecked: return ctx->Builder.CreateAdd(a, b, name, false, true);
+        case BinOp::UAddChecked: return ctx->Builder.CreateAdd(a, b, name, true, false);
+        case BinOp::SSubChecked: return ctx->Builder.CreateSub(a, b, name, false, true);
+        case BinOp::USubChecked: return ctx->Builder.CreateSub(a, b, name, true, false);
+        case BinOp::SMulChecked: return ctx->Builder.CreateMul(a, b, name, false, true);
+        default: return ctx->Builder.CreateMul(a, b, name, true, false);
+      }
+    }();
 
     // Define the pass and fail states of an arithmetic operation,
     // and branch based on the "overflowed" flag.
@@ -362,7 +384,7 @@ namespace {
     ctx->Builder.SetInsertPoint(fail_bb);
     EmitCheckFailed(ctx, check);
     ctx->Builder.SetInsertPoint(ok_bb);
-    return value;
+    return flagged;
   }
 
   /// A division or remainder, checked as "+" is: it aborts only
