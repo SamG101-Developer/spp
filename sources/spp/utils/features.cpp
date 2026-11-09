@@ -502,6 +502,18 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "tables' personality and LSDA pointers as absolute addresses, which a position-independent "
           "executable cannot hold."
         },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenAirIntegers,
+          .Name = "air_integers",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Integer overflow is checked as if integers were infinitely ranged: the program stops before a "
+          "wrong value is used (as an index, size, divisor, branch, output and so on) rather than at the operation, "
+          "so checks can be moved where they cost least and loops vectorised. Every overflow that matters still "
+          "stops it, naming the check; the report is where the value was used. Off, every check is made at its "
+          "operation. rel only; dev always checks at the operation."
+        },
       },
       .FreeForm = false,
     },
@@ -568,6 +580,18 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .DefaultText = "4.18",
           .Help = "The oldest Linux kernel, as 'major.minor'. The default is RHEL 8's, which leaves out deny_wx "
           "(6.6) and seal (6.10); raise it to get them."
+        },
+        KeySpec{
+          .Key = ConfigKey::TargetFloorCpu,
+          .Name = "cpu",
+          .Kind = ValueKind::String,
+          .Required = false,
+          .Default = false,
+          .DefaultText = "generic",
+          .Help = "The oldest CPU the program must run on, which code generation may use every instruction of: "
+          "'generic' (the target's baseline, which runs anywhere the target does), 'native' (the CPU of the machine "
+          "building it, when building for that machine), or an LLVM CPU name for the target, such as 'x86-64-v3' "
+          "(AVX2) or 'apple-m1'. The program stops with an illegal instruction on an older CPU."
         },
       },
       .FreeForm = false,

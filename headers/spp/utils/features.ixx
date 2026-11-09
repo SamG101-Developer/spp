@@ -28,11 +28,13 @@ namespace spp::utils::features {
     BinaryCodegenCfi,
     BinaryCodegenJumpTableBounds,
     BinaryCodegenFfiUnwindGuard,
+    BinaryCodegenAirIntegers,
     BinaryLinkHarden,
     BinaryLinkFortifiedFfi,
     BinaryLinkRelroFfi,
     BinaryLinkSegmentsFfi,
     TargetFloorLinux,
+    TargetFloorCpu,
   };
 
   /// A key specification contains the metadata of a key within a section,
