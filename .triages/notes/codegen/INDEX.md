@@ -24,3 +24,5 @@
 - [musl programs need libgcc_s](musl-programs-need-libgcc-s.md) — __gcc_personality_v0; bare Alpine needs `apk add libgcc`, not an sppc gap
 - [ffi params in the C ABI](ffi-struct-params-c-abi.md) — structs byval/by pointer on ppc32, m68k, s390x; small ints signext/zeroext per target; one-field structs are scalars
 - [MSVC target: link and SEH](msvc-target-link-and-seh.md) — lld-link, import .lib + DLL beside the .exe, static CRT; FFI guard as SEH cleanuppads; no probe-stack attr (__chkstk); Win64 C structs by pointer
+- [Variant phis hide pointer payloads](variant-phis-hide-pointer-payloads.md) — whole variants in a phi force ptrtoint; build with StoreVariant into one slot, load once
+- [SROA skips the i2 coroutine index](sroa-skips-sub-byte-coro-index.md) — elided frame index stays in memory; mem2reg at peephole points; coroutines lowered after linking
