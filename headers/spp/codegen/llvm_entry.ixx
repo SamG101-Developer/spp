@@ -4,6 +4,17 @@ module;
 export module spp.codegen.llvm_entry;
 
 namespace spp::codegen {
+  /// Tell LLVM what sppc's allocation functions are ("sppc_malloc",
+  /// "sppc_calloc", "sppc_aligned_alloc", "sppc_realloc", "sppc_free",
+  /// thin wrappers over the C library's), on every declaration of
+  /// them in "llvm_module" (an opaque pointer): their kind, their one
+  /// family, which argument is the size, alignment or pointer, and
+  /// that a new allocation aliases nothing. With that LLVM treats
+  /// them as "malloc" and "free": a pair whose memory nothing else
+  /// sees is removed, and alias analysis knows fresh memory is
+  /// fresh.
+  SPP_EXP_FUN auto ApplyRuntimeAllocatorAttrs(void *llvm_module) -> void;
+
   /// Add a C "main" to the combined "llvm::Module" (passed as
   /// an opaque pointer) that calls the s++ entry point named
   /// "spp_main_name", so the program has an entry point of the
