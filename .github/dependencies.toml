@@ -24,8 +24,8 @@ version = "23"
 [pin.llvm-sh]
 sha256 = "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae"
 
-# Refreshed with [pin.llvm-mac] to the newest final release
-# of the [pin.llvm-lib] major.
+# Refreshed to the newest final release of the [pin.llvm-lib]
+# major. macOS takes brew's llvm instead (built with RTTI).
 [pin.llvm-win]
 tag = "llvmorg-23.1.5"
 asset = "clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.xz"
@@ -59,14 +59,6 @@ commit = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
 [pin.pthreads4w]
 version = "3.0.3"
 commit = "06e7608bfe926d2bd7176c0b02be0c98f40cced4"
-
-# Homebrew has no llvm@23 formula (llvm is still 22.1.x), so
-# macOS takes its whole toolchain - compiler, libc++ and dev
-# libraries - off the same release as Windows.
-[pin.llvm-mac]
-tag = "llvmorg-23.1.5"
-asset = "LLVM-23.1.5-macOS-ARM64.tar.xz"
-sha256 = "aba592b4a15e8f90c634c5367b51ec8418b8bcd2829865db331a17dc9418dcff"
 
 # macOS toolchains are tied to the Xcode app on the runner image.
 # Pin the developer directory explicitly so CI does not drift when GitHub updates the image. One key per image,
@@ -153,7 +145,7 @@ windows-arm = "windows-11-arm"
 glibc = "2.28"
 linux = "4.18"
 binutils = "2.30"
-macos = "11.0"
+macos = "26.0"
 
 # Install prefixes, exported as SPP_CI_<KEY>_PREFIX. {home} expands at load time.
 [prefix]

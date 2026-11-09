@@ -276,11 +276,12 @@ else
     "$(fetch "${arm_api}/packages/generic/gnu-toolchain/${arm_version}/${arm_tar}.sha256asc" | cut -d ' ' -f 1)"
 fi
 
-# LLVM (WINDOWS, MACOS): the newest final release of the major
+# LLVM (WINDOWS): the newest final release of the major
 # that [pin.llvm-lib] names, so a new major is never taken here.
-# Both pins move together, and only once every value resolves.
+# Both pins (x64, ARM64) move together, and only once every value
+# resolves. macOS takes brew's llvm, so it has no pin here.
 echo
-echo "Windows and macOS LLVM (${MANIFEST})"
+echo "Windows LLVM (${MANIFEST})"
 llvm_major="$(pinned pin.llvm-lib.version)"
 llvm_tag="$(fetch "${auth[@]}" "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100" \
   | python3 -c '
@@ -297,13 +298,11 @@ else
   llvm_version="${llvm_tag#llvmorg-}"
   win_asset="clang+llvm-${llvm_version}-x86_64-pc-windows-msvc.tar.xz"
   win_arm_asset="clang+llvm-${llvm_version}-aarch64-pc-windows-msvc.tar.xz"
-  mac_asset="LLVM-${llvm_version}-macOS-ARM64.tar.xz"
   win_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$win_asset")"
   win_arm_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$win_arm_asset")"
-  mac_digest="$(asset_digest llvm/llvm-project "$llvm_tag" "$mac_asset")"
-  if [ -z "$win_digest" ] || [ -z "$win_arm_digest" ] || [ -z "$mac_digest" ]; then
-    echo "::error::${llvm_tag} publishes no digest for ${win_asset}, ${win_arm_asset} or ${mac_asset}; leaving the pins alone"
-    echo "  pick a tag that ships all three builds and move tag, asset and sha256 under [pin.llvm-win], [pin.llvm-win-arm] and [pin.llvm-mac] by hand"
+  if [ -z "$win_digest" ] || [ -z "$win_arm_digest" ]; then
+    echo "::error::${llvm_tag} publishes no digest for ${win_asset} or ${win_arm_asset}; leaving the pins alone"
+    echo "  pick a tag that ships both builds and move tag, asset and sha256 under [pin.llvm-win] and [pin.llvm-win-arm] by hand"
     status=1
   else
     set_pin pin.llvm-win.tag "$llvm_tag"
@@ -312,9 +311,6 @@ else
     set_pin pin.llvm-win-arm.tag "$llvm_tag"
     set_pin pin.llvm-win-arm.asset "$win_arm_asset"
     set_pin pin.llvm-win-arm.sha256 "$win_arm_digest"
-    set_pin pin.llvm-mac.tag "$llvm_tag"
-    set_pin pin.llvm-mac.asset "$mac_asset"
-    set_pin pin.llvm-mac.sha256 "$mac_digest"
   fi
 fi
 

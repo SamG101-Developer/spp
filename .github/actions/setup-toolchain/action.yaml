@@ -146,19 +146,10 @@ runs:
       shell: bash
       run: bash .github/scripts/setup/install-llvm-deps-windows.sh
 
-    # macOS takes its compiler out of the same release: brew has no llvm@23, so a brew clang would be a whole major
-    # version behind the LLVM the project links against. The key carries the install script, which decides what the
-    # tree holds and so cannot change without invalidating what is already cached.
-    - name: Cache LLVM toolchain (macOS)
+    # macOS takes its compiler, libc++ and dev libraries from brew's llvm, which is built with RTTI (the release
+    # tarball is not). Bottles come from brew's own CDN, so there is nothing to cache.
+    - name: Install LLVM toolchain (macOS)
       if: inputs.dependencies == 'true' && runner.os == 'macOS'
-      id: llvm-mac-cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/llvm
-        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}-${{ hashFiles('.github/scripts/setup/install-llvm-macos.sh') }}
-
-    - name: Install LLVM toolchain (macOS, cache miss)
-      if: inputs.dependencies == 'true' && runner.os == 'macOS' && steps.llvm-mac-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup/install-llvm-macos.sh
 

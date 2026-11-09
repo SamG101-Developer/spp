@@ -37,7 +37,6 @@ PARTS = (
     "NINJA_VERSION",
     "LLVM_LIB_VERSION",
     "LLVM_WIN_SHA256",
-    "LLVM_MAC_SHA256",
 )
 
 joined = "\n".join(os.environ.get(name, "") for name in PARTS)
