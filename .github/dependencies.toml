@@ -95,8 +95,8 @@ version = "3.28.0"
 sha256 = "9f7a18d128f05d3a80fea53e6953f34aad7200a425ceaee46099a8a798a7dd9c"
 
 [pin.qemu-user]
-tag = "spp-2026.11.07"
-sha256 = "d4e897b152745bd5f4b614eea0ddaa45afd322fa86736fbf0eaedf7d223590f9"
+tag = "spp-2026.11.09.3"
+sha256 = "64e805c66d9f64d9d1bedd6dc44b280ee8dc1e5aa7237f606b467a27481705f7"
 
 [pin.arm-gnu]
 version = "15.3.rel2"
@@ -104,7 +104,7 @@ sha256-aarch64-be = "bdf8e9b4c62791c5c3aeeb8ba3791421d73c7d147dd04f0da502716885b
 
 [pin.alpine]
 version = "3.24.4"
-sha256 = "93b41ef40b1677fce8fcc64ff4af09daddfacf5040afde618bc46c1e2d1cc7d4"
+sha256 = "f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf"
 
 # Executed by python3 against the built test binary,
 # so pinned by commit.
@@ -114,10 +114,10 @@ commit = "cd488bdedc1d2cffb98201a17afc1b298b0b90f1"
 # Tools the pipeline runs, tracking published releases
 # rather than a branch tip.
 [pin.ccache]
-version = "4.14.2"
-sha256-linux-x86-64 = "d540ba01f160addbd3dd5e18eda9bd34005591b095c09ac8ae9d0a1b655e7ef5"
-sha256-linux-aarch64 = "2be524bbccfc7e9ff0085d110da7dc9964de983bd92d29acf3b872e557194945"
-sha256-darwin = "cf240009630b605b775c7c5c7b7105a3b196c79f31af322c1557969aa28003fc"
+version = "4.14.3"
+sha256-linux-x86-64 = "e4583fd653b794a480b9915358679a75cdd7a7010dd865eaf4cbdc61e665a3f0"
+sha256-linux-aarch64 = "4b0ecece7929cbaf548ff1ab9a24074b240132ab8176bc3865a27d88c457a0d8"
+sha256-darwin = "764dd2a8100ff83e6bbd7b9a1e2016cc401be34bee8a70ea99698186622c34d5"
 
 [pin.sccache]
 version = "0.19.0"
@@ -125,8 +125,8 @@ sha256-x86-64 = "130e4f8eb672e76590e9993c2ab890c4763b88238577bb11d8062158c769835
 sha256-aarch64 = "a680e8e6058b033cd6ff56d56b2219ca13f1c1a45f50fb3b04f4ed80851f5c2b"
 
 [pin.osv-scanner]
-version = "2.7.0"
-sha256 = "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
+version = "2.7.1"
+sha256 = "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
 
 # Keep the version in step with the gitleaks rev in
 # .pre-commit-config.yaml.
@@ -187,13 +187,13 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "7fc8312c64fc6a507387b228fdc1e5ae122432d0"
+commit = "6f01030c4e6b27027ddd015807c3c5e5694cd5b1"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]
 name = "tomlplusplus"
 repo = "https://github.com/marzer/tomlplusplus.git"
-commit = "8dabfea58f66d6d141b52c56c0a096d4e2b96dd0"
+commit = "c6cbe977304c42a34ee5a553f87c9e1d53bdbc09"
 
 [[library]]
 name = "magic_enum"
