@@ -12,6 +12,7 @@ module;
 #include <llvm/IR/RuntimeLibcalls.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Object/ELFObjectFile.h>
 #include <llvm/Object/ObjectFile.h>
@@ -68,6 +69,7 @@ export namespace llvm {
   using ::llvm::ArrayType;
   using ::llvm::AtomicOrdering;
   using ::llvm::AtomicRMWInst;
+  using ::llvm::AllocFnKind;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
   using ::llvm::CallBase;
@@ -95,6 +97,7 @@ export namespace llvm {
   using ::llvm::Instruction;
   using ::llvm::IntegerType;
   using ::llvm::LLVMContext;
+  using ::llvm::MCSubtargetInfo;
   using ::llvm::MaybeAlign;
   using ::llvm::MDNode;
   using ::llvm::MDString;
@@ -131,6 +134,8 @@ export namespace llvm {
 
   namespace sys {
     using ::llvm::sys::getDefaultTargetTriple;
+    using ::llvm::sys::getHostCPUFeatures;
+    using ::llvm::sys::getHostCPUName;
   }
 
   namespace sys::fs {
