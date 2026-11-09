@@ -134,8 +134,9 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     return;
   }
 
-  // Lower S++ "NonNull[T]" to a bare llvm pointer.
-  if (is(*NON_NULL)) {
+  // Lower S++ "NonNull[T]" to a bare llvm pointer, and "Ptr[T]"
+  // (nullable) too.
+  if (is(*NON_NULL) or is(*PTR)) {
     cls_sym->LlvmInfo->LlvmType = llvm::PointerType::get(*ctx->Context, 0);
     return;
   }
