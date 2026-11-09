@@ -8,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.asts.class_prototype_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.generate.common_types_precompiled;
@@ -173,7 +174,7 @@ auto spp::asts::FloatLiteralAst::Stage11_CodeGen(
   // type here, in case it hasn't been reached yet by the
   // class prototypes.
   if (llvm_type == nullptr) {
-    codegen::RegisterLlvmTypeInfo(type_sym->Type, *sm, ctx);
+    codegen::RegisterLlvmTypeInfo(type_sym->Type->GetAstScope(), *sm, ctx);
     llvm_type = codegen::GetLlvmType(*type_sym, ctx);
   }
 

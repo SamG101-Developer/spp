@@ -45,7 +45,6 @@ use_alias(spp::analyse::scopes, Scope);
 use_alias(spp::analyse::scopes, ScopeManager);
 use_alias(spp::analyse::scopes, TypeRef);
 use_alias(spp::analyse::scopes, TypeSymbol);
-use_alias(spp::asts, ClassPrototypeAst);
 use_alias(spp::asts, FunctionPrototypeAst);
 use_alias(spp::asts, TypeAst);
 
@@ -78,25 +77,6 @@ namespace spp::codegen {
       return Nullopt;
     }
   }
-}
-
-auto spp::codegen::RegisterLlvmTypeInfo(
-  ClassPrototypeAst const *cls_proto,
-  ScopeManager const &sm, LlvmCtx const *ctx) -> void {
-  // $ types are function "mock" types (a $-type generated per
-  // function that superimposes n FunXXXs over itself). A function
-  // used as a value is one of these mocks, so it lowers to the
-  // same { fn_ptr, env_ptr } pair as the function type it extends.
-  if (cls_proto->Name->IsCompilerGeneratedType()) {
-    const auto mock_sym = cls_proto->GetClsSymbol();
-    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-    mock_sym->LlvmInfo->LlvmType = llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty});
-    return;
-  }
-
-  // Push the scope into the the registration function that accepts
-  // a scope and context.
-  RegisterLlvmTypeInfo(cls_proto->GetAstScope(), sm, ctx);
 }
 
 auto spp::codegen::RegisterLlvmTypeInfo(
@@ -178,7 +158,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
     auto const *const elem_sym = elem_ref.Symbol;
     if (length.has_value() and elem_sym != nullptr) {
       if (elem_sym->LlvmInfo->LlvmType == nullptr and elem_sym->Type != nullptr) {
-        RegisterLlvmTypeInfo(elem_sym->Type, sm, ctx);
+        RegisterLlvmTypeInfo(elem_sym->Type->GetAstScope(), sm, ctx);
       }
       if (const auto elem_llvm_type = GetLlvmTypeOf(elem_ref, ctx); elem_llvm_type != nullptr) {
         cls_sym->LlvmInfo->LlvmType = llvm::ArrayType::get(elem_llvm_type, *length);
@@ -244,7 +224,7 @@ auto spp::codegen::RegisterLlvmTypeInfo(
       // are, so lower any member still missing its llvm
       // type.
       if (member_sym->LlvmInfo->LlvmType == nullptr and member_sym->Type != nullptr) {
-        RegisterLlvmTypeInfo(member_sym->Type, sm, ctx);
+        RegisterLlvmTypeInfo(member_sym->Type->GetAstScope(), sm, ctx);
       }
 
       EnsureLlvmTypeComplete(*member_sym, member_sm, ctx);
@@ -342,8 +322,8 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // Ensure the type is complete. This is an on-demand walk of
   // the type's definition, including fields.
   if (type_sym.LlvmInfo->LlvmType == nullptr) {
-    if (type_sym.LinkedScope != nullptr) { RegisterLlvmTypeInfo(type_sym.LinkedScope, sm, ctx); }
-    else { RegisterLlvmTypeInfo(type_sym.Type, sm, ctx); }
+    RegisterLlvmTypeInfo(
+      type_sym.LinkedScope != nullptr ? type_sym.LinkedScope : type_sym.Type->GetAstScope(), sm, ctx);
 
     // A symbol standing in for another type - a generic parameter
     // bound to one, "T" inside an instantiation - is not the
