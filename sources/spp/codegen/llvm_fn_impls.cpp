@@ -2406,6 +2406,69 @@ auto spp::codegen::fn_impls::StdMemOpsSwap(
   ctx->Builder.CreateRetVoid();
 }
 
+namespace {
+  /// The byte address "at" bytes into what parameter "param" (a
+  /// "&NonNull[T]" or "&mut NonNull[T]") points to: the borrow, the
+  /// pointer it borrows, then the offset.
+  auto MemOpsAddress(
+    spp::analyse::scopes::ScopeManager *sm,
+    spp::asts::FunctionParameterAst const &param,
+    llvm::Value *at,
+    spp::codegen::LlvmCtx *ctx,
+    const spp::StrView name)
+    -> llvm::Value* {
+    const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
+    const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
+    const auto borrow = ctx->Builder.CreateLoad(ptr_ty, sym->LlvmInfo->Alloca, spp::Str(name) + ".borrow");
+    const auto base = ctx->Builder.CreateLoad(ptr_ty, borrow, spp::Str(name) + ".base");
+    return ctx->Builder.CreateGEP(llvm::Type::getInt8Ty(*ctx->Context), base, at, spp::Str(name));
+  }
+
+  /// The value of the by-value parameter "param", of LLVM type "ty".
+  auto MemOpsValue(
+    spp::analyse::scopes::ScopeManager *sm,
+    spp::asts::FunctionParameterAst const &param,
+    llvm::Type *ty,
+    spp::codegen::LlvmCtx *ctx,
+    const spp::StrView name)
+    -> llvm::Value* {
+    const auto sym = sm->CurrentScope->FindVarSymbol(param.ExtractName().get());
+    return ctx->Builder.CreateLoad(ty, sym->LlvmInfo->Alloca, name);
+  }
+}
+
+auto spp::codegen::fn_impls::StdMemOpsMemCopy(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "mem_copy(dest, src, n, dest_index, src_index)": LLVM's own
+  // "memcpy", so the optimiser sees the copy (a small one becomes a
+  // load and a store; a fresh allocation's contents are tracked
+  // through it) where a call into sppc was opaque. The regions must
+  // not overlap, as for C's "memcpy".
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto size_ty = TargetSizeType(*ctx->Context);
+  const auto n = MemOpsValue(sm, *params[2], size_ty, ctx, "mem.copy.n");
+  const auto dest_at = MemOpsValue(sm, *params[3], size_ty, ctx, "mem.copy.dest_index");
+  const auto src_at = MemOpsValue(sm, *params[4], size_ty, ctx, "mem.copy.src_index");
+  const auto dest = MemOpsAddress(sm, *params[0], dest_at, ctx, "mem.copy.dest");
+  const auto src = MemOpsAddress(sm, *params[1], src_at, ctx, "mem.copy.src");
+  ctx->Builder.CreateMemCpy(dest, llvm::MaybeAlign(1), src, llvm::MaybeAlign(1), n);
+  ctx->Builder.CreateRetVoid();
+}
+
+auto spp::codegen::fn_impls::StdMemOpsMemSet(
+  SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
+  // "mem_set(dest, value, n, dest_index)": LLVM's own "memset", for
+  // the same reason as "mem_copy".
+  const auto params = proto->FnParamGroup->GetAllParams();
+  const auto size_ty = TargetSizeType(*ctx->Context);
+  const auto value = MemOpsValue(sm, *params[1], llvm::Type::getInt8Ty(*ctx->Context), ctx, "mem.set.value");
+  const auto n = MemOpsValue(sm, *params[2], size_ty, ctx, "mem.set.n");
+  const auto dest_at = MemOpsValue(sm, *params[3], size_ty, ctx, "mem.set.dest_index");
+  const auto dest = MemOpsAddress(sm, *params[0], dest_at, ctx, "mem.set.dest");
+  ctx->Builder.CreateMemSet(dest, value, n, llvm::MaybeAlign(1));
+  ctx->Builder.CreateRetVoid();
+}
+
 auto spp::codegen::fn_impls::StdMemOpsDrop(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   // "val" is taken by move, so its slot holds the value itself rather than an address of one elsewhere, and that slot
