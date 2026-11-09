@@ -13,6 +13,7 @@
 #include <llvm/Transforms/Utils/Mem2Reg.h>
 
 #include <spp/macros.hpp>
+#include <spp/codegen/llvm_air.hpp>
 #include <spp/codegen/llvm_pipeline.hpp>
 
 import spp.utils.ice;
@@ -169,7 +170,7 @@ auto spp::codegen::ApplyColdPathHints(
 
 auto spp::codegen::RunOptimizationPipeline(
   void *llvm_module, void *target_machine, const unsigned opt_level,
-  void (*after_coro_split)(void *llvm_module)) -> void {
+  void (*after_coro_split)(void *llvm_module), const bool air_integers) -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
   auto loop_am = llvm::LoopAnalysisManager();
@@ -219,6 +220,20 @@ auto spp::codegen::RunOptimizationPipeline(
   if (opt_level > 0) {
     pass_builder.registerPeepholeEPCallback(
       [](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { fpm.addPass(llvm::PromotePass()); });
+  }
+
+  // The AIR passes ("llvm_air.hpp"): overflow checks moved to
+  // where they cost least, just before the vectoriser.
+  if (air_integers and opt_level > 0) {
+    pass_builder.registerVectorizerStartEPCallback(
+      [](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel) { AddAirPasses(fpm); });
+  }
+
+  // Checked ops and their checks put back together for the backend,
+  // once the optimiser is done with the no-wrap flags.
+  if (opt_level > 0) {
+    pass_builder.registerOptimizerLastEPCallback(
+      [](llvm::ModulePassManager &mpm, llvm::OptimizationLevel, llvm::ThinOrFullLTOPhase) { AddCheckedFusePasses(mpm); });
   }
 
   // The per-module pipeline, which is also what the combined

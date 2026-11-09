@@ -53,9 +53,15 @@ namespace spp::codegen {
   /// every coroutine is split into its ".resume", ".destroy" and
   /// ".cleanup" functions, and before MergeFunctions: what types
   /// those for control-flow integrity ("ApplyCfiCoroTypes").
+  ///
+  /// "air_integers" runs the AIR passes ("llvm_air.hpp", O1 and
+  /// up): overflow checks may move from their operation to before
+  /// the wrong value would be observed, which lets loops vectorise.
+  /// Every overflow that matters still aborts, with its check's
+  /// kind. Off, every check stays at its operation.
   auto RunOptimizationPipeline(
     void *llvm_module, void *target_machine, unsigned opt_level,
-    void (*after_coro_split)(void *llvm_module)) -> void;
+    void (*after_coro_split)(void *llvm_module), bool air_integers) -> void;
 
   /// Copy "src_module" into "dest_module" (both opaque
   /// "llvm::Module" pointers, sharing one context), so the
