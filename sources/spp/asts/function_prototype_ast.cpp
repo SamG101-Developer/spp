@@ -258,6 +258,14 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
         default: break;
       }
     }
+    if (TemperatureAnnotation != nullptr) {
+      using A = annotation_utils::BuiltinAnnotation;
+      switch (TemperatureAnnotation->Builtin) {
+        case A::kLlvmHot: func->Target->addFnAttr(llvm::Attribute::Hot); break;
+        case A::kLlvmCold: func->Target->addFnAttr(llvm::Attribute::Cold); break;
+        default: break;
+      }
+    }
 
     // The "willreturn" can't be auto added because of
     // functions that can crash (ie overflowing "+",
