@@ -1,0 +1,28 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(4096_uz)
+  let mut x = Vec[S64]::new_with_capacity(n)
+  let mut state = black_box(12345_u64)
+  let mut i = 0_uz
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    x.append(S64::from(state >> 44_u32) - 524288_s64)
+    i += 1_uz
+  }
+  let mut total = 0_s64
+  let mut pass = 0_s64
+  loop pass < black_box(50000_s64) {
+    let mut sum = 0_s64
+    i = 0_uz
+    loop i < x.len() {
+      sum = sum + x[i]@
+      i += 1_uz
+    }
+    total = (total + sum + pass) % 1000000007_s64
+    pass += 1_s64
+  }
+  println("{}", total)
+  drop(x)
+}

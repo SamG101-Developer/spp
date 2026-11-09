@@ -1,0 +1,18 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let mut x = Vec[S64]::new_filled(black_box(4096_uz), black_box(1_s64))
+  let k = black_box(3_s64)
+  let mut pass = 0_s64
+  loop pass < black_box(50000_s64) {
+    let mut i = 0_uz
+    loop i < x.len() {
+      x[mut i]@ = x[i]@ + k
+      i += 1_uz
+    }
+    pass += 1_s64
+  }
+  println("{}", x[0_uz]@ + x[4095_uz]@)
+  drop(x)
+}
