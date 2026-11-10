@@ -486,9 +486,9 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           .Required = false,
           .Default = true,
           .Help = "Keep a switch from jumping through an entry past the end of its jump table, even speculatively. "
-          "On AArch64 the index is clamped without a branch; on x86 switches are built without jump tables, "
-          "as compares. A few instructions per switch. Any other target fails the build until this is "
-          "turned off."
+          "A dense switch gets a table whose index is masked into range without a branch (none when the value "
+          "provably fits); every other switch is built as compares. Every target; WebAssembly, which has no "
+          "indirect jump, builds every switch as compares. No measurable cost against an unprotected table."
         },
         KeySpec{
           .Key = ConfigKey::BinaryCodegenFfiUnwindGuard,
