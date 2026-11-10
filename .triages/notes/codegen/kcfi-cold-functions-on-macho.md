@@ -1,6 +1,6 @@
 ---
 name: kcfi-cold-functions-on-macho
-description: "ld64 moves cold (N_COLD_FUNC) functions away from the KCFI hash word before them; KeepCfiTypesAttached keeps typed functions off cold on Mach-O"
+description: "The KCFI hash word before a function belongs to the previous Mach-O atom; ld64 moving a cold function splits them. Fixed with prefix data, which makes the function an .alt_entry"
 updated: 2026-11-10
 ---
 
@@ -18,15 +18,23 @@ right before the closure (`0x3129e27c`), and the macOS symbol carries `ColdFunc 
 section as the function, so Linux is unaffected. Which functions turn cold depends on the code, so this comes and goes
 as std changes.
 
-**Fixed 2026-11-10:** `codegen::KeepCfiTypesAttached` (`llvm_harden_codegen.cpp`), run after `CheckCfiCalls` under the
-same `cfi` gate, removes `cold` from every function with `!kcfi_type` when the target is Mach-O. Untyped cold functions
-(direct calls only, such as `Vec::grow_one`) keep it. Verified on the cross-compiled object: the closure's flags are
-`0x0` and its hash is still in front of it. The upstream layout (a bare word before the label) is unchanged, so clang's
-own `-fsanitize=kcfi` on Darwin has the same exposure.
+**First attempt (2026-11-10), only half a fix:** removing `cold` from typed functions. The word belongs to the
+*preceding* atom, so a cold function *before* a typed one still carried its hash away: CI then failed
+`test_an_async_call_runs_the_function` and `test_joining_returns_an_owned_result_without_freeing_it`, whose closures
+followed the cold `test_a_vector_formats_its_elements` and `test_dropping_an_rwlock_drops_its_value`.
+
+**Fixed 2026-11-10:** LLVM already solves this for prefix data (`AsmPrinter::emitFunctionPrefix`: a linker-private
+`ltmpN` label starts the atom and the function symbol becomes `.alt_entry`); `emitKCFITypeId` skips that path, which is
+the upstream bug. `codegen::FinishCfi` (`llvm_harden_codegen.cpp`, after the optimiser under the `cfi` gate)
+gives every defined function with `!kcfi_type` an `i32 0` of prefix data on Mach-O. The layout is `ltmpN`, `0`, hash,
+function (alt_entry), all one atom, so `cold` stays and moving it is harmless; 4 bytes per typed function. Verified on
+the cross object: 88 typed definitions, 88 `AltEntry` symbols, each with an atom label 8 bytes before it and the right
+hash 4 bytes before it.
 
 **Why:** the trap is in a correct object; only the macOS link breaks it, and it looks like a threading bug.
 
-**How to apply:** anything that moves a typed function away from the word in front of it (an order file, `-dead_strip`, a
-section attribute) brings this back on Mach-O. Diagnose a
+**How to apply:** if a typed function on Mach-O loses its `AltEntry` flag (a function given its own prefix data is
+skipped, as LLVM labels it anyway), this comes back. Drop the workaround once `emitKCFITypeId` goes through
+`emitFunctionPrefix` upstream. Diagnose a
 macOS `brk #0x82xx` by cross-compiling (`spp test --target aarch64-apple-darwin --runner true` with an all-targets
 build, `sls = false`) and checking the callee's symbol flags with `llvm-readobj --symbols`. See [[kcfi-bundles-not-metadata]].
