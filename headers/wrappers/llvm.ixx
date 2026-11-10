@@ -1,5 +1,6 @@
 module;
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
@@ -33,6 +34,7 @@ export namespace llvm {
   using ::llvm::operator!=;
   using ::llvm::operator<;
   using ::llvm::operator+;
+  using ::llvm::operator-;
 
   using ::llvm::cast;
   using ::llvm::dyn_cast;
@@ -72,10 +74,12 @@ export namespace llvm {
   using ::llvm::AllocFnKind;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
+  using ::llvm::BlockAddress;
   using ::llvm::CallBase;
   using ::llvm::CallInst;
   using ::llvm::CodeGenFileType;
   using ::llvm::CodeGenOptLevel;
+  using ::llvm::computeConstantRange;
   using ::llvm::Constant;
   using ::llvm::ConstantAsMetadata;
   using ::llvm::ConstantArray;
@@ -83,6 +87,7 @@ export namespace llvm {
   using ::llvm::ConstantInt;
   using ::llvm::ConstantFP;
   using ::llvm::ConstantPointerNull;
+  using ::llvm::ConstantRange;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
   using ::llvm::DiagnosticHandler;
@@ -92,6 +97,7 @@ export namespace llvm {
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
   using ::llvm::GlobalVariable;
+  using ::llvm::IndirectBrInst;
   using ::llvm::InlineAsm;
   using ::llvm::IRBuilder;
   using ::llvm::Instruction;
@@ -111,13 +117,16 @@ export namespace llvm {
   using ::llvm::StringLiteral;
   using ::llvm::StringRef;
   using ::llvm::StringSet;
+  using ::llvm::SimplifyQuery;
   using ::llvm::StructType;
+  using ::llvm::SwitchInst;
   using ::llvm::Target;
   using ::llvm::TargetMachine;
   using ::llvm::TargetOptions;
   using ::llvm::TargetRegistry;
   using ::llvm::Triple;
   using ::llvm::Type;
+  using ::llvm::UnreachableInst;
   using ::llvm::TypeSize;
   using ::llvm::PoisonValue;
   using ::llvm::UndefValue;
