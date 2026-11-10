@@ -20,6 +20,7 @@ import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
