@@ -28,5 +28,10 @@ macos` from 11.0 to 26.0 (`MACOSX_DEPLOYMENT_TARGET` is exported from it in `ins
 alternative, kept in reserve, was a plain TU with no `import`s holding the `ValueMap` code, built `-fno-rtti` when
 `LLVM_ENABLE_RTTI` is OFF.
 
+brew's LLVM also links `LLVMSupport` against `zstd::libzstd_shared` and `libz3.dylib` (Z3 solver, until LLVM 24),
+which `check-self-contained.sh` rejects (run 42721403742). `cmake/Dependencies.cmake` rewrites `LLVMSupport`'s
+`INTERFACE_LINK_LIBRARIES` on APPLE: static zstd in place of the dylib, and libz3 dropped, since only `Z3Solver.cpp.o`
+uses it and nothing pulls that member in.
+
 **How to apply:** if macOS goes back to a release tarball (or Windows starts linking something RTTI-dependent),
 expect this again; check `llvm-config --has-rtti` first. Related: [[llvm-passes-plain-tu]], [[llvm-win-mac-pins-refreshed]].

@@ -5,7 +5,7 @@
 - [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
-- [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0
+- [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0; its zstd/z3 dylibs rewritten out in Dependencies.cmake
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
 - [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file
 - [MSVC GMF inline bodies](msvc-gmf-inline-bodies-in-importers.md) — CLI11 sentry; CLI11_COMPILE + plain TU
