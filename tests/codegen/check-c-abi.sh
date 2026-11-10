@@ -34,7 +34,6 @@ read -r -d '' CONFIG <<'TOML'
 sls = false
 scrub = false
 cfi = false
-jump_table_bounds = false
 
 [memory.stack]
 split = false
