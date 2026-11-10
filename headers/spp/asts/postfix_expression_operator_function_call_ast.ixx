@@ -129,7 +129,7 @@ private:
   struct _IndirectInfo {
     Shared<TypeAst const> FnType;
     ConventionTag Conv;
-    TypeSymbol const *Callee;
+    Shared<TypeRef> Callee;
     Shared<TypeRef> FnSup;
     bool Borrowed;
   };

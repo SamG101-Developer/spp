@@ -146,15 +146,15 @@ auto spp::asts::IntegerLiteralAst::Stage11_CodeGen(
   using spp::utils::strings::NormaliseIntegerString;
 
   // Get the type of the integer literal.
-  const auto type_sym = InferTypeRef(sm, meta).Symbol;
-  auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto type_ref = InferTypeRef(sm, meta).WithoutConvention();
+  auto llvm_type = codegen::GetLlvmTypeOf(type_ref, ctx);
 
   // If come from stage10 cmp statement, register the int type
   // here, in case it hasn't been reached yet by the class
   // prototypes.
   if (llvm_type == nullptr) {
-    codegen::RegisterLlvmTypeInfo(type_sym->Type->GetAstScope(), *sm, ctx);
-    llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+    codegen::RegisterLlvmTypeInfo(type_ref.Symbol->Type->GetAstScope(), *sm, ctx);
+    llvm_type = codegen::GetLlvmTypeOf(type_ref, ctx);
   }
 
   const auto bit_width = llvm_type->getIntegerBitWidth();

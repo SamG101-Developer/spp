@@ -23,26 +23,19 @@ namespace spp::codegen {
   SPP_EXP_FUN auto RegisterLlvmTypeInfo(
     Scope const *scope, ScopeManager const &sm, LlvmCtx const *ctx) -> void;
 
-  /// Get the LLVM type information off of a type symbol. If the
-  /// type is borrowed, then return the opaque pointer type,
-  /// otherwise ensure the LLVM type has been generated, and return
-  /// it.
-  SPP_EXP_FUN auto GetLlvmType(
-    TypeSymbol const &type_sym, LlvmCtx const *ctx) -> llvm::Type*;
-
-  /// The LLVM type of a resolved type: a borrow is the opaque
-  /// pointer type (whatever it borrows), anything else its
-  /// symbol's type. A written type is resolved by "TypeRef::Of".
+  /// The LLVM type representation, of a resolved S++ type: a borrow is the
+  /// opaque pointer type (whatever it borrows, as in modern LLVM convention),
+  /// and anything else its symbol's type.
   SPP_EXP_FUN auto GetLlvmTypeOf(
     TypeRef const &ref, LlvmCtx const *ctx) -> llvm::Type*;
 
-  /// Ensure the provided type symbol has its LLVM type information
-  /// registered all the way down its field types (so that the
-  /// actual struct size is known and DataLayout can answer for it.
-  /// This is needed when stage 10 does something that is not in
-  /// scope walk order, or a generic instantiation.
+  /// Ensure the provided type symbol has its LLVM type information registered
+  /// all the way down its field types (so that the actual struct size is known
+  /// and DataLayout is valid. This is needed when stage 10 does something that
+  /// is not in scope walk order, or a generic instantiation.
   SPP_EXP_FUN auto EnsureLlvmTypeComplete(
-    TypeSymbol const &type_sym, ScopeManager const &sm, LlvmCtx const *ctx) -> void;
+    TypeSymbol const &type_sym, ScopeManager const &sm,
+    LlvmCtx const *ctx) -> void;
 
   /// Whether a value of this lowered type has any runtime value representation
   /// at all. Currently, this just checks for a LLVM void type, but is defined

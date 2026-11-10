@@ -1118,7 +1118,8 @@ auto spp::asts::FunctionPrototypeAst::_IsPureGn(
       llvm_param_types.insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_val_type = codegen::GetLlvmType(*read_type(*self_param->Type).Symbol, ctx);
+      const auto self_val_type = codegen::GetLlvmTypeOf(
+        read_type(*self_param->Type).WithoutConvention(), ctx);
       llvm_param_types.insert(llvm_param_types.begin(), self_val_type);
     }
   }

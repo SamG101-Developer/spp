@@ -113,7 +113,7 @@ namespace spp::codegen {
         return;
       }
 
-      const auto elem_ty = GetLlvmType(type_sym, ctx);
+      const auto elem_ty = GetLlvmTypeOf(type.WithoutConvention(), ctx);
 
       // A bound generic parameter stands for its argument: the symbol keeps the parameter's name ("T"), which is not a
       // name the checks below can read a tuple or an array off. "NeedsDrop" resolves through for the same reason.

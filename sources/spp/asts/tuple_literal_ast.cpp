@@ -182,8 +182,8 @@ auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
 
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + Uid();
-  const auto tuple_type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    InferTypeRef(sm, meta).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.

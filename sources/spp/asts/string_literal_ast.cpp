@@ -92,10 +92,10 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   // rather than a bare pointer. Everything in it is a compile
   // time constant, so the view is emitted as its own constant
   // global instead of being rebuilt on the stack at every use.
-  const auto view_type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_view_type = view_type_sym != nullptr
-    ? llvm::dyn_cast_or_null<llvm::StructType>(codegen::GetLlvmType(*view_type_sym, ctx))
-    : nullptr;
+  const auto view_type_ref = InferTypeRef(sm, meta).WithoutConvention();
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto llvm_view_type = llvm::dyn_cast_or_null<llvm::StructType>(
+    codegen::GetLlvmTypeOf(view_type_ref, ctx));
 
   // Build the view's fields, which are always a pointer and a
   // length.

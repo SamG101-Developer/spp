@@ -637,7 +637,7 @@ auto spp::codegen::fn_impls::SimpleIntrinsicBinop(
   const auto param0_name = proto->FnParamGroup->GetAllParams()[0]->ExtractName().get();
   const auto param0_type = sm->CurrentScope->FindVarSymbol(param0_name)->Type.get();
   const auto operand_ty = IsCompareBinOp(op)
-    ? GetLlvmType(*sm->CurrentScope->FindTypeSymbol(param0_type), ctx)
+    ? GetLlvmTypeOf(TypeRef::Of(*param0_type, *sm->CurrentScope).WithoutConvention(), ctx)
     : ty;
 
   const auto fn = SimpleCreateFn(sm, proto, meta, ctx, ty, Vec{operand_ty, operand_ty});
@@ -712,7 +712,7 @@ auto spp::codegen::fn_impls::SimpleIntrinsicUnopAssign(
   -> void {
   // "(this: &mut T) -> Void": "ty" (per the dispatcher) is the declared return type "Void", not "T" - the operand
   // type is read off "this" instead. "this" is itself a "&mut T" reference, but (matching how every other
-  // reference-typed symbol in this file - e.g. "self" - is resolved) FindTypeSymbol/GetLlvmType already unwraps the
+  // reference-typed symbol in this file - e.g. "self" - is resolved) "WithoutConvention" before GetLlvmTypeOf unwraps the
   // reference down to plain "T", not a raw pointer type.
   const auto uid = "." + utils::Uid();
   const auto this_param = proto->FnParamGroup->GetAllParams()[0];
@@ -1120,8 +1120,9 @@ auto spp::codegen::fn_impls::SimpleCoroViewIter(
   const auto size_ty = TargetSizeType(*ctx->Context);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "view.iter.self" + uid);
 
-  const auto view_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
-  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+  const auto view_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(view_type_ref, ctx));
 
   const auto elem_ref = view_type_sym->TypeArgRef("T");
   const auto elem_llvm_type = elem_ref.Symbol != nullptr
@@ -1261,8 +1262,9 @@ auto spp::codegen::fn_impls::SimpleCoroViewSlice(
   const auto from_alloca = sm->CurrentScope->FindVarSymbol(from_param.get(), true)->LlvmInfo->Alloca;
   const auto upto_alloca = sm->CurrentScope->FindVarSymbol(upto_param.get(), true)->LlvmInfo->Alloca;
 
-  const auto view_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
-  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+  const auto view_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(view_type_ref, ctx));
 
   const auto elem_ref = view_type_sym->TypeArgRef("T");
   const auto elem_llvm_type = elem_ref.Symbol != nullptr
@@ -1368,9 +1370,12 @@ auto spp::codegen::fn_impls::SimpleCoroContiguousFwd(
   // The view type is taken from what the coroutine yields rather than rebuilt from the element type, because what is
   // written here has to be the same "View[T]" the caller resolved - a freshly built one has no symbol in this scope.
   const auto uid = "." + utils::Uid();
-  auto view_type_sym = TypeRef::Of(*proto->ReturnType, *sm->CurrentScope).Symbol;
-  if (const auto yield = view_type_sym->TypeArgRef("Yield"); yield.Symbol != nullptr) { view_type_sym = yield.Symbol; }
-  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+  auto view_type_ref = TypeRef::Of(*proto->ReturnType, *sm->CurrentScope).WithoutConvention();
+  if (const auto yield = view_type_ref.Symbol->TypeArgRef("Yield"); yield.Symbol != nullptr) {
+    view_type_ref = yield.WithoutConvention();
+  }
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(view_type_ref, ctx));
   const auto data_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 0);
   const auto length_idx = GetPhysicalFieldIndex(*view_type_sym->LlvmInfo, 1);
 
@@ -1420,8 +1425,9 @@ auto spp::codegen::fn_impls::SimpleCoroArrayFwd(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "array.fwd.self" + uid);
 
-  const auto arr_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
-  const auto arr_llvm_type = llvm::cast<llvm::ArrayType>(GetLlvmType(*arr_type_sym, ctx));
+  const auto arr_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto arr_type_sym = arr_type_ref.Symbol;
+  const auto arr_llvm_type = llvm::cast<llvm::ArrayType>(GetLlvmTypeOf(arr_type_ref, ctx));
 
   const auto data = ctx->Builder.CreateConstInBoundsGEP2_64(
     arr_llvm_type, self_ptr, 0, 0, "array.fwd.data" + uid);
@@ -1445,15 +1451,17 @@ auto spp::codegen::fn_impls::SimpleCoroVectorFwd(
   const auto size_ty = TargetSizeType(*ctx->Context);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vector.fwd.self" + uid);
 
-  const auto vec_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
-  const auto vec_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*vec_type_sym, ctx));
+  const auto vec_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto vec_type_sym = vec_type_ref.Symbol;
+  const auto vec_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(vec_type_ref, ctx));
   const auto buffer_idx = GetPhysicalFieldIndex(*vec_type_sym->LlvmInfo, 0);
   const auto length_idx = GetPhysicalFieldIndex(*vec_type_sym->LlvmInfo, 1);
 
   // The buffer lays its own fields out independently of the vector's, so its pointer is reached through its own map
   // rather than assumed to have stayed first.
-  const auto buffer_type_sym = spp::get<1>(GetAllAttrs(*vec_type_sym)[0]).Symbol;
-  const auto buffer_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*buffer_type_sym, ctx));
+  const auto buffer_type_ref = spp::get<1>(GetAllAttrs(*vec_type_sym)[0]).WithoutConvention();
+  const auto buffer_type_sym = buffer_type_ref.Symbol;
+  const auto buffer_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(buffer_type_ref, ctx));
   const auto buffer_ptr_idx = GetPhysicalFieldIndex(*buffer_type_sym->LlvmInfo, 0);
 
   const auto buffer = ctx->Builder.CreateStructGEP(
@@ -1485,8 +1493,9 @@ auto spp::codegen::fn_impls::SimpleCoroViewIndex(
 
   // The element being indexed lives in the buffer the view spans, not in the view itself, so the view's own fields
   // have to be read to reach it: its data pointer to step from, its length to check against.
-  const auto view_type_sym = self_sym->TypeRefIn(*sm->CurrentScope).Symbol;
-  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmType(*view_type_sym, ctx));
+  const auto view_type_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto view_llvm_type = llvm::cast<llvm::StructType>(GetLlvmTypeOf(view_type_ref, ctx));
 
   const auto elem_ref = view_type_sym->TypeArgRef("T");
   const auto elem_llvm_type = elem_ref.Symbol != nullptr
@@ -1849,8 +1858,9 @@ auto spp::codegen::fn_impls::StdGeneratorDrop(
   // null check for a handle that was never assigned one.
   const auto self_param = proto->FnParamGroup->GetSelfParam();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(self_param->ExtractName().get());
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
-  EmitDrop(TypeRef::Of(*self_ty_sym, *sm->CurrentScope), self_sym->LlvmInfo->Alloca, sm, meta, ctx);
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
+  EmitDrop(self_ty_ref, self_sym->LlvmInfo->Alloca, sm, meta, ctx);
   ctx->Builder.CreateRetVoid();
 }
 
@@ -2062,8 +2072,9 @@ auto spp::codegen::fn_impls::StdVolRead(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
-  const auto self_ty = GetLlvmType(*self_ty_sym, ctx);
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
+  const auto self_ty = GetLlvmTypeOf(self_ty_ref, ctx);
 
   // Get the "value" alloca and load the value from it. The
   // field is the first field on the "self" object.
@@ -2086,14 +2097,15 @@ auto spp::codegen::fn_impls::StdVolWrite(
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(
     ptr_ty, self_sym->LlvmInfo->Alloca, "vol.read.self" + uid);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
-  const auto self_ty = GetLlvmType(*self_ty_sym, ctx);
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
+  const auto self_ty = GetLlvmTypeOf(self_ty_ref, ctx);
 
   // Get the llvm representation of the value being written
   // to this volatile value.
   const auto new_param = proto->FnParamGroup->GetNonSelfParams()[0];
   const auto new_alloca = sm->CurrentScope->FindVarSymbol(new_param->ExtractName().get(), true)->LlvmInfo->Alloca;
-  const auto new_type = GetLlvmType(*sm->CurrentScope->FindTypeSymbol(new_param->Type.get()), ctx);
+  const auto new_type = GetLlvmTypeOf(TypeRef::Of(*new_param->Type, *sm->CurrentScope).WithoutConvention(), ctx);
   const auto new_val = ctx->Builder.CreateLoad(new_type, new_alloca, "vol.write.new_val" + uid);
 
   // Get the "value" alloca and store the value into it. The
@@ -2137,7 +2149,8 @@ auto spp::codegen::fn_impls::StdRawBufTakeAt(
 
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.take_at.self" + uid);
 
@@ -2171,7 +2184,7 @@ auto spp::codegen::fn_impls::StdRawBufTakeAt(
     opt_ref, TypeRef::Of(*none_ty_spp, *sm->CurrentScope), *sm->CurrentScope);
   SPP_ASSERT(some_tag.has_value() and none_tag.has_value());
 
-  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmTypeOf(self_ty_ref, ctx));
   const auto capacity_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 1);
   const auto capacity = ctx->Builder.CreateLoad(
     usize_ty,
@@ -2211,7 +2224,8 @@ auto spp::codegen::fn_impls::StdRawBufPlaceAt(
   //
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
@@ -2229,7 +2243,7 @@ auto spp::codegen::fn_impls::StdRawBufPlaceAt(
   const auto element_sym = sm->CurrentScope->FindVarSymbol(element_param->ExtractName().get());
   const auto element_val = ctx->Builder.CreateLoad(elem_ty, element_sym->LlvmInfo->Alloca, "raw_buf.place_at.element");
 
-  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmTypeOf(self_ty_ref, ctx));
   const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
   const auto buf_ptr = ctx->Builder.CreateLoad(
     ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.place_at.buf_ptr" + uid),
@@ -2246,7 +2260,8 @@ auto spp::codegen::fn_impls::StdRawBufShift(
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "vol.replace.self" + uid);
 
@@ -2264,7 +2279,7 @@ auto spp::codegen::fn_impls::StdRawBufShift(
   const auto upto_val = ctx->Builder.CreateLoad(usize_ty, upto_sym->LlvmInfo->Alloca, "raw_buf.shift.upto");
   const auto count_val = ctx->Builder.CreateLoad(usize_ty, count_sym->LlvmInfo->Alloca, "raw_buf.shift.count");
 
-  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmTypeOf(self_ty_ref, ctx));
   const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
   const auto buf_ptr = ctx->Builder.CreateLoad(
     ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.shift.buf_ptr" + uid),
@@ -2289,7 +2304,8 @@ auto spp::codegen::fn_impls::StdRawBufClearRange(
   using asts::generate::common_types_precompiled::SELF_VAR;
   const auto uid = "." + utils::Uid();
   const auto self_sym = sm->CurrentScope->FindVarSymbol(SELF_VAR.get(), true);
-  const auto self_ty_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
+  const auto self_ty_ref = self_sym->TypeRefIn(*sm->CurrentScope).WithoutConvention();
+  const auto self_ty_sym = self_ty_ref.Symbol;
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   const auto self_ptr = ctx->Builder.CreateLoad(ptr_ty, self_sym->LlvmInfo->Alloca, "raw_buf.clear.self" + uid);
 
@@ -2313,7 +2329,7 @@ auto spp::codegen::fn_impls::StdRawBufClearRange(
   const auto start_val = ctx->Builder.CreateLoad(usize_ty, start_sym->LlvmInfo->Alloca, "raw_buf.clear.start");
   const auto count_val = ctx->Builder.CreateLoad(usize_ty, count_sym->LlvmInfo->Alloca, "raw_buf.clear.count");
 
-  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_ty_sym, ctx));
+  const auto self_llvm_ty = llvm::cast<llvm::StructType>(GetLlvmTypeOf(self_ty_ref, ctx));
   const auto data_idx = GetPhysicalFieldIndex(*self_ty_sym->LlvmInfo, 0);
   const auto buf_ptr = ctx->Builder.CreateLoad(
     ptr_ty, ctx->Builder.CreateStructGEP(self_llvm_ty, self_ptr, data_idx, "raw_buf.clear.buf_ptr" + uid),
@@ -2582,8 +2598,9 @@ auto spp::codegen::fn_impls::StdThreadingAtomicIsLockFree(
   SPP_LLVM_FUNC_INFO, LlvmCtx *ctx, llvm::Type *) -> void {
   //
 
-  const auto self_type_sym = sm->CurrentScope->FindSelfSymbol()->AsBound();
-  const auto atom_ty = llvm::cast<llvm::StructType>(GetLlvmType(*self_type_sym, ctx));
+  using asts::generate::common_types_precompiled::SELF_TYPE;
+  const auto self_type_ref = TypeRef::Of(*SELF_TYPE, *sm->CurrentScope).WithoutConvention();
+  const auto atom_ty = llvm::cast<llvm::StructType>(GetLlvmTypeOf(self_type_ref, ctx));
   const auto val_ty = atom_ty->getElementType(0);
 
   //

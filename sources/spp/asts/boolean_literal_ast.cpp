@@ -108,8 +108,8 @@ auto spp::asts::BooleanLiteralAst::Stage11_CodeGen(
   // Bool type and then use the uniform LLVM type mapping
   // function to evaluate what the LLVM type is, should Bool
   // ever be changed from "i1".
-  const auto type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    InferTypeRef(sm, meta).WithoutConvention(), ctx);
 
   // Create the "constant int" (this literal represents a known
   // bool value), and return that into whatever is using it.

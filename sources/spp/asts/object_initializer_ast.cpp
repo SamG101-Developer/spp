@@ -195,9 +195,9 @@ auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   // never be a borrow so always stack allocated, not a
   // pointer.
   const auto uid = "." + Uid();
-  const auto type_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
-
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope).WithoutConvention();
+  const auto type_sym = type_ref.Symbol;
+  const auto llvm_type = codegen::GetLlvmTypeOf(type_ref, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto attrs = type_members::GetAllAttrs(*type_sym);

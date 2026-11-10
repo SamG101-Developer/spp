@@ -305,7 +305,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage7_AnalyseSemantic
     auto &lhs = *Lhs;
     const auto callee = lhs.InferTypeRef(sm, meta);
     _Indirect = _IndirectInfo{
-      .FnType = indirect, .Conv = conv, .Callee = callee.Symbol,
+      .FnType = indirect, .Conv = conv, .Callee = MakeShared<TypeRef>(callee.WithoutConvention()),
       .FnSup = MakeShared<TypeRef>(marker_sups::FindFnSup(
         *lhs.InferType(sm, meta)->WithConvention(nullptr), *sm->CurrentScope)),
       .Borrowed = callee.IsBorrowed()};
@@ -494,8 +494,9 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     for (auto const &ast : _FoldedAsts) { results.emplace_back(AstClone(ast)->Stage11_CodeGen(sm, meta, ctx)); }
     for (auto const &drop : _FoldDrops) { AstClone(drop)->Stage11_CodeGen(sm, meta, ctx); }
 
-    const auto tuple_sym = InferTypeRef(sm, meta).Symbol;
-    const auto tuple_llvm_type = tuple_sym != nullptr ? codegen::GetLlvmType(*tuple_sym, ctx) : nullptr;
+    const auto tuple_ref = InferTypeRef(sm, meta).WithoutConvention();
+    const auto tuple_sym = tuple_ref.Symbol;
+    const auto tuple_llvm_type = codegen::GetLlvmTypeOf(tuple_ref, ctx);
     if (tuple_llvm_type == nullptr or not tuple_llvm_type->isStructTy()) { return nullptr; }
     auto tuple_val = static_cast<llvm::Value*>(llvm::PoisonValue::get(tuple_llvm_type));
     for (auto i = 0uz; i < results.size(); ++i) {
@@ -522,7 +523,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     // own attributes too, and the "spp" layout can reorder any of
     // them - "GetPhysicalFieldIndex" maps back from the fixed
     // declared prefix (0, 1) to wherever they actually ended up.
-    const auto lhs_type_sym = _Indirect->Callee;
+    const auto lhs_type_sym = _Indirect->Callee->Symbol;
     const auto fn_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 0);
     const auto env_ptr_idx = codegen::GetPhysicalFieldIndex(*lhs_type_sym->LlvmInfo, 1);
 
@@ -532,7 +533,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     auto fn_ptr = static_cast<llvm::Value*>(nullptr);
     auto env_ptr = static_cast<llvm::Value*>(nullptr);
     if (_Indirect->Borrowed) {
-      const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmType(*lhs_type_sym, ctx));
+      const auto closure_ty = llvm::cast<llvm::StructType>(codegen::GetLlvmTypeOf(*_Indirect->Callee, ctx));
       fn_ptr = ctx->Builder.CreateLoad(
         ptr_ty, ctx->Builder.CreateStructGEP(closure_ty, closure_val, fn_ptr_idx), "closure.fn_ptr" + closure_uid);
       env_ptr = ctx->Builder.CreateLoad(

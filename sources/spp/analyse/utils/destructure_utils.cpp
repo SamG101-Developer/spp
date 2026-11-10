@@ -217,8 +217,8 @@ auto spp::analyse::utils::destructure_utils::DestructureTempStage11(
     "analysed in");
   if (sym == nullptr) { Ice(*tmp_name, *sm.CurrentScope, no_tmp_msg); }
 
-  const auto type_sym = sym->TypeRefIn(*sm.CurrentScope).Symbol;
-  const auto llvm_type = GetLlvmType(*type_sym, ctx);
+  const auto llvm_type = GetLlvmTypeOf(
+    sym->TypeRefIn(*sm.CurrentScope).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto alloca = LlvmEntryAlloca(

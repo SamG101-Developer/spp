@@ -424,7 +424,10 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   // Non-struct types are compiler known special types, so
   // don't have any field generation. Things like numbers,
   // booleans, functions etc.
-  const auto lt = codegen::GetLlvmType(*type_sym, ctx);
+  if (type_sym->LlvmInfo->LlvmType == nullptr) {
+    codegen::EnsureLlvmTypeComplete(*type_sym, *sm, ctx);
+  }
+  const auto lt = type_sym->LlvmInfo->LlvmType;
   if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
     return;
   }
@@ -443,10 +446,10 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   // The "Spp" layout sorts the fields by size and alignment, so
   // every field has to be lowered all the way before any of them
   // can be placed - a field still sitting as an opaque placeholder
-  // has no size to sort on. "GetLlvmType" does that on demand, so
+  // has no size to sort on. "GetLlvmTypeOf" does that on demand, so
   // the order fields are reached in does not matter.
-  const auto lower_field = [&](TypeSymbol const *field_type_sym) -> llvm::Type* {
-    return field_type_sym != nullptr ? codegen::GetLlvmType(*field_type_sym, ctx) : nullptr;
+  const auto lower_field = [&](TypeRef const &field) -> llvm::Type* {
+    return codegen::GetLlvmTypeOf(field.WithoutConvention(), ctx);
   };
 
   // Tuple fields are positional based off of the types found
@@ -454,16 +457,14 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   if (is_tuple) {
     const auto elems = type_sym->TypeArgRefs();
     types = elems
-      | genex::views::transform([](auto const &elem) { return elem.Symbol; })
-      | genex::views::transform([&](auto const &type) { return lower_field(type); })
+      | genex::views::transform([&](auto const &elem) { return lower_field(elem); })
       | genex::to<Vec>();
   }
 
   // Class attributes are read from the attribute types.
   else {
     types = type_members::GetAllAttrs(*type_sym)
-      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair).Symbol; })
-      | genex::views::transform([&](auto const &type) { return lower_field(type); })
+      | genex::views::transform([&](auto const &pair) { return lower_field(spp::get<1>(pair)); })
       | genex::to<Vec>();
   }
 

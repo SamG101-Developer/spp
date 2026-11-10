@@ -80,7 +80,8 @@ namespace spp::analyse::utils::case_utils {
       auto ptr = subject_ptr;
       for (auto const &step : path) {
         SPP_ASSERT(step.Of.Symbol != nullptr);
-        const auto llvm_of_ty = codegen::GetLlvmType(*step.Of.Symbol, ctx);
+        const auto llvm_of_ty = codegen::GetLlvmTypeOf(
+          step.Of.WithoutConvention(), ctx);
         if (step.K == PathStep::Kind::Payload) {
           ptr = codegen::GetVariantPayloadPtr(ptr, llvm_of_ty, "case.pattern.payload" + uid, ctx);
           continue;
