@@ -1,6 +1,7 @@
 ---
 name: spp-codegen-cross-module-and-inherited
-description: "Two codegen invariants - globals must be mirrored per module, and an inherited by-value self needs a type bridge"
+description: "Codegen invariants - globals mirrored per module, bodies emitted into ctx->Module (own walk), an inherited by-value self needs a type bridge"
+updated: 2026-11-10
 ---
 
 Both found by the `std::net` test pass (2026-09-06) and both fixed; the invariants are worth keeping in mind.
@@ -11,6 +12,11 @@ Both found by the `std::net` test pass (2026-09-06) and both fixed; the invarian
   (`postfix_expression_operator_runtime_member_access_ast.cpp`, the symbolic-lhs branch) did not, so
   `SomeType::constant.field` from another module was invalid ir. Any new path that reads `sym->LlvmInfo->Alloca` needs
   the same `dyn_cast<GlobalVariable>` check.
+- **A function body is emitted from its own module's walk**, an instantiation's from its template's
+  (`_CodeGenGnSubstitutions`, with the owner's context), so "the current module" is always `ctx->Module`. Declare
+  helpers, intrinsics and mirrored globals there. `GetEmissionModule` (the insert point's module) covered the time
+  when it was not, and was removed 2026-11-10; subroutine and coroutine `Stage11_CodeGen` raise an Ice if a body's
+  function is in another module.
 - **A method reached by superimposition is generated once, for the type that declared it** - unless its signature
   names `Self`, in which case `SignatureNamesSelf` (in `overload_resolution.cpp`) pins `Self` to the receiver and the
   monomorphiser mints a per-receiver copy, mangled `#[Self=<receiver>]#`. A **by-value `self` now counts as naming

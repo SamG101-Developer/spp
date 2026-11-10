@@ -9,7 +9,7 @@ The optimisation pipeline and the passes s++ adds to it are plain TUs that `#inc
 in GCC (not the suppressible `-Wexpose-global-module-tu-local`). The maintainer's fix is llvm/llvm-project#233326 (merged). The rest
 are modules that `import llvm`: `spp.codegen.llvm_target` (target, triples, folders, target machine, object emission;
 exports `TargetTriple()`), `llvm_entry` (C main, runtime shims), `llvm_harden_memory` (exports `kNoSplitStack`),
-`llvm_harden_codegen` (exports `kFfiFnAttr`/`kCfiMd`/`kCfiCoroMd`), `llvm_artefact` (hardening record, fortification).
+`llvm_harden_codegen` (exports `kFfiFnAttr`), `llvm_cfi` (KCFI stamps, bundles and passes), `llvm_artefact` (hardening record, fortification).
 
 **Layout (2026-11-10):** one header, `headers/spp/codegen/llvm_passes.hpp`, declares all of them; the definitions are
 `sources/spp/codegen/llvm_passes/llvm_pass_*.cpp`, one each: `pipeline` (coroutine lowering, optimisation,

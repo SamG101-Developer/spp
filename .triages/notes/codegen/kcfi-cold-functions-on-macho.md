@@ -25,7 +25,7 @@ followed the cold `test_a_vector_formats_its_elements` and `test_dropping_an_rwl
 
 **Fixed 2026-11-10:** LLVM already solves this for prefix data (`AsmPrinter::emitFunctionPrefix`: a linker-private
 `ltmpN` label starts the atom and the function symbol becomes `.alt_entry`); `emitKCFITypeId` skips that path, which is
-the upstream bug. `codegen::FinishCfi` (`llvm_harden_codegen.cpp`, after the optimiser under the `cfi` gate)
+the upstream bug. `codegen::FinishCfi` (`llvm_cfi.cpp`, after the optimiser under the `cfi` gate)
 gives every defined function with `!kcfi_type` an `i32 0` of prefix data on Mach-O. The layout is `ltmpN`, `0`, hash,
 function (alt_entry), all one atom, so `cold` stays and moving it is harmless; 4 bytes per typed function. Verified on
 the cross object: 88 typed definitions, 88 `AltEntry` symbols, each with an atom label 8 bytes before it and the right

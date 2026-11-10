@@ -21,7 +21,7 @@ panics): `EmitCheckedDivRem` gives `srem` a divisor of 1 there, as `srem` itself
 `rem_checked`/`rem_overflow` follow the same rule. Needs an sppc with checks 0x16-0x18, or the report is "unknown
 check". Tests: `tests/codegen/check-runtime-checks.sh`.
 
-**AIR (2026-11-09, `.triages/air-integer-model.md`, spec outline 11.1.1):** the guarantee is "no wrong integer value
+**AIR (2026-11-09, `../../docs_closed/air-integer-model.md`, spec outline 11.1.1):** the guarantee is "no wrong integer value
 is ever *observed*", not "abort at the operation". In rel, with `[binary.codegen] air_integers` (default on), a check
 may move to before the next observation point (index, size, divisor, branch, call, sync, I/O, ...); the passes live in
 `llvm_pass_air`. Dev, and rel with the key off, check at the operation. The report still names the check. So "where did it

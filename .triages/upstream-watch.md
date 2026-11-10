@@ -42,6 +42,7 @@ Each entry gives:
 | U23 | MSVC             | Templates keep using-declared names when instantiated elsewhere | 2026-11-08   |
 | U24 | LLVM             | `Module::renumberMetadataForAssembly()` (LLVM 24)               | 2026-11-10   |
 | U25 | LLVM             | `HasRunOnLoopT` out of an anonymous namespace (#233326)         | 2026-11-10   |
+| U26 | LLVM             | KCFI type id kept in the function's atom on Mach-O (#241037)    | 2026-11-10   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -573,6 +574,31 @@ Each entry gives:
   `HasRunOnLoopT`.
 - **When it lands:** on the LLVM 24 bump, turn the four plain TUs into modules, exporting what they need from
   `headers/wrappers/llvm.ixx`.
+- **Last checked:** 2026-11-10.
+
+## U26. LLVM: the KCFI type id on Mach-O
+
+- **Library:** LLVM (`AsmPrinter::emitKCFITypeId`, `llvm/lib/CodeGen/AsmPrinter/AsmPrinter.cpp`), llvm/llvm-project#241037
+  (ours).
+- **Want:** the type id emitted through `emitFunctionPrefix`, as prefix data is, so on subsections-via-symbols targets
+  it gets a linker-private label and the function becomes an `.alt_entry` of it.
+- **Why:** the bare word before the function belongs to the previous function's atom, so ld64 moving that atom (a
+  cold function; an order file or `-dead_strip` would too) separates every typed function from its hash and the
+  KCFI check at an indirect call traps (`brk #0x8229`). clang's `-fsanitize=kcfi` on Darwin has the same exposure.
+  X86 overrides `emitKCFITypeId` and is not covered. Details: `notes/codegen/kcfi-cold-functions-on-macho.md`.
+- **Meanwhile:** `codegen::FinishCfi` (`../sources/spp/codegen/llvm_cfi.cpp`) gives each typed definition an `i32 0`
+  of prefix data on Mach-O, so LLVM's prefix path labels the atom; 4 bytes per typed function.
+- **Status (2026-11-10):** unchanged on `main` `814ab0edd50c`. Reproduce: `llc -mtriple=arm64-apple-macosx -filetype=obj` on a `cold` function followed by one with `!kcfi_type`; the hash word lands inside the cold
+  function's atom and the typed function has no `AltEntry` flag. A patch with the test
+  `llvm/test/CodeGen/AArch64/kcfi-macho.ll` is drafted (applies cleanly to `814ab0edd50c`, `clang-format` clean); its
+  checks were validated against stock `llc-23` output for the equivalent prefix-data IR, and fail on stock `llc`, but
+  the patched `llc` itself has not been built. Opened as
+  [llvm/llvm-project#241037](https://github.com/llvm/llvm-project/pull/241037) (2026-11-10, branch
+  `users/samg101-developer/kcfi-macho-alt-entry` on the fork); it must merge before `release/24.x` branches (about
+  mid-January 2027) to be in LLVM 24.
+- **Check:** whether #241037 has merged and into which release; then the reproduction above shows an `ltmpN` label, the hash, and `.alt_entry`.
+- **When it lands:** on the bump to the first LLVM that has it (Homebrew's, on macOS), drop the `anchor_types` prefix
+  data from `FinishCfi`.
 - **Last checked:** 2026-11-10.
 
 ## Resolved

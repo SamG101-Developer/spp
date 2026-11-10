@@ -1,8 +1,9 @@
 - [Codegen coercion sites](codegen-coercion-sites.md) — one CoerceToSlot (llvm_coerce); site list; check-coercions.sh sees wrong values
 - [Variant widening in generic args](spp-variant-widening-in-generic-args.md) — codegen rebuilds (llvm_variant)
-- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bridge
+- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bodies emit into ctx->Module; bridge
 - [Stand-ins lose the field map](llvm-info-standins-lose-field-map.md) — LlvmType + FieldIndexMap together
-- [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — no cls can describe a C struct
+- [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — unless !ffi or !conv("C"); C structs need one
+- [Convention table (!conv)](abi-conventions-table.md) — codegen::Abi entries spp/C: layout + call hooks; !ffi implies C; "Abi" as Convention means &/&mut
 - [NonNull and Ptr lower to ptr](nonnull-lowers-to-ptr.md) — is(*NON_NULL) / is(*PTR) special case; Ptr has no fields since O14
 - [Runtime allocator attrs](runtime-allocator-attrs.md) — sppc allocators declared as LLVM allocators; keep them plain wrappers
 - [noalias on &mut params](noalias-unsound-on-mut-params.md) — on since 2026-10-13, sound only via the checker (M7); history of the miscompile

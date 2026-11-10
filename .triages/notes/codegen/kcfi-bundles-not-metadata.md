@@ -4,8 +4,8 @@ description: "S9.1 CFI tags calls with kcfi operand bundles at emission; custom 
 updated: 2026-11-10
 ---
 
-S9.1 (2026-10-18): indirect calls carry a `kcfi` operand bundle from where they are emitted (`CfiCallBundles` in
-llvm_fn.cpp), never custom instruction metadata: SimplifyCFG sinking, GVN PRE and similar merges drop metadata kinds
+S9.1 (2026-10-18): indirect calls carry a `kcfi` operand bundle from where they are emitted (`CfiFnCallBundles`/`CfiGenCallBundles` in
+llvm_cfi.cpp, with the stamps and the module passes), never custom instruction metadata: SimplifyCFG sinking, GVN PRE and similar merges drop metadata kinds
 LLVM does not know (30 of 364 calls lost an `!spp.cfi` tag). Function-level metadata (`spp.cfi`, `spp.cfi.coro`) does
 survive, including into CoroSplit's `.resume/.destroy/.cleanup` clones, so `ApplyCfiTypes` types functions from it.
 A bundle on `llvm.coro.resume`/`destroy` is accepted by the verifier and kept by coro lowering.

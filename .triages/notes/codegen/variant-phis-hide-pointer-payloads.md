@@ -16,7 +16,7 @@ and harmful when its results meet in a phi.
 
 **How to apply:** where a variant is built on several edges and joined, allocate one slot (`LlvmEntryAlloca`), write
 each edge with `StoreVariant`, and load once at the join (see `PostfixExpressionOperatorKeywordResAst`). Value payloads
-(`Opt[U64]`) suffer far less. Two cases remain open, tracked as O13 in `../../llvm-optimisation-review.md`: `case`
+(`Opt[U64]`) suffer far less. Two cases remain open, tracked as O13 in `../../docs_wip/llvm-optimisation-review.md`: `case`
 used as an expression and loop exit values (fixable the same way), and variant-returning functions with several `ret`s
 (LLVM's inliner builds that phi, so it needs a representation change). Check a hot loop for `ptrtoint`/`inttoptr`
 before changing codegen.
