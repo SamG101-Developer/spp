@@ -628,7 +628,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   auto llvm_func = Target()->GetLlvmFn()->Target;
   SPP_ASSERT(llvm_func != nullptr);
   llvm_func = codegen::GetOrAddTargetIntoCurrentModule(
-    *llvm_func, *codegen::GetEmissionModule(*ctx));
+    *llvm_func, *ctx->Module);
 
   // The arguments have already been reordered to match the
   // parameters, so the two line up index for index.

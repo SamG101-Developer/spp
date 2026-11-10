@@ -42,6 +42,7 @@ import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_drop;
 import spp.codegen.llvm_fn;
@@ -408,7 +409,7 @@ auto spp::asts::ClosureExpressionAst::Stage11_CodeGen(
   // It is named after the function it is written inside of, like:
   // "run_server::{closure#0}", numbered in the order that function's
   // closures are generated, so the name is the same every build.
-  auto *const emission_module = codegen::GetEmissionModule(*ctx);
+  auto *const emission_module = ctx->Module.get();
   const auto enclosing = ctx->Builder.GetInsertBlock() != nullptr
     ? ctx->Builder.GetInsertBlock()->getParent()->getName().str()
     : Str("closure");

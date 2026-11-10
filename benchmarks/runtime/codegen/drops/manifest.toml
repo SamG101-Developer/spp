@@ -6,4 +6,5 @@ covers = [
   "codegen:llvm_alloca",
   "codegen:llvm_materialize",
   "codegen:llvm_harden_memory",
+  "codegen:llvm_abi",
 ]

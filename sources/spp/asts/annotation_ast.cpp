@@ -24,6 +24,7 @@ import spp.asts.module_prototype_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
+import spp.asts.string_literal_ast;
 import spp.asts.sup_prototype_extension_ast;
 import spp.asts.sup_prototype_functions_ast;
 import spp.asts.token_ast;
@@ -33,8 +34,10 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.mixins.visibility_enabled_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.visibility;
+import spp.codegen.llvm_abi;
 import spp.lex.lexer;
 import spp.parse.parser_spp;
+import spp.utils.strings;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
 use_alias(spp::analyse::scopes, Scope);
@@ -142,8 +145,12 @@ auto spp::asts::AnnotationAst::Stage4_ResolveDeclarations(
   const auto func_ctx = _Ctx->To<FunctionPrototypeAst>();
 
   // Early-apply the visibility annotations as some stage 5
-  // mechanics need it in asts that can have visibility.
-  if (const auto vis = VisibilityOf(Builtin); vis.has_value()) {
+  // mechanics need it in asts that can have visibility. An "ffi"
+  // function or class is public: it is what C names, or holds.
+  const auto vis = Builtin == annotation_utils::BuiltinAnnotation::kFfi
+    ? Opt(Visibility::kPublic)
+    : VisibilityOf(Builtin);
+  if (vis.has_value()) {
     if (const auto vis_ctx = _Ctx->To<mixins::VisibilityAst>()) {
       vis_ctx->Visibility = {*vis, this};
     }
@@ -217,11 +224,36 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
       break;
 
     // Mark a function as "ffi", additionally providing a linkage
-    // name, and a unit test as non-callable: both are public.
+    // name, and a unit test as non-callable: both are public (an
+    // "ffi" one since stage 4). An "ffi" function or class takes
+    // the C convention, unless a "!conv" names another (checked
+    // against "ffi" in stage 7).
     case A::kFfi:
-      if (fun_ctx) { fun_ctx->FfiAnnotation = this; }
-      if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
+      if (fun_ctx) {
+        fun_ctx->FfiAnnotation = this;
+        if (fun_ctx->DeclaredAbi == nullptr) { fun_ctx->DeclaredAbi = &codegen::GetCAbi(); }
+      }
+      if (cls_ctx) {
+        cls_ctx->FfiAnnotation = this;
+        const auto cls_sym = sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name);
+        if (cls_sym->DeclaredAbi == nullptr) { cls_sym->DeclaredAbi = &codegen::GetCAbi(); }
+      }
       break;
+
+    // Name the convention a function is called with, or a class is
+    // laid out by. A name no convention has is an unknown one.
+    case A::kConv: {
+      const auto abi = _NamedAbi();
+      if (fun_ctx) {
+        fun_ctx->ConvAnnotation = this;
+        fun_ctx->DeclaredAbi = abi;
+      }
+      if (cls_ctx) {
+        cls_ctx->ConvAnnotation = this;
+        sm->CurrentScope->FindHeadSymbol(*cls_ctx->Name)->DeclaredAbi = abi;
+      }
+      break;
+    }
     case A::kTest:
       if (fun_ctx) { fun_ctx->TestAnnotation = this; }
       if (fun_ctx) { fun_ctx->Visibility = {Visibility::kPublic, this}; }
@@ -259,11 +291,47 @@ auto spp::asts::AnnotationAst::Stage5_LoadSupScopes(
   }
 }
 
+auto spp::asts::AnnotationAst::ConvName() const -> Str {
+  const auto arg = _ConvNameArg();
+  const auto literal = arg != nullptr ? arg->To<StringLiteralAst>() : nullptr;
+  return literal != nullptr ? literal->CppVal() : Str();
+}
+
+auto spp::asts::AnnotationAst::_ConvNameArg() const -> ExpressionAst const* {
+  // The name is "!conv"'s one argument, given by keyword or not.
+  const auto keyword = FnArgGroup->At("name");
+  const auto arg = keyword != nullptr ? keyword : FnArgGroup->Args.empty() ? nullptr : FnArgGroup->Args.front().get();
+  return arg != nullptr ? arg->Val.get() : nullptr;
+}
+
+auto spp::asts::AnnotationAst::_NamedAbi() const -> Abi const* {
+  IMPORT_UTILS;
+  // With no name, the call to "conv" this is checked as in stage 7
+  // reports the missing argument; anything but a literal names no
+  // convention it can be read from here.
+  const auto arg = _ConvNameArg();
+  if (arg == nullptr) { return nullptr; }
+
+  const auto literal = arg->To<StringLiteralAst>();
+  RaiseIf<SppIdentifierUnknownError>(
+    literal == nullptr,
+    ERR_ARGS(*arg, "convention (a string literal)"));
+
+  const auto name = literal->CppVal();
+  const auto abi = codegen::FindAbi(name);
+  if (abi == nullptr) {
+    Raise<SppIdentifierUnknownError>(
+      ERR_ARGS(*literal, "convention", spp::utils::strings::ClosestMatch(name, codegen::AbiNames())));
+  }
+  return abi;
+}
+
 auto spp::asts::AnnotationAst::_ResolveBuiltin(
   ScopeManager *sm) -> bool {
   const auto sym = sm->CurrentScope->FindVarSymbolOutermost(*Name).first;
   if (sym == nullptr) { return false; }
-  Builtin = analyse::utils::annotation_utils::BuiltinAnnotationOf(sym->FqName()->ToString());
+  Builtin = analyse::utils::annotation_utils::BuiltinAnnotationOf(
+    sym->FqName()->ToString());
   _BuiltinResolved = true;
   return true;
 }

@@ -83,7 +83,7 @@ auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   // quotes) into the raw bytes, resolving escape sequences,
   // and emit either a string or byte string for it.
   const auto bytes = DecodeStringLiteral(Val->TokenData);
-  const auto emission_module = codegen::GetEmissionModule(*ctx);
+  const auto emission_module = ctx->Module.get();
   const auto llvm_bytes = ctx->Builder.CreateGlobalString(
     bytes, "string_literal", 0, emission_module, false);
 

@@ -8,5 +8,6 @@ covers = [
   "ast:sup_prototype_extension",
   "codegen:llvm_fn",
   "codegen:llvm_fn_impls",
+  "codegen:llvm_cfi",
   "codegen:llvm_harden_codegen",
 ]

@@ -14,6 +14,7 @@ use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct FunctionCallArgumentGroupAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TokenAst);
+use(spp::codegen, class Abi);
 
 /// An annotation is used to represent a behavioural transformation
 /// inside an ast, such as marking a method as virtual or
@@ -77,6 +78,10 @@ SPP_EXP_CLS struct spp::asts::AnnotationAst final : Ast {
   /// applied to what it is applied to ("_CheckTarget").
   auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
+  /// The convention name a "!conv" is written with, empty if it is
+  /// not a string literal: for the closest match to a misused one.
+  SPP_ATTR_NODISCARD auto ConvName() const -> Str;
+
 private:
   /// Evaluate the annotation definition's "target" mask and check
   /// the ast this is applied to is one of its kinds. Safe to do
@@ -97,6 +102,13 @@ private:
   /// qualified name, which bypasses a "use" import of it. False if
   /// the function is not found yet.
   auto _ResolveBuiltin(ScopeManager *sm) -> bool;
+
+  /// The convention a "!conv" names, raising an unknown identifier
+  /// for a name no convention has. Null if it names none at all.
+  SPP_ATTR_NODISCARD auto _NamedAbi() const -> codegen::Abi const*;
+
+  /// The argument a "!conv" names its convention with, or null.
+  SPP_ATTR_NODISCARD auto _ConvNameArg() const -> ExpressionAst const*;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::AnnotationAst)

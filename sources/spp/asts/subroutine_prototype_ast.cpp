@@ -24,6 +24,7 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
@@ -171,6 +172,13 @@ auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
     sm->MoveOutOfCurrentScope();
     _CodeGenGnSubstitutions(sm, meta, ctx);
     return nullptr;
+  }
+
+  // A body is only ever emitted from its own module's walk (an
+  // instantiation's from its template's: "_CodeGenGnSubstitutions"),
+  // so whatever it declares in "ctx->Module" lands beside it.
+  if (llvm_func_target->getParent() != ctx->Module.get()) {
+    Ice(*this, "a function body emitted from another module's walk");
   }
 
   // Add the entry block to the function.

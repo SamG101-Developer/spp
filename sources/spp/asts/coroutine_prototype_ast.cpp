@@ -28,12 +28,14 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
@@ -249,6 +251,13 @@ auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
     TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope, *ReturnType,
     [&] { return ReturnType; }, "coroutine return type");
   codegen::StampCfiCoroutine(*llvm_func_target, gen_sup);
+
+  // A body is only ever emitted from its own module's walk (an
+  // instantiation's from its template's: "_CodeGenGnSubstitutions"),
+  // so whatever it declares in "ctx->Module" lands beside it.
+  if (llvm_func_target->getParent() != ctx->Module.get()) {
+    Ice(*this, "a function body emitted from another module's walk");
+  }
 
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(

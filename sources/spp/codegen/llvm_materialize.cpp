@@ -109,7 +109,7 @@ auto spp::codegen::LlvmAddrOf(
     // declaration of the symbol, the same way a load of one
     // does.
     if (const auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(llvm_alloca); global_var != nullptr) {
-      return GetOrAddGlobalIntoCurrentModule(*global_var, *GetEmissionModule(*ctx));
+      return GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
     }
     return llvm_alloca;
   }

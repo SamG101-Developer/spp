@@ -354,7 +354,7 @@ auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen
       // declaration of the symbol.
       auto object_ptr = sym->LlvmInfo->Alloca;
       if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
-        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *codegen::GetEmissionModule(*ctx));
+        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
       }
 
       base_ptr = is_borrow

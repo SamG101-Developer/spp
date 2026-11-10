@@ -33,6 +33,7 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
@@ -279,7 +280,7 @@ auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // finished case to report.
   const auto resume = [&] {
     const auto coro_resume = llvm::Intrinsic::getOrInsertDeclaration(
-      codegen::GetEmissionModule(*ctx), llvm::Intrinsic::coro_resume);
+      ctx->Module.get(), llvm::Intrinsic::coro_resume);
     ctx->Builder.CreateCall(
       coro_resume, {llvm_generator_env->Handle},
       codegen::CfiGenCallBundles(gen, codegen::CoroEdge::Resume, ctx));
