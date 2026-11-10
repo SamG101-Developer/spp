@@ -2,7 +2,7 @@ module;
 #include <spp/macros.hpp>
 #include <spp/version.hpp>
 #include <spp/analyse/macros.hpp>
-#include <spp/codegen/llvm_pipeline.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 #include <spp/compiler/macros.hpp>
 #include <spp/parse/macros.hpp>
 
@@ -38,6 +38,7 @@ import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_entry;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_harden_memory;
+import spp.codegen.llvm_jump_tables;
 import spp.codegen.llvm_target;
 import spp.compiler.cfg;
 import spp.compiler.ffi;
@@ -788,7 +789,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     codegen::KeepCfiTypesAttached(lto_module.get());
   }
   FEATURE_GATE(BinaryCodegenJumpTableBounds) {
-    if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; }
+    codegen::ApplyHardenedJumpTables(lto_module.get());
   }
   FEATURE_GATE(BinaryCodegenFfiUnwindGuard) {
     if (not codegen::ApplyFfiUnwindGuard(lto_module.get())) { return false; }

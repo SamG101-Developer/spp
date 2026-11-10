@@ -352,7 +352,7 @@ auto spp::asts::GenExpressionAst::Stage11_CodeGen(
       if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
         Ice(*this, *sm->CurrentScope, "a value owned at a suspension has no storage to drop");
       }
-      codegen::EmitDropRemaining(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, moved, sm, meta, ctx);
+      codegen::EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, moved);
     }
     scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
   }

@@ -1,5 +1,8 @@
 module;
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Analysis/RuntimeLibcallInfo.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DiagnosticInfo.h>
@@ -48,6 +51,7 @@ export namespace llvm {
   using ::llvm::appendToUsed;
   using ::llvm::changeToInvokeAndSplitBasicBlock;
   using ::llvm::consumeError;
+  using ::llvm::createTargetTransformInfoWrapperPass;
   using ::llvm::instructions;
   using ::llvm::toString;
   using ::llvm::InitializeAllAsmPrinters;
@@ -113,6 +117,7 @@ export namespace llvm {
   using ::llvm::OperandBundleDef;
   using ::llvm::PointerType;
   using ::llvm::PHINode;
+  using ::llvm::RuntimeLibraryInfoWrapper;
   using ::llvm::SmallVector;
   using ::llvm::StringLiteral;
   using ::llvm::StringRef;
@@ -121,6 +126,8 @@ export namespace llvm {
   using ::llvm::StructType;
   using ::llvm::SwitchInst;
   using ::llvm::Target;
+  using ::llvm::TargetLibraryInfoImpl;
+  using ::llvm::TargetLibraryInfoWrapperPass;
   using ::llvm::TargetMachine;
   using ::llvm::TargetOptions;
   using ::llvm::TargetRegistry;
