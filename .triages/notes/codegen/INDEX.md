@@ -5,7 +5,7 @@
 - [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — no cls can describe a C struct
 - [NonNull and Ptr lower to ptr](nonnull-lowers-to-ptr.md) — is(*NON_NULL) / is(*PTR) special case; Ptr has no fields since O14
 - [Runtime allocator attrs](runtime-allocator-attrs.md) — sppc allocators declared as LLVM allocators; keep them plain wrappers
-- [noalias unsound on &mut params](noalias-unsound-on-mut-params.md) — plan is M7; index/slice borrows the blocker
+- [noalias on &mut params](noalias-unsound-on-mut-params.md) — on since 2026-10-13, sound only via the checker (M7); history of the miscompile
 - [GetAllParams includes self](getallparams-includes-self.md) — [0] on a method is `self`
 - [llvm.expect at the call site](expect-lowered-before-inlining.md) — hints via CallSiteImpl; expect in the branch's own block, else dropped
 - [rel miscompiles with intrinsics](rel-profile-miscompiles-with-intrinsics.md) — strip inliner lifetime markers
@@ -31,3 +31,4 @@
 - [Checked results are flagged](checked-results-are-flagged.md) — checked +/-/* return add nuw/nsw, not the intrinsic value; passes moving a check drop the flags
 - [mem ops are LLVM intrinsics](mem-ops-are-llvm-intrinsics.md) — mem_copy/mem_set emit llvm.memcpy/memset; sppc memcpy/memset/memmove gone
 - [Variants have no parts](variant-drop-is-a-no-op.md) — drop code reads variants via VariantMemberRefs + tag switch; GetAllParts alone missed them (leak fixed 2026-11-10)
+- [KCFI and cold functions on Mach-O](kcfi-cold-functions-on-macho.md) — ld64 moves N_COLD_FUNC away from the KCFI hash word; KeepCfiTypesAttached keeps typed fns off cold (fixed 2026-11-10)

@@ -17,29 +17,30 @@ Each entry gives:
 
 | #   | Library          | Want                                                            | Last checked |
 | --- | ---------------- | --------------------------------------------------------------- | ------------ |
-| U1  | LLVM             | New pass manager codegen pipeline on every target               | 2026-11-07   |
-| U2  | GCC              | `extern "C++"` forward declarations across modules              | 2026-09-13   |
-| U3  | GCC              | `lookup_mark` ICE on unqualified calls and cross-module friends | 2026-10-08   |
-| U4  | GCC              | "Bad file data" reading a compiled module cluster               | 2026-10-08   |
-| U5  | clang            | Implicit destructor ICE in an importer (`GetVTTParameter`)      | 2026-10-14   |
-| U6  | MSVC STL         | `std::string + std::string_view` (P2591)                        | 2026-11-07   |
+| U1  | LLVM             | New pass manager codegen pipeline on every target               | 2026-11-10   |
+| U2  | GCC              | `extern "C++"` forward declarations across modules              | 2026-11-10   |
+| U3  | GCC              | `lookup_mark` ICE on unqualified calls and cross-module friends | 2026-11-10   |
+| U4  | GCC              | "Bad file data" reading a compiled module cluster               | 2026-11-10   |
+| U5  | clang            | Implicit destructor ICE in an importer (`GetVTTParameter`)      | 2026-11-10   |
+| U6  | MSVC STL         | `std::string + std::string_view` (P2591)                        | 2026-11-10   |
 | U7  | MSVC             | Inline bodies from a GMF instantiated in importers              | 2026-09-11   |
-| U8  | CMake            | `vs_link_exe` treating a leading `@` as a response file         | 2026-11-07   |
-| U9  | ccache-action    | `append-timestamp: false`                                       | 2026-11-08   |
-| U10 | Ubuntu toolchain | A current GCC release for the runner images                     | 2026-11-07   |
-| U11 | ccache, sccache  | Caching C++20 module compiles from GCC                          | 2026-11-08   |
-| U12 | sccache          | Caching C++20 module compiles from cl.exe                       | 2026-11-08   |
-| U13 | LLVM             | PC-relative EH pointers on m68k under PIC                       | 2026-11-07   |
-| U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-11-07   |
-| U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-11-07   |
-| U16 | LLVM             | AArch64 SLS indirect-call thunks named for Mach-O               | 2026-11-07   |
-| U17 | qemu             | `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user    | 2026-11-07   |
-| U18 | qemu             | ppc32 rt sigreturn CFA missing `RT_SIGFRAME_ADJUST` (vDSO)      | 2026-11-07   |
-| U19 | qemu             | loongarch64 sigreturn CFA register and return column (vDSO)     | 2026-11-07   |
-| U20 | LLVM             | ARMv5 sub-word `__sync_*` results sign- vs zero-extended        | 2026-10-27   |
-| U21 | LLVM             | m68k 16-bit PC-relative and PLT relocations in large programs   | 2026-10-27   |
+| U8  | CMake            | `vs_link_exe` treating a leading `@` as a response file         | 2026-11-10   |
+| U9  | ccache-action    | `append-timestamp: false`                                       | 2026-11-10   |
+| U10 | Ubuntu toolchain | A current GCC release for the runner images                     | 2026-11-10   |
+| U11 | ccache, sccache  | Caching C++20 module compiles from GCC                          | 2026-11-10   |
+| U12 | sccache          | Caching C++20 module compiles from cl.exe                       | 2026-11-10   |
+| U13 | LLVM             | PC-relative EH pointers on m68k under PIC                       | 2026-11-10   |
+| U14 | CMake            | `import std` with clang-cl and the MSVC STL (CMake 4.5)         | 2026-11-10   |
+| U15 | LLVM             | SafeStack checking a canary through the target's own route      | 2026-11-10   |
+| U16 | LLVM             | AArch64 SLS indirect-call thunks named for Mach-O               | 2026-11-10   |
+| U17 | qemu             | `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user    | 2026-11-10   |
+| U18 | qemu             | ppc32 rt sigreturn CFA missing `RT_SIGFRAME_ADJUST` (vDSO)      | 2026-11-10   |
+| U19 | qemu             | loongarch64 sigreturn CFA register and return column (vDSO)     | 2026-11-10   |
+| U20 | LLVM             | ARMv5 sub-word `__sync_*` results sign- vs zero-extended        | 2026-11-10   |
+| U21 | LLVM             | m68k 16-bit PC-relative and PLT relocations in large programs   | 2026-11-10   |
 | U22 | MSVC             | Implementation units see the interface's using-declarations     | 2026-11-08   |
 | U23 | MSVC             | Templates keep using-declared names when instantiated elsewhere | 2026-11-08   |
+| U24 | LLVM             | `Module::renumberMetadataForAssembly()` (LLVM 24)               | 2026-11-10   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -63,20 +64,22 @@ Each entry gives:
   - RISC-V (since 2026-08, a "skeleton");
   - NVPTX (since 2026-08);
   - MIPS and SPARC (new by 2026-11-07);
+  - SystemZ (`bff8793c57a6`, 2026-11-09);
   - AMDGPU, BPF, Lanai and MSP430.
 
-  None on trunk (2026-11-07): AArch64, ARM, PowerPC, SystemZ, LoongArch, M68k, Hexagon. Even on X86 it is experimental
+  None on trunk (2026-11-10): AArch64, ARM, PowerPC, LoongArch, M68k, Hexagon. Even on X86 it is experimental
   (`llc -enable-new-pm`). In the installed LLVM 23, only X86, AMDGPU, BPF, Lanai and MSP430 have it.
 
 - **Check:** for each target in the cross-codegen list, does
   `llvm/lib/Target/<T>/<T>CodeGenPassBuilder.cpp` exist, or does `<T>TargetMachine.cpp` override
-  `buildCodeGenPipeline`? Does `llvm/docs/NewPassManager.rst` still say codegen uses the legacy pass manager? Locally:
+  `buildCodeGenPipeline`? Does `llvm/docs/NewPassManager.md` (Markdown since the LLVM 24 docs move) still say codegen
+  uses the legacy pass manager (it did on 2026-11-10)? Locally:
   `nm -C libLLVM<T>CodeGen.a | grep "TargetMachine::buildCodeGenPipeline"`.
 
 - **When it lands:** build object emission with `buildCodeGenPipeline` on a `ModulePassManager` (with
   `CGPassBuilderOption`), check every cross target in CI, then drop the legacy path.
 
-- **Last checked:** 2026-11-07 (trunk target directories; docs and archives as of 2026-10-24).
+- **Last checked:** 2026-11-10 (trunk target directories and `NewPassManager.md`; archives as of 2026-10-24).
 
 - **Sources:** [NewPassManager docs](https://llvm.org/docs/NewPassManager.html),
   [pipeline construction RFC (2025)](https://discourse.llvm.org/t/rfc-codegen-new-pass-manager-pipeline-construction-design/84659),
@@ -99,12 +102,15 @@ Each entry gives:
 - **Status:** reproduced with standalone modules (bugs 1 and 2). A Bugzilla-ready report for bug 2 was written to
   `docs/bug2/`, but it is no longer on disk and was never committed; whether it was filed, and its number, is not
   recorded. Bugzilla blocks automated fetches, so duplicates were not checked.
+  **2026-11-10: bug 1 is fixed on GCC trunk** (17.0.0 20261018): with `GenericArgumentAst` dropped from
+  `literal_ast.ixx`, the whole of `spp` builds and links under `-Werror` (in a scratch worktree). Bugs 2 and 3 were not
+  tried (no repro on disk). Not tried with GCC 16.2, which CI pins, so the redeclarations stay for now.
 - **Check:** remove one of the redeclarations that exist only for bug 1 (e.g. `GenericArgumentAst` in
   `literal_ast.ixx`) and build with the current GCC, using the project's `-Wall -Wextra -Werror`; grep for
   `warning` as well as `error`. A standalone repro would need writing again.
 - **When it lands:** turn the AST forward declarations into non-exported `extern "C++"` purview declarations, and drop
-  the redeclarations that exist only for bug 1.
-- **Last checked:** 2026-09-13.
+  the redeclarations that exist only for bug 1. For bug 1 alone: once CI's GCC has the fix (trunk does, 16.2 untested).
+- **Last checked:** 2026-11-10 (bug 1, GCC trunk 20261018).
 
 ## U3. GCC: `lookup_mark` ICE
 
@@ -116,10 +122,14 @@ Each entry gives:
   `BindByName`/`ParamsOfGroup` in `TypeSymbol::AliasTargetId`, both in `symbols.cpp`); the `TypeKey` caches are public
   `_`-prefixed fields rather than befriended. If a tidy drops one of those qualifications and the build ICEs in
   `lookup_mark`, restore it.
-- **Status:** not reduced to a standalone repro or reported, as far as the notes say.
+- **Status:** not reduced to a standalone repro or reported, as far as the notes say. Since the 2026-10-06 renames
+  the calls are `ParamsDeclaredBy`/`BindingsOfArgs` in `TypeSymbol::AliasTargetId`, and `PrecompiledTemplate` in
+  `TypeRef::IsA`. **2026-11-10, GCC trunk 17.0.0 20261018:** half fixed. `AliasTargetId` builds unqualified;
+  `IsA` still ICEs (`lookup_mark`, `cp/tree.cc:2638`), through ADL: `perform_koenig_lookup` ->
+  `lookup_arg_dependent` -> `name_lookup::search_adl` -> `dedup`. Not tried with GCC 16.2 (CI's).
 - **Check:** unqualify one of the calls above and build.
 - **When it lands:** calls can drop their qualification where a style choice wants it.
-- **Last checked:** 2026-10-08.
+- **Last checked:** 2026-11-10 (GCC trunk 20261018, scratch worktree).
 
 ## U4. GCC: "Bad file data" reading a compiled module cluster
 
@@ -130,10 +140,12 @@ Each entry gives:
 - **Meanwhile:** a `use()` forward declaration instead of an interface import where only a pointer or reference is
   needed (`instance_key.ixx` and `CompNode`, 2026-10-02); AST-needing functions moved into a second TU
   (`substitution.cpp`, 2026-10-08).
-- **Status:** not reduced or reported, as far as the notes say.
-- **Check:** add `import spp.analyse.scopes.comp_key;` back to `instance_key.ixx` and build.
-- **When it lands:** the workarounds above can go back to plain imports.
-- **Last checked:** 2026-10-08.
+- **Status:** not reduced or reported, as far as the notes say. **2026-11-10: gone on GCC trunk** (17.0.0 20261018):
+  with the import added to `type_key.ixx` (the 2026-10-09 rename of `instance_key.ixx`), every importer compiles and
+  `spp` links, with no "Bad file data". Not tried with GCC 16.2 (CI's), so the workarounds stay for now.
+- **Check:** add `import spp.analyse.scopes.comp_key;` back to `type_key.ixx` and build.
+- **When it lands:** the workarounds above can go back to plain imports, once CI's GCC is past it.
+- **Last checked:** 2026-11-10 (GCC trunk 20261018, scratch worktree).
 
 ## U5. clang: implicit destructor ICE in an importer
 
@@ -144,11 +156,14 @@ Each entry gives:
 - **Why:** special members could be left implicit.
 - **Meanwhile:** `PlaceAt` declares all its special members and defines them `= default` in `regions.cpp`, inside
   `SPP_MOD_BEGIN`/`SPP_MOD_END`. The same stack on another `SPP_EXP_CLS` type gets the same fix.
-- **Status:** a modules merge bug; GCC is fine. Not recorded as reported.
+- **Status:** a modules merge bug; GCC is fine. Not recorded as reported. **Still crashes with clang 23.1.5**
+  (2026-11-10): with the copy, move, assignment and destructor left implicit (both constructors still out-of-line),
+  four importers segfault on `PlaceAt::~PlaceAt` with the same stack: `symbols.cpp`, `defer_statement_ast.cpp`,
+  `loop_control_flow_statement_ast.cpp`, `pattern_guard_ast.cpp`.
 - **Check:** with the clang tree (see the local clang coverage build), drop `PlaceAt`'s out-of-line special members and
-  build `symbols.cpp`.
+  build `spp` with `ninja -k 0` (more than one importer crashes).
 - **When it lands:** remove the out-of-line special members.
-- **Last checked:** 2026-10-14.
+- **Last checked:** 2026-11-10 (clang 23.1.5, scratch worktree).
 
 ## U6. MSVC STL: `std::string + std::string_view`
 
@@ -158,10 +173,10 @@ Each entry gives:
 - **Meanwhile:** convert the view first with `AsStr(StrView) -> Str` (in `semantic_error.cpp`; `Str(x)` would trip GCC's
   `-Wuseless-cast`), and keep macros that expand to a `+` chain (`INLINE_INFO` and friends) parenthesised.
 - **Status:** not implemented: the MSVC STL's `main` still defines `__cpp_lib_string_view` as `201803L` (P2591 bumps
-  it to `202403L`), and no issue or PR names P2591 (2026-11-07).
+  it to `202403L`), and no issue or PR names P2591 (2026-11-10).
 - **Check:** the MSVC STL changelog or status page for P2591, or a one-line test on the Windows runner.
 - **When it lands:** `AsStr` at those splices can go (keep the macro parentheses).
-- **Last checked:** 2026-11-07 (STL `main`).
+- **Last checked:** 2026-11-10 (STL `main`).
 
 ## U7. MSVC: inline bodies from a global module fragment, in importers
 
@@ -186,10 +201,11 @@ Each entry gives:
 - **Why:** archives could stay in the build root on Windows.
 - **Meanwhile:** `set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")` under `if (MSVC)` in the root
   CMakeLists, and `-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=lib` in `install-small-libs.sh` for the dependency builds.
-- **Status:** still present in CMake 4.4.0, and in v4.5.0-rc3: `cmcmd.cxx` exempts only `@CMakeFiles` and `@.o/`.
+- **Status:** still present in CMake 4.4.0 through 4.4.5, in v4.5.0-rc3 and on `master` (2026-11-10): `cmcmd.cxx`
+  exempts only `@CMakeFiles` and `@.o/`.
 - **Check:** `cmcmd::VisualStudioLink` in the current CMake source, or the Windows build with the override removed.
 - **When it lands:** remove the archive directory override (both places).
-- **Last checked:** 2026-11-07 (CMake v4.5.0-rc3 source).
+- **Last checked:** 2026-11-10 (CMake v4.4.5, v4.5.0-rc3 and `master` source).
 
 ## U9. ccache-action: `append-timestamp: false`
 
@@ -199,11 +215,11 @@ Each entry gives:
 - **Why:** cache keys without a timestamp.
 - **Meanwhile:** the default (timestamped keys) and no sha in the key; `prune-caches.sh` groups `ccache-`/`sccache-`
   keys with `:3`, as the ISO date splits into three dash segments.
-- **Status:** broken in v1.2.24, still the latest release, and on `main` (`core.getInput`, 2026-11-08).
+- **Status:** broken in v1.2.24, still the latest release, and on `main` (`core.getInput`, 2026-11-10).
 - **Check:** on each ccache-action bump, read `restore.ts` for the string test.
 - **When it lands:** switching to `append-timestamp: false` is possible; keep the prune segment count in step with the
   key shape.
-- **Last checked:** 2026-11-08.
+- **Last checked:** 2026-11-10.
 
 ## U10. Ubuntu toolchain: a current GCC for the runner images
 
@@ -215,19 +231,22 @@ Each entry gives:
   in `../.github/dependencies.toml` (matched against `g++ -dumpfullversion`). It installs Homebrew's binutils too (its GCC
   emits `.base64`, which the runner's binutils 2.42 rejects) and strips Homebrew's specs-file loader and rpath
   additions. The clang jobs still take libstdc++ from the PPA.
-- **Status (2026-11-07):** the PPA's newest gcc-16 for noble is still a 2026-03-15 trunk snapshot, before the PR125768 fix. GCC 16.2
-  packaging exists only in Ubuntu 26.10 and Debian sid, neither of which has a runner image.
+- **Status (2026-11-10):** the PPA's newest gcc-16 for noble is still a 2026-03-15 trunk snapshot, before the PR125768 fix. GCC 16.2
+  packaging exists only in Ubuntu 26.10 and Debian sid, neither of which has a runner image. The `ubuntu-26.04` image
+  (GA 2026-09-17; `ubuntu-latest` moves to it in November 2026, runner-images #14748) does not help: its default GCC is
+  15.2 (13.4, 14.3, 15.2 installed), and 26.04's archive gcc-16 is a 2026-03-22 snapshot. CI pins `ubuntu-24.04`, so
+  the `ubuntu-latest` move does not touch it.
 - **Check:** the PPA's gcc-16 package date for the runner's Ubuntu release, and whether GitHub ships an image on a
   release with GCC 16.2 or later.
 - **When it lands:** go back to apt for GCC; the Homebrew binutils and specs workarounds go with it.
-- **Last checked:** 2026-11-07 (Launchpad API).
+- **Last checked:** 2026-11-10 (Launchpad API, runner-images Ubuntu 26.04 readme).
 
 ## U11. ccache, sccache: caching GCC's C++20 module compiles
 
 - **Library:** ccache (#1252, draft PR #1523) and sccache (#2630).
 - **Want:** GCC compiles with `-fmodules-ts` cached, with the imported and produced `.gcm` files hashed and restored.
 - **Why:** the GCC jobs build every TU with modules, so the compiler cache does nothing for them.
-- **Meanwhile:** none needed for correctness. ccache 4.14.2 counts these compiles as unsupported and sccache 0.19.0
+- **Meanwhile:** none needed for correctness. ccache 4.14.3 counts these compiles as unsupported and sccache 0.19.0
   refuses them, so they always compile fresh. The launcher stays on for GCC so a release that adds support takes effect.
 - **Status:** ccache#1523 had GCC 14 caching working but stalled in 2026-02. Its author says the compilers need upstream
   patches first: their P1689 output leaves too much out. sccache#2630 has no PR. sccache#2516's author calls GCC's
@@ -237,8 +256,8 @@ Each entry gives:
 - **When it lands:** bump `[pin.ccache]`/`[pin.sccache]`. Before trusting it, check that a change to a module interface
   alone makes its importers miss: export `f(int)`, compile an importer through the cache, change it to
   `f(int, int = 0)`, rebuild the module and the importer, and `nm` must show the new mangling (`_ZW1m1fii`).
-- **Last checked:** 2026-11-08 (ccache 4.14.2 and sccache 0.19.0 still latest; #1523 untouched since 2026-02, sccache#2630
-  since 2026-03).
+- **Last checked:** 2026-11-10 (ccache 4.14.3, out 2026-11-08, has nothing on modules in its notes; sccache 0.19.0 still
+  latest; #1523 untouched since 2026-02, sccache#2630 since 2026-03).
 
 ## U12. sccache: caching cl.exe's C++20 module compiles
 
@@ -248,11 +267,12 @@ Each entry gives:
 - **Why:** the Windows MSVC jobs (x64 and, since 2026-11-08, arm64) get a 0% hit rate. The clang-cl job is already cached (sccache #2876, in 0.19.0).
 - **Meanwhile:** none needed for correctness. sccache 0.19.0 refuses every cl.exe module flag, so these compile fresh.
   Do not move Windows to ccache: before ccache PR #1837 it caches MSVC module compiles and can return stale objects.
-- **Status:** PR #2934 opened 2026-10-23, still open and unreviewed (2026-11-08). `/headerUnit` would stay uncacheable.
-  ccache#1837 (stop ccache caching MSVC module compiles) is still open, last touched 2026-11-04.
+- **Status:** PR #2934 opened 2026-10-23, still open, with no reviews (its only comment is Codecov's), last touched
+  2026-11-09 (2026-11-10). `/headerUnit` would stay uncacheable. ccache#1837 (stop ccache caching MSVC module compiles)
+  is still open, last touched 2026-11-04.
 - **Check:** the sccache release notes for #2934, then the MSVC job's sccache stats on a second build.
 - **When it lands:** bump `[pin.sccache]` and confirm that a module-interface-only change makes importers miss.
-- **Last checked:** 2026-11-08 (sccache 0.19.0 still latest).
+- **Last checked:** 2026-11-10 (sccache 0.19.0 still latest).
 
 ## U13. LLVM: PC-relative EH pointers on m68k under PIC
 
@@ -268,15 +288,15 @@ Each entry gives:
   turns it off. m68k programs build without the guard: a foreign exception still aborts, without the named report.
 - **Status (2026-10-24):** absent on trunk (`299c65b98b02`). A one-line fix and an `eh-pic-encoding.ll` test were
   written for an upstream PR, [llvm/llvm-project#235347](https://github.com/llvm/llvm-project/pull/235347), opened
-  2026-10-24, merged 2026-10-25 as `62e4899157d6`. As of 2026-11-07 it is on `main` (LLVM 24) only: not on
-  `release/23.x` nor in 23.1.5, and no backport (`/cherry-pick`) has been requested.
+  2026-10-24, merged 2026-10-25 as `62e4899157d6`. As of 2026-11-10 it is on `main` (LLVM 24) only: not on
+  `release/23.x` nor in 23.1.5 (the newest release), and no backport (`/cherry-pick`) has been requested.
 - **Check:** whether #235347 has merged and into which release; then
   `grep -n "case Triple::m68k" llvm/lib/CodeGen/TargetLoweringObjectFileImpl.cpp` in the installed LLVM's
   release branch, or emit m68k with the key on and `readelf -r spp.o` for `R_68K_32` in `.rela.eh_frame`.
 - **When it lands:** once spp builds against an LLVM with the fix, delete `TargetHasPcRelEhPointers` and its refusal,
   drop `ffi_unwind_guard` from the m68k entry's `off` in `_cross_codegen.yaml`, and decide whether the key stays (S20.1
   had it keyless: it protects a language guarantee).
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U14. CMake: `import std` with clang-cl and the MSVC STL
 
@@ -292,7 +312,7 @@ Each entry gives:
   the MSVC ABI", 2026-07-04, closes CMake #26761): Clang on the MSVC ABI goes through the MSVC module logic. Not in any
   4.4.x (4.4.4 is the latest); in v4.5.0-rc1 (2026-10-15). 4.4 and 4.3 each took about four weeks from rc1 to final,
   so 4.5.0 is expected around mid-November 2026 (an estimate, not an announced date). v4.5.0-rc3 came out
-  2026-11-04 and keeps the MSVC-frontend include; still no final (2026-11-07). Whether clang 23 then compiles
+  2026-11-04 and keeps the MSVC-frontend include; still no final, and no rc4 (2026-11-10; 4.4.5 is the newest 4.4.x). Whether clang 23 then compiles
   the MSVC STL's `std.ixx` cleanly is untested.
 - **Check:** `gh api repos/Kitware/CMake/releases --jq '.[0:3][].tag_name'` for a final 4.5.0; the top of
   `Clang-CXX-CXXImportStd.cmake` at that tag should include `Compiler/MSVC-CXX-CXXImportStd` for the MSVC frontend.
@@ -303,7 +323,7 @@ Each entry gives:
   `setup-toolchain/action.yaml` and `_cppcheck.yaml`) to a tag whose catalog has 4.5.0 (the sibling libraries are built
   with the same CMake), run the clang-cl lane, and once it is green drop `advisory: true` and the "(advisory)" from its
   name in `pr.yaml`, and consider adding it to `ci-success`. Also recheck U8 on the new CMake.
-- **Last checked:** 2026-11-07 (CMake releases, `Clang-CXX-CXXImportStd.cmake` at v4.5.0-rc3).
+- **Last checked:** 2026-11-10 (CMake tags, `Clang-CXX-CXXImportStd.cmake` at v4.5.0-rc3).
 - **Sources:** [commit 1610aa22f4](https://github.com/Kitware/CMake/commit/1610aa22f4),
   [cmake-cxxmodules(7)](https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html),
   [CMake Discourse: import std on Windows](https://discourse.cmake.org/t/import-std-doesnt-work-on-windows/14268).
@@ -321,14 +341,14 @@ Each entry gives:
   `__stack_chk_fail` (`HasSafeStackCanary` in `../sources/spp/codegen/llvm_target.cpp`), naming both keys.
   The Windows lanes pass `off: memory.stack.split` (`pr.yaml`, `post_merge.yaml`), keeping the canary. (Whether sppc's unsafe stack works on
   Windows at all is open separately: sppc `PORTING.md` section 8.)
-- **Status (2026-11-07):** unchanged on trunk: `checkStackGuard` still errors when `STACKPROTECTOR_CHECK_FAIL` is
-  unsupported. No upstream issue found.
+- **Status (2026-11-10):** unchanged on trunk: `checkStackGuard` still errors when `STACKPROTECTOR_CHECK_FAIL` is
+  unsupported (`SafeStack.cpp`'s two commits since 2026-11-01 do not touch it). No upstream issue found.
 - **Check:** in `SafeStack.cpp`, whether `checkStackGuard` still errors when `STACKPROTECTOR_CHECK_FAIL` is
   unsupported; or `llc -mtriple=x86_64-pc-windows-msvc` on a function with `sspstrong safestack`.
 - **When it lands:** delete `HasSafeStackCanary`/`TargetHasSafeStackCanary`, the refusal and its Todo, the two
   `TestTargetSupport` canary tests, and `memory.stack.split` from the Windows lanes' `off` in `pr.yaml` and
   `post_merge.yaml`.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U16. LLVM: AArch64 SLS thunks on Mach-O
 
@@ -343,16 +363,17 @@ Each entry gives:
 - **Meanwhile:** `TargetHasSlsHardening` in `../sources/spp/codegen/llvm_harden_codegen.cpp` is false for AArch64
   Mach-O, so `[binary.codegen] sls` (on by default) is refused there, naming the key; the `retbr` half, which works,
   goes with it, since the key covers both. The macOS test calls pass `off: sls` (`pr.yaml`, `post_merge.yaml`).
-- **Status (2026-11-07):** unchanged on trunk (`convertBLRToBL` still calls `Context.getOrCreateSymbol(ThunkName)`). Reproduce: `llc -mtriple=aarch64-apple-macos -filetype=obj` on a function doing `call void %p()` with `"target-features"="+harden-sls-blr,+harden-sls-nocomdat"`;
+- **Status (2026-11-10):** unchanged on trunk (`convertBLRToBL` still calls `Context.getOrCreateSymbol(ThunkName)`;
+  the file's recent commits are inserter refactors, and no PR names the Mach-O thunk). Reproduce: `llc -mtriple=aarch64-apple-macos -filetype=obj` on a function doing `call void %p()` with `"target-features"="+harden-sls-blr,+harden-sls-nocomdat"`;
   `llvm-nm` shows `t ___llvm_slsblr_thunk_x0` and `U __llvm_slsblr_thunk_x0`. A fix is drafted in the local
   llvm-project working tree (2026-10-26, not yet a PR): `convertBLRToBL` takes the call's symbol from the thunk
   function (`MF.getTarget().getSymbol`) instead of `Context.getOrCreateSymbol(ThunkName)`, with the test
   `llvm/test/CodeGen/AArch64/speculation-hardening-sls-blr-macho.ll`. It fails on unpatched LLVM 23 and passes with
-  the patch, alongside the 8 existing AArch64 SLS tests. Still not opened as a PR (2026-11-07).
+  the patch, alongside the 8 existing AArch64 SLS tests. Still not opened as a PR (2026-11-10).
 - **Check:** the same `llc` + `llvm-nm`: one defined name, no `U` thunk.
 - **When it lands:** restore the AArch64 Mach-O case in `TargetHasSlsHardening`, with `+harden-sls-nocomdat` added to
   its features on Mach-O again (Mach-O has no COMDATs), and drop `off: sls` from the macOS test calls.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U17. qemu: `getsockopt` of `SO_RCVTIMEO`/`SO_SNDTIMEO` under linux-user
 
@@ -368,7 +389,7 @@ Each entry gives:
 - **Meanwhile:** CI's qemu-user is a static release of our fork, `SamG101-Developer/qemu` (`spp-patches`: qemu master
   plus this fix and U18-U19, rebased weekly by its Sync workflow; a `spp-*` tag builds and checks the release),
   pinned in `[pin.qemu-user]` and in sppc's `_build.yaml`. Under it the four tests pass.
-- **Status (2026-11-07):** unchanged in qemu master (`71f25c75417d`) and in 11.1.3, the newest release. The fix is
+- **Status (2026-11-10):** unchanged in qemu master (`723622bedb0b`) and in 11.1.3, the newest release. The fix is
   one character (`if (optval_addr)` to `if (!optval_addr)`, `Fixes: 08dc3e240fc0`, `Cc: qemu-stable`):
   `.triages/tickets/0003-linux-user-Fix-inverted-NULL-check-in-getsockopt-for-SO_RCVTIMEO.patch`, with the GitLab
   issue text in `.triages/tickets/qemu-getsockopt-timeout.md`. Carried in the fork; its Release build's check
@@ -381,7 +402,7 @@ Each entry gives:
   U17-U19 are all in a qemu release, retire the fork: move `[pin.qemu-user]` and sppc's `_build.yaml` back to Debian's
   newest `qemu-user` deb (restoring the Debian section of `refresh-pins.sh` and `install-qemu-linux.sh` from git
   history), and delete the notes.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U18. qemu: the ppc32 rt sigreturn CFA in the linux-user vDSO
 
@@ -396,7 +417,8 @@ Each entry gives:
 - **Meanwhile:** carried in our qemu fork with U17, which CI uses; its Release check unwinds 6 frames out of a handler
   under the patched qemu-ppc (2026-10-26). sppc's `_sppc_bt_print` also prints the fault pc alone as `#0`
   when an unwinder never reaches it (`../sppc/.triages/notes/ci/qemu-ppc32-vdso-sigframe-cfa.md`).
-- **Status (2026-11-07):** unchanged in qemu master (`71f25c75417d`). No upstream issue yet. The patch moves
+- **Status (2026-11-10):** unchanged in qemu master (`723622bedb0b`; `ppc/vdso.S` untouched since 2025-09). No upstream
+  issue yet. The patch moves
   `RT_SIGFRAME_ADJUST` into `vdso-asmoffset.h` and adds it to the CFA (`Fixes: e34136d93059`, `Cc: qemu-stable`);
   `vdso-32.so` must be regenerated from it:
   `.triages/tickets/0001-linux-user-ppc-Include-RT_SIGFRAME_ADJUST-in-the-32-bit-rt-sigreturn-CFA.patch`, with the
@@ -405,7 +427,7 @@ Each entry gives:
   `__kernel_sigtramp_rt32` under qemu-ppc built from qemu master, instead of dying with SIGSEGV.
 - **When it lands:** as U17. Then the sppc fallback can stay (it is right on any unwinder that stops short), but drop
   the sppc note.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U19. qemu: the loongarch64 sigreturn CFA and return column in the linux-user vDSO
 
@@ -424,14 +446,14 @@ Each entry gives:
   (2026-10-26). sppc's crash reporter falls back to printing the fault pc, as for U18; its loongarch64 build is
   `required: false` in `../sppc/.github/workflows/_build.yaml`.
 - **Status (2026-10-26):** reported as https://gitlab.com/qemu-project/qemu/-/work_items/4743 (2026-10-23, open).
-  Still open on 2026-11-07, with one comment (last activity 2026-10-28), and master's `vdso.S` still has
+  Still open on 2026-11-10, with one comment (last activity 2026-10-28), and master's `vdso.S` still has
   `.cfi_def_cfa 2` and `.cfi_return_column 64`. The issue proposes only the CFA half; the patch has both (`Resolves:` that issue, `Fixes: 00cc2934b2f0`,
   `Cc: qemu-stable`; `vdso.so` must be regenerated):
   `.triages/tickets/0002-linux-user-loongarch64-Use-sp-not-tp-for-the-sigreturn-CFA.patch`.
 - **Check:** the issue's reproducer prints `backtrace: 7 frames` under qemu-loongarch64 built from qemu master; or
   the issue is closed by a commit.
 - **When it lands:** as U17; then consider making sppc's loongarch64 build required again.
-- **Last checked:** 2026-11-07.
+- **Last checked:** 2026-11-10.
 
 ## U20. LLVM: ARMv5's sub-word `__sync_*` results are taken as zero-extended
 
@@ -447,9 +469,13 @@ Each entry gives:
 - **Status (2026-10-27):** not reported. Reproduce with no spp: a C file doing
   `unsigned char a[4] = {200}; __sync_val_compare_and_swap(&a[0], 0, 0)`, built with `clang --target=armv5te-linux-gnueabi --sysroot=/usr/arm-linux-gnueabi -O1 -c`, linked with `arm-linux-gnueabi-gcc`, run
   under qemu-arm: it reads 4294967240; built with `arm-linux-gnueabi-gcc -march=armv5te` it reads 200.
+  On trunk, llvm/llvm-project#238972 (merged 2026-11-04, LLVM 24) now marks the i8/i16 operands and results of the sized
+  atomic libcalls `zeroext`, and lets callers rely on the extended result. If that covers the `__sync_*` calls, it
+  writes the zero-extension assumption into the signature, so a fix would have to make it `signext` for ARM Linux. Not
+  tried on trunk.
 - **Check:** that reproducer reads 200 with the newest clang; or the test passes on arm-linux-gnueabi.
 - **When it lands:** nothing to undo; the test goes green on the LLVM bump.
-- **Last checked:** 2026-10-27.
+- **Last checked:** 2026-11-10 (trunk commits only; the reproducer was last run 2026-10-27).
 
 ## U21. LLVM: m68k reaches data and calls through 16-bit relocations
 
@@ -463,10 +489,11 @@ Each entry gives:
 - **Meanwhile:** the cross-codegen job's m68k unit-test step fails at link; its hello-world run still links and runs.
   The missing `__atomic_*` functions it also hit are fixed in spp: the link adds `-latomic` when the object imports
   them (`ImportsAtomicLibcalls`, `../sources/spp/compiler/compiler_boot.cpp`).
-- **Status (2026-10-27):** not reported; unchanged in LLVM 23.
+- **Status (2026-11-10):** not reported; unchanged in LLVM 23. The M68k backend's trunk commits since 2026-10-27 are
+  cleanups (carry handling, options in TableGen); none touches relocations or addressing.
 - **Check:** `spp test --all-libs --target m68k-unknown-linux-gnu` links.
 - **When it lands:** nothing to undo; the m68k unit-test step goes green on the LLVM bump.
-- **Last checked:** 2026-10-27.
+- **Last checked:** 2026-11-10 (trunk commits only; the link was last tried 2026-10-27).
 
 ## U22. MSVC: a module implementation unit misses the interface's using-declarations
 
@@ -476,7 +503,8 @@ Each entry gives:
 - **Why:** `use(ns, X)` in an interface would then serve its `.cpp` too.
 - **Meanwhile:** every module `.cpp` repeats the names it uses in a `use_alias` block, marked
   `MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL` (191 files). See `notes/ci/msvc-interface-names-not-inherited.md`.
-- **Status (2026-11-08):** filed. Repro: `tickets/msvc-impl-unit-misses-interface-using-decl/`.
+- **Status (2026-11-08):** filed. Repro: `tickets/msvc-impl-unit-misses-interface-using-decl/`. The
+  windows-2025-vs2026 image moved to MSVC 14.51.36247 (image 20261103), not yet tried (2026-11-10).
 - **Check:** `build.bat` in the repro folder prints `ok` with the runner's toolset.
 - **When it lands:** the marked `use_alias` lines a `.cpp` only needs for its interface's names can go.
 - **Last checked:** 2026-11-08.
@@ -490,10 +518,25 @@ Each entry gives:
 - **Why:** templates in interfaces could use the short names like the rest of the interface.
 - **Meanwhile:** those names are qualified inside the templates, marked `MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL`
   (`comp_time_intrinsics.ixx`, `inner_scope_ast.ixx`).
-- **Status (2026-11-08):** filed. Repro: `tickets/msvc-template-instantiation-misses-using-decl/`.
+- **Status (2026-11-08):** filed. Repro: `tickets/msvc-template-instantiation-misses-using-decl/`. Not yet tried on
+  MSVC 14.51.36247 (2026-11-10).
 - **Check:** `build.bat` in the repro folder prints `ok` with the runner's toolset.
 - **When it lands:** the marked qualifications can be shortened again.
 - **Last checked:** 2026-11-08.
+
+## U24. LLVM: `Module::renumberMetadataForAssembly()` before printing IR
+
+- **Library:** LLVM 24 (release notes, "Changes to the LLVM IR").
+- **Want:** `Module::renumberMetadataForAssembly()`, needed once LLVM 24 gives metadata persistent IDs: a client that
+  calls `Module::print()` directly no longer gets the `!N` numbers renumbered for it.
+- **Why:** without the call, the `.ll` artefacts keep valid IR but may number and order metadata differently, which
+  makes before/after `out/llvm/**/*.ll` diffs noisy (`notes/build/spp-ir-diff-verification.md`).
+- **Meanwhile:** nothing to do: LLVM 23 (23.1.5) has no such function and `print()` still renumbers.
+- **Status (2026-11-10):** in LLVM 24's in-progress release notes; not in `/usr/lib/llvm-23/include/llvm/IR/Module.h`.
+- **Check:** `grep renumberMetadataForAssembly $(llvm-config --includedir)/llvm/IR/Module.h`.
+- **When it lands:** on the LLVM 24 bump, call it on the module just before `print()` at both sites in
+  `compiler_boot.cpp` (each module's `.ll`, and `lto.ll`).
+- **Last checked:** 2026-11-10.
 
 ## Resolved
 
