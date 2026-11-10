@@ -207,6 +207,16 @@ auto spp::analyse::utils::drop_utils::NeedsDrop(
   // look at the attributes at all
   if (FindDropOverloadInfo(type_sym, sm, meta).Proto != nullptr) { return true; }
 
+  // A variant holds one of its members at a time, behind a
+  // tag rather than as parts: it is worth dropping if any
+  // member it can hold is.
+  if (type_predicates::IsTypeVariant(type, *sm.CurrentScope)) {
+    return genex::any_of(
+      type_members::VariantMemberRefs(type, *sm.CurrentScope), [&](auto const &member) {
+        return NeedsDrop(member, sm, meta);
+      });
+  }
+
   // Otherwise the type is only worth dropping if something
   // it holds is, each part read where it was found. A type
   // cannot contain itself by value, so the recursion is
@@ -245,6 +255,13 @@ auto spp::analyse::utils::drop_utils::EnsureDropInstantiated(
     // destruction: "EmitDrop" calls it and does not go on to the
     // attributes, because the destructor is what answers for them.
     if (DropProtoFor(sym, sm, meta, true) != nullptr) { return; }
+
+    // A variant is destroyed as whichever member it holds, so
+    // every member's destructor has to exist.
+    if (type_predicates::IsTypeVariant(ref, *sm.CurrentScope)) {
+      for (auto const &member : type_members::VariantMemberRefs(ref, *sm.CurrentScope)) { self(self, member); }
+      return;
+    }
 
     // Otherwise destruction is part by part, and it is their
     // destructors that have to exist.

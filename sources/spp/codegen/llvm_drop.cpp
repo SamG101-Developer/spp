@@ -18,6 +18,7 @@ import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
+import spp.codegen.llvm_variant;
 import spp.utils.ice;
 import spp.utils.interner;
 import spp.utils.uid;
@@ -41,8 +42,10 @@ namespace spp::codegen {
       using analyse::utils::drop_utils::FindDropOverload;
       using analyse::utils::drop_utils::NeedsDrop;
       using analyse::utils::type_members::GetAllParts;
+      using analyse::utils::type_members::VariantMemberRefs;
       using analyse::utils::type_predicates::IsTypeArray;
       using analyse::utils::type_predicates::IsTypeCompTimeIndexable;
+      using analyse::utils::type_predicates::IsTypeVariant;
 
       // Destroying a value that owns nothing is a no-op;
       // an "S32" local, or a struct built only from them,
@@ -110,6 +113,31 @@ namespace spp::codegen {
           const auto self_val = ctx->Builder.CreateLoad(self_ty, ptr, "drop.self" + uid);
           ctx->Builder.CreateCall(drop_func, {self_val});
         }
+        return;
+      }
+
+      // A variant holds one member at a time, behind its tag, so the payload is destroyed as whichever member the
+      // tag names; a member that owns nothing goes straight to the end. It has no parts to take out one by one, so
+      // it is only ever moved out whole, which returned above.
+      if (IsTypeVariant(type, *sm->CurrentScope)) {
+        if (not moved.empty()) { spp::Ice("a variant is destroyed with a part missing"); }
+        const auto variant_ty = GetLlvmTypeOf(type.WithoutConvention(), ctx);
+        const auto func = ctx->Builder.GetInsertBlock()->getParent();
+        const auto done_bb = llvm::BasicBlock::Create(*ctx->Context, "drop.var.done" + uid);
+        const auto tag = LoadVariantTag(ptr, variant_ty, "drop.var.tag" + uid, ctx);
+        const auto dispatch = ctx->Builder.CreateSwitch(tag, done_bb);
+        const auto members = VariantMemberRefs(type, *sm->CurrentScope);
+        for (auto i = 0uz; i < members.size(); ++i) {
+          if (not NeedsDrop(members[i], *sm, meta)) { continue; }
+          const auto member_bb = llvm::BasicBlock::Create(*ctx->Context, "drop.var.member" + uid, func);
+          dispatch->addCase(llvm::ConstantInt::get(GetVariantTagType(ctx), i), member_bb);
+          ctx->Builder.SetInsertPoint(member_bb);
+          const auto payload = GetVariantPayloadPtr(ptr, variant_ty, "drop.var.payload" + uid, ctx);
+          DropValue(members[i], payload, {}, sm, meta, ctx);
+          ctx->Builder.CreateBr(done_bb);
+        }
+        done_bb->insertInto(func);
+        ctx->Builder.SetInsertPoint(done_bb);
         return;
       }
 
