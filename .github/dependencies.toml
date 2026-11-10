@@ -167,7 +167,7 @@ generation = "v3"
 [[library]]
 name = "unordered_dense"
 repo = "https://github.com/martinus/unordered_dense.git"
-commit = "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5"
+commit = "4c8dd1e1e610e653e56c09fb29049a5a6535a8c8"
 
 [[library]]
 name = "mimalloc"
@@ -179,7 +179,7 @@ cmake-flags-windows = ["-DMI_OVERRIDE=OFF"]
 [[library]]
 name = "json"
 repo = "https://github.com/nlohmann/json.git"
-commit = "eac1b4343b644bd23cdf53359e9f8b0add473754"
+commit = "9ed8f85b21c7d38e2c2bf91dd55801e93e690d51"
 cmake-flags = ["-DJSON_BuildTests=OFF"]
 
 [[library]]

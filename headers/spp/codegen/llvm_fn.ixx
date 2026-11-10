@@ -13,26 +13,24 @@ use(spp::asts, struct TypeAst);
 use(spp::codegen, struct LlvmFnWrapper);
 use(spp::codegen, struct LlvmVarSymbolInfo);
 
-/// This is used as a shared pointer, wrapping the internal
-/// LLVM function, allowing it to be shared between cloned
-/// functions, and a one-place update mechanism too.
+/// This wrapper is used as a shared pointer, wrapping the internal LLVM
+/// function, allowing it to be shared between cloned functions, and a
+/// one-place update mechanism too.
 SPP_EXP_CLS struct spp::codegen::LlvmFnWrapper {
   llvm::Function *Target;
 };
 
 namespace spp::codegen {
-  /// To fix cross-module declaration errors, functions declared
-  /// in other modules need their declarations brought into
-  /// the current LLVM module, so they're accessible in the
-  /// individual TU. This function either adds the declaration
-  /// into this module, or it is already here so no work needs
-  /// to be done. Either way, the declaration is returned.
+  /// To fix cross-module declaration errors, functions declared/defined in
+  /// other modules need their declarations brought into the current LLVM
+  /// module, so they're accessible in the individual TU. This function either
+  /// adds the declaration into this module, or if it is already here no work
+  /// needs to be done. Either way, the declaration is returned.
   SPP_EXP_FUN auto GetOrAddTargetIntoCurrentModule(
     llvm::Function const &target,
     llvm::Module &current_module) -> llvm::Function*;
 
-  /// How the target's C calling convention takes one by-value
-  /// parameter of an "!ffi" function, where that differs from
+  /// How the target's C calling convention takes one by-value parameter of an "!ffi" function, where that differs from
   /// passing its LLVM value as it is. A struct of one field
   /// stands for that field's C scalar ("NonNull" is a pointer),
   /// so it is declared as that scalar on every target ("Unwrap":

@@ -148,33 +148,34 @@ auto spp::codegen::ApplyCfiCoroTypes(
   TypeCfiFunctions(*static_cast<llvm::Module*>(llvm_module));
 }
 
-auto spp::codegen::CheckCfiCalls(
+auto spp::codegen::FinishCfi(
   void *llvm_module) -> void {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
 
-  // The calls carry their checks from where they were emitted
-  // ("CfiFnCallBundles", "CfiGenCallBundles"). One that does not
-  // would be the call an attacker could take anywhere, so it
-  // stops the build.
+  // On Mach-O the type word before a function belongs to the atom
+  // before it, which ld64 may move (a cold function, either side).
+  // Prefix data gets a label of its own and turns the function into
+  // an .alt_entry of it, so the word after it (the type) stays in the
+  // function's atom. ELF keeps the word in the function's section.
+  const auto anchor_types = TargetTriple().isOSBinFormatMachO();
+  const auto anchor = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm_mod.getContext()), 0);
+
   for (auto &fn : llvm_mod) {
+    if (fn.isDeclaration()) { continue; }
+    if (anchor_types and not fn.hasPrefixData() and fn.hasMetadata(llvm::LLVMContext::MD_kcfi_type)) {
+      fn.setPrefixData(anchor);
+    }
+
+    // The calls carry their checks from where they were emitted
+    // ("CfiFnCallBundles", "CfiGenCallBundles"). One that does not
+    // would be the call an attacker could take anywhere, so it
+    // stops the build.
     for (auto &inst : llvm::instructions(fn)) {
       const auto call = llvm::dyn_cast<llvm::CallBase>(&inst);
       if (call == nullptr or not call->isIndirectCall()) { continue; }
       if (not call->getOperandBundle(llvm::LLVMContext::OB_kcfi).has_value()) {
         spp::Ice("an indirect call in " + fn.getName().str() + " has no control-flow-integrity type");
       }
-    }
-  }
-}
-
-auto spp::codegen::KeepCfiTypesAttached(
-  void *llvm_module) -> void {
-  // Only Mach-O moves a cold function away from the word before it
-  // (N_COLD_FUNC); ELF keeps the word in the function's own section.
-  if (not TargetTriple().isOSBinFormatMachO()) { return; }
-  for (auto &fn : *static_cast<llvm::Module*>(llvm_module)) {
-    if (fn.hasMetadata(llvm::LLVMContext::MD_kcfi_type)) {
-      fn.removeFnAttr(llvm::Attribute::Cold);
     }
   }
 }

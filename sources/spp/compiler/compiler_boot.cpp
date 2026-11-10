@@ -785,8 +785,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
     if (not codegen::ApplyRegisterScrubbing(lto_module.get())) { return false; }
   }
   FEATURE_GATE(BinaryCodegenCfi) {
-    codegen::CheckCfiCalls(lto_module.get());
-    codegen::KeepCfiTypesAttached(lto_module.get());
+    codegen::FinishCfi(lto_module.get());
   }
   FEATURE_GATE(BinaryCodegenJumpTableBounds) {
     codegen::ApplyHardenedJumpTables(lto_module.get());
