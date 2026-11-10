@@ -14,3 +14,4 @@
 - [GCC opaque enum -g ICE](gcc-opaque-enum-dwarf-ice.md) — enum opaque in one module, defined in another: dwarf2out ICE under -g, MSVC undefined symbol; import the definer
 - [import std: two std.cc entries](cmake-import-std-two-std-cc-entries.md) — object has no -std (gnu++20), imported BMI is gnu++26; IDEs may grey out C++23 exports
 - [GCC modules: undefined vtable](gcc-modules-vtable-key-function.md) — "undefined symbol: vtable for X" after an unrelated edit; SPP_GCC_VTABLE_FIX(_IMPL) gives a key function
+- [MSVC needs the member type imported](msvc-needs-member-type-imported.md) — postfix->Op->To<..>() needs spp.asts.postfix_expression_operator_ast imported; GCC/clang reach it, MSVC C2027
