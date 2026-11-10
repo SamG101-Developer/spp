@@ -29,12 +29,13 @@ import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_layout;
+import spp.codegen.llvm_abi;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
+import spp.utils.strings;
 import genex;
 import llvm;
 
@@ -59,6 +60,8 @@ spp::asts::ClassPrototypeAst::ClassPrototypeAst(
   Annotations(std::move(annotations)),
   TokCls(std::move(tok_cls)),
   ZeroTypeAnnotation(nullptr),
+  FfiAnnotation(nullptr),
+  ConvAnnotation(nullptr),
   Name(std::move(name)),
   GnParamGroup(std::move(generic_param_group)),
   Impl(std::move(impl)),
@@ -89,6 +92,8 @@ auto spp::asts::ClassPrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(Impl));
   ast->Visibility = Visibility;
   ast->ZeroTypeAnnotation = ZeroTypeAnnotation;
+  ast->FfiAnnotation = FfiAnnotation;
+  ast->ConvAnnotation = ConvAnnotation;
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->_ClsSymbol = _ClsSymbol;
@@ -238,6 +243,12 @@ auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
       *ZeroTypeAnnotation, *Impl->Members.front(), "a '!zero_type' class",
       "the type is guaranteed to occupy no storage, and an attribute would give it a size"));
 
+  // An "!ffi" class mirrors a C struct, so a "!conv" on it has to
+  // name a foreign convention ("C" itself, or a platform's).
+  RaiseIf<SppIdentifierUnknownError>(
+    FfiAnnotation != nullptr and ConvAnnotation != nullptr and not codegen::AbiOf(*_ClsSymbol).IsForeign(),
+    ERR_ARGS(*ConvAnnotation, "convention for an '!ffi' class", spp::utils::strings::ClosestMatch(ConvAnnotation->ConvName(), codegen::AbiNames(true))));
+
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
@@ -356,66 +367,41 @@ auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   return _ClsSymbol.get();
 }
 
-static auto ApplyStructLayout(
-  llvm::StructType *struct_type,
-  spp::Vec<llvm::Type*> const &field_types,
-  const spp::codegen::StructLayout layout,
-  spp::codegen::LlvmTypeSymbolInfo *sym_info,
-  spp::codegen::LlvmCtx const *ctx)
-  -> void {
-  // A struct body is only ever set once. "RegisterLlvmTypeInfo"
-  // lays the compiler-known types out itself, like "Var" is a
-  // { tag, payload } pair, "Generated" and the "Fun*" family
-  // are { fn_ptr, env_ptr } literals. As none of them declare
-  // attributes, we need to skip setting 0 fields, as this messes
-  // up the layout and subsequent GEP instructions.
-  const auto needs_body = struct_type->isOpaque();
+/// Why a C struct cannot hold a value of "ref" as a field, or none if it can:
+/// a number, a pointer, a fixed array of those, or a class (or tuple) laid out
+/// the C way whose own fields it can hold. A generator lowers to a pointer, and
+/// a closure or variant to a struct, but C holds none of them.
+static auto FfiAttrProblem(
+  TypeRef const &ref, ScopeManager const &sm, spp::codegen::LlvmCtx const *ctx)
+  -> spp::Opt<spp::StrView> {
+  using namespace spp::analyse::utils;
+  auto const &scope = *sm.CurrentScope;
+  if (type_predicates::IsTypeVoid(ref, scope)) { return spp::Nullopt; }
+  if (type_predicates::IsTypeGenerator(ref, scope)) { return "a generator"; }
+  if (type_predicates::IsTypeFunction(ref, scope)) { return "a function"; }
+  if (type_predicates::IsTypeVariant(ref, scope)) { return "a variant"; }
 
-  // Fields that carry no value are not laid out at all, whichever convention is in force.
-  const auto kept = spp::codegen::DropValuelessFields(field_types);
-  auto kept_types = spp::Vec<llvm::Type*>();
-  auto kept_map = spp::Map<std::size_t, std::size_t>();
-  for (auto new_idx = 0uz; new_idx < kept.size(); ++new_idx) {
-    kept_types.emplace_back(field_types[kept[new_idx]]);
-    kept_map[kept[new_idx]] = new_idx;
+  const auto type = spp::codegen::GetLlvmTypeOf(ref.WithoutConvention(), ctx);
+  if (type_predicates::IsTypeArray(ref, scope)) {
+    return FfiAttrProblem(ref.Symbol->AsBound()->TypeArgRefs().front(), sm, ctx);
   }
-  const auto dropped_any = kept.size() != field_types.size();
+  if (spp::codegen::IsCScalar(type)) { return spp::Nullopt; }
 
-  switch (layout) {
-    case spp::codegen::StructLayout::C: {
-      // Keep declaration order, with natural alignment padding.
-      // This mirrors the C language / specifications. Seen in the
-      // FFI structs.
-      if (needs_body) { struct_type->setBody(kept_types, false); }
-      // An empty map means the declaration order was preserved outright, which it only is when nothing was dropped.
-      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
-      else { sym_info->FieldIndexMap.clear(); }
-      break;
-    }
-    case spp::codegen::StructLayout::Packed: {
-      // Keep declaration order, but remove all inter-field padding.
-      // Todo: unreachable today. Before a class can be packed, a
-      //  borrow of one of its fields must not get "align" (nor any
-      //  load through it the type's ABI alignment): see the borrow
-      //  parameter attributes in "GenerateLlvmDeclaration".
-      if (needs_body) { struct_type->setBody(kept_types, true); }
-      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
-      else { sym_info->FieldIndexMap.clear(); }
-      break;
-    }
-    case spp::codegen::StructLayout::Spp: {
-      // Re-order the fields to minimize padding, and record where
-      // each declared attribute ended up, so that codegen can map
-      // a declaration index to its physical field index.
-      auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
-      if (needs_body) { struct_type->setBody(sorted_types, false); }
-      sym_info->FieldIndexMap = std::move(index_map);
-      break;
-    }
-    default: {
-      spp::Ice(std::format("unhandled struct layout: {}", static_cast<int>(layout)));
-    }
+  // A struct of two or more fields: a tuple is laid out the C way, and
+  // a class only if its convention is a foreign one. Either way its own
+  // fields have to be ones C can hold too.
+  auto const &sym = *ref.Symbol->AsBound();
+  const auto is_tuple = type_predicates::IsTypeTuple(ref, scope);
+  if (not is_tuple and not spp::codegen::AbiOf(sym).IsForeign()) { return "a class laid out the s++ way"; }
+  const auto fields = is_tuple
+    ? sym.TypeArgRefs()
+    : type_members::GetAllAttrs(sym)
+      | genex::views::transform([](auto const &attr) { return spp::get<1>(attr); })
+      | genex::to<spp::Vec>();
+  for (auto const &field : fields) {
+    if (const auto what = FfiAttrProblem(field, sm, ctx); what.has_value()) { return what; }
   }
+  return spp::Nullopt;
 }
 
 auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
@@ -484,14 +470,26 @@ auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
     types = std::move(prefixed);
   }
 
+  // An "!ffi" class is laid out as C lays out its struct, so every
+  // attribute must be one C can hold. Checked on each instance, as
+  // a generic one's attributes are only known there.
+  if (not is_tuple and FfiAnnotation != nullptr and genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
+    for (auto const &[name, attr_ref, attr_scope] : type_members::GetAllAttrs(*type_sym)) {
+      if (const auto what = FfiAttrProblem(attr_ref, *sm, ctx); what.has_value()) {
+        const auto attr = type_members::AttrAstOf(*attr_scope, *name);
+        Raise<SppFfiAttributeTypeError>(
+          ERR_ARGS(*FfiAnnotation, attr != nullptr ? static_cast<Ast const&>(*attr->Type) : *Name, *what));
+      }
+    }
+  }
+
   // If there are any generic types present (llvm_type is nullptr),
-  // skip the layout generation. Tuples use "C" layout so they
+  // skip the layout generation. Tuples use the C convention so they
   // keep the order of types based on the type arguments (standard
-  // tuple design).
+  // tuple design); a class uses its own ("!conv", "!ffi").
   if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-    const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
-    const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
-    ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
+    auto const &abi = is_tuple ? codegen::GetCAbi() : codegen::AbiOf(*type_sym->AsBound());
+    abi.LayOutStruct(*llvm::cast<llvm::StructType>(lt), types, *type_sym->LlvmInfo, *ctx);
   }
 }
 

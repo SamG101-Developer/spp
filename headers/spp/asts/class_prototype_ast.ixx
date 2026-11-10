@@ -41,6 +41,15 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
   /// is still linear unless it is also "Copy".
   AnnotationAst *ZeroTypeAnnotation;
 
+  /// Optional "!ffi" annotation: the class mirrors a C struct, so
+  /// it takes the C convention unless "!conv" names another, and
+  /// every attribute has to be one C can hold.
+  AnnotationAst *FfiAnnotation;
+
+  /// Optional "!conv" annotation, naming the convention the class
+  /// is laid out by (its symbol's "DeclaredAbi").
+  AnnotationAst *ConvAnnotation;
+
   /// The name used to refer to the class, which must be unique
   /// within the scope.
   Shared<TypeAst> Name;

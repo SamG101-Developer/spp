@@ -13,6 +13,7 @@ use std::annotations::private
 use std::annotations::virtual_method
 use std::annotations::abstract_method
 use std::annotations::ffi
+use std::annotations::conv
 use std::annotations::zero_type
 use std::annotations::test
 use std::annotations::cfg

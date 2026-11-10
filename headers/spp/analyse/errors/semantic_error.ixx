@@ -109,6 +109,7 @@ use(spp::analyse::errors, struct SppGenOnceFinishesWithoutYieldingError);
 use(spp::analyse::errors, struct SppUnitTestInvalidSignatureError);
 use(spp::analyse::errors, struct SppUnitTestNotCallableError);
 use(spp::analyse::errors, struct SppFfiGenericParameterError);
+use(spp::analyse::errors, struct SppFfiAttributeTypeError);
 use(spp::analyse::errors, struct SppEmptyBodyRequiredError);
 use(spp::analyse::errors, struct SppInvalidBinaryFoldExpressionError);
 use(spp::analyse::errors, struct SppAccessViolationError);
@@ -683,6 +684,11 @@ SPP_EXP_CLS struct spp::analyse::errors::SppUnitTestInvalidSignatureError final 
 SPP_EXP_CLS struct spp::analyse::errors::SppFfiGenericParameterError final : SemanticError {
   explicit SppFfiGenericParameterError(
     Ast const &annotation, Ast const &generic_parameter, StrView symbol);
+};
+
+SPP_EXP_CLS struct spp::analyse::errors::SppFfiAttributeTypeError final : SemanticError {
+  explicit SppFfiAttributeTypeError(
+    Ast const &annotation, Ast const &attribute_type, StrView what);
 };
 
 SPP_EXP_CLS struct spp::analyse::errors::SppEmptyBodyRequiredError final : SemanticError {

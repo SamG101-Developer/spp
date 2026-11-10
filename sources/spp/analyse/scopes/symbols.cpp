@@ -641,6 +641,7 @@ spp::analyse::scopes::TypeSymbol::TypeSymbol(TypeSymbol const &that) :
   IsDirectlyCopyable(that.IsDirectlyCopyable),
   IsDirectlyZeroType(that.IsDirectlyZeroType),
   IsDirectlyThreadHazard(that.IsDirectlyThreadHazard),
+  DeclaredAbi(that.DeclaredAbi),
   Serial(NextTypeSymbolSerial()) {
   // Shared rather than cloned: an alias's description is
   // fixed once resolved, and an instantiation of a generic
@@ -690,6 +691,7 @@ auto spp::analyse::scopes::TypeSymbol::BindTo(
   LinkedScope = target.LinkedScope;
   IsDirectlyCopyable = target.IsDirectlyCopyable;
   IsDirectlyZeroType = target.IsDirectlyZeroType;
+  DeclaredAbi = target.DeclaredAbi;
   TypeConstraints = target.TypeConstraints;
 }
 

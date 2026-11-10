@@ -33,6 +33,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeStatementAst);
+use(spp::codegen, class Abi);
 
 use_alias(spp::analyse::scopes, ExprSubst);
 use_alias(spp::asts, Ast);
@@ -738,6 +739,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// Track whether this type has been marked as a thread hazard
   /// with the "!thread_hazard" annotation.
   bool IsDirectlyThreadHazard = false;
+
+  /// The convention a "!conv" or "!ffi" annotation gave the class:
+  /// how its fields are laid out. Null for the default ("spp"); read
+  /// it through "codegen::AbiOf".
+  Abi const *DeclaredAbi = nullptr;
 
   /// The cached fully qualified name of this symbol. This is an
   /// expensive operation given how often it's used, so we can

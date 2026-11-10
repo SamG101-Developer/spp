@@ -30,6 +30,7 @@ use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, class Scope);
 use_alias(spp::analyse::scopes, TypeId);
 use_alias(spp::codegen, LlvmFnWrapper);
+use(spp::codegen, class Abi);
 
 /// The prototype of a function: its name, parameters and
 /// return type. The body is held in the implementation ast.
@@ -57,6 +58,15 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// implemented because it binds to an ffi symbol, so the
   /// usual type checking rules can be suspended.
   AnnotationAst *FfiAnnotation;
+
+  /// Optional "!conv" annotation, naming the convention the
+  /// function is called with ("DeclaredAbi").
+  AnnotationAst *ConvAnnotation;
+
+  /// The convention "!conv" names, or "C" for an "!ffi" function
+  /// with none. Null for the default ("spp"); read it through
+  /// "codegen::AbiOf".
+  Abi const *DeclaredAbi;
 
   /// Optional "!intrinsic" annotation. The function is
   /// specially implemented with llvm, so the usual type
@@ -155,8 +165,9 @@ SPP_EXP_CLS struct spp::asts::FunctionPrototypeAst : Ast, ModuleMemberAst, SupMe
   /// name the shared library actually exports. An ffi function
   /// is never mangled the S++ way, because the definition it
   /// binds to was compiled by something else entirely
-  /// (effectively: extern "C"). None if this is not an ffi
-  /// function, or its annotation names no symbol.
+  /// (effectively: extern "C"): its annotation's "symbol", or
+  /// the function's own name without one. None if this is not
+  /// an ffi function.
   SPP_ATTR_NODISCARD auto GetFfiSymbolName() const -> Opt<Str>;
 
   SPP_ATTR_NODISCARD auto GetLlvmFn() const -> Shared<LlvmFnWrapper>;

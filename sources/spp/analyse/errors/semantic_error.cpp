@@ -1621,6 +1621,19 @@ spp::analyse::errors::SppSpreadInFoldError::SppSpreadInFoldError(
     "Give the tuple or pack whole: " + INLINE_HELP("f(xs)..") + ", not " + INLINE_HELP("f(..xs)..") + ".");
 }
 
+spp::analyse::errors::SppFfiAttributeTypeError::SppFfiAttributeTypeError(
+  Ast const &annotation, Ast const &attribute_type, const StrView what) {
+  AddHeader(127, "Ffi Attribute Type Error");
+  AddCtxForErr(&annotation, "Class mirrors a c struct here");
+  AddErr(&attribute_type, "Attribute holds " + Str(what) + ", which c cannot");
+  AddFooter(
+    "An " + INLINE_NOTE("!ffi") + " class is laid out as c lays out its struct, field for field, so every attribute "
+    "has to be something a c struct can hold: a number, a pointer, a fixed array of those, or another class laid out "
+    "the c way.",
+    "Mark the attribute's class " + INLINE_NOTE("!ffi") + " (or " + INLINE_NOTE("!conv(\"C\")") + "), or hold it "
+    "behind a pointer.");
+}
+
 spp::analyse::errors::SppFoldLengthMismatchError::SppFoldLengthMismatchError(
   Ast const &first, const std::size_t first_length, Ast const &other, const std::size_t other_length) {
   AddHeader(126, "Fold Length Mismatch Error");

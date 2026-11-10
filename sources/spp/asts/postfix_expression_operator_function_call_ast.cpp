@@ -71,7 +71,9 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.builtins;
+import spp.codegen.llvm_abi;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
@@ -706,9 +708,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
     }
   }
 
-  // An ffi function takes a struct argument as the target's C
-  // convention does, which may be through a copy.
-  codegen::CAbiAdaptArgs(*llvm_func, llvm_func_args, ctx);
+  // The callee's convention may take an argument in another form
+  // than its value (a C struct through a copy, say).
+  auto const &callee_abi = codegen::AbiOf(*Target());
+  callee_abi.AdaptArgs(*llvm_func, llvm_func_args, ctx);
 
   // Create the call instruction (a call returning Void cannot be given a name - llvm forbids naming void
   // values).
@@ -718,10 +721,10 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::Stage11_CodeGen(
   const auto llvm_raw_call = ctx->Builder.CreateCall(
     llvm_func, llvm_func_args, "call" + uid);
 
-  // An ffi function returns a one-field struct as its scalar; the
-  // caller's value is the struct.
-  const auto llvm_call = codegen::CAbiAdaptReturn(
-    *llvm_func, llvm_raw_call, codegen::GetLlvmTypeOf(InferTypeRef(sm, meta), ctx), ctx);
+  // The callee's convention may return another form than the value
+  // (a C one-field struct as its scalar); the caller's is the value.
+  const auto llvm_call = callee_abi.AdaptReturn(
+    llvm_raw_call, codegen::GetLlvmTypeOf(InferTypeRef(sm, meta), ctx), ctx);
 
   // A coroutine's frame may live in the caller's frame when the handle does not escape it: LLVM's "CoroElide" only
   // does that for a call marked safe to elide.

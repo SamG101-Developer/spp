@@ -61,6 +61,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.codegen.builtins;
+import spp.codegen.llvm_abi;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
@@ -68,6 +69,7 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
+import spp.utils.strings;
 import genex;
 
 MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
@@ -126,6 +128,8 @@ spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   VirtualAnnotation(nullptr),
   TemperatureAnnotation(nullptr),
   FfiAnnotation(nullptr),
+  ConvAnnotation(nullptr),
+  DeclaredAbi(nullptr),
   BuiltinAnnotation(nullptr),
   TestAnnotation(nullptr),
   InlineAnnotation(nullptr),
@@ -192,21 +196,21 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // An ffi function is declared under the symbol its annotation
     // names, because that is what the shared library exports and
     // what the linker will resolve against. Everything else gets
-    // the S++ mangled name. It takes its by-value struct
-    // parameters as the target's C calling convention does, which
-    // is not always as their LLVM values ("CAbiParamsOf").
+    // the S++ mangled name. Its parameters and return take the form
+    // its convention gives them ("!conv", "C" for "!ffi"), which is
+    // not always their LLVM values.
     const auto ffi_symbol = GetFfiSymbolName();
+    auto const &abi = codegen::AbiOf(*this);
     const auto is_signed = [&](TypeAst const &type) {
       return type_predicates::IsTypeSignedInteger(type, *sm->CurrentScope);
     };
     const auto params_signed = FnParamGroup->Params
       | genex::views::transform([&](auto const &x) { return is_signed(*x->Type); })
       | genex::to<Vec>();
-    const auto c_abi = ffi_symbol.has_value()
-      ? codegen::CAbiParamsOf(llvm_param_types, params_signed, *ctx->Module)
-      : Vec<codegen::CAbiParam>();
-    auto declared_param_types = llvm_param_types;
-    for (auto i = 0uz; i < c_abi.size(); ++i) { declared_param_types[i] = c_abi[i].Declared; }
+    const auto abi_params = abi.ParamsOf(llvm_param_types, params_signed, *ctx->Module);
+    const auto declared_param_types = abi_params
+      | genex::views::transform([](auto const &param) { return param.Declared; })
+      | genex::to<Vec>();
 
     // Create the LLVM function type. A "..a: T" parameter is
     // never true C-ABI varargs - the call site ("BindSlots")
@@ -214,9 +218,7 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // tuple value ahead of time, so the callee is an ordinary
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
-    const auto declared_ret_type = ffi_symbol.has_value()
-      ? codegen::CAbiReturnOf(llvm_ret_type)
-      : llvm_ret_type;
+    const auto declared_ret_type = abi.ReturnOf(llvm_ret_type);
     const auto llvm_fun_type = llvm::FunctionType::get(
       declared_ret_type, declared_param_types, false);
 
@@ -242,13 +244,8 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
     // can throw), so it is marked for "ApplyFfiUnwindGuard"
     // to guard its calls rather than claimed not to.
     if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
-    else {
-      func->Target->addFnAttr(codegen::kFfiFnAttr);
-      codegen::CAbiAddParamAttrs(*func->Target, c_abi);
-      if (const auto ext = codegen::CAbiExtendOf(declared_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
-        func->Target->addRetAttr(ext);
-      }
-    }
+    else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
+    abi.AddAttrs(*func->Target, abi_params, is_signed(*ReturnType));
     if (InlineAnnotation != nullptr) {
       using A = annotation_utils::BuiltinAnnotation;
       switch (InlineAnnotation->Builtin) {
@@ -638,6 +635,17 @@ auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
     }
   }
 
+  // A foreign convention is for a function implemented outside
+  // S++, so only an "!ffi" one takes it, and takes nothing else.
+  if (ConvAnnotation != nullptr) {
+    const auto is_ffi = FfiAnnotation != nullptr;
+    RaiseIf<SppIdentifierUnknownError>(
+      codegen::AbiOf(*this).IsForeign() != is_ffi,
+      ERR_ARGS(
+        *ConvAnnotation, is_ffi ? "convention for an '!ffi' function" : "convention for a function defined in s++",
+        spp::utils::strings::ClosestMatch(ConvAnnotation->ConvName(), codegen::AbiNames(is_ffi))));
+  }
+
   // An ffi function body is in C, so there is no body
   // expressible in S++.
   RaiseIf<SppEmptyBodyRequiredError>(
@@ -902,15 +910,13 @@ auto spp::asts::FunctionPrototypeAst::_EnsureDropsForBuiltin(
 
 auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
   // The "symbol" argument of the "!ffi" annotation, when it is
-  // a non-empty string literal.
+  // a non-empty string literal; otherwise the function's own name,
+  // which "symbol" only overrides.
   if (FfiAnnotation == nullptr) { return Nullopt; }
   const auto symbol_arg = FfiAnnotation->FnArgGroup->At("symbol");
-  if (symbol_arg == nullptr) { return Nullopt; }
-  const auto symbol_literal = symbol_arg->Val->To<StringLiteralAst>();
-  if (symbol_literal == nullptr) { return Nullopt; }
-  auto symbol = symbol_literal->CppVal();
-  if (symbol.empty()) { return Nullopt; }
-  return symbol;
+  const auto symbol_literal = symbol_arg != nullptr ? symbol_arg->Val->To<StringLiteralAst>() : nullptr;
+  auto symbol = symbol_literal != nullptr ? symbol_literal->CppVal() : Str();
+  return symbol.empty() ? Name->Val : symbol;
 }
 
 auto spp::asts::FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
@@ -979,6 +985,8 @@ auto spp::asts::FunctionPrototypeAst::_CloneStateInto(
   ast.VirtualAnnotation = VirtualAnnotation;
   ast.TemperatureAnnotation = TemperatureAnnotation;
   ast.FfiAnnotation = FfiAnnotation;
+  ast.ConvAnnotation = ConvAnnotation;
+  ast.DeclaredAbi = DeclaredAbi;
   ast.BuiltinAnnotation = BuiltinAnnotation;
   ast.TestAnnotation = TestAnnotation;
   ast.InlineAnnotation = InlineAnnotation;
