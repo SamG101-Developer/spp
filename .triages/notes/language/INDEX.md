@@ -24,3 +24,4 @@
 - [Resume ends &mut yields](resume-ends-mut-yields.md) — 2nd g.res() moves earlier &mut holders
 - [Green task detach UAF](spp-green-task-detach-uaf.md) — a dropped future must await
 - [!extends annotation plan](spp-extends-annotation-plan.md) — future; use `sup X ext Copy` for now
+- [Method-result receiver temporaries unchecked (open)](method-result-receiver-temporary-unchecked.md) — s.to_reverse().len() compiles and leaks; outermost-symbol lookup skips the borrowed-temporary check
