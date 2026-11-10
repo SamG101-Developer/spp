@@ -394,6 +394,10 @@ static auto ApplyStructLayout(
     }
     case spp::codegen::StructLayout::Packed: {
       // Keep declaration order, but remove all inter-field padding.
+      // Todo: unreachable today. Before a class can be packed, a
+      //  borrow of one of its fields must not get "align" (nor any
+      //  load through it the type's ABI alignment): see the borrow
+      //  parameter attributes in "GenerateLlvmDeclaration".
       if (needs_body) { struct_type->setBody(kept_types, true); }
       if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
       else { sym_info->FieldIndexMap.clear(); }

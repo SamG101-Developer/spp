@@ -274,14 +274,15 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
       func->Target->addFnAttr(llvm::Attribute::NoReturn);
     }
 
-    // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse (detect recursion in stage7)
-    //  ZExt, SExt?
-    const auto deref_bytes = [&](TypeAst const &param_type) -> std::uint64_t {
+    // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse
+    //  (detect recursion in stage7), ZExt, SExt?
+
+    // What a borrow parameter points at, when it has a size: the
+    // bytes behind it ("dereferenceable") and its alignment ("align").
+    const auto pointee_of = [&](TypeAst const &param_type) -> llvm::Type* {
       const auto pointee = codegen::GetLlvmTypeOf(
         TypeRef::Of(*param_type.WithoutConvention(), *sm->CurrentScope), ctx);
-      return pointee != nullptr and pointee->isSized()
-        ? ctx->Module->getDataLayout().getTypeAllocSize(pointee).getFixedValue()
-        : 0;
+      return pointee != nullptr and pointee->isSized() ? pointee : nullptr;
     };
 
     for (const auto i : genex::views::iota(FnParamGroup->Params.size())) {
@@ -306,8 +307,16 @@ auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
       // every loan held), which is what "noalias" asks of the callee.
       if (is_ref) { func->Target->addParamAttr(j, llvm::Attribute::ReadOnly); }
       if (is_mut) { func->Target->addParamAttr(j, llvm::Attribute::NoAlias); }
-      if (const auto bytes = deref_bytes(param_type); bytes > 0) {
-        func->Target->addDereferenceableParamAttr(j, bytes);
+      // A borrow is always to a value laid out as its type: every
+      // load and store through it already claims the type's ABI
+      // alignment, so "align" says it up front, for the callee
+      // before any of them (and where it is not inlined). Variant
+      // payloads are built to their widest member's alignment (up
+      // to 16 bytes), and no layout packs fields.
+      if (const auto pointee = pointee_of(param_type); pointee != nullptr) {
+        auto const &dl = ctx->Module->getDataLayout();
+        func->Target->addDereferenceableParamAttr(j, dl.getTypeAllocSize(pointee).getFixedValue());
+        func->Target->addParamAttr(j, llvm::Attribute::getWithAlignment(*ctx->Context, dl.getABITypeAlign(pointee)));
       }
     }
 
