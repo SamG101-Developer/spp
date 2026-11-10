@@ -1,7 +1,7 @@
 ---
 name: checked-results-are-flagged
 description: "A checked +/-/* returns the plain op flagged nuw/nsw, not the intrinsic's value: LLVM's analyses can read it; passes moving a check must drop the flags"
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 `EmitCheckedArith` (`llvm_fn_impls.cpp`) emits `*.with.overflow` for the check, branches on its overflow bit, and
@@ -14,17 +14,20 @@ Until 2026-11-09 the result was the intrinsic's value (`extractvalue 0`), which 
 arithmetic already proved stayed. `ast/slices` dropped from 10.5 to 4.0 billion instructions (-62%) on a default
 build with this alone.
 
-At the end of the optimiser, `FuseCheckedOpsPass` (`llvm_air`) puts each op and its check back into one
+At the end of the optimiser, `FuseCheckedOpsPass` (`llvm_pass_air`) puts each op and its check back into one
 `*.with.overflow` for the backend, which only fuses them ("add", "jo") in that form: InstCombine turns a check whose
 value is unused into a comparison and moves the op away, and without the re-fuse every checked op cost an extra
-`cmp` (or a second multiply). It matches tests by value, not shape (truth set against overflow set for constants).
+`cmp` (or a second multiply). It matches tests by value, not shape (truth set against overflow set for constants),
+on `x` or on `x + C` (`OverflowCheckOf`): a multiply by a constant's check becomes a range test, `x + C u< K`.
 
 **Why:** the no-wrap fact is exactly what the check guarantees, and it feeds every analysis (InstCombine, SCEV trip
 counts, range analysis, induction variables). Instruction counts can rise where LLVM then picks other forms (sieve
 +43%, collatz +34%) while wall time falls (sieve -15%): judge by wall time.
 
-**How to apply:** a pass that finds a checked op's result looks for the flagged op (`FlaggedResultsOf` in `llvm_air`:
+**How to apply:** a pass that finds a checked op's result looks for the flagged op (`FlaggedResultsOf` in `llvm_pass_air`:
 same opcode and operands, `nsw` if signed else `nuw`), not only `extractvalue 0`. A pass that moves or removes the
 check (`DeferOverflowChecksPass`) must `dropPoisonGeneratingFlags()` on those results: past a moved check a wrapped
-result is used, and must be the wrapped value, not poison. The std's `*_overflow` methods keep the intrinsic's
+result is used, and must be the wrapped value, not poison. A check may also have no intrinsic left at all, only the
+comparison InstCombine made of it: `OverflowCheckOf` ties it back to its flagged op (the deferral takes these since
+2026-11-10, so a multiply by a constant defers and vectorises). The std's `*_overflow` methods keep the intrinsic's
 value (they report the wrapped value with its flag). Related: [[air-needs-wide-vectors]].

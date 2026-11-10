@@ -7,7 +7,7 @@ updated: 2026-11-09
 macOS linked the official `LLVM-<v>-macOS-ARM64.tar.xz` (`[pin.llvm-mac]`, until 2026-11-09), built with `LLVM_ENABLE_RTTI=OFF`. spp
 is built with RTTI. A TU that instantiates a polymorphic LLVM class template emits its vtable and typeinfo locally,
 and that typeinfo references the base class's typeinfo, which only exists in an RTTI build of LLVM. The first case
-(run 42710011919, 2026-11-09) was `llvm_air.cpp`'s `llvm::ValueToValueMapTy` (for `CloneBasicBlock` and
+(run 42710011919, 2026-11-09) was `llvm_air.cpp`'s (now `llvm_passes/llvm_pass_air.cpp`) `llvm::ValueToValueMapTy` (for `CloneBasicBlock` and
 `cloneLoopWithPreheader`): `ld64.lld: undefined symbol: typeinfo for llvm::CallbackVH`, from
 `ValueMapCallbackVH<...>`'s typeinfo. Linux's apt.llvm.org libraries are built with RTTI. MSVC emits RTTI
 descriptors as COMDATs in every TU, so Windows links too.

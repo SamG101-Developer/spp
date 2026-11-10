@@ -4,7 +4,7 @@ description: "The AIR passes act only on 256-bit vectors: set [target.floor] cpu
 updated: 2026-11-09
 ---
 
-Both AIR passes in `llvm_air` (`DeferOverflowChecksPass`, `ExactSumsPass`) ask LLVM's cost model
+Both AIR passes in `llvm_pass_air` (`DeferOverflowChecksPass`, `ExactSumsPass`) ask LLVM's cost model
 (`TargetTransformInfo`, per function) for the fixed vector width and do nothing below 256 bits
 (`kAirMinVectorBits`). Baseline x86-64 is SSE2: two 64-bit lanes and no 64-bit arithmetic shift or compare, so a
 vectorised check costs about what the branching one did (measured: 3.5% and 4.8% saved, and a 10% loss on short

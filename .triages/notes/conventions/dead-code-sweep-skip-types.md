@@ -29,7 +29,7 @@ range in with `append_range(genex::views::move(x))`, compare with `genex::equals
 `FuncRef` for a callable parameter only called during the call; `Func` when stored, captured or nullable. A
 `Func<T(...)>` parameter can't deduce `T` (it goes through `_FuncOf`): spell `T` or take `FuncRef`. Outside namespace
 `spp` (unnamed namespaces, `namespace std`) write `spp::Opt` etc.; inside `Module`, `spp::Path` (member named Path).
-`llvm_pipeline.cpp` (was llvm_passes.cpp) imports spp.utils.types and uses Str (2026-10-19).
+`llvm_passes/llvm_pass_pipeline.cpp` (was llvm_pipeline.cpp, and llvm_passes.cpp before 2026-10-19) imports spp.utils.types and uses Str (2026-10-19).
 
 **How to apply:** library types keep their library's API; the rest of the code is PascalCase. N0.2-N0.4 (more
 aliases, use existing aliases, drop `std::bit_shl`) are still open. Related: [[code-reduction-means-functions]],

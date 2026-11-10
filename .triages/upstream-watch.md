@@ -41,6 +41,7 @@ Each entry gives:
 | U22 | MSVC             | Implementation units see the interface's using-declarations     | 2026-11-08   |
 | U23 | MSVC             | Templates keep using-declared names when instantiated elsewhere | 2026-11-08   |
 | U24 | LLVM             | `Module::renumberMetadataForAssembly()` (LLVM 24)               | 2026-11-10   |
+| U25 | LLVM             | `HasRunOnLoopT` out of an anonymous namespace (#233326)         | 2026-11-10   |
 
 ## U1. LLVM: the new pass manager's codegen pipeline on every target
 
@@ -70,14 +71,27 @@ Each entry gives:
   None on trunk (2026-11-10): AArch64, ARM, PowerPC, LoongArch, M68k, Hexagon. Even on X86 it is experimental
   (`llc -enable-new-pm`). In the installed LLVM 23, only X86, AMDGPU, BPF, Lanai and MSP430 have it.
 
+  LLVM 23 still registers 26 shared codegen passes as `DUMMY` (unported, so skipped), among them `machine-combiner`,
+  `funclet-layout`, `cfguard-longjmp`, `machine-outliner` and GlobalISel; trunk is down to 13 (those five ported or
+  gone). Nothing ships on it: clang 23 drives codegen through the legacy pass manager.
+
+  LLVM 24 adds `llvm::runCodeGenPipeline` (`llvm/Passes/RunCodeGen.h`, `dca328efcdee`, 2026-09-03), which clang,
+  flang and LTO now call. It takes the new pass manager where `TargetMachine::shouldDefaultToNewPM()` says so (only
+  MSP430 and Lanai on 2026-11-10) and the legacy one otherwise, so the per-target split is kept upstream. Its legacy
+  path also adds the TTI, `TargetLibraryInfo` and `RuntimeLibraryInfoWrapper` passes. `EmitObjectFile` adds them too
+  since 2026-11-10 (byte-identical objects on 8 targets, std test binary included). Its `RuntimeLibraryInfoWrapper`
+  call reads `TargetOptions::FloatABIType`/`ExceptionModel`/`EABIVersion`, which LLVM 24 removes: the bump has to
+  replace it.
+
 - **Check:** for each target in the cross-codegen list, does
   `llvm/lib/Target/<T>/<T>CodeGenPassBuilder.cpp` exist, or does `<T>TargetMachine.cpp` override
   `buildCodeGenPipeline`? Does `llvm/docs/NewPassManager.md` (Markdown since the LLVM 24 docs move) still say codegen
   uses the legacy pass manager (it did on 2026-11-10)? Locally:
   `nm -C libLLVM<T>CodeGen.a | grep "TargetMachine::buildCodeGenPipeline"`.
 
-- **When it lands:** build object emission with `buildCodeGenPipeline` on a `ModulePassManager` (with
-  `CGPassBuilderOption`), check every cross target in CI, then drop the legacy path.
+- **When it lands:** on the LLVM 24 bump, replace the body of `EmitObjectFile` with one `llvm::runCodeGenPipeline`
+  call: each target moves to the new pass manager as LLVM flips its `shouldDefaultToNewPM`. Do not keep our own
+  split by target. Once every target the compiler builds for is flipped, nothing is left to do.
 
 - **Last checked:** 2026-11-10 (trunk target directories and `NewPassManager.md`; archives as of 2026-10-24).
 
@@ -369,8 +383,13 @@ Each entry gives:
   llvm-project working tree (2026-10-26, not yet a PR): `convertBLRToBL` takes the call's symbol from the thunk
   function (`MF.getTarget().getSymbol`) instead of `Context.getOrCreateSymbol(ThunkName)`, with the test
   `llvm/test/CodeGen/AArch64/speculation-hardening-sls-blr-macho.ll`. It fails on unpatched LLVM 23 and passes with
-  the patch, alongside the 8 existing AArch64 SLS tests. Still not opened as a PR (2026-11-10).
-- **Check:** the same `llc` + `llvm-nm`: one defined name, no `U` thunk.
+  the patch, alongside the 8 existing AArch64 SLS tests. Rechecked on `main` `98407454f4a9` (2026-11-10): applies
+  cleanly, the new test plus all 8 SLS tests and `kcfi.ll`/`setjmp-bti.ll` pass, and the new test fails without the
+  fix. Opened as [llvm/llvm-project#240915](https://github.com/llvm/llvm-project/pull/240915) (2026-11-10,
+  branch `users/samg101-developer/apple-sls-fix`); it must merge before `release/24.x` branches (about mid-January
+  2027\) to be in LLVM 24.
+- **Check:** whether #240915 has merged and into which release; then the same `llc` + `llvm-nm`: one defined name, no
+  `U` thunk.
 - **When it lands:** restore the AArch64 Mach-O case in `TargetHasSlsHardening`, with `+harden-sls-nocomdat` added to
   its features on Mach-O again (Mach-O has no COMDATs), and drop `off: sls` from the macOS test calls.
 - **Last checked:** 2026-11-10.
@@ -536,6 +555,24 @@ Each entry gives:
 - **Check:** `grep renumberMetadataForAssembly $(llvm-config --includedir)/llvm/IR/Module.h`.
 - **When it lands:** on the LLVM 24 bump, call it on the module just before `print()` at both sites in
   `compiler_boot.cpp` (each module's `.ll`, and `lto.ll`).
+- **Last checked:** 2026-11-10.
+
+## U25. LLVM: `HasRunOnLoopT` out of an anonymous namespace
+
+- **Library:** LLVM (`llvm/include/llvm/Transforms/Scalar/LoopPassManager.h`), llvm/llvm-project#233326 (ours).
+- **Want:** `HasRunOnLoopT` in a named namespace, so `is_detected` no longer exposes a TU-local entity: a hard error
+  in GCC for any module whose GMF includes `PassBuilder.h` (clang accepts it).
+- **Why:** the four plain LLVM TUs (`llvm_pass_pipeline`, `llvm_pass_air`, `llvm_pass_bounds`, `llvm_pass_loop_versioning`) can become
+  modules that `import llvm`.
+- **Meanwhile:** they stay plain TUs that `#include` LLVM (`notes/toolchain/llvm-passes-plain-tu.md`).
+- **Status (2026-11-10):** merged 2026-11-09 (moved to `namespace detail`), so in LLVM 24; not on `release/23.x`.
+  A probe module with every LLVM header those TUs include and the pass code they write builds cleanly on GCC trunk
+  with the patch applied, so nothing else in those headers needs the same change (MSVC, and LLVM 24's own headers,
+  not tried).
+- **Check:** `grep -n 'namespace detail' $(llvm-config --includedir)/llvm/Transforms/Scalar/LoopPassManager.h` above
+  `HasRunOnLoopT`.
+- **When it lands:** on the LLVM 24 bump, turn the four plain TUs into modules, exporting what they need from
+  `headers/wrappers/llvm.ixx`.
 - **Last checked:** 2026-11-10.
 
 ## Resolved

@@ -32,3 +32,5 @@
 - [mem ops are LLVM intrinsics](mem-ops-are-llvm-intrinsics.md) — mem_copy/mem_set emit llvm.memcpy/memset; sppc memcpy/memset/memmove gone
 - [Variants have no parts](variant-drop-is-a-no-op.md) — drop code reads variants via VariantMemberRefs + tag switch; GetAllParts alone missed them (leak fixed 2026-11-10)
 - [KCFI and cold functions on Mach-O](kcfi-cold-functions-on-macho.md) — ld64 moves N_COLD_FUNC away from the KCFI hash word; KeepCfiTypesAttached keeps typed fns off cold (fixed 2026-11-10)
+- [Hardened jump tables](hardened-jump-tables.md) — our own masked tables on every target; LLVM builds none; asm barrier keeps the mask branch-free
+- [Index checks versioned](index-checks-versioned.md) — llvm_pass_bounds: one wide-width guard before a loop, a copy without its index checks; proof by comparison only
