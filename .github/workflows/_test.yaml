@@ -139,12 +139,12 @@ jobs:
               SPP_CI_OFF: ${{ inputs.off }}
             run: bash .github/scripts/test/stl-conformance.sh
 
-          # The compiled code's memory, over the groups that make
-          # and drop frames, environments and buffers.
-          - name: s++ test groups under valgrind
+          # The compiled code's memory: every library's tests
+          # under valgrind.
+          - name: s++ STL conformance under valgrind
             if: contains(matrix.suites, 'valgrind')
             continue-on-error: ${{ matrix.suites != 'valgrind' }}
-            run: bash .github/scripts/test/valgrind-groups.sh
+            run: bash .github/scripts/test/valgrind-conformance.sh
 
           # What the compiler emits, built and run: canaries,
           # sealing, W^X, scrubbing, SLS, the abort path, ffi

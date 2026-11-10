@@ -24,7 +24,7 @@ read -ra mode_list <<< "$MODES"
 extras=()
 [ "$STL" = true ] && extras+=("stl|STL Conformance|90|false")
 if [[ "$OS" == ubuntu* ]]; then
-  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Groups|90|true")
+  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Conformance|90|true")
   [ "$CODEGEN" = true ] && extras+=("codegen|Codegen Checks|90|true")
   [ "$DIFFERENTIAL" = true ] && extras+=("differential|Differential Suite|90|true")
 fi

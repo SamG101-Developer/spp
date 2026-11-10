@@ -1,7 +1,7 @@
 ---
 name: hardening-needs-feature-gate
 description: Any hardening measure that can break a niche setup ships default-on behind an spp.toml key, failing loudly rather than degrading
-updated: 2026-10-21
+updated: 2026-11-10
 ---
 
 Every memory-safety/hardening measure that can be a problem in some niche scenario (old kernel, child that JITs,
@@ -23,4 +23,4 @@ one only needs `.MinLinux` and its `Applied` call where the shim is built.
 `int(void)` sppc step appended in `RuntimeInitShim` (`llvm_entry.cpp`), passed down through `EmitCEntryPoint` like
 `split_stacks`/`deny_wx`. Related: [[spp-toml-feature-schema]], [[one-hardening-measure-at-a-time]].
 
-Valgrind runs in-process, so `deny_wx` (MDWE refuses its JIT's exec mmaps: "out of memory: Permission denied") and `seal` (valgrind 3.24 lacks syscall 462) must be off under it; `.github/scripts/test/valgrind-groups.sh` writes both into its scratch spp.toml. `s++ test` only honours spp.toml since 2026-10-18 (HandleTest skipped `features::Load`).
+Valgrind runs in-process, so `deny_wx` (MDWE refuses its JIT's exec mmaps: "out of memory: Permission denied") and `seal` (valgrind 3.24 lacks syscall 462) must be off under it; `.github/scripts/test/valgrind-conformance.sh` writes both into its scratch spp.toml. `s++ test` only honours spp.toml since 2026-10-18 (HandleTest skipped `features::Load`).
