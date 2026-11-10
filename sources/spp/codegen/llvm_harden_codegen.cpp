@@ -175,6 +175,18 @@ auto spp::codegen::CheckCfiCalls(
   }
 }
 
+auto spp::codegen::KeepCfiTypesAttached(
+  void *llvm_module) -> void {
+  // Only Mach-O moves a cold function away from the word before it
+  // (N_COLD_FUNC); ELF keeps the word in the function's own section.
+  if (not TargetTriple().isOSBinFormatMachO()) { return; }
+  for (auto &fn : *static_cast<llvm::Module*>(llvm_module)) {
+    if (fn.hasMetadata(llvm::LLVMContext::MD_kcfi_type)) {
+      fn.removeFnAttr(llvm::Attribute::Cold);
+    }
+  }
+}
+
 auto spp::codegen::ApplyJumpTableBounds(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);

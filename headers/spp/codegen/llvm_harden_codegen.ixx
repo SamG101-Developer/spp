@@ -69,6 +69,14 @@ namespace spp::codegen {
   /// as that call would go unchecked.
   SPP_EXP_FUN auto CheckCfiCalls(void *llvm_module) -> void;
 
+  /// Keeps each typed function beside its type on Mach-O, run after
+  /// the optimiser. LLVM writes a function's KCFI type as a bare word
+  /// before its label, which Mach-O gives to the function before it;
+  /// ld64 moves a "cold" function to the end of the text, leaving the
+  /// word behind, so every indirect call to it traps. A typed function
+  /// is kept off "cold" there. Nothing to do for any other format.
+  SPP_EXP_FUN auto KeepCfiTypesAttached(void *llvm_module) -> void;
+
   /// Keep every switch in an "llvm::Module" (passed as an opaque
   /// pointer) from jumping through an entry past the end of its
   /// jump table when the bounds check before it is mispredicted.

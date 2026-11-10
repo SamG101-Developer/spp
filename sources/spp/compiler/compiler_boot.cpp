@@ -785,6 +785,7 @@ auto spp::compiler::CompilerBoot::_LinkTimeOptimize(
   }
   FEATURE_GATE(BinaryCodegenCfi) {
     codegen::CheckCfiCalls(lto_module.get());
+    codegen::KeepCfiTypesAttached(lto_module.get());
   }
   FEATURE_GATE(BinaryCodegenJumpTableBounds) {
     if (not codegen::ApplyJumpTableBounds(lto_module.get())) { return false; }
