@@ -131,11 +131,21 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto SuperClsReads(
     Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
 
+  /// How many pointers a value of the type "ref" is: 2 for the
+  /// "Fun*" family (and a "$" mock of one), a { fn_ptr, env_ptr }
+  /// pair; 1 for "Gen"/"GenOnce", the bare "llvm.coro.begin"
+  /// handle; 0 for anything else. The one place this is decided:
+  /// lowering such a type ("RegisterLlvmTypeInfo") and the fields
+  /// a class superimposing one gets prepended
+  /// ("GetSuperimposedFatPointerFieldCount") both read it.
+  SPP_EXP_FUN auto FatPointerWidthOf(
+    TypeRef const &ref, Scope const &scope) -> std::size_t;
+
   /// Get the number of synthetic fat-pointer fields on this
-  /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
-  /// fields prepended ahead of a type's own declared fields.
-  /// The fat pointer fields are always at the start of the
-  /// types for simplicity.
+  /// type: those of the first "Fun*"/"Gen*" type it superimposes
+  /// ("FatPointerWidthOf"), prepended ahead of its own declared
+  /// fields. The fat pointer fields are always at the start of
+  /// the types for simplicity.
   SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(
     TypeSymbol const &type_sym) -> std::size_t;
 

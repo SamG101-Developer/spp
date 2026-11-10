@@ -416,17 +416,25 @@ auto spp::analyse::utils::type_members::SuperClsReads(
   return out;
 }
 
-auto spp::analyse::utils::type_members::GetSuperimposedFatPointerFieldCount(
-  TypeSymbol const &type_sym)
+auto spp::analyse::utils::type_members::FatPointerWidthOf(
+  TypeRef const &ref, Scope const &scope)
   -> std::size_t {
   // "Gen"/"GenOnce" lower to a single opaque llvm coroutine handle
   // (the "llvm.coro.begin" result) rather than a true 2-pointer fat
   // pointer - only the "FunXXX" family is a { fn_ptr, env_ptr } pair.
+  if (type_predicates::IsTypeGenerator(ref, scope)) { return 1uz; }
+  if (type_predicates::IsTypeFunction(ref, scope)) { return 2uz; }
+  return 0uz;
+}
+
+auto spp::analyse::utils::type_members::GetSuperimposedFatPointerFieldCount(
+  TypeSymbol const &type_sym)
+  -> std::size_t {
+  // The first "Fun*"/"Gen*" type superimposed decides it.
   if (type_sym.LinkedScope == nullptr) { return 0uz; }
   auto const &scope = *type_sym.LinkedScope;
   for (auto const &sup : SuperClsRefs(TypeRef::ForKindCheck(type_sym, scope), scope)) {
-    if (type_predicates::IsTypeGenerator(sup, scope)) { return 1uz; }
-    if (type_predicates::IsTypeFunction(sup, scope)) { return 2uz; }
+    if (const auto width = FatPointerWidthOf(sup, scope); width > 0) { return width; }
   }
   return 0uz;
 }
