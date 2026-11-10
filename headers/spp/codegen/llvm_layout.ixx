@@ -9,11 +9,6 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  /// The layouts S++ supports, chosen with the "!layout(conv="C")" syntax. Once
-  /// enums are supported, the accepted convention will be enum based, matching
-  /// this enum. FFI structs always use the "C" or "packed" layouts.
-  SPP_EXP_CLS enum class StructLayout { Spp, C, Packed };
-
   /// The declaration indices of the fields that are actually laid out, in
   /// declaration order, given the lowered types of the struct's fields in
   /// declaration order.

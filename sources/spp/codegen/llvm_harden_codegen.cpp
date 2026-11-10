@@ -3,7 +3,6 @@ module;
 
 module spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_target;
-import spp.utils.ice;
 import spp.utils.types;
 import llvm;
 import std;
@@ -25,12 +24,6 @@ namespace spp::codegen {
       return TargetTriple().isX86() or TargetTriple().isAArch64();
     }
 
-    /// Whether the selected target can check indirect calls by
-    /// type (KCFI): x86-64 and AArch64 can.
-    auto TargetHasKcfi() -> bool {
-      return TargetTriple().getArch() == llvm::Triple::x86_64 or TargetTriple().isAArch64();
-    }
-
     /// Whether LLVM writes the selected target's personality and
     /// LSDA pointers PC-relative, as a position-independent
     /// executable needs: every target but m68k, which it leaves
@@ -39,34 +32,6 @@ namespace spp::codegen {
       return TargetTriple().getArch() != llvm::Triple::m68k;
     }
 
-    /// The type operand "i" of a control-flow-integrity record
-    /// holds.
-    auto CfiTypeAt(llvm::MDNode const &md, const unsigned i) -> llvm::ConstantInt* {
-      return llvm::mdconst::extract<llvm::ConstantInt>(md.getOperand(i));
-    }
-
-    /// Give every function in "llvm_mod" with a control-flow record
-    /// its "kcfi_type": the type it is called as. The functions a
-    /// coroutine is split into share its record, and are told apart
-    /// by the suffix the split names them with: the frame's resume
-    /// slot holds ".resume", and its destroy slot ".destroy", or
-    /// ".cleanup" when the frame was not allocated. A ramp has no
-    /// suffix and is left untyped: it is only ever called directly.
-    auto TypeCfiFunctions(llvm::Module &llvm_mod) -> void {
-      auto &ctx = llvm_mod.getContext();
-      for (auto &fn : llvm_mod) {
-        auto type = static_cast<llvm::ConstantInt*>(nullptr);
-        if (const auto md = fn.getMetadata(kCfiMd)) { type = CfiTypeAt(*md, 0); }
-        else if (const auto coro = fn.getMetadata(kCfiCoroMd)) {
-          const auto name = fn.getName();
-          if (name.ends_with(".resume")) { type = CfiTypeAt(*coro, 0); }
-          else if (name.ends_with(".destroy") or name.ends_with(".cleanup")) { type = CfiTypeAt(*coro, 1); }
-        }
-        if (type != nullptr) {
-          fn.setMetadata(llvm::LLVMContext::MD_kcfi_type, llvm::MDNode::get(ctx, llvm::ConstantAsMetadata::get(type)));
-        }
-      }
-    }
   }
 }
 
@@ -118,66 +83,6 @@ auto spp::codegen::ApplyRegisterScrubbing(
     fn.addFnAttr("zero-call-used-regs", "used-gpr");
   }
   return true;
-}
-
-auto spp::codegen::ApplyCfiTypes(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  if (not TargetHasKcfi()) {
-    llvm::errs()
-      << "This target cannot check indirect calls by type.\n"
-      << "  To build without it, set 'cfi = false' under [binary.codegen] in spp.toml.\n";
-    return false;
-  }
-
-  // The functions that exist before optimising: the coroutines
-  // are not split yet, so their parts are typed by
-  // "ApplyCfiCoroTypes" once they are.
-  TypeCfiFunctions(llvm_mod);
-
-  // The backend emits each function's type, and each call's
-  // check, only for a module that asks for them.
-  llvm_mod.addModuleFlag(llvm::Module::Override, "kcfi", 1);
-  return true;
-}
-
-auto spp::codegen::ApplyCfiCoroTypes(
-  void *llvm_module) -> void {
-  // Retyping the functions typed before is harmless; the module
-  // flag is not added again, as a second one fails verification.
-  TypeCfiFunctions(*static_cast<llvm::Module*>(llvm_module));
-}
-
-auto spp::codegen::FinishCfi(
-  void *llvm_module) -> void {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-
-  // On Mach-O the type word before a function belongs to the atom
-  // before it, which ld64 may move (a cold function, either side).
-  // Prefix data gets a label of its own and turns the function into
-  // an .alt_entry of it, so the word after it (the type) stays in the
-  // function's atom. ELF keeps the word in the function's section.
-  const auto anchor_types = TargetTriple().isOSBinFormatMachO();
-  const auto anchor = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm_mod.getContext()), 0);
-
-  for (auto &fn : llvm_mod) {
-    if (fn.isDeclaration()) { continue; }
-    if (anchor_types and not fn.hasPrefixData() and fn.hasMetadata(llvm::LLVMContext::MD_kcfi_type)) {
-      fn.setPrefixData(anchor);
-    }
-
-    // The calls carry their checks from where they were emitted
-    // ("CfiFnCallBundles", "CfiGenCallBundles"). One that does not
-    // would be the call an attacker could take anywhere, so it
-    // stops the build.
-    for (auto &inst : llvm::instructions(fn)) {
-      const auto call = llvm::dyn_cast<llvm::CallBase>(&inst);
-      if (call == nullptr or not call->isIndirectCall()) { continue; }
-      if (not call->getOperandBundle(llvm::LLVMContext::OB_kcfi).has_value()) {
-        spp::Ice("an indirect call in " + fn.getName().str() + " has no control-flow-integrity type");
-      }
-    }
-  }
 }
 
 auto spp::codegen::ApplyFfiUnwindGuard(

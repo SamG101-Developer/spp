@@ -26,13 +26,13 @@ auto spp::codegen::SortMembersForSppLayout(
   auto const &dl = ctx->Module->getDataLayout();
   auto order = DropValuelessFields(field_types);
   order |= genex::actions::stable_sort([&](auto a, auto b) {
-    // Sort first on alignment, moving the smaller alignments
+    // Sort first on alignment, moving the larger alignments
     // first.
     const auto align_a = dl.getABITypeAlign(field_types[a]).value();
     const auto align_b = dl.getABITypeAlign(field_types[b]).value();
     if (align_a != align_b) { return align_a > align_b; }
 
-    // Then sort on type sizes, moving the smaller sizes first.
+    // Then sort on type sizes, moving the larger sizes first.
     const auto size_a = dl.getTypeAllocSize(field_types[a]).getFixedValue();
     const auto size_b = dl.getTypeAllocSize(field_types[b]).getFixedValue();
     return size_a > size_b;

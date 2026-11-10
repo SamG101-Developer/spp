@@ -14,6 +14,7 @@ import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
@@ -68,7 +69,7 @@ auto spp::codegen::EmitDrop(
 
     ctx->Builder.SetInsertPoint(live_bb);
     const auto coro_destroy = llvm::Intrinsic::getOrInsertDeclaration(
-      GetEmissionModule(*ctx), llvm::Intrinsic::coro_destroy);
+      ctx->Module.get(), llvm::Intrinsic::coro_destroy);
     ctx->Builder.CreateCall(
       coro_destroy, {handle}, CfiGenCallBundles(type, CoroEdge::Destroy, ctx));
     ctx->Builder.CreateBr(done_bb);
@@ -94,7 +95,7 @@ auto spp::codegen::EmitDrop(
 
     if (drop_proto->GetLlvmFn() != nullptr) {
       const auto drop_func = GetOrAddTargetIntoCurrentModule(
-        *drop_proto->GetLlvmFn()->Target, *GetEmissionModule(*ctx));
+        *drop_proto->GetLlvmFn()->Target, *ctx->Module);
 
       // Destroying a value consumes it, so "drop" takes "self"
       // by move, which lowers to the value itself rather than

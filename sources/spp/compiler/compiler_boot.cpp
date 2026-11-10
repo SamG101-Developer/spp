@@ -34,6 +34,7 @@ import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_ctx;
 import spp.codegen.llvm_entry;
 import spp.codegen.llvm_harden_codegen;

@@ -1,0 +1,82 @@
+module;
+#include <spp/macros.hpp>
+
+/// Control-flow integrity (KCFI): every function called indirectly is stamped,
+/// as it is emitted, with a hash of the S++ type it is called as ("StampCfi*"),
+/// and every indirect call carries the hash it expects ("Cfi*CallBundles"). The
+/// module passes turn the stamps into LLVM's "kcfi_type" ("ApplyCfiTypes",
+/// "ApplyCfiCoroTypes") and check nothing was missed ("FinishCfi").
+export module spp.codegen.llvm_cfi;
+import spp.codegen.llvm_ctx;
+import spp.utils.types;
+import llvm;
+import std;
+
+use(spp::analyse::scopes, struct TypeRef);
+
+namespace spp::codegen {
+  /// Which of a generator's two functions a call through its frame reaches; the
+  /// one resuming it, or the one destroying it. Each has its own control-flow
+  /// type.
+  SPP_EXP_CLS enum class CoroEdge { Resume, Destroy };
+
+  /// Record that "fn" is called indirectly as a value whose function type is
+  /// "fn_sup" ("FindFnSup"), which "ApplyCfiTypes" turns into the type a call
+  /// checks for. Recorded as "metadata" on the function. The type is a hash of
+  /// the function type's "Args" and "Out", the s++ signature, not of which
+  /// "FunXXX" it is, as a "FunRef" can be passed as a "FunMov" (constrained
+  /// generic).
+  SPP_EXP_FUN auto StampCfiFn(
+    llvm::Function &fn, TypeRef const &fn_sup) -> void;
+
+  /// Record a coroutine's generator. The lowering splits it into the functions
+  /// resuming and destroying it, which keep this, and "ApplyCfiTypes" types
+  /// ach of them by which it is.
+  SPP_EXP_FUN auto StampCfiCoroutine(
+    llvm::Function &ramp, TypeRef const &gen_sup) -> void;
+
+  /// The operand bundle an indirect call through a value whose function type is
+  /// "fn_sup" carries, so the backend checks that what it reaches was stamped
+  /// with the same type (KCFI).
+  SPP_EXP_FUN auto CfiFnCallBundles(
+    TypeRef const &fn_sup, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef>;
+
+  /// The same for resuming or destroying a generator whose generator type is
+  /// "gen_sup" ("FindGenSup"), which the coroutine lowering turns into a call
+  /// through its frame.
+  SPP_EXP_FUN auto CfiGenCallBundles(
+    TypeRef const &gen_sup, CoroEdge edge,
+    LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef>;
+
+  /// Mark "fn" as a closure's capture destructor, the type the call in
+  /// "EmitDropClosureEnv" checks it against.
+  SPP_EXP_FUN auto StampCfiClosureEnvDrop(llvm::Function &fn) -> void;
+
+  /// The operand bundle the call through a closure's environment header to its
+  /// capture destructor carries ("StampCfiClosureEnvDrop").
+  SPP_EXP_FUN auto CfiClosureEnvDropCallBundles(
+    LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef>;
+
+  /// The control-flow-integrity type of a function type ("FindFnSup"): a hash
+  /// of its "Args" and "Out".
+  SPP_EXP_FUN auto CfiFnType(TypeRef const &fn_sup) -> std::uint32_t;
+
+  /// Check every indirect call in a "llvm::Module" against the S++ signature of
+  /// what it reaches (KCFI). Each function recorded as callable indirectly
+  /// carries its type just before its entry, and each call compares it with the
+  /// type it recorded, trapping on a mismatch, so a corrupted function pointer
+  /// or coroutine frame reaches only a function of the same type.
+  SPP_EXP_FUN auto ApplyCfiTypes(void *llvm_module) -> bool;
+
+  /// The rest of "ApplyCfiTypes": types the functions that coroutine lowering
+  /// split each coroutine into (".resume", ".destroy", ".cleanup"), which only
+  /// exist part-way through the optimiser. Runs after the split, but before
+  /// function merging could fold a part into a thunk that keeps no S++ record.
+  SPP_EXP_FUN auto ApplyCfiCoroTypes(void *llvm_module) -> void;
+
+  /// The after-optimiser half of "ApplyCfiTypes". Raises an Ice for any
+  /// indirect call left without a "kcfi" bundle, as that call would go
+  /// unchecked: error rather than silently fail. Also apply some specific
+  /// Mach-O fixes where KCFI type labels get subsumed by the previous function.
+  SPP_EXP_FUN auto FinishCfi(void *llvm_module) -> void;
+}
