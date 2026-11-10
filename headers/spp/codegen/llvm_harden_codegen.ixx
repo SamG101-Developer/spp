@@ -77,17 +77,6 @@ namespace spp::codegen {
   /// is kept off "cold" there. Nothing to do for any other format.
   SPP_EXP_FUN auto KeepCfiTypesAttached(void *llvm_module) -> void;
 
-  /// Keep every switch in an "llvm::Module" (passed as an opaque
-  /// pointer) from jumping through an entry past the end of its
-  /// jump table when the bounds check before it is mispredicted.
-  /// On AArch64 the table stays and its index is clamped without
-  /// a branch; x86 has no such lowering, so its switches are
-  /// built without tables, as compares, which also leaves no
-  /// indirect jump for anything to steer. A few instructions per
-  /// switch. On any other target this reports the key that turns
-  /// it off and answers false, which fails the build.
-  SPP_EXP_FUN auto ApplyJumpTableBounds(void *llvm_module) -> bool;
-
   /// Make every call to an "!ffi" function in an "llvm::Module"
   /// (passed as an opaque pointer) an invoke whose unwind edge
   /// fails the "unwound into s++" check, naming the function.

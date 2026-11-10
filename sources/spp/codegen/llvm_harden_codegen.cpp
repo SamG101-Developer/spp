@@ -10,14 +10,6 @@ import std;
 
 namespace spp::codegen {
   namespace {
-    /// The function attribute that builds a function's
-    /// switches without jump tables.
-    constexpr auto kNoJumpTablesAttr = llvm::StringLiteral("no-jump-tables");
-
-    /// The function attribute that clamps a jump table's
-    /// index on AArch64 before the table is read.
-    constexpr auto kJumpTableHardeningAttr = llvm::StringLiteral("aarch64-jump-table-hardening");
-
     /// Whether the selected target has straight-line speculation
     /// hardening: x86 and AArch64 do, nothing else does. Not
     /// AArch64 Mach-O: LLVM calls its indirect-call thunks by the
@@ -185,28 +177,6 @@ auto spp::codegen::KeepCfiTypesAttached(
       fn.removeFnAttr(llvm::Attribute::Cold);
     }
   }
-}
-
-auto spp::codegen::ApplyJumpTableBounds(
-  void *llvm_module) -> bool {
-  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  const auto &triple = TargetTriple();
-  if (not triple.isX86() and not triple.isAArch64()) {
-    llvm::errs()
-      << "This target cannot keep a jump table's index in bounds.\n"
-      << "  To build without it, set 'jump_table_bounds = false' under [binary.codegen] in spp.toml.\n";
-    return false;
-  }
-
-  // Read by the backend's switch lowering, so stamping them
-  // after optimisation still takes effect.
-  const auto attr = triple.isAArch64() ? kJumpTableHardeningAttr : kNoJumpTablesAttr;
-  for (auto &fn : llvm_mod) {
-    if (fn.isDeclaration()) { continue; }
-    if (attr == kNoJumpTablesAttr) { fn.addFnAttr(attr, "true"); }
-    else { fn.addFnAttr(attr); }
-  }
-  return true;
 }
 
 auto spp::codegen::ApplyFfiUnwindGuard(

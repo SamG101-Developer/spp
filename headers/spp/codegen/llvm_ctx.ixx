@@ -12,45 +12,51 @@ use(spp::codegen, struct DeferredReached);
 use(spp::codegen, struct LlvmCtx);
 use(spp::codegen, struct LlvmGenerator);
 
-/// The LLVM context information used throughout stage 10 and
-/// 11 of the compiler's code generation.
+/// The LLVM context information used throughout stage 10 and 11 of the
+/// compiler's code generation. Like the compiler's meta context but specific to
+/// LLVM and with no save/restore mechanic.
 SPP_EXP_CLS struct spp::codegen::LlvmCtx {
-  /// The LLVM context object, shared by every module of one
-  /// compile (so they can be linked) and owned by the compile.
+  /// The LLVM context object, shared by every module of one compile (so they
+  /// can be linked) and owned by the compilation.
   llvm::LLVMContext *Context;
 
-  /// The scope manager currently in use.
+  /// The scope manager currently in use. This is used to ensure types have been
+  /// lowered, and is needed when moving between type aliases.
   ScopeManager const *Sm = nullptr;
 
-  /// The LLVM module being emitted into.
+  /// The LLVM module being emitted into. Needed for generating all LLVM items
+  /// like functions, etc, into.
   Unique<llvm::Module> Module;
 
-  /// The LLVM builder currently in use.
+  /// The LLVM builder currently in use. Used to build all LLVM items, into the
+  /// "Module" field.
   llvm::IRBuilder<> Builder;
 
-  /// Whether we are generating into compile-time context or
-  /// not - some literals have better generation.
+  /// Whether we are generating into compile-time context or not - some literals
+  /// have better generation.
   bool InConstantContext = false;
 
-  /// A list of coroutine handles and their associated
-  /// generators.
+  /// A list of coroutine handles and their associated generators. Keyed on
+  /// assignment target storage.
   Map<llvm::Value*, Unique<LlvmGenerator>> LlvmGenerators;
 
-  /// Track the current closure type. Todo: Does this work
-  /// with nested closures? I'd doubt it.
+  /// Track the current closure type. Todo: Does this work with nested closures?
+  /// I doubt it.
   llvm::Type *CurrentClosureType = nullptr;
 
-  /// The current closure scope. Todo: Same issue as above.
+  /// The current closure scope. Todo: Does this work with nested closures? I
+  /// doubt it.
   Scope *CurrentClosureScope = nullptr;
 
-  /// The "defer"s the walk has reached in each scope (see
-  /// "llvm_defer"), kept here rather than on the scope, which a
-  /// generic template and its instantiations share.
+  /// The "defer" statements that the walk has reached in each scope, kept here
+  /// rather than on the scope, which a generic template and its instantiations
+  /// share.
   Unique<DeferredReached> Deferred;
 
-  /// Build a new context from the module name that is about
-  /// to run stage 10/11, emitting into "context".
-  static auto NewCtx(Str const &module_name, llvm::LLVMContext &context) -> Unique<LlvmCtx>;
+  /// Build a new context from the module name that is about to run stage 10/11,
+  /// emitting into "context".
+  static auto NewCtx(
+    Str const &module_name, llvm::LLVMContext &context) -> Unique<LlvmCtx>;
 
   explicit LlvmCtx(llvm::LLVMContext &context);
   LlvmCtx(LlvmCtx const &) = delete;

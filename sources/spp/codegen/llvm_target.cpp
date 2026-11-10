@@ -599,8 +599,20 @@ auto spp::codegen::EmitObjectFile(
   }
 
   // The legacy pass manager, because that is the only one
-  // the code generator is driven through.
+  // the code generator is driven through. The target's own
+  // analyses go in first, as clang adds them: left to the
+  // pipeline, each is built for an empty triple. No object
+  // changed for it on LLVM 23, but a pass that reads them
+  // would see the wrong target. LLVM 24's
+  // "runCodeGenPipeline" does all of this (upstream-watch U1).
   auto codegen_pm = llvm::legacy::PassManager();
+  const auto &triple = machine->getTargetTriple();
+  const auto &options = machine->Options;
+  codegen_pm.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
+  codegen_pm.add(new llvm::TargetLibraryInfoWrapperPass(llvm::TargetLibraryInfoImpl(triple, options.VecLib)));
+  codegen_pm.add(new llvm::RuntimeLibraryInfoWrapper(
+    triple, options.ExceptionModel, options.FloatABIType, options.EABIVersion, options.MCOptions.ABIName,
+    options.VecLib));
   if (machine->addPassesToEmitFile(codegen_pm, out, nullptr, llvm::CodeGenFileType::ObjectFile)) {
     llvm::errs() << "The target cannot emit an object file\n";
     return false;

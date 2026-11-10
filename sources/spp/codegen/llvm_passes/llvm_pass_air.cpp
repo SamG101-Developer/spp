@@ -18,7 +18,7 @@
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
 
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_air.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 import spp.utils.types;
 import genex;
@@ -41,21 +41,117 @@ namespace spp::codegen {
       return tti.getRegisterBitWidth(llvm::TargetTransformInfo::RGK_FixedWidthVector).getFixedValue() >= kAirMinVectorBits;
     }
 
-    /// One overflow check: the branch to its abort, and the checked
-    /// add or subtract whose bit it branches on.
+    /// The checked intrinsic "check" is the overflow test of "r"
+    /// ("x op y") for, if any: a "*.with.overflow" of the same op and
+    /// operands, or a comparison true for exactly the "x" (and "y")
+    /// the op overflows for. InstCombine makes the comparisons, from an
+    /// intrinsic whose value went unused once "EmitCheckedArith"
+    /// returned the flagged op instead: LLVM's add-overflow shapes for
+    /// two variables ("m_UAddWithOverflow"), "x u< y" for an unsigned
+    /// subtract, and, for a constant operand, any test of "x" whose
+    /// truth set is the op's overflow set (a range: "x u> MAX - 1",
+    /// "x == MAX", ...), compared as ranges so no shape is missed. A
+    /// subtract of a constant may have become "x + -C".
+    struct FusedCheck {
+      llvm::Intrinsic::ID Id;
+      llvm::Value *Rhs;
+    };
+
+    auto OverflowCheckOf(llvm::BinaryOperator const *r, llvm::Instruction const *check) -> Opt<FusedCheck> {
+      namespace pm = llvm::PatternMatch;
+      const auto x = r->getOperand(0);
+      const auto y = r->getOperand(1);
+      const auto opcode = r->getOpcode();
+
+      // An intrinsic of the same op and operands, read only through
+      // "extractvalue" (so its parts can be handed over).
+      if (const auto w = llvm::dyn_cast<llvm::WithOverflowInst>(check)) {
+        if (not genex::all_of(w->users(), [](auto u) { return llvm::isa<llvm::ExtractValueInst>(u); })) { return Nullopt; }
+        const auto same = (w->getLHS() == x and w->getRHS() == y)
+          or (r->isCommutative() and w->getLHS() == y and w->getRHS() == x);
+        if (w->getBinaryOp() == opcode and same) { return FusedCheck{.Id = w->getIntrinsicID(), .Rhs = y}; }
+        return Nullopt;
+      }
+      const auto cmp = llvm::dyn_cast<llvm::ICmpInst>(check);
+      if (cmp == nullptr) { return Nullopt; }
+
+      // Two variables: an unsigned add's shapes, or "x u< y".
+      if (opcode == llvm::Instruction::Add and (
+        pm::match(cmp, pm::m_UAddWithOverflow(pm::m_Specific(x), pm::m_Specific(y), pm::m_Value()))
+        or pm::match(cmp, pm::m_UAddWithOverflow(pm::m_Specific(y), pm::m_Specific(x), pm::m_Value())))) {
+        return FusedCheck{.Id = llvm::Intrinsic::uadd_with_overflow, .Rhs = y};
+      }
+      if (opcode == llvm::Instruction::Sub and (
+        pm::match(cmp, pm::m_SpecificICmp(llvm::ICmpInst::ICMP_ULT, pm::m_Specific(x), pm::m_Specific(y)))
+        or pm::match(cmp, pm::m_SpecificICmp(llvm::ICmpInst::ICMP_UGT, pm::m_Specific(y), pm::m_Specific(x))))) {
+        return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = y};
+      }
+
+      // A constant operand: the test's truth set against the op's
+      // overflow set, for each check the op could have come from.
+      const auto c = llvm::dyn_cast<llvm::ConstantInt>(y);
+      if (c == nullptr) { return Nullopt; }
+      // The test is on "x" itself, or on "x + C" (InstCombine's form of
+      // a range test, as a multiply's is): then "x"'s truth set is the
+      // comparison's shifted back by "C".
+      const auto offset_of = [&](llvm::Value *v) -> Opt<llvm::APInt> {
+        if (v == x) { return llvm::APInt::getZero(x->getType()->getIntegerBitWidth()); }
+        llvm::APInt const *off = nullptr;
+        if (pm::match(v, pm::m_Add(pm::m_Specific(x), pm::m_APInt(off)))) { return *off; }
+        return Nullopt;
+      };
+      auto k = static_cast<llvm::ConstantInt*>(nullptr);
+      auto pred = cmp->getPredicate();
+      auto offset = Opt<llvm::APInt>();
+      if (offset = offset_of(cmp->getOperand(0)); offset.has_value()) {
+        k = llvm::dyn_cast<llvm::ConstantInt>(cmp->getOperand(1));
+      }
+      else if (offset = offset_of(cmp->getOperand(1)); offset.has_value()) {
+        k = llvm::dyn_cast<llvm::ConstantInt>(cmp->getOperand(0));
+        pred = llvm::ICmpInst::getSwappedPredicate(pred);
+      }
+      if (k == nullptr) { return Nullopt; }
+      const auto truth = llvm::ConstantRange::makeExactICmpRegion(pred, k->getValue()).subtract(*offset);
+      const auto overflows = [&](const llvm::Instruction::BinaryOps op, llvm::APInt const &v, const unsigned kind) {
+        return llvm::ConstantRange::makeExactNoWrapRegion(op, v, kind).inverse() == truth;
+      };
+      constexpr auto nuw = llvm::OverflowingBinaryOperator::NoUnsignedWrap;
+      constexpr auto nsw = llvm::OverflowingBinaryOperator::NoSignedWrap;
+      const auto &v = c->getValue();
+      switch (opcode) {
+        case llvm::Instruction::Add:
+          if (overflows(llvm::Instruction::Add, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::uadd_with_overflow, .Rhs = y}; }
+          if (overflows(llvm::Instruction::Add, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::sadd_with_overflow, .Rhs = y}; }
+          if (overflows(llvm::Instruction::Sub, -v, nuw)) {
+            return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = llvm::ConstantInt::get(c->getType(), -v)};
+          }
+          return Nullopt;
+        case llvm::Instruction::Sub:
+          if (overflows(llvm::Instruction::Sub, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = y}; }
+          if (overflows(llvm::Instruction::Sub, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::ssub_with_overflow, .Rhs = y}; }
+          return Nullopt;
+        case llvm::Instruction::Mul:
+          if (overflows(llvm::Instruction::Mul, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::umul_with_overflow, .Rhs = y}; }
+          if (overflows(llvm::Instruction::Mul, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::smul_with_overflow, .Rhs = y}; }
+          return Nullopt;
+        default:
+          return Nullopt;
+      }
+    }
+
+    /// One overflow check: the branch to its abort, and either the
+    /// checked add or subtract whose bit it branches on ("Op"), or a
+    /// comparison ("Bit") InstCombine made of one, the overflow test of a
+    /// flagged plain op ("OverflowCheckOf"): a multiply by a constant,
+    /// whose check is the multiplicand outside a range, which unlike the
+    /// intrinsic vectorises. "Results" are the flagged ops whose values
+    /// are wrong when it fails.
     struct Check {
       llvm::CondBrInst *Branch;
       llvm::WithOverflowInst *Op;
+      llvm::Value *Bit;
+      Vec<llvm::BinaryOperator*> Results;
     };
-
-    /// A block that only aborts: one call to a function that does
-    /// not return, then "unreachable". Every s++ runtime check
-    /// fails into one.
-    auto IsAbortBlock(llvm::BasicBlock const &bb) -> bool {
-      const auto call = llvm::dyn_cast_or_null<llvm::CallInst>(bb.getTerminator()->getPrevNode());
-      return llvm::isa<llvm::UnreachableInst>(bb.getTerminator()) and call != nullptr and call->doesNotReturn()
-        and &bb.front() == call;
-    }
 
     /// The checked add or subtract whose overflow bit "cond" is.
     auto CheckedAddSubOf(llvm::Value *cond) -> llvm::WithOverflowInst* {
@@ -93,6 +189,47 @@ namespace spp::codegen {
       return found;
     }
 
+    /// The runtime's numbers for the overflow checks ("RuntimeCheck" in
+    /// "llvm_fn_impls.cpp"): signed and unsigned add, subtract and
+    /// multiply. Division's are not among them: a division must not run
+    /// with the divisor its check refused.
+    constexpr auto kFirstOverflowKind = 0x10u;
+    constexpr auto kLastOverflowKind = 0x15u;
+
+    /// Whether "abort" is where a failed overflow check goes.
+    auto IsOverflowAbort(llvm::BasicBlock const &abort) -> bool {
+      if (not IsAbortBlock(abort)) { return false; }
+      auto const &call = llvm::cast<llvm::CallInst>(abort.front());
+      const auto callee = call.getCalledFunction();
+      if (callee == nullptr or callee->getName() != "sppc_check_failed" or call.arg_size() == 0) { return false; }
+      const auto kind = llvm::dyn_cast<llvm::ConstantInt>(call.getArgOperand(0));
+      return kind != nullptr and kind->getZExtValue() >= kFirstOverflowKind and kind->getZExtValue() <= kLastOverflowKind;
+    }
+
+    /// The overflow check "br" (to an overflow abort) makes, if it is
+    /// one this pass can defer: the bit of a checked add or subtract, or
+    /// a comparison that is the overflow test of a flagged add, subtract
+    /// or multiply in "loop".
+    auto CheckOf(llvm::CondBrInst *br, llvm::Loop const &loop) -> Opt<Check> {
+      if (const auto op = CheckedAddSubOf(br->getCondition()); op != nullptr) {
+        return Check{.Branch = br, .Op = op, .Bit = nullptr, .Results = FlaggedResultsOf(op)};
+      }
+      const auto cmp = llvm::dyn_cast<llvm::ICmpInst>(br->getCondition());
+      if (cmp == nullptr or not loop.contains(cmp) or not IsOverflowAbort(*br->getSuccessor(0))) { return Nullopt; }
+      for (const auto bb : loop.blocks()) {
+        for (auto &inst : *bb) {
+          const auto r = llvm::dyn_cast<llvm::BinaryOperator>(&inst);
+          if (r == nullptr or not r->getType()->isIntegerTy() or not r->hasPoisonGeneratingFlags()) { continue; }
+          const auto op = r->getOpcode();
+          if (op != llvm::Instruction::Add and op != llvm::Instruction::Sub and op != llvm::Instruction::Mul) { continue; }
+          if (OverflowCheckOf(r, cmp).has_value()) {
+            return Check{.Branch = br, .Op = nullptr, .Bit = cmp, .Results = {r}};
+          }
+        }
+      }
+      return Nullopt;
+    }
+
     /// The overflow checks of "loop", if every edge out of it but one
     /// is such a check: a branch on the bit of a checked add or
     /// subtract to an abort block whose arguments come from outside
@@ -106,14 +243,14 @@ namespace spp::codegen {
         for (const auto succ : llvm::successors(bb)) {
           if (loop.contains(succ)) { continue; }
           const auto br = llvm::dyn_cast<llvm::CondBrInst>(bb->getTerminator());
-          const auto op = br != nullptr and br->getSuccessor(0) == succ and IsAbortBlock(*succ)
-            ? CheckedAddSubOf(br->getCondition()) : nullptr;
-          const auto movable = op != nullptr and genex::none_of(
+          const auto check = br != nullptr and br->getSuccessor(0) == succ and IsAbortBlock(*succ)
+            ? CheckOf(br, loop) : Nullopt;
+          const auto movable = check.has_value() and genex::none_of(
             llvm::cast<llvm::CallInst>(succ->front()).args(), [&](llvm::Use const &arg) {
               const auto inst = llvm::dyn_cast<llvm::Instruction>(arg.get());
               return inst != nullptr and loop.contains(inst);
             });
-          if (movable) { exits.Checks.emplace_back(br, op); }
+          if (movable) { exits.Checks.emplace_back(*check); }
           else { ++real_exits; exits.Exiting = bb; exits.Exit = succ; }
         }
       }
@@ -154,28 +291,34 @@ namespace spp::codegen {
     /// loop's exit. Each result, everything computed from it, and
     /// every load that may read one back ("tainted") may feed only
     /// more arithmetic, casts, selects (not their condition), other
-    /// deferred checks and stored values: never a phi (so nothing is
+    /// deferred checks (an op or a comparison: a tainted input means a
+    /// check has already failed, whose flag aborts at the exit whatever
+    /// this one says) and stored values: never a phi (so nothing is
     /// carried round in a register, which would also keep the loop
     /// from vectorising), a branch, an address, a division or a call.
     /// Each op must be read only through "extractvalue", and by one
     /// check, so it can be rewritten once.
     auto IsTaintContained(llvm::Loop const &loop, Vec<Check> const &checks, llvm::AAResults &aa) -> bool {
       auto ops = Set<llvm::Value const*>();
+      auto bits = Set<llvm::Value const*>();
       auto branches = Set<llvm::Value const*>();
       auto tainted = Set<llvm::Value const*>();
       auto work = Vec<llvm::Value const*>();
       auto stores = Vec<llvm::StoreInst const*>();
       const auto taint = [&](llvm::Value const *v) { if (tainted.insert(v).second) { work.emplace_back(v); } };
 
-      for (auto const &[br, op] : checks) {
-        if (not ops.insert(op).second) { return false; }
-        branches.insert(br);
-        for (const auto user : op->users()) {
-          const auto ev = llvm::dyn_cast<llvm::ExtractValueInst>(user);
-          if (ev == nullptr) { return false; }
-          if (ev->getIndices()[0] == 0) { taint(ev); }
+      for (auto const &check : checks) {
+        branches.insert(check.Branch);
+        if (check.Op != nullptr) {
+          if (not ops.insert(check.Op).second) { return false; }
+          for (const auto user : check.Op->users()) {
+            const auto ev = llvm::dyn_cast<llvm::ExtractValueInst>(user);
+            if (ev == nullptr) { return false; }
+            if (ev->getIndices()[0] == 0) { taint(ev); }
+          }
         }
-        for (const auto result : FlaggedResultsOf(op)) { taint(result); }
+        if (check.Bit != nullptr) { bits.insert(check.Bit); }
+        for (const auto result : check.Results) { taint(result); }
       }
 
       while (not work.empty()) {
@@ -191,7 +334,7 @@ namespace spp::codegen {
               continue;
             }
             const auto passes = (llvm::isa<llvm::BinaryOperator>(inst) and not inst->isIntDivRem())
-              or ops.contains(inst) or llvm::isa<llvm::CastInst, llvm::FreezeInst>(inst)
+              or ops.contains(inst) or bits.contains(inst) or llvm::isa<llvm::CastInst, llvm::FreezeInst>(inst)
               or (llvm::isa<llvm::ExtractValueInst>(inst) and ops.contains(inst->getOperand(0)))
               or (llvm::isa<llvm::SelectInst>(inst) and llvm::cast<llvm::SelectInst>(inst)->getCondition() != v);
             if (not passes) { return false; }
@@ -219,6 +362,7 @@ namespace spp::codegen {
     /// would otherwise run forever instead of aborting), whose only
     /// other exits are the checks, that do nothing observable, and
     /// whose wrapped results stay harmless until the exit.
+
     auto FindDeferredChecks(llvm::Loop const &loop, llvm::ScalarEvolution &se, llvm::AAResults &aa) -> Opt<Vec<Check>> {
       if (not loop.isInnermost() or loop.getLoopPreheader() == nullptr) { return Nullopt; }
       if (llvm::isa<llvm::SCEVCouldNotCompute>(se.getSymbolicMaxBackedgeTakenCount(&loop))) { return Nullopt; }
@@ -301,9 +445,11 @@ namespace spp::codegen {
         return flag;
       };
 
-      for (auto const &[br, op] : checks) {
+      for (auto const &[br, op, bit, results] : checks) {
         const auto flag = flag_of(br->getSuccessor(0));
-        const auto overflowed = LowerCheckedOp(op);
+        auto overflowed = bit;
+        if (op != nullptr) { overflowed = LowerCheckedOp(op); }
+        else { for (const auto result : results) { result->dropPoisonGeneratingFlags(); } }
         auto b = llvm::IRBuilder<>(br);
         b.CreateStore(b.CreateOr(b.CreateLoad(b.getInt1Ty(), flag), overflowed, "air.any"), flag);
         b.CreateBr(br->getSuccessor(1));
@@ -370,9 +516,11 @@ namespace spp::codegen {
         }
 
         // The check of this add: a checked add of the same operands,
-        // whose flagged result "Next" is.
+        // whose flagged result "Next" is. Only the intrinsic form: a
+        // comparison check has no op to rebuild the sum from.
         const auto check = genex::find_if(exits->Checks, [&](Check const &c) {
-          return c.Op->getBinaryOp() == llvm::Instruction::Add and genex::contains(FlaggedResultsOf(c.Op), next);
+          return c.Op != nullptr and c.Op->getBinaryOp() == llvm::Instruction::Add
+            and genex::contains(FlaggedResultsOf(c.Op), next);
         });
         if (check == exits->Checks.end()) { continue; }
         const auto op = check->Op;
@@ -410,37 +558,15 @@ namespace spp::codegen {
       auto expander = llvm::SCEVExpander(se, "air");
       if (not expander.isSafeToExpand(count)) { return false; }
       const auto ty = count->getType();
-
-      // The preheader becomes the guard, and a new one the exact loop's.
-      const auto guard = loop.getLoopPreheader();
-      const auto preheader = llvm::SplitBlock(guard, guard->getTerminator(), &dt, &li, nullptr, "air.exact.preheader");
-      const auto counted = expander.expandCodeFor(count, count->getType(), guard->getTerminator());
-      auto b = llvm::IRBuilder<>(guard->getTerminator());
-      const auto small = b.CreateAnd(
-        b.CreateICmpUGE(counted, llvm::ConstantInt::get(ty, kExactSumMinBackedges)),
-        ty->getIntegerBitWidth() <= 32
-          ? b.getTrue() : b.CreateICmpULE(counted, llvm::ConstantInt::get(ty, kExactSumMaxBackedges)),
-        "air.exact.worth");
-
-      auto map = llvm::ValueToValueMapTy();
-      auto blocks = llvm::SmallVector<llvm::BasicBlock*>();
-      llvm::cloneLoopWithPreheader(preheader, guard, &loop, map, ".air.checked", &li, &dt, blocks);
-      llvm::remapInstructionsInBlocks(blocks, map);
-      b.CreateCondBr(small, preheader, llvm::cast<llvm::BasicBlock>(map[preheader]));
-      guard->getTerminator()->eraseFromParent();
-
-      // The checked copy leaves by the same blocks; the real exit's
-      // phis take its values too (the abort blocks have none).
-      for (const auto bb : loop.blocks()) {
-        if (llvm::is_contained(llvm::successors(bb), exit)) {
-          for (auto &phi : exit->phis()) {
-            const auto v = phi.getIncomingValueForBlock(bb);
-            const auto mapped = static_cast<llvm::Value*>(map.lookup(v));
-            phi.addIncoming(mapped != nullptr ? mapped : v, llvm::cast<llvm::BasicBlock>(map[bb]));
-          }
-        }
-      }
-      dt.recalculate(*guard->getParent());
+      VersionLoop(loop, exit, [&](llvm::Instruction *before) -> llvm::User* {
+        auto b = llvm::IRBuilder<>(before);
+        const auto counted = expander.expandCodeFor(count, ty, before->getIterator());
+        return llvm::cast<llvm::User>(b.CreateAnd(
+          b.CreateICmpUGE(counted, llvm::ConstantInt::get(ty, kExactSumMinBackedges)),
+          ty->getIntegerBitWidth() <= 32
+            ? b.getTrue() : b.CreateICmpULE(counted, llvm::ConstantInt::get(ty, kExactSumMaxBackedges)),
+          "air.exact.worth"));
+      }, ".air.checked", li, dt);
       return true;
     }
 
@@ -565,92 +691,6 @@ namespace spp::codegen {
         return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
       }
     };
-
-    /// The checked intrinsic "check" is the overflow test of "r"
-    /// ("x op y") for, if any: a "*.with.overflow" of the same op and
-    /// operands, or a comparison true for exactly the "x" (and "y")
-    /// the op overflows for. InstCombine makes the comparisons, from an
-    /// intrinsic whose value went unused once "EmitCheckedArith"
-    /// returned the flagged op instead: LLVM's add-overflow shapes for
-    /// two variables ("m_UAddWithOverflow"), "x u< y" for an unsigned
-    /// subtract, and, for a constant operand, any test of "x" whose
-    /// truth set is the op's overflow set (a range: "x u> MAX - 1",
-    /// "x == MAX", ...), compared as ranges so no shape is missed. A
-    /// subtract of a constant may have become "x + -C".
-    struct FusedCheck {
-      llvm::Intrinsic::ID Id;
-      llvm::Value *Rhs;
-    };
-
-    auto OverflowCheckOf(llvm::BinaryOperator const *r, llvm::Instruction const *check) -> Opt<FusedCheck> {
-      namespace pm = llvm::PatternMatch;
-      const auto x = r->getOperand(0);
-      const auto y = r->getOperand(1);
-      const auto opcode = r->getOpcode();
-
-      // An intrinsic of the same op and operands, read only through
-      // "extractvalue" (so its parts can be handed over).
-      if (const auto w = llvm::dyn_cast<llvm::WithOverflowInst>(check)) {
-        if (not genex::all_of(w->users(), [](auto u) { return llvm::isa<llvm::ExtractValueInst>(u); })) { return Nullopt; }
-        const auto same = (w->getLHS() == x and w->getRHS() == y)
-          or (r->isCommutative() and w->getLHS() == y and w->getRHS() == x);
-        if (w->getBinaryOp() == opcode and same) { return FusedCheck{.Id = w->getIntrinsicID(), .Rhs = y}; }
-        return Nullopt;
-      }
-      const auto cmp = llvm::dyn_cast<llvm::ICmpInst>(check);
-      if (cmp == nullptr) { return Nullopt; }
-
-      // Two variables: an unsigned add's shapes, or "x u< y".
-      if (opcode == llvm::Instruction::Add and (
-        pm::match(cmp, pm::m_UAddWithOverflow(pm::m_Specific(x), pm::m_Specific(y), pm::m_Value()))
-        or pm::match(cmp, pm::m_UAddWithOverflow(pm::m_Specific(y), pm::m_Specific(x), pm::m_Value())))) {
-        return FusedCheck{.Id = llvm::Intrinsic::uadd_with_overflow, .Rhs = y};
-      }
-      if (opcode == llvm::Instruction::Sub and (
-        pm::match(cmp, pm::m_SpecificICmp(llvm::ICmpInst::ICMP_ULT, pm::m_Specific(x), pm::m_Specific(y)))
-        or pm::match(cmp, pm::m_SpecificICmp(llvm::ICmpInst::ICMP_UGT, pm::m_Specific(y), pm::m_Specific(x))))) {
-        return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = y};
-      }
-
-      // A constant operand: the test's truth set against the op's
-      // overflow set, for each check the op could have come from.
-      const auto c = llvm::dyn_cast<llvm::ConstantInt>(y);
-      if (c == nullptr) { return Nullopt; }
-      auto k = static_cast<llvm::ConstantInt*>(nullptr);
-      auto pred = cmp->getPredicate();
-      if (cmp->getOperand(0) == x) { k = llvm::dyn_cast<llvm::ConstantInt>(cmp->getOperand(1)); }
-      else if (cmp->getOperand(1) == x) {
-        k = llvm::dyn_cast<llvm::ConstantInt>(cmp->getOperand(0));
-        pred = llvm::ICmpInst::getSwappedPredicate(pred);
-      }
-      if (k == nullptr) { return Nullopt; }
-      const auto truth = llvm::ConstantRange::makeExactICmpRegion(pred, k->getValue());
-      const auto overflows = [&](const llvm::Instruction::BinaryOps op, llvm::APInt const &v, const unsigned kind) {
-        return llvm::ConstantRange::makeExactNoWrapRegion(op, v, kind).inverse() == truth;
-      };
-      constexpr auto nuw = llvm::OverflowingBinaryOperator::NoUnsignedWrap;
-      constexpr auto nsw = llvm::OverflowingBinaryOperator::NoSignedWrap;
-      const auto &v = c->getValue();
-      switch (opcode) {
-        case llvm::Instruction::Add:
-          if (overflows(llvm::Instruction::Add, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::uadd_with_overflow, .Rhs = y}; }
-          if (overflows(llvm::Instruction::Add, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::sadd_with_overflow, .Rhs = y}; }
-          if (overflows(llvm::Instruction::Sub, -v, nuw)) {
-            return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = llvm::ConstantInt::get(c->getType(), -v)};
-          }
-          return Nullopt;
-        case llvm::Instruction::Sub:
-          if (overflows(llvm::Instruction::Sub, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::usub_with_overflow, .Rhs = y}; }
-          if (overflows(llvm::Instruction::Sub, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::ssub_with_overflow, .Rhs = y}; }
-          return Nullopt;
-        case llvm::Instruction::Mul:
-          if (overflows(llvm::Instruction::Mul, v, nuw)) { return FusedCheck{.Id = llvm::Intrinsic::umul_with_overflow, .Rhs = y}; }
-          if (overflows(llvm::Instruction::Mul, v, nsw)) { return FusedCheck{.Id = llvm::Intrinsic::smul_with_overflow, .Rhs = y}; }
-          return Nullopt;
-        default:
-          return Nullopt;
-      }
-    }
 
     /// Put each checked op back together for the backend, at the end
     /// of the optimiser. "EmitCheckedArith" returns the plain op,

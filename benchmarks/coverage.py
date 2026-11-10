@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check that every part of codegen has a run-time benchmark, or a reason it has none.
 
-The parts are every AST whose source file defines Stage11_CodeGen ("ast:<file stem without _ast>") and every module in
-sources/spp/codegen ("codegen:<file stem>"). A part is covered by a benchmark folder under runtime/ast named after it,
+The parts are every AST whose source file defines Stage11_CodeGen ("ast:<file stem without _ast>") and every source
+file under sources/spp/codegen, subfolders included ("codegen:<file stem>"). A part is covered by a benchmark folder under runtime/ast named after it,
 or by a "covers" entry in any benchmark's manifest.toml. Otherwise it needs a line in exempt.txt, with its reason.
 
 Fails on a part that is neither covered nor exempt, on a covers or exempt entry naming no part, on a part both covered
@@ -32,7 +32,7 @@ def parts() -> set[str]:
         for path in ASTS.glob("*_ast.cpp")
         if "::Stage11_CodeGen(" in path.read_text(errors="replace")
     }
-    return asts | {"codegen:" + path.stem for path in CODEGEN.glob("*.cpp")}
+    return asts | {"codegen:" + path.stem for path in CODEGEN.rglob("*.cpp")}
 
 
 def coverage(known: set[str]) -> dict[str, list[str]]:

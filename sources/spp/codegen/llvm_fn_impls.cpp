@@ -1,6 +1,6 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/codegen/llvm_pipeline.hpp>
+#include <spp/codegen/llvm_passes.hpp>
 
 module spp.codegen.llvm_fn_impls;
 import spp.analyse.scopes.comp_key;

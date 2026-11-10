@@ -1,4 +1,4 @@
 description = "k added in place to every element of a 4096-element Vec[S64], 50K times: a checked add per element, indexed up to the Vec's own length; C traps signed overflow and Rust has overflow checks, so all three check"
 layer = "core"
 output = "exact"
-covers = ["codegen:llvm_air"]
+covers = ["codegen:llvm_pass_air"]
