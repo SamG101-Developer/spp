@@ -1,6 +1,6 @@
 ---
 name: variant-drop-is-a-no-op
-description: "OPEN 2026-11-10: dropping a variant destroys nothing - Var has no parts, so NeedsDrop says false and DropValue has no tag switch; Vec in a variant leaks"
+description: "Var has no parts, so drop code reads variants through VariantMemberRefs: NeedsDrop recurses into members, DropValue switches on the tag (fixed 2026-11-10)"
 updated: 2026-11-10
 ---
 
@@ -11,14 +11,18 @@ drop path reads a type's parts through `type_members::GetAllParts`, which finds 
   `std::mem::ops::drop[T=Bool or Vec[S32]]` compiles to a store and `ret` (seen in both dev and rel IR).
 
 The analysis still treats the variant as linear (`IsCopyable` is false, E94 without a `drop`), so the program is
-forced to call a `drop` that does nothing. Found by valgrind on
+forced to call a `drop` that does nothing. Was found by valgrind on
 `std::tst::variant::test_a_variant_can_hold_a_non_copyable_alternative` (4 bytes definitely lost in rel; dev hides it
 because a stale copy of the pointer survives on the stack). The same goes for a variant nested in a struct or tuple,
 and for `Opt[T]`/`Res[T, E]` over owning types.
 
-**Why:** the leak looks like a std bug but std's code is correct.
+**Fixed 2026-11-10:** `NeedsDrop` and `EnsureDropInstantiated` (`drop_utils.cpp`) recurse into
+`type_members::VariantMemberRefs`, and `DropValue` loads the tag (`LoadVariantTag`) and switches to a `DropValue` of
+the payload (`GetVariantPayloadPtr`) for each member that needs one; members are in tag order. A partial move out of a
+variant is an ICE there (a variant has no parts). Verified: valgrind conformance 663/666 (the rest are
+[[method-result-receiver-temporary-unchecked]]), no invalid accesses; 1285 targeted gtests pass.
 
-**How to apply:** the fix is `NeedsDrop` (and `EnsureDropInstantiated`) recursing into
-`type_members::VariantMemberRefs`, and `DropValue` loading the tag (`LoadVariantTag`) and switching to a per-member
-`DropValue` on the payload (`GetVariantPayloadPtr`) for each member that needs it. A main-only valgrind probe does not
+**Why:** anything new that walks a type's parts (`GetAllParts`) misses variants the same way.
+
+**How to apply:** code that asks "what does this type own" must handle `IsTypeVariant` beside `GetAllParts`. A main-only valgrind probe does not
 show variant leaks; probe through `spp test --filter ... -m rel --runner valgrind`.

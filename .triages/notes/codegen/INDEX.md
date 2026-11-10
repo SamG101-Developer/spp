@@ -30,4 +30,4 @@
 - [AIR needs wide vectors](air-needs-wide-vectors.md) — AIR passes act only at 256-bit vectors; set [target.floor] cpu; cpu stamped per function (arch.spp base)
 - [Checked results are flagged](checked-results-are-flagged.md) — checked +/-/* return add nuw/nsw, not the intrinsic value; passes moving a check drop the flags
 - [mem ops are LLVM intrinsics](mem-ops-are-llvm-intrinsics.md) — mem_copy/mem_set emit llvm.memcpy/memset; sppc memcpy/memset/memmove gone
-- [Variant drop is a no-op (open)](variant-drop-is-a-no-op.md) — Var has no parts: NeedsDrop false, DropValue has no tag switch; a Vec in a variant leaks
+- [Variants have no parts](variant-drop-is-a-no-op.md) — drop code reads variants via VariantMemberRefs + tag switch; GetAllParts alone missed them (leak fixed 2026-11-10)
