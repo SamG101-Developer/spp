@@ -18,6 +18,10 @@
 #   - a running sum is computed exactly: right in range, stopped on overflow;
 #   - a fussy overflow (MAX + 1 - 1 in a sum) finishes in rel with the exact
 #     result, and stops in dev;
+#   - a multiply by a constant ("c[i] = a[i] * 3 + b[i]", the multiply's check
+#     the multiplicand outside a range), in range, prints the right value, its
+#     loop deferred and vectorised (its index checks proven before it, O17);
+#     overflowing, it aborts with "signed multiply overflowed", in rel and dev;
 #   - an unknown "[target.floor] cpu" is refused.
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-air-integers.sh [path/to/spp]
@@ -68,6 +72,35 @@ fun main() -> Void {
   }
   println("{}", sum)
   drop(x)
+}
+EOF
+}
+
+# "c[i] = a[i] * 3 + b[i]" over three 4096-element Vecs, 1000 times, "a" filled
+# with "start" and "b" with 5, printing the first element of "c".
+mul_body() {
+    local start="$1"
+    cat <<EOF
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let a = Vec[S64]::new_filled(black_box(4096_uz), black_box(${start}))
+  let b = Vec[S64]::new_filled(black_box(4096_uz), black_box(5_s64))
+  let mut c = Vec[S64]::new_filled(black_box(4096_uz), 0_s64)
+  let mut pass = 0_s64
+  loop pass < black_box(1000_s64) {
+    let mut i = 0_uz
+    loop i < c.len() {
+      c[mut i]@ = a[i]@ * 3_s64 + b[i]@
+      i += 1_uz
+    }
+    pass += 1_s64
+  }
+  println("{}", c[0_uz]@)
+  drop(a)
+  drop(b)
+  drop(c)
 }
 EOF
 }
@@ -177,6 +210,22 @@ FUSSY='x[mut 0_uz]@ = 9223372036854775807_s64
 check "fussy overflow, rel finishes" rel "$(sum_body 0_s64 "${FUSSY}")" 0 "9223372036854775807" "${WIDE}"
 check "fussy overflow, dev stops" dev "$(sum_body 0_s64 "${FUSSY}")" 134 \
     "[sppc] check failed: signed add overflowed" "${WIDE}"
+
+# A multiply by a constant: its check is a range comparison, deferred like the
+# add's. S64::MAX / 3 + 1 is the smallest multiplicand that overflows.
+if check "multiply in range" rel "$(mul_body 7_s64)" 0 "26" "${WIDE}"; then
+    deferred="$(count_in_main "${LAST_DIR}" "air[.]any")"
+    vectors="$(count_in_main "${LAST_DIR}" "<[0-9]+ x ")"
+    if (( deferred > 0 && vectors > 0 )); then
+        ok "multiply in range: the loop is deferred and vectorised (${vectors} vector lines)"
+    else
+        fail "multiply in range: expected the loop deferred and vectorised, got ${deferred} deferred, ${vectors} vector lines"
+    fi
+fi
+check "multiply overflow" rel "$(mul_body 3074457345618258603_s64)" 134 \
+    "[sppc] check failed: signed multiply overflowed" "${WIDE}"
+check "multiply overflow, dev" dev "$(mul_body 3074457345618258603_s64)" 134 \
+    "[sppc] check failed: signed multiply overflowed" "${WIDE}"
 
 # An unknown CPU is refused, naming where to set it.
 dir="${WORK}/unknown-cpu/deferred"
