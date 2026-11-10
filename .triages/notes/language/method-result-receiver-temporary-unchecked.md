@@ -1,19 +1,27 @@
 ---
 name: method-result-receiver-temporary-unchecked
-description: "OPEN 2026-11-10: s.to_reverse().len() compiles and leaks; the borrowed-temporary check is skipped when the receiver's outermost symbol is found through a call"
+description: "A call's owned result is a temporary even though PlaceOf derives a method call from its receiver; the hole let s.to_reverse().len() leak (fixed 2026-11-10)"
 updated: 2026-11-10
 ---
 
-Borrowing a non-`Copy` temporary is an error (E94, [[spp-linear-types]]): `Str::from("a").len()` is rejected. But
-`s.to_reverse().len()`, and `loop c in self.to_reverse().chars()` in std's `StrView::rfind_if`, compile, and the
-owned `Str` is never destroyed (no drop in the IR, on any exit). `FunctionCallArgumentGroupAst` looks up
-`FindVarSymbolOutermost(*arg->Val)`, which walks `s.to_reverse()` back to `s`, and
-`borrows::ValidateUnnamedArgumentBorrow` returns early for any argument with a symbol, before its
-`IsLinearTemporary` check. Found by valgrind: the three leaking `std::tst::fs::path` tests all go through
-`rfind_if` (14 bytes, a copy of `"/usr/local/bin"`, allocated in `Path::parent`).
+`regions::PlaceOf` treats a method call on a place as a place (`v.clone()` is `v` plus one opaque step), which is
+right for the borrows a call hands back (`v[mut i]`, a `fwd_ref`). `linear_utils::IsLinearTemporary` used to read
+"has a place" as "is no temporary", so a non-`Copy` value *returned* by a method escaped every borrowed-temporary check
+(E94, [[spp-linear-types]]): `s.to_reverse().len()`, `&addr.storage()` as an argument, `loop c in
+self.to_reverse().chars()`. Nothing dropped those values. Found by valgrind (the three leaking `std::tst::fs::path`
+tests went through `StrView::rfind_if`).
 
-**Why:** a leak the linearity rules exist to forbid, reached only when the temporary comes from a method call.
+**Fixed 2026-11-10:** `IsLinearTemporary` skips the `PlaceOf` test when the expression is itself a call
+(`PostfixExpressionOperatorFunctionCallAst`); a borrow handed back is still excluded by `IsBorrowed`. Tests in
+`test_lin_temporaries.cpp` (`*_method_result*`, `test_valid_borrow_handed_back_by_a_call_is_no_temporary`).
 
-**How to apply:** the check should ask `IsLinearTemporary` (which uses `regions::PlaceOf`, and a call result is no
-place) whatever the outermost symbol. Expect std code that relies on the hole (`rfind_if` first) to become E94 and
-need a named binding plus `drop`.
+The std side, which has to be on SPP-STL master **before** this compiler change merges (it compiles under the old
+compiler too; the reverse of [[merge-spp-before-stl-for-new-features]]): `rfind_if` binds the reversed `Str` with
+`defer drop`; `Ptr[T]` and `sppc::CSockaddrStorage` became `Copy` (the latter declared in `std/net/socket.spp`,
+since the sppc stub generator emits no `Copy`); five test asserts on a non-`Copy` `Res` bind, assert and `drop`.
+`benchmarks/std.rev` needs bumping to that std commit, as the pinned std's `rfind_if` is now E94.
+
+**Why:** a leak the linearity rules exist to forbid, reachable only when the temporary came from a method call.
+
+**How to apply:** a helper that asks "does this expression name a place" for ownership must treat call results
+separately from field and deref chains.
