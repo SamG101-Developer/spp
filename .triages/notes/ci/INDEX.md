@@ -16,6 +16,7 @@
 - [MSVC exported inline vars](msvc-exported-inline-vars.md) — mutable export inline vars undefined at link, even constant-initialised (stats::Counts); extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
 - [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; all lanes run the same defaults; ci-success needs lanes
+- [Valgrind runs the whole STL](valgrind-runs-whole-stl.md) — valgrind-conformance.sh: every !test under valgrind, ~6 min locally; read the re-run section; first leaks found
 - [Released changelogs are frozen](released-changelogs-are-frozen.md) — changelog/<v>.md with v ≤ base VERSION cannot change; add to the head VERSION's entry; check-version.sh enforces
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
 - [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu
