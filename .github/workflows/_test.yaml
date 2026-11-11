@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ""
+      gtest-workers:
+        description: "Tests each gtest cell runs at once; one per CPU when empty."
+        required: false
+        type: string
+        default: ""
       asan-options:
         description: "ASAN_OPTIONS for the gtest cells of a sanitized build; ASan's defaults when empty."
         required: false
@@ -132,6 +137,7 @@ jobs:
               shard-count: ${{ matrix.shards }}
               shard-index: ${{ matrix.shard }}
               filter: ${{ inputs.gtest-filter }}
+              workers: ${{ inputs.gtest-workers }}
 
           - name: s++ STL conformance
             if: contains(matrix.suites, 'stl')

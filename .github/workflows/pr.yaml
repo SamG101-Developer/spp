@@ -207,6 +207,7 @@ jobs:
       compiler: msvc
       off: &msvc-off pac_ret memory.stack.split
       shard-count: 2
+      gtest-workers: "2"
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.
   # On the VS 2026 image, to try the newer MSVC STL before the MSVC lanes move.

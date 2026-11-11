@@ -14,6 +14,10 @@ inputs:
     description: "A --gtest_filter pattern to run only those tests; every test when empty."
     required: false
     default: ""
+  workers:
+    description: "Tests run at once; gtest-parallel's default (one per CPU) when empty."
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -36,4 +40,5 @@ runs:
         SHARD_COUNT: ${{ inputs.shard-count }}
         SHARD_INDEX: ${{ inputs.shard-index }}
         SPP_CI_GTEST_FILTER: ${{ inputs.filter }}
+        SPP_CI_GTEST_WORKERS: ${{ inputs.workers }}
       run: bash .github/scripts/test/gtest.sh
