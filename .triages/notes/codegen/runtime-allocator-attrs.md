@@ -1,10 +1,10 @@
 ---
 name: runtime-allocator-attrs
 description: sppc_malloc/calloc/aligned_alloc/realloc/free are declared as LLVM allocators; they must stay plain libc wrappers
-updated: 2026-11-09
+updated: 2026-11-11
 ---
 
-`ApplyRuntimeAllocatorAttrs` (`../sources/spp/codegen/llvm_entry.cpp`, called in `compiler_boot.cpp` on the linked
+`ApplyRuntimeAllocatorAttrs` (`../sources/spp/codegen/llvm_entry.cpp`, called in `compiler_link.cpp` on the linked
 module before the optimiser) gives every declaration of sppc's five allocation functions LLVM's allocator attributes:
 `allockind` (alloc/realloc/free, uninitialized/zeroed/aligned), one `"alloc-family"="sppc_malloc"`, `allocsize`,
 `allocptr`, `allocalign`, and a `noalias` return. LLVM then treats them as `malloc` and `free`: a pair whose memory

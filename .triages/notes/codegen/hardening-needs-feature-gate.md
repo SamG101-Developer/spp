@@ -25,7 +25,7 @@ when the link driver's start files lack the BTI property, [[aarch64-branch-prote
 
 **How to apply:** whether the target can have a measure is a `DoesTargetSupport<X>(triple = TargetTriple())` in
 `llvm_support` (one list of every such check; tests pass other triples). A compile-time measure is gated with
-`FEATURE_GATE` in `compiler_boot.cpp`; a runtime one becomes an
+`FEATURE_GATE` in `ApplyHardening` (`compiler_link.cpp`); a runtime one becomes an
 `int(void)` sppc step appended in `RuntimeInitShim` (`llvm_entry.cpp`), passed down through `EmitCEntryPoint` like
 `split_stacks`/`deny_wx`. Related: [[spp-toml-feature-schema]], [[one-hardening-measure-at-a-time]].
 

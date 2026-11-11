@@ -1,15 +1,15 @@
 ---
 name: msvc-target-link-and-seh
 description: "An *-windows-msvc target links with lld-link (import .lib, DLL beside the .exe, static CRT), guards FFI calls with SEH cleanuppads, and gets no probe-stack attribute (__chkstk instead)"
-updated: 2026-11-08
+updated: 2026-11-11
 ---
 
 An MSVC target (`isWindowsMSVCEnvironment`) is not linked or unwound the GNU way:
 
-- **Linker:** `lld-link` by default (`LinkerCommand`, `compiler_boot.cpp`), not `cc`: on a Windows runner `cc` is
+- **Linker:** `lld-link` by default (`LinkerCommand`, `compiler_link.cpp`), not `cc`: on a Windows runner `cc` is
   MinGW's gcc, whose runtime lacks the MSVC one's `__security_cookie` / `__C_specific_handler`. `[target.linkers]`
   still overrides it (`link` from a developer prompt). `utils::files::FindProgram` tries `name.exe` on Windows.
-- **Link:** `LinkMsvcExecutable` (anonymous namespace, `compiler_boot.cpp`): `/out:<name>.exe`, the object, each ffi
+- **Link:** `LinkMsvcExecutable` (anonymous namespace, `compiler_link.cpp`): `/out:<name>.exe`, the object, each ffi
   library's import library (`ffi::ImportLibraryOf`: `sppc.lib` beside `sppc.dll`), then `libcmt libvcruntime libucrt
   kernel32` (the static C runtime: the object names no runtime itself, unlike clang-compiled C). DLLs are copied beside
   the `.exe`, not into `lib/`: Windows has no rpath. `ffi::Validate` requires the `.lib` beside the `.dll` for such a

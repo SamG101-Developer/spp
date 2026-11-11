@@ -18,7 +18,7 @@ one off turns the other off beside it.
 The linker keeps the executable's BTI property only if every object linked has it, and drops it silently otherwise.
 **Some toolchains' own start files lack it** (Ubuntu 24.04's glibc `crti.o`/`crtn.o`; Arm's aarch64_be gcc's
 `crtbeginS.o`/`crtendS.o` and `libgcc.a` atomics), while Debian's all have it. So before the passes,
-`StartFileWithoutBti` (`compiler_boot.cpp`) asks the link's driver for its start files (`-print-file-name=`) and reads
+`StartFileWithoutBti` (`compiler_link.cpp`) asks the link's driver for its start files (`-print-file-name=`) and reads
 their properties: one without it makes `bti` **left out** when on by default (`features::LeaveOut`; the record reads
 `left out (the toolchain's crti.o has no BTI property)`, no pads are emitted), and **refused** when the project set
 `bti = true` itself (`features::IsExplicit`). After linking, `UnguardedBranchTargets` (`llvm_artefact.cpp`) still reads
