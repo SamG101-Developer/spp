@@ -5,6 +5,8 @@
 - [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
+- [harden-runner refused an allowed endpoint](harden-runner-refused-allowed-endpoint.md) — instant "Couldn't connect" to github.com in Detect Code Changes; all jobs skipped, run shows cancelled; re-run
+- [Caller grants every nested job](reusable-workflow-caller-grants-every-job.md) — a reusable-workflow call needs every called job's permissions, skipped or not; post-merge invalid otherwise
 - [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0; its zstd/z3 dylibs rewritten out in Dependencies.cmake
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
 - [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file

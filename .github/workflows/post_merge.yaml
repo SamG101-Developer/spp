@@ -486,7 +486,10 @@ jobs:
       !cancelled()
       && needs.changes.outputs.sonar == 'true'
       && (needs.linux-gcc.result == 'skipped' || needs.linux-gcc.outputs.artifact != '')
-    permissions: *read
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/_analysis.yaml
     with:
       sonar: true
