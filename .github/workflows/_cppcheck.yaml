@@ -21,7 +21,7 @@ jobs:
       # Audit, not block: this job gates the builds, so an
       # endpoint missing from the list would stop every merge.
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
@@ -71,7 +71,7 @@ jobs:
       - name: Upload cppcheck results
         if: always() && hashFiles('cppcheck.sarif') != ''
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: cppcheck.sarif
           category: cppcheck
