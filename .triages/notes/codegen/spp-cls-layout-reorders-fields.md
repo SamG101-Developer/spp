@@ -19,6 +19,6 @@ leaves them alone; that is luck, not a guarantee, until the stub's classes are `
 **Why:** a C struct has one layout, the one its header gives; the s++ sort silently moves fields.
 **How to apply:** any class that crosses to C (a stub record, a hand-written binding) is `!ffi`; the stub generator
 (`../sppc/tools/main.py`) emits it on every record. Still open: checking a struct's layout against its C header at
-build time (`../../../.triages/safety-hardening-plan.md`).
+build time (`../../docs_wip/safety-hardening-plan.md`).
 
 Related: [[sppc-sibling-repo]], [[stack-protector-heuristics]], [[ffi-struct-params-c-abi]].

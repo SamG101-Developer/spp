@@ -60,5 +60,5 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
 - [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)
 - [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (27)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (37)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (38)
 - [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (7)

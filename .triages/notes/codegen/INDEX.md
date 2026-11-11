@@ -35,3 +35,4 @@
 - [KCFI hash word on Mach-O](kcfi-cold-functions-on-macho.md) — hash word is in the previous atom; ld64 moving cold fns splits it; prefix data makes typed fns .alt_entry (fixed 2026-11-10)
 - [Hardened jump tables](hardened-jump-tables.md) — our own masked tables on every target; LLVM builds none; asm barrier keeps the mask branch-free
 - [Index checks versioned](index-checks-versioned.md) — llvm_pass_bounds: one wide-width guard before a loop, a copy without its index checks; proof by comparison only
+- [AArch64 branch protection fallbacks](aarch64-branch-protection-fallbacks.md) — bti/pac_ret only on AArch64 ELF; cfi and split stand in elsewhere; bti left out where the toolchain start files lack BTI
