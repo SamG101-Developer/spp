@@ -7,6 +7,8 @@ import std;
 
 auto spp::codegen::DoesTargetSupportSafeStack(
   llvm::Triple const &triple) -> bool {
+  // sppc is a DLL on Windows, which cannot export the thread-local pointer.
+  if (triple.isOSWindows()) { return false; }
   const auto libcalls = llvm::RTLIB::RuntimeLibcallsInfo(triple);
   return libcalls.getSupportedLibcallImpl("__safestack_unsafe_stack_ptr") != llvm::RTLIB::Unsupported
     or libcalls.getSupportedLibcallImpl("__safestack_pointer_address") != llvm::RTLIB::Unsupported;

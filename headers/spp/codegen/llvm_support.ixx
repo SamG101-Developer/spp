@@ -15,7 +15,9 @@ namespace spp::codegen {
   /// Whether LLVM has somewhere to keep the unsafe stack pointer for the
   /// target, which "[memory.stack] split" (safestack) needs: the runtime's
   /// thread-local, or a libc's accessor. Without it, LLVM reports an error and
-  /// emits code that writes through an arbitrary register.
+  /// emits code that writes through an arbitrary register. Never Windows: sppc
+  /// is a DLL there, and a DLL cannot export a thread-local, so the pointer
+  /// LLVM names would be an undefined symbol at the link.
   SPP_EXP_FUN auto DoesTargetSupportSafeStack(
     llvm::Triple const &triple = TargetTriple()) -> bool;
 
