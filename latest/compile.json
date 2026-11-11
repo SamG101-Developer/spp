@@ -6,7 +6,7 @@
     "rounds": 3,
     "runner_image": "ubuntu24 20261101.360.1",
     "spp": "0.6.0",
-    "spp_commit": "3a515849d172c4441eba50026cbdbcd86cc7594b",
+    "spp_commit": "61f7e89025ca29a4362884b55abee3ae5a9d6e83",
     "std_rev": "1eb1c26794212852d0fd68d495fede0695cf60a5",
     "valgrind": "valgrind-3.28.0"
   },
@@ -36,8 +36,8 @@
             "var_symbol_lookups": 1269249
           },
           "deterministic": true,
-          "instructions": 19877463783,
-          "peak_rss_bytes": 1402580992,
+          "instructions": 19882963003,
+          "peak_rss_bytes": 1402474496,
           "phases": [
             {
               "counters": {
@@ -60,7 +60,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 89534235
+              "wall_ns": 87363981
             },
             {
               "counters": {
@@ -83,7 +83,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 138025027
+              "wall_ns": 139539697
             },
             {
               "counters": {
@@ -106,7 +106,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 39811044
+              "wall_ns": 41262479
             },
             {
               "counters": {
@@ -129,7 +129,7 @@
                 "var_symbol_lookups": 12459
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 21619131
+              "wall_ns": 23073713
             },
             {
               "counters": {
@@ -152,7 +152,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 42147660
+              "wall_ns": 44838341
             },
             {
               "counters": {
@@ -175,7 +175,7 @@
                 "var_symbol_lookups": 30849
               },
               "name": "qualifying-types",
-              "wall_ns": 96911083
+              "wall_ns": 102663075
             },
             {
               "counters": {
@@ -198,7 +198,7 @@
                 "var_symbol_lookups": 26452
               },
               "name": "loading-super-scopes",
-              "wall_ns": 165763065
+              "wall_ns": 172087102
             },
             {
               "counters": {
@@ -221,7 +221,7 @@
                 "var_symbol_lookups": 108537
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 880941561
+              "wall_ns": 893426367
             },
             {
               "counters": {
@@ -244,7 +244,7 @@
                 "var_symbol_lookups": 26825
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 250234998
+              "wall_ns": 251058615
             },
             {
               "counters": {
@@ -267,7 +267,7 @@
                 "var_symbol_lookups": 588176
               },
               "name": "analysing-semantics",
-              "wall_ns": 1051414938
+              "wall_ns": 1067858640
             },
             {
               "counters": {
@@ -290,7 +290,7 @@
                 "var_symbol_lookups": 233252
               },
               "name": "checking-memory-safety",
-              "wall_ns": 98913774
+              "wall_ns": 98460795
             },
             {
               "counters": {
@@ -313,7 +313,7 @@
                 "var_symbol_lookups": 171750
               },
               "name": "monomorphising-generics",
-              "wall_ns": 238342508
+              "wall_ns": 239689695
             },
             {
               "counters": {
@@ -336,7 +336,7 @@
                 "var_symbol_lookups": 8203
               },
               "name": "generating-code-1",
-              "wall_ns": 139203294
+              "wall_ns": 142687161
             },
             {
               "counters": {
@@ -359,7 +359,7 @@
                 "var_symbol_lookups": 51924
               },
               "name": "generating-code-2",
-              "wall_ns": 84393389
+              "wall_ns": 90160044
             },
             {
               "counters": {
@@ -382,7 +382,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 57040846
+              "wall_ns": 60387956
             },
             {
               "counters": {
@@ -405,7 +405,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 98397607
+              "wall_ns": 97618086
             },
             {
               "counters": {
@@ -428,7 +428,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 3455492
+              "wall_ns": 3695551
             },
             {
               "counters": {
@@ -451,7 +451,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 7651486
+              "wall_ns": 7840080
             },
             {
               "counters": {
@@ -474,7 +474,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 69612086
+              "wall_ns": 71227916
             },
             {
               "counters": {
@@ -497,7 +497,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 25528960
+              "wall_ns": 26173739
             }
           ],
           "records": {
@@ -512,11 +512,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3644615297,
+          "wall_ns": 3674207375,
           "wall_ns_rounds": [
-            3644615297,
-            3690594165,
-            3654665685
+            3876586698,
+            3799200735,
+            3674207375
           ]
         },
         "rel": {
@@ -540,8 +540,8 @@
             "var_symbol_lookups": 1269224
           },
           "deterministic": true,
-          "instructions": 19862366646,
-          "peak_rss_bytes": 1404977152,
+          "instructions": 19864475465,
+          "peak_rss_bytes": 1404948480,
           "phases": [
             {
               "counters": {
@@ -564,7 +564,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 87889382
+              "wall_ns": 87092182
             },
             {
               "counters": {
@@ -587,7 +587,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 138975026
+              "wall_ns": 139359990
             },
             {
               "counters": {
@@ -610,7 +610,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 39177834
+              "wall_ns": 40573373
             },
             {
               "counters": {
@@ -633,7 +633,7 @@
                 "var_symbol_lookups": 12459
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22322530
+              "wall_ns": 22315025
             },
             {
               "counters": {
@@ -656,7 +656,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 43144698
+              "wall_ns": 43577557
             },
             {
               "counters": {
@@ -679,7 +679,7 @@
                 "var_symbol_lookups": 30849
               },
               "name": "qualifying-types",
-              "wall_ns": 96469083
+              "wall_ns": 102658780
             },
             {
               "counters": {
@@ -702,7 +702,7 @@
                 "var_symbol_lookups": 26452
               },
               "name": "loading-super-scopes",
-              "wall_ns": 167064345
+              "wall_ns": 171732309
             },
             {
               "counters": {
@@ -725,7 +725,7 @@
                 "var_symbol_lookups": 108537
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 862315421
+              "wall_ns": 882659734
             },
             {
               "counters": {
@@ -748,7 +748,7 @@
                 "var_symbol_lookups": 26825
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 241910804
+              "wall_ns": 249923177
             },
             {
               "counters": {
@@ -771,7 +771,7 @@
                 "var_symbol_lookups": 588167
               },
               "name": "analysing-semantics",
-              "wall_ns": 1045589935
+              "wall_ns": 1061787709
             },
             {
               "counters": {
@@ -794,7 +794,7 @@
                 "var_symbol_lookups": 233236
               },
               "name": "checking-memory-safety",
-              "wall_ns": 97667869
+              "wall_ns": 97647194
             },
             {
               "counters": {
@@ -817,7 +817,7 @@
                 "var_symbol_lookups": 171750
               },
               "name": "monomorphising-generics",
-              "wall_ns": 240403692
+              "wall_ns": 238947877
             },
             {
               "counters": {
@@ -840,7 +840,7 @@
                 "var_symbol_lookups": 8203
               },
               "name": "generating-code-1",
-              "wall_ns": 143800986
+              "wall_ns": 141312862
             },
             {
               "counters": {
@@ -863,7 +863,7 @@
                 "var_symbol_lookups": 51924
               },
               "name": "generating-code-2",
-              "wall_ns": 87188414
+              "wall_ns": 89222778
             },
             {
               "counters": {
@@ -886,7 +886,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 58588657
+              "wall_ns": 59663648
             },
             {
               "counters": {
@@ -909,7 +909,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 95801685
+              "wall_ns": 99585755
             },
             {
               "counters": {
@@ -932,7 +932,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 79277305
+              "wall_ns": 80288763
             },
             {
               "counters": {
@@ -955,7 +955,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 736180
+              "wall_ns": 761418
             },
             {
               "counters": {
@@ -978,7 +978,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 16218838
+              "wall_ns": 16520399
             },
             {
               "counters": {
@@ -1001,7 +1001,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 23387481
+              "wall_ns": 24177294
             }
           ],
           "records": {
@@ -1016,11 +1016,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3608079818,
+          "wall_ns": 3657989673,
           "wall_ns_rounds": [
-            3608079818,
-            3653867259,
-            3675798472
+            3657989673,
+            3710465701,
+            3883929574
           ]
         }
       }
@@ -1049,8 +1049,8 @@
             "var_symbol_lookups": 1230736
           },
           "deterministic": true,
-          "instructions": 17516766600,
-          "peak_rss_bytes": 1114365952,
+          "instructions": 17514003649,
+          "peak_rss_bytes": 1114333184,
           "phases": [
             {
               "counters": {
@@ -1073,7 +1073,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 86988154
+              "wall_ns": 87355536
             },
             {
               "counters": {
@@ -1096,7 +1096,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 133636479
+              "wall_ns": 135256395
             },
             {
               "counters": {
@@ -1119,7 +1119,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 38238589
+              "wall_ns": 40134210
             },
             {
               "counters": {
@@ -1142,7 +1142,7 @@
                 "var_symbol_lookups": 12417
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 21214648
+              "wall_ns": 22653175
             },
             {
               "counters": {
@@ -1165,7 +1165,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 42387097
+              "wall_ns": 45375417
             },
             {
               "counters": {
@@ -1188,7 +1188,7 @@
                 "var_symbol_lookups": 30832
               },
               "name": "qualifying-types",
-              "wall_ns": 97264402
+              "wall_ns": 102917853
             },
             {
               "counters": {
@@ -1211,7 +1211,7 @@
                 "var_symbol_lookups": 26383
               },
               "name": "loading-super-scopes",
-              "wall_ns": 166202896
+              "wall_ns": 173173307
             },
             {
               "counters": {
@@ -1234,7 +1234,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 855518935
+              "wall_ns": 893759217
             },
             {
               "counters": {
@@ -1257,7 +1257,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 237018953
+              "wall_ns": 252008087
             },
             {
               "counters": {
@@ -1280,7 +1280,7 @@
                 "var_symbol_lookups": 574085
               },
               "name": "analysing-semantics",
-              "wall_ns": 849916813
+              "wall_ns": 890499384
             },
             {
               "counters": {
@@ -1303,7 +1303,7 @@
                 "var_symbol_lookups": 224701
               },
               "name": "checking-memory-safety",
-              "wall_ns": 85609469
+              "wall_ns": 90868989
             },
             {
               "counters": {
@@ -1326,7 +1326,7 @@
                 "var_symbol_lookups": 160315
               },
               "name": "monomorphising-generics",
-              "wall_ns": 203239470
+              "wall_ns": 214255298
             },
             {
               "counters": {
@@ -1349,7 +1349,7 @@
                 "var_symbol_lookups": 8163
               },
               "name": "generating-code-1",
-              "wall_ns": 97579609
+              "wall_ns": 102046323
             },
             {
               "counters": {
@@ -1372,7 +1372,7 @@
                 "var_symbol_lookups": 47688
               },
               "name": "generating-code-2",
-              "wall_ns": 70602630
+              "wall_ns": 76490504
             },
             {
               "counters": {
@@ -1395,7 +1395,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 52865822
+              "wall_ns": 54648205
             },
             {
               "counters": {
@@ -1418,7 +1418,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 84708323
+              "wall_ns": 90068987
             },
             {
               "counters": {
@@ -1441,7 +1441,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 38742
+              "wall_ns": 56826
             },
             {
               "counters": {
@@ -1464,7 +1464,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 196236
+              "wall_ns": 227845
             },
             {
               "counters": {
@@ -1487,7 +1487,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 1351765
+              "wall_ns": 1416509
             },
             {
               "counters": {
@@ -1510,7 +1510,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 24091059
+              "wall_ns": 23522757
             }
           ],
           "records": {
@@ -1525,11 +1525,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3169790930,
+          "wall_ns": 3312631442,
           "wall_ns_rounds": [
-            3171859283,
-            3169790930,
-            3173502503
+            3312631442,
+            3357745660,
+            3389621671
           ]
         },
         "rel": {
@@ -1553,8 +1553,8 @@
             "var_symbol_lookups": 1230711
           },
           "deterministic": true,
-          "instructions": 17522864649,
-          "peak_rss_bytes": 1119485952,
+          "instructions": 17530447535,
+          "peak_rss_bytes": 1119551488,
           "phases": [
             {
               "counters": {
@@ -1577,7 +1577,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 88047022
+              "wall_ns": 86431033
             },
             {
               "counters": {
@@ -1600,7 +1600,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 132684835
+              "wall_ns": 135091514
             },
             {
               "counters": {
@@ -1623,7 +1623,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 38681831
+              "wall_ns": 39576617
             },
             {
               "counters": {
@@ -1646,7 +1646,7 @@
                 "var_symbol_lookups": 12417
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 21602723
+              "wall_ns": 22137385
             },
             {
               "counters": {
@@ -1669,7 +1669,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 42793439
+              "wall_ns": 43808371
             },
             {
               "counters": {
@@ -1692,7 +1692,7 @@
                 "var_symbol_lookups": 30832
               },
               "name": "qualifying-types",
-              "wall_ns": 97908733
+              "wall_ns": 100558895
             },
             {
               "counters": {
@@ -1715,7 +1715,7 @@
                 "var_symbol_lookups": 26383
               },
               "name": "loading-super-scopes",
-              "wall_ns": 166577091
+              "wall_ns": 167240543
             },
             {
               "counters": {
@@ -1738,7 +1738,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 871980193
+              "wall_ns": 873163053
             },
             {
               "counters": {
@@ -1761,7 +1761,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 244308269
+              "wall_ns": 243859905
             },
             {
               "counters": {
@@ -1784,7 +1784,7 @@
                 "var_symbol_lookups": 574076
               },
               "name": "analysing-semantics",
-              "wall_ns": 871277145
+              "wall_ns": 856919469
             },
             {
               "counters": {
@@ -1807,7 +1807,7 @@
                 "var_symbol_lookups": 224685
               },
               "name": "checking-memory-safety",
-              "wall_ns": 87733743
+              "wall_ns": 87848413
             },
             {
               "counters": {
@@ -1830,7 +1830,7 @@
                 "var_symbol_lookups": 160315
               },
               "name": "monomorphising-generics",
-              "wall_ns": 205634929
+              "wall_ns": 205636990
             },
             {
               "counters": {
@@ -1853,7 +1853,7 @@
                 "var_symbol_lookups": 8163
               },
               "name": "generating-code-1",
-              "wall_ns": 98810597
+              "wall_ns": 100987944
             },
             {
               "counters": {
@@ -1876,7 +1876,7 @@
                 "var_symbol_lookups": 47688
               },
               "name": "generating-code-2",
-              "wall_ns": 71326349
+              "wall_ns": 73270103
             },
             {
               "counters": {
@@ -1899,7 +1899,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 52013880
+              "wall_ns": 51236832
             },
             {
               "counters": {
@@ -1922,7 +1922,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 83974958
+              "wall_ns": 83237491
             },
             {
               "counters": {
@@ -1945,7 +1945,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 1467922
+              "wall_ns": 1498101
             },
             {
               "counters": {
@@ -1968,7 +1968,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 189693
+              "wall_ns": 198981
             },
             {
               "counters": {
@@ -1991,7 +1991,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 2372785
+              "wall_ns": 2448803
             },
             {
               "counters": {
@@ -2014,7 +2014,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 23430765
+              "wall_ns": 23725751
             }
           ],
           "records": {
@@ -2029,11 +2029,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3232926958,
+          "wall_ns": 3241942039,
           "wall_ns_rounds": [
-            3243057913,
-            3248350250,
-            3232926958
+            3258051905,
+            3244400892,
+            3241942039
           ]
         }
       }
@@ -2062,8 +2062,8 @@
             "var_symbol_lookups": 3457074
           },
           "deterministic": true,
-          "instructions": 34031583986,
-          "peak_rss_bytes": 1356378112,
+          "instructions": 34020067146,
+          "peak_rss_bytes": 1356333056,
           "phases": [
             {
               "counters": {
@@ -2086,7 +2086,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 105404371
+              "wall_ns": 108239603
             },
             {
               "counters": {
@@ -2109,7 +2109,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 230591736
+              "wall_ns": 231926408
             },
             {
               "counters": {
@@ -2132,7 +2132,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 54342243
+              "wall_ns": 55141264
             },
             {
               "counters": {
@@ -2155,7 +2155,7 @@
                 "var_symbol_lookups": 12419
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 21830643
+              "wall_ns": 22792696
             },
             {
               "counters": {
@@ -2178,7 +2178,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 43244281
+              "wall_ns": 45942636
             },
             {
               "counters": {
@@ -2201,7 +2201,7 @@
                 "var_symbol_lookups": 30832
               },
               "name": "qualifying-types",
-              "wall_ns": 99633613
+              "wall_ns": 101813170
             },
             {
               "counters": {
@@ -2224,7 +2224,7 @@
                 "var_symbol_lookups": 26385
               },
               "name": "loading-super-scopes",
-              "wall_ns": 170889319
+              "wall_ns": 172574556
             },
             {
               "counters": {
@@ -2247,7 +2247,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 874883935
+              "wall_ns": 900280695
             },
             {
               "counters": {
@@ -2270,7 +2270,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 241338311
+              "wall_ns": 261339337
             },
             {
               "counters": {
@@ -2293,7 +2293,7 @@
                 "var_symbol_lookups": 2429701
               },
               "name": "analysing-semantics",
-              "wall_ns": 1115911463
+              "wall_ns": 1130130975
             },
             {
               "counters": {
@@ -2316,7 +2316,7 @@
                 "var_symbol_lookups": 455778
               },
               "name": "checking-memory-safety",
-              "wall_ns": 1062333220
+              "wall_ns": 1084955447
             },
             {
               "counters": {
@@ -2339,7 +2339,7 @@
                 "var_symbol_lookups": 167310
               },
               "name": "monomorphising-generics",
-              "wall_ns": 221057103
+              "wall_ns": 230319564
             },
             {
               "counters": {
@@ -2362,7 +2362,7 @@
                 "var_symbol_lookups": 8165
               },
               "name": "generating-code-1",
-              "wall_ns": 100912052
+              "wall_ns": 105025559
             },
             {
               "counters": {
@@ -2385,7 +2385,7 @@
                 "var_symbol_lookups": 180332
               },
               "name": "generating-code-2",
-              "wall_ns": 155121409
+              "wall_ns": 166304521
             },
             {
               "counters": {
@@ -2408,7 +2408,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 82192246
+              "wall_ns": 79439171
             },
             {
               "counters": {
@@ -2431,7 +2431,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 182960483
+              "wall_ns": 172423980
             },
             {
               "counters": {
@@ -2454,7 +2454,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 67229905
+              "wall_ns": 75405663
             },
             {
               "counters": {
@@ -2477,7 +2477,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 82544574
+              "wall_ns": 80890031
             },
             {
               "counters": {
@@ -2500,7 +2500,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 401653449
+              "wall_ns": 416855376
             },
             {
               "counters": {
@@ -2523,7 +2523,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 45117507
+              "wall_ns": 46552872
             }
           ],
           "records": {
@@ -2538,11 +2538,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 5411591755,
+          "wall_ns": 5532211253,
           "wall_ns_rounds": [
-            5542806151,
-            5461989066,
-            5411591755
+            5532211253,
+            5630402590,
+            5681645843
           ]
         },
         "rel": {
@@ -2566,8 +2566,8 @@
             "var_symbol_lookups": 3457049
           },
           "deterministic": true,
-          "instructions": 32695709687,
-          "peak_rss_bytes": 1243467776,
+          "instructions": 32695085854,
+          "peak_rss_bytes": 1243594752,
           "phases": [
             {
               "counters": {
@@ -2590,7 +2590,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 107643784
+              "wall_ns": 105407725
             },
             {
               "counters": {
@@ -2613,7 +2613,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 229870614
+              "wall_ns": 229233470
             },
             {
               "counters": {
@@ -2636,7 +2636,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 54545503
+              "wall_ns": 55319203
             },
             {
               "counters": {
@@ -2659,7 +2659,7 @@
                 "var_symbol_lookups": 12419
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 22268663
+              "wall_ns": 23216097
             },
             {
               "counters": {
@@ -2682,7 +2682,7 @@
                 "var_symbol_lookups": 10822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 43812459
+              "wall_ns": 44240877
             },
             {
               "counters": {
@@ -2705,7 +2705,7 @@
                 "var_symbol_lookups": 30832
               },
               "name": "qualifying-types",
-              "wall_ns": 98761023
+              "wall_ns": 100136802
             },
             {
               "counters": {
@@ -2728,7 +2728,7 @@
                 "var_symbol_lookups": 26385
               },
               "name": "loading-super-scopes",
-              "wall_ns": 171520403
+              "wall_ns": 170960678
             },
             {
               "counters": {
@@ -2751,7 +2751,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 899280748
+              "wall_ns": 904877258
             },
             {
               "counters": {
@@ -2774,7 +2774,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 246786175
+              "wall_ns": 256182226
             },
             {
               "counters": {
@@ -2797,7 +2797,7 @@
                 "var_symbol_lookups": 2429692
               },
               "name": "analysing-semantics",
-              "wall_ns": 1158169817
+              "wall_ns": 1123981957
             },
             {
               "counters": {
@@ -2820,7 +2820,7 @@
                 "var_symbol_lookups": 455762
               },
               "name": "checking-memory-safety",
-              "wall_ns": 1072595583
+              "wall_ns": 1069201279
             },
             {
               "counters": {
@@ -2843,7 +2843,7 @@
                 "var_symbol_lookups": 167310
               },
               "name": "monomorphising-generics",
-              "wall_ns": 226032157
+              "wall_ns": 220770512
             },
             {
               "counters": {
@@ -2866,7 +2866,7 @@
                 "var_symbol_lookups": 8165
               },
               "name": "generating-code-1",
-              "wall_ns": 100201047
+              "wall_ns": 100958453
             },
             {
               "counters": {
@@ -2889,7 +2889,7 @@
                 "var_symbol_lookups": 180332
               },
               "name": "generating-code-2",
-              "wall_ns": 159966715
+              "wall_ns": 163308849
             },
             {
               "counters": {
@@ -2912,7 +2912,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 80697383
+              "wall_ns": 80100714
             },
             {
               "counters": {
@@ -2935,7 +2935,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 188816562
+              "wall_ns": 183595775
             },
             {
               "counters": {
@@ -2958,7 +2958,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 424072469
+              "wall_ns": 427616615
             },
             {
               "counters": {
@@ -2981,7 +2981,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 850813
+              "wall_ns": 920005
             },
             {
               "counters": {
@@ -3004,7 +3004,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 19840885
+              "wall_ns": 20021156
             },
             {
               "counters": {
@@ -3027,7 +3027,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 24260763
+              "wall_ns": 24539465
             }
           ],
           "records": {
@@ -3042,11 +3042,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 5378060226,
+          "wall_ns": 5323770774,
           "wall_ns_rounds": [
-            5378060226,
-            5428813274,
-            5387204899
+            5458659740,
+            5323770774,
+            5480895786
           ]
         }
       }
@@ -3075,8 +3075,8 @@
             "var_symbol_lookups": 1577291
           },
           "deterministic": true,
-          "instructions": 22104295578,
-          "peak_rss_bytes": 1312526336,
+          "instructions": 22107674734,
+          "peak_rss_bytes": 1311870976,
           "phases": [
             {
               "counters": {
@@ -3099,7 +3099,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 145533715
+              "wall_ns": 143063994
             },
             {
               "counters": {
@@ -3122,7 +3122,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 177378099
+              "wall_ns": 179167888
             },
             {
               "counters": {
@@ -3145,7 +3145,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 45219285
+              "wall_ns": 45789110
             },
             {
               "counters": {
@@ -3168,7 +3168,7 @@
                 "var_symbol_lookups": 24417
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 42218981
+              "wall_ns": 44022307
             },
             {
               "counters": {
@@ -3191,7 +3191,7 @@
                 "var_symbol_lookups": 25822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 115148537
+              "wall_ns": 120084927
             },
             {
               "counters": {
@@ -3214,7 +3214,7 @@
                 "var_symbol_lookups": 144432
               },
               "name": "qualifying-types",
-              "wall_ns": 296936453
+              "wall_ns": 304592875
             },
             {
               "counters": {
@@ -3237,7 +3237,7 @@
                 "var_symbol_lookups": 27983
               },
               "name": "loading-super-scopes",
-              "wall_ns": 179354999
+              "wall_ns": 182919177
             },
             {
               "counters": {
@@ -3260,7 +3260,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 883889515
+              "wall_ns": 909530379
             },
             {
               "counters": {
@@ -3283,7 +3283,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 257597358
+              "wall_ns": 268121096
             },
             {
               "counters": {
@@ -3306,7 +3306,7 @@
                 "var_symbol_lookups": 714375
               },
               "name": "analysing-semantics",
-              "wall_ns": 1023414976
+              "wall_ns": 1053904974
             },
             {
               "counters": {
@@ -3329,7 +3329,7 @@
                 "var_symbol_lookups": 270125
               },
               "name": "checking-memory-safety",
-              "wall_ns": 98401918
+              "wall_ns": 100858893
             },
             {
               "counters": {
@@ -3352,7 +3352,7 @@
                 "var_symbol_lookups": 167163
               },
               "name": "monomorphising-generics",
-              "wall_ns": 219050405
+              "wall_ns": 223545380
             },
             {
               "counters": {
@@ -3375,7 +3375,7 @@
                 "var_symbol_lookups": 16963
               },
               "name": "generating-code-1",
-              "wall_ns": 114798011
+              "wall_ns": 116567606
             },
             {
               "counters": {
@@ -3398,7 +3398,7 @@
                 "var_symbol_lookups": 50681
               },
               "name": "generating-code-2",
-              "wall_ns": 81908856
+              "wall_ns": 87170629
             },
             {
               "counters": {
@@ -3421,7 +3421,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 72137342
+              "wall_ns": 72317811
             },
             {
               "counters": {
@@ -3444,7 +3444,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 127634649
+              "wall_ns": 127044812
             },
             {
               "counters": {
@@ -3467,7 +3467,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 5582619
+              "wall_ns": 5695304
             },
             {
               "counters": {
@@ -3490,7 +3490,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 7200219
+              "wall_ns": 7651257
             },
             {
               "counters": {
@@ -3513,7 +3513,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 78444469
+              "wall_ns": 78489921
             },
             {
               "counters": {
@@ -3536,7 +3536,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 26594340
+              "wall_ns": 27277817
             }
           ],
           "records": {
@@ -3551,11 +3551,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 4039707075,
+          "wall_ns": 4156237113,
           "wall_ns_rounds": [
-            4181385117,
-            4126906137,
-            4039707075
+            4172954566,
+            4157411037,
+            4156237113
           ]
         },
         "rel": {
@@ -3579,8 +3579,8 @@
             "var_symbol_lookups": 1577266
           },
           "deterministic": true,
-          "instructions": 22106997794,
-          "peak_rss_bytes": 1316802560,
+          "instructions": 22119688275,
+          "peak_rss_bytes": 1316737024,
           "phases": [
             {
               "counters": {
@@ -3603,7 +3603,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lexing",
-              "wall_ns": 145258731
+              "wall_ns": 142603416
             },
             {
               "counters": {
@@ -3626,7 +3626,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "parsing",
-              "wall_ns": 176638445
+              "wall_ns": 177921403
             },
             {
               "counters": {
@@ -3649,7 +3649,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "pre-processing",
-              "wall_ns": 44507810
+              "wall_ns": 45274061
             },
             {
               "counters": {
@@ -3672,7 +3672,7 @@
                 "var_symbol_lookups": 24417
               },
               "name": "generating-top-level-scopes",
-              "wall_ns": 40945900
+              "wall_ns": 43589491
             },
             {
               "counters": {
@@ -3695,7 +3695,7 @@
                 "var_symbol_lookups": 25822
               },
               "name": "generating-top-level-aliases",
-              "wall_ns": 112647295
+              "wall_ns": 118115947
             },
             {
               "counters": {
@@ -3718,7 +3718,7 @@
                 "var_symbol_lookups": 144432
               },
               "name": "qualifying-types",
-              "wall_ns": 295804167
+              "wall_ns": 301851304
             },
             {
               "counters": {
@@ -3741,7 +3741,7 @@
                 "var_symbol_lookups": 27983
               },
               "name": "loading-super-scopes",
-              "wall_ns": 176033586
+              "wall_ns": 177199750
             },
             {
               "counters": {
@@ -3764,7 +3764,7 @@
                 "var_symbol_lookups": 108509
               },
               "name": "attaching-super-scopes",
-              "wall_ns": 871316718
+              "wall_ns": 887545884
             },
             {
               "counters": {
@@ -3787,7 +3787,7 @@
                 "var_symbol_lookups": 26821
               },
               "name": "pre-analysing-semantics",
-              "wall_ns": 252595409
+              "wall_ns": 260139211
             },
             {
               "counters": {
@@ -3810,7 +3810,7 @@
                 "var_symbol_lookups": 714366
               },
               "name": "analysing-semantics",
-              "wall_ns": 1011807968
+              "wall_ns": 1026029552
             },
             {
               "counters": {
@@ -3833,7 +3833,7 @@
                 "var_symbol_lookups": 270109
               },
               "name": "checking-memory-safety",
-              "wall_ns": 95449183
+              "wall_ns": 97734604
             },
             {
               "counters": {
@@ -3856,7 +3856,7 @@
                 "var_symbol_lookups": 167163
               },
               "name": "monomorphising-generics",
-              "wall_ns": 212723557
+              "wall_ns": 215834477
             },
             {
               "counters": {
@@ -3879,7 +3879,7 @@
                 "var_symbol_lookups": 16963
               },
               "name": "generating-code-1",
-              "wall_ns": 111605924
+              "wall_ns": 116461692
             },
             {
               "counters": {
@@ -3902,7 +3902,7 @@
                 "var_symbol_lookups": 50681
               },
               "name": "generating-code-2",
-              "wall_ns": 80069388
+              "wall_ns": 84301530
             },
             {
               "counters": {
@@ -3925,7 +3925,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "verify-and-lower-coroutines",
-              "wall_ns": 72370751
+              "wall_ns": 69632253
             },
             {
               "counters": {
@@ -3948,7 +3948,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "lto-link",
-              "wall_ns": 119250361
+              "wall_ns": 120588914
             },
             {
               "counters": {
@@ -3971,7 +3971,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "optimise",
-              "wall_ns": 88966436
+              "wall_ns": 91696089
             },
             {
               "counters": {
@@ -3994,7 +3994,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "write-ir-and-harden",
-              "wall_ns": 893122
+              "wall_ns": 862557
             },
             {
               "counters": {
@@ -4017,7 +4017,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "emit-object",
-              "wall_ns": 19322643
+              "wall_ns": 19805354
             },
             {
               "counters": {
@@ -4040,7 +4040,7 @@
                 "var_symbol_lookups": 0
               },
               "name": "link",
-              "wall_ns": 23440912
+              "wall_ns": 24853109
             }
           ],
           "records": {
@@ -4055,11 +4055,11 @@
           },
           "spp": "0.6.0",
           "target": "x86_64-linux-gnu",
-          "wall_ns": 3982063999,
+          "wall_ns": 4052476360,
           "wall_ns_rounds": [
-            3982063999,
-            4012397777,
-            3999660249
+            4052476360,
+            4182058718,
+            4080023205
           ]
         }
       }

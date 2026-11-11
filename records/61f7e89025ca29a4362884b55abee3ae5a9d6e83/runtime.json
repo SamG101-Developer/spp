@@ -1,0 +1,2324 @@
+{
+  "benchmarks": {
+    "ast/async": {
+      "description": "A function called with async and its future awaited, 5M times: S++ only, as C has no equivalent and Rust's needs an executor",
+      "gaps": [],
+      "languages": {
+        "spp": {
+          "executable_bytes": 31712,
+          "hash": "5214cf4247937e5ee7460e1524fdfe5caa9d6c520d16e3a78b3c28c37498816f",
+          "instructions": 4410641403,
+          "records": {
+            "executable.bytes": 31712,
+            "llvm.after_opt.blocks": 413,
+            "llvm.after_opt.functions": 23,
+            "llvm.after_opt.instructions": 1924,
+            "llvm.before_opt.blocks": 1023,
+            "llvm.before_opt.functions": 269,
+            "llvm.before_opt.instructions": 5768,
+            "object.bytes": 24200
+          },
+          "wall_ns": 383099881,
+          "wall_ns_rounds": [
+            383546498,
+            383737953,
+            396195364,
+            387092624,
+            383099881
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "868344\n",
+      "ratios": {}
+    },
+    "ast/binary_expression": {
+      "description": "Each integer operator family in a hot loop: checked + - * / %, comparisons, bitwise and shifts",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "6c87e27d5cc33bef1d8d09ceb019f439c57c76e977b4f9f4274ec20149f2ec80",
+          "instructions": 3200269889,
+          "wall_ns": 491634164,
+          "wall_ns_rounds": [
+            491767041,
+            491885809,
+            491699934,
+            491689067,
+            491634164
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1954368,
+          "hash": "34b16686c301277e482378a42748edd22f954d52774cf92511dea2047b35594a",
+          "instructions": 3910236060,
+          "wall_ns": 487902078,
+          "wall_ns_rounds": [
+            488367686,
+            488124531,
+            488422259,
+            487902078,
+            488010420
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31032,
+          "hash": "6310a30b108f529fdc2c14e07be56f5793700dc937f2b717d053119208d9a1f0",
+          "instructions": 3800641033,
+          "records": {
+            "executable.bytes": 31032,
+            "llvm.after_opt.blocks": 407,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1874,
+            "llvm.before_opt.blocks": 999,
+            "llvm.before_opt.functions": 263,
+            "llvm.before_opt.instructions": 5663,
+            "object.bytes": 21888
+          },
+          "wall_ns": 485555812,
+          "wall_ns_rounds": [
+            485727959,
+            485555812,
+            485721834,
+            485643991,
+            485601428
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "777952\n57851\n6345\n",
+      "ratios": {
+        "spp/c": 0.987636432849691,
+        "spp/c_instructions": 1.18760016024386,
+        "spp/rust": 0.995191112918359,
+        "spp/rust_instructions": 0.9719722734591119
+      }
+    },
+    "ast/calls": {
+      "description": "Calls by position and by keyword, an override on a sup extension called directly, and function values called indirectly through a function kept out of line (each indirect call carries the CFI check)",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16144,
+          "hash": "c36ee73ceeb8520b663a67e98e80e958018ad99f7ea4a31b9ae2cbba52474a90",
+          "instructions": 2700269112,
+          "wall_ns": 410327311,
+          "wall_ns_rounds": [
+            410572328,
+            410379168,
+            410435793,
+            410327311,
+            410514974
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1954168,
+          "hash": "29c4808995bacb5c5b0b40399a7d9c0543b43df36fb6b2827a78576a14dba161",
+          "instructions": 3050391079,
+          "wall_ns": 430198197,
+          "wall_ns_rounds": [
+            430198197,
+            430927971,
+            430390686,
+            430396286,
+            430587413
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31264,
+          "hash": "5ade01793c775ad71e2ad3d70a8a0398d7c70b182b03624120a8954e75ba06f1",
+          "instructions": 3950639949,
+          "records": {
+            "executable.bytes": 31264,
+            "llvm.after_opt.blocks": 399,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1818,
+            "llvm.before_opt.blocks": 984,
+            "llvm.before_opt.functions": 259,
+            "llvm.before_opt.instructions": 5502,
+            "object.bytes": 22072
+          },
+          "wall_ns": 432515380,
+          "wall_ns_rounds": [
+            433031855,
+            432515380,
+            432681149,
+            432664424,
+            432742835
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "115921\n",
+      "ratios": {
+        "spp/c": 1.0540740730757743,
+        "spp/c_instructions": 1.4630541568776794,
+        "spp/rust": 1.0053863149965736,
+        "spp/rust_instructions": 1.2951257221402332
+      }
+    },
+    "ast/case_expression": {
+      "description": "A dense eight-way case on LCG values in a hot loop: a jump table or a compare chain",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "cb2fd9b9c880fbf95992e0e9f004ce2230ec0d27470527ef3833715eba19e5ae",
+          "instructions": 1125256456,
+          "wall_ns": 684364038,
+          "wall_ns_rounds": [
+            685876887,
+            684922646,
+            685697377,
+            684826712,
+            684364038
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953688,
+          "hash": "ee9b8e3b86a292dd74ef1a88906aff166893f47f8b9b3fe1343f68bac732badd",
+          "instructions": 1162900903,
+          "wall_ns": 715653578,
+          "wall_ns_rounds": [
+            716417514,
+            716884174,
+            717904864,
+            715653578,
+            716237323
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "1f984644ccebd9f35d90b63e3124b6d321fc19b8f94ce35872fd3c274b0127e3",
+          "instructions": 938137580,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 410,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1837,
+            "llvm.before_opt.blocks": 1006,
+            "llvm.before_opt.functions": 264,
+            "llvm.before_opt.instructions": 5614,
+            "object.bytes": 21424
+          },
+          "wall_ns": 635826958,
+          "wall_ns_rounds": [
+            635826958,
+            636855223,
+            640645075,
+            636639970,
+            636586190
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "1433\n",
+      "ratios": {
+        "spp/c": 0.929077103259479,
+        "spp/c_instructions": 0.83371001783437,
+        "spp/rust": 0.8884563391367548,
+        "spp/rust_instructions": 0.8067218604610543
+      }
+    },
+    "ast/case_patterns": {
+      "description": "Case on tuples, arrays and objects with destructuring patterns, guards and else branches, and the is expression, on LCG values in a hot loop",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "878f394b7f8bdcff2bb6da176ac1e357893a335ae50ad4748a44a2cd78b3fcde",
+          "instructions": 2900269154,
+          "wall_ns": 221450602,
+          "wall_ns_rounds": [
+            221729569,
+            221450602,
+            222026125,
+            221942199,
+            221862198
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953408,
+          "hash": "0ce1f452e8b5e2583011c89e94fe29645454a86f5226cd9aafd3830d0b9f62e3",
+          "instructions": 3241026659,
+          "wall_ns": 429726481,
+          "wall_ns_rounds": [
+            430151188,
+            429740683,
+            429896106,
+            429726481,
+            429761915
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "07cb77765680d656d8ef684378e9096617b108ae5a1d45b0066a8c6f63b7e5f4",
+          "instructions": 3300639198,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 400,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1832,
+            "llvm.before_opt.blocks": 1018,
+            "llvm.before_opt.functions": 262,
+            "llvm.before_opt.instructions": 5684,
+            "object.bytes": 21168
+          },
+          "wall_ns": 443563862,
+          "wall_ns_rounds": [
+            443563862,
+            446796153,
+            446772277,
+            446409633,
+            446349452
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "1546816965\n",
+      "ratios": {
+        "spp/c": 2.0029923513145382,
+        "spp/c_instructions": 1.1380458235911715,
+        "spp/rust": 1.032200438213162,
+        "spp/rust_instructions": 1.018393103566261
+      }
+    },
+    "ast/closure_expression": {
+      "description": "A closure capturing a value, called in a hot loop: should inline to the bare arithmetic",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "62cc7eef451f81ba754c5a4f6a19f4ce5518592d4210f2bde6dbcf26a6e3a17a",
+          "instructions": 1200269129,
+          "wall_ns": 437483351,
+          "wall_ns_rounds": [
+            437551084,
+            437576573,
+            437695870,
+            437507567,
+            437483351
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953664,
+          "hash": "72436fdc72500616cc7e9096fed958ff721400e2a1ff323483448d6cdb543e67",
+          "instructions": 1900391351,
+          "wall_ns": 445673191,
+          "wall_ns_rounds": [
+            445797288,
+            445673191,
+            446059178,
+            446230095,
+            445744376
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "78a53a6e541b5fb36351046a79669b35ebe257a5713efed808e8061c8a5a6b67",
+          "instructions": 1700639098,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 394,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1806,
+            "llvm.before_opt.blocks": 978,
+            "llvm.before_opt.functions": 253,
+            "llvm.before_opt.instructions": 5471,
+            "object.bytes": 21096
+          },
+          "wall_ns": 465163374,
+          "wall_ns_rounds": [
+            465163374,
+            465222633,
+            465261540,
+            465275078,
+            465182258
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "809021\n",
+      "ratios": {
+        "spp/c": 1.0632710317700753,
+        "spp/c_instructions": 1.416881478420495,
+        "spp/rust": 1.0437320067564935,
+        "spp/rust_instructions": 0.8948888854419965
+      }
+    },
+    "ast/defer": {
+      "description": "A defer in a scope entered 100M times; the C and Rust equivalents run the same statement at the scope's end, so the gap is what defer costs",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "a63ca3301287c4b7de7389f257c2634c767b35793c16492a530411caab12488a",
+          "instructions": 1650269105,
+          "wall_ns": 451202554,
+          "wall_ns_rounds": [
+            451223269,
+            451279844,
+            451586043,
+            451241727,
+            451202554
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953208,
+          "hash": "59a41bc4e7f3b9f41a2f908fc77f7a40b22086d069f568aad59ee81dbbbd70c0",
+          "instructions": 1800391045,
+          "wall_ns": 437681225,
+          "wall_ns_rounds": [
+            437681225,
+            437716988,
+            437725030,
+            437781274,
+            438150887
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "e745255bf16f5e7026f814a84207869b87f6b5aa7cd5f226674fedf1cc5f8b9f",
+          "instructions": 1700639918,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 392,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1791,
+            "llvm.before_opt.blocks": 982,
+            "llvm.before_opt.functions": 257,
+            "llvm.before_opt.instructions": 5482,
+            "object.bytes": 21040
+          },
+          "wall_ns": 410757175,
+          "wall_ns_rounds": [
+            410976634,
+            410757175,
+            410892197,
+            410909393,
+            410789514
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "629720\n",
+      "ratios": {
+        "spp/c": 0.9103609262814589,
+        "spp/c_instructions": 1.0305227873729115,
+        "spp/rust": 0.9384847956409371,
+        "spp/rust_instructions": 0.9445947438602151
+      }
+    },
+    "ast/error_flow": {
+      "description": "Results built and propagated with ? through two calls, matched, about one in 97 failing; the not keyword and early ret",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "eb6d710db7d29d6761e1e41f50827d3acf78ce5da3b313521109dfc5d397590f",
+          "instructions": 3332781776,
+          "wall_ns": 245847654,
+          "wall_ns_rounds": [
+            246786202,
+            245940013,
+            245905882,
+            245949517,
+            245847654
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953824,
+          "hash": "e6a2ed331993b7a699ff7e9fd8a9292a802ff510c0add17d189aaf379a83df2f",
+          "instructions": 2032897227,
+          "wall_ns": 181377568,
+          "wall_ns_rounds": [
+            181701491,
+            181380811,
+            181579629,
+            181618687,
+            181377568
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31304,
+          "hash": "ad774171f13c31dd387ec8e3a618c1b60c252cff11e0fe638c7a6f990b0bc4aa",
+          "instructions": 2032118022,
+          "records": {
+            "executable.bytes": 31304,
+            "llvm.after_opt.blocks": 408,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1901,
+            "llvm.before_opt.blocks": 1026,
+            "llvm.before_opt.functions": 260,
+            "llvm.before_opt.instructions": 5737,
+            "object.bytes": 22472
+          },
+          "wall_ns": 181767511,
+          "wall_ns_rounds": [
+            181783774,
+            181837144,
+            182046047,
+            181991276,
+            181767511
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "454904369\n1027477\n",
+      "ratios": {
+        "spp/c": 0.7393501953042838,
+        "spp/c_instructions": 0.6097362979579615,
+        "spp/rust": 1.002149896507599,
+        "spp/rust_instructions": 0.9996167022170865
+      }
+    },
+    "ast/gen_delegation": {
+      "description": "A generator that delegates to another with gen with, iterated, and the same driven by hand with res; the C and Rust equivalents are plain loops, so the gap is the coroutines' overhead",
+      "gaps": [
+        "coroutine frames that are not elided"
+      ],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "b0bc86f81824862806517939876e58931128c1f9f265b44009b0c8ca8d0fcc50",
+          "instructions": 550269628,
+          "wall_ns": 148954323,
+          "wall_ns_rounds": [
+            148975345,
+            149094484,
+            149075926,
+            148954323,
+            149091149
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953912,
+          "hash": "8abe171dafb86d3dd50a40c9c27712aea30680fc83d5b16bdf8443e0aa9b22ec",
+          "instructions": 1250391892,
+          "wall_ns": 171841967,
+          "wall_ns_rounds": [
+            171958942,
+            171841967,
+            171879313,
+            171903379,
+            171878682
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30944,
+          "hash": "f923892426cd537b1b08b459458108d3e589c6025cc628ed90e4e9a0b7d56374",
+          "instructions": 950640391,
+          "records": {
+            "executable.bytes": 30944,
+            "llvm.after_opt.blocks": 401,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1832,
+            "llvm.before_opt.blocks": 1049,
+            "llvm.before_opt.functions": 257,
+            "llvm.before_opt.instructions": 5765,
+            "object.bytes": 20264
+          },
+          "wall_ns": 151587010,
+          "wall_ns_rounds": [
+            151587010,
+            151862112,
+            151688582,
+            151861672,
+            151732919
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "831250007\n50000000\n",
+      "ratios": {
+        "spp/c": 1.0176744584982607,
+        "spp/c_instructions": 1.7275901533129865,
+        "spp/rust": 0.882130323845746,
+        "spp/rust_instructions": 0.7602739565748879
+      }
+    },
+    "ast/gen_expression": {
+      "description": "Sum over a generator of 50M values; the C and Rust equivalents are a plain loop and a range iterator, so the gap is the generator's overhead",
+      "gaps": [
+        "coroutine frames that are not elided"
+      ],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "a2cdc1b39a018ff1726cc11be202ebe2895420f4e05206e533cf9eceb138b3f1",
+          "instructions": 550269179,
+          "wall_ns": 149055239,
+          "wall_ns_rounds": [
+            149055239,
+            149066645,
+            149195218,
+            149140486,
+            149131242
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953712,
+          "hash": "ad4e6e71e20ce120588a9cf81c5dcc75e1809d176ac25eb478a5cb2293220a85",
+          "instructions": 850391286,
+          "wall_ns": 151435246,
+          "wall_ns_rounds": [
+            151435537,
+            151484991,
+            151435246,
+            151472441,
+            151660173
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30856,
+          "hash": "bf732b55e68ac2b2e330c8181938b6f3fa3d130bcb77130decc8eb9e3fb3b7b7",
+          "instructions": 650639119,
+          "records": {
+            "executable.bytes": 30856,
+            "llvm.after_opt.blocks": 394,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1794,
+            "llvm.before_opt.blocks": 1006,
+            "llvm.before_opt.functions": 255,
+            "llvm.before_opt.instructions": 5547,
+            "object.bytes": 19608
+          },
+          "wall_ns": 138027876,
+          "wall_ns_rounds": [
+            138027876,
+            138220625,
+            138216680,
+            138346995,
+            138058933
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "898750007\n",
+      "ratios": {
+        "spp/c": 0.9260182797063577,
+        "spp/c_instructions": 1.1824015297066093,
+        "spp/rust": 0.9114646665545747,
+        "spp/rust_instructions": 0.7651055810560129
+      }
+    },
+    "ast/literals": {
+      "description": "Every literal kind built in a hot loop (integers, floats, booleans, chars, strings, tuples, explicit and repeated arrays) and indexed: all of it should fold into registers",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16104,
+          "hash": "1ffc24ef368b5201d2093e76212541d3a260aab3264d92d9cb1e792e6aab83c0",
+          "instructions": 3000270301,
+          "wall_ns": 158106222,
+          "wall_ns_rounds": [
+            158256267,
+            158229166,
+            158724950,
+            158106222,
+            158192571
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1954880,
+          "hash": "97f4d12714ebe53b99020f1911454737ddf50219bc0c2ced4b056cc076b98c4d",
+          "instructions": 5400391989,
+          "wall_ns": 298990785,
+          "wall_ns_rounds": [
+            300683122,
+            299427330,
+            299058828,
+            298990785,
+            299246579
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31048,
+          "hash": "2b5cd08a38b1be7bcb94a60d72106e218f793d9b8ba4a88e2f72145ea85bcb38",
+          "instructions": 3400694793,
+          "records": {
+            "executable.bytes": 31048,
+            "llvm.after_opt.blocks": 426,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1989,
+            "llvm.before_opt.blocks": 1083,
+            "llvm.before_opt.functions": 292,
+            "llvm.before_opt.instructions": 6047,
+            "object.bytes": 22896
+          },
+          "wall_ns": 155734897,
+          "wall_ns_rounds": [
+            155734897,
+            155967165,
+            156015798,
+            155898192,
+            156172633
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "1250002937499985\n50000000\n",
+      "ratios": {
+        "spp/c": 0.9850016971501602,
+        "spp/c_instructions": 1.1334628056233924,
+        "spp/rust": 0.5208685511829403,
+        "spp/rust_instructions": 0.6297125838137007
+      }
+    },
+    "ast/locals": {
+      "description": "Lets (initialised and not), assignment, tuple, array and object destructuring, inner scopes and scope expressions in a hot loop: none of it should cost anything once SROA has run",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "05325be4726eaa8738145b734d4abbe077072e9e81edfac0cfb50f83bd01c809",
+          "instructions": 2300269585,
+          "wall_ns": 397380164,
+          "wall_ns_rounds": [
+            397424159,
+            397380164,
+            397780304,
+            397555196,
+            397743268
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953864,
+          "hash": "57ab1e3a1b71c72f6c087d4706c882bcf18459b67e5e59de38c9195bc54e7464",
+          "instructions": 3100391609,
+          "wall_ns": 453994279,
+          "wall_ns_rounds": [
+            454115111,
+            454114460,
+            454050444,
+            453994279,
+            454087199
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31032,
+          "hash": "39501c04f7125d4de4a5351a0a80800ed9b2cd6ceb55c3ac603172f8243b7128",
+          "instructions": 2800640118,
+          "records": {
+            "executable.bytes": 31032,
+            "llvm.after_opt.blocks": 401,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1843,
+            "llvm.before_opt.blocks": 982,
+            "llvm.before_opt.functions": 253,
+            "llvm.before_opt.instructions": 5579,
+            "object.bytes": 21704
+          },
+          "wall_ns": 401371418,
+          "wall_ns_rounds": [
+            401371418,
+            401621853,
+            401777887,
+            401634121,
+            403153129
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "883008\n45152\n",
+      "ratios": {
+        "spp/c": 1.010043918548486,
+        "spp/c_instructions": 1.2175269091340004,
+        "spp/rust": 0.884089153907598,
+        "spp/rust_instructions": 0.9033181840223462
+      }
+    },
+    "ast/loops": {
+      "description": "Iterable loops over ranges with skip, exit carrying a value and a loop-else, nested: about 125M inner iterations",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "b8adfe250026329b95e0bc89e98d55a84e2f6e01c8f70be309ace2f1fb58fd4f",
+          "instructions": 3056227324,
+          "wall_ns": 229682761,
+          "wall_ns_rounds": [
+            230138333,
+            229744072,
+            229682761,
+            230428278,
+            230571693
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953416,
+          "hash": "e565b78f6c6af24bbc0ff1f324c72b9c6e36528d6c3e9400f97efcd0027c46f5",
+          "instructions": 3504776511,
+          "wall_ns": 220675547,
+          "wall_ns_rounds": [
+            220675547,
+            220799583,
+            221009388,
+            225920551,
+            221247304
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "98f10cc0a1b5a093b5b928d3745a3f015d29ef94c7ae33d2917d7cfaa9d03a84",
+          "instructions": 2161993823,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 409,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1839,
+            "llvm.before_opt.blocks": 1027,
+            "llvm.before_opt.functions": 256,
+            "llvm.before_opt.instructions": 5640,
+            "object.bytes": 21280
+          },
+          "wall_ns": 107069859,
+          "wall_ns_rounds": [
+            107384882,
+            107069859,
+            107182619,
+            107649949,
+            107645983
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "203330547\n",
+      "ratios": {
+        "spp/c": 0.46616410623869153,
+        "spp/c_instructions": 0.7074060905163219,
+        "spp/rust": 0.48519131573739793,
+        "spp/rust_instructions": 0.6168706667071132
+      }
+    },
+    "ast/members": {
+      "description": "A class with a static constructor and methods taking &self and &mut self, its fields read and written, and a write through a &mut parameter's deref, in a hot loop",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "f013f93db35082497a67a357960dfda927cea1e9f80829c642170b9de1c88674",
+          "instructions": 3600269206,
+          "wall_ns": 396508456,
+          "wall_ns_rounds": [
+            396508456,
+            397535606,
+            396779141,
+            396982597,
+            396703158
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953680,
+          "hash": "68bfae438f5d884444352ba6371c570122105d9609de4ef597a029108e66d395",
+          "instructions": 2400391363,
+          "wall_ns": 405418705,
+          "wall_ns_rounds": [
+            405418705,
+            405730532,
+            405678274,
+            405508459,
+            405508469
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "8440e0bcc3acf9b9395ac69cdcc47fec0b8c8af961379d0d1fc59c29c8a00e1a",
+          "instructions": 2400639091,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 394,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1803,
+            "llvm.before_opt.blocks": 982,
+            "llvm.before_opt.functions": 257,
+            "llvm.before_opt.instructions": 5493,
+            "object.bytes": 21112
+          },
+          "wall_ns": 405881408,
+          "wall_ns_rounds": [
+            405996912,
+            405881408,
+            406212415,
+            406012405,
+            406031173
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "18260791\n",
+      "ratios": {
+        "spp/c": 1.0236387190693355,
+        "spp/c_instructions": 0.6667943294349306,
+        "spp/rust": 1.00114129662567,
+        "spp/rust_instructions": 1.0001032031708739
+      }
+    },
+    "ast/object_initializer": {
+      "description": "A small Copy class built, passed by value and read field by field in a hot loop: should stay in registers",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "ff5d7273b03396eafcbaf464e6d3ec3e735ebdea1ebdd35410d9b780e118c8f4",
+          "instructions": 4200269550,
+          "wall_ns": 492050179,
+          "wall_ns_rounds": [
+            492415847,
+            492106273,
+            492404369,
+            495051698,
+            492050179
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1955200,
+          "hash": "d6c6b51efcd8c44fd2c391a4c521cb9bd0fbbbe5233e70d7884df2632b4c8e17",
+          "instructions": 4200391943,
+          "wall_ns": 455628212,
+          "wall_ns_rounds": [
+            465832826,
+            456850644,
+            464500614,
+            462998181,
+            455628212
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31032,
+          "hash": "6dca7ae5fe1c786d10f9fa3e35e5ae722d1f65eb96f2baf9145e46f9a153ad5e",
+          "instructions": 4600640202,
+          "records": {
+            "executable.bytes": 31032,
+            "llvm.after_opt.blocks": 410,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1870,
+            "llvm.before_opt.blocks": 1017,
+            "llvm.before_opt.functions": 270,
+            "llvm.before_opt.instructions": 5691,
+            "object.bytes": 21864
+          },
+          "wall_ns": 438906061,
+          "wall_ns_rounds": [
+            438906061,
+            439167513,
+            439191859,
+            439246812,
+            439249436
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "728729\n486285\n",
+      "ratios": {
+        "spp/c": 0.8919945154618062,
+        "spp/c_instructions": 1.0953202281982117,
+        "spp/rust": 0.9632986927508344,
+        "spp/rust_instructions": 1.095288312241199
+      }
+    },
+    "ast/postfix_expression_operator_function_call": {
+      "description": "Recursive Fibonacci of 39: about 200M calls and returns that cannot be inlined away",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16080,
+          "hash": "8f63da9f253a96dc178fa1e22d4669dc1b11a075d754c75a6b913963084b95fa",
+          "instructions": 1944618091,
+          "wall_ns": 139685171,
+          "wall_ns_rounds": [
+            140285168,
+            139809526,
+            139868353,
+            139915186,
+            139685171
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953312,
+          "hash": "93362f446876ff5ca4bbe4d292f41158a082d54d51f7f89d1ced678f4aeb13e4",
+          "instructions": 2968082042,
+          "wall_ns": 257507661,
+          "wall_ns_rounds": [
+            257507661,
+            257702943,
+            257670254,
+            262794521,
+            258001686
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30952,
+          "hash": "dc5144211d239896bafc4fb9effb0fea81ea456a636569ef012602c24426bfc8",
+          "instructions": 3684668748,
+          "records": {
+            "executable.bytes": 30952,
+            "llvm.after_opt.blocks": 393,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1790,
+            "llvm.before_opt.blocks": 978,
+            "llvm.before_opt.functions": 253,
+            "llvm.before_opt.instructions": 5440,
+            "object.bytes": 21184
+          },
+          "wall_ns": 257968131,
+          "wall_ns_rounds": [
+            258508350,
+            257968131,
+            258359748,
+            258428304,
+            259474424
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "63245986\n",
+      "ratios": {
+        "spp/c": 1.8467825120821164,
+        "spp/c_instructions": 1.8948032855670887,
+        "spp/rust": 1.0017881798087553,
+        "spp/rust_instructions": 1.241430895729937
+      }
+    },
+    "ast/slices": {
+      "description": "A sliding window over a Vec: a slice taken per step (about 100M of them) and summed by index",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "a5136fb5018e4e6456818ef589046f67e4541307b4383894d689c19b96e25d94",
+          "instructions": 1352827109,
+          "wall_ns": 73312848,
+          "wall_ns_rounds": [
+            73574721,
+            73312848,
+            73777995,
+            73731216,
+            73793724
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953848,
+          "hash": "4b64ce55c231dd72dc0d0ed55d2d643e9ccba3edfafbad69707cfd2498e897f1",
+          "instructions": 4183648750,
+          "wall_ns": 446684668,
+          "wall_ns_rounds": [
+            446821773,
+            446684668,
+            446801162,
+            446750360,
+            446996027
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31176,
+          "hash": "0ded7d7cdf6c39c954e464ecfdcc9217a717729f562fc92840104bec269f66c5",
+          "instructions": 3979818392,
+          "records": {
+            "executable.bytes": 31176,
+            "llvm.after_opt.blocks": 448,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 2101,
+            "llvm.before_opt.blocks": 1150,
+            "llvm.before_opt.functions": 301,
+            "llvm.before_opt.instructions": 6512,
+            "object.bytes": 22864
+          },
+          "wall_ns": 446938408,
+          "wall_ns_rounds": [
+            446938408,
+            446960681,
+            446974472,
+            447203285,
+            447547623
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "832688400000\n",
+      "ratios": {
+        "spp/c": 6.096317633165745,
+        "spp/c_instructions": 2.941852928229575,
+        "spp/rust": 1.000568051733533,
+        "spp/rust_instructions": 0.9512792850977272
+      }
+    },
+    "codegen/checked_add_in_place": {
+      "description": "k added in place to every element of a 4096-element Vec[S64], 50K times: a checked add per element, indexed up to the Vec's own length; C traps signed overflow and Rust has overflow checks, so all three check",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "e7e3cd4544ec97eb06862e6a0605068027140a1c7ca0a38c287a64e92a57766f",
+          "instructions": 1127175883,
+          "wall_ns": 57497096,
+          "wall_ns_rounds": [
+            57983645,
+            57612398,
+            57497096,
+            57657506,
+            57733439
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1955040,
+          "hash": "6710d37e8d77c826ed3000794e201a2c8b256a0b161a87a58b7f3cce161abc3e",
+          "instructions": 1434247314,
+          "wall_ns": 113450646,
+          "wall_ns_rounds": [
+            113647882,
+            113518478,
+            113450646,
+            113775203,
+            113981302
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31176,
+          "hash": "ea51fcbcaed4808bdd6dc43ea95c190a9bc3cc102e8119bce0fa59ff32867f75",
+          "instructions": 1434595217,
+          "records": {
+            "executable.bytes": 31176,
+            "llvm.after_opt.blocks": 434,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1988,
+            "llvm.before_opt.blocks": 1164,
+            "llvm.before_opt.functions": 309,
+            "llvm.before_opt.instructions": 6544,
+            "object.bytes": 22672
+          },
+          "wall_ns": 113875553,
+          "wall_ns_rounds": [
+            114123806,
+            114040251,
+            113875553,
+            116145838,
+            116184155
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "300002\n",
+      "ratios": {
+        "spp/c": 1.980544426104581,
+        "spp/c_instructions": 1.272734130171236,
+        "spp/rust": 1.0037453026049759,
+        "spp/rust_instructions": 1.000242568346898
+      }
+    },
+    "codegen/checked_dot": {
+      "description": "Dot product of two 4096-element Vec[S64], 50K times: a checked multiply and add per element into one sum; C traps signed overflow and Rust has overflow checks, so all three check",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "c4fa74d0f4c5c2d3308b3fd9fd40901af4fb97d8234fe54ed81d95cd734e2ae0",
+          "instructions": 1640220320,
+          "wall_ns": 85682697,
+          "wall_ns_rounds": [
+            85700634,
+            85682697,
+            85696307,
+            85854475,
+            85726753
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1956632,
+          "hash": "7cb06d4f331ab88f1f84677f32099acf0804b1ced791a7b452748012f1d49e4e",
+          "instructions": 2459548769,
+          "wall_ns": 141858473,
+          "wall_ns_rounds": [
+            143509669,
+            141858473,
+            143999302,
+            142679874,
+            141895348
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31456,
+          "hash": "5c12f2fa4b92a2bd99d54cf7447dd0f6f2dec0d5ea948229b60abe3a19e075b1",
+          "instructions": 1640792411,
+          "records": {
+            "executable.bytes": 31456,
+            "llvm.after_opt.blocks": 465,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2118,
+            "llvm.before_opt.blocks": 1146,
+            "llvm.before_opt.functions": 313,
+            "llvm.before_opt.instructions": 6461,
+            "object.bytes": 24984
+          },
+          "wall_ns": 86578700,
+          "wall_ns_rounds": [
+            86735655,
+            86578700,
+            87227814,
+            86698780,
+            86729036
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "54974741\n",
+      "ratios": {
+        "spp/c": 1.0104572221857115,
+        "spp/c_instructions": 1.000348789118769,
+        "spp/rust": 0.610317439410193,
+        "spp/rust_instructions": 0.667111151313788
+      }
+    },
+    "codegen/checked_map": {
+      "description": "c[i] = a[i] * 3 + b[i] over 4096-element Vec[S64], 50K times: a checked multiply and add per element, written back, no reduction; C traps signed overflow and Rust has overflow checks, so all three check",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16184,
+          "hash": "5ec7b50691ca494a1e9bf340518edf7902ba62003e2597f9dfbec38532f378ef",
+          "instructions": 1639555247,
+          "wall_ns": 113787464,
+          "wall_ns_rounds": [
+            115110609,
+            113787464,
+            115694634,
+            113884840,
+            114129550
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1956664,
+          "hash": "6a9cdbbc2c6b18f92ac00f3ea983a46aae40b624dfda29819c02b23a0d46138a",
+          "instructions": 2868751823,
+          "wall_ns": 176031233,
+          "wall_ns_rounds": [
+            181857998,
+            180301866,
+            176031233,
+            176816000,
+            180340140
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31456,
+          "hash": "877466c7c4319aea8a85cd0c0515de02babc31205ca312189f40a8ed56519e10",
+          "instructions": 2254775901,
+          "records": {
+            "executable.bytes": 31456,
+            "llvm.after_opt.blocks": 493,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2215,
+            "llvm.before_opt.blocks": 1217,
+            "llvm.before_opt.functions": 332,
+            "llvm.before_opt.instructions": 6817,
+            "object.bytes": 26000
+          },
+          "wall_ns": 114180564,
+          "wall_ns_rounds": [
+            124358152,
+            120789572,
+            114180564,
+            114241545,
+            124692012
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "147308441\n",
+      "ratios": {
+        "spp/c": 1.0034546863615836,
+        "spp/c_instructions": 1.3752363057760384,
+        "spp/rust": 0.6486380970813287,
+        "spp/rust_instructions": 0.7859780281174918
+      }
+    },
+    "codegen/checked_sum": {
+      "description": "A 4096-element Vec[S64] summed by index 50K times: a checked add into one running total per element; C traps signed overflow and Rust has overflow checks, so all three check",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "971bf4484486d81be779ff78f752692a21bbf4eb3210b34547ded84203fc168e",
+          "instructions": 718251473,
+          "wall_ns": 57338344,
+          "wall_ns_rounds": [
+            57372806,
+            57352175,
+            57338344,
+            57660998,
+            57358454
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1955784,
+          "hash": "6f4164dc726fad7fc49042557edcb176eaadb5188802bc1ef3eae909593ac52c",
+          "instructions": 1025495127,
+          "wall_ns": 58161498,
+          "wall_ns_rounds": [
+            58252164,
+            58255319,
+            58237913,
+            58161498,
+            58216851
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31456,
+          "hash": "372268a9b734b7f6cd00c8c3cf6b0bec6e4fd164d64e8fb22972f02ae25fc689",
+          "instructions": 1025838778,
+          "records": {
+            "executable.bytes": 31456,
+            "llvm.after_opt.blocks": 442,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2020,
+            "llvm.before_opt.blocks": 1143,
+            "llvm.before_opt.functions": 313,
+            "llvm.before_opt.instructions": 6439,
+            "object.bytes": 23984
+          },
+          "wall_ns": 58154698,
+          "wall_ns_rounds": [
+            58502329,
+            58606385,
+            58504793,
+            59270641,
+            58154698
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "787818567\n",
+      "ratios": {
+        "spp/c": 1.0142374882678857,
+        "spp/c_instructions": 1.4282445864193862,
+        "spp/rust": 0.9998830841667798,
+        "spp/rust_instructions": 1.0003351073944207
+      }
+    },
+    "codegen/drops": {
+      "description": "A small Vec allocated, filled, read and dropped 50M times: allocation, drop emission, temporaries",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "f41088d82145986bd28b679b4389010fa45bdf2c76a6189e272637fd78887d2a",
+          "instructions": 950269183,
+          "wall_ns": 144513216,
+          "wall_ns_rounds": [
+            144717061,
+            144536050,
+            144513216,
+            144554659,
+            144720026
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953352,
+          "hash": "69a71a6c830b5b0144c0e64a2ffdad3d83899cf009fcb7856f6002328fcc835d",
+          "instructions": 1650391369,
+          "wall_ns": 163774695,
+          "wall_ns_rounds": [
+            164350598,
+            164213663,
+            163774695,
+            164207814,
+            164543547
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31176,
+          "hash": "f352e2e81ec631b72e2f9545c47ce368032493efdf5e2e4a464e72397c25d7f6",
+          "instructions": 900639118,
+          "records": {
+            "executable.bytes": 31176,
+            "llvm.after_opt.blocks": 401,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 1859,
+            "llvm.before_opt.blocks": 1085,
+            "llvm.before_opt.functions": 286,
+            "llvm.before_opt.instructions": 6163,
+            "object.bytes": 21720
+          },
+          "wall_ns": 157896742,
+          "wall_ns_rounds": [
+            157896742,
+            158061630,
+            157926677,
+            158126346,
+            157911814
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "266249989\n",
+      "ratios": {
+        "spp/c": 1.0926110868641938,
+        "spp/c_instructions": 0.9477726249699924,
+        "spp/rust": 0.9641095164304839,
+        "spp/rust_instructions": 0.5457124503418316
+      }
+    },
+    "codegen/iter_adapters": {
+      "description": "iter_ref then map, filter and fold over a 4096-element Vec[U64], 50K times (205M elements, in L1); C is the hand-fused loop and Rust the same adapter chain, so the gap is the coroutine adapters'",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "f6a7e505001cfd5235a2dd17ba763b289a19e0f37f1b8c87a7e2fac2748de749",
+          "instructions": 871594448,
+          "wall_ns": 46045855,
+          "wall_ns_rounds": [
+            46617283,
+            46045855,
+            46091743,
+            46105655,
+            46093306
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953992,
+          "hash": "240a20a38e82cddefbdd1aede1846de1a9c7ea8cc5019611bf4509503ee6d4a0",
+          "instructions": 871795132,
+          "wall_ns": 47273665,
+          "wall_ns_rounds": [
+            47541198,
+            47309138,
+            47458142,
+            47273665,
+            47501637
+          ]
+        },
+        "spp": {
+          "executable_bytes": 33128,
+          "hash": "54f09b015934f1de9199385820cf5dbddf47c7fc5df5f98773871ae70f5556ba",
+          "instructions": 17532335381,
+          "records": {
+            "executable.bytes": 33128,
+            "llvm.after_opt.blocks": 474,
+            "llvm.after_opt.functions": 30,
+            "llvm.after_opt.instructions": 2243,
+            "llvm.before_opt.blocks": 1192,
+            "llvm.before_opt.functions": 308,
+            "llvm.before_opt.instructions": 6654,
+            "object.bytes": 28472
+          },
+          "wall_ns": 1404251646,
+          "wall_ns_rounds": [
+            1405169035,
+            1407649427,
+            1404251646,
+            1410429058,
+            1424218612
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "17229105217883260800\n",
+      "ratios": {
+        "spp/c": 30.49680901788011,
+        "spp/c_instructions": 20.115244447954538,
+        "spp/rust": 29.704734041669923,
+        "spp/rust_instructions": 20.110613993426153
+      }
+    },
+    "codegen/iter_mut": {
+      "description": "A 4096-element Vec[U64] rewritten in place through iter_mut 50K times (205M elements, in L1); the C and Rust equivalents are a pointer loop and slice::iter_mut, so the gap is the coroutine iterator's",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "d10098f163669668781b3ca5aaef672bba4738c7a5ef36e406ffcd19cb6a31e0",
+          "instructions": 1434101644,
+          "wall_ns": 85305985,
+          "wall_ns_rounds": [
+            85485693,
+            85480806,
+            85592934,
+            85599224,
+            85305985
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1954272,
+          "hash": "b08eb507c3b5bbdbd74d7250f4c0f76b33cc5d05d7496e33cb242544568b1bcd",
+          "instructions": 973756415,
+          "wall_ns": 46361657,
+          "wall_ns_rounds": [
+            46379995,
+            46505103,
+            46376559,
+            46361657,
+            46498703
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31456,
+          "hash": "1159afe0e193263a02d091515a432423c0897f32c5e3e1412be84e5df47a8941",
+          "instructions": 770000467,
+          "records": {
+            "executable.bytes": 31456,
+            "llvm.after_opt.blocks": 443,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2046,
+            "llvm.before_opt.blocks": 1129,
+            "llvm.before_opt.functions": 295,
+            "llvm.before_opt.instructions": 6355,
+            "object.bytes": 24064
+          },
+          "wall_ns": 35511340,
+          "wall_ns_rounds": [
+            37555955,
+            35605662,
+            35790849,
+            35511340,
+            35553503
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "3945200747419093206\n",
+      "ratios": {
+        "spp/c": 0.4162819291049743,
+        "spp/c_instructions": 0.5369218215609269,
+        "spp/rust": 0.7659635633816971,
+        "spp/rust_instructions": 0.790752651421557
+      }
+    },
+    "codegen/iter_ref": {
+      "description": "A 4096-element Vec[U64] summed through iter_ref 50K times (205M elements, in L1); the C and Rust equivalents are a pointer loop and slice::iter, so the gap is the coroutine iterator's",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "517f347358839b77ab9400195db35ab5f387839c6776f1e63c1f0ffeb90198bb",
+          "instructions": 461994462,
+          "wall_ns": 29391965,
+          "wall_ns_rounds": [
+            29391965,
+            29808319,
+            29727979,
+            29768220,
+            29758214
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953992,
+          "hash": "86fe5443b3ab012e010d55abb4c1c5cc35efa3252bf6ea86b39155471972b16b",
+          "instructions": 462345094,
+          "wall_ns": 29403212,
+          "wall_ns_rounds": [
+            29403212,
+            29836061,
+            29999847,
+            29866227,
+            29497182
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31456,
+          "hash": "3be7c7e8aa353b97a9af15142a7066957d477929e23eace74bef9f31f57a39e7",
+          "instructions": 463239212,
+          "records": {
+            "executable.bytes": 31456,
+            "llvm.after_opt.blocks": 434,
+            "llvm.after_opt.functions": 22,
+            "llvm.after_opt.instructions": 2012,
+            "llvm.before_opt.blocks": 1125,
+            "llvm.before_opt.functions": 296,
+            "llvm.before_opt.instructions": 6338,
+            "object.bytes": 23880
+          },
+          "wall_ns": 21188507,
+          "wall_ns_rounds": [
+            21188507,
+            21455166,
+            21489347,
+            21548236,
+            21514425
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "16011466361954569984\n",
+      "ratios": {
+        "spp/c": 0.7208945369933586,
+        "spp/c_instructions": 1.0026942963658296,
+        "spp/rust": 0.720618788178652,
+        "spp/rust_instructions": 1.0019338758247969
+      }
+    },
+    "codegen/variants": {
+      "description": "Optional values built (one in five empty), widened from Some to Opt and matched, 100M times",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "44f7917bd7a80f5cb8867f1245927dac149407b569baf24d98cd5a310bf8ef18",
+          "instructions": 1680269145,
+          "wall_ns": 252652242,
+          "wall_ns_rounds": [
+            252883418,
+            253360203,
+            252652242,
+            252798070,
+            252812012
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953752,
+          "hash": "c3c6fe7f79b3801f8d08a4ebd03cc988b5f891777e8bc7d2c96c9f69f23d76a9",
+          "instructions": 1960391385,
+          "wall_ns": 252190259,
+          "wall_ns_rounds": [
+            252604209,
+            252459994,
+            252190259,
+            252294746,
+            252297930
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "d84e49024ab8fa46f3b381b98697d88769b6fd62a4aca4b1e47604d6471f5122",
+          "instructions": 2500639190,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 401,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1812,
+            "llvm.before_opt.blocks": 987,
+            "llvm.before_opt.functions": 253,
+            "llvm.before_opt.instructions": 5499,
+            "object.bytes": 21176
+          },
+          "wall_ns": 225336339,
+          "wall_ns_rounds": [
+            225433325,
+            225551982,
+            225382218,
+            225416249,
+            225336339
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "964000007\n",
+      "ratios": {
+        "spp/c": 0.8918833936173818,
+        "spp/c_instructions": 1.488237284747617,
+        "spp/rust": 0.8935172194735721,
+        "spp/rust_instructions": 1.2755816053537696
+      }
+    },
+    "programs/bytecode-vm": {
+      "description": "A register bytecode interpreter running 30M iterations: dense case dispatch (a jump table), Vec reads, U64 arithmetic",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16232,
+          "hash": "15fb92ea03178348b2a8904ddf4e023b74596f13649cfc2ab3cda150fb555241",
+          "instructions": 1680272577,
+          "wall_ns": 122012118,
+          "wall_ns_rounds": [
+            122012118,
+            122063324,
+            123110975,
+            122114271,
+            122496064
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1957368,
+          "hash": "9ee9ba0491b44a93728b26072fd550d193a9bb44c3ac86f8eda02cec3088bcda",
+          "instructions": 3120392904,
+          "wall_ns": 195164456,
+          "wall_ns_rounds": [
+            195164456,
+            195933959,
+            195683584,
+            196855211,
+            197508520
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31512,
+          "hash": "baaaeac8f6dea4729f4056e561f38ba0058552a796ce551dc7a24710fe612653",
+          "instructions": 3210641455,
+          "records": {
+            "executable.bytes": 31512,
+            "llvm.after_opt.blocks": 460,
+            "llvm.after_opt.functions": 23,
+            "llvm.after_opt.instructions": 2069,
+            "llvm.before_opt.blocks": 1124,
+            "llvm.before_opt.functions": 298,
+            "llvm.before_opt.instructions": 6406,
+            "object.bytes": 24440
+          },
+          "wall_ns": 161686767,
+          "wall_ns_rounds": [
+            161686767,
+            162044824,
+            161745465,
+            161884814,
+            162185094
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "450000015000256\n",
+      "ratios": {
+        "spp/c": 1.3251697425660622,
+        "spp/c_instructions": 1.910786082536893,
+        "spp/rust": 0.8284642107167302,
+        "spp/rust_instructions": 1.0289221754364046
+      }
+    },
+    "programs/collatz": {
+      "description": "Longest Collatz chain below 1M: U64 arithmetic, nested conditional loops, case",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "78f7e2d396beee0185978113ba8e76d76b2ebc03db35d7f72d4fa4a5fa37cc60",
+          "instructions": 1196178362,
+          "wall_ns": 113175562,
+          "wall_ns_rounds": [
+            115197163,
+            113326249,
+            113175562,
+            113418096,
+            113750294
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953848,
+          "hash": "08f5c8c7bf58777b1e1817044cc0d8d0910624df892df758db8bf89bfc6e4d6f",
+          "instructions": 1328124578,
+          "wall_ns": 169993283,
+          "wall_ns_rounds": [
+            172178409,
+            179447747,
+            169993283,
+            178309481,
+            178836952
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31032,
+          "hash": "33399abc0e16ace5f3d46633a88eb65fb68f21a66c7f682737325834d13b15eb",
+          "instructions": 1546023309,
+          "records": {
+            "executable.bytes": 31032,
+            "llvm.after_opt.blocks": 408,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 1856,
+            "llvm.before_opt.blocks": 1006,
+            "llvm.before_opt.functions": 262,
+            "llvm.before_opt.instructions": 5651,
+            "object.bytes": 21856
+          },
+          "wall_ns": 179607737,
+          "wall_ns_rounds": [
+            180591001,
+            179607737,
+            180852213,
+            181957270,
+            188299418
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "837799\n524\n131434272\n",
+      "ratios": {
+        "spp/c": 1.5869833895766297,
+        "spp/c_instructions": 1.2924688809911777,
+        "spp/rust": 1.0565578464650276,
+        "spp/rust_instructions": 1.1640649790007878
+      }
+    },
+    "programs/fannkuch": {
+      "description": "Fannkuch-redux for n=10: small fixed arrays, permutations, swaps, nested exits",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16192,
+          "hash": "0d96a95c3300dedb98851924a9de58d5ac2c442b51cae9efb09ef936f84891ce",
+          "instructions": 1029453062,
+          "wall_ns": 202058993,
+          "wall_ns_rounds": [
+            204796588,
+            202809939,
+            202058993,
+            203358782,
+            204340675
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1957288,
+          "hash": "e2465600a3360ede7a1c098c8d4d1799c8d5ab2cffd9daa2390b84ee4ddbd179",
+          "instructions": 743434198,
+          "wall_ns": 152100116,
+          "wall_ns_rounds": [
+            152269426,
+            152208078,
+            152100116,
+            153183730,
+            153644611
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31032,
+          "hash": "d7477dbc520db6271e7fbbece924bd08ade53d058b79410d3028dff94dfcab4c",
+          "instructions": 841308213,
+          "records": {
+            "executable.bytes": 31032,
+            "llvm.after_opt.blocks": 488,
+            "llvm.after_opt.functions": 19,
+            "llvm.after_opt.instructions": 2218,
+            "llvm.before_opt.blocks": 1076,
+            "llvm.before_opt.functions": 283,
+            "llvm.before_opt.instructions": 5970,
+            "object.bytes": 23584
+          },
+          "wall_ns": 136510631,
+          "wall_ns_rounds": [
+            137033554,
+            136665264,
+            136762519,
+            136516550,
+            136510631
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "73196\n38\n",
+      "ratios": {
+        "spp/c": 0.6755978982831019,
+        "spp/c_instructions": 0.8172380500433152,
+        "spp/rust": 0.8975051077541585,
+        "spp/rust_instructions": 1.1316512144091602
+      }
+    },
+    "programs/fnv1a": {
+      "description": "FNV-1a over 200M bytes from an LCG: wrapping multiply, xor, shifts",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "0900f9826c503fdc6c2e6ea7f961647c478c8e11ebfccc4218df72ce3ec1ee53",
+          "instructions": 1300269292,
+          "wall_ns": 219415503,
+          "wall_ns_rounds": [
+            219439119,
+            219477587,
+            219415503,
+            219510987,
+            219562334
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1952800,
+          "hash": "26dc70e5672adee252f0b58b6a1cb906f71ba756ac9f5848f70773c4e0e205c2",
+          "instructions": 1300391383,
+          "wall_ns": 219527371,
+          "wall_ns_rounds": [
+            219610005,
+            220000791,
+            219527371,
+            219955804,
+            219690036
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "9c7b3aeb5835657210f6fe85f463207c7d3694bd867aea43a2e2f57af06abf7f",
+          "instructions": 1300639563,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 395,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1831,
+            "llvm.before_opt.blocks": 985,
+            "llvm.before_opt.functions": 260,
+            "llvm.before_opt.instructions": 5507,
+            "object.bytes": 21168
+          },
+          "wall_ns": 219863595,
+          "wall_ns_rounds": [
+            219969404,
+            219928933,
+            220060571,
+            219863595,
+            220007011
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "13607023556064612108\n",
+      "ratios": {
+        "spp/c": 1.002042207564522,
+        "spp/c_instructions": 1.0002847648577706,
+        "spp/rust": 1.0015315812259238,
+        "spp/rust_instructions": 1.000190850234202
+      }
+    },
+    "programs/mandelbrot": {
+      "description": "Mandelbrot set membership on a 1800x1800 grid, 50 iterations: F64 arithmetic, early exit",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "7d81538f4410e0b47a744fd0a69bb20520d94cbd8f08b31c2f35ce297fcedbb3",
+          "instructions": 1565633304,
+          "wall_ns": 207585986,
+          "wall_ns_rounds": [
+            207844284,
+            207585986,
+            207985905,
+            207946227,
+            207759796
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953640,
+          "hash": "b907e8ca6b09ebee4ca2c11e9c1b8c0301d25693b29b024327b5f58feca446f6",
+          "instructions": 1566328963,
+          "wall_ns": 208705995,
+          "wall_ns_rounds": [
+            208705995,
+            208725805,
+            208825024,
+            208767407,
+            208926796
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "1475de4277500056d91424152cda6d73d3bc033d7c0608506b40000d8aae4ced",
+          "instructions": 1567912762,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 402,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1844,
+            "llvm.before_opt.blocks": 1003,
+            "llvm.before_opt.functions": 264,
+            "llvm.before_opt.instructions": 5605,
+            "object.bytes": 21880
+          },
+          "wall_ns": 214320699,
+          "wall_ns_rounds": [
+            214320699,
+            216439717,
+            216830678,
+            219282124,
+            219271087
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "1285984\n",
+      "ratios": {
+        "spp/c": 1.0324430041245656,
+        "spp/c_instructions": 1.0014559335153232,
+        "spp/rust": 1.0269024567310585,
+        "spp/rust_instructions": 1.0010111534916437
+      }
+    },
+    "programs/matmul": {
+      "description": "Integer matrix multiply, 700x700 S64 in Vecs: checked multiply-add, strided reads",
+      "gaps": [
+        "no SIMD in the std, and the CPU is baseline x86-64 for all three"
+      ],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "614de93a41257d4bbf8d992f3ed98f4609b7b199be9586205d222d35150c1969",
+          "instructions": 3102713610,
+          "wall_ns": 200020411,
+          "wall_ns_rounds": [
+            200743486,
+            210251443,
+            200664657,
+            201556274,
+            200020411
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1956048,
+          "hash": "79341dbedc4074b7c09864aa16e8344cc30d6ed5ae24bae1c5323a5026394637",
+          "instructions": 7569428614,
+          "wall_ns": 372044400,
+          "wall_ns_rounds": [
+            372955316,
+            372932683,
+            372044400,
+            373380454,
+            372341926
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31312,
+          "hash": "9b0f3caaa596510115fc6fc65f1d5272d335d7901764acc2716c6da4597884cc",
+          "instructions": 5167088051,
+          "records": {
+            "executable.bytes": 31312,
+            "llvm.after_opt.blocks": 469,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 2122,
+            "llvm.before_opt.blocks": 1197,
+            "llvm.before_opt.functions": 322,
+            "llvm.before_opt.instructions": 6754,
+            "object.bytes": 24440
+          },
+          "wall_ns": 297609552,
+          "wall_ns_rounds": [
+            298005836,
+            297927118,
+            297609552,
+            298028740,
+            297926316
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "839561115142\n",
+      "ratios": {
+        "spp/c": 1.487895912782621,
+        "spp/c_instructions": 1.66534482407482,
+        "spp/rust": 0.7999302018791306,
+        "spp/rust_instructions": 0.6826259040798981
+      }
+    },
+    "programs/nbody": {
+      "description": "N-body simulation of 5 bodies for 5M steps: F64 in fixed arrays, sqrt, nested loops",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "667729d6e9b4e40766f39337b77c9b637d60c1f98b2a3a12a03a565cc080f65a",
+          "instructions": 3205270959,
+          "wall_ns": 332088876,
+          "wall_ns_rounds": [
+            332753874,
+            332088876,
+            332273083,
+            332382126,
+            332487064
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1962920,
+          "hash": "0cc0075680c52f85d732da038a698f039562dd9e35dea0c6216e4cc0acceab9d",
+          "instructions": 3130395038,
+          "wall_ns": 333253834,
+          "wall_ns_rounds": [
+            333358540,
+            333253834,
+            333328616,
+            333309006,
+            334762021
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31088,
+          "hash": "22a26595601a841591ea2e07805d5e27a955ab54125c1b3f5d38ce7491a42bc1",
+          "instructions": 3340696200,
+          "records": {
+            "executable.bytes": 31088,
+            "llvm.after_opt.blocks": 408,
+            "llvm.after_opt.functions": 20,
+            "llvm.after_opt.instructions": 2335,
+            "llvm.before_opt.blocks": 1051,
+            "llvm.before_opt.functions": 283,
+            "llvm.before_opt.instructions": 6262,
+            "object.bytes": 25912
+          },
+          "wall_ns": 309248997,
+          "wall_ns_rounds": [
+            309248997,
+            311880945,
+            309669844,
+            310745396,
+            309997495
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "-169075163\n-169083133\n",
+      "ratios": {
+        "spp/c": 0.9312235950956695,
+        "spp/c_instructions": 1.0422507933751257,
+        "spp/rust": 0.9279683095858996,
+        "spp/rust_instructions": 1.0671803907964155
+      }
+    },
+    "programs/popcount": {
+      "description": "SWAR population count (Hacker's Delight 5-2) of 100M LCG values: masks, shifts, wrapping arithmetic",
+      "gaps": [
+        "no popcount peephole: LLVM may or may not recognise the SWAR form for any of the three"
+      ],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "1ba767d3e8cf7a6e62e5e5c683edb1af05e04869190d55e8fe0770a8b4a689f1",
+          "instructions": 2100269155,
+          "wall_ns": 164952131,
+          "wall_ns_rounds": [
+            165004059,
+            164952131,
+            164977278,
+            165056697,
+            165023948
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1953304,
+          "hash": "65276fd1cc78a2861e9478ae31dd680bfaecbc2bfc15e32e7127a0b018481835",
+          "instructions": 2300391390,
+          "wall_ns": 166379811,
+          "wall_ns_rounds": [
+            166669315,
+            166379811,
+            166401263,
+            166625419,
+            166399711
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "ac81db971daac0a98ee2aaf1e43b9b7f992079d168ec1ecbe74984c07eca14d4",
+          "instructions": 2300639202,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 392,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1797,
+            "llvm.before_opt.blocks": 988,
+            "llvm.before_opt.functions": 263,
+            "llvm.before_opt.instructions": 5546,
+            "object.bytes": 21136
+          },
+          "wall_ns": 166782404,
+          "wall_ns_rounds": [
+            167497546,
+            166782404,
+            167569054,
+            166792039,
+            167503315
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "3200001878\n",
+      "ratios": {
+        "spp/c": 1.0110957826910403,
+        "spp/c_instructions": 1.0954020805014393,
+        "spp/rust": 1.0024197226669527,
+        "spp/rust_instructions": 1.0001077260161368
+      }
+    },
+    "programs/sieve": {
+      "description": "Sieve of Eratosthenes to 20M: a Vec[Bool], nested counted loops, indexed reads and writes",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16136,
+          "hash": "ac0755dd2e4afb12126bdb7246f047e1c7a48b3886fe86df69cce938750c6195",
+          "instructions": 380836856,
+          "wall_ns": 43594829,
+          "wall_ns_rounds": [
+            43594829,
+            44241649,
+            44373556,
+            43960657,
+            43904673
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1954064,
+          "hash": "5d4cc72c03aa4de3a44ccfe4bb3ea0f84fe9c2e5ee7c73afa951ba64bf1e87ee",
+          "instructions": 437709418,
+          "wall_ns": 48411229,
+          "wall_ns_rounds": [
+            49856316,
+            49389276,
+            48624159,
+            48411229,
+            49652941
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31304,
+          "hash": "6521033db80ce2cb5450440003283ffccac35507bf136955f7b97cc2b3af3460",
+          "instructions": 857958632,
+          "records": {
+            "executable.bytes": 31304,
+            "llvm.after_opt.blocks": 429,
+            "llvm.after_opt.functions": 21,
+            "llvm.after_opt.instructions": 1957,
+            "llvm.before_opt.blocks": 1153,
+            "llvm.before_opt.functions": 300,
+            "llvm.before_opt.instructions": 6505,
+            "object.bytes": 23000
+          },
+          "wall_ns": 66123414,
+          "wall_ns_rounds": [
+            67011375,
+            67158075,
+            66469402,
+            66299859,
+            66123414
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "1270607\n12272577818052\n",
+      "ratios": {
+        "spp/c": 1.5167719547655525,
+        "spp/c_instructions": 2.2528245848138186,
+        "spp/rust": 1.3658693523355914,
+        "spp/rust_instructions": 1.9601100563936231
+      }
+    },
+    "programs/spectral-norm": {
+      "description": "Spectral norm of a 2000x2000 matrix, 10 rounds: F64, sqrt, calls taking Vec borrows",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16224,
+          "hash": "4130bb53820f19178d2f9c9ee7ba7b144319a534e892e1070fe842d049c2aed3",
+          "instructions": 2721985084,
+          "wall_ns": 214425464,
+          "wall_ns_rounds": [
+            214835980,
+            214425464,
+            214733116,
+            214976000,
+            214646376
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1956320,
+          "hash": "30fbdb70d9ee12853eabf46ab50369115dd1c65451573aaf277d54a0fee52c85",
+          "instructions": 4161664802,
+          "wall_ns": 214743181,
+          "wall_ns_rounds": [
+            215885193,
+            214743181,
+            215083040,
+            215253767,
+            215136401
+          ]
+        },
+        "spp": {
+          "executable_bytes": 31464,
+          "hash": "56ca9686adbdabe2a394d4f33291ecc6649a4d6119529265681ad93fa8119a5f",
+          "instructions": 4001480746,
+          "records": {
+            "executable.bytes": 31464,
+            "llvm.after_opt.blocks": 494,
+            "llvm.after_opt.functions": 23,
+            "llvm.after_opt.instructions": 2279,
+            "llvm.before_opt.blocks": 1206,
+            "llvm.before_opt.functions": 327,
+            "llvm.before_opt.instructions": 6781,
+            "object.bytes": 27152
+          },
+          "wall_ns": 207232029,
+          "wall_ns_rounds": [
+            207370406,
+            209691808,
+            207326491,
+            207232029,
+            209315563
+          ]
+        }
+      },
+      "layer": "std",
+      "output": "1274224152\n",
+      "ratios": {
+        "spp/c": 0.9664525151732912,
+        "spp/c_instructions": 1.470059762458272,
+        "spp/rust": 0.9650226285881459,
+        "spp/rust_instructions": 0.9615096208798414
+      }
+    },
+    "programs/startup": {
+      "description": "An empty program: process start-up, the runtime's initialisation and exit. Its time is mostly the loader's; its instruction count is the part that is the language's",
+      "gaps": [],
+      "languages": {
+        "c": {
+          "executable_bytes": 16056,
+          "hash": "a647d7f9b0b065a1a6aba54d5d3def7b66136ad1d6d85db220b8f0dc02d9c3c0",
+          "instructions": 269010,
+          "wall_ns": 709164,
+          "wall_ns_rounds": [
+            797816,
+            771707,
+            765648,
+            732889,
+            709164
+          ]
+        },
+        "rust": {
+          "executable_bytes": 1952576,
+          "hash": "0f38cf6b92e10335c24ada59e305cb65c8edbb4c7906826cfc975aeddcbda958",
+          "instructions": 391239,
+          "wall_ns": 805809,
+          "wall_ns_rounds": [
+            915994,
+            813750,
+            816334,
+            818157,
+            805809
+          ]
+        },
+        "spp": {
+          "executable_bytes": 30896,
+          "hash": "86fdfbba10ac0163775bbdcdef9948608856490ee79dd65527a57c7ff33fb956",
+          "instructions": 639014,
+          "records": {
+            "executable.bytes": 30896,
+            "llvm.after_opt.blocks": 388,
+            "llvm.after_opt.functions": 18,
+            "llvm.after_opt.instructions": 1773,
+            "llvm.before_opt.blocks": 974,
+            "llvm.before_opt.functions": 252,
+            "llvm.before_opt.instructions": 5422,
+            "object.bytes": 20944
+          },
+          "wall_ns": 1056544,
+          "wall_ns_rounds": [
+            1393189,
+            1155071,
+            1082583,
+            1065818,
+            1056544
+          ]
+        }
+      },
+      "layer": "core",
+      "output": "0\n",
+      "ratios": {
+        "spp/c": 1.48984438014338,
+        "spp/c_instructions": 2.3754284227352143,
+        "spp/rust": 1.3111593442118417,
+        "spp/rust_instructions": 1.6333085403040086
+      }
+    }
+  },
+  "keys": {
+    "cc": "Ubuntu clang version 23.1.6 (++20261108033755+c47d7823685a-1~exp1~20261108153854.96)",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "llvm": "23.1.6",
+    "rounds": 5,
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "spp_commit": "61f7e89025ca29a4362884b55abee3ae5a9d6e83",
+    "std_rev": "1eb1c26794212852d0fd68d495fede0695cf60a5",
+    "valgrind": "valgrind-3.28.0"
+  },
+  "kind": "runtime",
+  "schema": 1
+}
