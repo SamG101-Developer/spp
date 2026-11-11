@@ -2,6 +2,7 @@
 # Install the LLVM development libraries the project
 # links against.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
 # Already installed if this job's compiler *is* this
 # LLVM release.
@@ -17,6 +18,6 @@ if ! [ -d "/usr/lib/llvm-${LLVM_LIB_VERSION}" ]; then
   if [ ${#lldb_pkgs[@]} -gt 0 ]; then
     sudo apt-get purge -y "${lldb_pkgs[@]}"
   fi
-  sudo "${RUNNER_TEMP}/llvm.sh" "${LLVM_LIB_VERSION}"
+  retry sudo "${RUNNER_TEMP}/llvm.sh" "${LLVM_LIB_VERSION}"
 fi
-sudo apt-get install -y "llvm-${LLVM_LIB_VERSION}-dev"
+retry sudo apt-get install -y "llvm-${LLVM_LIB_VERSION}-dev"

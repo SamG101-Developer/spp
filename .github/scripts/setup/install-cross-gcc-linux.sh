@@ -4,11 +4,12 @@
 # carries its own sysroot, exported as SPP_CI_QEMU_SYSROOT, and its gcc goes on PATH as <triple>-gcc, the
 # name spp links with.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
 if [ "${2:-}" != arm-gnu ]; then
   # With recommends: the target's libc (crt files, libm) is only a recommendation of its gcc.
-  sudo apt-get update -qq
-  sudo apt-get install -y "${2:-gcc-$1}"
+  retry sudo apt-get update -qq
+  retry sudo apt-get install -y "${2:-gcc-$1}"
   ls "/usr/$1/lib/Scrt1.o" > /dev/null
   exit 0
 fi

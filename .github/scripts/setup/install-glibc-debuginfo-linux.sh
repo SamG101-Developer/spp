@@ -4,9 +4,10 @@
 # before it can start; it reads build-id debug files only from
 # /usr/lib/debug, hence apt rather than a home-directory copy.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
-sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends libc6-dbg
+retry sudo apt-get update -qq
+retry sudo apt-get install -y --no-install-recommends libc6-dbg
 
 # Checked here so a version skew reads as this, not as
 # valgrind's "cannot be set up" at the first test group.

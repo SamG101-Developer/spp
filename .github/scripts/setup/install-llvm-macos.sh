@@ -6,6 +6,7 @@
 # brew's is built with RTTI, like apt.llvm.org's on Linux.
 # brew has no ld64.lld in llvm; it is the lld formula.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
 major="$LLVM_LIB_VERSION"
 prefix="$SPP_CI_LLVM_MAC_PREFIX"
@@ -20,7 +21,7 @@ fi
 lld=lld
 [ "$formula" = llvm ] || lld="lld@${major}"
 
-brew install --quiet "$formula" "$lld"
+retry brew install --quiet "$formula" "$lld"
 
 # One prefix holds everything the rest of CI looks for: brew's
 # keg, plus ld64.lld from the lld keg beside clang, where

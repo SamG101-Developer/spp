@@ -7,6 +7,7 @@
 # is from March 2026, months before the modules fix in PR125768 that
 # this project needs. Homebrew carries releases.
 set -euo pipefail
+source .github/scripts/lib/retry.sh
 
 major="${GCC_VERSION%%.*}"
 
@@ -20,7 +21,7 @@ fi
 eval "$("$brew_bin" shellenv)"
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
-brew update --quiet
+retry brew update --quiet
 
 # The newest major is plain "gcc"; the ones behind it keep a "gcc@N".
 formula="gcc@${major}"
@@ -29,7 +30,7 @@ brew info --formula "$formula" > /dev/null 2>&1 || formula="gcc"
 # Homebrew's GCC is configured against Homebrew's binutils and emits
 # directives, ".base64" among them, that the assembler on the runner
 # image (2.42) does not know.
-brew install --quiet "$formula" binutils
+retry brew install --quiet "$formula" binutils
 
 prefix="$(brew --prefix "$formula")"
 cc="${prefix}/bin/gcc-${major}"
