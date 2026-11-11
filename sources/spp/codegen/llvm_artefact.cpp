@@ -270,6 +270,42 @@ namespace spp::codegen {
       }
       return v;
     }
+
+    /// What an ELF file lacks of BTI: its GNU property note's AArch64 feature
+    /// word without the BTI bit, or no such note. The loader guards an object's
+    /// code only when that bit is set, and the linker sets it only when every
+    /// object linked in has it.
+    template <class ELFT>
+    auto BranchTargetGaps(llvm::object::ELFFile<ELFT> const &elf) -> Expected<Str, Str> {
+      auto sections = elf.sections();
+      if (not sections) { return Unexpected(llvm::toString(sections.takeError())); }
+      const auto little = ELFT::Endianness == llvm::endianness::little;
+      const auto pad = ELFT::Is64Bits ? 8uz : 4uz;
+
+      // Each property is a type, a size, and its data padded to the word
+      // size; the one wanted holds the AArch64 features every object shares.
+      for (auto const &sec : *sections) {
+        if (sec.sh_type != llvm::ELF::SHT_NOTE) { continue; }
+        auto err = llvm::Error::success();
+        auto bti = false;
+        for (auto const &note : elf.notes(sec, err)) {
+          if (note.getType() != llvm::ELF::NT_GNU_PROPERTY_TYPE_0 or note.getName() != "GNU") { continue; }
+          const auto desc = note.getDesc(sec.sh_addralign);
+          const auto data = llvm::StringRef(reinterpret_cast<char const*>(desc.data()), desc.size());
+          for (auto at = 0uz; at + 8 <= data.size();) {
+            const auto type = Get32(data, at, little);
+            const auto size = Get32(data, at + 4, little);
+            if (type == llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND and size >= 4 and at + 12 <= data.size()) {
+              bti = (Get32(data, at + 8, little) & llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_BTI) != 0;
+            }
+            at += 8 + ((size + pad - 1) & ~(pad - 1));
+          }
+        }
+        if (err) { return Unexpected(llvm::toString(std::move(err))); }
+        if (bti) { return Str(); }
+      }
+      return Str("no BTI property");
+    }
   }
 }
 
@@ -429,6 +465,11 @@ auto spp::codegen::UnhardenedLink(
 }
 
 /// [CHECKED]
+auto spp::codegen::UnguardedBranchTargets(
+  char const *path) -> Expected<Opt<Str>, Str> {
+  return ElfFinding(path, [](auto const &e) { return BranchTargetGaps(e); });
+}
+
 auto spp::codegen::UnhardenedSegments(
   char const *path) -> Expected<Opt<Str>, Str> {
   return ElfFinding(path, [](auto const &e) { return SegmentFaults(e); });

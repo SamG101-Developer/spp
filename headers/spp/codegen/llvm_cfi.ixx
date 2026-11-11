@@ -79,4 +79,23 @@ namespace spp::codegen {
   /// unchecked: error rather than silently fail. Also apply some specific
   /// Mach-O fixes where KCFI type labels get subsumed by the previous function.
   SPP_EXP_FUN auto FinishCfi(void *llvm_module) -> void;
+
+  /// Give every function in a "llvm::Module" a landing pad at its entry, and
+  /// every block an indirect jump reaches one too (LLVM places them), and mark
+  /// the object as needing none other (BTI). Its GNU property tells the loader
+  /// to guard its code, so an indirect branch anywhere else faults. Run last
+  /// among the hardening passes, once nothing adds a function. A target that
+  /// cannot enforce it falls back on the type checks on indirect calls
+  /// ("ApplyCfiTypes", stricter than any landing pad) when they are on, and
+  /// otherwise fails, naming the key.
+  SPP_EXP_FUN auto ApplyBranchTargets(void *llvm_module) -> bool;
+
+  /// Make every function in a "llvm::Module" that saves its return address
+  /// sign it first, with the stack pointer as context, and authenticate it
+  /// before returning (pac-ret, the A key), so a return address overwritten on
+  /// the stack faults rather than being returned to. Run with the other last
+  /// hardening passes. A target that cannot sign falls back on the split stack
+  /// ("ApplySafeStack"), which keeps what a callee could overflow away from
+  /// return addresses, when it is on, and otherwise fails, naming the key.
+  SPP_EXP_FUN auto ApplyReturnSigning(void *llvm_module) -> bool;
 }

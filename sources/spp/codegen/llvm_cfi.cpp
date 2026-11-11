@@ -4,6 +4,7 @@ module;
 module spp.codegen.llvm_cfi;
 import spp.analyse.scopes.symbols;
 import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_support;
 import spp.codegen.llvm_target;
 import spp.utils.features;
 import spp.utils.ice;
@@ -69,12 +70,6 @@ namespace spp::codegen {
           llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), type)
         });
       return bundles;
-    }
-
-    /// Whether the selected target can check indirect calls by
-    /// type (KCFI): x86-64 and AArch64 can.
-    auto TargetHasKcfi() -> bool {
-      return TargetTriple().getArch() == llvm::Triple::x86_64 or TargetTriple().isAArch64();
     }
 
     /// The type operand "i" of a control-flow-integrity record
@@ -161,10 +156,61 @@ auto spp::codegen::CfiClosureEnvDropCallBundles(
   return KcfiBundles(CfiClosureEnvDropType(), ctx);
 }
 
+auto spp::codegen::ApplyBranchTargets(
+  void *llvm_module) -> bool {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  // Where the processor does not enforce landing pads, the type checks on
+  // indirect calls already limit where one can go, more tightly than a landing
+  // pad would (any function start); BTI is defence in depth over them.
+  if (not DoesTargetSupportBti()) {
+    if (DoesTargetSupportKcfi() and utils::features::IsEnabled(utils::features::ConfigKey::BinaryCodegenCfi)) { return true; }
+    llvm::errs()
+      << "This target cannot enforce landing pads on indirect branches, and does not check indirect calls by type.\n"
+      << "  To build without it, set 'bti = false' under [binary.codegen] in spp.toml.\n";
+    return false;
+  }
+
+  // As clang marks "-mbranch-protection=bti": the attribute places the pads,
+  // and the module flag gives the object its GNU property. A linked program
+  // keeps the property only if every object in it has it.
+  for (auto &fn : llvm_mod) {
+    if (not fn.isDeclaration()) { fn.addFnAttr("branch-target-enforcement"); }
+  }
+  llvm_mod.addModuleFlag(llvm::Module::Min, "branch-target-enforcement", 2);
+  return true;
+}
+
+auto spp::codegen::ApplyReturnSigning(
+  void *llvm_module) -> bool {
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+
+  // Where return addresses cannot be signed, the split stack keeps what a
+  // callee could overflow off the stack they are saved on; its own key fails
+  // the build on a target that has none, so on is enough here.
+  if (not DoesTargetSupportPacRet()) {
+    if (utils::features::IsEnabled(utils::features::ConfigKey::MemoryStackSplit)) { return true; }
+    llvm::errs()
+      << "This target cannot sign return addresses, and does not keep what could overflow off their stack.\n"
+      << "  To build without it, set 'pac_ret = false' under [binary.codegen] in spp.toml.\n";
+    return false;
+  }
+
+  // As clang marks "-mbranch-protection=pac-ret": a leaf function never saves
+  // its return address, so has nothing to sign ("non-leaf").
+  for (auto &fn : llvm_mod) {
+    if (fn.isDeclaration()) { continue; }
+    fn.addFnAttr("sign-return-address", "non-leaf");
+    fn.addFnAttr("sign-return-address-key", "a_key");
+  }
+  llvm_mod.addModuleFlag(llvm::Module::Min, "sign-return-address", 2);
+  return true;
+}
+
 auto spp::codegen::ApplyCfiTypes(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  if (not TargetHasKcfi()) {
+  if (not DoesTargetSupportKcfi()) {
     llvm::errs()
       << "This target cannot check indirect calls by type.\n"
       << "  To build without it, set 'cfi = false' under [binary.codegen] in spp.toml.\n";

@@ -48,4 +48,11 @@ namespace spp::codegen {
   /// cannot be read.
   SPP_EXP_FUN auto UnhardenedSegments(
     char const *path) -> Expected<Opt<Str>, Str>;
+
+  /// Check if the executable specified by "path" lost its BTI property (an
+  /// AArch64 landing-pad requirement) at the link, so the loader will not guard
+  /// it. The returned string says what is missing, otherwise None when it has
+  /// the property or is non-ELF, or the unexpected error when it cannot be read.
+  SPP_EXP_FUN auto UnguardedBranchTargets(
+    char const *path) -> Expected<Opt<Str>, Str>;
 }

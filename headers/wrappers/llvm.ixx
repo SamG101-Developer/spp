@@ -51,6 +51,8 @@ export namespace llvm {
   using ::llvm::appendToUsed;
   using ::llvm::changeToInvokeAndSplitBasicBlock;
   using ::llvm::consumeError;
+  using ::llvm::endianness;
+  using ::llvm::Error;
   using ::llvm::createTargetTransformInfoWrapperPass;
   using ::llvm::instructions;
   using ::llvm::toString;
@@ -185,12 +187,16 @@ export namespace llvm {
     using ::llvm::ELF::DT_BIND_NOW;
     using ::llvm::ELF::DT_FLAGS;
     using ::llvm::ELF::DT_FLAGS_1;
+    using ::llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND;
+    using ::llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_BTI;
+    using ::llvm::ELF::NT_GNU_PROPERTY_TYPE_0;
     using ::llvm::ELF::PF_W;
     using ::llvm::ELF::PF_X;
     using ::llvm::ELF::PT_GNU_RELRO;
     using ::llvm::ELF::PT_LOAD;
     using ::llvm::ELF::SHN_UNDEF;
     using ::llvm::ELF::SHT_DYNSYM;
+    using ::llvm::ELF::SHT_NOTE;
   }
 
   namespace PICLevel {
