@@ -205,7 +205,7 @@ jobs:
     with:
       os: windows-2025
       compiler: msvc
-      off: &msvc-off memory.stack.split
+      off: &msvc-off pac_ret memory.stack.split
       shard-count: 2
 
   # Todo: drop advisory once CMake 4.5 (import std for clang-cl) is pinned; see .triages/upstream-watch.md U14.

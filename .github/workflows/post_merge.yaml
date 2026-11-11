@@ -269,7 +269,7 @@ jobs:
       os: windows-2025
       compiler: msvc
       check-floor: true
-      off: memory.stack.split
+      off: pac_ret memory.stack.split
 
   # Read-only: verifies each lane's tested spp against that lane's
   # digests and names it for the release. A lane that failed,
