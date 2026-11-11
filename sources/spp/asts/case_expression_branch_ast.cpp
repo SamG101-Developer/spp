@@ -31,8 +31,16 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CaseExpressionBranchAst::CaseExpressionBranchAst(
+spp::asts::CaseExpressionBranchAst::CaseExpressionBranchAst(
   decltype(Op) &&op,
   decltype(Patterns) &&patterns,
   decltype(Guard) &&guard,
@@ -45,19 +53,19 @@ CaseExpressionBranchAst::CaseExpressionBranchAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
 
-CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
+spp::asts::CaseExpressionBranchAst::~CaseExpressionBranchAst() = default;
 
-auto CaseExpressionBranchAst::PosStart() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::PosStart() const -> std::size_t {
   // Use the op or first pattern
   return Op ? Op->PosStart() : Patterns.front()->PosStart();
 }
 
-auto CaseExpressionBranchAst::PosEnd() const -> std::size_t {
+auto spp::asts::CaseExpressionBranchAst::PosEnd() const -> std::size_t {
   // Use the final pattern.
   return Patterns.back()->PosEnd();
 }
 
-auto CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, carrying over the
   // desugaring marker.
   auto cloned = MakeUnique<CaseExpressionBranchAst>(
@@ -68,7 +76,7 @@ auto CaseExpressionBranchAst::Clone() const -> Unique<Ast> {
   return cloned;
 }
 
-auto CaseExpressionBranchAst::ToString() const -> Str {
+auto spp::asts::CaseExpressionBranchAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Op).append(" ");
   SPP_STRING_EXTEND(Patterns, ", ");
@@ -78,7 +86,7 @@ auto CaseExpressionBranchAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
+auto spp::asts::CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Create a scope for the branch - this is where
@@ -119,7 +127,7 @@ auto CaseExpressionBranchAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionBranchAst::Stage8_CheckMemory(
+auto spp::asts::CaseExpressionBranchAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the branch's scope.
   sm->MoveToNextScope();
@@ -144,7 +152,7 @@ auto CaseExpressionBranchAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionBranchAst::Stage11_CodeGen(
+auto spp::asts::CaseExpressionBranchAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Generate the branch architecture. Start by defining blocks
@@ -230,7 +238,7 @@ auto CaseExpressionBranchAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto CaseExpressionBranchAst::EvaluateCompTime(
+auto spp::asts::CaseExpressionBranchAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Combine the case expression with the pattern to determine
@@ -286,24 +294,24 @@ auto CaseExpressionBranchAst::EvaluateCompTime(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionBranchAst::UsePlan(
+auto spp::asts::CaseExpressionBranchAst::UsePlan(
   MatchPlan const *plan, const std::size_t index) -> void {
   _CasePlan = plan;
   _CaseIndex = index;
 }
 
-auto CaseExpressionBranchAst::InferType(
+auto spp::asts::CaseExpressionBranchAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Forward type inference to the body.
   return Body->InferType(sm, meta);
 }
 
-auto CaseExpressionBranchAst::InferTypeRef(
+auto spp::asts::CaseExpressionBranchAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return Body->InferTypeRef(sm, meta);
 }
 
-auto CaseExpressionBranchAst::_CodegenCombinePatterns(
+auto spp::asts::CaseExpressionBranchAst::_CodegenCombinePatterns(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
   // The "case c { ... }" form desugars to a branch with no
   // operator and a synthesised "true" pattern, meaning "taken

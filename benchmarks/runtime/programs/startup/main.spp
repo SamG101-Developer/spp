@@ -1,0 +1,6 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  println("{}", black_box(0_u64))
+}

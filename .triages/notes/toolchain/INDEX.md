@@ -3,11 +3,15 @@
 - [Impl units can import upward](impl-units-can-import-upward.md) — .cpp may import higher modules; no hooks
 - [Third-party module wrappers](third-party-module-wrappers.md) — headers/wrappers/*.ixx; names must not collide
 - [llvm wrapper exports](llvm-module-wrapper-exports.md) — export missing LLVM symbols from llvm.ixx
-- [Only llvm_pipeline is a plain TU](llvm-passes-plain-tu.md) — llvm_passes split into 6 (2026-10-19); PassBuilder.h TU-local keeps the pipeline plain; rest are modules
+- [Four plain LLVM TUs](llvm-passes-plain-tu.md) — pipeline/air/bounds/loop_versioning; PassBuilder.h TU-local, fixed by #233326 in LLVM 24 (the only blocker)
 - [Boost multiprecision needs a GMF](boost-multiprecision-needs-gmf.md) — BigInt/BigDec arithmetic headers in GMF
 - [LLVM intrinsic overload arity](llvm-intrinsic-overload-arity.md) — multi-type intrinsics crash in the printer
 - [genex view gotchas](genex-view-gotchas.md) — zip/concat need to<Vec>; iota|transform breaks
 - [clang 23 implicit-dtor ICE](clang23-implicit-dtor-ice.md) — GetVTTParameter segfault; out-of-line special members
 - [cppcheck vs noreturn Raise](cppcheck-unreachable-missingreturn.md) — missingReturn: guard clause; null-guard deref: inline suppress
+- [ruff format targets 3.14](ruff-format-targets-python-314.md) — strips except-tuple parens (PEP 758); SyntaxError on local 3.13
 - [C++ linters in CI](cpp-linters-local-only.md) — cppcheck is a blocking pr.yaml gate (2026-08-18)
-- [GCC opaque enum -g ICE](gcc-opaque-enum-dwarf-ice.md) — enum opaque in one module, defined in another: dwarf2out ICE under -g; import the definer
+- [GCC opaque enum -g ICE](gcc-opaque-enum-dwarf-ice.md) — enum opaque in one module, defined in another: dwarf2out ICE under -g, MSVC undefined symbol; import the definer
+- [import std: two std.cc entries](cmake-import-std-two-std-cc-entries.md) — object has no -std (gnu++20), imported BMI is gnu++26; IDEs may grey out C++23 exports
+- [GCC modules: undefined vtable](gcc-modules-vtable-key-function.md) — "undefined symbol: vtable for X" after an unrelated edit; SPP_GCC_VTABLE_FIX(_IMPL) gives a key function
+- [MSVC needs the member type imported](msvc-needs-member-type-imported.md) — postfix->Op->To<..>() needs spp.asts.postfix_expression_operator_ast imported; GCC/clang reach it, MSVC C2027

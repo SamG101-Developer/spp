@@ -9,63 +9,67 @@ import spp.analyse.scopes.symbols;
 import spp.utils.ice;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::asts, Ast);
+use_alias(spp::utils::errors, ErrorFormatter);
+
 SPP_MOD_BEGIN
-ScopeManager::ScopeManager(
+spp::analyse::scopes::ScopeManager::ScopeManager(
   ScopeTree &tree,
   Scope *current_scope) :
   _Tree(&tree),
   CurrentScope(current_scope ? current_scope : tree.Global.get()) {
 }
 
-auto ScopeManager::ForTree(
+auto spp::analyse::scopes::ScopeManager::ForTree(
   ScopeTree &tree) -> ScopeManager {
   auto out = ScopeManager(tree);
   out.RestartWalk();
   return out;
 }
 
-auto ScopeManager::Tree() const -> ScopeTree& {
+auto spp::analyse::scopes::ScopeManager::Tree() const -> ScopeTree& {
   return *_Tree;
 }
 
-auto ScopeManager::GlobalScope() const -> Scope* {
+auto spp::analyse::scopes::ScopeManager::GlobalScope() const -> Scope* {
   return _Tree->Global.get();
 }
 
-ScopeManager::~ScopeManager() = default;
+spp::analyse::scopes::ScopeManager::~ScopeManager() = default;
 
-auto ScopeManager::NewManagerAt(
+auto spp::analyse::scopes::ScopeManager::NewManagerAt(
   Scope *scope) const -> ScopeManager {
   auto out = ScopeManager(*_Tree, scope);
   out.RestartWalk(scope);
   return out;
 }
 
-auto ScopeManager::NewManagerAt(
+auto spp::analyse::scopes::ScopeManager::NewManagerAt(
   ScopePosition const &pos) const -> ScopeManager {
   auto out = ScopeManager(*_Tree, pos.At);
   out.ReturnTo(pos);
   return out;
 }
 
-auto ScopeManager::Position() const -> ScopePosition {
+auto spp::analyse::scopes::ScopeManager::Position() const -> ScopePosition {
   return ScopePosition{.At = CurrentScope, .It = _It};
 }
 
-auto ScopeManager::ReturnTo(
+auto spp::analyse::scopes::ScopeManager::ReturnTo(
   ScopePosition const &pos) -> void {
   CurrentScope = pos.At;
   _It = pos.It;
 }
 
-auto ScopeManager::RestartWalk(
+auto spp::analyse::scopes::ScopeManager::RestartWalk(
   Scope *scope) -> void {
   // From the provided scope, or the global scope.
   CurrentScope = scope ? scope : GlobalScope();
   _It = ScopeIterator{CurrentScope};
 }
 
-auto ScopeManager::CreateAndMoveIntoNewScope(
+auto spp::analyse::scopes::ScopeManager::CreateAndMoveIntoNewScope(
   ScopeName const &name, Ast *ast, ErrorFormatter *error_formatter)
   -> Scope* {
   // Create a new scope, using the current scope as the parent
@@ -80,7 +84,7 @@ auto ScopeManager::CreateAndMoveIntoNewScope(
   return CurrentScope;
 }
 
-auto ScopeManager::MoveOutOfCurrentScope() -> Scope* {
+auto spp::analyse::scopes::ScopeManager::MoveOutOfCurrentScope() -> Scope* {
   // Exit the current scope into the parent scope, which reads
   // as it did before the walk entered it.
   CurrentScope->RevealLetBindings();
@@ -88,7 +92,7 @@ auto ScopeManager::MoveOutOfCurrentScope() -> Scope* {
   return CurrentScope;
 }
 
-auto ScopeManager::MoveToNextScope() -> Scope* {
+auto spp::analyse::scopes::ScopeManager::MoveToNextScope() -> Scope* {
   // Move to the next scope by advancing the iterator, past any
   // alias class scope (an alias's scope is walked by nothing).
   CurrentScope = *++_It;
@@ -101,7 +105,7 @@ auto ScopeManager::MoveToNextScope() -> Scope* {
   return CurrentScope;
 }
 
-auto ScopeManager::SkipSubtree(
+auto spp::analyse::scopes::ScopeManager::SkipSubtree(
   Scope *scope) -> bool {
   // A member with no scope of its own consumed none of the
   // walk, so there is nothing to skip.
@@ -117,13 +121,13 @@ auto ScopeManager::SkipSubtree(
   return _It != end;
 }
 
-ScopePositionGuard::ScopePositionGuard(
+spp::analyse::scopes::ScopePositionGuard::ScopePositionGuard(
   ScopeManager &sm) :
   _Sm(sm),
   _Was(sm.Position()) {
 }
 
-ScopePositionGuard::~ScopePositionGuard() {
+spp::analyse::scopes::ScopePositionGuard::~ScopePositionGuard() {
   _Sm.ReturnTo(_Was);
 }
 

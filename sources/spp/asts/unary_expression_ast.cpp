@@ -15,40 +15,48 @@ import spp.asts.unary_expression_operator_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-UnaryExpressionAst::UnaryExpressionAst(
+spp::asts::UnaryExpressionAst::UnaryExpressionAst(
   decltype(Op) &&tok_op,
   decltype(Expr) &&expr) :
   Op(std::move(tok_op)),
   Expr(std::move(expr)) {
 }
 
-UnaryExpressionAst::~UnaryExpressionAst() = default;
+spp::asts::UnaryExpressionAst::~UnaryExpressionAst() = default;
 
-auto UnaryExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::UnaryExpressionAst::PosStart() const -> std::size_t {
   // Use the operator.
   return Op->PosStart();
 }
 
-auto UnaryExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::UnaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto UnaryExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::UnaryExpressionAst::Clone() const -> Unique<Ast> {
   return MakeUnique<UnaryExpressionAst>(
     AstClone(Op),
     AstClone(Expr));
 }
 
-auto UnaryExpressionAst::ToString() const -> Str {
+auto spp::asts::UnaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Op);
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto UnaryExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::UnaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -71,7 +79,7 @@ auto UnaryExpressionAst::Stage7_AnalyseSemantics(
   Op->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto UnaryExpressionAst::Stage8_CheckMemory(
+auto spp::asts::UnaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the right-hand-side, unless the operator
   // walks it itself, and update the meta context to track the rhs
@@ -81,7 +89,7 @@ auto UnaryExpressionAst::Stage8_CheckMemory(
   Op->Stage8_CheckMemory(sm, meta);
 }
 
-auto UnaryExpressionAst::Stage11_CodeGen(
+auto spp::asts::UnaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the right-hand-side expression.
   const auto _meta_guard = MetaGuard(meta);
@@ -89,7 +97,7 @@ auto UnaryExpressionAst::Stage11_CodeGen(
   return lhs_val;
 }
 
-auto UnaryExpressionAst::InferType(
+auto spp::asts::UnaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the type of the right-hand-side expression,
   // adjusted by the operator.
@@ -99,20 +107,20 @@ auto UnaryExpressionAst::InferType(
   return type;
 }
 
-auto UnaryExpressionAst::InferTypeRef(
+auto spp::asts::UnaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   const auto _meta_guard = MetaGuard(meta);
   return Op->InferTypeRef(sm, meta);
 }
 
-auto UnaryExpressionAst::ReadExpr(
+auto spp::asts::UnaryExpressionAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The only unary operator is the "async" function call
   // so there will be no specialization.
   return MakeShared<UnaryExpressionAst>(AstClone(Op), AstClone(Expr->ReadExpr(sub)));
 }
 
-auto UnaryExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::UnaryExpressionAst::IsAllowedInDefault() const -> bool {
   // Check the op and the rhs expression. Nullptr guard in
   // case of std::move(ast) being used (not 100% sure if
   // needed or not).

@@ -11,7 +11,6 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
@@ -22,6 +21,10 @@ use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
+
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::type_resolution {
   /// Whether "AnalyseWrittenType" replaces "Self" from the scope,
@@ -34,7 +37,7 @@ namespace spp::analyse::utils::type_resolution {
   /// Self handling, general analysis etc. Use this when an AST
   /// needs to analyse a TypeAst field.
   SPP_EXP_FUN auto AnalyseWrittenType(
-    TypeAst const &written, ScopeManager &sm, meta::CompilerMetaData &meta,
+    TypeAst const &written, ScopeManager &sm, CompilerMetaData &meta,
     SelfPolicy self = SelfPolicy::kSubstitute) -> Shared<TypeAst>;
 
   /// Record on a written type the identity "sym" (what it
@@ -117,8 +120,8 @@ namespace spp::analyse::utils::type_resolution {
   /// read where the parameters are declared ("decl_scope") with
   /// what is named so far bound. What keying an instantiation
   /// not made yet reads its arguments as ("Scope::TypeKey").
-  /// Empty when the parameters are variadic, whose packing
-  /// this does not attempt, or when a default does not resolve.
+  /// A pack's elements stay positional, after the others. Empty
+  /// when a default does not resolve.
   SPP_EXP_FUN auto RecordedArgsFor(
     GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params,
     Scope const &scope, Scope const &decl_scope) -> Vec<Unique<GenericArgumentAst>>;

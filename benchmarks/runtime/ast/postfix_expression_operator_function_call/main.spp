@@ -1,0 +1,11 @@
+use std::console::println
+use std::hints::black_box
+
+fun fib(n: U64) -> U64 {
+  case n < 2_u64 { ret n }
+  ret fib(n - 1_u64) + fib(n - 2_u64)
+}
+
+fun main() -> Void {
+  println("{}", fib(black_box(39_u64)))
+}

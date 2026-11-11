@@ -6,8 +6,16 @@ import spp.asts.expression_ast;
 import spp.asts.identifier_ast;
 import spp.asts.type_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::analyse::utils::type_join, TypeJoin);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CompilerMetaData::CompilerMetaData() {
+spp::asts::meta::CompilerMetaData::CompilerMetaData() {
   CurrentStage = CompilerStage::kNone;
   ResetContext();
   CompTimeResult = nullptr;
@@ -15,7 +23,7 @@ CompilerMetaData::CompilerMetaData() {
   LlvmGeneratorState = nullptr;
 }
 
-auto CompilerMetaData::ResetContext() -> void {
+auto spp::asts::meta::CompilerMetaData::ResetContext() -> void {
   ReturnTypeOverloadResolverType = nullptr;
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
@@ -53,11 +61,13 @@ auto CompilerMetaData::ResetContext() -> void {
   IgnoreAccessModifierViolations = false;
   SkipSubstitutedConstraintChecks = false;
   AllowAbstractType = false;
+  AllowBorrowedTypeArgs = false;
+  AllowPackWhole = false;
   CompTimeCallSite = nullptr;
   ParameterDefaultScope = nullptr;
 }
 
-auto CompTimeCallArgs::Swap(
+auto spp::asts::meta::CompTimeCallArgs::Swap(
   CompTimeCallArgs &other)
   -> void {
   FnArgs.swap(other.FnArgs);
@@ -66,19 +76,19 @@ auto CompTimeCallArgs::Swap(
   GnCompValues.swap(other.GnCompValues);
 }
 
-auto CompTimeCallArgs::Clear() -> void {
+auto spp::asts::meta::CompTimeCallArgs::Clear() -> void {
   FnArgs.clear();
   GnTypeArgs.clear();
   GnCompArgs.clear();
   GnCompValues.clear();
 }
 
-auto CompilerMetaData::ClearAssignmentTarget() -> void {
+auto spp::asts::meta::CompilerMetaData::ClearAssignmentTarget() -> void {
   AssignmentTarget = nullptr;
   AssignmentTargetType = nullptr;
 }
 
-auto CompilerMetaData::Save(const bool heavy) -> void {
+auto spp::asts::meta::CompilerMetaData::Save(const bool heavy) -> void {
   // Reuse a parked slot at this depth if one exists, otherwise grow the pool by one. Copy-assigning into an existing
   // slot reuses its buffers (maps/vecs) rather than allocating a fresh state, and the pool is never shrunk so the
   // storage persists across cycles. `CompTimeCall` is moved out (each guard starts with none); `CompTimeResult` is not
@@ -134,13 +144,15 @@ auto CompilerMetaData::Save(const bool heavy) -> void {
   s.IgnoreAccessModifierViolations = IgnoreAccessModifierViolations;
   s.SkipSubstitutedConstraintChecks = SkipSubstitutedConstraintChecks;
   s.AllowAbstractType = AllowAbstractType;
+  s.AllowBorrowedTypeArgs = AllowBorrowedTypeArgs;
+  s.AllowPackWhole = AllowPackWhole;
   s.CompTimeCallSite = CompTimeCallSite;
   s.ParameterDefaultScope = ParameterDefaultScope;
   s.LlvmGenerator = LlvmGenerator;
   s.LlvmGeneratorState = LlvmGeneratorState;
 }
 
-auto CompilerMetaData::Restore(const bool heavy) -> void {
+auto spp::asts::meta::CompilerMetaData::Restore(const bool heavy) -> void {
   // Pop the top slot and move its owning fields back out. The slot is logically dead (the next Save overwrites it),
   // so stealing its shared_ptrs/maps/vecs avoids the atomic-refcount traffic and container copies that copy-assignment
   // would incur. Trivially-copyable fields are assigned directly.
@@ -190,13 +202,15 @@ auto CompilerMetaData::Restore(const bool heavy) -> void {
   IgnoreAccessModifierViolations = state.IgnoreAccessModifierViolations;
   SkipSubstitutedConstraintChecks = state.SkipSubstitutedConstraintChecks;
   AllowAbstractType = state.AllowAbstractType;
+  AllowBorrowedTypeArgs = state.AllowBorrowedTypeArgs;
+  AllowPackWhole = state.AllowPackWhole;
   CompTimeCallSite = state.CompTimeCallSite;
   ParameterDefaultScope = state.ParameterDefaultScope;
   LlvmGenerator = state.LlvmGenerator;
   LlvmGeneratorState = state.LlvmGeneratorState;
 }
 
-MetaGuard::MetaGuard(
+spp::asts::meta::MetaGuard::MetaGuard(
   CompilerMetaData *const meta,
   const bool heavy) :
   _Meta(meta),
@@ -204,18 +218,29 @@ MetaGuard::MetaGuard(
   _Meta->Save(_Heavy);
 }
 
-MetaGuard::~MetaGuard() {
+spp::asts::meta::AllowPackWholeGuard::AllowPackWholeGuard(
+  CompilerMetaData *meta, const bool allow) :
+  _Meta(meta),
+  _Outer(meta->AllowPackWhole) {
+  _Meta->AllowPackWhole = allow;
+}
+
+spp::asts::meta::AllowPackWholeGuard::~AllowPackWholeGuard() {
+  _Meta->AllowPackWhole = _Outer;
+}
+
+spp::asts::meta::MetaGuard::~MetaGuard() {
   _Meta->Restore(_Heavy);
 }
 
-IsBindingsScope::IsBindingsScope(
+spp::asts::meta::IsBindingsScope::IsBindingsScope(
   CompilerMetaData *const meta) :
   _Meta(meta),
   _Added(meta->AddedIsBindings.size()),
   _Expired(meta->ExpiredIsBindings.size()) {
 }
 
-IsBindingsScope::~IsBindingsScope() {
+spp::asts::meta::IsBindingsScope::~IsBindingsScope() {
   _Meta->AddedIsBindings.resize(_Added);
   _Meta->ExpiredIsBindings.resize(_Expired);
 }

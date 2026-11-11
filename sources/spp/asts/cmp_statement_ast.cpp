@@ -36,8 +36,19 @@ import spp.utils.ice;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CmpStatementAst::CmpStatementAst(
+spp::asts::CmpStatementAst::CmpStatementAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(Name) name,
@@ -59,19 +70,19 @@ CmpStatementAst::CmpStatementAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
-CmpStatementAst::~CmpStatementAst() = default;
+spp::asts::CmpStatementAst::~CmpStatementAst() = default;
 
-auto CmpStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::CmpStatementAst::PosStart() const -> std::size_t {
   // Use the name.
   return TokCmp->PosStart();
 }
 
-auto CmpStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::CmpStatementAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Value->PosEnd();
 }
 
-auto CmpStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CmpStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<CmpStatementAst>(
     AstCloneVec(Annotations),
@@ -89,7 +100,7 @@ auto CmpStatementAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto CmpStatementAst::ToString() const -> Str {
+auto spp::asts::CmpStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -102,14 +113,14 @@ auto CmpStatementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CmpStatementAst::Stage1_PreProcess(
+auto spp::asts::CmpStatementAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // No pre-processing needed for cmp statements.
   Ast::Stage1_PreProcess(ctx);
   for (auto const &a : Annotations) { a->Stage1_PreProcess(this); }
 }
 
-auto CmpStatementAst::Stage2_GenTopLvlScopes(
+auto spp::asts::CmpStatementAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
@@ -127,7 +138,7 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
     ? VariableKind::FnMock
     : VariableKind::Constant;
   _AliasSymbol = MakeShared<VariableSymbol>(
-    Name, Type, sm->CurrentScope, kind, false, Visibility.first);
+    Name, Type, sm->CurrentScope, kind);
   memory_state::StateOf(
     *sm->CurrentScope, *_AliasSymbol).InitializedBy(*this);
   _AliasSymbol->CompTimeValue = AstClone(Value);
@@ -145,7 +156,7 @@ auto CmpStatementAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage3_GenTopLvlAliases(
+auto spp::asts::CmpStatementAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Nothing to alias, but the value's scope is still stepped
   // over, so that the walk stays in step with the tree.
@@ -155,7 +166,7 @@ auto CmpStatementAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage4_ResolveDeclarations(
+auto spp::asts::CmpStatementAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -179,20 +190,19 @@ auto CmpStatementAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage5_LoadSupScopes(
+auto spp::asts::CmpStatementAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
   if (_AliasSymbol != nullptr and not Type->IsCompilerGeneratedType()) {
-    _AliasSymbol->Visibility = Visibility.first;
-    _AliasSymbol->VisibilityAnnotation = Visibility.second;
+    _AliasSymbol->VisibilityFrom = this;
   }
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::CmpStatementAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // Nothing to pre-analyse, but the value's scope is still
   // stepped over.
@@ -201,7 +211,7 @@ auto CmpStatementAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::CmpStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -222,7 +232,7 @@ auto CmpStatementAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::AnalyseAhead(
+auto spp::asts::CmpStatementAst::AnalyseAhead(
   Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
   IMPORT_UTILS;
   // Analysed already, by the walk or ahead of it; before stage 6
@@ -244,7 +254,7 @@ auto CmpStatementAst::AnalyseAhead(
   _Stage7 = _Stage7Progress::kAnalysedAhead;
 }
 
-auto CmpStatementAst::_AnalyseValue(
+auto spp::asts::CmpStatementAst::_AnalyseValue(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   _Stage7 = _Stage7Progress::kAnalysing;
@@ -269,6 +279,13 @@ auto CmpStatementAst::_AnalyseValue(
     *sm->CurrentScope, *sm->CurrentScope)) {
     const auto inferred_type = Value->InferType(sm, meta);
     Raise<SppTypeMismatchError>(ERR_ARGS(*Type, *Type, *Value, *inferred_type));
+  }
+
+  // A constant holds a value, which "Void" is not: there is nothing
+  // to fold into it or to emit as its global.
+  if (not IsFromUseStatement() and type_predicates::IsTypeVoid(
+    TypeRef::Of(*Type, *sm->CurrentScope), *sm->CurrentScope)) {
+    Raise<SppInvalidVoidValueError>(ERR_ARGS(*Value, "compile-time constant"));
   }
 
   // The value is folded, and its symbol takes the result, for any
@@ -304,7 +321,7 @@ auto CmpStatementAst::_AnalyseValue(
   _Stage7 = _Stage7Progress::kDone;
 }
 
-auto CmpStatementAst::Stage8_CheckMemory(
+auto spp::asts::CmpStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the type.
   IMPORT_UTILS;
@@ -329,7 +346,7 @@ auto CmpStatementAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CmpStatementAst::Stage10_PreCodeGen(
+auto spp::asts::CmpStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS;
   // A "cmp" generic parameter builds one of these on the
@@ -441,7 +458,7 @@ auto CmpStatementAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto CmpStatementAst::Stage11_CodeGen(
+auto spp::asts::CmpStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   // Everything a "cmp" statement emits was already emitted by
   // stage 10, but the scope stage 2 gave it (and the scopes its
@@ -456,12 +473,12 @@ auto CmpStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto CmpStatementAst::MarkFromUseStatement() -> void {
+auto spp::asts::CmpStatementAst::MarkFromUseStatement() -> void {
   // Setter for marking if its from a "use"-var statement.
   _FromUseStatement = true;
 }
 
-auto CmpStatementAst::IsFromUseStatement() const -> bool {
+auto spp::asts::CmpStatementAst::IsFromUseStatement() const -> bool {
   // Getter for the marked "use"-var flag.
   return _FromUseStatement;
 }

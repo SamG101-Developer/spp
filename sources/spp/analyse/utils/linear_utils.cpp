@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.linear_utils;
@@ -18,11 +19,25 @@ import spp.asts.expression_ast;
 import spp.asts.function_prototype_ast;
 import spp.asts.identifier_ast;
 import spp.asts.loop_conditional_expression_ast;
+import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
+import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ice;
 import genex;
 import std;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, LoopConditionalExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::linear_utils {
   namespace {
@@ -41,6 +56,16 @@ namespace spp::analyse::utils::linear_utils {
       // to the closure's environment, which is read again on every call - it is the closure value that is held to
       // being consumed. A "$" temporary a desugaring made is a local like any other: the desugaring consumes it.
       if (sym.Kind != VariableKind::Local and sym.Kind != VariableKind::Temporary) { return false; }
+
+      // A closed pack holds nothing itself: its elements are parameters of their own, each answering for its value.
+      // An open one holds what its elements are: nothing owed when each is copied ("..xs: S32", "..xs: Ts" with
+      // "Ts: Copy"), whatever its tuple of unknown length says.
+      if (sym.Pack.has_value() and not sym.Pack->Open) { return false; }
+      if (sym.Pack.has_value()) {
+        const auto element = sm.CurrentScope->FindTypeSymbol(
+          sym.Pack->Element->WithoutConvention().get());
+        if (element != nullptr and element->IsCopyable()) { return false; }
+      }
       if (sym.Type == nullptr or sym.MemInfo == nullptr) {
         Ice(*sym.Name, *sm.CurrentScope, "local variable has no type");
       }
@@ -309,8 +334,13 @@ auto spp::analyse::utils::linear_utils::IsLinearTemporary(
   // A value naming a place belongs to that place; a borrow
   // belongs to whatever it borrows; a value made at compile
   // time never exists at run time.
+  // A call is never a place for this: "PlaceOf" derives a method call on a place from its receiver ("v.clone()" is
+  // "v", one opaque step in), which is what a borrow the call hands back is reached through. An owned result is a
+  // new value all the same, and only the borrow test below lets the call's result go.
   if (meta != nullptr and meta->InCompTimeValue) { return false; }
-  if (regions::PlaceOf(expr, *sm.CurrentScope).has_value()) { return false; }
+  const auto postfix = expr.To<asts::PostfixExpressionAst>();
+  const auto is_call = postfix != nullptr and postfix->Op->To<asts::PostfixExpressionOperatorFunctionCallAst>() != nullptr;
+  if (not is_call and regions::PlaceOf(expr, *sm.CurrentScope).has_value()) { return false; }
   const auto ref = expr.InferTypeRef(&sm, meta);
   return not ref.IsNever and not ref.IsBorrowed() and ref.Symbol != nullptr and not ref.Symbol->IsCopyable();
 }
@@ -355,9 +385,7 @@ auto spp::analyse::utils::linear_utils::CheckOverwriteThroughBorrow(
   // there, the outermost call to reach it, with the write
   // as context.
   auto const *sub = asts::FunctionPrototypeAst::AnalysingGnSubstitution();
-  while (sub != nullptr and sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
-    sub = sub->RequestedBy;
-  }
+  if (sub != nullptr) { sub = sub->OutermostRequest(); }
   if (sub != nullptr and sub->RequiredAt != nullptr and sub->RequiredIn != nullptr) {
     Raise<SppLinearValueNotConsumedError>(ERR_ARGS(part, *sub->RequiredAt, StrView(type_name)));
   }

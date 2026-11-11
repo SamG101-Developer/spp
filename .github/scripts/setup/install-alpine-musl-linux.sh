@@ -23,4 +23,4 @@ EOF
 chmod +x "${bin}/x86_64-linux-musl-gcc"
 
 echo "$bin" >> "$GITHUB_PATH"
-echo "SPP_MUSL_RUN_IMAGE=spp-musl-run" >> "$GITHUB_ENV"
+echo "SPP_CI_MUSL_RUN_IMAGE=spp-musl-run" >> "$GITHUB_ENV"

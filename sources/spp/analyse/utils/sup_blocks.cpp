@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.sup_blocks;
@@ -20,6 +21,17 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 import std;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, SupPrototypeExtensionAst);
+use_alias(spp::asts, SupPrototypeFunctionsAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 /// [CHECKED]
 auto spp::analyse::utils::sup_blocks::IsSupBlock(
@@ -63,14 +75,14 @@ auto spp::analyse::utils::sup_blocks::CheckGnParams(
 
 auto spp::analyse::utils::sup_blocks::LoadTarget(
   Ast const &block, Shared<TypeAst> &name, const bool files_nested_mock,
-  ScopeManager &sm, meta::CompilerMetaData *meta) -> TypeSymbol* {
+  ScopeManager &sm, CompilerMetaData *meta) -> TypeSymbol* {
   {
     const auto _meta_guard = asts::meta::MetaGuard(meta);
     meta->AllowAbstractType = true;
     name->Stage7_AnalyseSemantics(&sm, meta);
   }
   RaiseIf<errors::SppSecondClassBorrowViolationError>(
-    type_predicates::IsTypeBorrowed(*name, sm),
+    type_predicates::IsTypeBorrowed(*name, *sm.CurrentScope),
     ERR_ARGS(block, *name, "superimposition type"));
 
   // A "$" mock keeps its bare name: it is declared in the

@@ -45,7 +45,8 @@ jobs:
       actions: read
     uses: ./.github/workflows/_analysis.yaml
     with:
-      codeql: true
+      codeql-cpp: true
+      codeql-python: true
       full-scan: true
 
   # The compiler under ASan, UBSan and LSan, over the suites
@@ -54,7 +55,8 @@ jobs:
   # sanitized. Not recording an allocation stack per malloc, nor
   # quarantining freed memory, halves that; a report still names
   # the error, and a failure can be re-run locally with ASan's
-  # defaults.
+  # defaults. The one sharded lane, and gtest at rel alone: the
+  # other suites test the compiled code, which is not sanitized.
   sanitizers:
     name: Sanitizers (ASan, UBSan, LSan)
     permissions:
@@ -63,7 +65,11 @@ jobs:
     with:
       variant: sanitizers
       cmake-flags: "-DSPP_SANITIZER=address,undefined,leak"
+      modes: rel
       stl-conformance: false
+      valgrind: false
+      codegen: false
+      differential: false
       shard-count: 4
       gtest-filter: "TestMem*:TestAstMemory*:TestAstEscapingBorrows.*:TestAstYieldedBorrow.*:TestLinear*:CaseExpressionAst.*:CasePattern*:TestVariantNarrowing.*:TestGenericInference_*:TestTypeCompSymmetry.*:TestOverrides.*:Closure*:TestFirstClassFunctions.*:TestShadowing.*"
       asan-options: "malloc_context_size=0:quarantine_size_mb=0"

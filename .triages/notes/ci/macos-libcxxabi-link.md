@@ -1,11 +1,11 @@
 ---
 name: macos-libcxxabi-link
-description: "macOS links the pinned LLVM release's libc++ and libc++abi statically via LDFLAGS; as dylibs, dyld bound the system libc++ at run time and crashed in static init"
-updated: 2026-09-11
+description: "macOS links brew llvm's libc++ and libc++abi statically via LDFLAGS; as dylibs, dyld bound the system libc++ at run time and crashed in static init"
+updated: 2026-11-09
 ---
 
-macOS CI builds with the LLVM release tarball unpacked at `$SPP_LLVM_MAC_PREFIX`
-(`.github/scripts/setup/install-llvm-macos.sh`). Since 2026-09-11
+macOS CI builds with brew's `llvm` keg, linked at `$SPP_CI_LLVM_MAC_PREFIX`
+(`.github/scripts/setup/install-llvm-macos.sh`; the LLVM release tarball until 2026-11-09). Since 2026-09-11
 `install-clang-macos.sh` sets `LDFLAGS=-nostdlib++ <prefix>/lib/libc++.a
 <prefix>/lib/libc++abi.a`, found with `find` and a hard error if missing. The
 old `if (APPLE) target_link_libraries(spp_lib PRIVATE c++abi)` in CMakeLists.txt
@@ -21,12 +21,14 @@ maps in that range, so frame addresses alone tell you which copy ran. The
 released macOS `spp` had the same dependency, with an rpath into the runner's
 `$HOME`, so on a user's machine it could only ever get the system copy.
 
-**Link-time half (still true):** the release's libc++ does not carry libc++abi
+**Link-time half (true of the release tarball):** the release's libc++ does not carry libc++abi
 (Apple's `libc++.tbd` re-exports it; this one doesn't), so dropping libc++abi.a
 gives undefined `__cxa_*`, `___gxx_personality_v0`, `operator new`,
 `std::terminate`, and the runtime_error/invalid_argument vtables. Only
 ABI-owned symbols go undefined, which makes it look like no C++ runtime was
-linked at all.
+linked at all. brew's `lib/c++/libc++.a` does carry libc++abi and libunwind
+(`LIBCXX_STATICALLY_LINK_ABI_IN_STATIC_LIBRARY`); libc++abi.a stays on the line,
+and as an archive it only supplies what libc++.a left undefined.
 
 **Static did NOT fix the abort (2026-09-11, commit 858e42eb):** with libc++.a
 linked, spp_tests still aborts in `--gtest_list_tests`, now *silently* (nothing
@@ -34,6 +36,11 @@ on stderr, so not a malloc/libc++/terminate message). Ruled out: stale
 `~/.local` gtest (rebuilt 09-09, after the LLVM 23 switch), init_priority on
 Mach-O (clang accepts it). Root cause still unknown; keep `DISCOVERY_MODE
 PRE_TEST` and the lldb block in run-tests.sh until a backtrace names it.
+
+**Linker (2026-11-08):** macOS now links with LLVM's `ld64.lld` (`CMAKE_LINKER_TYPE LLD` for every platform in
+`cmake/Toolchain.cmake`; `ld64.lld` comes from brew's separate `lld` formula, linked into the llvm keg's `bin/` by `install-llvm-macos.sh`), not Apple's linker, which
+took ~7.5 min to relink `spp` and `spp_tests`. `-load_hidden` is an lld option too; if the static runtime breaks
+after the switch, compare against Apple's linker first.
 
 **How to apply:** if a macOS binary's `otool -L` shows `@rpath/libc++`,
 `libc++abi` or `libunwind` again, the static flags were lost (cached build

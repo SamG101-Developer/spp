@@ -1,9 +1,14 @@
 module;
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Analysis/RuntimeLibcallInfo.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -11,6 +16,7 @@ module;
 #include <llvm/IR/RuntimeLibcalls.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Object/ELFObjectFile.h>
 #include <llvm/Object/ObjectFile.h>
@@ -31,6 +37,7 @@ export namespace llvm {
   using ::llvm::operator!=;
   using ::llvm::operator<;
   using ::llvm::operator+;
+  using ::llvm::operator-;
 
   using ::llvm::cast;
   using ::llvm::dyn_cast;
@@ -44,6 +51,9 @@ export namespace llvm {
   using ::llvm::appendToUsed;
   using ::llvm::changeToInvokeAndSplitBasicBlock;
   using ::llvm::consumeError;
+  using ::llvm::endianness;
+  using ::llvm::Error;
+  using ::llvm::createTargetTransformInfoWrapperPass;
   using ::llvm::instructions;
   using ::llvm::toString;
   using ::llvm::InitializeAllAsmPrinters;
@@ -67,11 +77,15 @@ export namespace llvm {
   using ::llvm::ArrayType;
   using ::llvm::AtomicOrdering;
   using ::llvm::AtomicRMWInst;
+  using ::llvm::AllocFnKind;
   using ::llvm::Attribute;
   using ::llvm::BasicBlock;
+  using ::llvm::BlockAddress;
   using ::llvm::CallBase;
   using ::llvm::CallInst;
   using ::llvm::CodeGenFileType;
+  using ::llvm::CodeGenOptLevel;
+  using ::llvm::computeConstantRange;
   using ::llvm::Constant;
   using ::llvm::ConstantAsMetadata;
   using ::llvm::ConstantArray;
@@ -79,6 +93,7 @@ export namespace llvm {
   using ::llvm::ConstantInt;
   using ::llvm::ConstantFP;
   using ::llvm::ConstantPointerNull;
+  using ::llvm::ConstantRange;
   using ::llvm::ConstantTokenNone;
   using ::llvm::ConstantStruct;
   using ::llvm::DiagnosticHandler;
@@ -88,10 +103,13 @@ export namespace llvm {
   using ::llvm::FunctionType;
   using ::llvm::GlobalValue;
   using ::llvm::GlobalVariable;
+  using ::llvm::IndirectBrInst;
+  using ::llvm::InlineAsm;
   using ::llvm::IRBuilder;
   using ::llvm::Instruction;
   using ::llvm::IntegerType;
   using ::llvm::LLVMContext;
+  using ::llvm::MCSubtargetInfo;
   using ::llvm::MaybeAlign;
   using ::llvm::MDNode;
   using ::llvm::MDString;
@@ -101,17 +119,23 @@ export namespace llvm {
   using ::llvm::OperandBundleDef;
   using ::llvm::PointerType;
   using ::llvm::PHINode;
+  using ::llvm::RuntimeLibraryInfoWrapper;
   using ::llvm::SmallVector;
   using ::llvm::StringLiteral;
   using ::llvm::StringRef;
   using ::llvm::StringSet;
+  using ::llvm::SimplifyQuery;
   using ::llvm::StructType;
+  using ::llvm::SwitchInst;
   using ::llvm::Target;
+  using ::llvm::TargetLibraryInfoImpl;
+  using ::llvm::TargetLibraryInfoWrapperPass;
   using ::llvm::TargetMachine;
   using ::llvm::TargetOptions;
   using ::llvm::TargetRegistry;
   using ::llvm::Triple;
   using ::llvm::Type;
+  using ::llvm::UnreachableInst;
   using ::llvm::TypeSize;
   using ::llvm::PoisonValue;
   using ::llvm::UndefValue;
@@ -128,6 +152,8 @@ export namespace llvm {
 
   namespace sys {
     using ::llvm::sys::getDefaultTargetTriple;
+    using ::llvm::sys::getHostCPUFeatures;
+    using ::llvm::sys::getHostCPUName;
   }
 
   namespace sys::fs {
@@ -161,10 +187,16 @@ export namespace llvm {
     using ::llvm::ELF::DT_BIND_NOW;
     using ::llvm::ELF::DT_FLAGS;
     using ::llvm::ELF::DT_FLAGS_1;
+    using ::llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND;
+    using ::llvm::ELF::GNU_PROPERTY_AARCH64_FEATURE_1_BTI;
+    using ::llvm::ELF::NT_GNU_PROPERTY_TYPE_0;
     using ::llvm::ELF::PF_W;
     using ::llvm::ELF::PF_X;
     using ::llvm::ELF::PT_GNU_RELRO;
     using ::llvm::ELF::PT_LOAD;
+    using ::llvm::ELF::SHN_UNDEF;
+    using ::llvm::ELF::SHT_DYNSYM;
+    using ::llvm::ELF::SHT_NOTE;
   }
 
   namespace PICLevel {
@@ -177,6 +209,11 @@ export namespace llvm {
 
   namespace Reloc {
     using ::llvm::Reloc::PIC_;
+    using ::llvm::Reloc::Static;
+  }
+
+  namespace CodeModel {
+    using ::llvm::CodeModel::Large;
   }
 
   namespace Intrinsic {

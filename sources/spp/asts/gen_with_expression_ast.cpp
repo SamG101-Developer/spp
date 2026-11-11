@@ -31,8 +31,13 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.uid;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-GenWithExpressionAst::GenWithExpressionAst(
+spp::asts::GenWithExpressionAst::GenWithExpressionAst(
   decltype(TokGen) &&tok_gen,
   decltype(TokWith) &&tok_with,
   decltype(Expr) &&expr) :
@@ -47,19 +52,19 @@ GenWithExpressionAst::GenWithExpressionAst(
   Source.OriginalPosEnd = Expr ? Expr->PosEnd() : TokWith->PosEnd();
 }
 
-GenWithExpressionAst::~GenWithExpressionAst() = default;
+spp::asts::GenWithExpressionAst::~GenWithExpressionAst() = default;
 
-auto GenWithExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::GenWithExpressionAst::PosStart() const -> std::size_t {
   // Use the "gen" token.
   return TokGen->PosStart();
 }
 
-auto GenWithExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenWithExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression, or where it ended once it was moved.
   return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto GenWithExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenWithExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenWithExpressionAst>(
     AstClone(TokGen),
@@ -67,7 +72,7 @@ auto GenWithExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Expr));
 }
 
-auto GenWithExpressionAst::ToString() const -> Str {
+auto spp::asts::GenWithExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_MappedLoop != nullptr) {
     SPP_STRING_APPEND(_MappedLoop);
@@ -79,7 +84,7 @@ auto GenWithExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenWithExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenWithExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS_AND_UID;
 
@@ -114,14 +119,14 @@ auto GenWithExpressionAst::Stage7_AnalyseSemantics(
   _MappedLoop->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto GenWithExpressionAst::Stage8_CheckMemory(
+auto spp::asts::GenWithExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward the memory check to the desugared loop (which
   // checks the sub-generator expression and the inner "gen").
   _MappedLoop->Stage8_CheckMemory(sm, meta);
 }
 
-auto GenWithExpressionAst::Stage11_CodeGen(
+auto spp::asts::GenWithExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the desugared loop, already built and analysed
   // in Stage7 (its scope aligns with the walk here). As the

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install a cross gcc and its /usr/<triple> sysroot (args: "aarch64-linux-gnu" [package, if not gcc-<triple>]).
 # Package "arm-gnu" is Arm's own release instead, for a target Ubuntu packages no gcc for (aarch64_be): it
-# carries its own sysroot, exported as SPP_QEMU_SYSROOT, and its gcc goes on PATH as <triple>-gcc, the
+# carries its own sysroot, exported as SPP_CI_QEMU_SYSROOT, and its gcc goes on PATH as <triple>-gcc, the
 # name spp links with.
 set -euo pipefail
 
@@ -30,5 +30,5 @@ sysroot="$("${root}/bin/${arm}-gcc" -print-sysroot)"
 ls "$("${root}/bin/${arm}-gcc" -print-file-name=Scrt1.o)" > /dev/null
 
 echo "${root}/wrap" >> "$GITHUB_PATH"
-echo "SPP_QEMU_SYSROOT=${sysroot}" >> "$GITHUB_ENV"
+echo "SPP_CI_QEMU_SYSROOT=${sysroot}" >> "$GITHUB_ENV"
 "${root}/bin/${arm}-gcc" --version | head -1

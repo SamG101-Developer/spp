@@ -1,0 +1,13 @@
+description = "Calls by position and by keyword, an override on a sup extension called directly, and function values called indirectly through a function kept out of line (each indirect call carries the CFI check)"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:function_call_argument",
+  "ast:function_parameter_group",
+  "ast:subroutine_prototype",
+  "ast:sup_prototype_extension",
+  "codegen:llvm_fn",
+  "codegen:llvm_fn_impls",
+  "codegen:llvm_cfi",
+  "codegen:llvm_harden_codegen",
+]

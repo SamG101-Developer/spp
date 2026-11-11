@@ -1,0 +1,9 @@
+description = "A function called with async and its future awaited, 5M times: S++ only, as C has no equivalent and Rust's needs an executor"
+layer = "core"
+output = "exact"
+languages = ["spp"]
+covers = [
+  "ast:unary_expression_operator_async",
+  "ast:postfix_expression_operator_keyword_await",
+  "ast:unary_expression",
+]

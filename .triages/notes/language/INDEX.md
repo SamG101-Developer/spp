@@ -1,12 +1,14 @@
 - [Linear types](spp-linear-types.md) — non-Copy used exactly once; 5 rules, Drop bound
-- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop for drop_in_place
+- [Implicit destructors are gone](no-destructor-dispatch-yet.md) — linear typing; EmitDrop only for the drop intrinsics
 - [Drop needs forced instantiation](drop-needs-forced-instantiation.md) — mint in the monomorphisation drain
 - [zero_type is not Copy](zero-type-implies-copy.md) — layout only; markers are linear unless Copy
 - [Markers only from own package](markers-only-from-own-package.md) — Copy/Drop/FwdRef/FwdMut: declaring package only (E111)
 - [Soundness audit 2026-09](spp-soundness-audit-2026-09.md) — branch-consumption on; where red tests live
 - [Borrow is a param convention](borrow-is-param-convention.md) — f[T](x: T) can't take &Str
-- [Checked arithmetic is the default](checked-arithmetic-is-default.md) — +,-,* trap; use *_wrapping
-- [Full-width shift was poison](spp-full-width-shift-is-poison.md) — clamped in ApplyBinOp
+- [Borrow is no generic argument](borrow-not-a-generic-argument.md) — E2 outside Gen/Fun types (sups); substituted types exempt; naming runs under the flag
+- [Checked arithmetic is the default](checked-arithmetic-is-default.md) — +,-,*,/,% trap (/0, %0, MIN/-1); MIN % -1 is 0; use *_wrapping
+- [Full-width shift was poison](spp-full-width-shift-is-poison.md) — clamped in ApplyBinOp; past the width 0, or sign bits for AShr
+- [Signed >> is arithmetic](signed-shr-is-arithmetic.md) — since 2026-11-09; unsigned logical; intrinsics::bit_shr always logical, bit_ashr always arithmetic
 - [Case narrowing limits](spp-case-narrowing-limits.md) — `<name>` subjects narrow; symbol outlives branch
 - [One rule for an agreed type](type-join-agreed-type.md) — TypeJoin: case rule for case/loop exits/closure rets (N9.1)
 - [Pattern solver](pattern-solver.md) — N9.2: MatchPlan checks; gtest cannot see pattern miscompiles; run check-case-patterns
@@ -22,3 +24,4 @@
 - [Resume ends &mut yields](resume-ends-mut-yields.md) — 2nd g.res() moves earlier &mut holders
 - [Green task detach UAF](spp-green-task-detach-uaf.md) — a dropped future must await
 - [!extends annotation plan](spp-extends-annotation-plan.md) — future; use `sup X ext Copy` for now
+- [Call results are temporaries](method-result-receiver-temporary-unchecked.md) — PlaceOf derives v.clone() from v; IsLinearTemporary skips it for calls (fixed 2026-11-10); std must land first

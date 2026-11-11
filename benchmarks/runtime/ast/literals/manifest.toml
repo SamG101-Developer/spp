@@ -1,0 +1,15 @@
+description = "Every literal kind built in a hot loop (integers, floats, booleans, chars, strings, tuples, explicit and repeated arrays) and indexed: all of it should fold into registers"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:integer_literal",
+  "ast:float_literal",
+  "ast:string_literal",
+  "ast:boolean_literal",
+  "ast:char_literal",
+  "ast:tuple_literal",
+  "ast:parenthesised_expression",
+  "ast:array_literal_explicit_elements",
+  "ast:array_literal_repeated_element",
+  "ast:postfix_expression_operator_index",
+]

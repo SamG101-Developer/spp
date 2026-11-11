@@ -37,15 +37,15 @@ need() {
 check_linux() {
   local bin="$1" glibc abi
   glibc="$(objdump -p "$bin" | sed -n 's/.*[[:space:]]GLIBC_\([0-9.]*\)$/\1/p' | sort -V | tail -n 1)"
-  echo "${bin} needs glibc ${glibc:-<none>} (floor ${SPP_FLOOR_GLIBC})"
-  if [ -n "$glibc" ] && newer "$glibc" "$SPP_FLOOR_GLIBC"; then
-    above "${bin} needs glibc ${glibc}, above the floor ${SPP_FLOOR_GLIBC}: $(objdump -T "$bin" | grep -o "[^ ]*GLIBC_${glibc}).*" | head -n 3 | tr '\n' ' ')"
+  echo "${bin} needs glibc ${glibc:-<none>} (floor ${SPP_CI_FLOOR_GLIBC})"
+  if [ -n "$glibc" ] && newer "$glibc" "$SPP_CI_FLOOR_GLIBC"; then
+    above "${bin} needs glibc ${glibc}, above the floor ${SPP_CI_FLOOR_GLIBC}: $(objdump -T "$bin" | grep -o "[^ ]*GLIBC_${glibc}).*" | head -n 3 | tr '\n' ' ')"
   fi
 
   abi="$(readelf -n "$bin" | sed -n 's/.*OS: Linux, ABI: \([0-9.]*\).*/\1/p' | head -n 1)"
-  echo "${bin} declares Linux ${abi:-<none>} (floor ${SPP_FLOOR_LINUX})"
-  if [ -n "$abi" ] && newer "$abi" "$SPP_FLOOR_LINUX"; then
-    above "${bin} declares Linux ${abi}, above the floor ${SPP_FLOOR_LINUX}"
+  echo "${bin} declares Linux ${abi:-<none>} (floor ${SPP_CI_FLOOR_LINUX})"
+  if [ -n "$abi" ] && newer "$abi" "$SPP_CI_FLOOR_LINUX"; then
+    above "${bin} declares Linux ${abi}, above the floor ${SPP_CI_FLOOR_LINUX}"
   fi
 }
 
@@ -55,17 +55,17 @@ check_macos() {
   minos="$(otool -l "$bin" | awk '
     /cmd LC_BUILD_VERSION/ { b = 1 } b && $1 == "minos" { print $2; exit }
     /cmd LC_VERSION_MIN_MACOSX/ { v = 1 } v && $1 == "version" { print $2; exit }')"
-  echo "${bin} needs macOS ${minos:-<none>} (floor ${SPP_FLOOR_MACOS})"
+  echo "${bin} needs macOS ${minos:-<none>} (floor ${SPP_CI_FLOOR_MACOS})"
   if [ -z "$minos" ]; then
     bad "${bin} records no minimum macOS version"
-  elif newer "$minos" "$SPP_FLOOR_MACOS"; then
-    above "${bin} needs macOS ${minos}, above the floor ${SPP_FLOOR_MACOS}; set CMAKE_OSX_DEPLOYMENT_TARGET"
+  elif newer "$minos" "$SPP_CI_FLOOR_MACOS"; then
+    above "${bin} needs macOS ${minos}, above the floor ${SPP_CI_FLOOR_MACOS}; set CMAKE_OSX_DEPLOYMENT_TARGET"
   fi
 }
 
 case "$RUNNER_OS" in
-  Linux) need SPP_FLOOR_GLIBC; need SPP_FLOOR_LINUX ;;
-  macOS) need SPP_FLOOR_MACOS ;;
+  Linux) need SPP_CI_FLOOR_GLIBC; need SPP_CI_FLOOR_LINUX ;;
+  macOS) need SPP_CI_FLOOR_MACOS ;;
   Windows)
     echo "no Windows floor yet: nothing to check"
     exit 0

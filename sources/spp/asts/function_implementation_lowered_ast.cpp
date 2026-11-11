@@ -30,15 +30,22 @@ import genex;
 import std;
 import numex.big_int;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+use_alias(spp::codegen::builtins, LoweredFnImpl);
+
 SPP_MOD_BEGIN
-auto FunctionImplementationLoweredAst::NewEmpty() -> Unique<FunctionImplementationLoweredAst> {
+auto spp::asts::FunctionImplementationLoweredAst::NewEmpty() -> Unique<FunctionImplementationLoweredAst> {
   // Empty AST.
   return MakeUnique<FunctionImplementationLoweredAst>(nullptr, decltype(Members)(), nullptr);
 }
 
-FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
+spp::asts::FunctionImplementationLoweredAst::~FunctionImplementationLoweredAst() = default;
 
-auto FunctionImplementationLoweredAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionImplementationLoweredAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto f = MakeUnique<FunctionImplementationLoweredAst>(
     AstClone(TokL),
@@ -49,14 +56,14 @@ auto FunctionImplementationLoweredAst::Clone() const -> Unique<Ast> {
   return f;
 }
 
-auto FunctionImplementationLoweredAst::SetProtoPtr(
+auto spp::asts::FunctionImplementationLoweredAst::SetProtoPtr(
   FunctionPrototypeAst *proto) -> void {
   // Non-owning: this is a back-pointer to the prototype that
   // owns this "Impl", not something to clone/free.
   _ProtoPtr = proto;
 }
 
-auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
+auto spp::asts::FunctionImplementationLoweredAst::_ValidateZeroDivision(
   Vec<Unique<ExpressionAst>> const &args, CompilerMetaData const *meta) const -> void {
   IMPORT_UTILS;
 
@@ -86,7 +93,7 @@ auto FunctionImplementationLoweredAst::_ValidateZeroDivision(
   RaiseIf<SppDivisionByZeroError>(is_zero, ERR_ARGS(*this, divisor));
 }
 
-auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
+auto spp::asts::FunctionImplementationLoweredAst::_ValidateShiftAmount(
   Vec<Unique<ExpressionAst>> const &args, CompilerMetaData const *meta) const -> void {
   IMPORT_UTILS;
 
@@ -95,6 +102,7 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   static const auto shifting_builtins = Vec<Str>{
     "std.intrinsics.bit_shl", "std.intrinsics.bit_shl_assign",
     "std.intrinsics.bit_shr", "std.intrinsics.bit_shr_assign",
+    "std.intrinsics.bit_ashr", "std.intrinsics.bit_ashr_assign",
   };
   if (not genex::contains(shifting_builtins, _Builtin->Name) or args.size() < 2) { return; }
 
@@ -112,7 +120,7 @@ auto FunctionImplementationLoweredAst::_ValidateShiftAmount(
   RaiseIf<SppShiftAmountOutOfBoundsError>(too_wide, ERR_ARGS(*this, *args[1], value->Type, width));
 }
 
-auto FunctionImplementationLoweredAst::Stage11_CodeGen(
+auto spp::asts::FunctionImplementationLoweredAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS;
   // Use the builtin to build the llvm custom lowered code. The
@@ -130,7 +138,7 @@ auto FunctionImplementationLoweredAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto FunctionImplementationLoweredAst::EvaluateCompTime(
+auto spp::asts::FunctionImplementationLoweredAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   if (_Builtin->CompTimeImpl == nullptr) {
@@ -180,13 +188,13 @@ auto FunctionImplementationLoweredAst::EvaluateCompTime(
   //     .raises_from(sm->CurrentScope);
 }
 
-auto FunctionImplementationLoweredAst::SetBuiltin(
+auto spp::asts::FunctionImplementationLoweredAst::SetBuiltin(
   codegen::builtins::LoweredFnImpl const *builtin) -> void {
   // Non-owning: an entry of the static "kBuiltinFuncs".
   _Builtin = builtin;
 }
 
-auto FunctionImplementationLoweredAst::Builtin() const
+auto spp::asts::FunctionImplementationLoweredAst::Builtin() const
   -> codegen::builtins::LoweredFnImpl const* {
   return _Builtin;
 }

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(AssignmentStatementAst);
+use_common(AssignmentStatementAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TokenAst);
 

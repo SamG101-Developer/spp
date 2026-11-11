@@ -10,8 +10,9 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypePostfixExpressionAst);
+use_common(TypePostfixExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
+use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct ConventionAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::asts, struct GenericArgumentAst);
@@ -77,7 +78,9 @@ SPP_EXP_CLS struct spp::asts::TypePostfixExpressionAst final : TypeAst {
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
 
-  auto ResetCache() -> void override;
+private:
+  /// The nested type's symbol ("B" of "A::B"), found in the left-hand side's scope.
+  auto _NestedSymbol(ScopeManager *sm, CompilerMetaData *meta) -> TypeSymbol*;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypePostfixExpressionAst)

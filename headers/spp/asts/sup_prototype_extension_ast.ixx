@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(SupPrototypeExtensionAst);
+use_common(SupPrototypeExtensionAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct FunctionPrototypeAst);

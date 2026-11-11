@@ -5,27 +5,34 @@ module spp.asts.postfix_expression_operator_ast;
 import spp.asts.expression_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorAst::PostfixExpressionOperatorAst() = default;
+spp::asts::PostfixExpressionOperatorAst::PostfixExpressionOperatorAst() = default;
 
-PostfixExpressionOperatorAst::~PostfixExpressionOperatorAst() = default;
+spp::asts::PostfixExpressionOperatorAst::~PostfixExpressionOperatorAst() = default;
 
-auto PostfixExpressionOperatorAst::RebuildsOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorAst::RebuildsOperand() const -> bool {
   // Most operators work on their analysed operand.
   return false;
 }
 
-auto PostfixExpressionOperatorAst::WalksOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorAst::WalksOperand() const -> bool {
   // The expression walks the operand, unless it was
   // never analysed in place.
   return RebuildsOperand();
 }
 
-auto PostfixExpressionOperatorAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::PostfixExpressionOperatorAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {};
 }
 
-auto PostfixExpressionOperatorAst::ReadExpr(
+auto spp::asts::PostfixExpressionOperatorAst::ReadExpr(
   ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Default implementation that the non-specialized
   // postfix expression operators will use.

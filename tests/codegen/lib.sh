@@ -98,6 +98,22 @@ build_project() {
     fi
 }
 
+# The ffi library "pkg" in "dir" cut to its first 100 bytes, which LLVM cannot
+# read as an object, then a rel build that must fail saying so: a hardening
+# check that cannot read a library refuses it rather than passing it.
+check_unreadable_ffi() {
+    local name="$1" dir="$2" pkg="$3"
+    local lib="${dir}/ffi/${pkg}/${HOST_FFI}/lib${pkg}.so"
+    head -c 100 "${lib}" > "${lib}.cut" && mv "${lib}.cut" "${lib}"
+    if (cd "${dir}" && "${SPP}" build -m rel > "${dir}/build.log" 2>&1); then
+        fail "${name}: the build succeeded" "${dir}/build.log"
+    elif tr '\r' '\n' < "${dir}/build.log" | grep -qF "cannot read 'ffi/${pkg}/${HOST_FFI}/lib${pkg}.so'"; then
+        ok "${name}: the build failed, saying it cannot read the library"
+    else
+        fail "${name}: the build failed without saying it cannot read the library" "${dir}/build.log"
+    fi
+}
+
 # Run "exe" with its output in "log" and its exit code in RC. Never through a
 # pipe, which would report the pipe's status and hide a crash. A run still
 # going after RUN_TIMEOUT seconds (60) is killed and failed here: no check
@@ -128,6 +144,23 @@ fail() {
 require_x86_64() {
     if [[ "$(uname -m)" != "x86_64" ]]; then
         echo "skipped: the disassembly checked is x86's"
+        exit 0
+    fi
+}
+
+# For a check built for aarch64-unknown-linux-gnu and run under qemu: the cross
+# gcc (its ffi helper), objdump and qemu, and the sysroot qemu loads from.
+readonly AARCH64_SYSROOT=/usr/aarch64-linux-gnu
+require_aarch64_cross() {
+    local tool
+    for tool in aarch64-linux-gnu-gcc aarch64-linux-gnu-objdump qemu-aarch64; do
+        if ! command -v "${tool}" > /dev/null; then
+            echo "skipped: no ${tool}"
+            exit 0
+        fi
+    done
+    if [[ ! -d "${AARCH64_SYSROOT}" ]]; then
+        echo "skipped: no AArch64 sysroot at ${AARCH64_SYSROOT}"
         exit 0
     fi
 }

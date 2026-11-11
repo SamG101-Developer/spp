@@ -37,8 +37,15 @@ import spp.lex.tokens;
 import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
+spp::asts::SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
   decltype(TokSup) &&tok_sup,
   decltype(GnParamGroup) &&generic_param_group,
   decltype(Name) name,
@@ -52,19 +59,19 @@ SupPrototypeFunctionsAst::SupPrototypeFunctionsAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
 }
 
-SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
+spp::asts::SupPrototypeFunctionsAst::~SupPrototypeFunctionsAst() = default;
 
-auto SupPrototypeFunctionsAst::PosStart() const -> std::size_t {
+auto spp::asts::SupPrototypeFunctionsAst::PosStart() const -> std::size_t {
   // Use the "sup" token.
   return TokSup->PosStart();
 }
 
-auto SupPrototypeFunctionsAst::PosEnd() const -> std::size_t {
+auto spp::asts::SupPrototypeFunctionsAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto SupPrototypeFunctionsAst::Clone() const -> Unique<Ast> {
+auto spp::asts::SupPrototypeFunctionsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<SupPrototypeFunctionsAst>(
     AstClone(TokSup),
@@ -76,7 +83,7 @@ auto SupPrototypeFunctionsAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto SupPrototypeFunctionsAst::ToString() const -> Str {
+auto spp::asts::SupPrototypeFunctionsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSup).append(" ");
   SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.empty() ? "" : " ");
@@ -85,7 +92,7 @@ auto SupPrototypeFunctionsAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto SupPrototypeFunctionsAst::Stage1_PreProcess(
+auto spp::asts::SupPrototypeFunctionsAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the AST by calling the base class method
   // and then processing the implementation.
@@ -93,7 +100,7 @@ auto SupPrototypeFunctionsAst::Stage1_PreProcess(
   Impl->Stage1_PreProcess(this);
 }
 
-auto SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
+auto spp::asts::SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -112,7 +119,7 @@ auto SupPrototypeFunctionsAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
+auto spp::asts::SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   sm->MoveToNextScope();
@@ -122,7 +129,7 @@ auto SupPrototypeFunctionsAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage4_ResolveDeclarations(
+auto spp::asts::SupPrototypeFunctionsAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
@@ -132,7 +139,7 @@ auto SupPrototypeFunctionsAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
+auto spp::asts::SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -149,7 +156,7 @@ auto SupPrototypeFunctionsAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -171,7 +178,7 @@ auto SupPrototypeFunctionsAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
+auto spp::asts::SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -185,7 +192,6 @@ auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
-    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
   }
 
@@ -193,7 +199,7 @@ auto SupPrototypeFunctionsAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage8_CheckMemory(
+auto spp::asts::SupPrototypeFunctionsAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -202,7 +208,7 @@ auto SupPrototypeFunctionsAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeFunctionsAst::Stage10_PreCodeGen(
+auto spp::asts::SupPrototypeFunctionsAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -212,7 +218,7 @@ auto SupPrototypeFunctionsAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto SupPrototypeFunctionsAst::Stage11_CodeGen(
+auto spp::asts::SupPrototypeFunctionsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();

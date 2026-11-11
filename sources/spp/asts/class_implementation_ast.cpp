@@ -12,17 +12,21 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import genex;
 
-use_ns(spp::analyse::utils);
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
-auto ClassImplementationAst::NewEmpty() -> Unique<ClassImplementationAst> {
+auto spp::asts::ClassImplementationAst::NewEmpty() -> Unique<ClassImplementationAst> {
   // Empty AST.
   return MakeUnique<ClassImplementationAst>();
 }
 
-ClassImplementationAst::~ClassImplementationAst() = default;
+spp::asts::ClassImplementationAst::~ClassImplementationAst() = default;
 
-auto ClassImplementationAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClassImplementationAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ClassImplementationAst>(
     AstClone(TokL),
@@ -30,37 +34,37 @@ auto ClassImplementationAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto ClassImplementationAst::Stage1_PreProcess(
+auto spp::asts::ClassImplementationAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Preprocess members.
   for (auto const &m : Members) { m->Stage1_PreProcess(ctx); }
 }
 
-auto ClassImplementationAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ClassImplementationAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Generate scopes for each member.
   for (auto const &m : Members) { m->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage3_GenTopLvlAliases(
+auto spp::asts::ClassImplementationAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Generate aliases for each member.
   for (auto const &m : Members) { m->Stage3_GenTopLvlAliases(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage4_ResolveDeclarations(
+auto spp::asts::ClassImplementationAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Qualify types for each member.
   for (auto const &m : Members) { m->Stage4_ResolveDeclarations(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage5_LoadSupScopes(
+auto spp::asts::ClassImplementationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Load super scopes for each member.
   for (auto const &m : Members) { m->Stage5_LoadSupScopes(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ClassImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   using namespace spp::analyse::errors;
 
@@ -82,19 +86,19 @@ auto ClassImplementationAst::Stage6_PreAnalyseSemantics(
     ERR_ARGS(*duplicates[0], *duplicates[1], "attribute"));
 }
 
-auto ClassImplementationAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClassImplementationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Analyse semantics for each member.
   for (auto const &m : Members) { m->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage8_CheckMemory(
+auto spp::asts::ClassImplementationAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check memory for each member.
   for (auto const &m : Members) { m->Stage8_CheckMemory(sm, meta); }
 }
 
-auto ClassImplementationAst::Stage11_CodeGen(
+auto spp::asts::ClassImplementationAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for each member.
   for (auto const &m : Members) { m->Stage11_CodeGen(sm, meta, ctx); }

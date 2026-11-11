@@ -6,7 +6,7 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableAst);
+use_common(LocalVariableAst);
 use(spp::asts, struct IdentifierAst);
 
 SPP_EXP_CLS struct spp::asts::LocalVariableAst : Ast {

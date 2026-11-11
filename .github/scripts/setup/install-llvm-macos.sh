@@ -1,59 +1,49 @@
 #!/usr/bin/env bash
-# macOS takes its whole toolchain from the official LLVM
-# release tarball rather than from brew.
+# macOS takes its whole toolchain - compiler, libc++ and the
+# LLVM dev libraries - from brew. The release tarball's LLVM
+# is built without RTTI, so a TU instantiating a polymorphic
+# LLVM template (ValueMap) needs typeinfo its libraries lack;
+# brew's is built with RTTI, like apt.llvm.org's on Linux.
+# brew has no ld64.lld in llvm; it is the lld formula.
 set -euo pipefail
-source .github/scripts/lib/verified-fetch.sh
 
-root="${LLVM_MAC_ASSET%.tar.xz}"
-tarball="${RUNNER_TEMP}/llvm.tar.xz"
-prefix="$SPP_LLVM_MAC_PREFIX"
-listing="${RUNNER_TEMP}/llvm-listing.txt"
-exported="${RUNNER_TEMP}/llvm-exported.txt"
-files="${RUNNER_TEMP}/llvm-files.txt"
+major="$LLVM_LIB_VERSION"
+prefix="$SPP_CI_LLVM_MAC_PREFIX"
 
-url="https://github.com/llvm/llvm-project/releases/download/${LLVM_MAC_TAG}/${LLVM_MAC_ASSET}"
-verified_fetch "$url" "$tarball" "$LLVM_MAC_SHA256"
-mkdir -p "$prefix"
+# The unversioned formula is the newest major; once it moves
+# past [pin.llvm-lib], that major is llvm@<major>.
+formula=llvm
+current="$(brew info --json=v2 llvm | python3 -c 'import json, sys; print(json.load(sys.stdin)["formulae"][0]["versions"]["stable"])')"
+if [ "${current%%.*}" != "$major" ]; then
+  formula="llvm@${major}"
+fi
+lld=lld
+[ "$formula" = llvm ] || lld="lld@${major}"
 
-# Whole, the tarball is 8.2 GB, most of it mlir, lldb and
-# tools nothing here runs - against 14 GB of runner disk
-# and a cache that holds a copy too. So unpack only the
-# members listed below.
-tar tf "$tarball" > "$listing"
+brew install --quiet "$formula" "$lld"
 
-# LLVMExports names every file find_package(LLVM) checks
-# for - a missing one is a fatal configure error - and
-# nothing else is needed.
-tar xf "$tarball" -C "$prefix" --strip-components=1 "${root}/lib/cmake/llvm"
-grep -o '_IMPORT_PREFIX}/[^"]*' "${prefix}/lib/cmake/llvm/LLVMExports-release.cmake" \
-  | sed 's|_IMPORT_PREFIX}/||' | sort -u > "$exported"
-
-grep -E \
-  -e "^${root}/bin/clang(\+\+|-[0-9]+|-scan-deps)?$" \
-  -e "^${root}/(lib/clang/|include/c\+\+/|lib/c\+\+/|lib/libc\+\+|lib/libunwind|lib/libLTO\.|share/libc\+\+/)" \
-  "$listing" > "${files}.compiler"
-
-{
-  echo "${root}/include/llvm"
-  echo "${root}/include/llvm-c"
-  grep -v '^bin/' "$exported" | sed "s|^|${root}/|"
-  cat "${files}.compiler"
-} | sort -u > "$files"
-tar xf "$tarball" -C "$prefix" --strip-components=1 -T "$files"
-
-mkdir -p "${prefix}/bin"
-while read -r tool; do
-  [ -e "${prefix}/${tool}" ] || : > "${prefix}/${tool}"
-done < <(grep '^bin/' "$exported")
-rm -f "$tarball"
+# One prefix holds everything the rest of CI looks for: brew's
+# keg, plus ld64.lld from the lld keg beside clang, where
+# -fuse-ld=lld looks first.
+ln -sfn "$(brew --prefix "$formula")" "$prefix"
+ln -sf "$(brew --prefix "$lld")/bin/ld64.lld" "${prefix}/bin/ld64.lld"
 
 # A missing piece surfaces much later as something inscrutable:
 # a configure that falls back to the system clang, a link that
 # cannot read the archives.
-for needed in bin/clang++ bin/clang-scan-deps lib/libLTO.dylib; do
+for needed in bin/clang++ bin/clang-scan-deps bin/ld64.lld lib/cmake/llvm/LLVMConfig.cmake lib/libLLVMCore.a; do
   if [ ! -e "${prefix}/${needed}" ]; then
-    echo "::error::${LLVM_MAC_ASSET} has no ${needed}; macOS cannot build against this release" >&2
+    echo "::error::brew's ${formula} has no ${needed}; macOS cannot build against it" >&2
     exit 1
   fi
 done
+version="$("${prefix}/bin/llvm-config" --version)"
+if [ "${version%%.*}" != "$major" ]; then
+  echo "::error::brew installed LLVM ${version}, not the [pin.llvm-lib] major ${major}" >&2
+  exit 1
+fi
+if [ "$("${prefix}/bin/llvm-config" --has-rtti)" != YES ]; then
+  echo "::error::brew's LLVM ${version} is built without RTTI; spp's TUs need its typeinfo" >&2
+  exit 1
+fi
 "${prefix}/bin/clang++" --version

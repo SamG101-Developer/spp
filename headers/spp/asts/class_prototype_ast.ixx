@@ -12,7 +12,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClassPrototypeAst);
+use_common(ClassPrototypeAst);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ClassImplementationAst);
 use(spp::asts, struct GenericParameterGroupAst);
@@ -26,6 +26,7 @@ use(spp::analyse::scopes, struct TypeSymbol);
 /// and any generic parameters. The attributes are defined in
 /// the implementation ast, making the scoping rules easier.
 SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(ClassPrototypeAst);
 
   /// The annotations applied to this class prototype.
@@ -39,6 +40,15 @@ SPP_EXP_CLS struct spp::asts::ClassPrototypeAst final : Ast, ModuleMemberAst, Su
   /// guaranteed to occupy no storage. Layout only: the class
   /// is still linear unless it is also "Copy".
   AnnotationAst *ZeroTypeAnnotation;
+
+  /// Optional "!ffi" annotation: the class mirrors a C struct, so
+  /// it takes the C convention unless "!conv" names another, and
+  /// every attribute has to be one C can hold.
+  AnnotationAst *FfiAnnotation;
+
+  /// Optional "!conv" annotation, naming the convention the class
+  /// is laid out by (its symbol's "DeclaredAbi").
+  AnnotationAst *ConvAnnotation;
 
   /// The name used to refer to the class, which must be unique
   /// within the scope.
@@ -103,3 +113,5 @@ private:
 
   auto _GenerateSymbols(ScopeManager *sm) -> TypeSymbol*;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::ClassPrototypeAst)

@@ -1,15 +1,21 @@
 # The two analyses that build the whole project: CodeQL under its
-# extractor, and Sonar over the release tree. Each runs only when
-# asked for. Sonar is advisory: a red quality gate does not fail
-# the call.
+# extractor, and Sonar over the release tree. CodeQL for Python
+# sits beside them and builds nothing. Each runs only when asked
+# for. Sonar is advisory: a red quality gate does not fail the
+# call.
 
 name: analysis
 
 on:
   workflow_call:
     inputs:
-      codeql:
-        description: "Run CodeQL."
+      codeql-cpp:
+        description: "Run CodeQL over the C++ sources."
+        required: false
+        type: boolean
+        default: false
+      codeql-python:
+        description: "Run CodeQL over the Python scripts."
         required: false
         type: boolean
         default: false
@@ -45,9 +51,9 @@ on:
 permissions: { }
 
 jobs:
-  codeql:
-    name: CodeQL
-    if: inputs.codeql
+  codeql-cpp:
+    name: CodeQL (CPP)
+    if: inputs.codeql-cpp
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -102,6 +108,41 @@ jobs:
         uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           category: "/language:c-cpp"
+
+  codeql-python:
+    name: CodeQL (Python)
+    if: inputs.codeql-python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read          # checkout
+      security-events: write  # upload CodeQL results
+      actions: read           # read workflow run metadata (private repos)
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          languages: python
+          build-mode: none
+          config-file: ./.github/codeql-config.yaml
+          queries: ${{ inputs.full-scan && 'security-and-quality' || 'security-extended' }}
+
+      # Uploads the results too.
+      - name: Analyze
+        uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          category: "/language:python"
 
   # Restores the release variant's build tree; Sonar only adds
   # -DCMAKE_EXPORT_COMPILE_COMMANDS, which invalidates no objects,

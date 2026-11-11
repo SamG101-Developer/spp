@@ -23,6 +23,13 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, CasePatternVariantAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 namespace {
   /// Resolve the types written on "pattern" and the destructures in
   /// it: a nested destructure is matched through the mapped "let"
@@ -33,17 +40,17 @@ namespace {
     CompilerMetaData &meta) -> void {
     IMPORT_UTILS;
     using namespace spp::asts;
-    if (auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
+    if (const auto obj = pattern.To<CasePatternVariantDestructureObjectAst>()) {
       obj->Type = type_resolution::AnalyseWrittenType(*obj->Type, sm, meta);
       for (auto const &elem : obj->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
+    else if (const auto tup = pattern.To<CasePatternVariantDestructureTupleAst>()) {
       for (auto const &elem : tup->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
+    else if (const auto arr = pattern.To<CasePatternVariantDestructureArrayAst>()) {
       for (auto const &elem : arr->Elems) { AnalyseNestedWrittenTypes(*elem, sm, meta); }
     }
-    else if (auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
+    else if (const auto binding = pattern.To<CasePatternVariantDestructureAttributeBindingAst>();
       binding != nullptr and binding->Val != nullptr) {
       AnalyseNestedWrittenTypes(*binding->Val, sm, meta);
     }
@@ -51,32 +58,32 @@ namespace {
 }
 
 SPP_MOD_BEGIN
-CasePatternVariantAst::CasePatternVariantAst() :
+spp::asts::CasePatternVariantAst::CasePatternVariantAst() :
   _MappedLet(nullptr) {
 }
 
-CasePatternVariantAst::~CasePatternVariantAst() = default;
+spp::asts::CasePatternVariantAst::~CasePatternVariantAst() = default;
 
-auto CasePatternVariantAst::EvaluateCompTime(
+auto spp::asts::CasePatternVariantAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   // No behaviour but c++ module issues require this be
   // defined here (maybe GCC bug).
 }
 
-auto CasePatternVariantAst::BindsByMove() const -> bool {
+auto spp::asts::CasePatternVariantAst::BindsByMove() const -> bool {
   // Only the patterns that name something take anything;
   // every other kind is a test.
   return false;
 }
 
-auto CasePatternVariantAst::ConvToVar(
+auto spp::asts::CasePatternVariantAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Default implementation for case pattern variants
   // that do not create variables.
   return nullptr;
 }
 
-auto CasePatternVariantAst::AnalyseDestructure(
+auto spp::asts::CasePatternVariantAst::AnalyseDestructure(
   ExpressionAst const *cond, Vec<CasePatternVariantAst*> const &elems,
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
@@ -94,7 +101,7 @@ auto CasePatternVariantAst::AnalyseDestructure(
   _MappedLet->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto CasePatternVariantAst::EvaluateCompTimeDestructure(
+auto spp::asts::CasePatternVariantAst::EvaluateCompTimeDestructure(
   ScopeManager *sm, CompilerMetaData *meta) const -> void {
   // Resolve the "let" statement introducing the symbols. The
   // literals the pattern tests are the "case"'s plan's.
@@ -102,8 +109,8 @@ auto CasePatternVariantAst::EvaluateCompTimeDestructure(
   meta->CompTimeResult = BooleanLiteralAst::True(PosStart());
 }
 
-auto CasePatternVariantAst::CodeGenDestructure(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) const -> llvm::Value* {
+auto spp::asts::CasePatternVariantAst::CodeGenDestructure(
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) const -> llvm::Value* {
   // Run the codegen on the transformed "let" ast to introduce
   // symbols into the llvm function. The literals the pattern
   // tests are the "case"'s plan's, so the shape always matches.

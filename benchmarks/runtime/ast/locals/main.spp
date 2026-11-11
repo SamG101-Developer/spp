@@ -1,0 +1,33 @@
+use std::console::println
+use std::hints::black_box
+
+cls Pair {
+  !public a: U64
+  !public b: U64
+}
+
+sup Pair ext std::copy::Copy { }
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut x = black_box(1_u64)
+  let mut y = black_box(2_u64)
+  let mut i = 0_u64
+  loop i < n {
+    let t: U64
+    t = (x + y) % 1000003_u64
+    let (p, q) = (t, x)
+    let [r, _, s] = [q, p, y]
+    let Pair(a, b) = Pair(a=r, b=s)
+    let z = {
+      let w = a * 3_u64 + b
+      w % 999983_u64
+    }
+    {
+      x = z
+    }
+    y = (y + i) % 1000003_u64
+    i += 1_u64
+  }
+  println("{}\n{}", x, y)
+}

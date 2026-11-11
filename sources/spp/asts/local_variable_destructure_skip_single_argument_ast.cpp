@@ -9,42 +9,47 @@ import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
+spp::asts::LocalVariableDestructureSkipSingleArgumentAst::LocalVariableDestructureSkipSingleArgumentAst(
   decltype(TokUnderscore) &&tok_underscore) :
   TokUnderscore(std::move(tok_underscore)) {
 }
 
-LocalVariableDestructureSkipSingleArgumentAst::~LocalVariableDestructureSkipSingleArgumentAst() = default;
+spp::asts::LocalVariableDestructureSkipSingleArgumentAst::~LocalVariableDestructureSkipSingleArgumentAst() = default;
 
-auto LocalVariableDestructureSkipSingleArgumentAst::PosStart() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosStart() const -> std::size_t {
   // Use the "_" token.
   return TokUnderscore->PosStart();
 }
 
-auto LocalVariableDestructureSkipSingleArgumentAst::PosEnd() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::PosEnd() const -> std::size_t {
   // Use the "_" token.
   return TokUnderscore->PosEnd();
 }
 
-auto LocalVariableDestructureSkipSingleArgumentAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LocalVariableDestructureSkipSingleArgumentAst>(
     AstClone(TokUnderscore));
 }
 
-auto LocalVariableDestructureSkipSingleArgumentAst::ToString() const -> Str {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("_");
   SPP_STRING_END;
 }
 
-auto LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // There are no names for this "_" single skip.
   return {};
 }
 
-auto LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableDestructureSkipSingleArgumentAst::ExtractName() const -> Shared<IdentifierAst> {
   IMPORT_UTILS;
   // There is no single name for this "_" single skip.
   return destructure_utils::UnmatchableSingleIdentifier(PosStart());

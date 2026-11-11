@@ -13,7 +13,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CmpStatementAst);
+use_common(CmpStatementAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct ExpressionAst);
@@ -27,6 +27,7 @@ use(spp::asts, struct TypeAst);
 /// statement.
 SPP_EXP_CLS struct spp::asts::CmpStatementAst final :
   StatementAst, ModuleMemberAst, SupMemberAst, mixins::VisibilityAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(CmpStatementAst);
 
   friend struct UseStatementVariableAst;
@@ -119,3 +120,5 @@ private:
 
   Shared<VariableSymbol> _AliasSymbol;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::CmpStatementAst)

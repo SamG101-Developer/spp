@@ -1,85 +1,28 @@
 module;
+#include <spp/macros.hpp>
 
 module spp.codegen.llvm_fn;
 import spp.analyse.scopes.symbols;
 import spp.asts.type_ast;
 import spp.codegen.llvm_alloca;
-import spp.codegen.llvm_harden_codegen;
-import spp.codegen.llvm_mangle;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_target;
-import spp.utils.features;
 import spp.utils.types;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, TypeAst);
+
 namespace spp::codegen {
   namespace {
-    /// A 32-bit FNV-1a hash: stable across builds and platforms,
-    /// so a build stays reproducible.
-    auto Fnv32(const StrView text) -> std::uint32_t {
-      auto hash = 2166136261u;
-      for (const auto c : text) {
-        hash ^= static_cast<unsigned char>(c);
-        hash *= 16777619u;
-      }
-      return hash;
-    }
-
-    /// Metadata holding "types", each as an "i32".
-    auto CfiMd(llvm::LLVMContext &ctx, const std::initializer_list<std::uint32_t> types) -> llvm::MDNode* {
-      auto ops = spp::Vec<llvm::Metadata*>();
-      const auto i32 = llvm::Type::getInt32Ty(ctx);
-      for (const auto t : types) {
-        ops.emplace_back(llvm::ConstantAsMetadata::get(llvm::ConstantInt::get(i32, t)));
-      }
-      return llvm::MDNode::get(ctx, ops);
-    }
-
-    /// [CHECKED]
-    /// The control-flow-integrity type of a function type ("FindFnSup").
-    auto CfiFnType(
-      TypeRef const &fn_sup) -> std::uint32_t {
-      // Get the "Args" tuple type, the "Out" return type,
-      // mangled and hashed for CFI.
-      const auto args = fn_sup.Symbol->TypeArgRef("Args");
-      const auto out = fn_sup.Symbol->TypeArgRef("Out");
-      return Fnv32(
-        "fn " + mangle::MangleTypeName(*args.Symbol) +
-        " -> " + mangle::MangleTypeName(*out.Symbol));
-    }
-
-    /// The control-flow-integrity type of one of a generator's two
-    /// functions ("FindGenSup").
-    auto CfiGenType(
-      TypeRef const &gen_sup, const CoroEdge edge) -> std::uint32_t {
-      const auto which = edge == CoroEdge::Destroy ? "destroy " : "resume ";
-      return Fnv32(which + mangle::MangleTypeName(*gen_sup.Symbol));
-    }
-
-    /// The control-flow-integrity type of a closure's capture
-    /// destructor ("void(ptr env)"), which every closure shares.
-    auto CfiClosureEnvDropType() -> std::uint32_t {
-      return Fnv32("closure env drop");
-    }
-
     /// The header every closure's environment starts with: "owns"
     /// and "drop_captures" ("ClosureEnvType").
     auto ClosureEnvHeaderType(LlvmCtx const *ctx) -> llvm::StructType* {
       return llvm::StructType::get(
         *ctx->Context, {llvm::Type::getInt8Ty(*ctx->Context), llvm::PointerType::get(*ctx->Context, 0)});
-    }
-
-    /// The "kcfi" operand bundle checking for "type"; none when
-    /// the feature is off.
-    auto KcfiBundles(
-      const std::uint32_t type, LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
-      if (not utils::features::Enabled(utils::features::ConfigKey::BinaryCodegenCfi)) { return {}; }
-      auto bundles = Vec<llvm::OperandBundleDef>();
-      bundles.emplace_back(
-        "kcfi", Vec<llvm::Value*>{
-          llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx->Context), type)
-        });
-      return bundles;
     }
   }
 }
@@ -112,122 +55,6 @@ auto spp::codegen::GetOrAddTargetIntoCurrentModule(
   return mirror;
 }
 
-namespace {
-  /// Whether @p type is a C struct, as a by-value "!ffi"
-  /// parameter: a struct of two or more fields. One of a single
-  /// field is the scalar inside it, however deeply wrapped.
-  auto IsCStruct(llvm::Type const *type) -> bool {
-    while (const auto st = llvm::dyn_cast<llvm::StructType>(type)) {
-      if (st->getNumElements() != 1) { return st->getNumElements() > 1; }
-      type = st->getElementType(0);
-    }
-    return false;
-  }
-}
-
-auto spp::codegen::CAbiExtendOf(
-  llvm::Type const *type,
-  const bool is_signed)
-  -> llvm::Attribute::AttrKind {
-  // As clang marks a C prototype's integers for each target.
-  const auto integer = llvm::dyn_cast<llvm::IntegerType>(type);
-  if (integer == nullptr) { return llvm::Attribute::None; }
-  const auto by_sign = is_signed ? llvm::Attribute::SExt : llvm::Attribute::ZExt;
-  const auto width = integer->getBitWidth();
-  if (width == 1) { return llvm::Attribute::ZExt; }
-  if (width < 32) { return by_sign; }
-  if (width > 32) { return llvm::Attribute::None; }
-
-  switch (TargetTriple().getArch()) {
-    case llvm::Triple::ppc64:
-    case llvm::Triple::ppc64le:
-    case llvm::Triple::systemz:
-    case llvm::Triple::sparcv9:
-      return by_sign;
-    case llvm::Triple::riscv64:
-    case llvm::Triple::loongarch64:
-    case llvm::Triple::mips:
-    case llvm::Triple::mipsel:
-    case llvm::Triple::mips64:
-    case llvm::Triple::mips64el:
-      return llvm::Attribute::SExt;
-    default:
-      return llvm::Attribute::None;
-  }
-}
-
-auto spp::codegen::CAbiParamsOf(
-  Vec<llvm::Type*> const &value_types,
-  Vec<bool> const &is_signed,
-  llvm::Module const &module)
-  -> Vec<CAbiParam> {
-  // Each target's rule, as clang lowers a C struct parameter for
-  // it (checked against "clang --target=<t> -S -emit-llvm").
-  const auto &triple = TargetTriple();
-  const auto arch = triple.getArch();
-  const auto by_val = arch == llvm::Triple::ppc or arch == llvm::Triple::ppcle or arch == llvm::Triple::m68k;
-  const auto s390x = arch == llvm::Triple::systemz;
-  const auto &layout = module.getDataLayout();
-
-  auto params = Vec<CAbiParam>();
-  params.reserve(value_types.size());
-  for (auto i = 0uz; i < value_types.size(); ++i) {
-    const auto type = value_types[i];
-    auto param = CAbiParam{
-      .How = CAbiParam::Kind::Direct, .Value = type, .Declared = type,
-      .Extend = CAbiExtendOf(type, i < is_signed.size() and is_signed[i])
-    };
-    if (IsCStruct(type) and (by_val or s390x)) {
-      const auto size = layout.getTypeAllocSize(type).getFixedValue();
-      if (s390x and (size == 1 or size == 2 or size == 4 or size == 8)) {
-        param.How = CAbiParam::Kind::Coerce;
-        param.Declared = llvm::IntegerType::get(type->getContext(), static_cast<unsigned>(size * 8));
-      }
-      else {
-        param.How = by_val ? CAbiParam::Kind::ByVal : CAbiParam::Kind::Indirect;
-        param.Declared = llvm::PointerType::get(type->getContext(), 0);
-      }
-    }
-    params.emplace_back(param);
-  }
-  return params;
-}
-
-auto spp::codegen::CAbiAddParamAttrs(
-  llvm::Function &fn,
-  Vec<CAbiParam> const &params)
-  -> void {
-  const auto &layout = fn.getParent()->getDataLayout();
-  for (auto i = 0u; i < params.size(); ++i) {
-    if (params[i].Extend != llvm::Attribute::None) { fn.addParamAttr(i, params[i].Extend); }
-    if (params[i].How != CAbiParam::Kind::ByVal) { continue; }
-    fn.addParamAttr(i, llvm::Attribute::getWithByValType(fn.getContext(), params[i].Value));
-    fn.addParamAttr(i, llvm::Attribute::getWithAlignment(fn.getContext(), layout.getABITypeAlign(params[i].Value)));
-  }
-}
-
-auto spp::codegen::CAbiAdaptArgs(
-  llvm::Function const &callee,
-  Vec<llvm::Value*> &args,
-  LlvmCtx *ctx)
-  -> void {
-  if (not callee.hasFnAttribute(kFfiFnAttr)) { return; }
-  const auto fn_type = callee.getFunctionType();
-  for (auto i = 0u; i < args.size() and i < fn_type->getNumParams(); ++i) {
-    const auto declared = fn_type->getParamType(i);
-    const auto value = args[i];
-    if (value->getType() == declared or not IsCStruct(value->getType())) { continue; }
-
-    // The copy is the caller's, made for this call: "byval" lets
-    // the callee write it, and s390x's pointer is to a copy the
-    // callee owns.
-    const auto slot = LlvmEntryAlloca(value->getType(), "cabi.arg", ctx);
-    ctx->Builder.CreateStore(value, slot);
-    args[i] = declared->isPointerTy() ? static_cast<llvm::Value*>(slot)
-      : ctx->Builder.CreateLoad(declared, slot, "cabi.arg.int");
-  }
-}
-
 auto spp::codegen::GetOrAddGlobalIntoCurrentModule(
   llvm::GlobalVariable const &target,
   llvm::Module &current_module)
@@ -255,39 +82,9 @@ auto spp::codegen::LoadGlobalConstant(
   // Declared here if it was defined in another module, and read
   // as its symbol's type when its initializer has another shape.
   const auto global_var = GetOrAddGlobalIntoCurrentModule(
-    *llvm::cast<llvm::GlobalVariable>(info.Alloca), *GetEmissionModule(*ctx));
+    *llvm::cast<llvm::GlobalVariable>(info.Alloca), *ctx->Module);
   const auto value_type = info.ValueType != nullptr ? info.ValueType : global_var->getValueType();
   return ctx->Builder.CreateLoad(value_type, global_var, name);
-}
-
-/// [CHECKED]
-auto spp::codegen::StampCfiFn(
-  llvm::Function &fn, TypeRef const &fn_sup) -> void {
-  // Stamp the CFI hashed type ("CfiFnType") onto the function
-  // in its metadata, for later retrieval.
-  fn.setMetadata(kCfiMd, CfiMd(fn.getContext(), {CfiFnType(fn_sup)}));
-}
-
-/// [CHECKED]
-auto spp::codegen::StampCfiCoroutine(
-  llvm::Function &ramp, TypeRef const &gen_sup) -> void {
-  // Stamp the CFI hashed type ("CfiGenType") onto the function
-  // in its metadata, for later retrieval.
-  const auto resume = CfiGenType(gen_sup, CoroEdge::Resume);
-  const auto destroy = CfiGenType(gen_sup, CoroEdge::Destroy);
-  ramp.setMetadata(kCfiCoroMd, CfiMd(ramp.getContext(), {resume, destroy}));
-}
-
-auto spp::codegen::CfiFnCallBundles(
-  TypeRef const &fn_sup,
-  LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
-  return KcfiBundles(CfiFnType(fn_sup), ctx);
-}
-
-auto spp::codegen::CfiGenCallBundles(
-  TypeRef const &gen_sup, const CoroEdge edge,
-  LlvmCtx const *ctx) -> Vec<llvm::OperandBundleDef> {
-  return KcfiBundles(CfiGenType(gen_sup, edge), ctx);
 }
 
 auto spp::codegen::BuildFnValue(
@@ -297,7 +94,7 @@ auto spp::codegen::BuildFnValue(
   // forwards everything else to the function unchanged. One
   // function can be the value of two function types, which are
   // two types to call it as, so the thunk is per type.
-  const auto module = GetEmissionModule(*ctx);
+  const auto module = ctx->Module.get();
   const auto callee = GetOrAddTargetIntoCurrentModule(target, *module);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
   auto type_hex = Str(8, '0');
@@ -329,16 +126,6 @@ auto spp::codegen::BuildFnValue(
   return llvm::ConstantStruct::get(llvm::StructType::get(*ctx->Context, {ptr_ty, ptr_ty}), fields);
 }
 
-auto spp::codegen::GetEmissionModule(
-  LlvmCtx const &ctx) -> llvm::Module* {
-  // Outside a function body (a "cmp" initializer, say) there is
-  // nothing being emitted into, so the context's own module is
-  // the only answer.
-  const auto insert_bb = ctx.Builder.GetInsertBlock();
-  if (insert_bb == nullptr or insert_bb->getParent() == nullptr) { return ctx.Module.get(); }
-  return insert_bb->getParent()->getParent();
-}
-
 auto spp::codegen::ClosureEnvType(
   Vec<llvm::Type*> const &capture_tys, const StrView name,
   LlvmCtx const *ctx) -> llvm::StructType* {
@@ -358,9 +145,9 @@ auto spp::codegen::EmitNewClosureEnv(
   }
   else {
     const auto size_ty = TargetSizeType(*ctx->Context);
-    const auto malloc_fn = GetEmissionModule(*ctx)->getOrInsertFunction(
+    const auto malloc_fn = ctx->Module->getOrInsertFunction(
       "sppc_malloc", llvm::FunctionType::get(llvm::PointerType::get(*ctx->Context, 0), {size_ty}, false));
-    const auto size = GetEmissionModule(*ctx)->getDataLayout().getTypeAllocSize(env_ty).getFixedValue();
+    const auto size = ctx->Module->getDataLayout().getTypeAllocSize(env_ty).getFixedValue();
     env = ctx->Builder.CreateCall(malloc_fn, {llvm::ConstantInt::get(size_ty, size)}, Str(name) + ".heap");
   }
 
@@ -402,18 +189,12 @@ auto spp::codegen::EmitReleaseClosureEnv(
 
   builder.SetInsertPoint(free_bb);
   const auto ptr_ty = llvm::PointerType::get(*ctx->Context, 0);
-  const auto llvm_free = GetEmissionModule(*ctx)->getOrInsertFunction(
+  const auto llvm_free = ctx->Module->getOrInsertFunction(
     "sppc_free", llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false));
   builder.CreateCall(llvm_free, {env});
   builder.CreateBr(done_bb);
 
   builder.SetInsertPoint(done_bb);
-}
-
-auto spp::codegen::StampCfiClosureEnvDrop(
-  llvm::Function &fn) -> void {
-  // Every capture destructor has the one type, so one checks as another.
-  fn.setMetadata(kCfiMd, CfiMd(fn.getContext(), {CfiClosureEnvDropType()}));
 }
 
 auto spp::codegen::EmitDropClosureEnv(
@@ -437,7 +218,7 @@ auto spp::codegen::EmitDropClosureEnv(
   builder.SetInsertPoint(call_bb);
   builder.CreateCall(
     llvm::FunctionType::get(llvm::Type::getVoidTy(*ctx->Context), {ptr_ty}, false), drop_captures, {env},
-    KcfiBundles(CfiClosureEnvDropType(), ctx));
+    CfiClosureEnvDropCallBundles(ctx));
   builder.CreateBr(done_bb);
 
   builder.SetInsertPoint(done_bb);

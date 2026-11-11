@@ -9,7 +9,7 @@ import spp.lex.tokens;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TokenAst);
+use_common(TokenAst);
 use(spp::asts, struct TypeIdentifierAst);
 
 /// A low level token created by the lexer, such as "=" or "+"

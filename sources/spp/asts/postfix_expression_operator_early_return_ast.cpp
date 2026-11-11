@@ -7,6 +7,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.type_resolution;
 import spp.asts.case_expression_ast;
@@ -23,7 +24,6 @@ import spp.asts.identifier_ast;
 import spp.asts.inner_scope_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -37,44 +37,50 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ice;
-import spp.utils.uid;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
-PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
+spp::asts::PostfixExpressionOperatorEarlyReturnAst::PostfixExpressionOperatorEarlyReturnAst(
   decltype(TokQst) &&tok_qst) :
   TokQst(std::move(tok_qst)),
   _TransformedExpr(nullptr) {
 }
 
-PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
+spp::asts::PostfixExpressionOperatorEarlyReturnAst::~PostfixExpressionOperatorEarlyReturnAst() = default;
 
-auto PostfixExpressionOperatorEarlyReturnAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosStart() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosStart();
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::PosEnd() const -> std::size_t {
   // Use the "?" token.
   return TokQst->PosEnd();
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<PostfixExpressionOperatorEarlyReturnAst>(
     AstClone(TokQst));
   ast->_TransformedExpr = _TransformedExpr;
   return ast;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokQst);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
-  IMPORT_UTILS_AND_UID;
+  IMPORT_UTILS;
 
   // A deferred expression runs at the exits of its scope,
   // so the "ret" this lowers to would have to be emitted at
@@ -84,17 +90,14 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     meta->WithinDeferTok != nullptr,
     ERR_ARGS(*meta->WithinDeferTok, *this));
 
-  const auto uid = "." + Uid();
-  auto temp_name = MakeShared<IdentifierAst>(PosStart(), "$temp" + uid);
-
-  // Build the materializing left-hand-side to contain the
-  // lhs of the postfix expression.
+  // The operand is read three times (whether it holds a value, then the value
+  // or the residual), so is evaluated once with hoisting: a place where it is,
+  // anything else into a temporary, placed in the lowering's own scope (below).
   SPP_ASSERT(WrittenOperand != nullptr);
-  auto lhs_copy = std::move(WrittenOperand);
-
-  auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
-  auto let_stmt = MakeUnique<LetStatementInitializedAst>(
-    nullptr, std::move(temp_var), nullptr, nullptr, std::move(lhs_copy));
+  auto hoisted = expr_utils::HoistOnce(*WrittenOperand, "$try", sm, meta, false);
+  const auto read = [&]() -> Unique<ExpressionAst> {
+    return hoisted.Name != nullptr ? AstClone(hoisted.Name) : AstClone(WrittenOperand);
+  };
 
   // Test for if the `Try`-superimposed type is in the value
   // state or not.
@@ -102,7 +105,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_is_value"));
   is_value_field->Source.OriginalExpr = this;
   auto is_value_target = MakeUnique<PostfixExpressionAst>(
-    MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(is_value_field));
+    read(), std::move(is_value_field));
   auto is_value_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     nullptr, nullptr, nullptr);
   is_value_call->Source.OriginalExpr = this;
@@ -117,7 +120,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_value"));
   output_field->Source.OriginalExpr = this;
   auto output_target = MakeUnique<PostfixExpressionAst>(
-    MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(output_field));
+    read(), std::move(output_field));
   auto output_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     nullptr, nullptr, nullptr);
   output_call->Source.OriginalExpr = this;
@@ -134,7 +137,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
     nullptr, MakeUnique<IdentifierAst>(PosStart(), "op_as_residual"));
   residual_field->Source.OriginalExpr = this;
   auto residual_target = MakeUnique<PostfixExpressionAst>(
-    MakeUnique<IdentifierAst>(PosStart(), temp_name->Val), std::move(residual_field));
+    read(), std::move(residual_field));
   auto residual_call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
     nullptr, nullptr, nullptr);
   residual_call->Source.OriginalExpr = this;
@@ -170,7 +173,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   // into the surrounding one and the whole lowering has a single
   // AST for the later stages to forward to.
   auto members = Vec<Unique<StatementAst>>();
-  members.emplace_back(std::move(let_stmt));
+  if (hoisted.Let != nullptr) { members.emplace_back(std::move(hoisted.Let)); }
   members.emplace_back(std::move(case_expr));
 
   _TransformedExpr = MakeUnique<InnerScopeExpressionAst>(
@@ -183,13 +186,13 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   const auto _meta_guard = MetaGuard(meta);
   meta->AssignmentTargetType = nullptr;
@@ -197,13 +200,13 @@ auto PostfixExpressionOperatorEarlyReturnAst::Stage11_CodeGen(
   return llvm_val;
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the lowered form.
   _TransformedExpr->EvaluateCompTime(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::InferType(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -221,7 +224,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferType(
   return TypeInferrableAst::InferType(sm, meta);
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The try type's "Value" is read off the type's arguments,
   // so only the transformed expression is forwarded.
@@ -240,7 +243,7 @@ auto PostfixExpressionOperatorEarlyReturnAst::InferTypeRef(
     "early return").Symbol->TypeArgRef("Value");
 }
 
-auto PostfixExpressionOperatorEarlyReturnAst::RebuildsOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorEarlyReturnAst::RebuildsOperand() const -> bool {
   // The "case" is built from the "?" operand.
   return true;
 }

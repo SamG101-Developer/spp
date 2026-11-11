@@ -36,6 +36,16 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 namespace spp::asts {
   namespace {
@@ -75,7 +85,7 @@ namespace spp::asts {
   }
 }
 
-CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
+spp::asts::CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
   decltype(Type) type,
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
@@ -93,9 +103,9 @@ CasePatternVariantDestructureObjectAst::CasePatternVariantDestructureObjectAst(
     this->TokR, lex::SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
+spp::asts::CasePatternVariantDestructureObjectAst::~CasePatternVariantDestructureObjectAst() = default;
 
-auto CasePatternVariantDestructureObjectAst::FromType(
+auto spp::asts::CasePatternVariantDestructureObjectAst::FromType(
   Shared<TypeAst> const &type) -> Unique<CasePatternVariantDestructureObjectAst> {
   // Build a destructure from a type, ie from "T" to make
   // "T()" for "case x of { T() { ... } }"
@@ -104,17 +114,17 @@ auto CasePatternVariantDestructureObjectAst::FromType(
     type, nullptr, std::move(empty_elems), nullptr);
 }
 
-auto CasePatternVariantDestructureObjectAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureObjectAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return Type->PosStart();
 }
 
-auto CasePatternVariantDestructureObjectAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureObjectAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR->PosEnd();
 }
 
-auto CasePatternVariantDestructureObjectAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantDestructureObjectAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CasePatternVariantDestructureObjectAst>(
     AstClone(Type),
@@ -125,7 +135,7 @@ auto CasePatternVariantDestructureObjectAst::Clone() const -> Unique<Ast> {
   return c;
 }
 
-auto CasePatternVariantDestructureObjectAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantDestructureObjectAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Type);
   SPP_STRING_APPEND(TokL);
@@ -134,14 +144,14 @@ auto CasePatternVariantDestructureObjectAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
+auto spp::asts::CasePatternVariantDestructureObjectAst::BindsByMove() const -> bool {
   // A destructure binds if any of its elements does. An
   // empty one, or one made only of skips, is a shape test
   // and takes nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
+auto spp::asts::CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -189,7 +199,7 @@ auto CasePatternVariantDestructureObjectAst::Stage7_AnalyseSemantics(
   AnalyseDestructure(mapped_cond, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
+auto spp::asts::CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -209,7 +219,7 @@ auto CasePatternVariantDestructureObjectAst::Stage8_CheckMemory(
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
+auto spp::asts::CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Whether the subject holds what this pattern names is the
   // "case"'s plan's to check ("PatternSolver"); this points the
@@ -291,10 +301,12 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
       // not one member, so it binds the value re-tagged as that
       // narrower variant.
       if (not tag.has_value()) {
-        const auto [is_member, narrowed] = codegen::NarrowVariant(
+        // The pattern's tag check has already tested that the subject
+        // holds one of the pattern's members.
+        const auto narrowed = codegen::NarrowVariant(
           current_ptr, TypeRef::Of(*subject_type->WithoutConvention(), *sm->CurrentScope),
           pattern_ref.WithoutConvention(), *sm->CurrentScope, "case.pattern.narrow" + level_uid, ctx);
-        if (is_member != nullptr) { current_ptr = narrowed; }
+        if (narrowed != nullptr) { current_ptr = narrowed; }
         break;
       }
 
@@ -332,7 +344,7 @@ auto CasePatternVariantDestructureObjectAst::Stage11_CodeGen(
   return llvm::ConstantInt::getTrue(*ctx->Context);
 }
 
-auto CasePatternVariantDestructureObjectAst::EvaluateCompTime(
+auto spp::asts::CasePatternVariantDestructureObjectAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // The narrowed subject holds the subject's comptime value: it
   // was copied at stage 7, before the subject had one, and the
@@ -350,7 +362,7 @@ auto CasePatternVariantDestructureObjectAst::EvaluateCompTime(
   EvaluateCompTimeDestructure(sm, meta);
 }
 
-auto CasePatternVariantDestructureObjectAst::ConvToVar(
+auto spp::asts::CasePatternVariantDestructureObjectAst::ConvToVar(
   CompilerMetaData *meta) -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.
@@ -366,7 +378,7 @@ auto CasePatternVariantDestructureObjectAst::ConvToVar(
   return var;
 }
 
-auto CasePatternVariantDestructureObjectAst::_DeclareFlowSymbol(
+auto spp::asts::CasePatternVariantDestructureObjectAst::_DeclareFlowSymbol(
   ScopeManager &sm) const -> void {
   // Every walk declares the narrowed subject where the pattern
   // is, as Stage 7 did: a binding of the same name after it

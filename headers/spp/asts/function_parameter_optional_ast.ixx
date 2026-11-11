@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterOptionalAst);
+use_common(FunctionParameterOptionalAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TokenAst);
 

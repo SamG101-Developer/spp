@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(IsExpressionAst);
+use_common(IsExpressionAst);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct CaseExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);

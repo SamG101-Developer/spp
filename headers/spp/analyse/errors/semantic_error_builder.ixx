@@ -16,8 +16,9 @@ import std;
 
 use(spp::asts, struct Ast);
 use(spp::asts, struct TypeAst);
-use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
+
+use_alias(spp::analyse::scopes, Scope);
 
 namespace spp::analyse::errors {
   MSVC_DEVCOM_11096133_CONSTRAINT_LEXICAL_EQ
@@ -117,6 +118,7 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
   /// then uses the abstract raise function.
   SPP_ATTR_COLD SPP_ATTR_NORETURN auto Raise() -> void override {
     const auto cast_error = dynamic_cast<SemanticError*>(this->_ErrObj.get());
+    _AddInstantiatedFrom(*cast_error);
 
     // Each block that quotes source (an error and its context) is
     // quoted through the file its ast was parsed from, which its
@@ -164,6 +166,24 @@ struct spp::analyse::errors::SemanticErrorBuilder final :
 private:
   /// List of sub-errors (the failed overloads of a call).
   Vec<Str> _SubErrors;
+
+  /// Show where the instantiation the error was raised in was asked for ("InstantiatedFrom"), before the footer,
+  /// unless a block already quotes that file (one formatter per file) or no file holds the site.
+  static auto _AddInstantiatedFrom(SemanticError &error) -> void {
+    using spp::utils::errors::ErrorFormatter;
+    auto const *const site = InstantiatedFrom();
+    auto const *const site_file = site != nullptr ? ErrorFormatter::Owning(site) : nullptr;
+    if (site_file == nullptr) { return; }
+
+    auto footer = error.ErrorInfo.end();
+    for (auto it = error.ErrorInfo.begin(); it != error.ErrorInfo.end(); ++it) {
+      const auto quotes = it->Ast != nullptr
+        and (it->Kind == ErrorInformationKind::ERROR or it->Kind == ErrorInformationKind::CONTEXT);
+      if (quotes and ErrorFormatter::Owning(it->Ast) == site_file) { return; }
+      if (it->Kind == ErrorInformationKind::FOOTER and footer == error.ErrorInfo.end()) { footer = it; }
+    }
+    error.ErrorInfo.insert(footer, {.Ast = site, .Kind = ErrorInformationKind::CONTEXT, .Tag = "Instantiated here", .Msg = ""});
+  }
 
   static auto _StringifyErrorInformation(
     spp::utils::errors::ErrorFormatter *formatter,

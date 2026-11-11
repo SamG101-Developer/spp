@@ -4,7 +4,8 @@
 # read back as the member it was, and a named function must call that function, at every slot a value can land in:
 # "let", "ret", an assignment, an argument, a default argument, an attribute, an attribute assignment, a "gen", a send
 # value, a "case" branch (assigned and as an argument), a closure's body and its "ret"s, a loop's "exit" and "else", an
-# array element (written out and repeated), a tuple element, and a "cmp" (a constant). gtest builds and verifies these;
+# array element (written out and repeated), a tuple element, a "cmp" (a constant), and a "gen self" forwarded through
+# "FwdRef" to a borrow of a variant (open-bugs #54). gtest builds and verifies these;
 # only running them shows a value copied into the slot untagged, or a call through a function value that was never
 # built.
 #
@@ -43,6 +44,11 @@ check_program() {
     local dir="${WORK}/${name}-${mode}"
     new_project "${dir}"
     printf '%s\n\n%s\n' "${PRELUDE}" "${body}" > "${dir}/src/main.spp"
+    shift 4
+    while (( $# >= 2 )); do
+        printf '%s\n' "$2" > "${dir}/src/$1"
+        shift 2
+    done
     if ! build_project "${name} [${mode}]" "${dir}" "${mode}"; then
         failures=$((failures + 1))
         return
@@ -405,6 +411,161 @@ fun main() -> Void {
     let a: [FunRef[(U64,), U64]; 1_uz] = [ident]
     show(call_ref(a[0_uz]) + 2_u64)
 }'
+
+# A "gen self" forwarded through "FwdRef" yields a borrow of the variant, a pointer: nothing to coerce. Through a
+# wrapper of the test's own, and through std's "Single::get_ref". The return type was read without its convention, so
+# the pointer was coerced into the variant by value, an ICE (open-bugs #54).
+read -r -d '' FWD_VARIANT <<'BODY'
+cls Holder { !public inner: Opt[U64] }
+
+sup Holder ext std::ops::fwd::FwdRef[Opt[U64]] {
+    cor fwd_ref(&self) -> std::generator::GenOnce[&Opt[U64]] {
+        gen &self.inner
+    }
+}
+
+sup Holder {
+    !public cor get(&self) -> std::generator::GenOnce[&Opt[U64]] {
+        gen self
+    }
+}
+
+fun main() -> Void {
+    let h = Holder(inner=Some(val=37_u64))
+    showo(h.get()@)
+    std::mem::ops::drop(h)
+    let s = std::single::Single[Opt[U64]]::new(Some(val=38_u64))
+    showo(s.get_ref()@)
+    std::mem::ops::drop(s)
+    let n = std::single::Single[Opt[U64]]::new(None)
+    showo(n.get_ref()@)
+    std::mem::ops::drop(n)
+}
+BODY
+
+for mode in dev rel; do
+    check_program "gen-fwd-ref-variant" "${mode}" "${FWD_VARIANT}" "$(printf '37\n38\nnone')"
+done
+
+# A borrow yielded ("gen &x") into a variant holding it ("&U64 or None") is wrapped as that member, in a lowered
+# "GenOnce" and in a coroutine, and a plain borrow yield is the address (open-bugs #49: an ICE, then a wrong value).
+read -r -d '' GEN_BORROW <<'BODY'
+cls BorrowHolder { !public val: U64 }
+
+sup BorrowHolder ext std::copy::Copy { }
+
+sup BorrowHolder {
+    !public cor once(&self) -> std::iterator::Indexed[&U64 or None] {
+        gen &self.val
+    }
+    !public cor many(&self) -> std::generator::Gen[&U64 or None] {
+        gen &self.val
+        gen None
+    }
+    !public cor plain(&self) -> std::generator::Gen[&U64] {
+        gen &self.val
+    }
+}
+
+fun main() -> Void {
+    let h = BorrowHolder(val=39_u64)
+    let r = h.once()
+    case r of {
+        is &U64(..) { show(r@) }
+        else { std::console::println("none") }
+    }
+    let mut m = h.many()
+    let a = m.res()
+    case a of {
+        is &U64(..) { show(a@) }
+        else { std::console::println("other") }
+    }
+    let b = m.res()
+    case b of {
+        is &U64(..) { show(b@) }
+        else { std::console::println("other") }
+    }
+    std::mem::ops::drop(m)
+    let mut p = h.plain()
+    let c = p.res()
+    case c of {
+        is &U64(..) { show(c@) }
+        else { std::console::println("other") }
+    }
+    std::mem::ops::drop(p)
+}
+BODY
+
+for mode in dev rel; do
+    check_program "gen-borrow-into-variant" "${mode}" "${GEN_BORROW}" "$(printf '39\n39\nother\n39')"
+done
+
+# A borrow of a variant ("&Opt[U64]", from "iter_ref" over a "Vec[Opt[U64]]") is one member of the variant a resume
+# gives ("GenDone or &Opt[U64]"), a pointer: flattened into it as "GenDone or None or Some[U64]", the borrow was lost and
+# reading an element read its tag as an address (SPP-STL's "test_iter_ref_over_variant_elements_yields_valid_borrows").
+read -r -d '' ITER_REF_VARIANTS <<'BODY'
+fun main() -> Void {
+    let mut v = Vec[Opt[U64]]::new()
+    v.append(Some(val=40_u64))
+    v.append(None)
+    v.append(Some(val=2_u64))
+    let mut total = 0_u64
+    let mut nones = 0_u64
+    loop x in v.iter_ref() {
+        case x@ of {
+            is Some[U64](val) { total += val }
+            else { nones += 1_u64 }
+        }
+    }
+    show(total)
+    show(nones)
+    std::mem::ops::drop(v)
+}
+BODY
+
+for mode in dev rel; do
+    check_program "iter-ref-over-variants" "${mode}" "${ITER_REF_VARIANTS}" "$(printf '42\n1')"
+done
+
+# A pattern two levels deep reads the payload of the member the tag names. The tag is the member's place in the
+# variant's identity order ("GetVariantIndexOfMember"), but the next level was read off the members in their written
+# order ("type_members::VariantMembers", sorted by qualified name), and the two orders differ when a type's module sorts
+# before another's but its name after ("a::Zed" and "b::Apple"): the walk took the other member and bound the wrong
+# bytes (open-bugs.md #56, fixed: the identity alone orders a variant's members, N14.8).
+read -r -d '' TAG_ORDER_A <<'BODY'
+!public
+cls Zed[T] {
+    !public
+    v: T
+}
+
+sup [T: Copy] Zed[T] ext Copy { }
+BODY
+
+read -r -d '' TAG_ORDER_B <<'BODY'
+!public
+cls Apple[T] {
+    !public
+    v: T
+}
+
+sup [T: Copy] Apple[T] ext Copy { }
+BODY
+
+read -r -d '' TAG_ORDER <<'BODY'
+fun main() -> Void {
+    let x: a::Zed[Opt[Bool]] or b::Apple[Opt[U64]] = b::Apple(v=Some(val=7_u64))
+    let r = case x of {
+        is b::Apple[Some[U64]](v) { v.val }
+        else { 0_u64 }
+    }
+    show(r)
+}
+BODY
+
+for mode in dev rel; do
+    check_program "nested-pattern-tag-order" "${mode}" "${TAG_ORDER}" "7" a.spp "${TAG_ORDER_A}" b.spp "${TAG_ORDER_B}"
+done
 
 fn_case "distinct-fns-in-array" '
 fun main() -> Void {

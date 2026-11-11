@@ -7,7 +7,7 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentKeywordAst);
+use_common(ObjectInitializerArgumentKeywordAst);
 use(spp::asts, struct TokenAst);
 
 /// A keyword argument in an object initializer. It forces the

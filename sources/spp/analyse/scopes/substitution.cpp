@@ -5,7 +5,6 @@ module spp.analyse.scopes.substitution;
 import spp.analyse.scopes.comp_key;
 import spp.analyse.scopes.type_key;
 import spp.analyse.utils.comp_generics;
-import spp.asts.generate.common_types_precompiled;
 import spp.utils.ice;
 import spp.utils.types;
 import genex;
@@ -60,58 +59,16 @@ namespace spp::analyse::scopes {
     auto RewriteCompId(CompId id, GenericSubst const &subst, TypeId subst_id) -> CompId;
 
     /// [CHECKED]
-    /// The elements a type pack standing as one element is
-    /// spread into: the arguments of the tuple it is bound to.
-    /// 0 elements for a 0-tuple, vs nullopt for not a tuple.
-    /// The "Tup" template, from the cache "StampPrecompiledTypes"
-    /// fills in stage 3 (a substitution has no scope to search).
-    auto TupTemplate() -> void const* {
-      using namespace asts::generate::common_types_precompiled;
-      if (TUP == nullptr) { return nullptr; }
-      const auto hit = TEMPLATE_SYMBOLS.find(TUP.get());
-      return hit != TEMPLATE_SYMBOLS.end() ? hit->second.second : nullptr;
-    }
-
-    auto SpreadTypePack(
-      const TypeId written, GenericSubst const &subst) -> Opt<Vec<TypeId>> {
-      // Get the head, and if it is not a type parameter,
-      // if it has a convention, or not in the known packs,
-      // then return nullopt.
-      auto const &head = HeadOf(written);
-      if (head.Kind != TypeKey::Tag::TypeParam or head.Conv != 0 or not
-        genex::contains(subst.TypePackParams, head.TypeParamId)) {
-        return Nullopt;
-      }
-
-      // Read what the pack is bound to by its head: bare "Tup"
-      // spreads into no elements, an "Inst" into its arguments,
-      // and anything else (another class) is not a tuple.
-      const auto bound = BoundTypeOf(subst, head.TypeParamId);
-      if (bound == nullptr) { Ice("type pack parameter listed in a substitution with no bound type"); }
-      auto elems = Vec<TypeId>();
-      if (HeadOf(bound).Kind == TypeKey::Tag::Symbol) {
-        return HeadOf(bound).Ptr == TupTemplate() ? Opt(elems) : Nullopt;
-      }
-      if (HeadOf(bound).Kind != TypeKey::Tag::Inst) { return Nullopt; }
-      for (auto const &arg : ArgsOf(HeadOf(bound).Args)) {
-        if (arg.Named or arg.TypeVal == nullptr) { return Nullopt; }
-        elems.push_back(arg.TypeVal);
-      }
-      return elems;
-    }
-
-    /// [CHECKED]
     /// An instantiation's arguments ("ArgsOf") rewritten, keyed as "Scope::ArgsIdOf" keys them: each named or
-    /// positional, a type part or a comp identity ("RewriteCompId"). A type pack standing as one positional argument
-    /// is spread into the elements it is bound to, and the positions after it move along by the elements it added.
+    /// positional, a type part or a comp identity ("RewriteCompId"). A type pack's argument is its list, which splices
+    /// the packs bound in it ("RewriteTypeId").
     auto RewriteArgsId(const TypeId args, GenericSubst const &subst, const TypeId subst_id) -> TypeId {
       auto out = TypeKey();
-      auto shift = static_cast<std::uint64_t>(0);
       // From the interned type id of the args, pull the type
       // id args out and iterate them.
       for (auto const &arg : ArgsOf(args)) {
         const auto tag = arg.Named ? TypeKey::Tag::Arg : TypeKey::Tag::Pos;
-        const auto at = arg.Named ? arg.Slot : arg.Slot + shift;
+        const auto at = arg.Slot;
 
         // For a generic comp arg, rewrite the comp id, and
         // push the tag+name and value. Handles positional,
@@ -124,23 +81,8 @@ namespace spp::analyse::scopes {
           continue;
         }
 
-        // If it is not named, we are dealing with a positional
-        // type argument. For variadics, this needs handling to
-        // extract the pack elements and push them all in.
-        if (not arg.Named) {
-          if (const auto elems = SpreadTypePack(arg.TypeVal, subst); elems.has_value()) {
-            for (auto i = 0uz; i < elems->size(); ++i) {
-              out.Push(TypeKey::Tag::Pos, at + i);
-              out.PushTypePart((*elems)[i]);
-            }
-            shift += elems->size() - 1;
-            continue;
-          }
-        }
-
-        // The final case is a type arg that's either named, or
-        // a positional non-pack (unlikely to even exist). Do a
-        // standard rewrite, and tag+name and part push.
+        // A type argument: a standard rewrite, and tag+name and
+        // part push.
         const auto part = RewriteTypeId(arg.TypeVal, subst, subst_id);
         if (part == nullptr) { return nullptr; }
         out.Push(tag, at);
@@ -153,20 +95,19 @@ namespace spp::analyse::scopes {
     /// A type identity rewritten part by part under "subst"
     /// (the type twin of "RewriteCompId"), memoised per ("id",
     /// "subst") once nothing in it is unresolved. Branches on
-    /// the kind of its head ("HeadOf").
+    /// the kind of its head ("HeaderOf").
     auto RewriteTypeId(const TypeId id, GenericSubst const &subst, const TypeId subst_id) -> TypeId {
       auto &memo = TypeMemo();
       if (const auto hit = memo.find({id, subst_id}); hit != memo.end()) { return hit->second; }
 
       const auto rewritten = [&]() -> TypeId {
-        auto const &head = HeadOf(id);
+        auto const &head = HeaderOf(id);
         switch (head.Kind) {
           // For type parameters ("Self" is 0), use the bound type
           // function so that the cache is reused (indexed with
           // interning), otherwise return the id back. Handle the
           // convention if there is one.
-          case TypeKey::Tag::TypeParam:
-          case TypeKey::Tag::TypeBound: {
+          case TypeKey::Tag::TypeParam: {
             const auto bound = BoundTypeOf(subst, head.TypeParamId);
             if (bound == nullptr) { return id; }
             if (head.Conv == 0) { return bound; }
@@ -196,11 +137,11 @@ namespace spp::analyse::scopes {
             }
             const auto args = RewriteArgsId(head.Args, subst, subst_id);
             if (args == nullptr) { return nullptr; }
+            const auto inst = InstanceIdOfArgs(*head.Symbol(), args);
+            if (head.Conv == 0) { return inst; }
             auto key = TypeKey();
-            if (head.Conv != 0) { key.Push(TypeKey::Tag::Conv, head.Conv); }
-            key.Push(TypeKey::Tag::Inst);
-            key.PushSymbol(head.Symbol());
-            key.PushKey(*args);
+            key.Push(TypeKey::Tag::Conv, head.Conv);
+            key.PushSpliced(*inst);
             return InternTypeKey(std::move(key));
           }
 
@@ -213,23 +154,14 @@ namespace spp::analyse::scopes {
             for (const auto written : head.VariantMembers) {
               const auto member = RewriteTypeId(written, subst, subst_id);
               if (member == nullptr) { return nullptr; }
-              auto const &member_head = HeadOf(member);
+              auto const &member_head = HeaderOf(member);
 
-              // A pack member ("Var[Variants]") bound to its tuple is the tuple's elements.
-              auto const &written_head = HeadOf(written);
-              const auto is_pack = written_head.Kind == TypeKey::Tag::TypeParam and written_head.Conv == 0
-                and genex::contains(subst.TypePackParams, written_head.TypeParamId);
-              auto flat = member_head.Kind == TypeKey::Tag::Variant and member_head.Conv == 0
+              // A pack member ("Var[Variants]") bound to its list is the list's elements.
+              const auto flat = member_head.Kind == TypeKey::Tag::Pack
+                ? member_head.PackElements
+                : member_head.Kind == TypeKey::Tag::Variant and member_head.Conv == 0
                 ? member_head.VariantMembers
                 : Vec{member};
-              if (is_pack and member != written) {
-                flat.clear();
-                if (member_head.Args != nullptr) {
-                  for (auto const &arg : ArgsOf(member_head.Args)) {
-                    if (arg.TypeVal != nullptr) { flat.push_back(arg.TypeVal); }
-                  }
-                }
-              }
               for (const auto m : flat) {
                 if (not genex::contains(members, m)) { members.push_back(m); }
               }
@@ -241,6 +173,20 @@ namespace spp::analyse::scopes {
             key.PushSymbol(head.Symbol());
             for (const auto m : members) { key.PushTypePart(m); }
             return InternTypeKey(std::move(key));
+          }
+
+          // A type pack's list: each element rewritten, one bound to
+          // a list of its own ("Tup[A, Ts]" with "Ts" bound to "B, C")
+          // spliced in.
+          case TypeKey::Tag::Pack: {
+            auto elems = Vec<TypeId>();
+            for (const auto written : head.PackElements) {
+              const auto elem = RewriteTypeId(written, subst, subst_id);
+              if (elem == nullptr) { return nullptr; }
+              if (HeaderOf(elem).Kind == TypeKey::Tag::Pack) { elems.append_range(HeaderOf(elem).PackElements); }
+              else { elems.push_back(elem); }
+            }
+            return PackIdOf(elems);
           }
           default:
             return nullptr;
@@ -296,21 +242,24 @@ namespace spp::analyse::scopes {
             return bound != nullptr ? bound : id;
           }
 
-          // For packs, recursively iterate through the pack's
-          // elements and rewrite them.
-          case CompKey::Part::Pack: {
+          // For a comp pack's list, or a tuple, rewrite each
+          // element; one bound to a pack's list is spliced in, as
+          // a type pack's is ("RewriteTypeId").
+          case CompKey::Part::Pack:
+          case CompKey::Part::Tuple: {
             auto elems = Vec<CompId>();
             for (const auto elem : id->Kids) {
               const auto value = RewriteCompId(elem, subst, subst_id);
               if (value == nullptr) { return nullptr; }
-              if (elem->Kind == CompKey::Part::Param and genex::contains(subst.CompPackParams, elem->ParamId)
-                and value->Kind == CompKey::Part::Pack) {
+              if (IsPackCompId(value)) {
                 elems.insert(elems.end(), value->Kids.begin(), value->Kids.end());
                 continue;
               }
               elems.push_back(value);
             }
-            return InternCompKey(CompKey::OfPack(std::move(elems)));
+            return InternCompKey(IsPackCompId(id)
+              ? CompKey::OfPack(std::move(elems))
+              : CompKey::OfTuple(std::move(elems)));
           }
 
           // For the binary operator, rewrite the left- and
@@ -350,23 +299,20 @@ namespace spp::analyse::scopes {
       types |= genex::actions::sort;
       comps |= genex::actions::sort;
 
-      // Create an empty type key, and push the type
-      // parameters, and then the comp parameters, into it.
+      // Each binding as an argument, "[Arg param]" then its value:
+      // the types, then the comp values. A parameter's id is unique
+      // across both kinds, and the value's own tag ("TypeId" or
+      // "CompId") says which a binding is. Intern the result (an
+      // identity that is no type: only a memo's key).
       auto key = TypeKey();
       for (auto const &[param, type] : types) {
-        key.Push(TypeKey::Tag::TypeParam, param);
+        key.Push(TypeKey::Tag::Arg, param);
         key.PushTypeId(type);
       }
       for (auto const &[param, value] : comps) {
-        key.Push(TypeKey::Tag::CompParam, param);
+        key.Push(TypeKey::Tag::Arg, param);
         key.PushCompId(value);
       }
-
-      // Finally, push the type and comp pack parameters
-      // into it, for the variadic management. Intern
-      // the result.
-      for (const auto pack : subst.TypePackParams) { key.Push(TypeKey::Tag::TypePack, pack); }
-      for (const auto pack : subst.CompPackParams) { key.Push(TypeKey::Tag::CompPack, pack); }
       return InternTypeKey(std::move(key));
     }
   }

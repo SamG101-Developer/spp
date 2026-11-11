@@ -8,7 +8,7 @@ import spp.asts.case_pattern_variant_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantDestructureSkipMultipleArgumentsAst);
+use_common(CasePatternVariantDestructureSkipMultipleArgumentsAst);
 use(spp::asts, struct CasePatternVariantSingleIdentifierAst);
 use(spp::asts, struct LocalVariableAst);
 use(spp::asts, struct TokenAst);

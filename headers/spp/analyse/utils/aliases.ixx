@@ -14,26 +14,32 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeStatementAst);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::aliases {
-  /// What a type statement names: its immediate target as written,
-  /// arguments named (an alias of an alias names that alias, read
-  /// through it by identity), the parameters of a target alias it
-  /// passes on, the scope the class at the end of the chain was
-  /// found in (where an instantiation is attached), and that class.
+  /// The result of resolving a type alias, moving through multiple aliasing
+  /// definitions, until a class type is reached. Include generics that need to
+  /// be attached, and scope+symbol trackers.
+  SPP_EXP_CLS struct AliasTarget {
+    Shared<TypeAst> DirectTarget;
+    Shared<GenericParameterGroupAst> AttachGenerics;
+    Scope* TrackingScope;
+    TypeSymbol* ResolvedSym;
+  };
+
+  /// What a type statement fully resolves to, including its target, all the
+  /// arguments named, the parameters of a target alias it passes on, etc.
   /// Rejects a cyclic chain.
   SPP_EXP_FUN auto StatementTarget(
-    TypeStatementAst const &alias_stmt, bool from_use_stmt, Scope *tracking_scope,
-    ScopeManager *sm, meta::CompilerMetaData *meta)
-    -> Tup<Shared<TypeAst>, Shared<GenericParameterGroupAst>, Scope*, TypeSymbol*>;
+    TypeStatementAst const &alias_stmt, bool from_use_stmt,
+    Scope const *tracking_scope, ScopeManager *sm, CompilerMetaData *meta)
+    -> AliasTarget;
 
-  /// What an alias's instantiation stands for, by identity: the
-  /// alias's target, its parameters replaced by the
-  /// instantiation's arguments, as its identity
+  /// What an alias's instantiation stands for, by identity: the alias's target,
+  /// its parameters replaced by the instantiation's arguments, as its identity
   /// ("Scope::InstanceIdOf") holds them ("Res[T=S32, E=Str]" is
-  /// "Pass[S32] or Fail[Str]"). "id" itself when it is filed under
-  /// the class it names rather than under "alias"; null when the
-  /// identity or the target has no such reading.
+  /// "Pass[S32] or Fail[Str]").
   SPP_EXP_FUN auto InstanceTargetIdOf(
     TypeSymbol const &alias, TypeId id) -> TypeId;
 }

@@ -24,7 +24,7 @@ ACTIONS = Path(".github/actions")
 
 HARDEN = "step-security/harden-runner@"
 DOWNLOAD = "actions/download-artifact@"
-IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?)?\b")
+IMAGE_IN_TEXT = re.compile(r"\b(?:ubuntu|macos|windows)-(?:latest|\d+(?:\.\d+)*)(?:-arm(?:64)?|-vs\d+)?\b")
 LINE = "__line__"
 
 findings = 0

@@ -35,8 +35,15 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-AssignmentStatementAst::AssignmentStatementAst(
+spp::asts::AssignmentStatementAst::AssignmentStatementAst(
   decltype(Lhs) &&lhs,
   decltype(TokAssign) &&tok_assign,
   decltype(Rhs) &&rhs) :
@@ -49,19 +56,19 @@ AssignmentStatementAst::AssignmentStatementAst(
     this->TokAssign, SppTokenType::TK_ASSIGN, "=");
 }
 
-AssignmentStatementAst::~AssignmentStatementAst() = default;
+spp::asts::AssignmentStatementAst::~AssignmentStatementAst() = default;
 
-auto AssignmentStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::AssignmentStatementAst::PosStart() const -> std::size_t {
   // Use the leftmost assignment target.
   return Lhs.front()->PosStart();
 }
 
-auto AssignmentStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::AssignmentStatementAst::PosEnd() const -> std::size_t {
   // Use the rightmost assignment value.
   return Rhs.back()->PosEnd();
 }
 
-auto AssignmentStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::AssignmentStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<AssignmentStatementAst>(
     AstCloneVec(Lhs),
@@ -69,7 +76,7 @@ auto AssignmentStatementAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Rhs));
 }
 
-auto AssignmentStatementAst::ToString() const -> Str {
+auto spp::asts::AssignmentStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Lhs, ", ");
   SPP_STRING_APPEND_RAW(" ");
@@ -79,7 +86,7 @@ auto AssignmentStatementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto AssignmentStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::AssignmentStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -173,7 +180,7 @@ auto AssignmentStatementAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto AssignmentStatementAst::Stage8_CheckMemory(
+auto spp::asts::AssignmentStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   using namespace spp::analyse::errors;
   using namespace spp::analyse::utils;
@@ -305,7 +312,7 @@ auto AssignmentStatementAst::Stage8_CheckMemory(
   }
 }
 
-auto AssignmentStatementAst::Stage11_CodeGen(
+auto spp::asts::AssignmentStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -389,7 +396,7 @@ auto AssignmentStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto AssignmentStatementAst::EvaluateCompTime(
+auto spp::asts::AssignmentStatementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 

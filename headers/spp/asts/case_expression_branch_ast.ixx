@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CaseExpressionBranchAst);
+use_common(CaseExpressionBranchAst);
 use(spp::analyse::utils::pattern_solver, struct MatchPlan);
 use(spp::asts, struct BinaryExpressionAst);
 use(spp::asts, struct CasePatternVariantAst);

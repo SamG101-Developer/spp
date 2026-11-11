@@ -59,6 +59,8 @@ paths = [
   ".github/workflows/_test.yaml",
   ".github/workflows/_lane.yaml",
   ".github/workflows/_coverage.yaml",
+  ".github/workflows/_benchmarks.yaml",
+  ".github/scripts/bench/*",
   ".github/actions/compile/*",
   ".github/actions/setup-runtime/*",
   ".github/actions/restore-mtimes/*",
@@ -67,7 +69,7 @@ paths = [
   ".github/scripts/test/plan-tests.sh",
   ".github/scripts/test/gtest.sh",
   ".github/scripts/test/stl-conformance.sh",
-  ".github/scripts/test/valgrind-groups.sh",
+  ".github/scripts/test/valgrind-conformance.sh",
   ".github/scripts/test/coverage-report.sh",
 ]
 include = ["toolchain"]
@@ -96,6 +98,15 @@ paths = [
 ]
 include = ["toolchain"]
 pinnable = true
+
+[gate.codeql_python]
+paths = [
+  "*.py",
+  ".github/codeql-config.yaml",
+  ".github/workflows/pr.yaml",
+  ".github/workflows/_analysis.yaml",
+]
+code = false
 
 [gate.sonar]
 paths = [

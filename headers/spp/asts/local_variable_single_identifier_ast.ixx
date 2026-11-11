@@ -9,13 +9,14 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableSingleIdentifierAst);
+use_common(LocalVariableSingleIdentifierAst);
 use(spp::asts, struct ConventionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct LocalVariableSingleIdentifierAliasAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TokenAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct VariableSymbol);
 
 /// A local variable defined by a single identifier, such as
@@ -59,11 +60,15 @@ SPP_EXP_CLS struct spp::asts::LocalVariableSingleIdentifierAst final : LocalVari
 
   SPP_ATTR_NODISCARD auto BindsByMove() const -> bool override;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage11_CodeGen(ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+  auto Stage11_CodeGen(
+    ScopeManager *sm, CompilerMetaData *meta,
+    LlvmCtx *ctx) -> llvm::Value* override;
 
   auto EvaluateCompTime(
     ScopeManager *sm, CompilerMetaData *meta) -> void override;

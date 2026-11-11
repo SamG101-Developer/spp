@@ -4,7 +4,7 @@ module;
 export module spp.asts.module_member_ast;
 import spp.asts.ast;
 
-SPP_AST_COMMON_FWD_DECL(ModuleMemberAst);
+use_common(ModuleMemberAst);
 
 /// The tag-based base class for all members of a module:
 /// CmpStatementAst, ClassPrototypeAst, FunctionPrototypeAst,

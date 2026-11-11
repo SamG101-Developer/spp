@@ -1,6 +1,5 @@
 module;
 #include <spp/macros.hpp>
-#include <spp/analyse/macros.hpp>
 
 module spp.asts.mixins.compiler_stages;
 import spp.analyse.errors.semantic_error;
@@ -9,69 +8,73 @@ import spp.analyse.scopes.scope_manager;
 import spp.asts.ast;
 import spp.codegen.llvm_ctx;
 
-use_ns(spp::analyse::utils);
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
-CompilerStages::CompilerStages() = default;
+spp::asts::mixins::CompilerStages::CompilerStages() = default;
 
-CompilerStages::~CompilerStages() = default;
+spp::asts::mixins::CompilerStages::~CompilerStages() = default;
 
-auto CompilerStages::Stage1_PreProcess(
+auto spp::asts::mixins::CompilerStages::Stage1_PreProcess(
   Ast *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage2_GenTopLvlScopes(
+auto spp::asts::mixins::CompilerStages::Stage2_GenTopLvlScopes(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage3_GenTopLvlAliases(
+auto spp::asts::mixins::CompilerStages::Stage3_GenTopLvlAliases(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage4_ResolveDeclarations(
+auto spp::asts::mixins::CompilerStages::Stage4_ResolveDeclarations(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage5_LoadSupScopes(
+auto spp::asts::mixins::CompilerStages::Stage5_LoadSupScopes(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage6_PreAnalyseSemantics(
+auto spp::asts::mixins::CompilerStages::Stage6_PreAnalyseSemantics(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage7_AnalyseSemantics(
+auto spp::asts::mixins::CompilerStages::Stage7_AnalyseSemantics(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage8_CheckMemory(
+auto spp::asts::mixins::CompilerStages::Stage8_CheckMemory(
   ScopeManager *,
   CompilerMetaData *)
   -> void {
   // Default behaviour: no actions.
 }
 
-auto CompilerStages::Stage10_PreCodeGen(
+auto spp::asts::mixins::CompilerStages::Stage10_PreCodeGen(
   ScopeManager *,
   CompilerMetaData *,
   LlvmCtx *)
@@ -80,7 +83,7 @@ auto CompilerStages::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto CompilerStages::Stage11_CodeGen(
+auto spp::asts::mixins::CompilerStages::Stage11_CodeGen(
   ScopeManager *,
   CompilerMetaData *,
   LlvmCtx *)

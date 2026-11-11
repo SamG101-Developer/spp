@@ -6,7 +6,7 @@ import spp.asts.ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionOperatorAst);
+use_common(TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorBorrowAst);

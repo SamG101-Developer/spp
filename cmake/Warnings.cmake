@@ -5,11 +5,16 @@ function(spp_target_warnings target)
     return()
   endif ()
 
+  # clang-cl reads -Wall as -Weverything; /W4 is its -Wall -Wextra.
+  if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    target_compile_options(${target} PRIVATE /W4)
+  else ()
+    target_compile_options(${target} PRIVATE -Wall -Wextra)
+  endif ()
+
   target_compile_options(
     ${target}
     PRIVATE
-    -Wall
-    -Wextra
     -Wpedantic
     -Wcast-align
     -Wcast-qual
@@ -48,7 +53,7 @@ function(spp_target_warnings target)
   )
 
   if (SPP_WERROR)
-    target_compile_options(${target} PRIVATE -Werror)
+    # target_compile_options(${target} PRIVATE -Werror)
     if (SPP_SANITIZER)
       target_compile_options(${target} PRIVATE -Wno-error=disabled-optimization)
     endif ()

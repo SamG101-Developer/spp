@@ -8,19 +8,19 @@ import spp.utils.types;
 import std;
 
 use(spp::parse::errors, struct SppSyntaxError);
-use(spp::parse::errors, template <typename T> struct SyntacticErrorBuilder);
+use(spp::parse::errors, (typename T) struct SyntacticErrorBuilder);
 use(spp::parse, class ParserBase);
 
-/// The base class for all parsers. This is so that we can
-/// have a consistent set of tools for parsing, and currently
-/// there is only the standard s++ parser, but will expand
-/// to possibly have a restricted "stub" parser for ffi stub
+/// The base class for all parsers. This is so that we can have a consistent set
+/// of tools for parsing, and currently there is only the standard s++ parser,
+/// but will expand to possibly have a restricted "stub" parser for ffi stub
 /// files.
 SPP_EXP_CLS class spp::parse::ParserBase {
 public:
   explicit ParserBase(
     Vec<lex::RawToken> tokens,
     Shared<utils::errors::ErrorFormatter> const &error_formatter = nullptr);
+
   virtual ~ParserBase();
 
 protected:

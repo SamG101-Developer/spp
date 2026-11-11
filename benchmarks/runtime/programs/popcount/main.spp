@@ -1,0 +1,22 @@
+use std::console::println
+use std::hints::black_box
+
+fun pop(x: U64) -> U64 {
+  let a = x.sub_wrapping((x >> 1_u32) & 0x5555555555555555_u64)
+  let b = (a & 0x3333333333333333_u64).add_wrapping((a >> 2_u32) & 0x3333333333333333_u64)
+  let c = (b.add_wrapping(b >> 4_u32)) & 0x0f0f0f0f0f0f0f0f_u64
+  ret c.mul_wrapping(0x0101010101010101_u64) >> 56_u32
+}
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut state = black_box(7_u64)
+  let mut total = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    total += pop(state)
+    i += 1_u64
+  }
+  println("{}", total)
+}

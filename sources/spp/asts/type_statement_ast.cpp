@@ -36,8 +36,20 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, AliasInfo);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, ScopePositionGuard);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-TypeStatementAst::TypeStatementAst(
+spp::asts::TypeStatementAst::TypeStatementAst(
   decltype(Annotations) &&annotations,
   decltype(TokType) &&tok_type,
   decltype(NewType) new_type,
@@ -59,20 +71,20 @@ TypeStatementAst::TypeStatementAst(
   Source.OriginalOldType = AstClone(OldType);
 }
 
-TypeStatementAst::~TypeStatementAst() {
+spp::asts::TypeStatementAst::~TypeStatementAst() {
 }
 
-auto TypeStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::TypeStatementAst::PosStart() const -> std::size_t {
   // Use the "type" token.
   return TokType->PosStart();
 }
 
-auto TypeStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::TypeStatementAst::PosEnd() const -> std::size_t {
   // Use the old type.
   return Source.OriginalOldType->PosEnd();
 }
 
-auto TypeStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TypeStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<TypeStatementAst>(
     AstCloneVec(Annotations),
@@ -89,7 +101,7 @@ auto TypeStatementAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto TypeStatementAst::ToString() const -> Str {
+auto spp::asts::TypeStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -101,14 +113,14 @@ auto TypeStatementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto TypeStatementAst::Stage1_PreProcess(
+auto spp::asts::TypeStatementAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the annotations.
   Ast::Stage1_PreProcess(ctx);
   for (auto const &a : Annotations) { a->Stage1_PreProcess(this); }
 }
 
-auto TypeStatementAst::Stage2_GenTopLvlScopes(
+auto spp::asts::TypeStatementAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run top level scope generation for the annotations.
   IMPORT_UTILS;
@@ -144,7 +156,7 @@ auto TypeStatementAst::Stage2_GenTopLvlScopes(
   _Generated = true;
 }
 
-auto TypeStatementAst::Stage3_GenTopLvlAliases(
+auto spp::asts::TypeStatementAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Skip the class scope, and enter the type statement scope.
@@ -204,7 +216,7 @@ auto TypeStatementAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage4_ResolveDeclarations(
+auto spp::asts::TypeStatementAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Skip the class scope, and enter the type statement scope.
@@ -215,7 +227,7 @@ auto TypeStatementAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::ResolveTargetEarly(
+auto spp::asts::TypeStatementAst::ResolveTargetEarly(
   TypeSymbol const &alias, ScopeManager const &sm, CompilerMetaData &meta) -> void {
   // Read from a clean context, where this statement is written: whatever was being analysed when the binding was made
   // is not what the target is read in.
@@ -226,7 +238,7 @@ auto TypeStatementAst::ResolveTargetEarly(
   _ResolveTarget(&tm, &meta);
 }
 
-auto TypeStatementAst::_ResolveTarget(
+auto spp::asts::TypeStatementAst::_ResolveTarget(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Once, at stage 4 or earlier on demand ("ResolveTargetEarly"); marked first, so a request for it during its own
   // resolution finds it under way and binds as it would have before (to the alias, waiting).
@@ -271,31 +283,27 @@ auto TypeStatementAst::_ResolveTarget(
   }
 }
 
-auto TypeStatementAst::Stage5_LoadSupScopes(
+auto spp::asts::TypeStatementAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Sync the alias symbol's visibility from the AST (annotations set Visibility in Stage5). Without this the alias
-  // symbol keeps the symbol-constructor default (public), making every alias publicly accessible regardless of its
-  // annotation (or lack of one: unannotated statements are private).
-  if (_AliasSymbol != nullptr) {
-    _AliasSymbol->Visibility = Visibility.first;
-    for (auto const &[_, inst] : _AliasSymbol->Instances) { inst->Visibility = Visibility.first; }
-  }
+  // The alias symbol, and so its instances, read their visibility here, where the annotations set it: without, the
+  // symbol keeps its constructor's default (public), whatever the annotation (an unannotated statement is private).
+  if (_AliasSymbol != nullptr) { _AliasSymbol->VisibilityFrom = this; }
 
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::TypeStatementAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *) -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::TypeStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -310,7 +318,6 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
     {
       const auto _meta_guard = MetaGuard(meta);
       meta->AllowAbstractType = true;
-      resolved->ResetCache();
       resolved->Stage7_AnalyseSemantics(sm, meta);
     }
 
@@ -347,7 +354,7 @@ auto TypeStatementAst::Stage7_AnalyseSemantics(
   _IndexWrittenTarget(sm, meta);
 }
 
-auto TypeStatementAst::_IndexWrittenTarget(
+auto spp::asts::TypeStatementAst::_IndexWrittenTarget(
   ScopeManager *sm, CompilerMetaData *meta) const -> void {
   // The alias is analysed through rebuilt copies of its target, which are not what was written and so are not
   // recorded; without this, the target of a "type" or "use" statement has nothing to navigate from. The written
@@ -366,14 +373,14 @@ auto TypeStatementAst::_IndexWrittenTarget(
   catch (SemanticError const &) {}
 }
 
-auto TypeStatementAst::Stage8_CheckMemory(
+auto spp::asts::TypeStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *) -> void {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::Stage10_PreCodeGen(
+auto spp::asts::TypeStatementAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -381,7 +388,7 @@ auto TypeStatementAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto TypeStatementAst::Stage11_CodeGen(
+auto spp::asts::TypeStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *) -> llvm::Value* {
   sm->MoveToNextScope();
   // SPP_ASSERT(sm->CurrentScope == _Scope);
@@ -389,7 +396,7 @@ auto TypeStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto TypeStatementAst::EvaluateCompTime(
+auto spp::asts::TypeStatementAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // A "type" statement in a "cmp" function's body has a scope of
   // its own, which the walk of the body steps over.
@@ -398,7 +405,7 @@ auto TypeStatementAst::EvaluateCompTime(
   sm->MoveOutOfCurrentScope();
 }
 
-auto TypeStatementAst::MarkFromUseStatement() -> void {
+auto spp::asts::TypeStatementAst::MarkFromUseStatement() -> void {
   _FromUseStatement = true;
 }
 

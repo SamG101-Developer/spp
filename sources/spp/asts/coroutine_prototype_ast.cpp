@@ -28,15 +28,25 @@ import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_target;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
+import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, IsBindingsScope);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 namespace {
   /// The runtime's allocator. A coroutine frame is allocated
@@ -68,7 +78,7 @@ namespace {
 }
 
 SPP_MOD_BEGIN
-CoroutinePrototypeAst::CoroutinePrototypeAst(
+spp::asts::CoroutinePrototypeAst::CoroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -91,17 +101,17 @@ CoroutinePrototypeAst::CoroutinePrototypeAst(
     this->TokFun, SppTokenType::KW_COR, "cor");
 }
 
-CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
+spp::asts::CoroutinePrototypeAst::~CoroutinePrototypeAst() = default;
 
-auto CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CoroutinePrototypeAst::Clone() const -> Unique<Ast> {
   return _CloneWithImpl(AstClone(Impl));
 }
 
-auto CoroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
+auto spp::asts::CoroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
   return _CloneWithImpl(nullptr);
 }
 
-auto CoroutinePrototypeAst::_CloneWithImpl(
+auto spp::asts::CoroutinePrototypeAst::_CloneWithImpl(
   decltype(Impl) &&impl) const -> Unique<CoroutinePrototypeAst> {
   IMPORT_UTILS;
   auto ast = MakeUnique<CoroutinePrototypeAst>(
@@ -118,7 +128,7 @@ auto CoroutinePrototypeAst::_CloneWithImpl(
   return ast;
 }
 
-auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   if (_SkipIfAnalysedAhead(sm)) { return; }
@@ -160,7 +170,7 @@ auto CoroutinePrototypeAst::Stage7_AnalyseSemantics(
   _Stage7 = _Stage7Progress::kDone;
 }
 
-auto CoroutinePrototypeAst::Stage10_PreCodeGen(
+auto spp::asts::CoroutinePrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // For "GenOnce" coroutines, we can desugar them into
   // subroutines returning the yielded value. This is memory
@@ -204,7 +214,7 @@ auto CoroutinePrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto CoroutinePrototypeAst::Stage11_CodeGen(
+auto spp::asts::CoroutinePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // The lowering emits this prototype's body, but it is this
   // prototype the instantiations are registered against, so their
@@ -241,6 +251,13 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
     TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope, *ReturnType,
     [&] { return ReturnType; }, "coroutine return type");
   codegen::StampCfiCoroutine(*llvm_func_target, gen_sup);
+
+  // A body is only ever emitted from its own module's walk (an
+  // instantiation's from its template's: "_CodeGenGnSubstitutions"),
+  // so whatever it declares in "ctx->Module" lands beside it.
+  if (llvm_func_target->getParent() != ctx->Module.get()) {
+    Ice(*this, "a function body emitted from another module's walk");
+  }
 
   const auto uid = "." + Uid();
   const auto entry_bb = llvm::BasicBlock::Create(
@@ -461,19 +478,19 @@ auto CoroutinePrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto CoroutinePrototypeAst::IsCoroutine() const -> bool {
+auto spp::asts::CoroutinePrototypeAst::IsCoroutine() const -> bool {
   return true;
 }
 
-auto CoroutinePrototypeAst::IsOnce() const -> bool {
+auto spp::asts::CoroutinePrototypeAst::IsOnce() const -> bool {
   return _IsOnce;
 }
 
-auto CoroutinePrototypeAst::GenOnceLowered() const -> SubroutinePrototypeAst* {
+auto spp::asts::CoroutinePrototypeAst::GenOnceLowered() const -> SubroutinePrototypeAst* {
   return _GenOnceLowered.get();
 }
 
-auto CoroutinePrototypeAst::_LowerGenOnce() -> void {
+auto spp::asts::CoroutinePrototypeAst::_LowerGenOnce() -> void {
   if (not _IsOnce or _GenOnceLowered != nullptr) { return; }
 
   // Todo: A body that defers anything is miscompiled here. A deferred expression is meant to run after the yield -
@@ -499,7 +516,7 @@ auto CoroutinePrototypeAst::_LowerGenOnce() -> void {
   _GenOnceLowered->SetNonGnImpl(this);
 }
 
-auto CoroutinePrototypeAst::_ForceInlineBorrowedYield(
+auto spp::asts::CoroutinePrototypeAst::_ForceInlineBorrowedYield(
   SubroutinePrototypeAst const &lowered) const -> void {
   // A "GenOnce" that yields a borrow hands back the address of something the body built, and a body that yields a
   // view over its argument ("fwd_ref", "slice_ref") has nowhere to build it but its own frame. That was sound while
@@ -517,7 +534,7 @@ auto CoroutinePrototypeAst::_ForceInlineBorrowedYield(
   llvm_func->Target->addFnAttr(llvm::Attribute::AlwaysInline);
 }
 
-auto CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
+auto spp::asts::CoroutinePrototypeAst::_DeclareBorrowedYieldStorage(
   SubroutinePrototypeAst const &lowered) const -> void {
   // The other half of "_ForceInlineBorrowedYield", and it has to come after the body exists rather than beside the
   // attribute, because there are no allocas to describe until the body is generated.

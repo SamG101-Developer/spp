@@ -51,8 +51,14 @@ import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.uid;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LoopIterableExpressionAst::LoopIterableExpressionAst(
+spp::asts::LoopIterableExpressionAst::LoopIterableExpressionAst(
   decltype(TokLoop) &&tok_loop,
   decltype(Var) &&var,
   decltype(TokIn) &&tok_in,
@@ -70,19 +76,19 @@ LoopIterableExpressionAst::LoopIterableExpressionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokIn, lex::SppTokenType::KW_IN, "in");
 }
 
-LoopIterableExpressionAst::~LoopIterableExpressionAst() = default;
+spp::asts::LoopIterableExpressionAst::~LoopIterableExpressionAst() = default;
 
-auto LoopIterableExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::LoopIterableExpressionAst::PosStart() const -> std::size_t {
   // Use the "loop" token or the transformed loop.
   return TokLoop != nullptr ? TokLoop->PosStart() : _TransformedLoop->PosStart();
 }
 
-auto LoopIterableExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::LoopIterableExpressionAst::PosEnd() const -> std::size_t {
   // Use the iterable, or where it ended once the lowering moved it.
   return Iterable != nullptr ? Iterable->PosEnd() : _IterablePosEnd;
 }
 
-auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, and the lowering Stage 7
   // built (which moved the written members into it), so a clone
   // taken after Stage 7 is as complete as the original.
@@ -101,7 +107,7 @@ auto LoopIterableExpressionAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto LoopIterableExpressionAst::ToString() const -> Str {
+auto spp::asts::LoopIterableExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_TransformedLoop != nullptr) {
     SPP_STRING_APPEND(_TransformedLoop);
@@ -116,7 +122,7 @@ auto LoopIterableExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS_AND_UID;
 
@@ -238,16 +244,8 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   // The iterator is consumed on every way out of the loop, and
   // only then, so it is deferred in the loop's own scope.
   // Translated: "defer std::mem::ops::drop($_iter)".
-  auto drop_iter = [&] {
-    auto args = Vec<Unique<FunctionCallArgumentAst>>();
-    args.emplace_back(MakeUnique<FunctionCallArgumentPositionalAst>(
-      nullptr, nullptr, AstClone(iterable_name)));
-    auto call = MakeUnique<PostfixExpressionOperatorFunctionCallAst>(
-      nullptr, MakeUnique<FunctionCallArgumentGroupAst>(nullptr, std::move(args), nullptr), nullptr);
-    return MakeUnique<PostfixExpressionAst>(
-      INJECT_CODE("std::mem::ops::drop", ParseExpression), std::move(call));
-  }();
-  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(nullptr, std::move(drop_iter));
+  _TransformedLoop->LoopDefer = MakeUnique<DeferStatementAst>(
+    nullptr, expr_utils::DropCall(*iterable_name));
 
   // Analyse the other initial let statement.
   _TransformedLet = std::move(iterable_let);
@@ -256,7 +254,7 @@ auto LoopIterableExpressionAst::Stage7_AnalyseSemantics(
   _TransformedLoop->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto LoopIterableExpressionAst::Stage8_CheckMemory(
+auto spp::asts::LoopIterableExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Call the memory check on the transformed loop. Its end drops
   // the iterator, which ends its loans (the "&mut v" of
@@ -266,7 +264,7 @@ auto LoopIterableExpressionAst::Stage8_CheckMemory(
   _TransformedLoop->Stage8_CheckMemory(sm, meta);
 }
 
-auto LoopIterableExpressionAst::Stage11_CodeGen(
+auto spp::asts::LoopIterableExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the code for the transformed loop.
   _TransformedLet->Stage11_CodeGen(sm, meta, ctx);
@@ -274,7 +272,7 @@ auto LoopIterableExpressionAst::Stage11_CodeGen(
   return _TransformedLoop->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto LoopIterableExpressionAst::InferType(
+auto spp::asts::LoopIterableExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Before the desugaring in stage 7 there is no transformed
   // loop to ask, so fall back to the base implementation.
@@ -283,7 +281,7 @@ auto LoopIterableExpressionAst::InferType(
     : _TransformedLoop->InferType(sm, meta);
 }
 
-auto LoopIterableExpressionAst::InferTypeRef(
+auto spp::asts::LoopIterableExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return _TransformedLoop == nullptr
     ? LoopExpressionAst::InferTypeRef(sm, meta)

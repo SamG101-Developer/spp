@@ -1,8 +1,7 @@
 # The test matrix _build.yaml planned, against its digest-checked
-# binaries: gtest (mode x shard), STL conformance, and on Linux
-# valgrind, the codegen checks and the differential suite when
-# asked for, each in a cell of its own or, with `pack`, beside
-# the last gtest shard.
+# binaries: a gtest cell per mode and shard, then one cell for
+# STL conformance and, on Linux, valgrind, the codegen checks and
+# the differential suite when asked for.
 
 name: test
 
@@ -72,6 +71,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Exclude the workspace from Defender (Windows)
+        if: runner.os == 'Windows'
+        run: bash .github/scripts/setup/exclude-defender-windows.sh
+
       - name: Fetch and verify binaries
         uses: ./.github/actions/setup-runtime
         with:
@@ -88,7 +91,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.tools/valgrind
-          key: valgrind-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+          key: valgrind-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
 
       - name: Install valgrind (cache miss)
         if: contains(matrix.suites, 'valgrind') && steps.valgrind-cache.outputs.cache-hit != 'true'
@@ -97,8 +100,8 @@ jobs:
       - name: Expose valgrind
         if: contains(matrix.suites, 'valgrind')
         run: |
-          echo "$SPP_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
-          "$SPP_VALGRIND_PREFIX/bin/valgrind" --version
+          echo "$SPP_CI_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_CI_VALGRIND_PREFIX/bin/valgrind" --version
 
       - name: Install glibc debug symbols
         if: contains(matrix.suites, 'valgrind')
@@ -111,13 +114,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/prof"
           echo "LLVM_PROFILE_FILE=$RUNNER_TEMP/prof/%8m.profraw" >> "$GITHUB_ENV"
 
-      # Every suite the cell holds, side by side: a packed cell
-      # (`pack`) lets the short suites finish while gtest runs on.
-      # A failure fails the job at the group's implicit wait, after
-      # the others have finished. Valgrind, the codegen checks and
-      # the differential suite sharing a cell stay advisory through
-      # their own continue-on-error; alone, the job-level one covers
-      # them.
+      # Every suite the cell holds, side by side: a gtest cell holds
+      # only gtest, the other cell the rest. A failure fails the job
+      # at the group's implicit wait, after the others have finished.
+      # Valgrind, the codegen checks and the differential suite
+      # sharing a cell stay advisory through their own
+      # continue-on-error; alone, the job-level one covers them.
       - parallel:
           - name: Run tests
             id: tests
@@ -134,15 +136,15 @@ jobs:
           - name: s++ STL conformance
             if: contains(matrix.suites, 'stl')
             env:
-              SPP_OFF: ${{ inputs.off }}
+              SPP_CI_OFF: ${{ inputs.off }}
             run: bash .github/scripts/test/stl-conformance.sh
 
-          # The compiled code's memory, over the groups that make
-          # and drop frames, environments and buffers.
-          - name: s++ test groups under valgrind
+          # The compiled code's memory: every library's tests
+          # under valgrind.
+          - name: s++ STL conformance under valgrind
             if: contains(matrix.suites, 'valgrind')
             continue-on-error: ${{ matrix.suites != 'valgrind' }}
-            run: bash .github/scripts/test/valgrind-groups.sh
+            run: bash .github/scripts/test/valgrind-conformance.sh
 
           # What the compiler emits, built and run: canaries,
           # sealing, W^X, scrubbing, SLS, the abort path, ffi

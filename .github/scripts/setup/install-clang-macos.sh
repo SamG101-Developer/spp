@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# Point CC/CXX at the clang that install-llvm-macos.sh unpacked - the
-# same release the project links against, see the comment there - and
+# Point CC/CXX at the clang that install-llvm-macos.sh installed - the
+# same brew keg the project links against, see the comment there - and
 # rewrite the libc++ module manifest with absolute paths so module
 # builds resolve it.
 set -euo pipefail
 
-prefix="$SPP_LLVM_MAC_PREFIX"
+prefix="$SPP_CI_LLVM_MAC_PREFIX"
 
 # There is nothing to install a different version from: the compiler
-# is whichever one [pin.llvm-mac] names.
-pinned="${LLVM_MAC_TAG#llvmorg-}"
-pinned="${pinned%%.*}"
-if [ -n "${CLANG_VERSION:-}" ] && [ "$CLANG_VERSION" != "$pinned" ]; then
-  echo "::error::clang ${CLANG_VERSION} was asked for, but macOS builds with the pinned LLVM ${pinned}" >&2
+# is the [pin.llvm-lib] major that the dev libraries are.
+if [ -n "${CLANG_VERSION:-}" ] && [ "$CLANG_VERSION" != "$LLVM_LIB_VERSION" ]; then
+  echo "::error::clang ${CLANG_VERSION} was asked for, but macOS builds with LLVM ${LLVM_LIB_VERSION}" >&2
   exit 1
 fi
 
@@ -29,15 +27,20 @@ if [ -z "$libcxx" ] || [ -z "$libcxxabi" ]; then
   exit 1
 fi
 
+# brew builds its bottles for the runner's macOS, so the static
+# LLVM and libc++ archives set the floor; [floor] macos names it.
+# CMake seeds CMAKE_OSX_DEPLOYMENT_TARGET from this, and the small
+# libraries' builds read it too.
 {
+  echo "MACOSX_DEPLOYMENT_TARGET=${SPP_CI_FLOOR_MACOS}"
   echo "CC=${prefix}/bin/clang"
   echo "CXX=${prefix}/bin/clang++"
   echo "LDFLAGS=-nostdlib++ -Wl,-load_hidden,${libcxx} -Wl,-load_hidden,${libcxxabi}"
 } >> "$GITHUB_ENV"
 
 # The manifest's paths are relative to its own directory, which sits
-# either in lib/ or lib/c++/ depending on how the release laid libc++
-# out, and they are read from the resource directory it is copied to
+# either in lib/ or lib/c++/ depending on how the build laid libc++
+# out (brew's is lib/c++/), and they are read from the resource directory it is copied to
 # rather than from there.
 manifest="$(find "${prefix}/lib" -maxdepth 2 -name libc++.modules.json | head -n 1)"
 if [ -z "$manifest" ]; then

@@ -1,0 +1,5 @@
+description = "Sum over a generator of 50M values; the C and Rust equivalents are a plain loop and a range iterator, so the gap is the generator's overhead"
+layer = "core"
+output = "exact"
+gaps = ["coroutine frames that are not elided"]
+covers = ["ast:coroutine_prototype", "codegen:llvm_coros"]

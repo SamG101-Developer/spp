@@ -7,7 +7,7 @@ import spp.asts.function_call_argument_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionCallArgumentPositionalAst);
+use_common(FunctionCallArgumentPositionalAst);
 use(spp::asts, struct TokenAst);
 
 /// A positional argument in a function call, which forces the

@@ -14,8 +14,15 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ParenthesisedExpressionAst::ParenthesisedExpressionAst(
+spp::asts::ParenthesisedExpressionAst::ParenthesisedExpressionAst(
   decltype(TokL) &&tok_open_paren,
   decltype(Expr) &&expr,
   decltype(TokR) &&tok_close_paren) :
@@ -24,19 +31,19 @@ ParenthesisedExpressionAst::ParenthesisedExpressionAst(
   TokR(std::move(tok_close_paren)) {
 }
 
-ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
+spp::asts::ParenthesisedExpressionAst::~ParenthesisedExpressionAst() = default;
 
-auto ParenthesisedExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::ParenthesisedExpressionAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto ParenthesisedExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::ParenthesisedExpressionAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto ParenthesisedExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ParenthesisedExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ParenthesisedExpressionAst>(
     AstClone(TokL),
@@ -44,7 +51,7 @@ auto ParenthesisedExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto ParenthesisedExpressionAst::ToString() const -> Str {
+auto spp::asts::ParenthesisedExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_APPEND(Expr);
@@ -52,7 +59,7 @@ auto ParenthesisedExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -61,7 +68,7 @@ auto ParenthesisedExpressionAst::Stage7_AnalyseSemantics(
   common_errors::RequirePrimary(*Expr, *sm);
 }
 
-auto ParenthesisedExpressionAst::Stage8_CheckMemory(
+auto spp::asts::ParenthesisedExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -70,30 +77,30 @@ auto ParenthesisedExpressionAst::Stage8_CheckMemory(
   mem_utils::ValidateSymbolMemory(*Expr, *this, *sm, meta, {.MarkMoves = false});
 }
 
-auto ParenthesisedExpressionAst::Stage11_CodeGen(
+auto spp::asts::ParenthesisedExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the inner expression.
   return Expr->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto ParenthesisedExpressionAst::EvaluateCompTime(
+auto spp::asts::ParenthesisedExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward comptime resolution into the expression.
   Expr->EvaluateCompTime(sm, meta);
 }
 
-auto ParenthesisedExpressionAst::InferType(
+auto spp::asts::ParenthesisedExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Get the inner expression's type.
   return Expr->InferType(sm, meta);
 }
 
-auto ParenthesisedExpressionAst::InferTypeRef(
+auto spp::asts::ParenthesisedExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return Expr->InferTypeRef(sm, meta);
 }
 
-auto ParenthesisedExpressionAst::ReadExpr(
+auto spp::asts::ParenthesisedExpressionAst::ReadExpr(
   analyse::scopes::ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Substitute into the inner expression.
   return MakeShared<ParenthesisedExpressionAst>(
@@ -102,7 +109,7 @@ auto ParenthesisedExpressionAst::ReadExpr(
     AstClone(TokR));
 }
 
-auto ParenthesisedExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ParenthesisedExpressionAst::IsAllowedInDefault() const -> bool {
   // Move into the internal expression.
   return Expr->IsAllowedInDefault();
 }

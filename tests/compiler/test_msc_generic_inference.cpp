@@ -92,7 +92,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Nested,
   test_valid_infer_comp_from_array_size, R"(
-    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::unreachable() }
+    fun f[T, cmp n: USize](a: Arr[T, n]) -> Arr[T, n + 1_uz] { std::abort::abort() }
 
     fun g() -> Void {
         let mut x = f([1, 2, 3])
@@ -207,6 +207,49 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
 
     fun g() -> Void {
         f()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_object_initializer_with_nothing_to_infer_from,
+  SppGenericParameterNotInferredError, "Box", R"(
+    cls Box[T] {
+        val: T
+    }
+
+    fun g() -> Void {
+        let x = Box()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_std_type_initializer_with_nothing_to_infer_from,
+  SppGenericParameterNotInferredError, "Pass", R"(
+    fun g() -> Res[Void, Bool] {
+        ret Pass()
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC_AT(
+  TestGenericInference_NotInferred,
+  test_invalid_type_annotation_missing_its_generic_argument,
+  SppGenericParameterNotInferredError, "Box", R"(
+    cls Box[T] {
+        val: T
+    }
+
+    fun g(b: Box) -> Void {
+        std::mem::ops::drop(b)
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestGenericInference_NotInferred,
+  test_valid_std_type_initializer_with_the_generic_written, R"(
+    fun g() -> Res[Void, Bool] {
+        ret Pass[Void]()
     }
 )");
 
@@ -408,7 +451,7 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
   TestGenericInference_Variadic,
   test_valid_infer_type_from_variadic_function_parameter, R"(
     fun f[T](..a: T) -> Void {
-        std::mem::ops::drop(a)
+        std::mem::ops::drop(..a)
     }
 
     fun g() -> Void {

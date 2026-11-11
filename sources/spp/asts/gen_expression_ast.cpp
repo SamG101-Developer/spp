@@ -14,7 +14,6 @@ import spp.analyse.utils.fn_values;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.mem_utils;
-import spp.analyse.utils.memory_state;
 import spp.analyse.utils.self_type;
 import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_join;
@@ -47,8 +46,15 @@ import spp.utils.ptr;
 import spp.utils.uid;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-GenExpressionAst::GenExpressionAst(
+spp::asts::GenExpressionAst::GenExpressionAst(
   decltype(TokGen) &&tok_gen,
   decltype(Conv) &&conv,
   decltype(Expr) &&expr) :
@@ -61,19 +67,19 @@ GenExpressionAst::GenExpressionAst(
   Source.OriginalPosEnd = Expr ? Expr->PosEnd() : Conv ? Conv->PosEnd() : TokGen->PosEnd();
 }
 
-GenExpressionAst::~GenExpressionAst() = default;
+spp::asts::GenExpressionAst::~GenExpressionAst() = default;
 
-auto GenExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::GenExpressionAst::PosStart() const -> std::size_t {
   // Use the "gen" token.
   return TokGen->PosStart();
 }
 
-auto GenExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression, or where it ended once it was moved.
   return Expr ? Expr->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto GenExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto g = MakeUnique<GenExpressionAst>(
     AstClone(TokGen),
@@ -86,7 +92,7 @@ auto GenExpressionAst::Clone() const -> Unique<Ast> {
   return g;
 }
 
-auto GenExpressionAst::ToString() const -> Str {
+auto spp::asts::GenExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokGen).append(" ");
   SPP_STRING_APPEND(Conv);
@@ -94,7 +100,7 @@ auto GenExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types::GenType;
@@ -154,7 +160,7 @@ auto GenExpressionAst::Stage7_AnalyseSemantics(
   ResolveYield(meta->EnclosingFnRetType, std::move(expr_type), sm, meta);
 }
 
-auto GenExpressionAst::ResolveYield(
+auto spp::asts::GenExpressionAst::ResolveYield(
   Shared<TypeAst> gen_type, Shared<TypeAst> expr_type, ScopeManager *sm, CompilerMetaData *meta)
   -> void {
   IMPORT_UTILS;
@@ -212,7 +218,7 @@ auto GenExpressionAst::ResolveYield(
   }
 }
 
-auto GenExpressionAst::Stage8_CheckMemory(
+auto spp::asts::GenExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -250,35 +256,35 @@ auto GenExpressionAst::Stage8_CheckMemory(
   }
 
   else if (*Conv == ConventionTag::MUT) {
-    // Immutable symbols cannot be mutated.
-    RaiseIf<SppInvalidMutationError>(
-      not sym->IsMutable,
-      ERR_ARGS(
-        *sym->Name, *Conv, *memory_state::StateOf(*sm->CurrentScope, *sym).AstInitialization,
-        "immutable symbol"));
-
-    // Immutable borrows, even if their symbol is mutable,
-    // cannot be mutated.
-    RaiseIf<SppInvalidMutationError>(
-      sym->MemInfo->AstBorrowed and *sym->Type->GetConvention() == ConventionTag::REF,
-      ERR_ARGS(*sym->Name, *Conv, *sym->MemInfo->AstBorrowed, "immutable borrow"));
+    // Lent on mutably as a call's argument is: a "&mut" parameter
+    // ("x: &mut S32") can be ("RequireMutablyBorrowable").
+    common_errors::RequireMutablyBorrowable(*sym, *Conv, *sm);
   }
 
   record_owned();
 }
 
-auto GenExpressionAst::Diverges(
+auto spp::asts::GenExpressionAst::Diverges(
   ScopeManager *, CompilerMetaData *meta) -> bool {
   return meta->EnclosingFnFlavour != nullptr and meta->EnclosingFnFlavour->TokenType == lex::SppTokenType::KW_FUN;
 }
 
-auto GenExpressionAst::Stage11_CodeGen(
+auto spp::asts::GenExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // In a lowered "GenOnce", the "gen" is the return.
   if (Diverges(sm, meta)) {
+    // A borrow yielded is its address, coerced into the yield type as any
+    // yielded value is: a variant holding the borrow as a member ("&S32 or
+    // None") wraps it, tagged (open-bugs #49).
     if (Conv != nullptr) {
-      ctx->Builder.CreateRet(codegen::LlvmAddrOf(*Expr, sm, meta, ctx));
+      auto llvm_addr = codegen::LlvmAddrOf(*Expr, sm, meta, ctx);
+      if (_YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
+        const auto borrow_ref = TypeRef::Of(
+          *Expr->InferType(sm, meta)->WithoutConvention()->WithConvention(AstClone(Conv)), *sm->CurrentScope);
+        llvm_addr = codegen::CoerceToSlot(llvm_addr, *_YieldRef, borrow_ref, *sm, "gen.yield.coerce", ctx);
+      }
+      ctx->Builder.CreateRet(llvm_addr);
       return nullptr;
     }
 
@@ -297,14 +303,21 @@ auto GenExpressionAst::Stage11_CodeGen(
   // rebuilt here, so the store cannot be wider than the
   // storage the frame reserved for it.
   const auto llvm_gen_state_ty = meta->LlvmGeneratorState->getAllocatedType();
-  auto llvm_yield_val = Expr != nullptr ? Expr->Stage11_CodeGen(sm, meta, ctx) : nullptr;
+  // A borrow ("gen &x") yields the address of what it borrows.
+  auto llvm_yield_val = Expr == nullptr ? nullptr
+    : Conv != nullptr ? codegen::LlvmAddrOf(*Expr, sm, meta, ctx)
+    : Expr->Stage11_CodeGen(sm, meta, ctx);
 
   // A yielded value is coerced into the yield type as "ret" and
   // "let" coerce theirs: a member into a variant ("gen None()"
   // into an "Opt[S32]"), and a named function into a function
-  // type. Otherwise the slot holds the bare member, untagged.
-  if (llvm_yield_val != nullptr and Conv == nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
-    const auto expr_ref = Expr->InferTypeRef(sm, meta);
+  // type. Otherwise the slot holds the bare member, untagged. A
+  // borrow ("gen &x") is coerced as the borrow it is, so a variant
+  // holding it ("&S32 or None") wraps it (open-bugs #49).
+  if (llvm_yield_val != nullptr and _YieldRef != nullptr and _YieldRef->Symbol != nullptr) {
+    const auto expr_ref = Conv == nullptr
+      ? Expr->InferTypeRef(sm, meta)
+      : TypeRef::Of(*Expr->InferType(sm, meta)->WithoutConvention()->WithConvention(AstClone(Conv)), *sm->CurrentScope);
     llvm_yield_val = codegen::CoerceToSlot(llvm_yield_val, *_YieldRef, expr_ref, *sm, "gen.yield.coerce", ctx);
   }
 
@@ -339,7 +352,7 @@ auto GenExpressionAst::Stage11_CodeGen(
       if (sym == nullptr or sym->LlvmInfo->Alloca == nullptr) {
         Ice(*this, *sm->CurrentScope, "a value owned at a suspension has no storage to drop");
       }
-      codegen::EmitDropRemaining(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, moved, sm, meta, ctx);
+      codegen::EmitDrop(sym->TypeRefIn(*scope), sym->LlvmInfo->Alloca, sm, meta, ctx, moved);
     }
     scope = scope == meta->EnclosingFnScope ? nullptr : scope->Parent;
   }
@@ -366,7 +379,7 @@ auto GenExpressionAst::Stage11_CodeGen(
   return llvm_recv_val;
 }
 
-auto GenExpressionAst::InferTypeRef(
+auto spp::asts::GenExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The generator's "Send" argument, off its identity; "Void" for a "GenOnce", which has none.
   using generate::common_types_precompiled::VOID;

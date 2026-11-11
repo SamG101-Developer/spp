@@ -24,10 +24,19 @@ import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
+import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, IsBindingsScope);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-SubroutinePrototypeAst::SubroutinePrototypeAst(
+spp::asts::SubroutinePrototypeAst::SubroutinePrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -44,17 +53,17 @@ SubroutinePrototypeAst::SubroutinePrototypeAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokFun, lex::SppTokenType::KW_FUN, "fun");
 }
 
-SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
+spp::asts::SubroutinePrototypeAst::~SubroutinePrototypeAst() = default;
 
-auto SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::SubroutinePrototypeAst::Clone() const -> Unique<Ast> {
   return _CloneWithImpl(AstClone(Impl));
 }
 
-auto SubroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
+auto spp::asts::SubroutinePrototypeAst::CloneSignature() const -> Unique<FunctionPrototypeAst> {
   return _CloneWithImpl(nullptr);
 }
 
-auto SubroutinePrototypeAst::_CloneWithImpl(
+auto spp::asts::SubroutinePrototypeAst::_CloneWithImpl(
   decltype(Impl) &&impl) const -> Unique<SubroutinePrototypeAst> {
   IMPORT_UTILS;
   auto ast = MakeUnique<SubroutinePrototypeAst>(
@@ -71,7 +80,7 @@ auto SubroutinePrototypeAst::_CloneWithImpl(
   return ast;
 }
 
-auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -86,7 +95,8 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   {
     const auto _fn_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = this->TokFun.get();
-    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithConvention(
+      AstClone(ReturnType->GetConvention()));
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
@@ -129,7 +139,7 @@ auto SubroutinePrototypeAst::Stage7_AnalyseSemantics(
   _Stage7 = _Stage7Progress::kDone;
 }
 
-auto SubroutinePrototypeAst::Stage11_CodeGen(
+auto spp::asts::SubroutinePrototypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Build the function body.
@@ -164,6 +174,13 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
     return nullptr;
   }
 
+  // A body is only ever emitted from its own module's walk (an
+  // instantiation's from its template's: "_CodeGenGnSubstitutions"),
+  // so whatever it declares in "ctx->Module" lands beside it.
+  if (llvm_func_target->getParent() != ctx->Module.get()) {
+    Ice(*this, "a function body emitted from another module's walk");
+  }
+
   // Add the entry block to the function.
   const auto entry_bb = llvm::BasicBlock::Create(
     *ctx->Context, "entry", llvm_func_target);
@@ -178,7 +195,11 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   {
     const auto _meta_guard = MetaGuard(meta, true);
     meta->EnclosingFnFlavour = TokFun.get();
-    meta->EnclosingFnRetType = ret_type_sym->FqName();
+    // The qualified name, with the convention written: a symbol's name has
+    // none, and a lowered "GenOnce" coroutines that yield a borrow need the
+    // convention on the subroutine return type.
+    meta->EnclosingFnRetType = ret_type_sym->FqName()->WithConvention(
+      AstClone(ReturnType->GetConvention()));
     meta->EnclosingFnSourceRetType = ReturnType;
     meta->ClosureRetJoin = nullptr;
     meta->EnclosingFnScope = sm->CurrentScope;
@@ -215,7 +236,7 @@ auto SubroutinePrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto SubroutinePrototypeAst::IsCoroutine() const -> bool {
+auto spp::asts::SubroutinePrototypeAst::IsCoroutine() const -> bool {
   return false;
 }
 

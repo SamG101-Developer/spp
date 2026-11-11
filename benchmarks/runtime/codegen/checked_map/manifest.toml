@@ -1,0 +1,4 @@
+description = "c[i] = a[i] * 3 + b[i] over 4096-element Vec[S64], 50K times: a checked multiply and add per element, written back, no reduction; C traps signed overflow and Rust has overflow checks, so all three check"
+layer = "core"
+output = "exact"
+covers = ["codegen:llvm_fn_impls", "codegen:llvm_pass_bounds"]

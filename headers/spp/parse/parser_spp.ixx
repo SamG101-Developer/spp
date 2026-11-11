@@ -40,7 +40,7 @@ use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct GenericParameterTypeConstraintsAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts, template <typename T> struct InnerScopeAst);
+use(spp::asts, (typename T) struct InnerScopeAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct PatternGuardAst);
 use(spp::asts, struct CasePatternVariantAst);
@@ -74,6 +74,7 @@ use(spp::asts, struct ArrayLiteralAst);
 use(spp::asts, struct ArrayLiteralRepeatedElementAst);
 use(spp::asts, struct ArrayLiteralExplicitElementsAst);
 use(spp::asts, struct StringLiteralAst);
+use(spp::asts, struct SpreadExpressionAst);
 use(spp::asts, struct TupleLiteralAst);
 use(spp::asts, struct BinaryExpressionAst);
 use(spp::asts, struct IsExpressionAst);
@@ -81,8 +82,6 @@ use(spp::asts, struct ClosureExpressionAst);
 use(spp::asts, struct ClosureExpressionCaptureAst);
 use(spp::asts, struct ClosureExpressionCaptureGroupAst);
 use(spp::asts, struct ClosureExpressionParameterAndCaptureGroupAst);
-use(spp::asts, using ClosureExpressionParameterAst = FunctionParameterAst);
-use(spp::asts, using ClosureExpressionParameterGroupAst = FunctionParameterGroupAst);
 use(spp::asts, struct LetStatementAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct LetStatementUninitializedAst);
@@ -124,7 +123,6 @@ use(spp::asts, struct RetStatementAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
-use(spp::asts, struct TypeBinaryExpressionAst);
 use(spp::asts, struct TypePostfixExpressionAst);
 use(spp::asts, struct TypeUnaryExpressionAst);
 use(spp::asts, struct TypeIdentifierAst);
@@ -133,9 +131,6 @@ use(spp::asts, struct TypePostfixExpressionOperatorNestedTypeAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorBorrowAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorNamespaceAst);
-use(spp::asts, struct TypeParenthesisedExpressionAst);
-use(spp::asts, struct TypeArrayShorthandAst);
-use(spp::asts, struct TypeTupleShorthandAst);
 use(spp::asts, struct UseStatementAst);
 use(spp::asts, struct UseStatementVariableAst);
 use(spp::asts, struct TypeStatementAst);
@@ -143,7 +138,6 @@ use(spp::asts, struct SupPrototypeFunctionsAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct SupImplementationAst);
 use(spp::asts, struct SupMemberAst);
-use(spp::asts, using FunctionMemberAst = StatementAst);
 
 use(spp::parse, class ParserSpp);
 
@@ -248,6 +242,8 @@ public:
   auto ParseParenthesisedExpression() -> Unique<ParenthesisedExpressionAst>;
 
   auto ParseFoldExpression() -> Unique<FoldExpressionAst>;
+
+  auto ParseSpreadExpression() -> Unique<SpreadExpressionAst>;
 
   auto ParseCaseExpression() -> Unique<CaseExpressionAst>;
   auto ParseCaseExpressionBranch() -> Unique<CaseExpressionBranchAst>;
@@ -359,8 +355,8 @@ public:
   auto ParseClosureExpressionCapture() -> Unique<ClosureExpressionCaptureAst>;
   auto ParseClosureExpressionParameterAndCaptureGroup()
     -> Unique<ClosureExpressionParameterAndCaptureGroupAst>;
-  auto ParseClosureExpressionParameterGroup() -> Unique<ClosureExpressionParameterGroupAst>;
-  auto ParseClosureExpressionParameter() -> Unique<ClosureExpressionParameterAst>;
+  auto ParseClosureExpressionParameterGroup() -> Unique<FunctionParameterGroupAst>;
+  auto ParseClosureExpressionParameter() -> Unique<FunctionParameterAst>;
 
   auto ParseTypeExpression() -> Unique<TypeAst>;
 
@@ -415,29 +411,19 @@ public:
   auto ParseIntegerSuffixType() -> Unique<TokenAst>;
   auto ParseBytePrefixType() -> Unique<TokenAst>;
 
-  auto ParseLiteralTuple1Element(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<TupleLiteralAst>;
+  auto ParseLiteralTuple1Element(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
+  auto ParseLiteralTupleNElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<TupleLiteralAst>;
 
-  auto ParseLiteralTupleNElements(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<TupleLiteralAst>;
+  /// A tuple literal's element: an expression, or a spread of a tuple or a pack into it ("..t").
+  auto ParseLiteralTupleElement() -> Unique<ExpressionAst>;
 
-  auto ParseLiteralArrayRepeatedElement(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<ArrayLiteralRepeatedElementAst>;
+  /// A tuple literal of one spread element, which needs no trailing comma: "(..t)" is no parenthesised expression.
+  auto ParseLiteralTupleSpread() -> Unique<TupleLiteralAst>;
+  auto ParseLiteralArrayRepeatedElement(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralRepeatedElementAst>;
+  auto ParseLiteralArrayExplicitElements(Func<Unique<ExpressionAst>()> &&elem_parser) -> Unique<ArrayLiteralExplicitElementsAst>;
 
-  auto ParseLiteralArrayExplicitElements(
-    Func<Unique<ExpressionAst>()> &&elem_parser)
-    -> Unique<ArrayLiteralExplicitElementsAst>;
-
-  auto ParseSpecificCharacters(
-    Str &&s)
-    -> Unique<TokenAst>;
-
-  auto ParseSpecificCharacter(
-    char16_t c)
-    -> Unique<TokenAst>;
+  auto ParseSpecificCharacters(Str &&s) -> Unique<TokenAst>;
+  auto ParseSpecificCharacter(char16_t c)-> Unique<TokenAst>;
 
   auto ParseLexemeCharacter() -> Unique<TokenAst>;
   auto ParseLexemeDigit() -> Unique<TokenAst>;
@@ -545,29 +531,26 @@ public:
   auto ParseTokenRaw(lex::RawTokenType tok, lex::SppTokenType mapped_tok) -> Unique<TokenAst>;
 
 private:
-  /// Store error information about a discovered failure in
-  /// the parsing.
+  /// Store error information about a discovered failure in the parsing.
   auto _StoreError(std::size_t pos, Str &&err_str) const -> bool;
 
-  /// Store an error that says more than which tokens were
-  /// expected (a construct the language does not have): kept
-  /// unless an error lies further on, and over an expected-token
-  /// one at the same position.
+  /// Store an error that says more than which tokens were expected (a construct
+  /// the language does not have): kept unless an error lies further on, and
+  /// over an expected-token one at the same position.
   auto _StoreSpecificError(std::size_t pos, Str &&err_str) const -> void;
 
-  /// Check if a line feed sits between the token just parsed
-  /// and the next one. Tokens usually skip line feeds freely,
-  /// so the postfix operators that open with a bracket use
-  /// this to stay on the line of they apply to. A "(" or "["
-  /// starting a line begins a statement of its own (tuple or
-  /// array), and reading it as a call or index would swallow
-  /// the statement into the one above it. "something\n[1]"
-  /// should be identifier then array, not an index operation etc.
+  /// Check if a line feed sits between the token just parsed and the next one.
+  /// Tokens usually skip line feeds freely, so the postfix operators that open
+  /// with a bracket use this to stay on the line of they apply to. A "(" or "["
+  /// starting a line begins a statement of its own (tuple or array), and
+  /// reading it as a call or index would swallow the statement into the one
+  /// above it. "something\n[1]" should be identifier then array, not an index
+  /// operation etc.
   auto _LineFeedAhead() const -> bool;
 
-  /// Build a T from the parsed parts, moving every argument in:
-  /// the parts are locals that are discarded once the node is
-  /// made, so the call sites need no std::move of their own.
+  /// Build a T from the parsed parts, moving every argument in: the parts are
+  /// locals that are discarded once the node is made, so the call sites need no
+  /// "std::move" of their own.
   template <typename T>
   static auto _CreateAst(auto &&... args) -> Unique<T> {
     return MakeUnique<T>(std::move(args)...);

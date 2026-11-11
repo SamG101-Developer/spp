@@ -32,6 +32,8 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
+import spp.codegen.llvm_alloca;
+import spp.codegen.llvm_cfi;
 import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_coros;
 import spp.codegen.llvm_fn;
@@ -43,8 +45,15 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
+spp::asts::PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
   decltype(TokDot) &&tok_dot,
   decltype(TokRes) &&tok_res,
   decltype(FnArgGroup) &&arg_group) :
@@ -55,19 +64,19 @@ PostfixExpressionOperatorKeywordResAst::PostfixExpressionOperatorKeywordResAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->FnArgGroup);
 }
 
-PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
+spp::asts::PostfixExpressionOperatorKeywordResAst::~PostfixExpressionOperatorKeywordResAst() = default;
 
-auto PostfixExpressionOperatorKeywordResAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot != nullptr ? TokDot->PosStart() : 0;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::PosEnd() const -> std::size_t {
   // Use the argument group if it exists, otherwise use the "res" token.
   return FnArgGroup != nullptr ? FnArgGroup->PosEnd() : TokRes != nullptr ? TokRes->PosEnd() : 0;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorKeywordResAst>(
     AstClone(TokDot),
@@ -78,7 +87,7 @@ auto PostfixExpressionOperatorKeywordResAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW(".");
   SPP_STRING_APPEND_RAW("res");
@@ -86,7 +95,7 @@ auto PostfixExpressionOperatorKeywordResAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Already analysed => return early.
   IMPORT_UTILS;
@@ -114,7 +123,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage7_AnalyseSemantics(
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // The generator, when it is a named one. A borrow yielded by an
@@ -153,7 +162,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage8_CheckMemory(
   }
 }
 
-auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // The three-step operation for the "res" operation is to
@@ -271,7 +280,7 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
   // finished case to report.
   const auto resume = [&] {
     const auto coro_resume = llvm::Intrinsic::getOrInsertDeclaration(
-      codegen::GetEmissionModule(*ctx), llvm::Intrinsic::coro_resume);
+      ctx->Module.get(), llvm::Intrinsic::coro_resume);
     ctx->Builder.CreateCall(
       coro_resume, {llvm_generator_env->Handle},
       codegen::CfiGenCallBundles(gen, codegen::CoroEdge::Resume, ctx));
@@ -319,35 +328,41 @@ auto PostfixExpressionOperatorKeywordResAst::Stage11_CodeGen(
     Ice(*this, *sm->CurrentScope, bad_shape_msg);
   }
 
+  // Both edges write the one result slot, and the join loads it
+  // once. A phi of the two whole variants instead hides a
+  // reference payload from the optimiser as an integer, so a
+  // loop over the generator can never reduce to a counted loop
+  // and vectorise ("StoreVariant").
+  const auto llvm_res_slot = codegen::LlvmEntryAlloca(llvm_res_ty, "gen.res" + uid + ".slot", ctx);
+
   // The resumption just made put this value in the slot.
   ctx->Builder.SetInsertPoint(yielded_bb);
   const auto llvm_yielded_val = read_yielded_val();
-  const auto llvm_some = yield_tag.has_value()
-    ? codegen::BuildVariant(llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx)
-    : codegen::CoerceToSlot(llvm_yielded_val, res_ref, yield_ref, *sm, "gen.some" + uid, ctx);
-  const auto some_from_bb = ctx->Builder.GetInsertBlock();
+  if (yield_tag.has_value()) {
+    codegen::StoreVariant(llvm_res_slot, llvm_yielded_val, llvm_res_ty, *yield_tag, "gen.some" + uid, ctx);
+  }
+  else {
+    ctx->Builder.CreateStore(
+      codegen::CoerceToSlot(llvm_yielded_val, res_ref, yield_ref, *sm, "gen.some" + uid, ctx), llvm_res_slot);
+  }
   ctx->Builder.CreateBr(joined_bb);
 
   ctx->Builder.SetInsertPoint(exhausted_bb);
-  const auto llvm_none = codegen::BuildVariant(nullptr, llvm_res_ty, *done_tag, "gen.done" + uid, ctx);
-  const auto none_from_bb = ctx->Builder.GetInsertBlock();
+  codegen::StoreVariant(llvm_res_slot, nullptr, llvm_res_ty, *done_tag, "gen.done" + uid, ctx);
   ctx->Builder.CreateBr(joined_bb);
 
   ctx->Builder.SetInsertPoint(joined_bb);
-  const auto llvm_res = ctx->Builder.CreatePHI(llvm_res_ty, 2, "gen.res" + uid);
-  llvm_res->addIncoming(llvm_some, some_from_bb);
-  llvm_res->addIncoming(llvm_none, none_from_bb);
-  return llvm_res;
+  return ctx->Builder.CreateLoad(llvm_res_ty, llvm_res_slot, "gen.res" + uid);
 }
 
-auto PostfixExpressionOperatorKeywordResAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The "Yield" argument of what the mapped ".send()"
   // returns ("InferType").
   return _MappedFn->InferTypeRef(sm, meta).Symbol->TypeArgRef("Yield");
 }
 
-auto PostfixExpressionOperatorKeywordResAst::ReadExpr(
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::ReadExpr(
   ExprSubst const &sub) const -> Unique<PostfixExpressionOperatorAst> {
   // The potential resume arguments are expressions.
   auto fn_arg_group = AstClone(FnArgGroup);
@@ -359,14 +374,14 @@ auto PostfixExpressionOperatorKeywordResAst::ReadExpr(
     AstClone(TokDot), AstClone(TokRes), std::move(fn_arg_group));
 }
 
-auto PostfixExpressionOperatorKeywordResAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::IsAllowedInDefault() const -> bool {
   // Resumes a generator the way a call runs a function,
   // so nothing leaves the code it is in. Should be safe
   // although I can't see where this would even be used.
   return true;
 }
 
-auto PostfixExpressionOperatorKeywordResAst::WalksOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorKeywordResAst::WalksOperand() const -> bool {
   // Checked through "send", over the operand.
   return true;
 }

@@ -7,8 +7,13 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
+spp::asts::LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBindingAst(
   decltype(Name) name,
   decltype(TokAssign) &&tok_assign,
   decltype(Val) &&val) :
@@ -18,19 +23,19 @@ LocalVariableDestructureAttributeBindingAst::LocalVariableDestructureAttributeBi
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokAssign, lex::SppTokenType::TK_ASSIGN, "=");
 }
 
-LocalVariableDestructureAttributeBindingAst::~LocalVariableDestructureAttributeBindingAst() = default;
+spp::asts::LocalVariableDestructureAttributeBindingAst::~LocalVariableDestructureAttributeBindingAst() = default;
 
-auto LocalVariableDestructureAttributeBindingAst::PosStart() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::PosStart() const -> std::size_t {
   // Use the name.
   return Name->PosStart();
 }
 
-auto LocalVariableDestructureAttributeBindingAst::PosEnd() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::PosEnd() const -> std::size_t {
   // Use the val.
   return Val->PosEnd();
 }
 
-auto LocalVariableDestructureAttributeBindingAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LocalVariableDestructureAttributeBindingAst>(
     AstCloneShared(Name),
@@ -38,7 +43,7 @@ auto LocalVariableDestructureAttributeBindingAst::Clone() const -> Unique<Ast> {
     AstClone(Val));
 }
 
-auto LocalVariableDestructureAttributeBindingAst::ToString() const -> Str {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Name).append(" ");
   SPP_STRING_APPEND(TokAssign).append(" ");
@@ -46,12 +51,12 @@ auto LocalVariableDestructureAttributeBindingAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LocalVariableDestructureAttributeBindingAst::BindsByMove() const -> bool {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::BindsByMove() const -> bool {
   // "x=<pattern>" and "x as y" bind whatever their value pattern binds.
   return Val != nullptr and Val->BindsByMove();
 }
 
-auto LocalVariableDestructureAttributeBindingAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableDestructureAttributeBindingAst::ExtractName() const -> Shared<IdentifierAst> {
   // Return the direct name of this attribute binding => this is the attribute being bound.
   return Name;
 }

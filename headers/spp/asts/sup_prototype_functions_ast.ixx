@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(SupPrototypeFunctionsAst);
+use_common(SupPrototypeFunctionsAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct SupImplementationAst);
 use(spp::asts, struct TokenAst);

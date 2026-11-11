@@ -8,37 +8,42 @@ import spp.asts.local_variable_destructure_skip_single_argument_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
+spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::CasePatternVariantDestructureSkipSingleArgumentAst(
   decltype(TokUnderscore) &&tok_underscore) :
   TokUnderscore(std::move(tok_underscore)) {
 }
 
-CasePatternVariantDestructureSkipSingleArgumentAst::~CasePatternVariantDestructureSkipSingleArgumentAst() = default;
+spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::~CasePatternVariantDestructureSkipSingleArgumentAst() = default;
 
-auto CasePatternVariantDestructureSkipSingleArgumentAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::PosStart() const -> std::size_t {
   // Use the "_" token.
   return TokUnderscore->PosStart();
 }
 
-auto CasePatternVariantDestructureSkipSingleArgumentAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::PosEnd() const -> std::size_t {
   // Use the "_" token.
   return TokUnderscore->PosEnd();
 }
 
-auto CasePatternVariantDestructureSkipSingleArgumentAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CasePatternVariantDestructureSkipSingleArgumentAst>(
     AstClone(TokUnderscore));
 }
 
-auto CasePatternVariantDestructureSkipSingleArgumentAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokUnderscore);
   SPP_STRING_END;
 }
 
-auto CasePatternVariantDestructureSkipSingleArgumentAst::ConvToVar(
+auto spp::asts::CasePatternVariantDestructureSkipSingleArgumentAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Create the local variable destructure attribute
   // binding AST.

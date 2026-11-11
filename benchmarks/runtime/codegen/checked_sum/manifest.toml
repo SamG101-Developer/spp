@@ -1,0 +1,4 @@
+description = "A 4096-element Vec[S64] summed by index 50K times: a checked add into one running total per element; C traps signed overflow and Rust has overflow checks, so all three check"
+layer = "core"
+output = "exact"
+covers = ["codegen:llvm_pass_air", "codegen:llvm_pass_loop_versioning"]

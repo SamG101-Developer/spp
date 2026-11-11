@@ -35,8 +35,17 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LoopConditionalExpressionAst::LoopConditionalExpressionAst(
+spp::asts::LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   decltype(TokLoop) &&tok_loop,
   decltype(Cond) &&cond,
   decltype(Body) &&body,
@@ -45,19 +54,19 @@ LoopConditionalExpressionAst::LoopConditionalExpressionAst(
   Cond(std::move(cond)) {
 }
 
-LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;
+spp::asts::LoopConditionalExpressionAst::~LoopConditionalExpressionAst() = default;
 
-auto LoopConditionalExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::LoopConditionalExpressionAst::PosStart() const -> std::size_t {
   // Use the "loop" token.
   return TokLoop->PosStart();
 }
 
-auto LoopConditionalExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::LoopConditionalExpressionAst::PosEnd() const -> std::size_t {
   // Use the condition.
   return Cond->PosEnd();
 }
 
-auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, carrying over the desugaring marker.
   auto cloned = MakeUnique<LoopConditionalExpressionAst>(
     AstClone(TokLoop),
@@ -72,7 +81,7 @@ auto LoopConditionalExpressionAst::Clone() const -> Unique<Ast> {
   return cloned;
 }
 
-auto LoopConditionalExpressionAst::ToString() const -> Str {
+auto spp::asts::LoopConditionalExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokLoop).append(" ");
   SPP_STRING_APPEND(Cond).append(" ");
@@ -81,7 +90,7 @@ auto LoopConditionalExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -151,7 +160,7 @@ auto LoopConditionalExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto LoopConditionalExpressionAst::Stage8_CheckMemory(
+auto spp::asts::LoopConditionalExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using memory_state::MemoryState;
@@ -365,7 +374,7 @@ auto LoopConditionalExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto LoopConditionalExpressionAst::Stage11_CodeGen(
+auto spp::asts::LoopConditionalExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -485,7 +494,7 @@ auto LoopConditionalExpressionAst::Stage11_CodeGen(
   return phi;
 }
 
-auto LoopConditionalExpressionAst::InferType(
+auto spp::asts::LoopConditionalExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
   using generate::common_types_precompiled::NeverAt;
@@ -517,7 +526,7 @@ auto LoopConditionalExpressionAst::InferType(
   return type;
 }
 
-auto LoopConditionalExpressionAst::InferTypeRef(
+auto spp::asts::LoopConditionalExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // A "loop true" with no exit statements is "Never"; otherwise as any loop.
   using generate::common_types_precompiled::NEVER;

@@ -21,54 +21,60 @@ import spp.codegen.llvm_type;
 import spp.utils.strings;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-StringLiteralAst::StringLiteralAst(
+spp::asts::StringLiteralAst::StringLiteralAst(
   decltype(BytePrefix) &&byte_prefix,
   decltype(Val) &&val) :
   BytePrefix(std::move(byte_prefix)),
   Val(std::move(val)) {
 }
 
-StringLiteralAst::~StringLiteralAst() = default;
+spp::asts::StringLiteralAst::~StringLiteralAst() = default;
 
-auto StringLiteralAst::EqualsStringLiteral(
+auto spp::asts::StringLiteralAst::EqualsStringLiteral(
   StringLiteralAst const &other) const -> Ordering {
   // Equality is based on the internal string value.
   const auto matching_byte_prefix = static_cast<bool>(BytePrefix) == static_cast<bool>(other.BytePrefix);
   return matching_byte_prefix and Val->TokenData == other.Val->TokenData ? Ordering::equal : Ordering::less;
 }
 
-auto StringLiteralAst::Equals(
+auto spp::asts::StringLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsStringLiteral(*this);
 }
 
-auto StringLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::StringLiteralAst::PosStart() const -> std::size_t {
   // Use the value.
   return Val->PosStart();
 }
 
-auto StringLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::StringLiteralAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto StringLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::StringLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<StringLiteralAst>(
     AstClone(BytePrefix),
     AstClone(Val));
 }
 
-auto StringLiteralAst::ToString() const -> Str {
+auto spp::asts::StringLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(BytePrefix);
   SPP_STRING_APPEND(Val);
   SPP_STRING_END;
 }
 
-auto StringLiteralAst::Stage11_CodeGen(
+auto spp::asts::StringLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   using spp::utils::strings::DecodeStringLiteral;
@@ -77,7 +83,7 @@ auto StringLiteralAst::Stage11_CodeGen(
   // quotes) into the raw bytes, resolving escape sequences,
   // and emit either a string or byte string for it.
   const auto bytes = DecodeStringLiteral(Val->TokenData);
-  const auto emission_module = codegen::GetEmissionModule(*ctx);
+  const auto emission_module = ctx->Module.get();
   const auto llvm_bytes = ctx->Builder.CreateGlobalString(
     bytes, "string_literal", 0, emission_module, false);
 
@@ -86,10 +92,10 @@ auto StringLiteralAst::Stage11_CodeGen(
   // rather than a bare pointer. Everything in it is a compile
   // time constant, so the view is emitted as its own constant
   // global instead of being rebuilt on the stack at every use.
-  const auto view_type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_view_type = view_type_sym != nullptr
-    ? llvm::dyn_cast_or_null<llvm::StructType>(codegen::GetLlvmType(*view_type_sym, ctx))
-    : nullptr;
+  const auto view_type_ref = InferTypeRef(sm, meta).WithoutConvention();
+  const auto view_type_sym = view_type_ref.Symbol;
+  const auto llvm_view_type = llvm::dyn_cast_or_null<llvm::StructType>(
+    codegen::GetLlvmTypeOf(view_type_ref, ctx));
 
   // Build the view's fields, which are always a pointer and a
   // length.
@@ -110,27 +116,28 @@ auto StringLiteralAst::Stage11_CodeGen(
   return llvm_global_view;
 }
 
-auto StringLiteralAst::EvaluateCompTime(
+auto spp::asts::StringLiteralAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the float literal as is for compile-time resolution.
   meta->CompTimeResult = AstClone(this);
 }
 
-auto StringLiteralAst::InferType(
+auto spp::asts::StringLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  // A char literal is either a StrView or Vec[U8] type,
-  // depending on the "b" byte prefix.
-  // Todo: static flag to check if the type's been analysed before? only has to be done once.
+  // A string literal is a "&StrView", or a "&View[U8]" with the
+  // "b" byte prefix: built and analysed once ("_Type").
   using generate::common_types_precompiled::StrViewAt;
   using generate::common_types::ViewU8Type;
-  auto type = BytePrefix != nullptr
-    ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
-    : StrViewAt(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
-  type->Stage7_AnalyseSemantics(sm, meta); // Todo: single analysis somewhere?
-  return type;
+  if (_Type == nullptr) {
+    _Type = BytePrefix != nullptr
+      ? ViewU8Type(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr))
+      : StrViewAt(PosStart())->WithConvention(MakeUnique<ConventionRefAst>(nullptr));
+    _Type->Stage7_AnalyseSemantics(sm, meta);
+  }
+  return AstCloneShared(_Type);
 }
 
-auto StringLiteralAst::InferTypeRef(
+auto spp::asts::StringLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // "View[U8]" is an instantiation "InferType" may be the first to make, so only "&StrView" is answered directly.
   if (BytePrefix != nullptr) { return TypeRef::Of(*InferType(sm, meta), *sm->CurrentScope); }
@@ -139,7 +146,7 @@ auto StringLiteralAst::InferTypeRef(
   return ref;
 }
 
-auto StringLiteralAst::CppVal() const -> Str {
+auto spp::asts::StringLiteralAst::CppVal() const -> Str {
   // Reuse the same decoding Stage11_CodeGen uses, so this
   // matches the literal's actual (escape-resolved) value
   // instead of the raw source text (which would still

@@ -15,15 +15,58 @@ import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.asts.annotation_ast;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ClassAttributeAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ClassAttributeAst::ClassAttributeAst(
+namespace {
+  /// The first borrow written in "type" or, at any depth, its generic arguments (a variant's too, once analysed into
+  /// its "Var[Variants=...]"); null for none.
+  auto FirstWrittenBorrow(TypeAst const &type) -> TypeAst const* {
+    if (type.GetConvention() != nullptr) { return &type; }
+    for (auto const *part : type.TypeParts()) {
+      for (auto const *arg : part->GnArgGroup->GetTypeArgs()) {
+        if (auto const *found = FirstWrittenBorrow(*arg->TypeVal); found != nullptr) { return found; }
+      }
+    }
+    return nullptr;
+  }
+
+  /// A field's type is never a borrow. One that is only by substitution ("val: T" in the "Some[&Str]" that
+  /// "Opt[&Str]" makes) is reported at the borrow written where the instantiation was asked for ("InstantiatedFrom"),
+  /// with the field as context: the template is not where the mistake is.
+  auto RequireFieldNotBorrowed(ClassAttributeAst const &attr, ScopeManager const &sm) -> void {
+    if (not spp::analyse::utils::type_predicates::IsTypeBorrowed(*attr.Type, *sm.CurrentScope)) { return; }
+    auto const *const site = attr.Source.OriginalType->GetConvention() == nullptr ? spp::analyse::errors::InstantiatedFrom() : nullptr;
+    auto const *const site_type = site != nullptr ? site->To<TypeAst>() : nullptr;
+    if (auto const *const written = site_type != nullptr ? FirstWrittenBorrow(*site_type) : nullptr) {
+      spp::analyse::utils::common_errors::RequireNotBorrowed(
+        *attr.Type, *written, *attr.Source.OriginalType, "class field type", sm);
+    }
+    spp::analyse::utils::common_errors::RequireNotBorrowed(
+      *attr.Type, *attr.Source.OriginalType, "class field type", sm);
+  }
+}
+
+spp::asts::ClassAttributeAst::ClassAttributeAst(
   decltype(Annotations) &&annotations,
   decltype(Name) &&name,
   decltype(TokColon) &&tok_colon,
@@ -37,19 +80,19 @@ ClassAttributeAst::ClassAttributeAst(
   Source.OriginalType = AstClone(Type);
 }
 
-ClassAttributeAst::~ClassAttributeAst() = default;
+spp::asts::ClassAttributeAst::~ClassAttributeAst() = default;
 
-auto ClassAttributeAst::PosStart() const -> std::size_t {
+auto spp::asts::ClassAttributeAst::PosStart() const -> std::size_t {
   // Use the "name".
   return Name->PosStart();
 }
 
-auto ClassAttributeAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClassAttributeAst::PosEnd() const -> std::size_t {
   // Use the "type".
   return Type->PosEnd();
 }
 
-auto ClassAttributeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClassAttributeAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ClassAttributeAst>(
     AstCloneVec(Annotations),
@@ -64,7 +107,7 @@ auto ClassAttributeAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ClassAttributeAst::ToString() const -> Str {
+auto spp::asts::ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -75,7 +118,7 @@ auto ClassAttributeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ClassAttributeAst::Stage1_PreProcess(
+auto spp::asts::ClassAttributeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the AST by calling the base class method
   // and then processing annotations.
@@ -83,7 +126,7 @@ auto ClassAttributeAst::Stage1_PreProcess(
   for (auto const &a : Annotations) { a->SetAstCtx(this); }
 }
 
-auto ClassAttributeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ClassAttributeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run the generation steps for the annotations.
   for (auto const &a : Annotations) { a->Stage2_GenTopLvlScopes(sm, meta); }
@@ -91,30 +134,22 @@ auto ClassAttributeAst::Stage2_GenTopLvlScopes(
   // Create a variable symbol for this attribute in the
   // current scope (class scope).
   auto sym = MakeShared<VariableSymbol>(
-    Name, Type, sm->CurrentScope, VariableKind::Attribute, false, Visibility.first);
+    Name, Type, sm->CurrentScope, VariableKind::Attribute);
   sm->CurrentScope->AddVarSymbol(std::move(sym));
 }
 
-auto ClassAttributeAst::Stage4_ResolveDeclarations(
+auto spp::asts::ClassAttributeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   for (auto const &a : Annotations) { a->Stage4_ResolveDeclarations(sm, meta); }
-  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.first;
-  sym->VisibilityAnnotation = Visibility.second;
+  sm->CurrentScope->FindVarSymbol(Name.get(), true)->VisibilityFrom = this;
 }
 
-auto ClassAttributeAst::Stage5_LoadSupScopes(
+auto spp::asts::ClassAttributeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using type_resolution::SelfPolicy;
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
-
-  // Sync the variable symbol's visibility from the AST
-  // (annotations set Visibility in Stage5).
-  const auto sym = sm->CurrentScope->FindVarSymbol(Name.get(), true);
-  sym->Visibility = Visibility.first;
-  sym->VisibilityAnnotation = Visibility.second;
 
   // What a default may hold is limited, because it is
   // copied into every object initializer that leaves
@@ -130,10 +165,10 @@ auto ClassAttributeAst::Stage5_LoadSupScopes(
   sm->CurrentScope->FindVarSymbol(Name.get())->Type = Type;
 
   // Ensure that the field type doesn't have a convention.
-  common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
+  RequireFieldNotBorrowed(*this, *sm);
 }
 
-auto ClassAttributeAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClassAttributeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -145,9 +180,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
 
   const auto var_sym = sm->CurrentScope->FindVarSymbol(Name.get());
   Type->Stage7_AnalyseSemantics(sm, meta);
-  if (not Type->IsSelfType()) {
-    common_errors::RequireNotBorrowed(*Type, *Source.OriginalType, "class field type", *sm);
-  }
+  if (not Type->IsSelfType()) { RequireFieldNotBorrowed(*this, *sm); }
   var_sym->Type = Type;
 
   if (meta->CurrentStage != CompilerStage::kAnalyseSemantics) { return; }
@@ -164,7 +197,7 @@ auto ClassAttributeAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ClassAttributeAst::Stage8_CheckMemory(
+auto spp::asts::ClassAttributeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // If there is a default value, check it for memory errors.
   IMPORT_UTILS;

@@ -29,17 +29,29 @@ import spp.asts.type_statement_ast;
 import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.codegen.llvm_layout;
+import spp.codegen.llvm_abi;
 import spp.codegen.llvm_mangle;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.utils.ice;
+import spp.utils.strings;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeIdentifierName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, ScopeTypeIdentifierName);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ClassPrototypeAst::ClassPrototypeAst(
+spp::asts::ClassPrototypeAst::ClassPrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCls) &&tok_cls,
   decltype(Name) name,
@@ -48,6 +60,8 @@ ClassPrototypeAst::ClassPrototypeAst(
   Annotations(std::move(annotations)),
   TokCls(std::move(tok_cls)),
   ZeroTypeAnnotation(nullptr),
+  FfiAnnotation(nullptr),
+  ConvAnnotation(nullptr),
   Name(std::move(name)),
   GnParamGroup(std::move(generic_param_group)),
   Impl(std::move(impl)),
@@ -57,19 +71,19 @@ ClassPrototypeAst::ClassPrototypeAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
 }
 
-ClassPrototypeAst::~ClassPrototypeAst() = default;
+spp::asts::ClassPrototypeAst::~ClassPrototypeAst() = default;
 
-auto ClassPrototypeAst::PosStart() const -> std::size_t {
+auto spp::asts::ClassPrototypeAst::PosStart() const -> std::size_t {
   // Use the "cls" token.
   return TokCls->PosStart();
 }
 
-auto ClassPrototypeAst::PosEnd() const -> std::size_t {
+auto spp::asts::ClassPrototypeAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ClassPrototypeAst::Clone() const -> Unique<Ast> {
   auto ast = MakeUnique<ClassPrototypeAst>(
     AstCloneVec(Annotations),
     AstClone(TokCls),
@@ -78,6 +92,8 @@ auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
     AstClone(Impl));
   ast->Visibility = Visibility;
   ast->ZeroTypeAnnotation = ZeroTypeAnnotation;
+  ast->FfiAnnotation = FfiAnnotation;
+  ast->ConvAnnotation = ConvAnnotation;
   ast->_Ctx = _Ctx;
   ast->_Scope = _Scope;
   ast->_ClsSymbol = _ClsSymbol;
@@ -85,7 +101,7 @@ auto ClassPrototypeAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ClassPrototypeAst::ToString() const -> Str {
+auto spp::asts::ClassPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n");
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -96,7 +112,7 @@ auto ClassPrototypeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto ClassPrototypeAst::Stage1_PreProcess(
+auto spp::asts::ClassPrototypeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Pre-process the AST by calling the base class method and
   // then processing annotations and the body.
@@ -105,7 +121,7 @@ auto ClassPrototypeAst::Stage1_PreProcess(
   Impl->Stage1_PreProcess(this);
 }
 
-auto ClassPrototypeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ClassPrototypeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create the class scope, which is the scope for the class
   // prototype.
@@ -127,7 +143,7 @@ auto ClassPrototypeAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
+auto spp::asts::ClassPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *) -> void {
   IMPORT_UTILS;
   // Register "Self" before any alias in the body is resolved,
@@ -141,7 +157,7 @@ auto ClassPrototypeAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage4_ResolveDeclarations(
+auto spp::asts::ClassPrototypeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Qualify the types in the class body.
   sm->MoveToNextScope();
@@ -152,7 +168,7 @@ auto ClassPrototypeAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage5_LoadSupScopes(
+auto spp::asts::ClassPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types_precompiled::COPY;
@@ -162,17 +178,6 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Sync the type symbols' visibility from the AST.
-  // Instances minted before this stage (use statements
-  // analyse their targets in Stage4) copied the default
-  // visibility, and are shared by identity across modules.
-  const auto sync = [this](TypeSymbol *sym) {
-    if (sym == nullptr) { Ice(*Name, "class has no type symbol by stage 5"); }
-    sym->Visibility = Visibility.first;
-    for (auto const &[_, inst] : sym->Instances) { inst->Visibility = Visibility.first; }
-  };
-  sync(_ClsSymbol.get());
-  sync(sm->CurrentScope->LinkedTypeSymbol.get());
 
   // Mark the "Copy" class itself as copyable. Minimise
   // `TypeEq` calls.
@@ -201,7 +206,7 @@ auto ClassPrototypeAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Pre-analyse semantics for the class body.
@@ -218,7 +223,7 @@ auto ClassPrototypeAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::ClassPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Analyse semantics for the class body.
@@ -238,11 +243,17 @@ auto ClassPrototypeAst::Stage7_AnalyseSemantics(
       *ZeroTypeAnnotation, *Impl->Members.front(), "a '!zero_type' class",
       "the type is guaranteed to occupy no storage, and an attribute would give it a size"));
 
+  // An "!ffi" class mirrors a C struct, so a "!conv" on it has to
+  // name a foreign convention ("C" itself, or a platform's).
+  RaiseIf<SppIdentifierUnknownError>(
+    FfiAnnotation != nullptr and ConvAnnotation != nullptr and not codegen::AbiOf(*_ClsSymbol).IsForeign(),
+    ERR_ARGS(*ConvAnnotation, "convention for an '!ffi' class", spp::utils::strings::ClosestMatch(ConvAnnotation->ConvName(), codegen::AbiNames(true))));
+
   Impl->Stage7_AnalyseSemantics(sm, meta);
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage8_CheckMemory(
+auto spp::asts::ClassPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check memory for the class body.
   sm->MoveToNextScope();
@@ -251,7 +262,7 @@ auto ClassPrototypeAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto ClassPrototypeAst::Stage10_PreCodeGen(
+auto spp::asts::ClassPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate code for the class body.
   sm->MoveToNextScope();
@@ -278,7 +289,7 @@ auto ClassPrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto ClassPrototypeAst::Stage11_CodeGen(
+auto spp::asts::ClassPrototypeAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Get the class symbol.
   sm->MoveToNextScope();
@@ -288,13 +299,13 @@ auto ClassPrototypeAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto ClassPrototypeAst::AddGnSubstitution(
+auto spp::asts::ClassPrototypeAst::AddGnSubstitution(
   GenericSubstitution &&sub) -> GenericSubstitution& {
   // Kept alive here: the instantiation's scope points into it.
   return _GnSubstitutions.emplace_back(std::move(sub));
 }
 
-auto ClassPrototypeAst::GetClsSymbol() const -> Shared<TypeSymbol> {
+auto spp::asts::ClassPrototypeAst::GetClsSymbol() const -> Shared<TypeSymbol> {
   // Getter for the class symbol.
   return _ClsSymbol;
 }
@@ -313,7 +324,7 @@ static auto IsStdNeverModule(
   return names.size() == 2 and names[0] == "never" and names[1] == "std";
 }
 
-auto ClassPrototypeAst::_GenerateSymbols(
+auto spp::asts::ClassPrototypeAst::_GenerateSymbols(
   ScopeManager *sm) -> TypeSymbol* {
   auto is_dollar_type = Name->IsCompilerGeneratedType();
   // A template is named as written ("Vec"); as a pattern it is
@@ -339,6 +350,9 @@ auto ClassPrototypeAst::_GenerateSymbols(
   symbol_1 = MakeShared<TypeSymbol>(
     std::move(sym_name), this, sm->CurrentScope, sm->CurrentScope,
     is_dollar_type ? TypeKind::FnMock : TypeKind::Cls, is_dollar_type);
+  // Its visibility is read here, where the annotations set it after the symbol is made; its instances read it
+  // through it ("TypeSymbol::GetVisibility").
+  symbol_1->VisibilityFrom = this;
   sm->CurrentScope->LinkedTypeSymbol = symbol_1;
   sm->CurrentScope->Parent->AddTypeSymbolCheckConflict(symbol_1);
   _ClsSymbol = sm->CurrentScope->LinkedTypeSymbol;
@@ -353,65 +367,44 @@ auto ClassPrototypeAst::_GenerateSymbols(
   return _ClsSymbol.get();
 }
 
-static auto ApplyStructLayout(
-  llvm::StructType *struct_type,
-  spp::Vec<llvm::Type*> const &field_types,
-  const spp::codegen::StructLayout layout,
-  spp::codegen::LlvmTypeSymbolInfo *sym_info,
-  spp::codegen::LlvmCtx const *ctx)
-  -> void {
-  // A struct body is only ever set once. "RegisterLlvmTypeInfo"
-  // lays the compiler-known types out itself, like "Var" is a
-  // { tag, payload } pair, "Generated" and the "Fun*" family
-  // are { fn_ptr, env_ptr } literals. As none of them declare
-  // attributes, we need to skip setting 0 fields, as this messes
-  // up the layout and subsequent GEP instructions.
-  const auto needs_body = struct_type->isOpaque();
+/// Why a C struct cannot hold a value of "ref" as a field, or none if it can:
+/// a number, a pointer, a fixed array of those, or a class (or tuple) laid out
+/// the C way whose own fields it can hold. A generator lowers to a pointer, and
+/// a closure or variant to a struct, but C holds none of them.
+static auto FfiAttrProblem(
+  TypeRef const &ref, ScopeManager const &sm, spp::codegen::LlvmCtx const *ctx)
+  -> spp::Opt<spp::StrView> {
+  using namespace spp::analyse::utils;
+  auto const &scope = *sm.CurrentScope;
+  if (type_predicates::IsTypeVoid(ref, scope)) { return spp::Nullopt; }
+  if (type_predicates::IsTypeGenerator(ref, scope)) { return "a generator"; }
+  if (type_predicates::IsTypeFunction(ref, scope)) { return "a function"; }
+  if (type_predicates::IsTypeVariant(ref, scope)) { return "a variant"; }
 
-  // Fields that carry no value are not laid out at all, whichever convention is in force.
-  const auto kept = spp::codegen::DropValuelessFields(field_types);
-  auto kept_types = spp::Vec<llvm::Type*>();
-  auto kept_map = spp::Map<std::size_t, std::size_t>();
-  for (auto new_idx = 0uz; new_idx < kept.size(); ++new_idx) {
-    kept_types.emplace_back(field_types[kept[new_idx]]);
-    kept_map[kept[new_idx]] = new_idx;
+  const auto type = spp::codegen::GetLlvmTypeOf(ref.WithoutConvention(), ctx);
+  if (type_predicates::IsTypeArray(ref, scope)) {
+    return FfiAttrProblem(ref.Symbol->AsBound()->TypeArgRefs().front(), sm, ctx);
   }
-  const auto dropped_any = kept.size() != field_types.size();
+  if (spp::codegen::IsCScalar(type)) { return spp::Nullopt; }
 
-  switch (layout) {
-    case spp::codegen::StructLayout::C: {
-      // Keep declaration order, with natural alignment padding.
-      // This mirrors the C language / specifications. Seen in the
-      // FFI structs.
-      if (needs_body) { struct_type->setBody(kept_types, false); }
-      // An empty map means the declaration order was preserved outright, which it only is when nothing was dropped.
-      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
-      else { sym_info->FieldIndexMap.clear(); }
-      break;
-    }
-    case spp::codegen::StructLayout::Packed: {
-      // Keep declaration order, but remove all inter-field padding.
-      if (needs_body) { struct_type->setBody(kept_types, true); }
-      if (dropped_any) { sym_info->FieldIndexMap = std::move(kept_map); }
-      else { sym_info->FieldIndexMap.clear(); }
-      break;
-    }
-    case spp::codegen::StructLayout::Spp: {
-      // Re-order the fields to minimize padding, and record where
-      // each declared attribute ended up, so that codegen can map
-      // a declaration index to its physical field index.
-      auto [sorted_types, index_map] = spp::codegen::SortMembersForSppLayout(field_types, ctx);
-      if (needs_body) { struct_type->setBody(sorted_types, false); }
-      sym_info->FieldIndexMap = std::move(index_map);
-      break;
-    }
-    default: {
-      spp::Ice(std::format("unhandled struct layout: {}", static_cast<int>(layout)));
-    }
+  // A struct of two or more fields: a tuple is laid out the C way, and
+  // a class only if its convention is a foreign one. Either way its own
+  // fields have to be ones C can hold too.
+  auto const &sym = *ref.Symbol->AsBound();
+  const auto is_tuple = type_predicates::IsTypeTuple(ref, scope);
+  if (not is_tuple and not spp::codegen::AbiOf(sym).IsForeign()) { return "a class laid out the s++ way"; }
+  const auto fields = is_tuple
+    ? sym.TypeArgRefs()
+    : type_members::GetAllAttrs(sym)
+      | genex::views::transform([](auto const &attr) { return spp::get<1>(attr); })
+      | genex::to<spp::Vec>();
+  for (auto const &field : fields) {
+    if (const auto what = FfiAttrProblem(field, sm, ctx); what.has_value()) { return what; }
   }
+  return spp::Nullopt;
 }
 
-auto ClassPrototypeAst::FillLlvmLayout(
+auto spp::asts::ClassPrototypeAst::FillLlvmLayout(
   ScopeManager const *sm, TypeSymbol const *type_sym, codegen::LlvmCtx const *ctx) const -> void {
   IMPORT_UTILS;
 
@@ -421,7 +414,10 @@ auto ClassPrototypeAst::FillLlvmLayout(
   // Non-struct types are compiler known special types, so
   // don't have any field generation. Things like numbers,
   // booleans, functions etc.
-  const auto lt = codegen::GetLlvmType(*type_sym, ctx);
+  if (type_sym->LlvmInfo->LlvmType == nullptr) {
+    codegen::EnsureLlvmTypeComplete(*type_sym, *sm, ctx);
+  }
+  const auto lt = type_sym->LlvmInfo->LlvmType;
   if (lt == nullptr or not llvm::isa<llvm::StructType>(lt)) {
     return;
   }
@@ -440,10 +436,10 @@ auto ClassPrototypeAst::FillLlvmLayout(
   // The "Spp" layout sorts the fields by size and alignment, so
   // every field has to be lowered all the way before any of them
   // can be placed - a field still sitting as an opaque placeholder
-  // has no size to sort on. "GetLlvmType" does that on demand, so
+  // has no size to sort on. "GetLlvmTypeOf" does that on demand, so
   // the order fields are reached in does not matter.
-  const auto lower_field = [&](TypeSymbol const *field_type_sym) -> llvm::Type* {
-    return field_type_sym != nullptr ? codegen::GetLlvmType(*field_type_sym, ctx) : nullptr;
+  const auto lower_field = [&](TypeRef const &field) -> llvm::Type* {
+    return codegen::GetLlvmTypeOf(field.WithoutConvention(), ctx);
   };
 
   // Tuple fields are positional based off of the types found
@@ -451,16 +447,14 @@ auto ClassPrototypeAst::FillLlvmLayout(
   if (is_tuple) {
     const auto elems = type_sym->TypeArgRefs();
     types = elems
-      | genex::views::transform([](auto const &elem) { return elem.Symbol; })
-      | genex::views::transform([&](auto const &type) { return lower_field(type); })
+      | genex::views::transform([&](auto const &elem) { return lower_field(elem); })
       | genex::to<Vec>();
   }
 
   // Class attributes are read from the attribute types.
   else {
     types = type_members::GetAllAttrs(*type_sym)
-      | genex::views::transform([&](auto const &pair) { return spp::get<1>(pair).Symbol; })
-      | genex::views::transform([&](auto const &type) { return lower_field(type); })
+      | genex::views::transform([&](auto const &pair) { return lower_field(spp::get<1>(pair)); })
       | genex::to<Vec>();
   }
 
@@ -476,14 +470,26 @@ auto ClassPrototypeAst::FillLlvmLayout(
     types = std::move(prefixed);
   }
 
+  // An "!ffi" class is laid out as C lays out its struct, so every
+  // attribute must be one C can hold. Checked on each instance, as
+  // a generic one's attributes are only known there.
+  if (not is_tuple and FfiAnnotation != nullptr and genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
+    for (auto const &[name, attr_ref, attr_scope] : type_members::GetAllAttrs(*type_sym)) {
+      if (const auto what = FfiAttrProblem(attr_ref, *sm, ctx); what.has_value()) {
+        const auto attr = type_members::AttrAstOf(*attr_scope, *name);
+        Raise<SppFfiAttributeTypeError>(
+          ERR_ARGS(*FfiAnnotation, attr != nullptr ? static_cast<Ast const&>(*attr->Type) : *Name, *what));
+      }
+    }
+  }
+
   // If there are any generic types present (llvm_type is nullptr),
-  // skip the layout generation. Tuples use "C" layout so they
+  // skip the layout generation. Tuples use the C convention so they
   // keep the order of types based on the type arguments (standard
-  // tuple design).
+  // tuple design); a class uses its own ("!conv", "!ffi").
   if (genex::all_of(types, [](auto const &x) { return x != nullptr; })) {
-    const auto struct_type = llvm::dyn_cast<llvm::StructType>(lt);
-    const auto layout = is_tuple ? codegen::StructLayout::C : codegen::StructLayout::Spp;
-    ApplyStructLayout(struct_type, types, layout, type_sym->LlvmInfo.get(), ctx);
+    auto const &abi = is_tuple ? codegen::GetCAbi() : codegen::AbiOf(*type_sym->AsBound());
+    abi.LayOutStruct(*llvm::cast<llvm::StructType>(lt), types, *type_sym->LlvmInfo, *ctx);
   }
 }
 

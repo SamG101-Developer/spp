@@ -17,9 +17,9 @@ cd "${RUNNER_TEMP:-/tmp}/cross"
 # which picks one test when a failure is re-run alone, has to reach
 # the program through it (qemu passes the environment on).
 if [ -n "$QEMU" ]; then
-  RUNNER="qemu-${QEMU} -L ${SPP_QEMU_SYSROOT:-/usr/${SYSROOT}}"
+  RUNNER="qemu-${QEMU} -L ${SPP_CI_QEMU_SYSROOT:-/usr/${SYSROOT}}"
 elif [ "$RUN_IN" = alpine ]; then
-  RUNNER="docker run --rm -e SPP_TEST_ONLY -v ${PWD}:${PWD} ${SPP_MUSL_RUN_IMAGE}"
+  RUNNER="docker run --rm -e SPP_TEST_ONLY -v ${PWD}:${PWD} ${SPP_CI_MUSL_RUN_IMAGE}"
 else
   echo "::error::${TRIPLE} has nothing to run its tests under"
   exit 1

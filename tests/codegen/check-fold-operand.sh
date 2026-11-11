@@ -4,7 +4,9 @@
 # Builds a scratch project at dev and asserts:
 #   - ".. + make()", "make() * .." and "id(make()).." give the fold of the tuple
 #     "make" returns;
-#   - "make" runs once per fold, not once per element read off its tuple.
+#   - "make" runs once per fold, not once per element read off its tuple;
+#   - a call fold's receiver and its unfolded arguments ("make().m(xs, arg())..")
+#     run once per fold, not once per element (open-bugs.md #59).
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-fold-operand.sh [path/to/spp]
 
@@ -54,6 +56,52 @@ if build_project "fold" "${dir}" dev; then
         fail "a fold evaluated its operand once per element: \"make\" ran ${makes} times for 3 folds" "${dir}/run.log"
     else
         ok "a fold evaluates its operand once"
+    fi
+else
+    failures=$((failures + 1))
+fi
+
+# A call fold copies its receiver and every argument it does not fold into each element's call, so a receiver or an
+# argument that is a call ran once per element (open-bugs.md #59, fixed).
+dir="${WORK}/fold-receiver"
+new_project "${dir}"
+cat > "${dir}/src/main.spp" <<'EOF'
+cls C { }
+
+sup C ext Copy { }
+
+sup C {
+    !public
+    fun m(&self, x: S32, y: S32) -> Void { }
+}
+
+fun make() -> C {
+    std::console::println("make")
+    ret C()
+}
+
+fun arg() -> S32 {
+    std::console::println("arg")
+    ret 0
+}
+
+fun g(..xs: S32) -> Void {
+    make().m(xs, arg())..
+}
+
+fun main() -> Void {
+    g(1, 2, 3)
+}
+EOF
+
+if build_project "fold-receiver" "${dir}" dev; then
+    run_exe "${EXE}" "${dir}/run.log"
+    makes="$(grep -cx "make" "${dir}/run.log")"
+    args="$(grep -cx "arg" "${dir}/run.log")"
+    if (( RC != 0 || makes != 1 || args != 1 )); then
+        fail "a call fold ran its receiver ${makes} times and its unfolded argument ${args} times over 3 elements (exit ${RC})" "${dir}/run.log"
+    else
+        ok "a call fold evaluates its receiver and unfolded arguments once"
     fi
 else
     failures=$((failures + 1))

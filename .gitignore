@@ -12,7 +12,12 @@ __pycache__/
 # lychee link-check cache (pre-commit hook)
 .lycheecache
 
+# local linter reports
+cppcheck-report.txt
+clang-tidy-report.txt
+
 # test fixture project and per-test logs
 tests/test_outputs/
 tests/gtest-parallel-logs/
+!benchmarks/**/*.spp
 !tests/**/*.spp

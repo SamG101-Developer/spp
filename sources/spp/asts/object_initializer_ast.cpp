@@ -32,14 +32,21 @@ import spp.codegen.llvm_coerce;
 import spp.codegen.llvm_layout;
 import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
-import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ObjectInitializerAst::ObjectInitializerAst(
+spp::asts::ObjectInitializerAst::ObjectInitializerAst(
   decltype(Type) type,
   decltype(ArgGroup) &&arg_group) :
   Type(std::move(type)),
@@ -48,19 +55,19 @@ ObjectInitializerAst::ObjectInitializerAst(
   Source.OriginalType = AstClone(Type);
 }
 
-ObjectInitializerAst::~ObjectInitializerAst() = default;
+spp::asts::ObjectInitializerAst::~ObjectInitializerAst() = default;
 
-auto ObjectInitializerAst::PosStart() const -> std::size_t {
+auto spp::asts::ObjectInitializerAst::PosStart() const -> std::size_t {
   // Use the type.
   return Source.OriginalType->PosStart();
 }
 
-auto ObjectInitializerAst::PosEnd() const -> std::size_t {
+auto spp::asts::ObjectInitializerAst::PosEnd() const -> std::size_t {
   // Use the argument group.
   return ArgGroup->PosEnd();
 }
 
-auto ObjectInitializerAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ObjectInitializerAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast. The constructor records the
   // type it is given as the written one, but "Type" may already be
   // the resolved type by now, so the written one is carried over.
@@ -71,14 +78,14 @@ auto ObjectInitializerAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ObjectInitializerAst::ToString() const -> Str {
+auto spp::asts::ObjectInitializerAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Type);
   SPP_STRING_APPEND(ArgGroup);
   SPP_STRING_END;
 }
 
-auto ObjectInitializerAst::Stage7_AnalyseSemantics(
+auto spp::asts::ObjectInitializerAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -145,7 +152,7 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   if (not base_cls_sym->IsGn()) {
     for (const auto attr : base_cls_sym->Type->Impl->Members
          | genex::views::ptr
-         | genex::views::cast_dynamic<ClassAttributeAst*>()) {
+         | genex::views::cast_dynamic<ClassAttributeAst*>) {
       const auto attr_sym = base_cls_sym->LinkedScope->FindTypeSymbol(attr->Type.get());
       if (attr_sym == nullptr) { continue; }
       for (auto const &arg : ArgGroup->Args) {
@@ -174,13 +181,13 @@ auto ObjectInitializerAst::Stage7_AnalyseSemantics(
   ArgGroup->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto ObjectInitializerAst::Stage8_CheckMemory(
+auto spp::asts::ObjectInitializerAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory of the object argument group.
   ArgGroup->Stage8_CheckMemory(sm, meta);
 }
 
-auto ObjectInitializerAst::Stage11_CodeGen(
+auto spp::asts::ObjectInitializerAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -188,9 +195,9 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   // never be a borrow so always stack allocated, not a
   // pointer.
   const auto uid = "." + Uid();
-  const auto type_sym = sm->CurrentScope->FindTypeSymbol(Type.get());
-
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto type_ref = TypeRef::Of(*Type, *sm->CurrentScope).WithoutConvention();
+  const auto type_sym = type_ref.Symbol;
+  const auto llvm_type = codegen::GetLlvmTypeOf(type_ref, ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   const auto attrs = type_members::GetAllAttrs(*type_sym);
@@ -332,7 +339,7 @@ auto ObjectInitializerAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(struct_type, comp_fields);
 }
 
-auto ObjectInitializerAst::EvaluateCompTime(
+auto spp::asts::ObjectInitializerAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values.
   auto cmp_elems = ObjectInitializerArgumentGroupAst::NewEmpty();
@@ -349,13 +356,13 @@ auto ObjectInitializerAst::EvaluateCompTime(
     Type, std::move(cmp_elems));
 }
 
-auto ObjectInitializerAst::InferTypeRef(
+auto spp::asts::ObjectInitializerAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   // The type being initialized, held as written.
   return TypeRef::Of(*Type, *sm->CurrentScope);
 }
 
-auto ObjectInitializerAst::ReadExpr(
+auto spp::asts::ObjectInitializerAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   IMPORT_UTILS;
   // The initialiser names its type outright, and each
@@ -366,7 +373,7 @@ auto ObjectInitializerAst::ReadExpr(
     type_resolution::ReadType(*Type, sub), std::move(arg_group));
 }
 
-auto ObjectInitializerAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ObjectInitializerAst::IsAllowedInDefault() const -> bool {
   // Check the argument group for validity of being used
   // in the default context.
   return ArgGroup->IsAllowedInDefault();

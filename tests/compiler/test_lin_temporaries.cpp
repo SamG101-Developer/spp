@@ -54,6 +54,59 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     }
 )");
 
+// A method's result is a new value even though "PlaceOf" derives it from the receiver's place ("v.dup()" is "v", one
+// opaque step in, for the borrows a call hands back); std's "rfind_if" leaked through "self.to_reverse().chars()".
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearTemporaries,
+  test_invalid_borrowing_method_called_on_a_method_result,
+  SppLinearValueNotConsumedError, R"(
+    cls TmpDup { !public b: Str }
+
+    sup TmpDup {
+        !public fun dup(&self) -> TmpDup { ret TmpDup(b=Str::from("b")) }
+        !public fun peek(&self) -> S32 { ret 1 }
+    }
+
+    fun f() -> S32 {
+        let v = TmpDup(b=Str::from("b"))
+        let n = v.dup().peek()
+        std::mem::ops::drop(v)
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  TestLinearTemporaries,
+  test_invalid_method_result_borrowed_as_an_argument,
+  SppLinearValueNotConsumedError, R"(
+    cls TmpArg { !public b: Str }
+
+    sup TmpArg {
+        !public fun dup(&self) -> TmpArg { ret TmpArg(b=Str::from("b")) }
+    }
+
+    fun look(x: &TmpArg) -> S32 { ret 1 }
+
+    fun f() -> S32 {
+        let v = TmpArg(b=Str::from("b"))
+        let n = look(&v.dup())
+        std::mem::ops::drop(v)
+        ret n
+    }
+)");
+
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  TestLinearTemporaries,
+  test_valid_borrow_handed_back_by_a_call_is_no_temporary, R"(
+    fun f() -> USize {
+        let mut v = std::vector::Vec[Str]::new()
+        v.append(Str::from("a"))
+        let n = v[0_uz].len()
+        std::mem::ops::drop(v)
+        ret n
+    }
+)");
+
 SPP_TEST_SHOULD_FAIL_SEMANTIC(
   TestLinearTemporaries,
   test_invalid_element_taken_off_a_temporary_tuple,

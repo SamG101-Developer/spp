@@ -10,6 +10,9 @@ import genex;
 import std;
 import sys;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::asts, Ast);
+
 SPP_MOD_BEGIN
 namespace spp::utils::errors {
   namespace {

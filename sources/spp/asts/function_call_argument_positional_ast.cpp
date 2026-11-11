@@ -10,8 +10,13 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
+spp::asts::FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
   decltype(Conv) &&conv,
   decltype(TokUnpack) &&tok_unpack,
   decltype(Val) &&val) :
@@ -19,19 +24,19 @@ FunctionCallArgumentPositionalAst::FunctionCallArgumentPositionalAst(
   TokUnpack(std::move(tok_unpack)) {
 }
 
-FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
+spp::asts::FunctionCallArgumentPositionalAst::~FunctionCallArgumentPositionalAst() = default;
 
-auto FunctionCallArgumentPositionalAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentPositionalAst::PosStart() const -> std::size_t {
   // Use the ".." token or the value.
   return TokUnpack ? TokUnpack->PosStart() : Val->PosStart();
 }
 
-auto FunctionCallArgumentPositionalAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionCallArgumentPositionalAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast
   auto ast = MakeUnique<FunctionCallArgumentPositionalAst>(
     AstClone(Conv),
@@ -40,7 +45,7 @@ auto FunctionCallArgumentPositionalAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto FunctionCallArgumentPositionalAst::ToString() const -> Str {
+auto spp::asts::FunctionCallArgumentPositionalAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokUnpack);
   SPP_STRING_APPEND(Conv);

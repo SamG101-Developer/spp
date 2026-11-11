@@ -11,7 +11,9 @@ import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.memory_state;
 import spp.analyse.utils.operator_desugaring;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.boolean_literal_ast;
 import spp.asts.fold_expression_ast;
@@ -22,10 +24,9 @@ import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.postfix_expression_ast;
+import spp.asts.postfix_expression_operator_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
-import spp.asts.postfix_expression_operator_runtime_member_access_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.type_identifier_ast;
@@ -37,6 +38,15 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 import llvm;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, TokenAst);
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 namespace {
@@ -56,7 +66,7 @@ namespace {
   }
 }
 
-BinaryExpressionAst::BinaryExpressionAst(
+spp::asts::BinaryExpressionAst::BinaryExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(TokOp) &&tok_op,
   decltype(Rhs) &&rhs) :
@@ -70,19 +80,19 @@ BinaryExpressionAst::BinaryExpressionAst(
   Source.OriginalPosEnd = Rhs ? Rhs->PosEnd() : 0;
 }
 
-BinaryExpressionAst::~BinaryExpressionAst() = default;
+spp::asts::BinaryExpressionAst::~BinaryExpressionAst() = default;
 
-auto BinaryExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::BinaryExpressionAst::PosStart() const -> std::size_t {
   // Use the left hand side operand.
   return Lhs ? Lhs->PosStart() : Source.OriginalPosStart;
 }
 
-auto BinaryExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::BinaryExpressionAst::PosEnd() const -> std::size_t {
   // Use the right hand side operand.
   return Rhs ? Rhs->PosEnd() : Source.OriginalPosEnd;
 }
 
-auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::BinaryExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<BinaryExpressionAst>(
     AstClone(Lhs),
@@ -90,11 +100,13 @@ auto BinaryExpressionAst::Clone() const -> Unique<Ast> {
     AstClone(Rhs));
   ast->_MappedFn = _MappedFn;
   ast->_ChainTemps = AstCloneVec(_ChainTemps);
+  ast->_OpenPack = AstClone(_OpenPack);
+  ast->_OpenPackMoves = _OpenPackMoves;
   ast->Source = Source;
   return ast;
 }
 
-auto BinaryExpressionAst::ToString() const -> Str {
+auto spp::asts::BinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   if (Lhs != nullptr) {
     raw_string.append("(");
@@ -108,35 +120,69 @@ auto BinaryExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto BinaryExpressionAst::IsLogicalOperator() const -> bool {
+auto spp::asts::BinaryExpressionAst::IsLogicalOperator() const -> bool {
   // Simple getter on the flag determining if this is a
   // logic operation.
   return _IsLogical;
 }
 
-auto BinaryExpressionAst::_BindFoldOperand(
+auto spp::asts::BinaryExpressionAst::_BindFoldOperand(
   Unique<ExpressionAst> &operand, ScopeManager *sm, CompilerMetaData *meta) -> void {
-  // A name is read in place. Anything else is evaluated once,
-  // into a temporary, rather than once per element read off
-  // it.
-  if (operand->To<IdentifierAst>() == nullptr) {
-    auto temp_name = MakeShared<IdentifierAst>(operand->PosStart(), "$fold." + spp::utils::Uid());
-    auto temp_var = MakeUnique<LocalVariableSingleIdentifierAst>(nullptr, temp_name, nullptr);
-    auto temp_let = MakeUnique<LetStatementInitializedAst>(
-      nullptr, std::move(temp_var), nullptr, nullptr, std::move(operand));
-    temp_let->Stage7_AnalyseSemantics(sm, meta);
-    _ChainTemps.emplace_back(std::move(temp_let));
-    operand = AstClone(temp_name);
+  // Each element is read off it, so it is evaluated once ("HoistOnce"): a place where it is, anything else into a
+  // temporary.
+  if (auto hoisted = analyse::utils::expr_utils::HoistOnce(*operand, "$fold", sm, meta); hoisted.Let != nullptr) {
+    _ChainTemps.emplace_back(std::move(hoisted.Let));
+    operand = AstClone(hoisted.Name);
   }
+
+  // A name may be a pack, which a fold names whole ("AllowPackWhole").
+  const auto _pack_guard = AllowPackWholeGuard(meta, true);
   operand->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto BinaryExpressionAst::_FoldElements(
+auto spp::asts::BinaryExpressionAst::_FoldElements(
   Unique<ExpressionAst> &tuple, Ast const &fold, ScopeManager *sm, CompilerMetaData *meta)
-  -> Vec<Unique<PostfixExpressionAst>> {
+  -> Vec<Unique<ExpressionAst>> {
   IMPORT_UTILS;
   _BindFoldOperand(tuple, sm, meta);
   common_errors::RequirePrimary(*tuple, *sm);
+
+  // The elements, read off as a spread reads them ("ExpandTupleSpread": a closed pack's parameters "xs#0", ..., or a
+  // tuple's "t.0", ...), each analysed. The operand is a place by now, so nothing more is hoisted.
+  const auto elements_of = [&] {
+    auto spread = expr_utils::ExpandTupleSpread(*tuple, *tuple, sm, meta);
+    for (auto const &elem : spread->Elems) { elem->Stage7_AnalyseSemantics(sm, meta); }
+    return std::move(spread->Elems);
+  };
+
+  // A closed pack has at least two elements.
+  auto const *const pack_name = tuple->To<IdentifierAst>();
+  auto const *const pack = pack_name != nullptr ? sm->CurrentScope->FindVarSymbol(pack_name) : nullptr;
+  if (pack != nullptr and pack->Pack.has_value() and not pack->Pack->Open) {
+    if (pack->Pack->Elements.size() < 2) {
+      const auto tuple_type = tuple->InferType(sm, meta);
+      Raise<SppInvalidBinaryFoldExpressionError>(ERR_ARGS(*tuple, *tuple_type, pack->Pack->Elements.size()));
+    }
+    return elements_of();
+  }
+
+  // An open pack, or a value of an open tuple (a fold's results over an open pack, "(..xs)"): of unknown length, so
+  // three elements are read off it ("xs.0", "xs.1", "xs.2"), and "Stage7" checks a fold of two and of three agree on
+  // their type: then each element more keeps it, whatever the length.
+  const auto open_ref = tuple->InferTypeRef(sm, meta);
+  if (type_compare::IsOpenTuple(open_ref.WithoutConvention(), *sm->CurrentScope) and tuple->To<IdentifierAst>() != nullptr) {
+    _OpenPack = AstClone(tuple->To<IdentifierAst>());
+    auto elems = Vec<Unique<ExpressionAst>>();
+    for (auto i = 0uz; i < 3; ++i) {
+      auto elem = expr_utils::ElementAccess(*tuple, i);
+      elem->Stage7_AnalyseSemantics(sm, meta);
+      elems.emplace_back(std::move(elem));
+    }
+    const auto element = elems.front()->InferTypeRef(sm, meta);
+    _OpenPackMoves = not element.IsBorrowed() and not open_ref.IsBorrowed()
+      and (element.Symbol == nullptr or not element.Symbol->IsCopyable());
+    return elems;
+  }
 
   // The operand is a tuple (Todo: maybe allow arrays too?) of at
   // least two elements.
@@ -150,20 +196,10 @@ auto BinaryExpressionAst::_FoldElements(
     const auto tuple_type = tuple->InferType(sm, meta);
     Raise<SppInvalidBinaryFoldExpressionError>(ERR_ARGS(*tuple, *tuple_type, num_elems));
   }
-
-  // Each element read off it ("t.0", "t.1", ...), analysed.
-  auto elems = Vec<Unique<PostfixExpressionAst>>();
-  for (auto i = 0uz; i < num_elems; ++i) {
-    auto field = MakeUnique<IdentifierAst>(tuple->PosStart(), std::to_string(i));
-    auto elem = MakeUnique<PostfixExpressionAst>(
-      AstClone(tuple), MakeUnique<PostfixExpressionOperatorRuntimeMemberAccessAst>(nullptr, std::move(field)));
-    elem->Stage7_AnalyseSemantics(sm, meta);
-    elems.emplace_back(std::move(elem));
-  }
-  return elems;
+  return elements_of();
 }
 
-auto BinaryExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::BinaryExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -195,6 +231,23 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
     }
     _MappedFn = operator_desugaring::ConvertBinExprToFnCall(*this, sm, meta);
     _MappedFn->Stage7_AnalyseSemantics(sm, meta);
+
+    // An open pack's fold of three elements is only the type of every fold of three or more if the fold of two has
+    // it too: each element more is then the same step again. A fold of fewer than two is the call's to reject.
+    if (_OpenPack != nullptr) {
+      const auto element = [&](const std::size_t i) { return expr_utils::ElementAccess(*_OpenPack, i); };
+      auto two = from_left
+        ? MakeUnique<BinaryExpressionAst>(element(0), AstClone(TokOp), element(1))
+        : MakeUnique<BinaryExpressionAst>(element(1), AstClone(TokOp), element(2));
+      two->Stage7_AnalyseSemantics(sm, meta);
+      const auto two_type = two->InferType(sm, meta);
+      const auto all_type = _MappedFn->InferType(sm, meta);
+      if (not type_compare::TypeEq(
+        TypeRef::Of(*two_type, *sm->CurrentScope), TypeRef::Of(*all_type, *sm->CurrentScope),
+        *sm->CurrentScope, *sm->CurrentScope)) {
+        Raise<SppTypeMismatchError>(ERR_ARGS(*two, *two_type, *this, *all_type));
+      }
+    }
   }
 
   else {
@@ -250,7 +303,7 @@ auto BinaryExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto BinaryExpressionAst::Stage8_CheckMemory(
+auto spp::asts::BinaryExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Run memory analysis on the temporary materialized
@@ -269,11 +322,23 @@ auto BinaryExpressionAst::Stage8_CheckMemory(
     return;
   }
 
+  // A fold over a template's open pack uses the whole pack, of whatever length, not just the three elements it is
+  // checked on: it must hold every element first, and has moved them all after, unless each is copied.
+  if (_OpenPack != nullptr) {
+    mem_utils::ValidateSymbolMemory(*_OpenPack, *this, *sm, meta, {.MarkMoves = false});
+    _MappedFn->Stage8_CheckMemory(sm, meta);
+    if (_OpenPackMoves) {
+      auto *const held = sm->CurrentScope->FindVarSymbol(_OpenPack.get());
+      memory_state::StateOf(*sm->CurrentScope, *held).MovedBy(*this);
+    }
+    return;
+  }
+
   // Forward the memory checking to the mapped function.
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto BinaryExpressionAst::Stage11_CodeGen(
+auto spp::asts::BinaryExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Forward the code generation to the mapped function. The common
@@ -339,7 +404,7 @@ auto BinaryExpressionAst::Stage11_CodeGen(
   return llvm_res;
 }
 
-auto BinaryExpressionAst::EvaluateCompTime(
+auto spp::asts::BinaryExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run comptime resolution on the temporary materialized
   // comparison chain values (checks validity).
@@ -360,7 +425,7 @@ auto BinaryExpressionAst::EvaluateCompTime(
   _MappedFn->EvaluateCompTime(sm, meta);
 }
 
-auto BinaryExpressionAst::InferType(
+auto spp::asts::BinaryExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // A logical operator is boolean by construction - both
   // operands are required to be, and the result is one of
@@ -388,7 +453,7 @@ auto BinaryExpressionAst::InferType(
   return _MappedFn->InferType(sm, meta);
 }
 
-auto BinaryExpressionAst::InferTypeRef(
+auto spp::asts::BinaryExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // A logical operator is boolean by construction. Before
   // analysis maps it onto a function, a comparison is boolean
@@ -407,7 +472,7 @@ auto BinaryExpressionAst::InferTypeRef(
   return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*> {
+auto spp::asts::BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, ExpressionAst const*> {
   if (Lhs != nullptr and Rhs != nullptr) { return {Lhs.get(), Rhs.get()}; }
   if (_MappedFn == nullptr) { return {nullptr, nullptr}; }
   // "lhs.add(rhs)" as converted, or "Type::add(self=lhs, that=rhs)" once the call is elaborated.
@@ -420,7 +485,7 @@ auto BinaryExpressionAst::Operands() const -> Pair<ExpressionAst const*, Express
   return {nullptr, nullptr};
 }
 
-auto BinaryExpressionAst::ReadExpr(
+auto spp::asts::BinaryExpressionAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Both operands are expressions, read where they are written or where analysis moved them.
   const auto [lhs, rhs] = Operands();
@@ -431,7 +496,7 @@ auto BinaryExpressionAst::ReadExpr(
     AstClone(rhs->ReadExpr(sub)));
 }
 
-auto BinaryExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::BinaryExpressionAst::IsAllowedInDefault() const -> bool {
   // Check the left-hand-side and right-hand-side elems.
   return
     (Lhs == nullptr or Lhs->IsAllowedInDefault()) and

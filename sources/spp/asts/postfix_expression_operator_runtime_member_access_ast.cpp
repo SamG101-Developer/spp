@@ -14,13 +14,14 @@ import spp.analyse.utils.fn_values;
 import spp.analyse.utils.marker_sups;
 import spp.analyse.utils.member_lookup;
 import spp.analyse.utils.memory_state;
-import spp.analyse.utils.packs;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_predicates;
 import spp.analyse.utils.type_resolution;
 import spp.analyse.utils.visibility_utils;
 import spp.asts.array_literal_explicit_elements_ast;
 import spp.asts.ast;
+import spp.asts.convention_ast;
 import spp.asts.fold_expression_ast;
 import spp.asts.function_call_argument_group_ast;
 import spp.asts.generic_argument_ast;
@@ -34,7 +35,6 @@ import spp.asts.postfix_expression_operator_function_call_ast;
 import spp.asts.token_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
-import spp.asts.type_identifier_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
@@ -44,14 +44,23 @@ import spp.codegen.llvm_sym_info;
 import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
-import spp.utils.algorithms;
 import spp.utils.ice;
 import spp.utils.strings;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
+spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntimeMemberAccessAst(
   decltype(TokDot) &&tok_dot,
   decltype(Name) name) :
   TokDot(std::move(tok_dot)),
@@ -66,20 +75,20 @@ PostfixExpressionOperatorRuntimeMemberAccessAst::PostfixExpressionOperatorRuntim
     this->TokDot, lex::SppTokenType::TK_DOT, ".", this->Name != nullptr ? this->Name->PosStart() : 0);
 }
 
-PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default
+spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::~PostfixExpressionOperatorRuntimeMemberAccessAst() = default
 ;
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot->PosStart();
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::PosEnd() const -> std::size_t {
   // Use the name.
   return Name->PosEnd();
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, sharing the mapped
   // forwarding access so a clone taken after analysis
   // keeps it.
@@ -92,7 +101,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Clone() const -> Unique<As
   return ast;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokDot);
   SPP_STRING_APPEND(Name);
@@ -100,26 +109,20 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::ToString() const -> Str {
 }
 
 namespace {
-  /// The left-hand side's symbol, when it names a pack not bound to its tuple yet: a template's variadic comp parameter
-  /// ("cmp ..ns"), or variadic function parameter ("..xs: S32") whose pack type parameter is not declared here. There
-  /// its type is one element's, and "xs.0" reads an element; in an instantiation it is the tuple, read like any other.
+  /// The left-hand side's symbol, when it names a template's open pack ("PackInfo::Open"): a function pack ("..xs:
+  /// S32") or a comp pack ("cmp ..ns: Bool"). There "xs.0" reads an element, of the type the pack declares; in an
+  /// instantiation it is the tuple, read like any other.
   auto UnboundPack(
     spp::asts::ExpressionAst const &lhs,
     spp::analyse::scopes::ScopeManager const &sm)
     -> spp::analyse::scopes::VariableSymbol const* {
-    IMPORT_UTILS;
-    using spp::analyse::scopes::VariableKind;
     auto const *const name = lhs.To<spp::asts::IdentifierAst>();
     auto const *const sym = name != nullptr ? sm.CurrentScope->FindVarSymbol(name) : nullptr;
-    if (sym == nullptr or not sym->IsVariadic or sym->Kind == VariableKind::GnCompArg) { return nullptr; }
-    if (sym->Kind == VariableKind::GnCompParam) { return sym; }
-    const auto pack_type = spp::MakeUnique<spp::asts::TypeIdentifierAst>(
-      0, packs::FnVariadicParamName(*sym->Name), nullptr);
-    return sm.CurrentScope->FindTypeSymbol(pack_type.get()) == nullptr ? sym : nullptr;
+    return sym != nullptr and sym->Pack.has_value() and sym->Pack->Open ? sym : nullptr;
   }
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -148,8 +151,11 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   if (std::isdigit(Name->Val[0])) {
     if (UnboundPack(*Lhs, *sm) != nullptr) { return; }
 
-    // The lhs's type is only spelled out for the errors.
+    // The lhs's type is only spelled out for the errors. An open
+    // tuple ("Tup[Ts]", a variadic parameter as a whole) has no
+    // length here either.
     const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) { return; }
 
     // Check the lhs is a tuple/array (the only indexable
     // types).
@@ -290,7 +296,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
   IMPORT_UTILS_AND_UID;
@@ -348,7 +354,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
       // declaration of the symbol.
       auto object_ptr = sym->LlvmInfo->Alloca;
       if (const auto global_var = llvm::dyn_cast_or_null<llvm::GlobalVariable>(object_ptr); global_var != nullptr) {
-        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *codegen::GetEmissionModule(*ctx));
+        object_ptr = codegen::GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
       }
 
       base_ptr = is_borrow
@@ -424,7 +430,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::Stage11_CodeGen(
   return ctx->Builder.CreateLoad(field_llvm_type, field_ptr, "member_access.field" + uid);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -462,7 +468,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::EvaluateCompTime(
   meta->CompTimeResult = comp_time_intrinsics::GetCompTimeAttrValue(cmp_obj, Name.get());
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -477,7 +483,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferType(
   return InferTypeRef(sm, meta).AstIn(*sm->CurrentScope);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // As "InferType": forwarded to the rewritten access, and
   // an element of a tuple or an array read off the left-hand
@@ -490,12 +496,21 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   // pack not yet bound to its tuple, which is typed as its
   // element.
   if (std::isdigit(Name->Val[0])) {
+    // An open pack's element is what the pack declares each to be, with its convention, read through the symbol it
+    // names (so a "Self" in it is resolved here, not wherever a callee reads it); never off the open tuple, whose
+    // element for a pack of one type is its hidden length parameter.
     if (auto const *const pack = UnboundPack(*Lhs, *sm); pack != nullptr) {
-      return TypeRef::Of(*sm->CurrentScope->FindTypeSymbol(pack->Type.get()), *sm->CurrentScope);
+      auto const &element = pack->Pack->Element;
+      auto const *const conv = element->GetConvention();
+      return TypeRef::Of(
+        *sm->CurrentScope->FindTypeSymbol(element.get())->AsBound(), *sm->CurrentScope,
+        conv != nullptr ? Opt<ConventionTag>(conv->Tag()) : Nullopt);
     }
-    const auto lhs_ref = Lhs->InferTypeRef(sm, meta);
-    return type_members::GetNthTypeOfIndexableType(
-      std::stoul(Name->Val), lhs_ref.WithoutConvention(), *sm->CurrentScope);
+    const auto lhs_ref = Lhs->InferTypeRef(sm, meta).WithoutConvention();
+    if (type_compare::IsOpenTuple(lhs_ref, *sm->CurrentScope)) {
+      return type_compare::OpenTupleElement(lhs_ref, std::stoul(Name->Val), *sm->CurrentScope);
+    }
+    return type_members::GetNthTypeOfIndexableType(std::stoul(Name->Val), lhs_ref, *sm->CurrentScope);
   }
 
   // Read where the field is declared for this instance: its
@@ -503,7 +518,7 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::InferTypeRef(
   return _Resolve(sm, meta)->TypeRefIn(*_Owner->LinkedScope);
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   ScopeManager *sm, CompilerMetaData *meta) -> VariableSymbol* {
   //
   IMPORT_UTILS;
@@ -513,17 +528,17 @@ auto PostfixExpressionOperatorRuntimeMemberAccessAst::_Resolve(
   return _Member;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::GetFwdReceiver() const -> PostfixExpressionAst* {
   // The lhs of the rewritten access is the forwarding call
   // ("x.fwd_ref()") applied to the original lhs.
   return _MappedFwd != nullptr ? _MappedFwd->Lhs->To<PostfixExpressionAst>() : nullptr;
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::ExprParts() const -> Vec<IdentifierAst*> {
   return {Name.get()};
 }
 
-auto PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorRuntimeMemberAccessAst::IsAllowedInDefault() const -> bool {
   // Reads what it is applied to, and holds nothing of its own.
   return true;
 }

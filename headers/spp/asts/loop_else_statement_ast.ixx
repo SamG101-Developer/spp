@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopElseStatementAst);
+use_common(LoopElseStatementAst);
 use(spp::asts, struct InnerScopeExpressionAst);
 use(spp::asts, struct StatementAst);
 use(spp::asts, struct TokenAst);

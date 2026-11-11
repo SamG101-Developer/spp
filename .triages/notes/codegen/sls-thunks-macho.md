@@ -9,7 +9,7 @@ On AArch64 Mach-O, LLVM's SLS hardening defines each indirect-call thunk as `___
 `__llvm_slsblr_thunk_x*` symbols. `+harden-sls-nocomdat` does not help: it only changes the thunk's linkage. ELF
 targets are fine. Upstream-watch U16 has the cause, reproduction and the change to make once fixed.
 
-`TargetHasSlsHardening` (`llvm_harden_codegen.cpp`) is false for AArch64 Mach-O, so `[binary.codegen] sls` is refused
+`DoesTargetSupportSlsHardening` (`llvm_support.cpp`) is false for AArch64 Mach-O, so `[binary.codegen] sls` is refused
 there with the "set 'sls = false'" message, and the macOS CI test calls pass `off: sls`.
 
 **Why:** found 2026-10-26 on the macOS STL conformance link, once the Mach-O link flags were fixed

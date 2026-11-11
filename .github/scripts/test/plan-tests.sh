@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# Expand a lane's test matrix: one entry per gtest mode and
-# shard (each carrying the shard count), then STL conformance,
-# valgrind, the codegen checks and the differential suite where
-# the lane asks for them, all against one build. With PACK, those ride in the last gtest
-# cell instead, where the test job runs every suite of a cell in
-# parallel.
+# Expand a lane's test matrix: one gtest cell per mode, and per
+# shard where the lane shards (each carrying the shard count),
+# then one cell for the rest - STL conformance, and on Linux
+# valgrind, the codegen checks and the differential suite -
+# which the test job runs side by side, all against one build.
 set -euo pipefail
 
 # These land in GITHUB_OUTPUT as JSON, so they are
 # validated rather than quoted.
 [[ "$SHARD_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "::error::bad shard count '${SHARD_COUNT}'"; exit 1; }
-for flag in STL VALGRIND CODEGEN DIFFERENTIAL PACK; do
+for flag in STL VALGRIND CODEGEN DIFFERENTIAL; do
   [[ "${!flag}" =~ ^(true|false)$ ]] || { echo "::error::bad ${flag} flag '${!flag}'"; exit 1; }
 done
 
@@ -25,7 +24,7 @@ read -ra mode_list <<< "$MODES"
 extras=()
 [ "$STL" = true ] && extras+=("stl|STL Conformance|90|false")
 if [[ "$OS" == ubuntu* ]]; then
-  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Groups|90|true")
+  [ "$VALGRIND" = true ] && extras+=("valgrind|Valgrind Conformance|90|true")
   [ "$CODEGEN" = true ] && extras+=("codegen|Codegen Checks|90|true")
   [ "$DIFFERENTIAL" = true ] && extras+=("differential|Differential Suite|90|true")
 fi
@@ -35,7 +34,6 @@ add() {  # suites label timeout advisory [mode shard]
   entries+=("{\"suites\":\"$1\",\"label\":\"$2\",\"timeout\":$3,\"advisory\":$4,\"mode\":\"${5:-}\",\"shard\":${6:-0},\"shards\":${SHARD_COUNT}}")
 }
 
-last_mode="${mode_list[${#mode_list[@]} - 1]}"
 for mode in "${mode_list[@]}"; do
   case "$mode" in
     rel) mode_label=Rel ;;
@@ -43,28 +41,28 @@ for mode in "${mode_list[@]}"; do
     *) echo "::error::bad test mode '${mode}'; expected rel or dev"; exit 1 ;;
   esac
   for ((shard = 0; shard < SHARD_COUNT; shard++)); do
-    suites="gtest"
-    label="GTest ${mode_label} $((shard + 1))/${SHARD_COUNT}"
-    timeout=90
-    # A packed cell is advisory only if every suite in it is;
-    # with gtest in it, it never is.
-    if [ "$PACK" = true ] && [ "$mode" = "$last_mode" ] && [ "$shard" -eq $((SHARD_COUNT - 1)) ]; then
-      for extra in ${extras[@]+"${extras[@]}"}; do
-        IFS='|' read -r name name_label name_timeout _ <<< "$extra"
-        suites+=" ${name}"
-        label+=" + ${name_label%% *}"
-        [ "$name_timeout" -gt "$timeout" ] && timeout="$name_timeout"
-      done
-    fi
-    add "$suites" "$label" "$timeout" false "$mode" "$shard"
+    label="GTest ${mode_label}"
+    [ "$SHARD_COUNT" -gt 1 ] && label+=" $((shard + 1))/${SHARD_COUNT}"
+    add gtest "$label" 90 false "$mode" "$shard"
   done
 done
 
-if [ "$PACK" = false ]; then
-  for extra in ${extras[@]+"${extras[@]}"}; do
+# The rest share one cell, named by each suite's first word
+# ("STL + Valgrind + Codegen + Differential"), or its whole
+# label when alone. It is advisory only if every suite in it
+# is; an advisory suite beside a required one stays advisory
+# through its own step's continue-on-error.
+if [ "${#extras[@]}" -gt 0 ]; then
+  suites="" label="" timeout=0 advisory=true
+  for extra in "${extras[@]}"; do
     IFS='|' read -r name name_label name_timeout name_advisory <<< "$extra"
-    add "$name" "$name_label" "$name_timeout" "$name_advisory"
+    suites+="${suites:+ }${name}"
+    label+="${label:+ + }${name_label%% *}"
+    [ "$name_timeout" -gt "$timeout" ] && timeout="$name_timeout"
+    [ "$name_advisory" = false ] && advisory=false
   done
+  [ "${#extras[@]}" -eq 1 ] && label="$name_label"
+  add "$suites" "$label" "$timeout" "$advisory"
 fi
 
 tests="{\"include\":[$(IFS=,; echo "${entries[*]}")]}"

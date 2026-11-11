@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureTupleAst);
+use_common(LocalVariableDestructureTupleAst);
 use(spp::asts, struct CasePatternVariantDestructureTupleAst);
 use(spp::asts, struct LetStatementInitializedAst);
 use(spp::asts, struct IdentifierAst);

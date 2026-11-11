@@ -4,7 +4,7 @@ module;
 export module spp.asts.class_member_ast;
 import spp.asts.ast;
 
-SPP_AST_COMMON_FWD_DECL(ClassMemberAst);
+use_common(ClassMemberAst);
 
 /// Tag-based base class for all members of a class. Only
 /// ClassAttributeAst uses it for now, but it allows for simple

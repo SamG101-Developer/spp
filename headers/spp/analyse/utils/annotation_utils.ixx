@@ -6,7 +6,7 @@ import spp.utils.types;
 import std;
 
 use(spp::analyse::utils::annotation_utils, struct AnnotationInfo);
-use(spp::analyse::utils::annotation_utils, enum class BuiltinAnnotation : std::uint8_t);
+use(spp::analyse::utils::annotation_utils, enum class BuiltinAnnotation);
 use(spp::asts, struct AnnotationAst);
 
 /// The AnnotationInfo holds a small set of metadata about an
@@ -35,7 +35,7 @@ SPP_EXP_CLS struct spp::analyse::utils::annotation_utils::AnnotationInfo {
 /// acts on it. Anything else is "kNone" (a custom annotation).
 /// "kCfg" is acted on before analysis, by its written name
 /// ("compiler/cfg.cpp"), and "kVersioned" is documentation only.
-SPP_EXP_CLS enum class spp::analyse::utils::annotation_utils::BuiltinAnnotation : std::uint8_t {
+SPP_EXP_CLS enum class spp::analyse::utils::annotation_utils::BuiltinAnnotation {
   kNone,
   kAnnotation,
   kIntrinsic,
@@ -46,6 +46,7 @@ SPP_EXP_CLS enum class spp::analyse::utils::annotation_utils::BuiltinAnnotation 
   kVirtualMethod,
   kAbstractMethod,
   kFfi,
+  kConv,
   kZeroType,
   kThreadHazard,
   kTest,
@@ -71,6 +72,7 @@ namespace spp::analyse::utils::annotation_utils {
     {"std::annotations::virtual_method", BuiltinAnnotation::kVirtualMethod},
     {"std::annotations::abstract_method", BuiltinAnnotation::kAbstractMethod},
     {"std::annotations::ffi", BuiltinAnnotation::kFfi},
+    {"std::annotations::conv", BuiltinAnnotation::kConv},
     {"std::annotations::zero_type", BuiltinAnnotation::kZeroType},
     {"std::annotations::thread_hazard", BuiltinAnnotation::kThreadHazard},
     {"std::annotations::test", BuiltinAnnotation::kTest},

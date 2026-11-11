@@ -84,9 +84,9 @@ fi
 # A lane may run only some suites (the sanitizer lane, whose build is too slow for all of them).
 # Not GTEST_FILTER: gtest reads that from the environment, and an empty one matches no tests.
 filter_flags=()
-if [ -n "${SPP_GTEST_FILTER:-}" ]; then
-  filter_flags=("--gtest_filter=${SPP_GTEST_FILTER}")
-  echo "filter: ${SPP_GTEST_FILTER}"
+if [ -n "${SPP_CI_GTEST_FILTER:-}" ]; then
+  filter_flags=("--gtest_filter=${SPP_CI_GTEST_FILTER}")
+  echo "filter: ${SPP_CI_GTEST_FILTER}"
 fi
 
 status=0
@@ -110,7 +110,9 @@ fi
 results_dir="${log_dir}/gtest-parallel-logs"
 count() { find "${results_dir}/$1" -name '*.log' 2> /dev/null | wc -l | tr -d ' '; }
 {
-  echo "### gtest · ${SPP_TEST_MODE:-rel} · shard $((shard_index + 1)) of ${shard_count}"
+  heading="### gtest · ${SPP_TEST_MODE:-rel}"
+  [ "$shard_count" -gt 1 ] && heading+=" · shard $((shard_index + 1)) of ${shard_count}"
+  echo "$heading"
   echo
   echo "passed $(count passed), failed $(count failed), interrupted $(count interrupted)"
   if [ "$(count failed)" -gt 0 ]; then

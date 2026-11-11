@@ -1,0 +1,44 @@
+use std::console::println
+use std::hints::black_box
+
+fun emit(code: &mut Vec[U64], op: U64, a: U64, b: U64) -> Void {
+  code.append(op)
+  code.append(a)
+  code.append(b)
+}
+
+fun main() -> Void {
+  let n = black_box(30000000_u64)
+  let mut code = Vec[U64]::new()
+  emit(&mut code, 1_u64, 0_u64, n)
+  emit(&mut code, 1_u64, 1_u64, 0_u64)
+  emit(&mut code, 1_u64, 3_u64, 85_u64)
+  emit(&mut code, 2_u64, 1_u64, 0_u64)
+  emit(&mut code, 3_u64, 1_u64, 3_u64)
+  emit(&mut code, 4_u64, 0_u64, 1_u64)
+  emit(&mut code, 5_u64, 0_u64, 3_u64)
+  emit(&mut code, 0_u64, 0_u64, 0_u64)
+
+  let mut regs = [0_u64; 4_uz]
+  let mut pc = 0_uz
+  let mut running = true
+  loop running {
+    let op = code[pc * 3_uz]@
+    let a = USize::from(code[pc * 3_uz + 1_uz]@)
+    let b = code[pc * 3_uz + 2_uz]@
+    pc += 1_uz
+    case op of {
+      == 0_u64 { running = false }
+      == 1_u64 { regs[mut a]@ = b }
+      == 2_u64 { regs[mut a]@ = regs[a]@ + regs[USize::from(b)]@ }
+      == 3_u64 { regs[mut a]@ = regs[a]@ ^ regs[USize::from(b)]@ }
+      == 4_u64 { regs[mut a]@ = regs[a]@ - b }
+      == 5_u64 {
+        case regs[a]@ != 0_u64 { pc = USize::from(b) }
+      }
+      else { running = false }
+    }
+  }
+  drop(code)
+  println("{}", regs[1_uz]@)
+}

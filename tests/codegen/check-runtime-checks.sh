@@ -12,7 +12,14 @@
 #   - a slice in bounds exits 0 and reports nothing;
 #   - a float converted to an integer it does not fit (too large, negative
 #     for an unsigned one, NaN) reports the integer type;
-#   - a float that fits once truncated, the lowest S32 included, exits 0.
+#   - a float that fits once truncated, the lowest S32 included, exits 0;
+#   - a division or remainder by zero, and the lowest S32 divided by -1,
+#     report their check by name; a division in range exits 0;
+#   - the lowest S32 remainder by -1 is 0 (it fits, so it is not an
+#     overflow), not a check.
+#
+# The division cases need an sppc that names checks 0x16-0x18; an older one
+# reports "unknown check".
 #
 #   [SPPC_LIB=path/to/libsppc.so] tests/codegen/check-runtime-checks.sh [path/to/spp]
 
@@ -41,6 +48,18 @@ fun add(a: S32, b: S32) -> S32 {
 
 fun sub(a: U64, b: U64) -> U64 {
   ret a - b
+}
+
+fun div_s32(a: S32, b: S32) -> S32 {
+  ret a / b
+}
+
+fun rem_u64(a: U64, b: U64) -> U64 {
+  ret a % b
+}
+
+fun rem_s32(a: S32, b: S32) -> S32 {
+  ret a % b
 }
 
 fun to_s32(x: F64) -> S32 {
@@ -113,6 +132,15 @@ for mode in dev rel; do
         "[sppc] check failed: float out of range for S32, or NaN"
     check "${mode}" "float truncating to the lowest S32" "let x = to_s32(-2147483648.9_f64)" 0 ""
     check "${mode}" "float in range" "let x = to_s32(3.7_f64)" 0 ""
+    check "${mode}" "division by zero" "let x = div_s32(1_s32, 0_s32)" 134 \
+        "[sppc] check failed: division by zero"
+    check "${mode}" "remainder by zero" "let x = rem_u64(1_u64, 0_u64)" 134 \
+        "[sppc] check failed: remainder by zero"
+    check "${mode}" "lowest S32 divided by -1" "let x = div_s32(-2147483648_s32, -1_s32)" 134 \
+        "[sppc] check failed: signed divide overflowed"
+    check "${mode}" "division in range" "let x = div_s32(-7_s32, 2_s32)" 0 ""
+    check "${mode}" "lowest S32 remainder by -1 is zero" \
+        "case rem_s32(-2147483648_s32, -1_s32) == 0_s32 { std::console::println(\"rem zero\") }" 0 "rem zero"
 done
 
 finish

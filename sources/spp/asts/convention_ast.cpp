@@ -3,21 +3,26 @@ module;
 
 module spp.asts.convention_ast;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ConventionAst::ConventionAst(
+spp::asts::ConventionAst::ConventionAst(
   const ConventionTag tag) :
   _Tag(tag) {
 }
 
-ConventionAst::~ConventionAst() = default;
+spp::asts::ConventionAst::~ConventionAst() = default;
 
-auto ConventionAst::operator==(
+auto spp::asts::ConventionAst::operator==(
   ConventionAst const *that) const -> bool {
   // Equality is based on the tag.
   return _Tag == (that ? that->_Tag : ConventionTag::MOV);
 }
 
-auto ConventionAst::operator==(
+auto spp::asts::ConventionAst::operator==(
   const ConventionTag that_tag) const -> bool {
   // Match the internal tag.
   return _Tag == that_tag;

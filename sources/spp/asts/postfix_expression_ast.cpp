@@ -6,12 +6,12 @@ module spp.asts.postfix_expression_ast;
 import spp.analyse.errors.semantic_error;
 import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope_manager;
-import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
 import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.linear_utils;
 import spp.analyse.utils.mem_utils;
+import spp.analyse.utils.packs;
 import spp.analyse.utils.type_members;
 import spp.analyse.utils.type_resolution;
 import spp.asts.ast;
@@ -27,8 +27,31 @@ import spp.asts.utils.ast_utils;
 import spp.lsp.resolution_index;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionAst::PostfixExpressionAst(
+namespace {
+  /// "PackElementCloneGuard": the closed packs whose elements a clone renames, by name, to their element counts.
+  thread_local auto pack_elements = spp::Map<spp::Str, std::size_t>();
+}
+
+spp::asts::PackElementCloneGuard::PackElementCloneGuard(
+  Map<Str, std::size_t> packs) :
+  _Outer(std::exchange(pack_elements, std::move(packs))) {
+}
+
+spp::asts::PackElementCloneGuard::~PackElementCloneGuard() {
+  pack_elements = std::move(_Outer);
+}
+
+spp::asts::PostfixExpressionAst::PostfixExpressionAst(
   decltype(Lhs) &&lhs,
   decltype(Op) &&op) :
   Lhs(std::move(lhs)),
@@ -38,9 +61,9 @@ PostfixExpressionAst::PostfixExpressionAst(
   if (Op != nullptr) { Op->Lhs = Lhs.get(); }
 }
 
-PostfixExpressionAst::~PostfixExpressionAst() = default;
+spp::asts::PostfixExpressionAst::~PostfixExpressionAst() = default;
 
-auto PostfixExpressionAst::NewOverAnalysedLhs(
+auto spp::asts::PostfixExpressionAst::NewOverAnalysedLhs(
   decltype(Lhs) &&lhs, decltype(Op) &&op) -> Unique<PostfixExpressionAst> {
   // The lhs is a clone of an analysed operand, so it carries its
   // analysis; analysing it again would open its scopes twice.
@@ -49,17 +72,30 @@ auto PostfixExpressionAst::NewOverAnalysedLhs(
   return out;
 }
 
-auto PostfixExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionAst::PosStart() const -> std::size_t {
   // Use the lhs.
   return Lhs->PosStart();
 }
 
-auto PostfixExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionAst::PosEnd() const -> std::size_t {
   // Use the operator.
   return Op->PosEnd();
 }
 
-auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionAst::Clone() const -> Unique<Ast> {
+  // An element of a closed pack is cloned as the name of its parameter ("PackElementCloneGuard").
+  if (auto const *const id = Lhs->To<IdentifierAst>(); id != nullptr and not pack_elements.empty()) {
+    auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+    const auto pack = pack_elements.find(id->Val);
+    if (access != nullptr and pack != pack_elements.end()
+      and genex::all_of(access->Name->Val, [](const char c) { return std::isdigit(c) != 0; })) {
+      const auto index = std::stoul(access->Name->Val);
+      if (index < pack->second) {
+        return MakeUnique<IdentifierAst>(id->PosStart(), analyse::utils::packs::PackElementName(*id, index));
+      }
+    }
+  }
+
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionAst>(
     AstClone(Lhs),
@@ -68,14 +104,14 @@ auto PostfixExpressionAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto PostfixExpressionAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Lhs);
   SPP_STRING_APPEND(Op);
   SPP_STRING_END;
 }
 
-auto PostfixExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -110,7 +146,11 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
 
       // Standard analysis of the lhs (which is not a type), and
       // checking that the lhs is a valid form of primary expression.
+      // An element of a pack ("xs.0") names the pack whole, as a spread does.
       if (not _LhsAnalysed) {
+        auto const *const access = Op->To<PostfixExpressionOperatorRuntimeMemberAccessAst>();
+        const auto _pack_guard = AllowPackWholeGuard(
+          meta, access != nullptr and std::isdigit(access->Name->Val[0]) and Lhs->To<IdentifierAst>() != nullptr);
         Lhs->Stage7_AnalyseSemantics(sm, meta);
         common_errors::RequirePrimary(*Lhs, *sm, {.AllowTypeAst = true});
       }
@@ -136,7 +176,7 @@ auto PostfixExpressionAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto PostfixExpressionAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -197,7 +237,7 @@ auto PostfixExpressionAst::Stage8_CheckMemory(
   Op->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
@@ -206,7 +246,7 @@ auto PostfixExpressionAst::Stage11_CodeGen(
   return ret_val;
 }
 
-auto PostfixExpressionAst::EvaluateCompTime(
+auto spp::asts::PostfixExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward into the operator AST.
   const auto _meta_guard = MetaGuard(meta);
@@ -214,7 +254,7 @@ auto PostfixExpressionAst::EvaluateCompTime(
   Op->EvaluateCompTime(sm, meta);
 }
 
-auto PostfixExpressionAst::InferType(
+auto spp::asts::PostfixExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Check cache.
   // if (Source.CachedInference != nullptr) { return Source.CachedInference; }
@@ -226,14 +266,14 @@ auto PostfixExpressionAst::InferType(
   return x;
 }
 
-auto PostfixExpressionAst::InferTypeRef(
+auto spp::asts::PostfixExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   const auto _meta_guard = MetaGuard(meta);
   Op->Lhs = Lhs.get();
   return Op->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
+auto spp::asts::PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   // Recursively search the lhs, and add the rhs if it
   // exists.
   auto lhs_parts = Lhs->ExprParts();
@@ -244,7 +284,7 @@ auto PostfixExpressionAst::ExprParts() const -> Vec<IdentifierAst*> {
   return lhs_parts;
 }
 
-auto PostfixExpressionAst::ReadExpr(
+auto spp::asts::PostfixExpressionAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // The left-hand side is where a type is written - the
   // "A" of "A::new()", the "Self" of "Self::mo_seq_cst" -
@@ -255,7 +295,7 @@ auto PostfixExpressionAst::ReadExpr(
     Op->ReadExpr(sub));
 }
 
-auto PostfixExpressionAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionAst::IsAllowedInDefault() const -> bool {
   // Check both the lhs and the postfix op on this ast.
   // Leaving the nullptr guards in because there is some
   // std::move(ast) for postfix iirc.

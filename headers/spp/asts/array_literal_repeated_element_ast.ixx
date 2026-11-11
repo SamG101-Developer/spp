@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ArrayLiteralRepeatedElementAst);
+use_common(ArrayLiteralRepeatedElementAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);

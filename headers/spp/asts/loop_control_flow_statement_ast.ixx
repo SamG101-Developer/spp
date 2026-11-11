@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopControlFlowStatementAst);
+use_common(LoopControlFlowStatementAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);

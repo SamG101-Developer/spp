@@ -46,7 +46,7 @@ on:
         description: "Space-separated s++ modes (rel | dev) the gtest suite runs in, each against the same build."
         required: false
         type: string
-        default: "rel"
+        default: "rel dev"
       shard-count:
         description: "Jobs each mode's gtest sweep is split across."
         required: false
@@ -61,19 +61,14 @@ on:
         description: "Run chosen `!test` groups under valgrind (Linux only; advisory)."
         required: false
         type: boolean
-        default: false
+        default: true
       codegen:
         description: "Run the tests/codegen hardening checks against the build (Linux only; advisory)."
         required: false
         type: boolean
-        default: false
+        default: true
       differential:
         description: "Run the tests/differential programs at dev and rel and compare them (Linux only; advisory)."
-        required: false
-        type: boolean
-        default: false
-      pack:
-        description: "Run STL conformance, valgrind, the codegen checks and the differential suite in the last gtest cell, in parallel with it, rather than in cells of their own."
         required: false
         type: boolean
         default: true
@@ -159,7 +154,6 @@ jobs:
           VALGRIND: ${{ inputs.valgrind }}
           CODEGEN: ${{ inputs.codegen }}
           DIFFERENTIAL: ${{ inputs.differential }}
-          PACK: ${{ inputs.pack }}
         run: bash .github/scripts/test/plan-tests.sh
 
       - name: Build

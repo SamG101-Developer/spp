@@ -50,6 +50,11 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Exclude the workspace from Defender (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: bash .github/scripts/setup/exclude-defender-windows.sh
+
     # Once per job: every action below reads the pins this publishes.
     - name: Set up Python and load pins
       uses: ./.github/actions/setup-python
@@ -66,7 +71,7 @@ runs:
       with:
         runner-image: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
+        version: ${{ env.SPP_CI_TOOLCHAIN_VERSION }}
         cache-key-suffix: ${{ inputs.variant }}
 
     - name: Restore source mtimes
@@ -80,7 +85,7 @@ runs:
       with:
         os: ${{ inputs.os }}
         compiler: ${{ inputs.compiler }}
-        version: ${{ env.SPP_TOOLCHAIN_VERSION }}
+        version: ${{ env.SPP_CI_TOOLCHAIN_VERSION }}
         variant: ${{ inputs.variant }}
 
     # Falls back to the newest tree for this variant on this branch, then on the base branch.
@@ -113,6 +118,11 @@ runs:
       env:
         FLOOR_ADVISORY: "true"
       run: bash .github/scripts/build/check-floor.sh
+
+    - name: Collect compiler crash reproducers
+      if: failure()
+      shell: bash
+      run: bash .github/scripts/build/collect-crash-reproducers.sh
 
     - name: Upload build logs on failure
       if: failure()

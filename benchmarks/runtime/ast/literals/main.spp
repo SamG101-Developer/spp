@@ -1,0 +1,22 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut acc = 0_u64
+  let mut f = 0.0_f64
+  let mut i = 0_u64
+  loop i < n {
+    let small = [1_u64, 2_u64, 3_u64, 5_u64, 8_u64, 13_u64, 21_u64, 34_u64]
+    let mut window = [0_u64; 4_uz]
+    window[mut USize::from(i % 4_u64)]@ = i
+    let (k, flag) = (i % 7_u64, true)
+    let c = 'x'
+    let word = "benchmark"
+    acc = acc + small[USize::from(i % 8_u64)]@ + window[0_uz]@ + (k * 3_u64) + U64::from(word.len())
+    case flag and c == 'x' { acc += 1_u64 }
+    f = f + 0.5_f64
+    i += 1_u64
+  }
+  println("{}\n{}", acc, S64::from(f))
+}

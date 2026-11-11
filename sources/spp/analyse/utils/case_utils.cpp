@@ -38,6 +38,28 @@ import spp.utils.uid;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::analyse::utils::pattern_solver, CaseCoverage);
+use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
+use_alias(spp::analyse::utils::pattern_solver, SubjectEdges);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, AstClone);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionBranchAst);
+use_alias(spp::asts, CasePatternVariantElseAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, ObjectInitializerAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, SubjectOnMatch);
+use_alias(spp::codegen, LlvmCtx);
+
 namespace spp::analyse::utils::case_utils {
   namespace {
     using pattern_solver::PathStep;
@@ -58,7 +80,8 @@ namespace spp::analyse::utils::case_utils {
       auto ptr = subject_ptr;
       for (auto const &step : path) {
         SPP_ASSERT(step.Of.Symbol != nullptr);
-        const auto llvm_of_ty = codegen::GetLlvmType(*step.Of.Symbol, ctx);
+        const auto llvm_of_ty = codegen::GetLlvmTypeOf(
+          step.Of.WithoutConvention(), ctx);
         if (step.K == PathStep::Kind::Payload) {
           ptr = codegen::GetVariantPayloadPtr(ptr, llvm_of_ty, "case.pattern.payload" + uid, ctx);
           continue;
@@ -292,7 +315,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
     // The branch applies its match edge to the subject.
     meta->CaseSubjectOnMatch = subject_edges != nullptr
       ? subject_edges->OnMatch[i]
-      : meta::SubjectOnMatch::kKeep;
+      : SubjectOnMatch::kKeep;
     branch->Stage8_CheckMemory(sm, meta);
     paths.emplace_back(branch, memory_state::SnapshotSymbols(var_syms, *sm->CurrentScope));
     memory_state::RestoreSnapshot(pre_analysis);
@@ -303,7 +326,7 @@ auto spp::analyse::utils::case_utils::ValidateInconsistentMemory(
   const auto falls_through = coverage.FallsThrough;
   paths.emplace_back(nullptr, pre_analysis);
   const auto discharged = subject_edges != nullptr
-    and subject_edges->OnFallThrough == meta::SubjectOnMatch::kDischarge;
+    and subject_edges->OnFallThrough == SubjectOnMatch::kDischarge;
 
   // A branch that never finishes leaves no state behind to
   // agree with. Worked out once per branch, not per symbol:
@@ -402,7 +425,7 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
 
   // The patterns took it apart, so a part they left unbound
   // would be left with no owner once it is taken.
-  if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake) {
+  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
     const auto taken = regions::PlaceOf(*cond, *sm.CurrentScope);
     if (const auto skipped = taken.has_value() ? regions::FirstUnaccountedPart(*subject, *taken, sm) : Str();
       not skipped.empty()) {
@@ -416,20 +439,20 @@ auto spp::analyse::utils::case_utils::ApplySubjectOnMatch(
   // If we are moving an identifier part, then mark the state
   // as "moved by", so it cannot be used until initialized
   // again.
-  if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake and whole) {
+  if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake and whole) {
     memory_state::StateOf(*sm.CurrentScope, *subject).MovedBy(*cond);
   }
 
   // If we are moving a non-identifier part, then this is a
   // partial move, so get its place, and mark the partial
   // move.
-  else if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kTake) {
+  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kTake) {
     memory_state::StateOf(*sm.CurrentScope, *subject).PartMovedBy(regions::PlaceAtOf(*cond, *sm.CurrentScope));
   }
 
   // If the discharge flag has been set and it is a identifier
   // ast, then mark the "owes nothing" as true.
-  else if (meta.CaseSubjectOnMatch == meta::SubjectOnMatch::kDischarge and whole) {
+  else if (meta.CaseSubjectOnMatch == SubjectOnMatch::kDischarge and whole) {
     memory_state::StateOf(*sm.CurrentScope, *subject).OwesNothing = true;
   }
 }

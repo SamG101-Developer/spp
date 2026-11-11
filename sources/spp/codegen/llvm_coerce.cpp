@@ -25,6 +25,10 @@ import genex;
 import llvm;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+
 namespace spp::codegen {
   namespace {
     /**
@@ -166,11 +170,17 @@ namespace spp::codegen {
       TypeRef const &source, ScopeManager const &sm,
       LlvmCtx const *ctx) -> llvm::Value* {
       // A named function carries nothing at runtime, so whatever was
-      // loaded for it is dropped and the chosen overload built.
-      const auto fn = llvm_val != nullptr
-        ? analyse::utils::fn_values::FindFnValue(source, target, sm)
-        : nullptr;
-      if (fn == nullptr or fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) { return llvm_val; }
+      // loaded for it is dropped and the chosen overload built. One
+      // with no overload to build is an error here: passing on the
+      // loaded mock would call a null function.
+      namespace fv = analyse::utils::fn_values;
+      if (llvm_val == nullptr or not fv::NamesFnInto(source, target, *sm.CurrentScope)) { return llvm_val; }
+      const auto fn = fv::FindFnValue(source, target, sm);
+      const auto into = " into " + target.Symbol->FqName()->ToString();
+      if (fn == nullptr) { Ice("no overload of a function value was found for its function type" + into); }
+      if (fn->GetLlvmFn() == nullptr or fn->GetLlvmFn()->Target == nullptr) {
+        Ice("the overload of a function value has no llvm function: " + fn->PrintSignature("") + into);
+      }
       const auto fn_sup = analyse::utils::marker_sups::FindFnSup(*target.Symbol->FqName(), *sm.CurrentScope);
       return BuildFnValue(*fn->GetLlvmFn()->Target, fn_sup, ctx);
     }
@@ -242,64 +252,13 @@ namespace spp::codegen {
         return BuildVariant(member_val, target_llvm_type, *tag, name, ctx);
       }
 
-      // Otherwise, we need to widen one variant into another, like
-      // "Str or Bool" into "Str or Bool or S32". As the order is not
-      // guaranteed to match, a mapping is needed.
-      const auto source_llvm_type = GetLlvmTypeOf(source.WithoutConvention(), ctx);
-      SPP_ASSERT(source_llvm_type != nullptr);
-
-      auto tag_map = Vec<std::uint64_t>();
-      auto is_identity_map = true;
-      const auto source_members = VariantMemberRefs(source, scope);
-      for (auto i = 0uz; i < source_members.size(); ++i) {
-        const auto target_tag = GetVariantIndexOfMember(target, source_members[i], scope);
-        if (not target_tag.has_value()) { return llvm_val; }
-        is_identity_map = is_identity_map and *target_tag == static_cast<std::uint64_t>(i);
-        tag_map.emplace_back(*target_tag);
-      }
-
-      // Spill the source to memory, because the payload is copied
-      // through a pointer rather than by value.
-      const auto source_slot = LlvmEntryAlloca(source_llvm_type, name + ".from.slot", ctx);
+      // Otherwise, one variant widened into another ("Str or Bool"
+      // into "Str or Bool or S32"), through memory as the payload is
+      // copied; left as it is if it is not one.
+      const auto source_slot = LlvmEntryAlloca(llvm_val->getType(), name + ".from.slot", ctx);
       ctx->Builder.CreateStore(llvm_val, source_slot);
-      const auto source_tag = LoadVariantTag(source_slot, source_llvm_type, name + ".from.tag", ctx);
-
-      // Translate the discriminant with a chain of selects, innermost
-      // first. Variants have few members, so this stays smaller than
-      // a lookup table, and it folds away entirely when the two
-      // numberings happen to agree.
-      const auto tag_type = GetVariantTagType(ctx);
-      auto target_tag = static_cast<llvm::Value*>(source_tag);
-      if (not is_identity_map) {
-        target_tag = llvm::ConstantInt::get(tag_type, tag_map.back());
-        for (auto i = tag_map.size() - 1; i > 0; --i) {
-          const auto matches = ctx->Builder.CreateICmpEQ(
-            source_tag, llvm::ConstantInt::get(tag_type, i - 1), name + ".from.is");
-          target_tag = ctx->Builder.CreateSelect(
-            matches, llvm::ConstantInt::get(tag_type, tag_map[i - 1]), target_tag, name + ".to.tag");
-        }
-      }
-
-      // Write the translated discriminant and move the payload over.
-      // The target's members are a superset of the source's, so its
-      // payload buffer is always at least as large, and the source's
-      // size is the amount worth copying. That leaves the target's
-      // wider tail uncopied, so zero the slot first.
-      const auto target_slot = LlvmEntryAlloca(target_llvm_type, name + ".to.slot", ctx);
-      ctx->Builder.CreateStore(llvm::Constant::getNullValue(target_llvm_type), target_slot);
-      ctx->Builder.CreateStore(
-        target_tag, ctx->Builder.CreateStructGEP(target_llvm_type, target_slot, 0, name + ".to.tag.ptr"));
-
-      auto const &dl = ctx->Module->getDataLayout();
-      const auto source_payload_type = llvm::cast<llvm::StructType>(source_llvm_type)->getElementType(1);
-      ctx->Builder.CreateMemCpy(
-        GetVariantPayloadPtr(target_slot, target_llvm_type, name + ".to.payload.ptr", ctx),
-        dl.getABITypeAlign(llvm::cast<llvm::StructType>(target_llvm_type)->getElementType(1)),
-        GetVariantPayloadPtr(source_slot, source_llvm_type, name + ".from.payload.ptr", ctx),
-        dl.getABITypeAlign(source_payload_type),
-        dl.getTypeAllocSize(source_payload_type).getFixedValue());
-
-      return ctx->Builder.CreateLoad(target_llvm_type, target_slot, name);
+      const auto widened = WidenVariant(source_slot, source, target, scope, name, ctx);
+      return widened != nullptr ? ctx->Builder.CreateLoad(target_llvm_type, widened, name) : llvm_val;
     }
   }
 }

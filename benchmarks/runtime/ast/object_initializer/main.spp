@@ -1,0 +1,24 @@
+use std::console::println
+use std::hints::black_box
+
+cls Point {
+  !public x: S64
+  !public y: S64
+}
+
+sup Point ext std::copy::Copy { }
+
+fun step(p: Point, k: S64) -> Point {
+  ret Point(x=(p.x * 3_s64 + p.y + k) % 1000003_s64, y=(p.y * 5_s64 + p.x) % 999983_s64)
+}
+
+fun main() -> Void {
+  let n = black_box(100000000_s64)
+  let mut p = Point(x=black_box(1_s64), y=black_box(2_s64))
+  let mut i = 0_s64
+  loop i < n {
+    p = step(p, i % 7_s64)
+    i += 1_s64
+  }
+  println("{}\n{}", p.x, p.y)
+}

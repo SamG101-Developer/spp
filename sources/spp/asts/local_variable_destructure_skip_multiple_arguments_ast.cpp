@@ -12,8 +12,13 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import spp.utils.ptr;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
+spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMultipleArgumentsAst(
   decltype(TokEllipsis) &&tok_ellipsis,
   Unique<LocalVariableAst> &&binding) :
   TokEllipsis(std::move(tok_ellipsis)),
@@ -21,44 +26,44 @@ LocalVariableDestructureSkipMultipleArgumentsAst::LocalVariableDestructureSkipMu
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokEllipsis, lex::SppTokenType::TK_DOUBLE_DOT, "..");
 }
 
-LocalVariableDestructureSkipMultipleArgumentsAst::~LocalVariableDestructureSkipMultipleArgumentsAst()
+spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::~LocalVariableDestructureSkipMultipleArgumentsAst()
 = default;
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::PosStart() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::PosStart() const -> std::size_t {
   // Use the ".." token.
   return TokEllipsis->PosStart();
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::PosEnd() const -> std::size_t {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::PosEnd() const -> std::size_t {
   // Use the binding or the ".." token.
   return Binding ? Binding->PosEnd() : TokEllipsis->PosEnd();
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LocalVariableDestructureSkipMultipleArgumentsAst>(
     AstClone(TokEllipsis),
     AstClone(Binding));
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::ToString() const -> Str {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokEllipsis);
   SPP_STRING_APPEND(Binding);
   SPP_STRING_END;
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::TakesRest() const -> bool {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::TakesRest() const -> bool {
   // Takes the rest if the binding is captured, like "..other".
   return Binding != nullptr;
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ExtractNames() const -> Vec<Shared<IdentifierAst>> {
   // If there is a binding, use it, otherwise there are no names for this.
   return Binding != nullptr ? Binding->ExtractNames() : Vec<Shared<IdentifierAst>>();
 }
 
-auto LocalVariableDestructureSkipMultipleArgumentsAst::ExtractName() const -> Shared<IdentifierAst> {
+auto spp::asts::LocalVariableDestructureSkipMultipleArgumentsAst::ExtractName() const -> Shared<IdentifierAst> {
   IMPORT_UTILS;
   // If there is a binding, use it, otherwise this is unmatchable.
   return Binding != nullptr

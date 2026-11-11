@@ -26,18 +26,24 @@ import spp.lex.tokens;
 import spp.utils.ptr;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, BumpTypeStructureGeneration);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-auto GenericParameterGroupAst::NewEmpty() -> Unique<GenericParameterGroupAst> {
+auto spp::asts::GenericParameterGroupAst::NewEmpty() -> Unique<GenericParameterGroupAst> {
   return MakeUnique<GenericParameterGroupAst>(
     nullptr, decltype(Params)(), nullptr);
 }
 
-auto GenericParameterGroupAst::NewEmptyShared() -> Shared<GenericParameterGroupAst> {
+auto spp::asts::GenericParameterGroupAst::NewEmptyShared() -> Shared<GenericParameterGroupAst> {
   return MakeShared<GenericParameterGroupAst>(
     nullptr, decltype(Params)(), nullptr);
 }
 
-GenericParameterGroupAst::GenericParameterGroupAst(
+spp::asts::GenericParameterGroupAst::GenericParameterGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Params) &&params,
   decltype(TokR) &&tok_r) :
@@ -46,19 +52,19 @@ GenericParameterGroupAst::GenericParameterGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-GenericParameterGroupAst::~GenericParameterGroupAst() = default;
+spp::asts::GenericParameterGroupAst::~GenericParameterGroupAst() = default;
 
-auto GenericParameterGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::GenericParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Params.empty() ? 0 : Params.front()->PosStart();
 }
 
-auto GenericParameterGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenericParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Params.empty() ? 0 : Params.back()->PosEnd();
 }
 
-auto GenericParameterGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenericParameterGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenericParameterGroupAst>(
     AstClone(TokL),
@@ -66,7 +72,7 @@ auto GenericParameterGroupAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto GenericParameterGroupAst::ToString() const -> Str {
+auto spp::asts::GenericParameterGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   if (not Params.empty()) {
     SPP_STRING_APPEND_RAW("[");
@@ -76,14 +82,14 @@ auto GenericParameterGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto GenericParameterGroupAst::GetOptionalParams() const -> Vec<GenericParameterAst*> {
+auto spp::asts::GenericParameterGroupAst::GetOptionalParams() const -> Vec<GenericParameterAst*> {
   return Params
     | genex::views::filter([](auto const &param) { return param->IsOptional(); })
     | genex::views::transform([](auto const &param) { return param.get(); })
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::GetVariadicParam() const -> GenericParameterAst* {
+auto spp::asts::GenericParameterGroupAst::GetVariadicParam() const -> GenericParameterAst* {
   // The first (and only valid) variadic parameter.
   for (auto const &p : Params) {
     if (p->IsVariadic()) { return p.get(); }
@@ -91,7 +97,7 @@ auto GenericParameterGroupAst::GetVariadicParam() const -> GenericParameterAst* 
   return nullptr;
 }
 
-auto GenericParameterGroupAst::GetCompParams() const -> Vec<GenericParameterAst*> {
+auto spp::asts::GenericParameterGroupAst::GetCompParams() const -> Vec<GenericParameterAst*> {
   // Filter by the kind of parameter.
   return Params
     | genex::views::filter([](auto const &param) { return param->IsCompParam(); })
@@ -99,7 +105,7 @@ auto GenericParameterGroupAst::GetCompParams() const -> Vec<GenericParameterAst*
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::GetTypeParams() const -> Vec<GenericParameterAst*> {
+auto spp::asts::GenericParameterGroupAst::GetTypeParams() const -> Vec<GenericParameterAst*> {
   // Filter by the kind of parameter.
   return Params
     | genex::views::filter([](auto const &param) { return param->IsTypeParam(); })
@@ -107,14 +113,14 @@ auto GenericParameterGroupAst::GetTypeParams() const -> Vec<GenericParameterAst*
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::GetAllParams() const -> Vec<GenericParameterAst*> {
+auto spp::asts::GenericParameterGroupAst::GetAllParams() const -> Vec<GenericParameterAst*> {
   // Return all parameters.
   return Params
     | genex::views::transform([](auto const &param) { return param.get(); })
     | genex::to<Vec>();
 }
 
-auto GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParameterGroupAst> {
+auto spp::asts::GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParameterGroupAst> {
   // Convert all optional parameters to required parameters.
   auto new_params = Vec<Unique<GenericParameterAst>>();
   for (auto const &p : Params) {
@@ -134,7 +140,7 @@ auto GenericParameterGroupAst::OptionalToRequired() const -> Unique<GenericParam
     nullptr, std::move(new_params), nullptr);
 }
 
-auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
+auto spp::asts::GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -160,7 +166,7 @@ auto GenericParameterGroupAst::Stage2_GenTopLvlScopes(
   for (auto const &p : Params) { p->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
-auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
+auto spp::asts::GenericParameterGroupAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Run the type qualifier steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage4_ResolveDeclarations(sm, meta); }
@@ -190,7 +196,7 @@ auto GenericParameterGroupAst::Stage4_ResolveDeclarations(
   }
 }
 
-auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::GenericParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -198,7 +204,7 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   // the symbols are registered.
   const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   // Mark copyable generics. An inherited one resolves to its
@@ -226,7 +232,7 @@ auto GenericParameterGroupAst::Stage7_AnalyseSemantics(
   for (auto const &p : Params) { p->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto GenericParameterGroupAst::Stage11_CodeGen(
+auto spp::asts::GenericParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Run the code generation steps on each parameter in the group.
   for (auto const &p : Params) { p->Stage11_CodeGen(sm, meta, ctx); }

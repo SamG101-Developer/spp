@@ -2,25 +2,24 @@ module;
 #include <spp/macros.hpp>
 
 module spp.lex.lexer;
-import spp.compiler.prelude;
 import spp.utils.strings;
 import spp.utils.types;
 import genex;
 import magic_enum;
 
 SPP_MOD_BEGIN
-spp::lex::Lexer::Lexer(Str code, const bool add_prelude)
+spp::lex::Lexer::Lexer(Str code, const StrView prelude)
   : _Code("\n" + std::move(code)) {
-  // Add the prelude at the end so it doesn't offset line numbers from the actual code. Due to the order-agnostic
-  // definition system, this is fine.
-  if (add_prelude) {
+  // Add the prelude at the end so it doesn't offset line numbers from the
+  // actual code. Due to the order-agnostic definition system, this is fine.
+  if (not prelude.empty()) {
     _PreludeCharOffset = _Code.length();
-    _Code += "\n" + compiler::kPrelude;
+    _Code += "\n";
+    _Code += prelude;
   }
 }
 
-auto spp::lex::Lexer::Lex()
-  -> Vec<RawToken> {
+auto spp::lex::Lexer::Lex() -> Vec<RawToken> {
   // Define tracker variables.
   auto tokens = Vec<RawToken>();
   auto in_char = false;
@@ -29,7 +28,7 @@ auto spp::lex::Lexer::Lex()
   auto in_multi_line_comment = false;
   tokens.reserve(_Code.length() / 2);
 
-  // Save keywords.
+  // Save keywords into a cached map to increase performance.
   auto keywords = Map<RawTokenType, Str>();
   for (auto [kw, kw_string] : magic_enum::enum_entries<RawTokenType>()) {
     if (kw_string.starts_with("KW_")) {
@@ -39,40 +38,43 @@ auto spp::lex::Lexer::Lex()
     }
   }
 
-  // Iterate the source code.
   auto i = 0uz;
   while (i < _Code.length()) {
-    // The first token at or past where the prelude was appended is
-    // the first token that is not the author's. Taken on the way
-    // through rather than worked out afterwards, because a token
-    // carries no source offset to work it out from.
+    // The first token at or past where the prelude was appended is the first
+    // token that is not the author's. Taken on the way through rather than
+    // worked out afterwards, because a token carries no source offset to work
+    // it out from.
     if (i >= _PreludeCharOffset and _PreludeTokenIndex == Str::npos) {
       _PreludeTokenIndex = tokens.size();
     }
 
     const auto c = _Code[i];
 
-    // Skip any characters in a single-line comment (except terminating newline character).
+    // Skip any characters in a single-line comment (except terminating newline
+    // character).
     if (in_single_line_comment and c != '\n') {
       ++i;
       continue;
     }
 
-    // Append any characters in a character literal as a character token (except terminating apostrophe).
+    // Append any characters in a character literal as a character token (except
+    // terminating apostrophe).
     if (in_char and c != '\'') {
       tokens.emplace_back(RawTokenType::LX_CHARACTER, Str(1, c));
       ++i;
       continue;
     }
 
-    // Append any characters in a string literal as a character token (except terminating quotation mark).
+    // Append any characters in a string literal as a character token (except
+    // terminating quotation mark).
     if (in_string and c != '"') {
       tokens.emplace_back(RawTokenType::LX_CHARACTER, Str(1, c));
       ++i;
       continue;
     }
 
-    // Enter a multi-line comment on '##' (not currently in a multi-line comment).
+    // Enter a multi-line comment on '##' (not currently in a multi-line
+    // comment).
     if (not in_multi_line_comment and c == '#' and _Code[i + 1] == '#') {
       in_multi_line_comment = true;
       i += 2;
@@ -92,7 +94,8 @@ auto spp::lex::Lexer::Lex()
       continue;
     }
 
-    // Otherwise, match the character to known tokens and append them to the token list.
+    // Otherwise, match the character to known tokens and append them to the
+    // token list.
     switch (c) {
       case '#': {
         in_single_line_comment = true;
@@ -274,7 +277,8 @@ auto spp::lex::Lexer::Lex()
       continue;
     }
 
-    // Try to match individual characters or numbers, otherwise the token is unknown.
+    // Try to match individual characters or numbers, otherwise the token is
+    // unknown.
     if (('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z')) {
       tokens.emplace_back(RawTokenType::LX_CHARACTER, Str(1, c));
       ++i;

@@ -29,8 +29,15 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LoopExpressionAst::LoopExpressionAst(
+spp::asts::LoopExpressionAst::LoopExpressionAst(
   decltype(TokLoop) &&tok_loop,
   decltype(Body) &&body,
   decltype(ElseBlock) &&else_block) :
@@ -41,9 +48,9 @@ LoopExpressionAst::LoopExpressionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Body);
 }
 
-LoopExpressionAst::~LoopExpressionAst() = default;
+spp::asts::LoopExpressionAst::~LoopExpressionAst() = default;
 
-auto LoopExpressionAst::InferType(
+auto spp::asts::LoopExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   //
   IMPORT_UTILS;
@@ -68,7 +75,7 @@ auto LoopExpressionAst::InferType(
   return VoidAt(PosStart());
 }
 
-auto LoopExpressionAst::InferTypeRef(
+auto spp::asts::LoopExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The exit type, checked against the else block as written; resolved where it is read.
   const auto type = InferType(sm, meta);

@@ -17,7 +17,7 @@ never by spelling a path, so renaming one in the schema is a compile error at ev
 schema and are on.
 `Load` is called once per build in `HandleBuild` for the top-level project only - a dependency's own toml is
 validated but its features are not adopted. Gate a protection at its *call site* when the implementation lives in a
-plain (non-module) TU like `llvm_pipeline.cpp` (llvm_passes.cpp until the 2026-10-19 split), which cannot import the features module - that is why
+plain (non-module) TU like `llvm_passes/llvm_pass_pipeline.cpp` (llvm_pipeline.cpp until 2026-11-10, llvm_passes.cpp until the 2026-10-19 split), which cannot import the features module - that is why
 `ApplyStackProtector` is gated in `compiler_boot.cpp` rather than inside itself. Checked arithmetic deliberately has *no* key: it is a
 language-level guarantee, not a hardening measure, so `+` cannot be made to wrap by any configuration. Only the
 things layered on top of the guarantees are switchable.

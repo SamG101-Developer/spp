@@ -1,0 +1,19 @@
+use std::console::println
+use std::hints::black_box
+
+cor numbers(n: U64) -> std::iterator::Iterator[U64] {
+  let mut i = 0_u64
+  loop i < n {
+    gen i
+    i += 1_u64
+  }
+}
+
+fun main() -> Void {
+  let n = black_box(50000000_u64)
+  let mut sum = 0_u64
+  loop x in numbers(n) {
+    sum = (sum + x * 3_u64) % 1000000007_u64
+  }
+  println("{}", sum)
+}

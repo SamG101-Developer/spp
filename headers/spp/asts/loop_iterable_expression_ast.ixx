@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopIterableExpressionAst);
+use_common(LoopIterableExpressionAst);
 use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct LetStatementInitializedAst);

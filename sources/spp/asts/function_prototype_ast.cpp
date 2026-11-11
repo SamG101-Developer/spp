@@ -45,6 +45,7 @@ import spp.asts.module_implementation_ast;
 import spp.asts.module_prototype_ast;
 import spp.asts.object_initializer_argument_group_ast;
 import spp.asts.object_initializer_ast;
+import spp.asts.postfix_expression_ast;
 import spp.asts.string_literal_ast;
 import spp.asts.sup_implementation_ast;
 import spp.asts.sup_prototype_extension_ast;
@@ -60,6 +61,7 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 import spp.codegen.builtins;
+import spp.codegen.llvm_abi;
 import spp.codegen.llvm_fn;
 import spp.codegen.llvm_harden_codegen;
 import spp.codegen.llvm_mangle;
@@ -67,7 +69,21 @@ import spp.codegen.llvm_type;
 import spp.lex.tokens;
 import spp.lsp.resolution_index;
 import spp.utils.ice;
+import spp.utils.strings;
 import genex;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableKind);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, CompilerStage);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+use_alias(spp::codegen, LlvmFnWrapper);
 
 namespace {
   /// The instantiation whose body is being analysed.
@@ -98,7 +114,7 @@ namespace {
 }
 
 SPP_MOD_BEGIN
-FunctionPrototypeAst::FunctionPrototypeAst(
+spp::asts::FunctionPrototypeAst::FunctionPrototypeAst(
   decltype(Annotations) &&annotations,
   decltype(TokCmp) &&tok_cmp,
   decltype(TokFun) &&tok_fun,
@@ -112,6 +128,8 @@ FunctionPrototypeAst::FunctionPrototypeAst(
   VirtualAnnotation(nullptr),
   TemperatureAnnotation(nullptr),
   FfiAnnotation(nullptr),
+  ConvAnnotation(nullptr),
+  DeclaredAbi(nullptr),
   BuiltinAnnotation(nullptr),
   TestAnnotation(nullptr),
   InlineAnnotation(nullptr),
@@ -135,24 +153,24 @@ FunctionPrototypeAst::FunctionPrototypeAst(
   _LlvmFn = MakeShared<Shared<codegen::LlvmFnWrapper>>(nullptr);
 }
 
-FunctionPrototypeAst::~FunctionPrototypeAst() = default;
+spp::asts::FunctionPrototypeAst::~FunctionPrototypeAst() = default;
 
-auto FunctionPrototypeAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::PosStart() const -> std::size_t {
   // Use the "fun"/"cor" token.
   return TokCmp ? TokCmp->PosStart() : TokFun->PosStart();
 }
 
-auto FunctionPrototypeAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionPrototypeAst::PosEnd() const -> std::size_t {
   // Use the return type.
   return ReturnType->PosEnd();
 }
 
-auto FunctionPrototypeAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionPrototypeAst::Clone() const -> Unique<Ast> {
   // FunctionPrototypeAst is abstract, so cloning it is not allowed.
   Ice(*this, "FunctionPrototypeAst is abstract: clone the SubroutinePrototypeAst or CoroutinePrototypeAst");
 }
 
-auto FunctionPrototypeAst::ToString() const -> Str {
+auto spp::asts::FunctionPrototypeAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Annotations, "\n")
   SPP_STRING_APPEND_RAW(not Annotations.empty() ? "\n" : "");
@@ -167,7 +185,7 @@ auto FunctionPrototypeAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FunctionPrototypeAst::GenerateLlvmDeclaration(
+auto spp::asts::FunctionPrototypeAst::GenerateLlvmDeclaration(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> Shared<codegen::LlvmFnWrapper> {
   IMPORT_UTILS;
   // Generate the return and parameter types.
@@ -178,21 +196,21 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // An ffi function is declared under the symbol its annotation
     // names, because that is what the shared library exports and
     // what the linker will resolve against. Everything else gets
-    // the S++ mangled name. It takes its by-value struct
-    // parameters as the target's C calling convention does, which
-    // is not always as their LLVM values ("CAbiParamsOf").
+    // the S++ mangled name. Its parameters and return take the form
+    // its convention gives them ("!conv", "C" for "!ffi"), which is
+    // not always their LLVM values.
     const auto ffi_symbol = GetFfiSymbolName();
+    auto const &abi = codegen::AbiOf(*this);
     const auto is_signed = [&](TypeAst const &type) {
       return type_predicates::IsTypeSignedInteger(type, *sm->CurrentScope);
     };
     const auto params_signed = FnParamGroup->Params
       | genex::views::transform([&](auto const &x) { return is_signed(*x->Type); })
       | genex::to<Vec>();
-    const auto c_abi = ffi_symbol.has_value()
-      ? codegen::CAbiParamsOf(llvm_param_types, params_signed, *ctx->Module)
-      : Vec<codegen::CAbiParam>();
-    auto declared_param_types = llvm_param_types;
-    for (auto i = 0uz; i < c_abi.size(); ++i) { declared_param_types[i] = c_abi[i].Declared; }
+    const auto abi_params = abi.ParamsOf(llvm_param_types, params_signed, *ctx->Module);
+    const auto declared_param_types = abi_params
+      | genex::views::transform([](auto const &param) { return param.Declared; })
+      | genex::to<Vec>();
 
     // Create the LLVM function type. A "..a: T" parameter is
     // never true C-ABI varargs - the call site ("BindSlots")
@@ -200,8 +218,9 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // tuple value ahead of time, so the callee is an ordinary
     // fixed-arity function whose last parameter happens to
     // have a tuple type.
+    const auto declared_ret_type = abi.ReturnOf(llvm_ret_type);
     const auto llvm_fun_type = llvm::FunctionType::get(
-      llvm_ret_type, declared_param_types, false);
+      declared_ret_type, declared_param_types, false);
 
     // Shortcut for ffi functions: only ever one symbol
     // because of the C ABI compatibility. Enforced by the
@@ -225,19 +244,22 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
     // can throw), so it is marked for "ApplyFfiUnwindGuard"
     // to guard its calls rather than claimed not to.
     if (not ffi_symbol.has_value()) { func->Target->addFnAttr(llvm::Attribute::NoUnwind); }
-    else {
-      func->Target->addFnAttr(codegen::kFfiFnAttr);
-      codegen::CAbiAddParamAttrs(*func->Target, c_abi);
-      if (const auto ext = codegen::CAbiExtendOf(llvm_ret_type, is_signed(*ReturnType)); ext != llvm::Attribute::None) {
-        func->Target->addRetAttr(ext);
-      }
-    }
+    else { func->Target->addFnAttr(codegen::kFfiFnAttr); }
+    abi.AddAttrs(*func->Target, abi_params, is_signed(*ReturnType));
     if (InlineAnnotation != nullptr) {
       using A = annotation_utils::BuiltinAnnotation;
       switch (InlineAnnotation->Builtin) {
         case A::kLlvmInline: func->Target->addFnAttr(llvm::Attribute::InlineHint); break;
         case A::kLlvmAlwaysInline: func->Target->addFnAttr(llvm::Attribute::AlwaysInline); break;
         case A::kLlvmNoInline: func->Target->addFnAttr(llvm::Attribute::NoInline); break;
+        default: break;
+      }
+    }
+    if (TemperatureAnnotation != nullptr) {
+      using A = annotation_utils::BuiltinAnnotation;
+      switch (TemperatureAnnotation->Builtin) {
+        case A::kLlvmHot: func->Target->addFnAttr(llvm::Attribute::Hot); break;
+        case A::kLlvmCold: func->Target->addFnAttr(llvm::Attribute::Cold); break;
         default: break;
       }
     }
@@ -249,14 +271,15 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
       func->Target->addFnAttr(llvm::Attribute::NoReturn);
     }
 
-    // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse (detect recursion in stage7)
-    //  ZExt, SExt?
-    const auto deref_bytes = [&](TypeAst const &param_type) -> std::uint64_t {
+    // Todo: Captures, NoFree (in non "del" methods), NoSync, NoRecurse
+    //  (detect recursion in stage7), ZExt, SExt?
+
+    // What a borrow parameter points at, when it has a size: the
+    // bytes behind it ("dereferenceable") and its alignment ("align").
+    const auto pointee_of = [&](TypeAst const &param_type) -> llvm::Type* {
       const auto pointee = codegen::GetLlvmTypeOf(
         TypeRef::Of(*param_type.WithoutConvention(), *sm->CurrentScope), ctx);
-      return pointee != nullptr and pointee->isSized()
-        ? ctx->Module->getDataLayout().getTypeAllocSize(pointee).getFixedValue()
-        : 0;
+      return pointee != nullptr and pointee->isSized() ? pointee : nullptr;
     };
 
     for (const auto i : genex::views::iota(FnParamGroup->Params.size())) {
@@ -281,8 +304,16 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
       // every loan held), which is what "noalias" asks of the callee.
       if (is_ref) { func->Target->addParamAttr(j, llvm::Attribute::ReadOnly); }
       if (is_mut) { func->Target->addParamAttr(j, llvm::Attribute::NoAlias); }
-      if (const auto bytes = deref_bytes(param_type); bytes > 0) {
-        func->Target->addDereferenceableParamAttr(j, bytes);
+      // A borrow is always to a value laid out as its type: every
+      // load and store through it already claims the type's ABI
+      // alignment, so "align" says it up front, for the callee
+      // before any of them (and where it is not inlined). Variant
+      // payloads are built to their widest member's alignment (up
+      // to 16 bytes), and no layout packs fields.
+      if (const auto pointee = pointee_of(param_type); pointee != nullptr) {
+        auto const &dl = ctx->Module->getDataLayout();
+        func->Target->addDereferenceableParamAttr(j, dl.getTypeAllocSize(pointee).getFixedValue());
+        func->Target->addParamAttr(j, llvm::Attribute::getWithAlignment(*ctx->Context, dl.getABITypeAlign(pointee)));
       }
     }
 
@@ -297,7 +328,7 @@ auto FunctionPrototypeAst::GenerateLlvmDeclaration(
   return *_LlvmFn;
 }
 
-auto FunctionPrototypeAst::Stage1_PreProcess(
+auto spp::asts::FunctionPrototypeAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Get the name of either the module, sup, or sup-ext context name.
   Ast::Stage1_PreProcess(ctx);
@@ -308,7 +339,7 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
 
   // If this is the first overload being converted, then the class needs to be made for the mock type.
   const auto needs_generation = genex::operations::empty(AstBody(ctx)
-    | genex::views::cast_dynamic<ClassPrototypeAst*>()
+    | genex::views::cast_dynamic<ClassPrototypeAst*>
     | genex::views::filter([&mock_class_name](auto const &x) {
       return x->Name->WithoutGns() == mock_class_name->WithoutGns();
     })
@@ -390,7 +421,7 @@ auto FunctionPrototypeAst::Stage1_PreProcess(
   }
 }
 
-auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
+auto spp::asts::FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using analyse::scopes::ScopeBlockName;
@@ -417,7 +448,7 @@ auto FunctionPrototypeAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage3_GenTopLvlAliases(
+auto spp::asts::FunctionPrototypeAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // Skip the function scope, as it is already generated.
   sm->MoveToNextScope();
@@ -425,7 +456,7 @@ auto FunctionPrototypeAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage4_ResolveDeclarations(
+auto spp::asts::FunctionPrototypeAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Skip the function scope, as it is already qualified.
   sm->MoveToNextScope();
@@ -436,7 +467,7 @@ auto FunctionPrototypeAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage5_LoadSupScopes(
+auto spp::asts::FunctionPrototypeAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -445,20 +476,20 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   SPP_ASSERT(sm->CurrentScope == _Scope);
   for (auto const &a : Annotations) { a->Stage5_LoadSupScopes(sm, meta); }
 
-  // Ensure overloads have the same visibility by
-  // comparing to the master symbol.
-  // Todo: Tidy this?
+  // Ensure overloads have the same visibility: the mock reads
+  // the latest overload's, which this one is checked against
+  // where it was written.
   if (Name and not Name->Val.starts_with("$")) {
     if (const auto *outer_scope = sm->CurrentScope->Parent != nullptr ? sm->CurrentScope->Parent->Parent : nullptr) {
       if (const auto mock_sym = outer_scope->FindVarSymbol(Name.get(), true)) {
         if (mock_sym->Kind == VariableKind::FnMock) {
           // Enforce that all overloads have the same
           // visibility.
+          auto const *const prev = mock_sym->VisibilityFrom;
           RaiseIf<SppFunctionOverloadVisibilityMismatchError>(
-            mock_sym->VisibilityAnnotation != nullptr and mock_sym->Visibility != Visibility.first,
-            ERR_ARGS(*mock_sym->VisibilityAnnotation, *this, *Visibility.second));
-          mock_sym->Visibility = Visibility.first;
-          mock_sym->VisibilityAnnotation = Visibility.second;
+            prev != nullptr and prev->Visibility.second != nullptr and prev->Visibility.first != Visibility.first,
+            ERR_ARGS(*prev->Visibility.second, *this, *Visibility.second));
+          mock_sym->VisibilityFrom = this;
         }
       }
     }
@@ -475,7 +506,7 @@ auto FunctionPrototypeAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types_precompiled::SELF_VAR;
@@ -484,15 +515,9 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   // analysis errors due to multiple possible prototypes.
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
-
-  // Apply constraints in the types. Force re-analysis
-  // post sup-scope attachment, but before stage 7, to remain
-  // order agnostic.
   for (auto const &param : FnParamGroup->GetAllParams()) {
-    param->Type->ResetCache();
     param->Type->Stage7_AnalyseSemantics(sm, meta);
   }
-  ReturnType->ResetCache();
   ReturnType->Stage7_AnalyseSemantics(sm, meta);
 
   const auto mod_ctx = _Ctx->To<ModulePrototypeAst>();
@@ -549,7 +574,7 @@ auto FunctionPrototypeAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::_InstallLoweredImpl(
+auto spp::asts::FunctionPrototypeAst::_InstallLoweredImpl(
   ScopeManager *sm) -> void {
   IMPORT_UTILS;
   //
@@ -582,7 +607,7 @@ auto FunctionPrototypeAst::_InstallLoweredImpl(
   }
 }
 
-auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionPrototypeAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -608,6 +633,17 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
     if (not type_predicates::IsTypeVoid(TypeRef::Of(*ReturnType, *sm->CurrentScope), *sm->CurrentScope)) {
       bad("does not return 'Void'");
     }
+  }
+
+  // A foreign convention is for a function implemented outside
+  // S++, so only an "!ffi" one takes it, and takes nothing else.
+  if (ConvAnnotation != nullptr) {
+    const auto is_ffi = FfiAnnotation != nullptr;
+    RaiseIf<SppIdentifierUnknownError>(
+      codegen::AbiOf(*this).IsForeign() != is_ffi,
+      ERR_ARGS(
+        *ConvAnnotation, is_ffi ? "convention for an '!ffi' function" : "convention for a function defined in s++",
+        spp::utils::strings::ClosestMatch(ConvAnnotation->ConvName(), codegen::AbiNames(is_ffi))));
   }
 
   // An ffi function body is in C, so there is no body
@@ -640,7 +676,7 @@ auto FunctionPrototypeAst::Stage7_AnalyseSemantics(
   // method, and finish the analysis themselves.
 }
 
-auto FunctionPrototypeAst::Stage8_CheckMemory(
+auto spp::asts::FunctionPrototypeAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move into the function scope, as it is now ready for
   // memory checking.
@@ -682,7 +718,7 @@ auto FunctionPrototypeAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto FunctionPrototypeAst::Stage10_PreCodeGen(
+auto spp::asts::FunctionPrototypeAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Create the declaration, but not the definition, of the
   // function. This allows for order-agnostic behaviour.
@@ -710,7 +746,7 @@ auto FunctionPrototypeAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
+auto spp::asts::FunctionPrototypeAst::_CodeGenGnSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> void {
   // Emit the bodies of this prototype's instantiations. Their own bodies
   // were analysed by the monomorphisation stage, which ran to a fixed
@@ -726,12 +762,12 @@ auto FunctionPrototypeAst::_CodeGenGnSubstitutions(
 }
 
 /// [CHECKED]
-auto FunctionPrototypeAst::AnalysingGnSubstitution()
+auto spp::asts::FunctionPrototypeAst::AnalysingGnSubstitution()
   -> GenericSubstitution const* {
   return analysing_gn_substitution;
 }
 
-auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
+auto spp::asts::FunctionPrototypeAst::AnalysePendingGnSubstitutions(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Iterating while appending is deliberate, and is why the
@@ -758,12 +794,27 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
     tm.RestartWalk(tm.CurrentScope);
 
     // The instantiation was built from the signature alone
-    // ("CloneSignature"), so it takes the template's pristine body.
-    sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl);
+    // ("CloneSignature"), so it takes the template's pristine body:
+    // with each element of a closed pack ("xs.0") as the name of its
+    // parameter ("xs#0", "PackElementCloneGuard").
+    auto closed_packs = Map<Str, std::size_t>();
+    if (auto const *const variadic = FnParamGroup->GetVariadicParam(); variadic != nullptr) {
+      auto const *const pack = sub.ProtoScope()->FindVarSymbol(variadic->ExtractName().get(), true);
+      if (pack != nullptr and pack->Pack.has_value() and not pack->Pack->Open) {
+        closed_packs[variadic->ExtractName()->Val] = pack->Pack->Elements.size();
+      }
+    }
+    if (closed_packs.empty()) { sub.Proto->Impl = std::move(sub.Proto->Source.OriginalImpl); }
+    else {
+      const auto _elements = PackElementCloneGuard(std::move(closed_packs));
+      sub.Proto->Impl = AstClone(sub.Proto->Source.OriginalImpl);
+    }
     sub.Proto->_InstallLoweredImpl(&tm);
 
     const auto _meta_guard = MetaGuard(meta, true);
     const auto _analysing = AnalysingGnSubstitutionGuard(sub);
+    const auto _instantiated_from = analyse::errors::InstantiatedFromGuard(
+      sub.OutermostRequest()->RequiredAt.get());
     meta->ClearAssignmentTarget();
 
     // Same relaxation, and for the same reason, as the one
@@ -805,7 +856,7 @@ auto FunctionPrototypeAst::AnalysePendingGnSubstitutions(
   }
 }
 
-auto FunctionPrototypeAst::AnalyseAhead(
+auto spp::asts::FunctionPrototypeAst::AnalyseAhead(
   Ast const &site, ScopeManager const *sm, CompilerMetaData const *meta) -> void {
   IMPORT_UTILS;
   // Analysed already, by the walk or ahead of it.
@@ -824,7 +875,7 @@ auto FunctionPrototypeAst::AnalyseAhead(
   _Stage7 = _Stage7Progress::kAnalysedAhead;
 }
 
-auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
+auto spp::asts::FunctionPrototypeAst::_SkipIfAnalysedAhead(
   ScopeManager *sm) -> bool {
   // The scopes "AnalyseAhead" built are where this walk would
   // have built them, so it only has to step past them.
@@ -836,8 +887,9 @@ auto FunctionPrototypeAst::_SkipIfAnalysedAhead(
   return true;
 }
 
-auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
-  FunctionPrototypeAst const &sub_proto, ScopeManager &tm, CompilerMetaData *meta) -> void {
+auto spp::asts::FunctionPrototypeAst::_EnsureDropsForBuiltin(
+  FunctionPrototypeAst const &sub_proto, ScopeManager &tm,
+  CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
   if (sub_proto.BuiltinAnnotation == nullptr) { return; }
@@ -856,24 +908,22 @@ auto FunctionPrototypeAst::_EnsureDropsForBuiltin(
   drop_utils::EnsureDropInstantiated(TypeRef::Of(*t_ast, *tm.CurrentScope), tm, meta);
 }
 
-auto FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
+auto spp::asts::FunctionPrototypeAst::GetFfiSymbolName() const -> Opt<Str> {
   // The "symbol" argument of the "!ffi" annotation, when it is
-  // a non-empty string literal.
+  // a non-empty string literal; otherwise the function's own name,
+  // which "symbol" only overrides.
   if (FfiAnnotation == nullptr) { return Nullopt; }
   const auto symbol_arg = FfiAnnotation->FnArgGroup->At("symbol");
-  if (symbol_arg == nullptr) { return Nullopt; }
-  const auto symbol_literal = symbol_arg->Val->To<StringLiteralAst>();
-  if (symbol_literal == nullptr) { return Nullopt; }
-  auto symbol = symbol_literal->CppVal();
-  if (symbol.empty()) { return Nullopt; }
-  return symbol;
+  const auto symbol_literal = symbol_arg != nullptr ? symbol_arg->Val->To<StringLiteralAst>() : nullptr;
+  auto symbol = symbol_literal != nullptr ? symbol_literal->CppVal() : Str();
+  return symbol.empty() ? Name->Val : symbol;
 }
 
-auto FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
+auto spp::asts::FunctionPrototypeAst::GetLlvmFn() const -> Shared<codegen::LlvmFnWrapper> {
   return *_LlvmFn;
 }
 
-auto FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
+auto spp::asts::FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
   // Walk to the template this was substituted from, which is
   // what carries the stamp when this is an instantiation minted
   // after Stage10. "_NonGnImpl" is self-referential on a
@@ -885,13 +935,13 @@ auto FunctionPrototypeAst::OwnerCtx() const -> codegen::LlvmCtx* {
   return nullptr;
 }
 
-auto FunctionPrototypeAst::DetachLlvmFnSlot() -> void {
+auto spp::asts::FunctionPrototypeAst::DetachLlvmFnSlot() -> void {
   // Break the slot shared with the prototype this was cloned
   // from, so this function gets its own llvm target.
   _LlvmFn = MakeShared<Shared<codegen::LlvmFnWrapper>>(nullptr);
 }
 
-auto FunctionPrototypeAst::PrintSignature(
+auto spp::asts::FunctionPrototypeAst::PrintSignature(
   Str const &) const -> Str {
   SPP_STRING_START.append(Name->Val);
   SPP_STRING_APPEND(GnParamGroup);
@@ -901,19 +951,28 @@ auto FunctionPrototypeAst::PrintSignature(
   SPP_STRING_END;
 }
 
-auto FunctionPrototypeAst::GetDeclarationScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GetDeclarationScope() const -> Scope* {
   return _OwnGnSubstitution != nullptr ? _OwnGnSubstitution->ProtoScope() : GetAstScope();
 }
 
-auto FunctionPrototypeAst::GenericSubstitution::WalkScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::WalkScope() const -> Scope* {
   return OwnedScope.get();
 }
 
-auto FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::ProtoScope() const -> Scope* {
   return OwnedScope->Children[0].get();
 }
 
-auto FunctionPrototypeAst::_CloneStateInto(
+auto spp::asts::FunctionPrototypeAst::GenericSubstitution::OutermostRequest() const
+  -> GenericSubstitution const* {
+  auto const *sub = this;
+  while (sub->RequestedBy != nullptr and sub->RequestedBy->RequiredAt != nullptr) {
+    sub = sub->RequestedBy;
+  }
+  return sub;
+}
+
+auto spp::asts::FunctionPrototypeAst::_CloneStateInto(
   FunctionPrototypeAst &ast) const -> void {
   IMPORT_UTILS;
   ast._AnnotationInfo = _AnnotationInfo
@@ -926,16 +985,17 @@ auto FunctionPrototypeAst::_CloneStateInto(
   ast.VirtualAnnotation = VirtualAnnotation;
   ast.TemperatureAnnotation = TemperatureAnnotation;
   ast.FfiAnnotation = FfiAnnotation;
+  ast.ConvAnnotation = ConvAnnotation;
+  ast.DeclaredAbi = DeclaredAbi;
   ast.BuiltinAnnotation = BuiltinAnnotation;
   ast.TestAnnotation = TestAnnotation;
   ast.InlineAnnotation = InlineAnnotation;
   ast.Visibility = Visibility;
-  ast.VariadicPackType = VariadicPackType;
   ast._LlvmFn = _LlvmFn;
   for (auto const &a : ast.Annotations) { a->SetAstCtx(&ast); }
 }
 
-auto FunctionPrototypeAst::AddGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::AddGnSubstitution(
   GenericSubstitution &&sub) -> GenericSubstitution& {
   // Store the scope for object persistence (and codegen), keyed
   // by the arguments that produced it, and point the instantiation
@@ -946,14 +1006,20 @@ auto FunctionPrototypeAst::AddGnSubstitution(
   return filed;
 }
 
-auto FunctionPrototypeAst::RequireGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::RequireGnSubstitution(
   Ast const *at, Scope *in) const -> void {
   IMPORT_UTILS;
   const auto tmpl = GetNonGnImpl();
   const auto sub = _OwnGnSubstitution;
   if (tmpl == nullptr or sub == nullptr or sub->IsRequired) { return; }
   sub->IsRequired = true;
-  sub->RequiredAt = at;
+  // A call with no place in the source (generated) is shown as its text, so
+  // that one is copied whole.
+  static const auto stand_in = TypeIdentifierAst::FromString("$instantiated_here");
+  const auto has_span = at != nullptr and at->PosStart() != 0 and at->PosEnd() > at->PosStart();
+  sub->RequiredAt = at == nullptr ? nullptr
+    : has_span ? Shared<Ast const>(stand_in->WithSourceSpanAt(*at))
+    : Shared<Ast const>(AstClone(at));
   sub->RequiredIn = in;
 
   // The instantiation's body has not been analysed yet, and
@@ -965,33 +1031,33 @@ auto FunctionPrototypeAst::RequireGnSubstitution(
   monomorphization::EnqueueInstantiation(tmpl);
 }
 
-auto FunctionPrototypeAst::FindGnSubstitution(
+auto spp::asts::FunctionPrototypeAst::FindGnSubstitution(
   analyse::scopes::TypeId const args_id) -> GenericSubstitution* {
   // Get the generic implementation for arguments of this identity.
   const auto it = _GnSubstitutionsById.find(args_id);
   return it != _GnSubstitutionsById.end() ? it->second : nullptr;
 }
 
-auto FunctionPrototypeAst::SetNonGnImpl(
+auto spp::asts::FunctionPrototypeAst::SetNonGnImpl(
   FunctionPrototypeAst *impl) -> void {
   _NonGnImpl = impl;
 }
 
-auto FunctionPrototypeAst::GetNonGnImpl() const -> FunctionPrototypeAst* {
+auto spp::asts::FunctionPrototypeAst::GetNonGnImpl() const -> FunctionPrototypeAst* {
   return _NonGnImpl;
 }
 
-auto FunctionPrototypeAst::MarkAsAnnotation() -> void {
+auto spp::asts::FunctionPrototypeAst::MarkAsAnnotation() -> void {
   IMPORT_UTILS;
   // Mark this function prototype as an annotation, by adding the appropriate annotation to it.
   _AnnotationInfo = MakeUnique<annotation_utils::AnnotationInfo>();
 }
 
-auto FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo* {
+auto spp::asts::FunctionPrototypeAst::GetAnnotationInfo() const -> analyse::utils::annotation_utils::AnnotationInfo* {
   return _AnnotationInfo.get();
 }
 
-auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str> {
+auto spp::asts::FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, Str> {
   IMPORT_UTILS;
   //
   using generate::common_types::FunMovType;
@@ -1034,7 +1100,7 @@ auto FunctionPrototypeAst::_DeduceMockClsType() const -> Pair<Shared<TypeAst>, S
   Ice(*FnParamGroup->GetSelfParam(), "unhandled \"self\" convention");
 }
 
-auto FunctionPrototypeAst::_IsPureGn(
+auto spp::asts::FunctionPrototypeAst::_IsPureGn(
   ScopeManager *sm, CompilerMetaData *meta,
   codegen::LlvmCtx const *ctx) const -> Tup<bool, llvm::Type*, Vec<llvm::Type*>> {
   //
@@ -1052,20 +1118,11 @@ auto FunctionPrototypeAst::_IsPureGn(
   // Convert the return and parameter types to LLVM types.
   const auto llvm_ret_type = codegen::GetLlvmTypeOf(read_type(*ReturnType), ctx);
 
-  // A variadic parameter declares one element ("..b: T") but
-  // receives the whole tuple the call site collapsed its
-  // trailing arguments into, so that tuple is what it lowers as.
-  // Every argument count is its own instantiation with its own
-  // pack type.
+  // An instantiation has a parameter per element of its pack ("monomorphization::ExpandClosedPack"), so each
+  // parameter lowers as its own type.
   const auto variadic_param = FnParamGroup->GetVariadicParam();
   auto llvm_param_types = FnParamGroup->GetNonSelfParams()
-    | genex::views::transform([&](auto const &x) {
-      auto const &source_type = VariadicPackType != nullptr and x == static_cast<FunctionParameterAst*>(variadic_param)
-        ? VariadicPackType
-        : x->Type;
-
-      return codegen::GetLlvmTypeOf(read_type(*source_type), ctx);
-    })
+    | genex::views::transform([&](auto const &x) { return codegen::GetLlvmTypeOf(read_type(*x->Type), ctx); })
     | genex::to<Vec>();
 
   // For the self param, we add the pointer for "self", if "self"
@@ -1078,7 +1135,8 @@ auto FunctionPrototypeAst::_IsPureGn(
       llvm_param_types.insert(llvm_param_types.begin(), self_ptr_type);
     }
     else {
-      const auto self_val_type = codegen::GetLlvmType(*read_type(*self_param->Type).Symbol, ctx);
+      const auto self_val_type = codegen::GetLlvmTypeOf(
+        read_type(*self_param->Type).WithoutConvention(), ctx);
       llvm_param_types.insert(llvm_param_types.begin(), self_val_type);
     }
   }
@@ -1088,15 +1146,16 @@ auto FunctionPrototypeAst::_IsPureGn(
   const auto all_types_converted = llvm_ret_type != nullptr
     and genex::all_of(llvm_param_types, [](auto const &x) { return x != nullptr; });
 
-  // A variadic parameter with no pack bound yet makes the function
-  // generic over its pack, as a generic parameter would: only the
+  // A variadic parameter left (a template's, or an instantiation
+  // forwarding a pack it has not closed) makes the function generic
+  // over its pack, as a generic parameter would: only the
   // instantiation for each argument count has code to generate.
-  const auto unbound_pack = variadic_param != nullptr and VariadicPackType == nullptr and FfiAnnotation == nullptr;
+  const auto unbound_pack = variadic_param != nullptr and FfiAnnotation == nullptr;
   const auto is_pure_generic = not GnParamGroup->Params.empty() or not all_types_converted or unbound_pack;
   return {is_pure_generic, llvm_ret_type, llvm_param_types};
 }
 
-auto FunctionPrototypeAst::AnalysePendingDefaults(
+auto spp::asts::FunctionPrototypeAst::AnalysePendingDefaults(
   ScopeManager *sm) -> void {
   // Parameter defaults are analysed here: after every module's
   // stage 6, and before any body.
@@ -1113,7 +1172,7 @@ auto FunctionPrototypeAst::AnalysePendingDefaults(
   }
 }
 
-auto FunctionPrototypeAst::ClearPendingDefaults() -> void {
+auto spp::asts::FunctionPrototypeAst::ClearPendingDefaults() -> void {
   _PendingDefaults.clear();
 }
 

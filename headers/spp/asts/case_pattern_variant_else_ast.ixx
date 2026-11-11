@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CasePatternVariantElseAst);
+use_common(CasePatternVariantElseAst);
 use(spp::asts, struct TokenAst);
 
 SPP_EXP_CLS struct spp::asts::CasePatternVariantElseAst final : CasePatternVariantAst {

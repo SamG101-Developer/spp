@@ -55,6 +55,55 @@ namespace {
     return sign + all.substr(0, static_cast<std::size_t>(at)) + "." + all.substr(static_cast<std::size_t>(at));
   }
 
+  /// The non-zero decimal "plain", as "Plain" writes one, rounded
+  /// half up to its first "digits" significant digits.
+  auto RoundDecimal(
+    spp::Str const &plain, const unsigned digits)
+    -> spp::Str {
+    using spp::Str;
+    const auto is_negative = plain.starts_with('-');
+    auto text = plain.substr(is_negative ? 1 : 0);
+    const auto point = text.find('.');
+    const auto is_digit = [&](const std::size_t i) { return i != point and i < text.size(); };
+
+    // Past the last digit kept; nothing is cut if the text ends first.
+    auto cut = text.find_first_not_of("0.");
+    for (auto kept = 0u; cut < text.size(); ++cut) {
+      if (not is_digit(cut)) { continue; }
+      if (kept++ == digits) { break; }
+    }
+    if (cut >= text.size()) { return plain; }
+
+    // Dropped integer digits still hold their place; dropped fraction
+    // digits, the point among them, simply go.
+    const auto round_up = text[cut] >= '5';
+    if (point == Str::npos or cut < point) {
+      const auto end = point == Str::npos ? text.size() : point;
+      text = text.substr(0, cut) + Str(end - cut, '0');
+    }
+    else {
+      text.resize(cut);
+    }
+
+    // Carry from the last digit kept, which may lengthen the number.
+    if (round_up) {
+      auto carry = true;
+      for (auto i = cut; carry and i-- > 0;) {
+        if (not is_digit(i)) { continue; }
+        carry = text[i] == '9';
+        text[i] = carry ? '0' : static_cast<char>(text[i] + 1);
+      }
+      if (carry) { text.insert(0, 1, '1'); }
+    }
+
+    // A fraction ends at its last non-zero digit, as "toString" writes one.
+    if (text.find('.') != Str::npos) {
+      text.erase(text.find_last_not_of('0') + 1);
+      if (text.ends_with('.')) { text.pop_back(); }
+    }
+    return (is_negative ? "-" : "") + text;
+  }
+
   /// The range of the float "type": its largest finite
   /// magnitude, either sign. Written exactly: it is an integer
   /// of at most 4933 digits (an "f128").
@@ -147,6 +196,27 @@ auto spp::utils::numbers::ShiftRightLogical(
   return WrapToInteger(bits >> count, type);
 }
 
+auto spp::utils::numbers::ShiftRightArithmetic(
+  numex::BigInt const &value, const std::uint32_t count,
+  Str const &type) -> Opt<numex::BigInt> {
+  // Read the value as its type's bits taken as signed (the top
+  // bit set is negative, even for an unsigned type), and floor
+  // it by 2^count. A negative one is floored through its
+  // magnitude, -((-s - 1) >> count) - 1, so only non-negative
+  // values are ever shifted.
+  const auto bounds = IntegerBounds().find(type);
+  if (bounds == IntegerBounds().end()) { return Nullopt; }
+  auto const &[lower, upper] = bounds->second;
+  const auto modulus = upper - lower + numex::BigInt(1);
+  const auto one = numex::BigInt(1);
+  auto bits = value % modulus;
+  if (bits.IsNegative()) { bits = bits + modulus; }
+  const auto floored = bits >= modulus / numex::BigInt(2)
+    ? -(((modulus - bits) - one) >> count) - one
+    : bits >> count;
+  return WrapToInteger(floored, type);
+}
+
 auto spp::utils::numbers::FloatSemantics(
   Str const &type) -> llvm::fltSemantics const& {
   // An unsuffixed literal is an "f32".
@@ -196,9 +266,12 @@ auto spp::utils::numbers::WriteFloat(
   // Otherwise the fewest significant digits that read back to
   // the value, so one value has one text: found by halving, as
   // more digits never read back less exactly. An "f128" needs
-  // at most 36.
-  const auto reads_back = [&value](const unsigned digits) {
-    return llvm::APFloat(value.getSemantics(), Plain(value, digits)).bitwiseIsEqual(value);
+  // at most 36. Each try rounds one text, as "toString" works out
+  // a value's exact digits however few it writes: thousands of
+  // them for the smallest "f128".
+  const auto exact = Plain(value, 40);
+  const auto reads_back = [&value, &exact](const unsigned digits) {
+    return llvm::APFloat(value.getSemantics(), RoundDecimal(exact, digits)).bitwiseIsEqual(value);
   };
   auto lo = 1u;
   auto hi = 40u;
@@ -207,7 +280,7 @@ auto spp::utils::numbers::WriteFloat(
     if (reads_back(mid)) { hi = mid; }
     else { lo = mid + 1; }
   }
-  return Plain(value, lo);
+  return RoundDecimal(exact, lo);
 }
 
 /// [CHECKED]

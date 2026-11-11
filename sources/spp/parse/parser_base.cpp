@@ -7,6 +7,10 @@ import spp.parse.errors.parser_error;
 import spp.parse.errors.parser_error_builder;
 import spp.utils.error_formatter;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::parse::errors, SppSyntaxError);
+use_alias(spp::parse::errors, SyntacticErrorBuilder);
+
 SPP_MOD_BEGIN
 spp::parse::ParserBase::ParserBase(Vec<lex::RawToken> tokens,
   Shared<utils::errors::ErrorFormatter> const &error_formatter) :

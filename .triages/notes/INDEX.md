@@ -10,7 +10,7 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [Symmetry levels up](conventions/symmetry-levels-up.md) — make the worse of a pair match the better
 - [Type/comp symmetry helpers](conventions/type-comp-symmetry-helpers.md) — comp generics mirror type generics; shared helpers
 - [Switch impls off TypeAst](conventions/switch-impls-off-typeast.md) — analysis/codegen move to symbols/TypeRef; big rewrites OK
-- [Naming abbreviations](conventions/spp-naming-abbreviations.md) — Gn/Fn/Cls..., Get/Find/FindOrMake/Read/Of verbs
+- [Naming abbreviations](conventions/spp-naming-abbreviations.md) — Gn/Fn/Cls..., Get/Find/FindOrMake/Read/Of/View verbs
 - [Identity renames 2026-10-06](conventions/identity-renames-2026-10-06.md) — old→new names map (TypeKey, CompKey, Stamp*, ...)
 - [Terse comments, none in config](conventions/terse-comments-in-config.md) — no comments in config; brief in scripts
 - [LF line endings only](conventions/lf-line-endings.md) — CRLF breaks git hooks; check `git ls-files --eol`
@@ -24,6 +24,11 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [genex, not std::ranges](conventions/genex-not-std-ranges.md) — range algorithms via genex; add `import genex;`
 - [CI name casing](conventions/ci-name-casing.md) — Title Case workflows/jobs/matrix labels, sentence-case steps, kebab ids
 - [Normalised platform macros](conventions/use-normalised-platform-macros.md) — `#if SPP_COMPILER_MSVC` from macros-platforms.hpp, never raw _MSC_VER
+- [Env vars are registered](conventions/env-vars-registered.md) — SPP_ names live in utils/env.cpp, CI's are SPP_CI_; anything else stops spp at startup
+- [sys:: names vs C macros](conventions/sys-names-vs-c-macros.md) — a macro-named sys:: export breaks where the C header is included (gtest); #undef there
+- [Shell through utils::shell](conventions/shell-through-utils-shell.md) — shell::Run and shell::Quote only; why cmd /c needs an outer pair of quotes
+- [Enums over strings](conventions/enums-over-strings.md) — fields and params hold the enum; convert once where a user writes it; "any" is Opt<Enum>
+- [Tickets: a folder each](conventions/tickets-one-folder-each.md) — .triages/tickets/<slug>/ with README.md + repro files; URL in the status line once filed
 
 ## Build, test, verify
 - [Build workflow](build/build-workflow.md) — release build; probe loop; targeted suite for targeted changes; rebuild first, count failed/, wipe after kills
@@ -34,23 +39,26 @@ Paths are relative to this folder. Read a note before relying on its one-line su
 - [gtest-parallel crash reporting](build/gtest-parallel-crash-reporting.md) — segfaults say "killed by signal"
 - [Test suite stage scope](build/spp-test-suite-stage-scope.md) — suite runs codegen + verify; LLVM context per compile (N1.12); identities cleared per compile (N1.13)
 - [Test harness std refresh](build/spp-test-harness-stale-std.md) — SppBootstrap.Fixture pulls once per run; hand runs without it compile a stale std
+- [Intrinsic removal order](build/std-intrinsic-removal-order.md) — keep a removed intrinsic registered until SPP-STL stops declaring it; else every gtest compile ICEs
 - [Codegen checks suite](build/codegen-checks-suite.md) — tests/codegen/run.sh, ~6 min with check-intrinsics (KNOWN list in intrinsics.py); new checks on lib.sh
 - [Test group bugs](build/spp-test-group-filter-bugs.md) — novel !test group segfaults; --group filter misbehaves
-- [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus
+- [s++ test writing idioms](build/spp-test-writing-idioms.md) — destructure-only patterns, literal-only unary minus; benchmark idioms (Arr type, closures, black_box, formatted println)
 - [Stale module objects](build/cmake-stale-module-objects.md) — a changed .cpp may not rebuild; touch it
 - [Split macro headers](build/split-macro-headers.md) — macros.hpp edit = 11 min rebuild; use narrow headers
+- [Genex on one line](build/cmake-genex-no-line-breaks.md) — a wrapped generator expression splits into args; ninja "bad $-escape"; use a variable
 - [ASAN for LLVM crashes](build/asan-build-for-llvm-crashes.md) — gdb can't unwind LLVM; -DSPP_SANITIZER=address
 - [heaptrack needs mimalloc removed](build/heaptrack-needs-mimalloc-removed.md) — -DSPP_NO_MIMALLOC build + patchelf out libmimalloc
 - [Stderr behind progress bar](build/spp-stderr-behind-progress-bar.md) — tr '\r' '\n' before grepping
 - [Binary memory cap](build/spp-run-binary-memory-cap.md) — ulimit -v guard in cli.cpp; keep it
-- [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test is rel+LTO; virtual base, no prior call
+- [Every codegen part has a benchmark](build/every-codegen-part-has-a-benchmark.md) — new AST with codegen or codegen module: a `covers` entry or exempt.txt reason; pre-commit checks
+- [std tests can't see unreachable](build/std-tests-cannot-see-unreachable.md) — spp test defaults to rel+LTO (`-m dev` keeps it); virtual base, no prior call
 
 ## Areas (open the area's INDEX.md when the work touches it)
-- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (13)
-- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (19)
-- [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (12)
-- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (20)
-- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (23)
-- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (24)
-- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (22)
-- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (3)
+- [Toolchain](toolchain/INDEX.md) — GCC/clang C++20 module bugs and workarounds, LLVM wrapper module, linters (17)
+- [CI and platforms](ci/INDEX.md) — workflow quirks, compiler caches, macOS libc++, MSVC bugs, cross-target blockers (33)
+- [Type identity](types/INDEX.md) — TypeKey/stamps, aliases, variant order, TypeEq vs Assignable, Self, comp key folding (13)
+- [Generics](generics/INDEX.md) — inference, variadic packs, sups and attach, overload resolution (23)
+- [Analysis internals](analysis/INDEX.md) — scopes and the walk API, stages, cloning, errors, perf (25)
+- [Language semantics](language/INDEX.md) — linear types, drops, borrows, case/patterns, closures, generators (27)
+- [Codegen and runtime](codegen/INDEX.md) — coercion, layout, mangling, hardening keys, abort path (38)
+- [Std and sibling repos](repos/INDEX.md) — SPP-STL and sppc: what lives where, prelude, link-time library checks (7)

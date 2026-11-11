@@ -24,6 +24,22 @@ import spp.utils.ice;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, IsRuntimeMemberAccess);
+use_alias(spp::asts, IsStaticMemberAccess);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorEarlyReturnAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, PostfixExpressionOperatorStaticMemberAccessAst);
+
 SPP_MOD_BEGIN
 spp::analyse::utils::regions::PlaceAt::PlaceAt() = default;
 

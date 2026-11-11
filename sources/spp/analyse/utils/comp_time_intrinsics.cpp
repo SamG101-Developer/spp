@@ -38,6 +38,25 @@ import llvm;
 import numex.big_dec;
 import numex.big_int;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FloatLiteralAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, IntegerLiteralAst);
+use_alias(spp::asts, ObjectInitializerArgumentAst);
+use_alias(spp::asts, ObjectInitializerArgumentKeywordAst);
+use_alias(spp::asts, ObjectInitializerArgumentShorthandAst);
+use_alias(spp::asts, ObjectInitializerAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, TokenAst);
+use_alias(spp::asts::meta, CompTimeCallArgs);
+
 namespace spp::analyse::utils::comp_time_intrinsics {
   namespace {
     auto SizedNumericLiteralTypeName(TypeSymbol const *sym) -> Str {
@@ -299,6 +318,18 @@ auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitShr(
   // the run-time "lshr" is: a negative value's sign bit moves down too.
   const auto count = rhs.CppVal<std::uint32_t>();
   const auto shifted = spp::utils::numbers::ShiftRightLogical(lhs.BigVal(), count, lhs.Type);
+  return IntegerLiteralAst::FromBigVal(shifted.value_or(lhs.BigVal() >> count), lhs.Type);
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::StdIntrinsicsBitAShr(
+  IntegerLiteralAst const &lhs,
+  IntegerLiteralAst const &rhs)
+  -> Unique<IntegerLiteralAst> {
+  // Perform arithmetic right shift on two integer literals. In the type's width, as the run-time "ashr" is: the top
+  // bit is copied in, so a negative value stays negative.
+  // An unsuffixed literal is an "s32", which the width-aware shift has to be told.
+  const auto count = rhs.CppVal<std::uint32_t>();
+  const auto shifted = spp::utils::numbers::ShiftRightArithmetic(lhs.BigVal(), count, lhs.TypeOrDefault());
   return IntegerLiteralAst::FromBigVal(shifted.value_or(lhs.BigVal() >> count), lhs.Type);
 }
 
@@ -733,6 +764,18 @@ auto spp::analyse::utils::comp_time_intrinsics::StdNumIntTwo(
   return IntegerLiteralAst::FromBigVal(numex::BigInt(2), type);
 }
 
+auto spp::analyse::utils::comp_time_intrinsics::StdHintsBranch(
+  BooleanLiteralAst const &condition)
+  -> Unique<BooleanLiteralAst> {
+  // "likely"/"unlikely" hint the optimiser only; at compile time the condition is passed through.
+  return BooleanLiteralAst::FromCppVal(condition.CppVal());
+}
+
+auto spp::analyse::utils::comp_time_intrinsics::StdHintsColdPath()
+  -> void {
+  // "cold_path" hints the optimiser only; at compile time there is no branch to hint.
+}
+
 auto spp::analyse::utils::comp_time_intrinsics::StdMemOpsSizeOf(
   ScopeManager const &sm,
   Vec<Shared<TypeRef>> const &types)
@@ -772,6 +815,7 @@ SPP_CMP_ASSIGN_OP(Div, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(Rem, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(BitShl, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(BitShr, IntegerLiteralAst)
+SPP_CMP_ASSIGN_OP(BitAShr, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(BitIor, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(BitAnd, IntegerLiteralAst)
 SPP_CMP_ASSIGN_OP(BitXor, IntegerLiteralAst)
@@ -828,6 +872,19 @@ namespace spp::analyse::utils::comp_time_intrinsics {
         lhs.As<BooleanLiteralAst>()->CppVal() or rhs.As<BooleanLiteralAst>()->CppVal());
     }
 
+    /// ">>" over two integers is what std's "BitShr" is for the
+    /// left one's type: arithmetic for a signed type, logical for
+    /// an unsigned one.
+    auto ShiftRightOfType(ExpressionAst const &lhs, ExpressionAst const &rhs) -> Unique<ExpressionAst> {
+      auto const &l = *lhs.As<IntegerLiteralAst>();
+      auto const &r = *rhs.As<IntegerLiteralAst>();
+      auto const &bounds = spp::utils::numbers::IntegerBounds();
+      const auto range = bounds.find(l.TypeOrDefault());
+      const auto is_signed = range != bounds.end() and range->second.first.IsNegative();
+      if (is_signed) { return StdIntrinsicsBitAShr(l, r); }
+      return StdIntrinsicsBitShr(l, r);
+    }
+
     /// An operator, and the intrinsic each kind of operand folds
     /// it by - what std's method for it calls ("S32::add" calls
     /// "sadd", "F32::ne" calls "one"); null where there is none.
@@ -848,7 +905,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
       {"/", Over<Int, StdIntrinsicsDiv>, Over<Flt, StdIntrinsicsFdiv>, nullptr},
       {"%", Over<Int, StdIntrinsicsRem>, Over<Flt, StdIntrinsicsFrem>, nullptr},
       {"<<", Over<Int, StdIntrinsicsBitShl>, nullptr, nullptr},
-      {">>", Over<Int, StdIntrinsicsBitShr>, nullptr, nullptr},
+      {">>", ShiftRightOfType, nullptr, nullptr},
       {"|", Over<Any, StdIntrinsicsBitIor>, nullptr, Over<Any, StdIntrinsicsBitIor>},
       {"&", Over<Any, StdIntrinsicsBitAnd>, nullptr, Over<Any, StdIntrinsicsBitAnd>},
       {"^", Over<Any, StdIntrinsicsBitXor>, nullptr, Over<Any, StdIntrinsicsBitXor>},

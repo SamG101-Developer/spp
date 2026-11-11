@@ -35,7 +35,7 @@ runs:
   steps:
     # Runner images ship an older CMake (3.31.x); the project needs the pinned one to satisfy cmake_minimum_required.
     - name: Install CMake & Ninja
-      uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9 # v4.4.4
+      uses: lukka/get-cmake@30aea713799f46b5b60e60f5fa83f849abd52c22 # v4.5.0-rc3
       with:
         cmakeVersion: ${{ env.CMAKE_VERSION }}
         ninjaVersion: ${{ env.NINJA_VERSION }}
@@ -64,12 +64,15 @@ runs:
       if: runner.os == 'macOS'
       shell: bash
       env:
-        SPP_RUNNER_IMAGE: ${{ inputs.runner-image }}
+        SPP_CI_RUNNER_IMAGE: ${{ inputs.runner-image }}
       run: bash .github/scripts/setup/select-xcode-macos.sh
 
+    # The action defaults to x64 tools, which windows-11-arm would run emulated, building x64.
     - name: Set up MSVC / clang-cl (Windows)
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      with:
+        arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
 
     - name: Select Windows compiler
       if: runner.os == 'Windows'
@@ -123,7 +126,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm
-        key: llvm-win-${{ env.LLVM_WIN_SHA256 }}
+        key: ${{ runner.arch == 'ARM64' && format('llvm-win-arm64-{0}', env.LLVM_WIN_ARM_SHA256) || format('llvm-win-{0}', env.LLVM_WIN_SHA256) }}
 
     - name: Install LLVM dev libraries (Windows, cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-win-cache.outputs.cache-hit != 'true'
@@ -136,26 +139,17 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/llvm-deps
-        key: llvm-deps-win-${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-llvm-deps-windows.sh') }}
+        key: llvm-deps-win-${{ runner.arch == 'ARM64' && 'arm64-' || '' }}${{ hashFiles('.github/dependencies.toml', '.github/scripts/setup/install-llvm-deps-windows.sh') }}
 
     - name: Install the Windows-only dependencies (cache miss)
       if: inputs.dependencies == 'true' && runner.os == 'Windows' && steps.llvm-deps-win-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup/install-llvm-deps-windows.sh
 
-    # macOS takes its compiler out of the same release: brew has no llvm@23, so a brew clang would be a whole major
-    # version behind the LLVM the project links against. The key carries the install script, which decides what the
-    # tree holds and so cannot change without invalidating what is already cached.
-    - name: Cache LLVM toolchain (macOS)
+    # macOS takes its compiler, libc++ and dev libraries from brew's llvm, which is built with RTTI (the release
+    # tarball is not). Bottles come from brew's own CDN, so there is nothing to cache.
+    - name: Install LLVM toolchain (macOS)
       if: inputs.dependencies == 'true' && runner.os == 'macOS'
-      id: llvm-mac-cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ~/llvm
-        key: llvm-mac-${{ env.LLVM_MAC_SHA256 }}-${{ hashFiles('.github/scripts/setup/install-llvm-macos.sh') }}
-
-    - name: Install LLVM toolchain (macOS, cache miss)
-      if: inputs.dependencies == 'true' && runner.os == 'macOS' && steps.llvm-mac-cache.outputs.cache-hit != 'true'
       shell: bash
       run: bash .github/scripts/setup/install-llvm-macos.sh
 

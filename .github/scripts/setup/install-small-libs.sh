@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The header/CMake dependencies: check each out at a pinned
-# commit and install it into SPP_LOCAL_PREFIX, which the
+# commit and install it into SPP_CI_LOCAL_PREFIX, which the
 # calling step caches as one tree. LLVM comes prebuilt and is
 # installed elsewhere.
 set -euo pipefail
@@ -8,7 +8,7 @@ source .github/scripts/lib/llvm-prefix.sh
 source .github/scripts/lib/pinned-checkout.sh
 source .github/scripts/lib/cmake-install.sh
 
-PREFIX="$SPP_LOCAL_PREFIX"
+PREFIX="$SPP_CI_LOCAL_PREFIX"
 llvm_dir="$(llvm_prefix)"
 
 # Read before leaving the repository root: pins.py resolves the

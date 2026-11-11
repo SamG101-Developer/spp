@@ -11,11 +11,12 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(InnerScopeExpressionAst);
-use(spp::asts, struct Ast);
+use_common(InnerScopeExpressionAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::analyse::scopes, struct TypeRef);
+
+use_alias(spp::asts, Ast);
 
 SPP_EXP_CLS struct spp::asts::InnerScopeExpressionAst : PrimaryExpressionAst {
   SPP_AST_KEY_FUNCTIONS(InnerScopeExpressionAst);

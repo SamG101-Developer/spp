@@ -106,3 +106,17 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
         std::mem::ops::drop(a)
     }
 )");
+
+// An instance's default is read from the template's ("ReadExpr", monomorphization.cpp), and an open-ended slice's
+// has a bound missing, which stays missing. open-bugs.md #58.
+SPP_TEST_SHOULD_PASS_SEMANTIC(
+  AstPostfixExpressionOperatorSliceAst,
+  test_valid_open_ended_slice_as_a_generic_function_default, R"(
+    fun f[T](x: T, s: &StrView = "hello"[to 2_uz]) -> T {
+        ret x
+    }
+
+    fun g() -> Void {
+        let y = f[S32](1)
+    }
+)");

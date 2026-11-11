@@ -1,0 +1,31 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(4096_uz)
+  let mut data = Vec[U64]::new_filled(n, 0_u64)
+  let mut state = black_box(11_u64)
+  let mut i = 0_uz
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    data[mut i]@ = state >> 54_u32
+    i += 1_uz
+  }
+  let mut acc = 0_u64
+  let mut round = 0_u64
+  loop round < 25000_u64 {
+    let mut lo = 0_uz
+    loop lo + 16_uz <= n {
+      let window = data[lo to lo + 16_uz]
+      let mut j = 0_uz
+      loop j < window.len() {
+        acc = acc + window[j]@
+        j += 1_uz
+      }
+      lo += 1_uz
+    }
+    round += 1_u64
+  }
+  drop(data)
+  println("{}", acc)
+}

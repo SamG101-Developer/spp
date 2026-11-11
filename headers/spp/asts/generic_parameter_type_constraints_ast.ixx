@@ -7,7 +7,7 @@ import spp.asts.ast_kind;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterTypeConstraintsAst);
+use_common(GenericParameterTypeConstraintsAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 

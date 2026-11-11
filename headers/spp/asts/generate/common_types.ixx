@@ -166,6 +166,9 @@ namespace spp::asts::generate::common_types {
     std::size_t pos)
     -> Shared<TypeAst>;
 
+  SPP_EXP_FUN auto PtrType(
+    std::size_t pos, Shared<TypeAst> inner_type) -> Shared<TypeAst>;
+
   SPP_EXP_FUN auto NonNullType(
     std::size_t pos,
     Shared<TypeAst> inner_type)

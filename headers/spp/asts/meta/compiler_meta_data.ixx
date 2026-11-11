@@ -23,17 +23,18 @@ use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
-use(spp::asts::meta, enum class CompilerStage : std::uint8_t);
-use(spp::asts::meta, enum class SubjectOnMatch : std::uint8_t);
+use(spp::asts::meta, enum class CompilerStage);
+use(spp::asts::meta, enum class SubjectOnMatch);
 use(spp::asts::meta, struct CompilerMetaData);
 use(spp::asts::meta, struct CompilerMetaDataState);
+use(spp::asts::meta, struct AllowPackWholeGuard);
 use(spp::asts::meta, struct CompTimeCallArgs);
 use(spp::asts::meta, struct LlvmLoopInfo);
 use(spp::asts::meta, struct IsBindingsScope);
 use(spp::asts::meta, struct MetaGuard);
 use(spp::codegen, struct LlvmCtx);
 
-SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
+SPP_EXP_CLS enum class spp::asts::meta::CompilerStage {
   kNone = 0,
   kGenTopLvlScopes, // stage 2
   kGenTopLvlAliases, // stage 3
@@ -52,7 +53,7 @@ SPP_EXP_CLS enum class spp::asts::meta::CompilerStage : std::uint8_t {
 /// its patterns (and guard) have matched: take it (a pattern binds
 /// by move off it), find it owes nothing (it is narrowed to members
 /// that are all "Copy"), or keep it owned.
-SPP_EXP_CLS enum class spp::asts::meta::SubjectOnMatch : std::uint8_t {
+SPP_EXP_CLS enum class spp::asts::meta::SubjectOnMatch {
   kKeep,
   kTake,
   kDischarge,
@@ -233,7 +234,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// agree on its return type in, or a coroutine closure's "gen"s
   /// on its yield type ("type_join::TypeJoin"), as a "case"'s
   /// branches do; null anywhere else.
-  analyse::utils::type_join::TypeJoin *ClosureRetJoin;
+  TypeJoin *ClosureRetJoin;
 
   /// Whether the enclosing function is a "cmp" compile time
   /// function or not. Required because "cmp" functions cannot
@@ -282,7 +283,7 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// to, if anything, as a "case"'s branches do. An "exit" at any
   /// level gives its value to the loop it targets; each loop owns
   /// its own join while its body is analysed.
-  Vec<analyse::utils::type_join::TypeJoin*> LoopJoins;
+  Vec<TypeJoin*> LoopJoins;
 
   /// There are some instances where we want to analyse a type
   /// but not the generics attached to it, so allow that. Both
@@ -371,6 +372,20 @@ SPP_EXP_CLS struct spp::asts::meta::CompilerMetaDataState {
   /// limited in where they can be used.
   bool AllowAbstractType;
 
+  /// Set while a generator's or a function type's generic arguments
+  /// are analysed, all the way down: they name a borrow (a yield, a
+  /// parameter) without a value of the type storing it, so a borrow
+  /// may be one of them, where elsewhere it is E2. Also set while an
+  /// instance is made: its types are substituted, not written, and a
+  /// borrow in them was judged where it was written ("T" bound to
+  /// "&Str" in "Iterator[&Str]" gives its "nth" an "Opt[&Str]").
+  bool AllowBorrowedTypeArgs = false;
+
+  /// Set while the identifier a spread, an element access ("xs.0") or a fold
+  /// operand is made of is analysed: there a pack may be named whole. Anywhere
+  /// else it is "a pack is not a value".
+  bool AllowPackWhole = false;
+
   /// The coroutine being generated into, for "gen" and ".res()"
   /// to interact with in stage 11.
   Shared<codegen::LlvmGenerator> LlvmGenerator;
@@ -445,10 +460,24 @@ SPP_EXP_CLS struct spp::asts::meta::MetaGuard {
 
 private:
   /// The meta context to restore to.
-  meta::CompilerMetaData *_Meta;
+  CompilerMetaData *_Meta;
 
   /// Whether to restore the "heavy" fields too.
   bool _Heavy;
+};
+
+/// Sets "AllowPackWhole" for as long as it lives, then puts the outer value
+/// back, an error unwinding included: the one field, where a "MetaGuard" would
+/// save them all for every argument analysed.
+SPP_EXP_CLS struct spp::asts::meta::AllowPackWholeGuard {
+  AllowPackWholeGuard(CompilerMetaData *meta, bool allow);
+  ~AllowPackWholeGuard();
+  AllowPackWholeGuard(AllowPackWholeGuard const &) = delete;
+  auto operator=(AllowPackWholeGuard const &) -> AllowPackWholeGuard& = delete;
+
+private:
+  CompilerMetaData *_Meta;
+  bool _Outer;
 };
 
 /// Bounds the "is" binding lists ("AddedIsBindings",
@@ -464,7 +493,7 @@ SPP_EXP_CLS struct spp::asts::meta::IsBindingsScope {
   auto operator=(IsBindingsScope const &) -> IsBindingsScope& = delete;
 
 private:
-  meta::CompilerMetaData *_Meta;
+  CompilerMetaData *_Meta;
   std::size_t _Added;
   std::size_t _Expired;
 };

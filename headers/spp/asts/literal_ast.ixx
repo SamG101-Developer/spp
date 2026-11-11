@@ -5,7 +5,7 @@ export module spp.asts.literal_ast;
 import spp.asts.primary_expression_ast;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LiteralAst);
+use_common(LiteralAst);
 
 GCC_BUGZILLA_127346_FORWARD_DECL_GLOBAL_FRAGMENT
 use(spp::analyse::scopes, struct ExprSubst);

@@ -12,11 +12,17 @@ import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.analyse.utils.mem_utils;
 import spp.analyse.utils.packs;
+import spp.analyse.utils.type_compare;
 import spp.analyse.utils.type_predicates;
 import spp.asts.convention_ast;
+import spp.asts.generic_argument_ast;
+import spp.asts.generic_argument_group_ast;
 import spp.asts.identifier_ast;
+import spp.asts.let_statement_initialized_ast;
+import spp.asts.spread_expression_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
+import spp.asts.type_identifier_ast;
 import spp.asts.generate.common_types;
 import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_alloca;
@@ -26,8 +32,25 @@ import spp.utils.ice;
 import spp.utils.uid;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, SpreadExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-TupleLiteralAst::TupleLiteralAst(
+namespace {
+  /// The value an element gives: a spread's tuple, or the element itself.
+  auto ValueOf(ExpressionAst &elem) -> ExpressionAst& {
+    auto spread = elem.To<SpreadExpressionAst>();
+    return spread != nullptr ? *spread->Expr : elem;
+  }
+}
+
+spp::asts::TupleLiteralAst::TupleLiteralAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,
   decltype(TokR) &&tok_r) :
@@ -36,9 +59,9 @@ TupleLiteralAst::TupleLiteralAst(
   TokR(std::move(tok_r)) {
 }
 
-TupleLiteralAst::~TupleLiteralAst() = default;
+spp::asts::TupleLiteralAst::~TupleLiteralAst() = default;
 
-auto TupleLiteralAst::EqualsTupleLiteral(
+auto spp::asts::TupleLiteralAst::EqualsTupleLiteral(
   TupleLiteralAst const &other) const -> Ordering {
   // If two tuple asts don't have the same size, they cannot be equal.
   if (Elems.size() != other.Elems.size()) { return Ordering::less; }
@@ -52,23 +75,23 @@ auto TupleLiteralAst::EqualsTupleLiteral(
   return Ordering::less;
 }
 
-auto TupleLiteralAst::Equals(
+auto spp::asts::TupleLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsTupleLiteral(*this);
 }
 
-auto TupleLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
-auto TupleLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::TupleLiteralAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
-auto TupleLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::TupleLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, and the type stage 7 settled
   // on, as an array literal's clone does.
   auto ast = MakeUnique<TupleLiteralAst>(
@@ -76,10 +99,11 @@ auto TupleLiteralAst::Clone() const -> Unique<Ast> {
     AstCloneVec(Elems),
     AstClone(TokR));
   ast->_InferredType = _InferredType;
+  ast->_SpreadTemps = AstCloneVec(_SpreadTemps);
   return ast;
 }
 
-auto TupleLiteralAst::ToString() const -> Str {
+auto spp::asts::TupleLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("(");
   SPP_STRING_EXTEND(Elems, ", ");
@@ -87,15 +111,45 @@ auto TupleLiteralAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto TupleLiteralAst::Stage7_AnalyseSemantics(
+auto spp::asts::TupleLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
 
+  // Expand each spread of a closed tuple into its elements ("(a, ..t)" is
+  // "(a, t.0, t.1)"). An open one's (a template's pack) stays, giving the type
+  // its elements ("ElementTypes"); each instance expands it.
+  auto elems = Vec<Unique<ExpressionAst>>();
+  elems.reserve(Elems.size());
+  for (auto &elem : Elems) {
+    const auto spr = elem->To<SpreadExpressionAst>();
+    auto exp = spr != nullptr
+      ? expr_utils::ExpandTupleSpread(*spr->Expr, *spr->TokUnpack, sm, meta)
+      : Nullopt;
+
+    // Todo: Document this better.
+    if (not exp.has_value()) { // Open
+      // A borrowed pack's elements are borrows, and a tuple holds none: decided
+      // off the pack in a template.
+      const auto pack_name = spr != nullptr ? spr->Expr->To<IdentifierAst>() : nullptr;
+      const auto pack = pack_name != nullptr ? sm->CurrentScope->FindVarSymbol(pack_name) : nullptr;
+      RaiseIf<SppSecondClassBorrowViolationError>(
+        pack != nullptr and pack->Pack.has_value()
+        and pack->Pack->Element->GetConvention() != nullptr,
+        ERR_ARGS(*spr, *pack->Pack->Element, "tuple element type"));
+
+      elems.emplace_back(std::move(elem));
+      continue;
+    }
+    if (exp->Temp != nullptr) { _SpreadTemps.emplace_back(std::move(exp->Temp)); }
+    for (auto &part : exp->Elems) { elems.emplace_back(std::move(part)); }
+  }
+  Elems = std::move(elems);
+
   // Analyse the elements in the tuple.
   for (auto const &elem : Elems) {
     elem->Stage7_AnalyseSemantics(sm, meta);
-    common_errors::RequirePrimary(*elem, *sm);
+    common_errors::RequirePrimary(ValueOf(*elem), *sm);
   }
 
   // Check all the elements are owned by the tuple, not borrowed.
@@ -108,25 +162,28 @@ auto TupleLiteralAst::Stage7_AnalyseSemantics(
   _InferredType = _BuildType(sm, meta);
 }
 
-auto TupleLiteralAst::Stage8_CheckMemory(
+auto spp::asts::TupleLiteralAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
 
-  // Check the memory of each element in the tuple literal.
+  // Check the memory of each element in the tuple literal, after the temporaries spread elements are read off.
+  for (auto const &temp : _SpreadTemps) { temp->Stage8_CheckMemory(sm, meta); }
   for (auto const &elem : Elems) {
     elem->Stage8_CheckMemory(sm, meta);
     mem_utils::ValidateSymbolMemory(*elem, *elem, *sm, meta, {.MarkMoves = false});
   }
 }
 
-auto TupleLiteralAst::Stage11_CodeGen(
+auto spp::asts::TupleLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
+  for (auto const &temp : _SpreadTemps) { temp->Stage11_CodeGen(sm, meta, ctx); }
+
   // The tuple lowers to a struct of its element types, kept in declaration order, so element "i" is field "i".
   const auto uid = "." + Uid();
-  const auto tuple_type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_type = codegen::GetLlvmType(*tuple_type_sym, ctx);
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    InferTypeRef(sm, meta).WithoutConvention(), ctx);
   SPP_ASSERT(llvm_type != nullptr);
 
   // Runtime pathway: build the tuple in a stack slot, and load it back out to give the expression its value.
@@ -189,7 +246,7 @@ auto TupleLiteralAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(llvm_type), comp_elems);
 }
 
-auto TupleLiteralAst::EvaluateCompTime(
+auto spp::asts::TupleLiteralAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values. They are
   // only read, as an array literal's are.
@@ -207,14 +264,14 @@ auto TupleLiteralAst::EvaluateCompTime(
   meta->CompTimeResult = std::move(result);
 }
 
-auto TupleLiteralAst::InferType(
+auto spp::asts::TupleLiteralAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type stage 7 settled on; a tuple not analysed yet has its
   // type built as it is.
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
-auto TupleLiteralAst::InferTypeRef(
+auto spp::asts::TupleLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The tuple type is built as syntax ("Tup[...]", "_BuildType");
   // resolved where it is read.
@@ -222,53 +279,71 @@ auto TupleLiteralAst::InferTypeRef(
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto TupleLiteralAst::_BuildType(
+auto spp::asts::TupleLiteralAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
-  return TypeOfElements(Elems | genex::views::ptr | genex::to<Vec>(), PosStart(), sm, meta);
-}
-
-auto TupleLiteralAst::TypeOfElements(
-  Vec<ExpressionAst*> const &elems, const std::size_t pos, ScopeManager *sm, CompilerMetaData *meta)
-  -> Shared<TypeAst> {
-  //
-  using generate::common_types::TupleType;
-
-  // Create a "..Ts" type, for the tuple type. A bound generic keeps
-  // its parameter's name ("T"), so each element is taken as what it
-  // is bound to - or an instantiation's "(T(), U())" is the generic
-  // tuple "(T, U)", which has no layout to generate. Each element
-  // points at its value, so an error about one names it there.
-  // Todo: TIDY
-  auto types_gen = elems
-    | genex::views::transform([sm, meta](auto *elem) {
-      auto type = elem->InferType(sm, meta);
-      const auto sym = sm->CurrentScope->FindTypeSymbol(type->WithoutConvention().get());
-      if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
-        type = sym->AsBound()->FqName()->WithConvention(AstClone(type->GetConvention()));
-      }
-      return type->WithSourceSpanAt(*elem);
-    })
-    | genex::to<Vec>();
-
-  // Create a tuple type with the inferred element types.
-  auto tuple_type = TupleType(pos, std::move(types_gen));
+  // The tuple of the elements' types, analysed.
+  auto tuple_type = generate::common_types::TupleType(
+    PosStart(), ElementTypes(Elems | genex::views::ptr | genex::to<Vec>(), sm, meta));
   tuple_type->Stage7_AnalyseSemantics(sm, meta);
   return tuple_type;
 }
 
-auto TupleLiteralAst::ReadExpr(
+auto spp::asts::TupleLiteralAst::ElementTypes(
+  Vec<ExpressionAst*> const &elems, ScopeManager *sm, CompilerMetaData *meta,
+  const bool strip_conventions) -> Vec<Shared<TypeAst>> {
+  // Iterate each element in the tuple, inferring its type and applying pack
+  // spreading logic.
+  auto types_gen = Vec<Shared<TypeAst>>();
+  for (const auto elem : elems) {
+    // Infer the type of each element. If we are stripping the conventions, then
+    // remove them before any more processing.
+    auto type = elem->InferType(sm, meta);
+    if (strip_conventions) { type = AstCloneShared(type->WithoutConvention()); }
+
+    // For a spread expression that is being moved from into this tuple, add the
+    // types of each part of that pack into the type list and continue looping.
+    if (elem->To<SpreadExpressionAst>() != nullptr and type->GetConvention() == nullptr) {
+      for (const auto arg : type->LastTypePart()->GnArgGroup->GetTypeArgs()) {
+        types_gen.emplace_back(arg->TypeVal->WithSourceSpanAt(*elem));
+      }
+      continue;
+    }
+
+    // Otherwise, get the type's symbol, and qualify it, and set it into the
+    // type list.
+    const auto sym = sm->CurrentScope->FindTypeSymbol(
+      type->WithoutConvention().get());
+    if (sym != nullptr and sym->IsGn() and sym->AsBound() != sym) {
+      type = sym->AsBound()->FqName()->WithConvention(
+        AstClone(type->GetConvention()));
+    }
+    types_gen.emplace_back(type->WithSourceSpanAt(*elem));
+  }
+  return types_gen;
+}
+
+auto spp::asts::TupleLiteralAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   IMPORT_UTILS;
-  // Each element is an expression so substitute them
-  // all too.
-  // An element naming a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is collected into) spreads
-  // into the elements of the tuple it is bound to, as a type pack does in "Tup[S32, Ts]".
+  // Each element is an expression so substitute them all too. An element naming
+  // a comp pack ("ns" in the pack "(0_uz, ns)" a variadic argument list is
+  // collected into) spreads into the elements of the tuple it is bound to, as a
+  // type pack does in "Tup[S32, Ts]".
   auto elems = Vec<Unique<ExpressionAst>>();
   elems.reserve(Elems.size());
   for (auto const &elem : Elems) {
     auto sub_elem = elem->ReadExpr(sub);
-    auto const *const id = elem->To<IdentifierAst>();
-    auto const *const pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
+
+    // A spread of a comp pack, read as the tuple literal it is bound to, is its
+    // elements.
+    if (const auto spread = sub_elem->To<SpreadExpressionAst>(); spread != nullptr) {
+      if (const auto tuple = spread->Expr->To<TupleLiteralAst>(); tuple != nullptr) {
+        for (auto const &inner : tuple->Elems) { elems.emplace_back(AstClone(inner)); }
+        continue;
+      }
+    }
+    const auto id = elem->To<IdentifierAst>();
+    const auto pack = id != nullptr ? sub.Written->FindVarSymbol(id) : nullptr;
     if (pack != nullptr and pack->IsVariadic and sub_elem->To<TupleLiteralAst>() != nullptr) {
       for (auto const *inner : packs::CompPackElements(*sub_elem)) {
         elems.emplace_back(AstClone(inner));
@@ -280,7 +355,7 @@ auto TupleLiteralAst::ReadExpr(
   return MakeShared<TupleLiteralAst>(AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
-auto TupleLiteralAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::TupleLiteralAst::IsAllowedInDefault() const -> bool {
   // Check every element - one bad one prevents the entire
   // ast from being allowed in this specific context.
   for (auto const &x : Elems) {

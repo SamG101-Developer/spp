@@ -43,8 +43,19 @@ import spp.utils.uid;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::analyse::utils::pattern_solver, MatchPlan);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::asts::meta, SubjectOnMatch);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CaseExpressionAst::CaseExpressionAst(
+spp::asts::CaseExpressionAst::CaseExpressionAst(
   decltype(TokCase) &&tok_case,
   decltype(Cond) &&cond,
   decltype(TokOf) &&tok_of,
@@ -55,14 +66,14 @@ CaseExpressionAst::CaseExpressionAst(
   Branches(std::move(branches)) {
   using lex::SppTokenType;
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokCase, SppTokenType::KW_CASE, "case", cond ? cond->PosStart() : 0);
+    this->TokCase, SppTokenType::KW_CASE, "case", this->Cond ? this->Cond->PosStart() : 0);
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(
-    this->TokOf, SppTokenType::KW_OF, "of", cond ? cond->PosEnd() : 0);
+    this->TokOf, SppTokenType::KW_OF, "of", this->Cond ? this->Cond->PosEnd() : 0);
 }
 
-CaseExpressionAst::~CaseExpressionAst() = default;
+spp::asts::CaseExpressionAst::~CaseExpressionAst() = default;
 
-auto CaseExpressionAst::NewNonPatternMatch(
+auto spp::asts::CaseExpressionAst::NewNonPatternMatch(
   decltype(TokCase) &&tok_case, decltype(Cond) &&cond, Unique<InnerScopeExpressionAst> &&first,
   decltype(Branches) &&branches) -> Unique<CaseExpressionAst> {
   // A condition that is one "is" ("case x is P { .. }") is the
@@ -95,17 +106,17 @@ auto CaseExpressionAst::NewNonPatternMatch(
   return out;
 }
 
-auto CaseExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::CaseExpressionAst::PosStart() const -> std::size_t {
   // Use the "case" token.
   return TokCase->PosStart();
 }
 
-auto CaseExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::CaseExpressionAst::PosEnd() const -> std::size_t {
   // Use the "of" token, or condition.
   return TokOf != nullptr ? TokOf->PosEnd() : Cond->PosEnd();
 }
 
-auto CaseExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CaseExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CaseExpressionAst>(
     AstClone(TokCase),
@@ -117,7 +128,7 @@ auto CaseExpressionAst::Clone() const -> Unique<Ast> {
   return c;
 }
 
-auto CaseExpressionAst::ToString() const -> Str {
+auto spp::asts::CaseExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokCase).append(" ");
   SPP_STRING_APPEND(Cond).append(" ");
@@ -126,7 +137,7 @@ auto CaseExpressionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CaseExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::CaseExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Create the scope for the case expression.
   using namespace spp::analyse::errors;
@@ -236,7 +247,7 @@ auto CaseExpressionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionAst::Plan(
+auto spp::asts::CaseExpressionAst::Plan(
   ScopeManager *sm, CompilerMetaData *meta) -> MatchPlan const& {
   // Use the cached plan that has already been computed, if it
   // exists.
@@ -264,7 +275,7 @@ auto CaseExpressionAst::Plan(
   return *_Plan;
 }
 
-auto CaseExpressionAst::Stage8_CheckMemory(
+auto spp::asts::CaseExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -347,7 +358,7 @@ auto CaseExpressionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionAst::Stage11_CodeGen(
+auto spp::asts::CaseExpressionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
   // Scope shift.
@@ -396,15 +407,15 @@ auto CaseExpressionAst::Stage11_CodeGen(
     or LoweredFromTryOperator
     or yields_value;
 
-  // Get the function, and create the end basic block. We
-  // define "entry" and "end" zones for the "case" expression,
-  // and start in the "entry" zone.
-  const auto func = ctx->Builder.GetInsertBlock()->getParent();
-  const auto case_entry_bb = llvm::BasicBlock::Create(
-    *ctx->Context, "case.entry" + uid, func);
+  // Create the end basic block. The branches start in the block
+  // the condition ended in, with no block between: a branch hint
+  // ("std::hints::likely") is lost unless its "llvm.expect" is in
+  // the same block as the branch it feeds, as LLVM removes every
+  // "expect" in a block once it has seen that block's own branch.
+  const auto case_entry_bb = ctx->Builder.GetInsertBlock();
+  const auto func = case_entry_bb->getParent();
   const auto case_end_bb = llvm::BasicBlock::Create(
     *ctx->Context, "case.end" + uid, func);
-  ctx->Builder.CreateBr(case_entry_bb);
 
   auto phi = static_cast<llvm::PHINode*>(nullptr);
   auto ret_type = Shared<TypeAst>(nullptr);
@@ -480,7 +491,7 @@ auto CaseExpressionAst::Stage11_CodeGen(
   return phi;
 }
 
-auto CaseExpressionAst::EvaluateCompTime(
+auto spp::asts::CaseExpressionAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Scopes.
   sm->MoveToNextScope();
@@ -512,7 +523,7 @@ auto CaseExpressionAst::EvaluateCompTime(
   sm->MoveOutOfCurrentScope();
 }
 
-auto CaseExpressionAst::InferType(
+auto spp::asts::CaseExpressionAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
   using generate::common_types_precompiled::VoidAt;
@@ -561,14 +572,14 @@ auto CaseExpressionAst::InferType(
     : agreed.Type;
 }
 
-auto CaseExpressionAst::InferTypeRef(
+auto spp::asts::CaseExpressionAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The branches' agreed type, checked as written ("case_utils::JoinBranches"); resolved where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto CaseExpressionAst::Diverges(
+auto spp::asts::CaseExpressionAst::Diverges(
   ScopeManager *sm, CompilerMetaData *meta) -> bool {
   IMPORT_UTILS;
   // Before Stage 7 has worked out what it covers, only an

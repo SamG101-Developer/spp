@@ -38,7 +38,7 @@ mapfile -t families < <(python3 .github/scripts/lib/pins.py caches | cut -f3)
 # restore-key that picks the newest match, and a hash of the
 # defining files for the rest.
 for spec in "spp-libs-:1" "ccache-:3" "sccache-:3" "doxygen-:1" "valgrind-:1" "gtest-parallel-:1" "cppcheck-:2" \
-  "llvm-win-:1" "llvm-deps-win-:1" "llvm-mac-:2" "${families[@]/%/:2}"; do
+  "llvm-win-:1" "llvm-deps-win-:1" "${families[@]/%/:2}"; do
   prefix="${spec%:*}"
   drop="${spec##*:}"
   echo "keeping the newest ${prefix} cache per branch, dropping ${drop} trailing segment(s) to group"

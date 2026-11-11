@@ -8,14 +8,23 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.utils.ice;
+import spp.utils.stats;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-Ast::Ast() = default;
+spp::asts::Ast::Ast() {
+  spp::utils::stats::Bump(spp::utils::stats::Counter::AstNodesCreated);
+}
 
-Ast::~Ast() = default;
+spp::asts::Ast::~Ast() = default;
 
-auto Ast::_AsFailed(
+auto spp::asts::Ast::_AsFailed(
   Ast const *self,
   const std::source_location raised_at)
   -> void {
@@ -25,56 +34,56 @@ auto Ast::_AsFailed(
   Ice(*self, "an ast cast as a kind it is not", raised_at);
 }
 
-auto Ast::Size() const -> std::size_t {
+auto spp::asts::Ast::Size() const -> std::size_t {
   // The size is the difference between the two positions.
   return PosEnd() - PosStart();
 }
 
-auto Ast::AnkerlHash() const -> std::size_t {
+auto spp::asts::Ast::AnkerlHash() const -> std::size_t {
   // Default hash is empty (0).
   return 0uz;
 }
 
-auto Ast::Stage1_PreProcess(
+auto spp::asts::Ast::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Bind the context by default.
   _Ctx = ctx;
 }
 
-auto Ast::Stage2_GenTopLvlScopes(
+auto spp::asts::Ast::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *) -> void {
   // Bind the scope by default.
   _Scope = sm->CurrentScope;
 }
 
-auto Ast::GetAstCtx() const -> Ast* {
+auto spp::asts::Ast::GetAstCtx() const -> Ast* {
   // Context getter.
   return _Ctx;
 }
 
-auto Ast::GetAstScope() const -> Scope* {
+auto spp::asts::Ast::GetAstScope() const -> Scope* {
   // Scope getter.
   return _Scope;
 }
 
-auto Ast::SetAstCtx(
+auto spp::asts::Ast::SetAstCtx(
   Ast *ctx) -> void {
   // Context setter.
   _Ctx = ctx;
 }
 
-auto Ast::SetAstScope(
+auto spp::asts::Ast::SetAstScope(
   Scope *scope) -> void {
   // Scope setter.
   _Scope = scope;
 }
 
-auto Ast::IsAllowedInDefault() const -> bool {
+auto spp::asts::Ast::IsAllowedInDefault() const -> bool {
   // Default implementation is to prevent it.
   return false;
 }
 
-auto Ast::EvaluateCompTime(
+auto spp::asts::Ast::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *) -> void {
   // Default behaviour: this AST does not support
   // comptime resolution, so throw an error.

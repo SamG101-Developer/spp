@@ -23,22 +23,17 @@ namespace spp::analyse::utils::async_utils {
   /// different capture conventions.
   SPP_EXP_FUN auto CaptureOnce(
     Vec<Unique<ClosureExpressionCaptureAst>> &captures,
-    Unique<IdentifierAst> &&name,
-    Unique<ConventionAst> &&conv)
-    -> void;
+    Unique<IdentifierAst> &&name, Unique<ConventionAst> &&conv) -> void;
 
   /// Determine what is being borrowed, and therefore what needs
   /// to happen for the closure. Borrowing a field needs to
   /// being in the outermost symbol, borrowing a temporary needs
   /// to materialize it etc.
   SPP_EXP_FUN auto CaptureBorrow(
-    Unique<ExpressionAst> &place,
-    ConventionAst const &conv,
-    Scope const &scope,
+    Unique<ExpressionAst> &place, ConventionAst const &conv, Scope const &scope,
     Vec<Unique<StatementAst>> &prelude,
     Vec<Unique<ClosureExpressionCaptureAst>> &captures,
-    std::size_t pos)
-    -> void;
+    std::size_t pos) -> void;
 
   /// Capture a method calls receiver; for example in the expr
   /// "async a.b.c()" it'd be "a.b" ie what is "self"? The
@@ -46,11 +41,8 @@ namespace spp::analyse::utils::async_utils {
   /// as "self" - temporaries are materialized by binding to a
   /// closure-owned local.
   SPP_EXP_FUN auto CaptureReceiver(
-    PostfixExpressionAst &path,
-    FunctionPrototypeAst const *target,
-    Scope const &scope,
-    Vec<Unique<StatementAst>> &prelude,
+    PostfixExpressionAst &path, FunctionPrototypeAst const *target,
+    Scope const &scope, Vec<Unique<StatementAst>> &prelude,
     Vec<Unique<ClosureExpressionCaptureAst>> &captures,
-    std::size_t pos)
-    -> void;
+    std::size_t pos) -> void;
 }

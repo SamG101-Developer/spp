@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeAst);
+use_common(TypeAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct TypeSymbol);
@@ -25,6 +25,7 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypePostfixExpressionAst);
 use(spp::asts, struct TypeUnaryExpressionAst);
+use_alias(spp::analyse::scopes, TypeId);
 
 /// The base class for all type asts.
 SPP_EXP_CLS struct spp::asts::TypeAst :
@@ -75,7 +76,7 @@ SPP_EXP_CLS struct spp::asts::TypeAst :
   SPP_ATTR_NODISCARD auto IsAllowedInDefault() const -> bool override;
 
   auto Stage11_CodeGen(
-    ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* override;
+    ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* override;
 
   /// A type written as a value is a zero type's one value ("None"),
   /// so it is resolved and generated as the object initializer of

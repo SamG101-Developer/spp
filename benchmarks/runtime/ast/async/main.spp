@@ -1,0 +1,18 @@
+use std::console::println
+use std::hints::black_box
+
+fun work(x: U64) -> U64 {
+  ret (x * 7_u64 + 3_u64) % 1000003_u64
+}
+
+fun main() -> Void {
+  let n = black_box(5000000_u64)
+  let mut acc = black_box(1_u64)
+  let mut i = 0_u64
+  loop i < n {
+    let f = async work(acc)
+    acc = f.await
+    i += 1_u64
+  }
+  println("{}", acc)
+}

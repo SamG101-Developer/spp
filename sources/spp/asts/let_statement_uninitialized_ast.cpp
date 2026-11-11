@@ -19,8 +19,14 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LetStatementUninitializedAst::LetStatementUninitializedAst(
+spp::asts::LetStatementUninitializedAst::LetStatementUninitializedAst(
   decltype(TokLet) &&tok_let,
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
@@ -35,19 +41,19 @@ LetStatementUninitializedAst::LetStatementUninitializedAst(
     this->TokLet, SppTokenType::KW_LET, "let");
 }
 
-LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
+spp::asts::LetStatementUninitializedAst::~LetStatementUninitializedAst() = default;
 
-auto LetStatementUninitializedAst::PosStart() const -> std::size_t {
+auto spp::asts::LetStatementUninitializedAst::PosStart() const -> std::size_t {
   // Use the "let" token.
   return TokLet->PosStart();
 }
 
-auto LetStatementUninitializedAst::PosEnd() const -> std::size_t {
+auto spp::asts::LetStatementUninitializedAst::PosEnd() const -> std::size_t {
   // Use the type.
   return Type->PosEnd();
 }
 
-auto LetStatementUninitializedAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LetStatementUninitializedAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<LetStatementUninitializedAst>(
     AstClone(TokLet),
@@ -56,7 +62,7 @@ auto LetStatementUninitializedAst::Clone() const -> Unique<Ast> {
     AstCloneShared(Type));
 }
 
-auto LetStatementUninitializedAst::ToString() const -> Str {
+auto spp::asts::LetStatementUninitializedAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokLet).append(" ");
   SPP_STRING_APPEND(Var);
@@ -65,7 +71,7 @@ auto LetStatementUninitializedAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
+auto spp::asts::LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -82,7 +88,7 @@ auto LetStatementUninitializedAst::Stage7_AnalyseSemantics(
   Var->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto LetStatementUninitializedAst::Stage8_CheckMemory(
+auto spp::asts::LetStatementUninitializedAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -103,8 +109,8 @@ auto LetStatementUninitializedAst::Stage8_CheckMemory(
   }
 }
 
-auto LetStatementUninitializedAst::Stage11_CodeGen(
-  ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
+auto spp::asts::LetStatementUninitializedAst::Stage11_CodeGen(
+  ScopeManager *sm, CompilerMetaData *meta, LlvmCtx *ctx) -> llvm::Value* {
   // Setup a lot of meta information for the local variable to
   // correctly generate the value.
   const auto _meta_guard = MetaGuard(meta);

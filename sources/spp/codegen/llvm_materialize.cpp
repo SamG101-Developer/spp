@@ -22,6 +22,15 @@ import spp.utils.uid;
 import llvm;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, LocalVariableSingleIdentifierAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+
 auto spp::codegen::LlvmMaterialize(
   ExpressionAst &ast, ScopeManager *sm, CompilerMetaData *meta,
   LlvmCtx *ctx) -> IdentifierAst* {
@@ -100,7 +109,7 @@ auto spp::codegen::LlvmAddrOf(
     // declaration of the symbol, the same way a load of one
     // does.
     if (const auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(llvm_alloca); global_var != nullptr) {
-      return GetOrAddGlobalIntoCurrentModule(*global_var, *GetEmissionModule(*ctx));
+      return GetOrAddGlobalIntoCurrentModule(*global_var, *ctx->Module);
     }
     return llvm_alloca;
   }

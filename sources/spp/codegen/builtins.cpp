@@ -1,9 +1,17 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.codegen.builtins;
 import spp.analyse.utils.comp_time_intrinsics;
 import spp.asts.boolean_literal_ast;
 import spp.asts.float_literal_ast;
 import spp.asts.integer_literal_ast;
 import spp.codegen.llvm_fn_impls;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, FunctionPrototypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::codegen::builtins {
   namespace {
@@ -15,14 +23,17 @@ namespace spp::codegen::builtins {
     using LlvmImplFn = decltype(LoweredFnImpl::LlvmImpl);
 
     /// File the builtin "name": how it is lowered, how it is computed at compile time if it can be, and the generic
-    /// parameter whose destructor its lowering calls, if any ("T" for "drop").
+    /// parameter whose destructor its lowering calls, if any ("T" for "drop"), and how a direct call to it is lowered
+    /// in place, if it is (a branch hint).
     auto Register(
       Map<Str, LoweredFnImpl> &map, Str const &name, LlvmImplFn llvm_impl,
-      Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "")
+      Unique<ct::CompTimeFn> cmp_impl = nullptr, Str drops_gn = "",
+      decltype(LoweredFnImpl::CallSiteImpl) call_site_impl = nullptr)
       -> void {
       map.emplace(name, LoweredFnImpl{
-        .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl), .Name = name,
-        .DropsGn = std::move(drops_gn)});
+        .LlvmImpl = std::move(llvm_impl), .CompTimeImpl = std::move(cmp_impl),
+        .Name = name, .DropsGn = std::move(drops_gn),
+        .CallSiteImpl = std::move(call_site_impl)});
     }
 
     // The lowerings that are one call to a shared builder ("fn_impls::Simple*"), bound to what picks the operation:
@@ -82,6 +93,18 @@ namespace spp::codegen::builtins {
       };
     }
 
+    auto BitCount(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+        fn_impls::SimpleBitCount(sm, proto, meta, ctx, ty, intrinsic);
+      };
+    }
+
+    auto FunnelShift(const llvm::Intrinsic::IndependentIntrinsics intrinsic) -> LlvmImplFn {
+      return [intrinsic](auto sm, auto proto, auto meta, auto ctx, auto ty) {
+        fn_impls::SimpleFunnelShift(sm, proto, meta, ctx, ty, intrinsic);
+      };
+    }
+
     auto AtomicRmw(const AtomicRmwOp op) -> LlvmImplFn {
       return [op](auto sm, auto proto, auto meta, auto ctx, auto) {
         fn_impls::SimpleAtomicFetchRmw(sm, proto, meta, ctx, op);
@@ -103,15 +126,21 @@ namespace spp::codegen::builtins {
     /// A builder that reads everything it needs off the prototype (a "&" and a "&mut" form lower alike), so it takes
     /// no return type.
     auto Untyped(
-      void (*build)(ScopeManager *, FunctionPrototypeAst const *, meta::CompilerMetaData *, LlvmCtx *))
+      void (*build)(ScopeManager *, FunctionPrototypeAst const *, CompilerMetaData *, LlvmCtx *))
       -> LlvmImplFn {
       return [build](auto sm, auto proto, auto meta, auto ctx, auto) { build(sm, proto, meta, ctx); };
+    }
+
+    /// A branch hint, lowered at the call site to the condition expected to be "expected".
+    auto Expect(const bool expected) -> decltype(LoweredFnImpl::CallSiteImpl) {
+      return [expected](auto const &args, auto ctx) {
+        return fn_impls::StdHintsExpect(args, ctx, expected);
+      };
     }
   }
 }
 
-auto spp::codegen::builtins::MakeBuiltinFnMap()
-  -> Map<Str, LoweredFnImpl> {
+auto spp::codegen::builtins::MakeBuiltinFnMap() -> Map<Str, LoweredFnImpl> {
   auto map = Map<Str, LoweredFnImpl>{};
 
   Register(map, "std.array.Arr.new", fn_impls::StdArrayNew);
@@ -149,6 +178,11 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
 
   Register(map, "std.mem.pointer.NonNull.cast", fn_impls::StdNonNullCast);
   Register(map, "std.mem.pointer.NonNull.from_ptr_inner", fn_impls::StdNonNullFromPtrInner);
+  Register(map, "std.mem.pointer.NonNull.dangling", fn_impls::StdNonNullDangling);
+  Register(map, "std.mem.pointer.Ptr.null", fn_impls::StdPtrNull);
+  Register(map, "std.mem.pointer.Ptr.is_null", fn_impls::StdPtrIsNull);
+  Register(map, "std.mem.pointer.Ptr.addr", fn_impls::StdPtrAddr);
+  Register(map, "std.mem.pointer.NonNull.from_mut", fn_impls::StdNonNullFromMut);
   Register(map, "std.mem.pointer.NonNull.fwd_mut", Untyped(fn_impls::SimpleCoroNonNullFwd));
   Register(map, "std.mem.pointer.NonNull.fwd_ref", Untyped(fn_impls::SimpleCoroNonNullFwd));
 
@@ -169,8 +203,19 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
   Register(map, "std.mem.ops.align_of_val", fn_impls::StdMemOpsAlignOfVal);
   Register(map, "std.mem.ops.replace", fn_impls::StdMemOpsReplace);
   Register(map, "std.mem.ops.swap", fn_impls::StdMemOpsSwap);
+  Register(map, "std.mem.ops.mem_copy", fn_impls::StdMemOpsMemCopy);
+  Register(map, "std.mem.ops.mem_set", fn_impls::StdMemOpsMemSet);
   Register(map, "std.mem.ops.drop", fn_impls::StdMemOpsDrop, nullptr, "T");
-  Register(map, "std.mem.ops.drop_in_place", fn_impls::StdMemOpsDropInPlace, nullptr, "T");
+
+  Register(map, "std.hints.black_box", fn_impls::StdHintsBlackBox);
+  Register(map, "std.hints.black_box_ref", fn_impls::StdHintsBlackBox);
+  Register(
+    map, "std.hints.likely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(true));
+  Register(
+    map, "std.hints.unlikely", fn_impls::StdHintsBranch, ct::MakeCompTimeFn(ct::StdHintsBranch), "", Expect(false));
+  Register(
+    map, "std.hints.cold_path", fn_impls::StdHintsColdPath, ct::MakeCompTimeFn(ct::StdHintsColdPath), "",
+    fn_impls::StdHintsColdPathMarker);
 
   Register(
     map, "std.intrinsics.sadd", Binop(BinOp::SAddChecked), ct::MakeCompTimeFn(ct::StdIntrinsicsAdd));
@@ -222,6 +267,10 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
     map, "std.intrinsics.bit_shr", Binop(BinOp::LShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitShr));
   Register(
     map, "std.intrinsics.bit_shr_assign", BinopAssign(BinOp::LShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitShrAssign));
+  Register(
+    map, "std.intrinsics.bit_ashr", Binop(BinOp::AShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitAShr));
+  Register(
+    map, "std.intrinsics.bit_ashr_assign", BinopAssign(BinOp::AShr), ct::MakeCompTimeFn(ct::StdIntrinsicsBitAShrAssign));
   Register(
     map, "std.intrinsics.bit_ior", Binop(BinOp::Or), ct::MakeCompTimeFn(ct::StdIntrinsicsBitIor));
   Register(
@@ -376,8 +425,12 @@ auto spp::codegen::builtins::MakeBuiltinFnMap()
     ct::MakeCompTimeFn(ct::StdIntrinsicsFround));
   Register(
     map, "std.intrinsics.bitreverse", UnaryIntrinsic(llvm::Intrinsic::bitreverse));
-  Register(
-    map, "std.intrinsics.ctlz", fn_impls::StdIntrinsicsCtlz);
+  Register(map, "std.intrinsics.bswap", fn_impls::StdIntrinsicsBswap);
+  Register(map, "std.intrinsics.ctlz", BitCount(llvm::Intrinsic::ctlz));
+  Register(map, "std.intrinsics.cttz", BitCount(llvm::Intrinsic::cttz));
+  Register(map, "std.intrinsics.ctpop", BitCount(llvm::Intrinsic::ctpop));
+  Register(map, "std.intrinsics.fshl", FunnelShift(llvm::Intrinsic::fshl));
+  Register(map, "std.intrinsics.fshr", FunnelShift(llvm::Intrinsic::fshr));
 
   Register(map, "std.intrinsics.sadd_overflow", OverflowIntrinsic(llvm::Intrinsic::sadd_with_overflow));
   Register(map, "std.intrinsics.uadd_overflow", OverflowIntrinsic(llvm::Intrinsic::uadd_with_overflow));

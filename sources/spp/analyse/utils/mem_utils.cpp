@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.mem_utils;
@@ -17,10 +18,25 @@ import spp.asts.convention_ast;
 import spp.asts.expression_ast;
 import spp.asts.function_call_argument_ast;
 import spp.asts.identifier_ast;
+import spp.asts.spread_expression_ast;
 import spp.asts.tuple_literal_ast;
 import spp.asts.type_ast;
 import genex;
 import std;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ArrayLiteralExplicitElementsAst);
+use_alias(spp::asts, ArrayLiteralRepeatedElementAst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, SpreadExpressionAst);
+use_alias(spp::asts, TupleLiteralAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::mem_utils {
   namespace {
@@ -149,10 +165,8 @@ namespace spp::analyse::utils::mem_utils {
 }
 
 auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
-  ExpressionAst &value_ast, Ast const &move_ast,
-  ScopeManager &sm,
-  meta::CompilerMetaData *meta,
-  SymbolMemoryOptions const &options) -> void {
+  ExpressionAst &value_ast, Ast const &move_ast, ScopeManager &sm,
+  CompilerMetaData *meta, SymbolMemoryOptions const &options) -> void {
   // For tuple and array literals, recursively analyse each
   // element, with all checks enabled, except the pass-through
   // "MarkMoves".
@@ -174,6 +188,12 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
     return;
   }
 
+  // A spread in a tuple literal ("(..t)") moves the tuple it spreads.
+  if (const auto spread = value_ast.To<SpreadExpressionAst>(); spread != nullptr) {
+    ValidateSymbolMemory(*spread->Expr, move_ast, sm, meta, options);
+    return;
+  }
+
   // Get the symbol representing the outermost part of the
   // expression being moved. Non-symbolic => temporary value.
   auto [var_sym, var_scope] = sm.CurrentScope->FindVarSymbolOutermost(value_ast);
@@ -182,9 +202,14 @@ auto spp::analyse::utils::mem_utils::ValidateSymbolMemory(
   // A holder used again after a conflict with one of its
   // loans means the loan was live then (M9.2).
   borrows::RaiseIfConflictedUse(*var_sym, *sm.CurrentScope);
-  const auto value_type_sym = value_ast.InferTypeRef(&sm, meta).Symbol;
+
+  // A part that is a borrow (an element of a borrowed pack, "xs.0" for
+  // "..xs: &Ts"; a field never is one) passes the borrow on, so moves nothing.
+  const auto value_ref = value_ast.InferTypeRef(&sm, meta);
+  const auto value_type_sym = value_ref.Symbol;
   const auto outer_is_copyable = var_sym->TypeRefIn(*var_scope).Symbol->IsCopyable();
-  const auto partial_is_copyable = value_type_sym != nullptr and value_type_sym->IsCopyable();
+  const auto partial_is_copyable = value_ref.IsBorrowed() or (
+    value_type_sym != nullptr and value_type_sym->IsCopyable());
 
   // A move only occurs when the value is an identifier that's
   // not copyable, or a field that's not copyable (ie overall
@@ -291,7 +316,7 @@ auto spp::analyse::utils::mem_utils::RaiseIfMoved(
 
 /// [CHECKED]
 auto spp::analyse::utils::mem_utils::AssignmentTargetSymbol(
-  Scope const &scope, meta::CompilerMetaData const &meta) -> VariableSymbol* {
+  Scope const &scope, CompilerMetaData const &meta) -> VariableSymbol* {
   // Get the assignment target symbol off of the meta
   // context.
   if (meta.AssignmentTarget == nullptr) { return nullptr; }

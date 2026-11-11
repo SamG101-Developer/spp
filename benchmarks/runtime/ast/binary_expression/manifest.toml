@@ -1,0 +1,3 @@
+description = "Each integer operator family in a hot loop: checked + - * / %, comparisons, bitwise and shifts"
+layer = "core"
+output = "exact"

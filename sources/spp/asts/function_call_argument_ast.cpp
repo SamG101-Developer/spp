@@ -12,6 +12,7 @@ import spp.analyse.utils.common_errors;
 import spp.analyse.utils.expr_utils;
 import spp.asts.convention_ast;
 import spp.asts.expression_ast;
+import spp.asts.function_call_argument_positional_ast;
 import spp.asts.identifier_ast;
 import spp.asts.token_ast;
 import spp.asts.type_ast;
@@ -20,6 +21,14 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.LlvmMaterialize;
 import spp.codegen.llvm_type;
 import spp.utils.types;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, AllowPackWholeGuard);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
 namespace {
@@ -44,7 +53,7 @@ namespace {
   };
 }
 
-FunctionCallArgumentAst::FunctionCallArgumentAst(
+spp::asts::FunctionCallArgumentAst::FunctionCallArgumentAst(
   decltype(Conv) &&conv,
   decltype(Val) &&val,
   const utils::OrderableTag order_tag) :
@@ -53,25 +62,30 @@ FunctionCallArgumentAst::FunctionCallArgumentAst(
   Val(std::move(val)) {
 }
 
-FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
+spp::asts::FunctionCallArgumentAst::~FunctionCallArgumentAst() = default;
 
-auto FunctionCallArgumentAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionCallArgumentAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
-  // Analyse the semantics of the value expression.
+  // Analyse the semantics of the value expression. A spread ("..xs"), or an argument of a fold (the call allows it),
+  // may name a pack whole; nothing under it may.
   const auto _target_guard = WithoutCallersTarget(meta);
+  const auto pos = To<FunctionCallArgumentPositionalAst>();
+  const auto spreads = pos != nullptr and pos->TokUnpack != nullptr;
+  const auto _pack_guard = AllowPackWholeGuard(
+    meta, (spreads or meta->AllowPackWhole) and Val->To<IdentifierAst>() != nullptr);
   Val->Stage7_AnalyseSemantics(sm, meta);
   common_errors::RequirePrimary(*Val, *sm);
 }
 
-auto FunctionCallArgumentAst::Stage8_CheckMemory(
+auto spp::asts::FunctionCallArgumentAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the memory status of the value expression.
   Val->Stage8_CheckMemory(sm, meta);
 }
 
-auto FunctionCallArgumentAst::Stage11_CodeGen(
+auto spp::asts::FunctionCallArgumentAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // An argument passed by value is generated as a value; a borrowed one lowers to the address of what it borrows.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -79,13 +93,13 @@ auto FunctionCallArgumentAst::Stage11_CodeGen(
   return codegen::LlvmAddrOf(*Val, sm, meta, ctx);
 }
 
-auto FunctionCallArgumentAst::EvaluateCompTime(
+auto spp::asts::FunctionCallArgumentAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Delegate comptime resolution to the value expression.
   Val->EvaluateCompTime(sm, meta);
 }
 
-auto FunctionCallArgumentAst::InferType(
+auto spp::asts::FunctionCallArgumentAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // Infer the type from the value expression.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -94,7 +108,7 @@ auto FunctionCallArgumentAst::InferType(
   return type;
 }
 
-auto FunctionCallArgumentAst::InferTypeRef(
+auto spp::asts::FunctionCallArgumentAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // Held as the argument says: a borrow of "!" is a real value.
   const auto _target_guard = WithoutCallersTarget(meta);
@@ -106,7 +120,7 @@ auto FunctionCallArgumentAst::InferTypeRef(
   return ref;
 }
 
-auto FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::FunctionCallArgumentAst::IsAllowedInDefault() const -> bool {
   // Check the internal value of the argument.
   // Todo: Remove the nullptr guard?
   return Val == nullptr or Val->IsAllowedInDefault();

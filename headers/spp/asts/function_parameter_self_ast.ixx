@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterSelfAst);
+use_common(FunctionParameterSelfAst);
 use(spp::asts, struct ConventionAst);
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterSelfAst final : FunctionParameterAst {

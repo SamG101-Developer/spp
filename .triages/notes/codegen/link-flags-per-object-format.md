@@ -1,10 +1,10 @@
 ---
 name: link-flags-per-object-format
 description: "_LinkExecutable picks rpath, -lm and hardening flags from the target's object format; Mach-O gets no -z, COFF links are not wired up"
-updated: 2026-10-25
+updated: 2026-11-11
 ---
 
-`_LinkExecutable` in `compiler_boot.cpp` branches on `codegen::TargetTriple()` (the target, not the host, so a cross
+`LinkExecutable`/`CcLinkCommand` in `compiler_link.cpp` branch on `codegen::TargetTriple()` (the target, not the host, so a cross
 link gets the target's flags):
 
 - **ELF:** `-lm`, `-Wl,-rpath,'$ORIGIN/lib'`, and the `[binary.link] harden` flags (`-pie`, `-z relro,now`,

@@ -1,11 +1,14 @@
 - [Codegen coercion sites](codegen-coercion-sites.md) — one CoerceToSlot (llvm_coerce); site list; check-coercions.sh sees wrong values
 - [Variant widening in generic args](spp-variant-widening-in-generic-args.md) — codegen rebuilds (llvm_variant)
-- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bridge
+- [Cross-module globals + inherited self](spp-codegen-cross-module-and-inherited.md) — mirror globals; bodies emit into ctx->Module; bridge
 - [Stand-ins lose the field map](llvm-info-standins-lose-field-map.md) — LlvmType + FieldIndexMap together
-- [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — no cls can describe a C struct
-- [NonNull lowers to ptr](nonnull-lowers-to-ptr.md) — needs the is(*NON_NULL) special case
-- [noalias unsound on &mut params](noalias-unsound-on-mut-params.md) — plan is M7; index/slice borrows the blocker
+- [cls layout reorders fields](spp-cls-layout-reorders-fields.md) — unless !ffi or !conv("C"); C structs need one
+- [Convention table (!conv)](abi-conventions-table.md) — codegen::Abi entries spp/C: layout + call hooks; !ffi implies C; "Abi" as Convention means &/&mut
+- [NonNull and Ptr lower to ptr](nonnull-lowers-to-ptr.md) — is(*NON_NULL) / is(*PTR) special case; Ptr has no fields since O14
+- [Runtime allocator attrs](runtime-allocator-attrs.md) — sppc allocators declared as LLVM allocators; keep them plain wrappers
+- [noalias on &mut params](noalias-unsound-on-mut-params.md) — on since 2026-10-13, sound only via the checker (M7); history of the miscompile
 - [GetAllParams includes self](getallparams-includes-self.md) — [0] on a method is `self`
+- [llvm.expect at the call site](expect-lowered-before-inlining.md) — hints via CallSiteImpl; expect in the branch's own block, else dropped
 - [rel miscompiles with intrinsics](rel-profile-miscompiles-with-intrinsics.md) — strip inliner lifetime markers
 - [Symbol mangling](spp-symbol-mangling.md) — path + $h<fnv64>; closures {closure#N}
 - [Stack protector heuristics](stack-protector-heuristics.md) — canaries everywhere; sspstrong = all
@@ -13,10 +16,23 @@
 - [Link flags per object format](link-flags-per-object-format.md) — ELF -z + $ORIGIN; Mach-O @loader_path, no -z; COFF link unwired; MSVC refuses protect+split (U15)
 - [SLS thunks on Mach-O](sls-thunks-macho.md) — LLVM calls AArch64 SLS thunks unprefixed on Mach-O; sls refused on arm64 macOS (U16)
 - [Single abort path](spp-single-abort-path.md) — checks call sppc_check_failed; no frontend willreturn
-- [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; optimiser drops custom call md
+- [KCFI uses bundles, not call metadata](kcfi-bundles-not-metadata.md) — S9.1: new indirect calls need CfiCallBundles; fns typed before the optimiser (thunks drop spp.cfi)
 - [Hardening needs a feature gate](hardening-needs-feature-gate.md) — default on behind a key, fail loudly; old kernels via build-time floor (RHEL 8), never runtime skip
+- [Hardening checks fail closed](hardening-checks-fail-closed.md) — artefact checks answer Expected<Opt<Str>, Str>; unreadable = refused; check_unreadable_ffi case
 - [spp.toml feature schema](spp-toml-feature-schema.md) — schema-checked; features::Enabled
 - [Float literal bounds are exact](float-literal-bounds-exact.md) — E16 on the exact written value, not rounding; WriteFloat writes integers exactly
 - [BigDec::ToString is a fraction](bigdec-tostring-is-rational.md) — "5/4"; use Decimal()
+- [ARM narrow atomics miscompare](arm-narrow-atomics-sync-libcall-extension.md) — pre-v6: LLVM assumes __sync_* results zero-extended, libgcc sign-extends; U8 > 127 fails
 - [musl programs need libgcc_s](musl-programs-need-libgcc-s.md) — __gcc_personality_v0; bare Alpine needs `apk add libgcc`, not an sppc gap
-- [ffi params in the C ABI](ffi-struct-params-c-abi.md) — structs byval/by pointer on ppc32, m68k, s390x; small ints signext/zeroext per target; one-field structs are scalars
+- [ffi params in the C ABI](ffi-struct-params-c-abi.md) — structs byval/by pointer on ppc32, m68k, s390x; small ints signext/zeroext per target; one-field structs are scalars, params and returns
+- [MSVC target: link and SEH](msvc-target-link-and-seh.md) — lld-link, import .lib + DLL beside the .exe, static CRT; FFI guard as SEH cleanuppads; no probe-stack attr (__chkstk); Win64 C structs by pointer
+- [Variant phis hide pointer payloads](variant-phis-hide-pointer-payloads.md) — whole variants in a phi force ptrtoint; build with StoreVariant into one slot, load once
+- [SROA skips the i2 coroutine index](sroa-skips-sub-byte-coro-index.md) — elided frame index stays in memory; mem2reg at peephole points; coroutines lowered after linking
+- [AIR needs wide vectors](air-needs-wide-vectors.md) — AIR passes act only at 256-bit vectors; set [target.floor] cpu; cpu stamped per function (arch.spp base)
+- [Checked results are flagged](checked-results-are-flagged.md) — checked +/-/* return add nuw/nsw, not the intrinsic value; passes moving a check drop the flags
+- [mem ops are LLVM intrinsics](mem-ops-are-llvm-intrinsics.md) — mem_copy/mem_set emit llvm.memcpy/memset; sppc memcpy/memset/memmove gone
+- [Variants have no parts](variant-drop-is-a-no-op.md) — drop code reads variants via VariantMemberRefs + tag switch; GetAllParts alone missed them (leak fixed 2026-11-10)
+- [KCFI hash word on Mach-O](kcfi-cold-functions-on-macho.md) — hash word is in the previous atom; ld64 moving cold fns splits it; prefix data makes typed fns .alt_entry (fixed 2026-11-10)
+- [Hardened jump tables](hardened-jump-tables.md) — our own masked tables on every target; LLVM builds none; asm barrier keeps the mask branch-free
+- [Index checks versioned](index-checks-versioned.md) — llvm_pass_bounds: one wide-width guard before a loop, a copy without its index checks; proof by comparison only
+- [AArch64 branch protection fallbacks](aarch64-branch-protection-fallbacks.md) — bti/pac_ret only on AArch64 ELF; cfi and split stand in elsewhere; bti left out where the toolchain start files lack BTI

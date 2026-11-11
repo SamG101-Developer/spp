@@ -57,15 +57,17 @@
     (ast_attr) = std::remove_cvref_t<decltype(*ast_attr)>::NewEmptyShared(__VA_ARGS__); \
   }
 
-#define SPP_AST_COMMON_FWD_DECL(_Ast)            \
+#define use_common(_Ast)            \
   use(spp::analyse::scopes, class ScopeManager); \
   use(spp::asts::meta, struct CompilerMetaData); \
+  use(spp::codegen, struct LlvmCtx);             \
   use(spp::asts, struct _Ast)
 
-#define SPP_AST_COMMON_FWD_DECL_TEMPLATED(_Ast)  \
+#define use_common_templated(_Ast)  \
   use(spp::analyse::scopes, class ScopeManager); \
   use(spp::asts::meta, struct CompilerMetaData); \
-  use(spp::asts, template <typename T> struct _Ast)
+  use(spp::codegen, struct LlvmCtx);             \
+  use(spp::asts, (typename T) struct _Ast)
 
 #define SPP_STRING_START auto raw_string = Str()
 
@@ -152,10 +154,66 @@
 
 #define SPP_LLVM_FUNC_INFO analyse::scopes::ScopeManager *sm, asts::FunctionPrototypeAst const *proto, asts::meta::CompilerMetaData *meta
 
-#define use(ns, _Type, ...) \
-  namespace ns { SPP_EXP_CLS _Type __VA_OPT__(, __VA_ARGS__); } \
-  using namespace ns
+// ---------------------------------------------------------------------------
 
-#define use_ns(ns) \
-  namespace ns {} \
-  using namespace ns
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+#define SPP_CAT_(a, b) a##b
+#define SPP_CAT(a, b)  SPP_CAT_(a, b)
+
+#define SPP_EAT(...)
+
+// ---------------------------------------------------------------------------
+// Keyword stripping: struct/class/union X, enum class/struct X  ->  X
+// ---------------------------------------------------------------------------
+// pass 1: strip the first keyword
+#define SPP_S1_struct SPP_KW_DONE
+#define SPP_S1_class  SPP_KW_DONE
+#define SPP_S1_union  SPP_KW_DONE
+#define SPP_S1_enum   /* leaves 'class X' / 'struct X' for pass 2 */
+
+// pass 2: strip the marker or the scoped-enum key
+#define SPP_S2_SPP_KW_DONE
+#define SPP_S2_class
+#define SPP_S2_struct
+
+#define SPP_S1_(x) SPP_S1_##x
+#define SPP_S1(x)  SPP_S1_(x)
+#define SPP_S2_(x) SPP_S2_##x
+#define SPP_S2(x)  SPP_S2_(x)
+
+#define SPP_STRIP_KW(x) SPP_S2(SPP_S1(x))
+
+// ---------------------------------------------------------------------------
+// Template detection: 1 if x starts with a (...) group, else 0
+// ---------------------------------------------------------------------------
+#define SPP_IS_PAREN(x)            SPP_IS_PAREN_(SPP_IS_PAREN_PROBE x)
+#define SPP_IS_PAREN_(...)         SPP_IS_PAREN_N(__VA_ARGS__, 0, ~)
+#define SPP_IS_PAREN_N(a, n, ...)  n
+#define SPP_IS_PAREN_PROBE(...)    ~, 1,
+
+// ---------------------------------------------------------------------------
+// Declaration / name builders
+// ---------------------------------------------------------------------------
+#define SPP_TPL(...) SPP_EXP_CLS template <__VA_ARGS__>
+
+// (params) struct X  ->  template <params> SPP_EXP_CLS struct X
+#define SPP_DECL_0(x) SPP_EXP_CLS x
+#define SPP_DECL_1(x) SPP_TPL x
+
+// (params) struct X  ->  X
+#define SPP_NAME_0(x) SPP_STRIP_KW(x)
+#define SPP_NAME_1(x) SPP_STRIP_KW(SPP_EAT x)
+
+#define SPP_DECL(x) SPP_CAT(SPP_DECL_, SPP_IS_PAREN(x))(x)
+#define SPP_NAME(x) SPP_CAT(SPP_NAME_, SPP_IS_PAREN(x))(x)
+
+// ---------------------------------------------------------------------------
+// use(ns, [ (template-params) ] class-key Name [, extra...])
+// ---------------------------------------------------------------------------
+#define use(ns, Type, ...)                                      \
+  namespace ns { SPP_DECL(Type) __VA_OPT__(, __VA_ARGS__); }    \
+  using ns::SPP_NAME(Type)
+
+#define use_alias(ns, _Alias) using ns::_Alias

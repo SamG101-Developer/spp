@@ -3,25 +3,30 @@ module;
 
 module spp.asts.type_unary_expression_operator_ast;
 
-SPP_MOD_BEGIN
-TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
-auto TypeUnaryExpressionOperatorAst::operator<=>(
+SPP_MOD_BEGIN
+spp::asts::TypeUnaryExpressionOperatorAst::~TypeUnaryExpressionOperatorAst() = default;
+
+auto spp::asts::TypeUnaryExpressionOperatorAst::operator<=>(
   TypeUnaryExpressionOperatorAst const &that) const -> Ordering {
   return Equals(that);
 }
 
-auto TypeUnaryExpressionOperatorAst::operator==(
+auto spp::asts::TypeUnaryExpressionOperatorAst::operator==(
   TypeUnaryExpressionOperatorAst const &that) const -> bool {
   return Equals(that) == Ordering::equal;
 }
 
-auto TypeUnaryExpressionOperatorAst::EqualsOpBorrow(
+auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpBorrow(
   TypeUnaryExpressionOperatorBorrowAst const &) const -> Ordering {
   return Ordering::less;
 }
 
-auto TypeUnaryExpressionOperatorAst::EqualsOpNamespace(
+auto spp::asts::TypeUnaryExpressionOperatorAst::EqualsOpNamespace(
   TypeUnaryExpressionOperatorNamespaceAst const &) const -> Ordering {
   return Ordering::less;
 }

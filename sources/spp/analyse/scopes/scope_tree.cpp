@@ -13,19 +13,20 @@ import spp.asts.closure_expression_ast;
 import spp.asts.generic_parameter_ast;
 
 SPP_MOD_BEGIN
-ScopeTree::ScopeTree(
+spp::analyse::scopes::ScopeTree::ScopeTree(
   Shared<Scope> global) :
   Global(std::move(global)) {
   Global->OwningTree = this;
 }
 
-ScopeTree::~ScopeTree() {
+spp::analyse::scopes::ScopeTree::~ScopeTree() {
   // The caches elsewhere hold this compile's scopes, so they are
   // cleared while the scopes are still alive, before the members
   // (the scopes themselves) are freed.
   spp::analyse::utils::monomorphization::StopInstantiatingOnRead();
   Scope::ClearOpaqueCompValues();
   spp::analyse::scopes::ClearGnParams();
+  spp::analyse::utils::sup_attachment::StopAttachingDeferredSups();
   spp::analyse::utils::sup_attachment::ClearSupStatementsCache();
   spp::analyse::utils::type_members::ClearUnimplementedAbstractMethodsCache();
   spp::analyse::utils::overload_resolution::ClearCaches();

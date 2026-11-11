@@ -27,22 +27,28 @@ import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
 template <typename T>
-auto InnerScopeAst<T>::NewEmpty() -> Unique<InnerScopeAst> {
+auto spp::asts::InnerScopeAst<T>::NewEmpty() -> Unique<InnerScopeAst> {
   return MakeUnique<InnerScopeAst>(
     nullptr, decltype(Members)(), nullptr);
 }
 
 template <typename T>
-InnerScopeAst<T>::InnerScopeAst() :
+spp::asts::InnerScopeAst<T>::InnerScopeAst() :
   TokL(nullptr),
   Members(),
   TokR(nullptr) {
 }
 
 template <typename T>
-InnerScopeAst<T>::InnerScopeAst(
+spp::asts::InnerScopeAst<T>::InnerScopeAst(
   decltype(TokL) &&tok_l,
   decltype(Members) &&members,
   decltype(TokR) &&tok_r) :
@@ -52,29 +58,29 @@ InnerScopeAst<T>::InnerScopeAst(
 }
 
 template <typename T>
-InnerScopeAst<T>::~InnerScopeAst() = default;
+spp::asts::InnerScopeAst<T>::~InnerScopeAst() = default;
 
 template <typename T>
-auto InnerScopeAst<T>::PosStart() const -> std::size_t {
+auto spp::asts::InnerScopeAst<T>::PosStart() const -> std::size_t {
   // Use the "{" token.
   return TokL->PosStart();
 }
 
 template <typename T>
-auto InnerScopeAst<T>::PosEnd() const -> std::size_t {
+auto spp::asts::InnerScopeAst<T>::PosEnd() const -> std::size_t {
   // Use the "}" token.
   return TokR->PosEnd();
 }
 
 template <typename T>
-auto InnerScopeAst<T>::Clone() const -> Unique<Ast> {
+auto spp::asts::InnerScopeAst<T>::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<InnerScopeAst>(
     AstClone(TokL), AstCloneVec(Members), AstClone(TokR));
 }
 
 template <typename T>
-auto InnerScopeAst<T>::ToString() const -> Str {
+auto spp::asts::InnerScopeAst<T>::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW("{").append(not Members.empty() ? "\n" : "");
   SPP_STRING_EXTEND(Members, "\n");
@@ -84,7 +90,7 @@ auto InnerScopeAst<T>::ToString() const -> Str {
 }
 
 template <typename T>
-auto InnerScopeAst<T>::Stage11_CodeGen(
+auto spp::asts::InnerScopeAst<T>::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Add all the expressions/statements into the current scope.
   sm->MoveToNextScope();
@@ -104,7 +110,7 @@ auto InnerScopeAst<T>::Stage11_CodeGen(
 }
 
 template <typename T>
-auto InnerScopeAst<T>::FinalMember() const -> Ast* {
+auto spp::asts::InnerScopeAst<T>::FinalMember() const -> Ast* {
   return Members.empty() ? TokR->To<Ast>() : Members.back()->template To<Ast>();
 }
 

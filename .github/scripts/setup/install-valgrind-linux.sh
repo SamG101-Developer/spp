@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the pinned valgrind release into SPP_VALGRIND_PREFIX,
+# Build the pinned valgrind release into SPP_CI_VALGRIND_PREFIX,
 # checksum first.
 set -euo pipefail
 
@@ -14,8 +14,8 @@ tar xjf "${work}/valgrind.tar.bz2" -C "$work" --strip-components=1
 
 (
   cd "$work"
-  ./configure --prefix="$SPP_VALGRIND_PREFIX" --quiet
+  ./configure --prefix="$SPP_CI_VALGRIND_PREFIX" --quiet
   make --quiet -j "$(nproc)"
   make --quiet install
 )
-"${SPP_VALGRIND_PREFIX}/bin/valgrind" --version
+"${SPP_CI_VALGRIND_PREFIX}/bin/valgrind" --version

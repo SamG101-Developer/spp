@@ -21,8 +21,15 @@ import spp.asts.mixins.orderable_ast;
 import spp.asts.utils.ast_utils;
 import spp.asts.utils.orderable;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionParameterOptionalAst::FunctionParameterOptionalAst(
+spp::asts::FunctionParameterOptionalAst::FunctionParameterOptionalAst(
   decltype(Var) &&var,
   decltype(TokColon) &&tok_colon,
   decltype(Type) type,
@@ -36,19 +43,19 @@ FunctionParameterOptionalAst::FunctionParameterOptionalAst(
   Source.OriginalDefaultVal = AstClone(DefaultVal);
 }
 
-FunctionParameterOptionalAst::~FunctionParameterOptionalAst() = default;
+spp::asts::FunctionParameterOptionalAst::~FunctionParameterOptionalAst() = default;
 
-auto FunctionParameterOptionalAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionParameterOptionalAst::PosStart() const -> std::size_t {
   // Use the variable.
   return Var->PosStart();
 }
 
-auto FunctionParameterOptionalAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionParameterOptionalAst::PosEnd() const -> std::size_t {
   // Use the default value.
   return DefaultVal->PosEnd();
 }
 
-auto FunctionParameterOptionalAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionParameterOptionalAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<FunctionParameterOptionalAst>(
     AstClone(Var),
@@ -60,7 +67,7 @@ auto FunctionParameterOptionalAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto FunctionParameterOptionalAst::ToString() const -> Str {
+auto spp::asts::FunctionParameterOptionalAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Var);
   SPP_STRING_APPEND(TokColon).append(" ");
@@ -70,7 +77,7 @@ auto FunctionParameterOptionalAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -110,7 +117,7 @@ auto FunctionParameterOptionalAst::Stage6_PreAnalyseSemantics(
   _DefaultAnalysed = true;
 }
 
-auto FunctionParameterOptionalAst::Stage8_CheckMemory(
+auto spp::asts::FunctionParameterOptionalAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Perform default memory checking steps.
   IMPORT_UTILS;

@@ -1,3 +1,6 @@
+module;
+#include <spp/macros.hpp>
+
 module spp.analyse.utils.self_type;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
@@ -14,23 +17,36 @@ import spp.asts.utils.ast_utils;
 import spp.utils.ptr;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypeIdentifierAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+
 auto spp::analyse::utils::self_type::SubstituteSelf(
   TypeAst const &type, TypeAst const *self, Scope const &scope,
-  ScopeManager *const sm, meta::CompilerMetaData *const meta) -> Shared<TypeAst> {
+  ScopeManager *const sm, CompilerMetaData *const meta) -> Shared<TypeAst> {
   if (self == nullptr or not type_predicates::DoesTypeNameSelf(type)) { return AstClone(&type); }
   auto bindings = GenericSubst();
   BindSelf(bindings, *self, scope);
   auto out = type_resolution::ReadType(type, ExprSubst::In(scope, std::move(bindings)));
   if (sm == nullptr) { return out; }
-  const auto _meta_guard = meta::MetaGuard(meta);
+  const auto _meta_guard = MetaGuard(meta);
   meta->AllowAbstractType = true;
   out->Stage7_AnalyseSemantics(sm, meta);
   return out;
 }
 
 auto spp::analyse::utils::self_type::TypeIdWithSelf(
-  const scopes::TypeId instance_id, TypeAst const &written, Scope const *const written_in,
-  const scopes::TypeId self) -> scopes::TypeId {
+  const TypeId instance_id, TypeAst const &written, Scope const *const written_in,
+  const TypeId self) -> TypeId {
   auto id = instance_id;
   if (id == nullptr and written_in != nullptr and self != nullptr and type_predicates::DoesTypeNameSelf(written)) {
     id = written_in->TypeIdOf(written);

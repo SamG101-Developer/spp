@@ -51,26 +51,34 @@ import spp.lex.tokens;
 import spp.parse.parser_spp;
 import spp.utils.ice;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
+spp::asts::UnaryExpressionOperatorAsyncAst::UnaryExpressionOperatorAsyncAst(
   decltype(TokAsync) &&tok_async) :
   TokAsync(std::move(tok_async)),
   _TransformedFn(nullptr) {
 }
 
-UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
+spp::asts::UnaryExpressionOperatorAsyncAst::~UnaryExpressionOperatorAsyncAst() = default;
 
-auto UnaryExpressionOperatorAsyncAst::PosStart() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::PosStart() const -> std::size_t {
   // Use the "async" token.
   return TokAsync->PosStart();
 }
 
-auto UnaryExpressionOperatorAsyncAst::PosEnd() const -> std::size_t {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::PosEnd() const -> std::size_t {
   // Use the "async" token.
   return TokAsync->PosEnd();
 }
 
-auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<UnaryExpressionOperatorAsyncAst>(
     AstClone(TokAsync));
@@ -81,7 +89,7 @@ auto UnaryExpressionOperatorAsyncAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
   SPP_STRING_START;
   if (_TransformedFn != nullptr) {
     SPP_STRING_APPEND(_TransformedFn);
@@ -91,7 +99,7 @@ auto UnaryExpressionOperatorAsyncAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto UnaryExpressionOperatorAsyncAst::_SkipOperandScope(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::_SkipOperandScope(
   ScopeManager *sm) const -> void {
   if (_OperandScope == nullptr) { return; }
   sm->MoveToNextScope();
@@ -100,7 +108,7 @@ auto UnaryExpressionOperatorAsyncAst::_SkipOperandScope(
   sm->MoveOutOfCurrentScope();
 }
 
-auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -275,7 +283,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage7_AnalyseSemantics(
   _TransformedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Stage 7 always builds the transformation, or raises; a
   // member that raised is not checked again.
@@ -289,7 +297,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage8_CheckMemory(
   _TransformedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Generate the mapped object initialization, which handles
   // the sppc lowering.
@@ -298,7 +306,7 @@ auto UnaryExpressionOperatorAsyncAst::Stage11_CodeGen(
   return value;
 }
 
-auto UnaryExpressionOperatorAsyncAst::InferType(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::InferType(
   ScopeManager *sm, CompilerMetaData *) -> Shared<TypeAst> {
   // The future type is built at stage 7, which every query follows.
   if (_FutType == nullptr) {
@@ -307,19 +315,19 @@ auto UnaryExpressionOperatorAsyncAst::InferType(
   return _FutType;
 }
 
-auto UnaryExpressionOperatorAsyncAst::InferTypeRef(
+auto spp::asts::UnaryExpressionOperatorAsyncAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The future type is built as syntax ("Fut[T]"); resolved where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::IsAllowedInDefault() const -> bool {
   // Lowers into a closure => not allowed as a default.
   return false;
 }
 
-auto UnaryExpressionOperatorAsyncAst::RebuildsOperand() const -> bool {
+auto spp::asts::UnaryExpressionOperatorAsyncAst::RebuildsOperand() const -> bool {
   // The closure is built from the call as written.
   return true;
 }

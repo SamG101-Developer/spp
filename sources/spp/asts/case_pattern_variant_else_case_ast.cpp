@@ -8,34 +8,39 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
+spp::asts::CasePatternVariantElseCaseAst::CasePatternVariantElseCaseAst(
   decltype(TokElse) &&tok_else,
   decltype(CaseExpr) &&case_expr) :
   TokElse(std::move(tok_else)),
   CaseExpr(std::move(case_expr)) {
 }
 
-CasePatternVariantElseCaseAst::~CasePatternVariantElseCaseAst() = default;
+spp::asts::CasePatternVariantElseCaseAst::~CasePatternVariantElseCaseAst() = default;
 
-auto CasePatternVariantElseCaseAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantElseCaseAst::PosStart() const -> std::size_t {
   // Use the "else" token.
   return TokElse->PosStart();
 }
 
-auto CasePatternVariantElseCaseAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantElseCaseAst::PosEnd() const -> std::size_t {
   // Use the [case expression]'s condition.
   return CaseExpr->Cond->PosEnd();
 }
 
-auto CasePatternVariantElseCaseAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantElseCaseAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CasePatternVariantElseCaseAst>(
     AstClone(TokElse),
     AstClone(CaseExpr));
 }
 
-auto CasePatternVariantElseCaseAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantElseCaseAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokElse);
   SPP_STRING_APPEND(CaseExpr);

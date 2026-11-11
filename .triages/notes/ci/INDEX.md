@@ -1,10 +1,11 @@
 - [CI gcc from Homebrew](ci-gcc-from-homebrew.md) — PPA is stale; needs brew binutils; specs inject rpath+loader
 - [ccache-action key quirks](ccache-action-key-quirks.md) — append-timestamp:false broken in v1.2.24; keys end in ISO date (prune :3)
 - [ccache serves stale clang module objects](ccache-stale-clang-modules.md) — <4.14.1 ignores BMIs (fixed #1774); CI pins ccache 4.14.2 + sccache; GCC uncacheable
-- [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores; don't lower workers
-- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k, ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
+- [CI runner core topology](ci-runner-core-topology.md) — x86 4 vCPU = 2 cores on a varying CPU pool, ARM 4 real cores; don't lower workers
+- [Cross-run blocker sparc64](cross-run-blockers-sparc64.md) — sparc64 RWX PLT keeps it emit-only; m68k tests overflow 16-bit PIC reach; ppc32 fixed; musl in Alpine; aarch64_be via arm-gnu
 - [GHA parallel steps](gha-parallel-steps-limits.md) — not inside composite actions; actionlint ignore
 - [harden-runner not composable](harden-runner-not-composable.md) — its pre: step must stay in the job
+- [macOS LLVM has no RTTI](macos-llvm-has-no-rtti.md) — release tarball is -fno-rtti (ValueMap needs CallbackVH typeinfo); macOS now on brew llvm, floor 26.0; its zstd/z3 dylibs rewritten out in Dependencies.cmake
 - [macOS libc++ is static](macos-libcxxabi-link.md) — link libc++.a + libc++abi.a, not dylibs; -load_hidden vs system weak-symbol coalescing (2026-10-25)
 - [MSVC strong_ordering + import std](msvc-strong-ordering-import-std.md) — LNK2019 ::less etc.; response file
 - [MSVC GMF inline bodies](msvc-gmf-inline-bodies-in-importers.md) — CLI11 sentry; CLI11_COMPILE + plain TU
@@ -12,8 +13,21 @@
 - [MSVC has no string+string_view](msvc-lacks-string-plus-view.md) — libstdc++-only; parenthesise macros
 - [MSVC transitive namespace lookup](msvc-transitive-namespace-lookup.md) — relative `utils::` in spp::analyse hits analyse::utils; write spp::utils::
 - [MSVC ICE via MachineMemOperand](msvc-ice-machinememoperand.md) — no CodeGen headers in llvm.ixx GMF; PointerUnion C1001
-- [MSVC inline vars need constant init](msvc-inline-vars-dynamic-init.md) — dynamic-init export inline vars undefined at link; extern + .cpp
+- [MSVC exported inline vars](msvc-exported-inline-vars.md) — mutable export inline vars undefined at link, even constant-initialised (stats::Counts); extern + .cpp
 - [No "/" substring path checks](no-slash-substring-path-checks.md) — Windows paths use `\`; broke prelude-on-std (E14) and test path checks; compare Path components
-- [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; ci-success needs lanes
+- [Job graph layout](job-graph-layout.md) — graph flattens called workflows, columns by needs depth; lanes call _build+_test, one row each; all lanes run the same defaults; ci-success needs lanes
+- [Valgrind runs the whole STL](valgrind-runs-whole-stl.md) — valgrind-conformance.sh: every !test under valgrind, ~6 min locally; read the re-run section; first leaks found
+- [Runner concurrency and cell times](runner-concurrency-and-cell-times.md) — 20 jobs until ~2026-11-13 then 40; a PR asks ~78; gtest shard minutes per lane; cheap cuts if it queues
+- [Released changelogs are frozen](released-changelogs-are-frozen.md) — changelog/<v>.md with v ≤ base VERSION cannot change; add to the head VERSION's entry; check-version.sh enforces
 - [CodeQL is the -g build](codeql-is-the-debug-build.md) — only Debug/-g build in CI; Release matrix misses debug-info ICEs; repro with local Debug GCC
 - [qemu getsockopt timeouts empty](qemu-getsockopt-timeout-empty.md) — inverted NULL check: SO_RCV/SNDTIMEO read back length 0; 4 std net tests fail under qemu
+- [Scorecard reads pruned check runs](scorecard-reads-pruned-check-runs.md) — CI-Tests 0/6 comes from nightly prune-runs (3 days) deleting check runs, not from missing CI
+- [Python CodeQL alerts frozen](python-codeql-alerts-frozen.md) — old py/* alerts date from the removed default setup; codeql-python ignores tests, so dismiss gtest-parallel ones
+- [Benchmark records branch](benchmark-records-branch.md) — orphan `benchmarks` branch, records/<sha>/<kind>.json; only Publish Benchmarks writes; Rust pinned by component tarball
+- [windows.h before SDK headers](windows-h-before-sdk-headers.md) — psapi.h etc. need windows.h first; sorted includes break MSVC sys.ixx with WINAPI/BOOL errors
+- [LLVM Windows pins](llvm-win-mac-pins-refreshed.md) — fixed tags refresh-pins.sh moves to the newest final <llvm-lib major>.x.y; Linux floats on apt, macOS on brew llvm
+- [MSVC: interface names not inherited](msvc-interface-names-not-inherited.md) — .cpp misses its interface use() decls; templates lose them when instantiated elsewhere; use_alias / qualify
+- [MSVC: imported type redeclared](msvc-imported-type-redeclared.md) — use(…, struct/enum X) while importing X's module: C1117 (enum) / C2027 (struct); use use_alias
+- [clang-cl: std::apply mangling crash](clang-cl-std-apply-mangling-crash.md) — segfault mangling std::apply in comp_key.ixx and diagnostic.cpp; unfixed; reproducer + BMIs in the buildlog artifact
+- [clang-cl: -Wall is -Weverything](clang-cl-wall-is-weverything.md) — ~46k C++98-compat warnings; Warnings.cmake gives clang-cl /W4
+- [Defender already off on x64](windows-defender-already-off-x64.md) — windows-2025 x64 runs with real-time scan off (ARM on); exclusions can't speed the x64 shards

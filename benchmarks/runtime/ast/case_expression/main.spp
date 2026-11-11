@@ -1,0 +1,25 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(100000000_u64)
+  let mut state = black_box(3_u64)
+  let mut acc = 0_u64
+  let mut i = 0_u64
+  loop i < n {
+    state = state.mul_wrapping(6364136223846793005_u64).add_wrapping(1442695040888963407_u64)
+    let v = state >> 61_u32
+    acc = case v of {
+      == 0_u64 { acc + 1_u64 }
+      == 1_u64 { acc + 3_u64 }
+      == 2_u64 { acc ^ 0x55_u64 }
+      == 3_u64 { acc + (state & 0xff_u64) }
+      == 4_u64 { acc - (acc >> 3_u32) }
+      == 5_u64 { acc + 7_u64 }
+      == 6_u64 { acc | 0x100_u64 }
+      else { acc + v }
+    }
+    i += 1_u64
+  }
+  println("{}", acc)
+}

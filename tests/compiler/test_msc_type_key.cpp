@@ -5,7 +5,7 @@ import spp.analyse.scopes.type_key;
 import numex.big_int;
 
 // A type part that does not resolve is held inline in its parent key (its words, after its length) rather than by its
-// id, and decoding it builds its key again from those words ("ArgsOf", "HeadOf"). The key built again carries the flags
+// id, and decoding it builds its key again from those words ("ArgsOf", "HeaderOf"). The key built again carries the flags
 // the part had when it was pushed: here, a "Self" it holds only through a part of its own, by id.
 
 namespace {

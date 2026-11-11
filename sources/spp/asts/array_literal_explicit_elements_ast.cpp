@@ -32,8 +32,15 @@ import spp.utils.uid;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
+spp::asts::ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elements,
   decltype(TokR) &&tok_r) :
@@ -48,9 +55,9 @@ ArrayLiteralExplicitElementsAst::ArrayLiteralExplicitElementsAst(
     this->TokR, SppTokenType::TK_RIGHT_SQUARE_BRACKET, "]");
 }
 
-ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
+spp::asts::ArrayLiteralExplicitElementsAst::~ArrayLiteralExplicitElementsAst() = default;
 
-auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
+auto spp::asts::ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   ArrayLiteralExplicitElementsAst const &other) const -> Ordering {
   // If two explicit array asts don't have the same size, they
   // cannot be equal.
@@ -64,23 +71,23 @@ auto ArrayLiteralExplicitElementsAst::EqualsArrayLiteralExplicitElements(
   return Ordering::equal;
 }
 
-auto ArrayLiteralExplicitElementsAst::Equals(
+auto spp::asts::ArrayLiteralExplicitElementsAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsArrayLiteralExplicitElements(*this);
 }
 
-auto ArrayLiteralExplicitElementsAst::PosStart() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::PosStart() const -> std::size_t {
   // Use the "[" token.
   return TokL != nullptr ? TokL->PosStart() : Elems.empty() ? 0 : Elems.front()->PosStart();
 }
 
-auto ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
+auto spp::asts::ArrayLiteralExplicitElementsAst::PosEnd() const -> std::size_t {
   // Use the "]" token.
   return TokR != nullptr ? TokR->PosEnd() : Elems.empty() ? 0 : Elems.back()->PosEnd();
 }
 
-auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast, and the type stage 7 settled
   // on, which its elements alone do not give ("[Some(..), None]" is
   // an "[Opt[T]; 2]"): a "cmp" constant's value is read through a
@@ -93,7 +100,7 @@ auto ArrayLiteralExplicitElementsAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
+auto spp::asts::ArrayLiteralExplicitElementsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Elems, ", ");
@@ -102,7 +109,7 @@ auto ArrayLiteralExplicitElementsAst::ToString() const -> Str {
 }
 
 /// [CHECKED]
-auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
+auto spp::asts::ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -155,7 +162,7 @@ auto ArrayLiteralExplicitElementsAst::Stage7_AnalyseSemantics(
 }
 
 /// [CHECKED]
-auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
+auto spp::asts::ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Alias the common utils functions and types.
   IMPORT_UTILS;
@@ -167,7 +174,7 @@ auto ArrayLiteralExplicitElementsAst::Stage8_CheckMemory(
   }
 }
 
-auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
+auto spp::asts::ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   IMPORT_UTILS_AND_UID;
 
@@ -269,7 +276,7 @@ auto ArrayLiteralExplicitElementsAst::Stage11_CodeGen(
   }
 }
 
-auto ArrayLiteralExplicitElementsAst::EvaluateCompTime(
+auto spp::asts::ArrayLiteralExplicitElementsAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Convert the inner elements to compile-time values. One that
   // has none raises in its own evaluation (E3 for a runtime name,
@@ -294,21 +301,21 @@ auto ArrayLiteralExplicitElementsAst::EvaluateCompTime(
   meta->CompTimeResult = std::move(result);
 }
 
-auto ArrayLiteralExplicitElementsAst::InferType(
+auto spp::asts::ArrayLiteralExplicitElementsAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type stage 7 settled on; an array not analysed yet has its
   // type built as it is.
   return _InferredType != nullptr ? _InferredType : _BuildType(sm, meta);
 }
 
-auto ArrayLiteralExplicitElementsAst::InferTypeRef(
+auto spp::asts::ArrayLiteralExplicitElementsAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   // The array type is built as syntax ("Arr[T, n]", "_BuildType"); resolved where it is read.
   const auto type = InferType(sm, meta);
   return type != nullptr ? TypeRef::Of(*type, *sm->CurrentScope) : TypeRef();
 }
 
-auto ArrayLiteralExplicitElementsAst::_BuildType(
+auto spp::asts::ArrayLiteralExplicitElementsAst::_BuildType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   IMPORT_UTILS;
 
@@ -335,7 +342,7 @@ auto ArrayLiteralExplicitElementsAst::_BuildType(
   return array_type;
 }
 
-auto ArrayLiteralExplicitElementsAst::ReadExpr(
+auto spp::asts::ArrayLiteralExplicitElementsAst::ReadExpr(
   ExprSubst const &sub) const -> Shared<ExpressionAst> {
   // Each element is an expression, so map them all.
   auto elems = Vec<Unique<ExpressionAst>>();
@@ -347,7 +354,7 @@ auto ArrayLiteralExplicitElementsAst::ReadExpr(
     AstClone(TokL), std::move(elems), AstClone(TokR));
 }
 
-auto ArrayLiteralExplicitElementsAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::ArrayLiteralExplicitElementsAst::IsAllowedInDefault() const -> bool {
   // Check every element - one bad one prevents the entire
   // ast from being allowed in this specific context.
   for (auto const &x : Elems) {

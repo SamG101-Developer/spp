@@ -103,9 +103,9 @@ fi
 # Run: the scratch project's entry point prints one line.
 RUN=()
 if [ -n "$QEMU" ]; then
-  RUN=("qemu-${QEMU}" -L "${SPP_QEMU_SYSROOT:-/usr/${SYSROOT}}" "$EXE")
+  RUN=("qemu-${QEMU}" -L "${SPP_CI_QEMU_SYSROOT:-/usr/${SYSROOT}}" "$EXE")
 elif [ "$RUN_IN" = alpine ]; then
-  RUN=(docker run --rm -v "${PWD}:${PWD}" "$SPP_MUSL_RUN_IMAGE" "${PWD}/${EXE}")
+  RUN=(docker run --rm -v "${PWD}:${PWD}" "$SPP_CI_MUSL_RUN_IMAGE" "${PWD}/${EXE}")
 fi
 if [ "${#RUN[@]}" -gt 0 ]; then
   STATUS=0

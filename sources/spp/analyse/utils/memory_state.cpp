@@ -14,6 +14,13 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ExpressionAst);
+
 namespace spp::analyse::utils::memory_state {
   namespace {
     /// What a borrow is compared by across paths: its place (the
@@ -71,7 +78,7 @@ namespace spp::analyse::utils::memory_state {
 }
 
 SPP_MOD_BEGIN
-auto MemoryState::InitializedBy(
+auto spp::analyse::utils::memory_state::MemoryState::InitializedBy(
   Ast const &ast)
   -> void {
   // Set the initialisation asts, and clean the "moved" ast.
@@ -89,7 +96,7 @@ auto MemoryState::InitializedBy(
   MaybePartialMoves.clear();
 }
 
-auto MemoryState::MovedBy(
+auto spp::analyse::utils::memory_state::MemoryState::MovedBy(
   Ast const &ast) -> void {
   // Bind the move to the field, and clear the initialisation
   // ast too.
@@ -103,7 +110,7 @@ auto MemoryState::MovedBy(
   MaybePartialMoves.clear();
 }
 
-auto MemoryState::PartMovedBy(
+auto spp::analyse::utils::memory_state::MemoryState::PartMovedBy(
   regions::PlaceAt const &part) -> void {
   // A partial move is of an attribute chain rooted at a symbol,
   // which always has a place: one without is a bug upstream.
@@ -118,7 +125,7 @@ auto MemoryState::PartMovedBy(
 }
 
 /// [CHECKED]
-auto MemoryState::RemovePartialMoves(
+auto spp::analyse::utils::memory_state::MemoryState::RemovePartialMoves(
   Ast const &ast, Scope const *scope) -> void {
   // Determine a "place" for the ast to represent the root
   // symbol and sny steps into it. If there is no scope, the
@@ -141,17 +148,17 @@ auto MemoryState::RemovePartialMoves(
     [&](auto const &maybe) { return is_written(maybe.Part); });
 }
 
-BodyFlow::BodyFlow(
+spp::analyse::utils::memory_state::BodyFlow::BodyFlow(
   Scope const &body) :
   _Body(&body),
   _Outer(std::exchange(body.Flow, MakeShared<FlowState>())) {
 }
 
-BodyFlow::~BodyFlow() {
+spp::analyse::utils::memory_state::BodyFlow::~BodyFlow() {
   _Body->Flow = std::move(_Outer);
 }
 
-auto MemoryInfo::Clone() const
+auto spp::analyse::utils::memory_state::MemoryInfo::Clone() const
   -> Unique<MemoryInfo> {
   auto out = MakeUnique<MemoryInfo>();
   static_cast<MemoryState&>(*out) = *this;

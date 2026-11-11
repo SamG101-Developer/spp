@@ -49,7 +49,10 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     }
 
     sup [T] A[T] {
-        !public fun f(&self) -> T { ret self.new().a }
+        !public fun f(&self) -> T {
+            let A[T](a) = self.new()
+            ret a
+        }
     }
 
     fun g() -> Void {

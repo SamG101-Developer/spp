@@ -3,11 +3,18 @@ module;
 
 module spp.asts.literal_ast;
 
-SPP_MOD_BEGIN
-LiteralAst::LiteralAst() = default;
-LiteralAst::~LiteralAst() = default;
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
-auto LiteralAst::IsAllowedInDefault() const -> bool {
+SPP_MOD_BEGIN
+spp::asts::LiteralAst::LiteralAst() = default;
+spp::asts::LiteralAst::~LiteralAst() = default;
+
+auto spp::asts::LiteralAst::IsAllowedInDefault() const -> bool {
   // A literal is a value. The array and tuple literals answer
   // for their elements instead, but as a baseline for literals,
   // they can be used as defaults.

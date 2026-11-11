@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.type_resolution;
@@ -33,6 +34,25 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, CompKey);
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, GenericSubst);
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::analyse::scopes, VariableSymbol);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, GenericArgumentAst);
+use_alias(spp::asts, GenericArgumentGroupAst);
+use_alias(spp::asts, GenericParameterAst);
+use_alias(spp::asts, GenericParameterGroupAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts, TypePostfixExpressionAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+
 namespace spp::analyse::utils::type_resolution {
   namespace {
     /// "ReadType", null where the type does not resolve.
@@ -57,7 +77,7 @@ namespace spp::analyse::utils::type_resolution {
 
 /// [CHECKED]
 auto spp::analyse::utils::type_resolution::AnalyseWrittenType(
-  TypeAst const &written, ScopeManager &sm, meta::CompilerMetaData &meta,
+  TypeAst const &written, ScopeManager &sm, CompilerMetaData &meta,
   const SelfPolicy self) -> Shared<TypeAst> {
   // Based on the "self policy", extract the "Self" from the
   // current scope. Substituting with Self=nullptr is a no-op
@@ -253,13 +273,23 @@ auto spp::analyse::utils::type_resolution::RecordedArgsFor(
   GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params,
   Scope const &scope, Scope const &decl_scope) -> Vec<Unique<GenericArgumentAst>> {
   auto out = Vec<Unique<GenericArgumentAst>>();
-  if (params.GetVariadicParam() != nullptr) { return out; }
+  auto const *const pack = params.GetVariadicParam();
 
-  // Each argument names its parameter as the solver names it ("ParamsBoundByArgs").
+  // Each argument names its parameter as the solver names it ("ParamsBoundByArgs"); a pack's elements stay positional,
+  // after the others ("Scope::ArgsIdOf" keys them into its list).
   const auto all_args = args.GetAllArgs();
   const auto all_params = params.GetAllParams();
   const auto targets = ParamsBoundByArgs(all_args, all_params);
   for (auto *const param : all_params) {
+    if (param == pack) {
+      for (auto i = 0uz; i < all_args.size(); ++i) {
+        if (targets[i] != pack) { continue; }
+        out.emplace_back(all_args[i]->IsTypeArg()
+          ? GenericArgumentAst::NewType(nullptr, all_args[i]->TypeVal)
+          : GenericArgumentAst::NewComp(nullptr, AstCloneShared(all_args[i]->CompVal)));
+      }
+      continue;
+    }
     const auto at = genex::find(targets, param);
     auto const *const given = at != targets.end() ? all_args[static_cast<std::size_t>(at - targets.begin())] : nullptr;
     if (given != nullptr and given->IsTypeArg()) {

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ModulePrototypeAst);
+use_common(ModulePrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct ModuleImplementationAst);
@@ -18,10 +18,13 @@ use(spp::compiler, struct CompilerBoot);
 /// A prototype for a module, containing the implementation of
 /// the module.
 SPP_EXP_CLS struct spp::asts::ModulePrototypeAst final : Ast {
-  /// The file path of the module prototype, used by the
-  /// compiler to resolve module imports. Not got from parsing
-  /// children asts.
+  /// The file path of the module prototype, used by the compiler to resolve
+  /// module imports. Not got from parsing children asts.
   Path FilePath = "";
+
+  /// Who shipped this module - the dependency's name, or nothing for the
+  /// project's own.
+  Opt<Str> Owner;
 
   /// The module implementation ast this prototype represents.
   Unique<ModuleImplementationAst> Impl;

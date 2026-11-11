@@ -9,11 +9,12 @@ import spp.asts.utils.orderable;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericArgumentAst);
+use_common(GenericArgumentAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 use(spp::asts, struct TypeAst);
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
@@ -22,7 +23,8 @@ use(spp::analyse::scopes, struct VariableSymbol);
 /// a compile time value, passed like "std::Arr[Str, 100_uz]".
 /// Either is given by keyword ("T=Str") or by position. Exactly
 /// one of "TypeVal" and "CompVal" is set.
-SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableAst {
+SPP_EXP_CLS struct spp::asts::GenericArgumentAst final :
+  Ast, mixins::OrderableAst {
   SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(GenericArgumentAst);
 
@@ -41,20 +43,26 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   /// The type of the comp parameter this argument binds, when it is known before analysis and has a type of its own
   /// ("comp_generics::ExpectCompParamTypes", "OverloadSolver::ExpectedCompArgTypes"): the value's target, as a "let"
   /// type is its value's, so "[Some(val=1), None]" is an "[Opt[U64]; 2_uz]". Null otherwise.
-  Shared<analyse::scopes::TypeRef> ExpectedCompType;
+  Shared<TypeRef> ExpectedCompType;
 
   /// Analyse "value" as this argument's comp value is analysed: as an expression of its own, nothing the enclosing one
   /// set up applying to it, against "ExpectedCompType". For the value itself, a copy of it, or one named after its
   /// parameter ("generic_inference::NamedGnArgs").
-  auto AnalyseCompExpr(ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) const -> void;
+  auto AnalyseCompExpr(
+    ExpressionAst &value, ScopeManager *sm,
+    CompilerMetaData *meta) const -> void;
 
-  static auto NewType(Shared<TypeAst> name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
+  static auto NewType(
+    Shared<TypeAst> name, decltype(TypeVal) val) -> Unique<GenericArgumentAst>;
 
-  static auto NewComp(Shared<TypeAst> name, decltype(CompVal) val) -> Unique<GenericArgumentAst>;
+  static auto NewComp(
+    Shared<TypeAst> name, decltype(CompVal) val) -> Unique<GenericArgumentAst>;
 
-  static auto FromSymbol(TypeSymbol const &sym) -> Unique<GenericArgumentAst>;
+  static auto FromSymbol(
+    TypeSymbol const &sym) -> Unique<GenericArgumentAst>;
 
-  static auto FromSymbol(VariableSymbol const &sym) -> Unique<GenericArgumentAst>;
+  static auto FromSymbol(
+    VariableSymbol const &sym) -> Unique<GenericArgumentAst>;
 
   GenericArgumentAst(
     Shared<TypeAst> name,
@@ -84,9 +92,11 @@ SPP_EXP_CLS struct spp::asts::GenericArgumentAst final : Ast, mixins::OrderableA
   /// The keyword name, or "" for a positional argument.
   SPP_ATTR_NODISCARD auto ViewName() const -> StrView;
 
-  auto Stage7_AnalyseSemantics(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage7_AnalyseSemantics(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
-  auto Stage8_CheckMemory(ScopeManager *sm, CompilerMetaData *meta) -> void override;
+  auto Stage8_CheckMemory(
+    ScopeManager *sm, CompilerMetaData *meta) -> void override;
 
 private:
   /// The keyword name ("KeywordName"), and the identifier it is read
@@ -109,12 +119,12 @@ private:
   /// here.
   auto AnalyseCompVal(ScopeManager *sm, CompilerMetaData *meta) -> void;
 
-
   /// Whether the comp value itself is what stage 7 analysed
   /// ("AnalyseCompVal"): not one that folds (never analysed), nor
   /// an operator expression (analysed on a copy, as analysing it
   /// desugars it). Only that is checked again after.
-  SPP_ATTR_NODISCARD auto IsCompValAnalysedInPlace(Scope const &scope) const -> bool;
+  SPP_ATTR_NODISCARD auto IsCompValAnalysedInPlace(
+    Scope const &scope) const -> bool;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::GenericArgumentAst)

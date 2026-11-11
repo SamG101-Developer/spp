@@ -87,10 +87,11 @@ SPP_TEST_SHOULD_PASS_SEMANTIC(
     TestAstMemoryPinsLoop,
     test_valid_memory_mut_iterator_modify_owned_object_clone, R"(
     fun f(mut v: Vec[Str]) -> Void {
-        loop x in v.clone().iter_mut() {
+        let mut copy = v.clone()
+        loop x in copy.iter_mut() {
             v.append(Str::from("hello world"))
         }
-        std::mem::ops::drop(v)
+        std::mem::ops::drop(copy, v)
     }
 )");
 

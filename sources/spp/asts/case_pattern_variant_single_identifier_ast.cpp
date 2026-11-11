@@ -17,8 +17,13 @@ import spp.asts.utils.ast_utils;
 import spp.codegen.llvm_ctx;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
+spp::asts::CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
   decltype(Conv) &&conv,
   decltype(TokMut) &&tok_mut,
   decltype(Name) &&name,
@@ -29,19 +34,19 @@ CasePatternVariantSingleIdentifierAst::CasePatternVariantSingleIdentifierAst(
   Alias(std::move(alias)) {
 }
 
-CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
+spp::asts::CasePatternVariantSingleIdentifierAst::~CasePatternVariantSingleIdentifierAst() = default;
 
-auto CasePatternVariantSingleIdentifierAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::PosStart() const -> std::size_t {
   // Use the "mut" token, or the name if there is no "mut" (matches LocalVariableSingleIdentifierAst).
   return TokMut ? TokMut->PosStart() : Name->PosStart();
 }
 
-auto CasePatternVariantSingleIdentifierAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::PosEnd() const -> std::size_t {
   // Use the alias, or the name if there is no alias (matches LocalVariableSingleIdentifierAst).
   return Alias ? Alias->PosEnd() : Name->PosEnd();
 }
 
-auto CasePatternVariantSingleIdentifierAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::Clone() const -> Unique<Ast> {
   auto a = MakeUnique<CasePatternVariantSingleIdentifierAst>(
     AstClone(Conv),
     AstClone(TokMut),
@@ -51,7 +56,7 @@ auto CasePatternVariantSingleIdentifierAst::Clone() const -> Unique<Ast> {
   return a;
 }
 
-auto CasePatternVariantSingleIdentifierAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokMut);
   SPP_STRING_APPEND(Name);
@@ -59,13 +64,13 @@ auto CasePatternVariantSingleIdentifierAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CasePatternVariantSingleIdentifierAst::BindsByMove() const -> bool {
+auto spp::asts::CasePatternVariantSingleIdentifierAst::BindsByMove() const -> bool {
   // A name binds what it stands for, unless it asks for it
   // through a borrow, which leaves the value where it was.
   return Conv == nullptr;
 }
 
-auto CasePatternVariantSingleIdentifierAst::ConvToVar(
+auto spp::asts::CasePatternVariantSingleIdentifierAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   // Create the local variable single identifier binding AST.
   // (Note no convention is propagated into the variable, as

@@ -31,8 +31,15 @@ import spp.codegen.llvm_ctx;
 import spp.lex.tokens;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-PostfixExpressionOperatorKeywordAwaitAst::PostfixExpressionOperatorKeywordAwaitAst(
+spp::asts::PostfixExpressionOperatorKeywordAwaitAst::PostfixExpressionOperatorKeywordAwaitAst(
   decltype(TokDot) &&tok_dot,
   decltype(TokAwait) &&tok_await) :
   TokDot(std::move(tok_dot)),
@@ -40,23 +47,23 @@ PostfixExpressionOperatorKeywordAwaitAst::PostfixExpressionOperatorKeywordAwaitA
   _MappedFn(nullptr) {
 }
 
-PostfixExpressionOperatorKeywordAwaitAst::~PostfixExpressionOperatorKeywordAwaitAst() = default;
+spp::asts::PostfixExpressionOperatorKeywordAwaitAst::~PostfixExpressionOperatorKeywordAwaitAst() = default;
 
-auto PostfixExpressionOperatorKeywordAwaitAst::PosStart() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::PosStart() const -> std::size_t {
   // Use the "." token.
   return TokDot != nullptr
     ? TokDot->PosStart()
     : 0uz;
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::PosEnd() const -> std::size_t {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::PosEnd() const -> std::size_t {
   // Use the "await" token.
   return TokAwait != nullptr
     ? TokAwait->PosEnd()
     : 0uz;
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::Clone() const -> Unique<Ast> {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<PostfixExpressionOperatorKeywordAwaitAst>(
     AstClone(TokDot),
@@ -65,14 +72,14 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::ToString() const -> Str {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND_RAW(".");
   SPP_STRING_APPEND_RAW("await");
   SPP_STRING_END;
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -117,7 +124,7 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage7_AnalyseSemantics(
   _MappedFn->Stage7_AnalyseSemantics(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   // Release what the future was keeping pinned, freeing up
@@ -144,26 +151,26 @@ auto PostfixExpressionOperatorKeywordAwaitAst::Stage8_CheckMemory(
   _MappedFn->Stage8_CheckMemory(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::Stage11_CodeGen(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Nothing of its own to emit: the wait is whatever "await_"
   // compiled to.
   return _MappedFn->Stage11_CodeGen(sm, meta, ctx);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::InferType(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // The type wrapped inside the "Fut[T]" object being awaited
   // on: "T".
   return _MappedFn->InferType(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   return _MappedFn->InferTypeRef(sm, meta);
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
   ExprSubst const &) const -> Unique<PostfixExpressionOperatorAst> {
   // Nothing inside the operator is an expression, so there is
   // nothing to substitute into.
@@ -171,13 +178,13 @@ auto PostfixExpressionOperatorKeywordAwaitAst::ReadExpr(
     AstClone(TokDot), AstClone(TokAwait));
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const -> bool {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::IsAllowedInDefault() const -> bool {
   // Waits on a future the way a call waits on its callee,
   // so nothing leaves the code it is in.
   return true;
 }
 
-auto PostfixExpressionOperatorKeywordAwaitAst::WalksOperand() const -> bool {
+auto spp::asts::PostfixExpressionOperatorKeywordAwaitAst::WalksOperand() const -> bool {
   // Checked through "await_", over the operand.
   return true;
 }

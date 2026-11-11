@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterVariadicAst);
+use_common(FunctionParameterVariadicAst);
 use(spp::asts, struct TokenAst);
 
 /// A variadic parameter in a function prototype, which can
@@ -18,6 +18,13 @@ SPP_EXP_CLS struct spp::asts::FunctionParameterVariadicAst final : FunctionParam
 
   /// The ".." token marking the parameter as variadic.
   Unique<TokenAst> TokEllipsis;
+
+  /// Whether the pack is over a type pack ("..xs: Ts"), which binds
+  /// the list of its elements' types; otherwise each element is of
+  /// one type ("..xs: T", "..xs: S32"), and a hidden pack stands for
+  /// its length. Decided where the template's parameter is analysed
+  /// ("FunctionParameterAst::Stage7"); an instance's copy carries it.
+  bool OverTypePack = false;
 
   FunctionParameterVariadicAst(
     decltype(TokEllipsis) &&tok_ellipsis,

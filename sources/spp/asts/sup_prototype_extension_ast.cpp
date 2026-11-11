@@ -42,27 +42,31 @@ import spp.asts.generate.common_types_precompiled;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
-import spp.utils.files;
+import spp.lsp.resolution_index;
 import spp.utils.ice;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeBlockName);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeKind);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 namespace spp::asts {
   namespace {
-    /// The package a scope belongs to. This is the library folder
-    /// that is a direct child of the "vcs" folder, or "" for the
-    /// project's modules.
+    /// The package a scope belongs to: its module's owner, or "" for
+    /// the project's modules.
     auto PackageOfScope(Scope const *const scope) -> Opt<Str> {
       const auto mod_scope = scope != nullptr ? scope->GetParentModule() : nullptr;
       const auto mod_ast = mod_scope != nullptr ? AstAs<ModulePrototypeAst>(mod_scope->AstNode) : nullptr;
       if (mod_ast == nullptr) { return Nullopt; }
-
-      auto const &path = mod_ast->FilePath;
-      for (auto it = path.begin(); it != path.end(); ++it) {
-        if (*it != "vcs") { continue; }
-        if (const auto lib = std::next(it); lib != path.end()) { return spp::utils::files::NativeString(*lib); }
-      }
-      return Str();
+      return mod_ast->Owner.value_or(Str());
     }
 
     /// The first block in "scopes" extending a type matching
@@ -102,7 +106,7 @@ namespace spp::asts {
 }
 
 SPP_MOD_BEGIN
-SupPrototypeExtensionAst::SupPrototypeExtensionAst(
+spp::asts::SupPrototypeExtensionAst::SupPrototypeExtensionAst(
   decltype(TokSup) &&tok_sup,
   decltype(GnParamGroup) &&generic_param_group,
   decltype(Name) name,
@@ -121,19 +125,19 @@ SupPrototypeExtensionAst::SupPrototypeExtensionAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->Impl);
 }
 
-SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
+spp::asts::SupPrototypeExtensionAst::~SupPrototypeExtensionAst() = default;
 
-auto SupPrototypeExtensionAst::PosStart() const -> std::size_t {
+auto spp::asts::SupPrototypeExtensionAst::PosStart() const -> std::size_t {
   // Use the "sup" token.
   return TokSup->PosStart();
 }
 
-auto SupPrototypeExtensionAst::PosEnd() const -> std::size_t {
+auto spp::asts::SupPrototypeExtensionAst::PosEnd() const -> std::size_t {
   // Use the superclass.
   return SuperCls->PosEnd();
 }
 
-auto SupPrototypeExtensionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::SupPrototypeExtensionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<SupPrototypeExtensionAst>(
     AstClone(TokSup),
@@ -147,7 +151,7 @@ auto SupPrototypeExtensionAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto SupPrototypeExtensionAst::ToString() const -> Str {
+auto spp::asts::SupPrototypeExtensionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokSup).append(" ");
   SPP_STRING_APPEND(GnParamGroup).append(GnParamGroup->Params.empty() ? "" : " ");
@@ -158,7 +162,7 @@ auto SupPrototypeExtensionAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto SupPrototypeExtensionAst::Stage1_PreProcess(
+auto spp::asts::SupPrototypeExtensionAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Don't need to pre-process function-classes -- they are introduced from preprocessing functions.
   if (Name->IsCompilerGeneratedType()) { return; }
@@ -168,7 +172,7 @@ auto SupPrototypeExtensionAst::Stage1_PreProcess(
   Impl->Stage1_PreProcess(this);
 }
 
-auto SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
+auto spp::asts::SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -190,7 +194,7 @@ auto SupPrototypeExtensionAst::Stage2_GenTopLvlScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
+auto spp::asts::SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   sm->MoveToNextScope();
@@ -200,7 +204,7 @@ auto SupPrototypeExtensionAst::Stage3_GenTopLvlAliases(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
+auto spp::asts::SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward to the implementation.
   sm->MoveToNextScope();
@@ -210,7 +214,7 @@ auto SupPrototypeExtensionAst::Stage4_ResolveDeclarations(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
+auto spp::asts::SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -274,7 +278,7 @@ auto SupPrototypeExtensionAst::Stage5_LoadSupScopes(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -283,26 +287,28 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   sm->MoveToNextScope();
   SPP_ASSERT(sm->CurrentScope == _Scope);
 
-  // Re-analyse the superclass type so its generic-argument
-  // constraints are enforced at this pre-analysis stage. If
+  // Analyse the superclass type again, which checks its generic
+  // arguments' constraints at this pre-analysis stage. If
   // they are done in stage 7, then we get misleading errors
   // because when something else correctly fails, a missing
   // constraint enforcement spews some inference error..
   {
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
   }
 
   // Get the symbols.
   const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
   const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+  if (sup_sym == nullptr or sup_sym->LinkedScope == nullptr) {
+    Ice(*SuperCls, *sm->CurrentScope, "a superclass analysed again does not resolve where its block is");
+  }
 
   // We use "direct" super scopes here because it enforces
   // superimposing "Copy" on the type directly, not via an
   // extension chain.
-  auto sup_scopes = sm->CurrentScope->FindTypeSymbol(SuperCls.get())->LinkedScope->DirectSupScopes;
+  auto sup_scopes = sup_sym->LinkedScope->DirectSupScopes;
   sup_scopes |= genex::actions::insert(sup_scopes.begin(), sup_sym->LinkedScope);
   sup_scopes |= genex::actions::remove_if([](auto const &x) {
     return AstAs<ClassPrototypeAst>(x->AstNode) == nullptr;
@@ -323,7 +329,7 @@ auto SupPrototypeExtensionAst::Stage6_PreAnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
+auto spp::asts::SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   //
@@ -339,14 +345,18 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
     const auto _meta_guard = MetaGuard(meta);
     meta->AllowAbstractType = true;
 
-    Name->ResetCache();
     Name->Stage7_AnalyseSemantics(sm, meta);
     const auto cls_sym = sm->CurrentScope->FindTypeSymbol(Name.get());
 
-    SuperCls->ResetCache();
     SuperCls->Stage7_AnalyseSemantics(sm, meta);
     if (cls_sym->Type and not cls_sym->IsMock()) {
       const auto sup_sym = sm->CurrentScope->FindTypeSymbol(SuperCls.get());
+
+      // What the superclass still has to be overridden, for an
+      // editor to offer inside this block.
+      if (lsp::resolution_index::IsEnabled() and sup_sym != nullptr and sup_sym->LinkedScope != nullptr) {
+        lsp::resolution_index::RecordOverridables(*this, *sup_sym->LinkedScope, *sm, meta);
+      }
 
       // Copying a value copies every attribute, so "Copy" only
       // holds over a type whose attributes are all copyable -
@@ -372,7 +382,7 @@ auto SupPrototypeExtensionAst::Stage7_AnalyseSemantics(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage8_CheckMemory(
+auto spp::asts::SupPrototypeExtensionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -381,7 +391,7 @@ auto SupPrototypeExtensionAst::Stage8_CheckMemory(
   sm->MoveOutOfCurrentScope();
 }
 
-auto SupPrototypeExtensionAst::Stage10_PreCodeGen(
+auto spp::asts::SupPrototypeExtensionAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -391,7 +401,7 @@ auto SupPrototypeExtensionAst::Stage10_PreCodeGen(
   return nullptr;
 }
 
-auto SupPrototypeExtensionAst::Stage11_CodeGen(
+auto spp::asts::SupPrototypeExtensionAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Move to the next scope.
   sm->MoveToNextScope();
@@ -400,7 +410,7 @@ auto SupPrototypeExtensionAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto SupPrototypeExtensionAst::CheckExtensionMembers(
+auto spp::asts::SupPrototypeExtensionAst::CheckExtensionMembers(
   ScopeManager &sm, CompilerMetaData *meta) -> void {
   // Checked for every block before any is pre-analysed: a member that overrides nothing leaves the abstract method it
   // meant to implement unimplemented, so a type using this block is abstract, and whichever module happened to name
@@ -434,8 +444,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
       // Todo: Once "inheriting" annotations is supported at definition, do it dynamically.
       this_method->Visibility = base_method->Visibility;
       const auto func_sym = _Scope->FindVarSymbol(this_method->Name.get(), true);
-      func_sym->Visibility = base_method->Visibility.first;
-      func_sym->VisibilityAnnotation = this_method->Visibility.second;
+      func_sym->VisibilityFrom = this_method;
     }
 
     else if (const auto type_member = member->To<TypeStatementAst>()) {
@@ -471,7 +480,7 @@ auto SupPrototypeExtensionAst::CheckExtensionMembers(
   }
 }
 
-auto SupPrototypeExtensionAst::CheckExtensionHierarchy(
+auto spp::asts::SupPrototypeExtensionAst::CheckExtensionHierarchy(
   TypeSymbol const &cls_sym, TypeSymbol const *sup_sym, Scope &check_scope) const -> void {
   //
   IMPORT_UTILS;

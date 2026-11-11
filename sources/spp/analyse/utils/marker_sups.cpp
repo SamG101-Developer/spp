@@ -36,6 +36,21 @@ import spp.utils.ptr;
 import genex;
 import std;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, TypeAst);
+use_alias(spp::asts::meta, CompilerMetaData);
+
 namespace spp::analyse::utils::marker_sups {
   namespace {
     /**
@@ -74,7 +89,7 @@ namespace spp::analyse::utils::marker_sups {
       IdentifierAst const *member,
       TypeRef const &target,
       ScopeManager *sm,
-      meta::CompilerMetaData *meta)
+      CompilerMetaData *meta)
       -> bool {
       if (member == nullptr or target.Symbol == nullptr or target.Symbol->LinkedScope == nullptr) { return false; }
       auto any_self = false;
@@ -138,6 +153,26 @@ auto spp::analyse::utils::marker_sups::FindFnSup(
   }
 
   return TypeRef();
+}
+
+auto spp::analyse::utils::marker_sups::HoldsNoValueOfItsArgs(
+  TypeSymbol &sym, Scope const &scope) -> bool {
+  // The type itself, then everything it superimposes: a user's
+  // class extending "GenOnce" is a generator just as "GenOnce" is.
+  const auto names_only = [&scope](TypeRef const &ref) {
+    return type_predicates::IsTypeGenerator(ref, scope)
+      or type_predicates::IsTypeFunction(ref, scope);
+  };
+
+  // Asked for nearly every written type with arguments, so a class's answer is
+  // kept on it. A generic parameter's sups are its constraints, read where it
+  // is asked, so it is worked out each time.
+  if (sym.HoldsNoValueOfArgs.has_value()) { return *sym.HoldsNoValueOfArgs; }
+  const auto ref = TypeRef::ForKindCheck(sym, scope);
+  const auto holds_none = names_only(ref)
+    or genex::any_of(type_members::SuperClsRefs(ref, scope), names_only);
+  if (not sym.IsGn()) { sym.HoldsNoValueOfArgs = holds_none; }
+  return holds_none;
 }
 
 auto spp::analyse::utils::marker_sups::FindGenSup(
@@ -207,7 +242,8 @@ auto spp::analyse::utils::marker_sups::IsGenOnce(
   TypeRef const &gen,
   Scope const &scope)
   -> bool {
-  return gen.Symbol != nullptr and gen.IsA(*generate::common_types_precompiled::GEN_ONCE, scope);
+  return gen.Symbol != nullptr and gen.IsA(
+    *asts::generate::common_types_precompiled::GEN_ONCE, scope);
 }
 
 auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
@@ -224,7 +260,7 @@ auto spp::analyse::utils::marker_sups::EnforceYieldTypeWithoutGenDone(
 
   // A variant yield is checked member by member, as that is how
   // it is flattened into the result.
-  const auto done_ref = TypeRef::Of(*generate::common_types::GenDone(expr.PosStart()), scope);
+  const auto done_ref = TypeRef::Of(*asts::generate::common_types::GenDone(expr.PosStart()), scope);
   if (done_ref.Symbol == nullptr) { return; }
   auto members = VariantMemberRefs(yield_ref, scope);
   if (members.empty()) { members.emplace_back(yield_ref); }
@@ -283,8 +319,8 @@ auto spp::analyse::utils::marker_sups::FindFwdSups(
   Scope const &scope)
   -> Pair<TypeRef, TypeRef> {
   //
-  using generate::common_types_precompiled::FWD_MUT;
-  using generate::common_types_precompiled::FWD_REF;
+  using asts::generate::common_types_precompiled::FWD_MUT;
+  using asts::generate::common_types_precompiled::FWD_REF;
 
   // Generic types do not have forward types, so return nullptr.
   if (ref.Symbol == nullptr or ref.Symbol->IsGn() or ref.Symbol->LinkedScope == nullptr) { return {}; }
@@ -308,7 +344,7 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   ExpressionAst const &receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta,
+  CompilerMetaData *meta,
   IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
   // The built call is over a clone of the analysed receiver, which
@@ -321,7 +357,7 @@ auto spp::analyse::utils::marker_sups::BuildFwdCall(
   Unique<ExpressionAst> &&receiver,
   TypeRef const &receiver_ref,
   ScopeManager *sm,
-  meta::CompilerMetaData *meta,
+  CompilerMetaData *meta,
   IdentifierAst const *member)
   -> Unique<PostfixExpressionAst> {
   // A type forwards by superimposing "FwdRef" or "FwdMut", whose coroutines are "fwd_ref" and "fwd_mut".

@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeUnaryExpressionAst);
+use_common(TypeUnaryExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct ConventionAst);
 use(spp::analyse::scopes, struct ExprSubst);
@@ -17,9 +17,10 @@ use(spp::asts, struct GenericArgumentAst);
 use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterAst);
 use(spp::asts, struct IdentifierAst);
-use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeUnaryExpressionOperatorAst);
 use(spp::asts, struct TypeIdentifierAst);
+
+use_alias(spp::asts, TypeAst);
 
 SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_GCC_VTABLE_FIX
@@ -79,8 +80,6 @@ SPP_EXP_CLS struct spp::asts::TypeUnaryExpressionAst final : TypeAst {
   SPP_ATTR_NODISCARD auto WithoutGns() const -> Shared<TypeAst> override;
 
   SPP_ATTR_NODISCARD auto IsCompilerGeneratedType() const -> bool override;
-
-  auto ResetCache() -> void override;
 };
 
 SPP_GCC_VTABLE_FIX_IMPL(spp::asts::TypeUnaryExpressionAst)

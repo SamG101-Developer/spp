@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(CoroutinePrototypeAst);
+use_common(CoroutinePrototypeAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct SubroutinePrototypeAst);
 use(spp::asts, struct TypeAst);

@@ -122,6 +122,51 @@ namespace spp::codegen {
   }
 }
 
+auto spp::codegen::ApplyRuntimeAllocatorAttrs(
+  void *llvm_module) -> void {
+  // What each is, as LLVM names it ("allockind"), and which of its
+  // arguments is the size ("allocsize", a count beside it for
+  // "calloc"), the pointer it takes ("allocptr"), and the alignment
+  // ("allocalign"). One family: memory from any of them goes back
+  // through "sppc_free" or "sppc_realloc".
+  struct Allocator {
+    StrView Name;
+    std::uint64_t Kind;
+    Opt<unsigned> Size;
+    Opt<unsigned> Count;
+    Opt<unsigned> Pointer;
+    Opt<unsigned> Align;
+  };
+  using K = llvm::AllocFnKind;
+  const auto kind = [](std::initializer_list<K> ks) {
+    auto bits = std::uint64_t{0};
+    for (const auto k : ks) { bits |= static_cast<std::uint64_t>(k); }
+    return bits;
+  };
+  constexpr auto allocators = Arr<Allocator, 5>{
+    Allocator{.Name = "sppc_malloc", .Kind = kind({K::Alloc, K::Uninitialized}), .Size = 0u, .Count = Nullopt, .Pointer = Nullopt, .Align = Nullopt},
+    Allocator{.Name = "sppc_calloc", .Kind = kind({K::Alloc, K::Zeroed}), .Size = 1u, .Count = 0u, .Pointer = Nullopt, .Align = Nullopt},
+    Allocator{.Name = "sppc_aligned_alloc", .Kind = kind({K::Alloc, K::Uninitialized, K::Aligned}), .Size = 0u, .Count = Nullopt, .Pointer = Nullopt, .Align = 1u},
+    Allocator{.Name = "sppc_realloc", .Kind = kind({K::Realloc}), .Size = 1u, .Count = Nullopt, .Pointer = 0u, .Align = Nullopt},
+    Allocator{.Name = "sppc_free", .Kind = kind({K::Free}), .Size = Nullopt, .Count = Nullopt, .Pointer = 0u, .Align = Nullopt},
+  };
+
+  auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
+  auto &ctx = llvm_mod.getContext();
+  for (auto const &a : allocators) {
+    const auto fn = llvm_mod.getFunction(a.Name);
+    if (fn == nullptr) { continue; }
+    const auto allocates = (a.Kind & static_cast<std::uint64_t>(K::Free)) == 0;
+
+    fn->addFnAttr(llvm::Attribute::getWithAllocKind(ctx, static_cast<K>(a.Kind)));
+    fn->addFnAttr("alloc-family", "sppc_malloc");
+    if (a.Size) { fn->addFnAttr(llvm::Attribute::getWithAllocSizeArgs(ctx, *a.Size, a.Count)); }
+    if (a.Pointer) { fn->addParamAttr(*a.Pointer, llvm::Attribute::AllocatedPointer); }
+    if (a.Align) { fn->addParamAttr(*a.Align, llvm::Attribute::AllocAlign); }
+    if (allocates) { fn->addRetAttr(llvm::Attribute::NoAlias); }
+  }
+}
+
 auto spp::codegen::EmitCEntryPoint(
   void *llvm_module, char const *spp_main_name, const bool split_stacks,
   const bool deny_wx, const bool seal) -> void {

@@ -111,6 +111,7 @@ namespace spp::asts {
   SPP_EXP_CLS struct PostfixExpressionOperatorStaticMemberAccessAst;
   SPP_EXP_CLS struct PrimaryExpressionAst;
   SPP_EXP_CLS struct RetStatementAst;
+  SPP_EXP_CLS struct SpreadExpressionAst;
   SPP_EXP_CLS struct StatementAst;
   SPP_EXP_CLS struct StringLiteralAst;
   SPP_EXP_CLS struct SubroutinePrototypeAst;
@@ -119,16 +120,12 @@ namespace spp::asts {
   SPP_EXP_CLS struct SupPrototypeFunctionsAst;
   SPP_EXP_CLS struct TokenAst;
   SPP_EXP_CLS struct TupleLiteralAst;
-  SPP_EXP_CLS struct TypeArrayShorthandAst;
   SPP_EXP_CLS struct TypeAst;
-  SPP_EXP_CLS struct TypeBinaryExpressionAst;
   SPP_EXP_CLS struct TypeIdentifierAst;
-  SPP_EXP_CLS struct TypeParenthesisedExpressionAst;
   SPP_EXP_CLS struct TypePostfixExpressionAst;
   SPP_EXP_CLS struct TypePostfixExpressionOperatorAst;
   SPP_EXP_CLS struct TypePostfixExpressionOperatorNestedTypeAst;
   SPP_EXP_CLS struct TypeStatementAst;
-  SPP_EXP_CLS struct TypeTupleShorthandAst;
   SPP_EXP_CLS struct TypeUnaryExpressionAst;
   SPP_EXP_CLS struct TypeUnaryExpressionOperatorAst;
   SPP_EXP_CLS struct TypeUnaryExpressionOperatorBorrowAst;
@@ -875,6 +872,13 @@ namespace spp::asts {
   };
 
   template <>
+  struct AstKindRange<SpreadExpressionAst> {
+    static constexpr auto Known = true;
+    static constexpr auto First = AstKind::kSpreadExpressionAst;
+    static constexpr auto Last = AstKind::kSpreadExpressionAst;
+  };
+
+  template <>
   struct AstKindRange<StatementAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kStatementAst;
@@ -931,13 +935,6 @@ namespace spp::asts {
   };
 
   template <>
-  struct AstKindRange<TypeArrayShorthandAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kTypeArrayShorthandAst;
-    static constexpr auto Last = AstKind::kTypeArrayShorthandAst;
-  };
-
-  template <>
   struct AstKindRange<TypeAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kTypeAst;
@@ -945,24 +942,10 @@ namespace spp::asts {
   };
 
   template <>
-  struct AstKindRange<TypeBinaryExpressionAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kTypeBinaryExpressionAst;
-    static constexpr auto Last = AstKind::kTypeBinaryExpressionAst;
-  };
-
-  template <>
   struct AstKindRange<TypeIdentifierAst> {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kTypeIdentifierAst;
     static constexpr auto Last = AstKind::kTypeIdentifierAst;
-  };
-
-  template <>
-  struct AstKindRange<TypeParenthesisedExpressionAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kTypeParenthesisedExpressionAst;
-    static constexpr auto Last = AstKind::kTypeParenthesisedExpressionAst;
   };
 
   template <>
@@ -991,13 +974,6 @@ namespace spp::asts {
     static constexpr auto Known = true;
     static constexpr auto First = AstKind::kTypeStatementAst;
     static constexpr auto Last = AstKind::kTypeStatementAst;
-  };
-
-  template <>
-  struct AstKindRange<TypeTupleShorthandAst> {
-    static constexpr auto Known = true;
-    static constexpr auto First = AstKind::kTypeTupleShorthandAst;
-    static constexpr auto Last = AstKind::kTypeTupleShorthandAst;
   };
 
   template <>

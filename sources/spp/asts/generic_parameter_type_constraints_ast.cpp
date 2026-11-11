@@ -17,16 +17,22 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 // Todo: second-class borrow violation unit test.
 
 SPP_MOD_BEGIN
-auto GenericParameterTypeConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeConstraintsAst> {
+auto spp::asts::GenericParameterTypeConstraintsAst::NewEmpty() -> Unique<GenericParameterTypeConstraintsAst> {
   // New empty constraint set.
   return MakeUnique<GenericParameterTypeConstraintsAst>(
     nullptr, Vec<Unique<TypeAst>>{});
 }
 
-GenericParameterTypeConstraintsAst::GenericParameterTypeConstraintsAst(
+spp::asts::GenericParameterTypeConstraintsAst::GenericParameterTypeConstraintsAst(
   decltype(TokColon) &&tok_colon,
   Vec<Unique<TypeAst>> &&constraints) :
   TokColon(std::move(tok_colon)) {
@@ -36,33 +42,33 @@ GenericParameterTypeConstraintsAst::GenericParameterTypeConstraintsAst(
   }
 }
 
-GenericParameterTypeConstraintsAst::~GenericParameterTypeConstraintsAst() = default;
+spp::asts::GenericParameterTypeConstraintsAst::~GenericParameterTypeConstraintsAst() = default;
 
-auto GenericParameterTypeConstraintsAst::PosStart() const -> std::size_t {
+auto spp::asts::GenericParameterTypeConstraintsAst::PosStart() const -> std::size_t {
   // Use the ":" token.
   return TokColon != nullptr ? TokColon->PosStart() : Constraints.empty() ? 0 : Constraints.front()->PosStart();
 }
 
-auto GenericParameterTypeConstraintsAst::PosEnd() const -> std::size_t {
+auto spp::asts::GenericParameterTypeConstraintsAst::PosEnd() const -> std::size_t {
   // Use the last constraint.
   return not Constraints.empty() ? Constraints.back()->PosEnd() : TokColon != nullptr ? TokColon->PosEnd() : 0;
 }
 
-auto GenericParameterTypeConstraintsAst::Clone() const -> Unique<Ast> {
+auto spp::asts::GenericParameterTypeConstraintsAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<GenericParameterTypeConstraintsAst>(
     AstClone(TokColon),
     AstCloneVec(Constraints));
 }
 
-auto GenericParameterTypeConstraintsAst::ToString() const -> Str {
+auto spp::asts::GenericParameterTypeConstraintsAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokColon);
   SPP_STRING_EXTEND(Constraints, " & ");
   SPP_STRING_END;
 }
 
-auto GenericParameterTypeConstraintsAst::Stage4_ResolveDeclarations(
+auto spp::asts::GenericParameterTypeConstraintsAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 

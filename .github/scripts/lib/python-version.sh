@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish the pinned Python version as SPP_PYTHON_VERSION. awk and
+# Publish the pinned Python version as SPP_CI_PYTHON_VERSION. awk and
 # not pins.py, because this runs before Python is installed: the
 # one value needed to install it cannot be read by it.
 set -euo pipefail
@@ -17,4 +17,4 @@ if [ -z "$version" ]; then
   exit 1
 fi
 
-echo "SPP_PYTHON_VERSION=${version}" >> "${GITHUB_ENV:-/dev/stdout}"
+echo "SPP_CI_PYTHON_VERSION=${version}" >> "${GITHUB_ENV:-/dev/stdout}"

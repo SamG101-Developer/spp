@@ -1,0 +1,7 @@
+description = "A closure capturing a value, called in a hot loop: should inline to the bare arithmetic"
+layer = "core"
+output = "exact"
+covers = [
+  "ast:closure_expression_capture_group",
+  "ast:closure_expression_parameter_and_capture_group",
+]

@@ -1,0 +1,24 @@
+use std::console::println
+use std::hints::black_box
+
+fun main() -> Void {
+  let n = black_box(20000000_uz)
+  let mut composite = Vec[Bool]::new_filled(n + 1_uz, false)
+  let mut count = 0_u64
+  let mut sum = 0_u64
+  let mut i = 2_uz
+  loop i <= n {
+    case composite[i]@.not {
+      count += 1_u64
+      sum += U64::from(i)
+      let mut j = i * i
+      loop j <= n {
+        composite[mut j]@ = true
+        j += i
+      }
+    }
+    i += 1_uz
+  }
+  drop(composite)
+  println("{}\n{}", count, sum)
+}

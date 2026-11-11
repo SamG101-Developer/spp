@@ -1,0 +1,187 @@
+# The benchmarks against a Linux GCC lane's spp, each compared with
+# compare.py against `base`'s record of the same kind on the
+# benchmarks branch: Compile Time (benchmarks/run.py) and Run Time
+# (benchmarks/runtime.py, the programs in S++, C and Rust).
+# Report-only for now: the comparisons go to the step summary and
+# never fail a job. Each record is uploaded, for post_merge.yaml to
+# publish; this workflow holds no write access, as a called
+# workflow's job cannot ask for more than its caller grants.
+#
+# A job each, as other work on the runner distorts wall times. Only
+# the counters, sizes and instruction counts are comparable between
+# runs; the wall times are shown for information.
+
+name: benchmarks
+
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        description: "Name of the lane's staged binaries artifact."
+        required: true
+        type: string
+      spp-sha256:
+        description: "sha256 of the lane's staged spp, from its build job's outputs."
+        required: true
+        type: string
+      tests-sha256:
+        description: "sha256 of the lane's staged spp_tests, from its build job's outputs. Empty when it staged none."
+        required: false
+        type: string
+        default: ""
+      base:
+        description: "Commit whose records to compare against; the newest master records when it has none."
+        required: false
+        type: string
+        default: ""
+
+permissions: { }
+
+jobs:
+  compile-time:
+    name: Compile Time
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      # Egress stays on audit until its endpoints are known: the std
+      # mirror, the benchmarks branch and valgrind's tarball.
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ inputs.artifact }}
+          spp-sha256: ${{ inputs.spp-sha256 }}
+          tests-sha256: ${{ inputs.tests-sha256 }}
+
+      - name: Cache valgrind
+        id: valgrind-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.tools/valgrind
+          key: valgrind-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+
+      - name: Install valgrind (cache miss)
+        if: steps.valgrind-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-valgrind-linux.sh
+
+      - name: Expose valgrind
+        run: |
+          echo "$SPP_CI_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_CI_VALGRIND_PREFIX/bin/valgrind" --version
+
+      - name: Fetch the baseline
+        env:
+          BASE_SHA: ${{ inputs.base }}
+        run: bash .github/scripts/bench/fetch-baseline.sh compile "$RUNNER_TEMP/baseline.json"
+
+      - name: Run the benchmarks
+        run: |
+          mkdir -p "$RUNNER_TEMP/record"
+          python3 benchmarks/run.py --spp build/spp --cachegrind --out "$RUNNER_TEMP/record/compile.json"
+
+      - name: Compare with the baseline
+        run: python3 benchmarks/compare.py --record "$RUNNER_TEMP/record/compile.json" --baseline "$RUNNER_TEMP/baseline.json" --report-only
+
+      - name: Upload the record
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-record-compile
+          path: ${{ runner.temp }}/record/compile.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Sudo for llvm.sh, which installs Clang through apt.
+  run-time:
+    name: Run Time
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Fetch and verify binaries
+        uses: ./.github/actions/setup-runtime
+        with:
+          artifact: ${{ inputs.artifact }}
+          spp-sha256: ${{ inputs.spp-sha256 }}
+          tests-sha256: ${{ inputs.tests-sha256 }}
+
+      - name: Fetch llvm.sh
+        run: bash .github/scripts/setup/fetch-llvm-sh.sh
+
+      - name: Install Clang
+        run: bash .github/scripts/setup/install-clang-c-linux.sh
+
+      - name: Cache Rust
+        id: rust-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.tools/rust
+          key: rust-${{ runner.os }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-rust-linux.sh') }}
+
+      - name: Install Rust (cache miss)
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-rust-linux.sh
+
+      - name: Cache valgrind
+        id: valgrind-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.tools/valgrind
+          key: valgrind-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/dependencies.toml', '.github/scripts/lib/pins.py', '.github/scripts/setup/install-valgrind-linux.sh') }}
+
+      - name: Install valgrind (cache miss)
+        if: steps.valgrind-cache.outputs.cache-hit != 'true'
+        run: bash .github/scripts/setup/install-valgrind-linux.sh
+
+      - name: Expose valgrind
+        run: |
+          echo "$SPP_CI_VALGRIND_PREFIX/bin" >> "$GITHUB_PATH"
+          "$SPP_CI_VALGRIND_PREFIX/bin/valgrind" --version
+
+      - name: Fetch the baseline
+        env:
+          BASE_SHA: ${{ inputs.base }}
+        run: bash .github/scripts/bench/fetch-baseline.sh runtime "$RUNNER_TEMP/baseline.json"
+
+      - name: Run the benchmarks
+        run: |
+          mkdir -p "$RUNNER_TEMP/record"
+          python3 benchmarks/runtime.py --spp build/spp --cc "clang-$LLVM_LIB_VERSION" \
+            --rustc "$SPP_CI_RUST_PREFIX/bin/rustc" --cachegrind --out "$RUNNER_TEMP/record/runtime.json"
+
+      - name: Compare with the baseline
+        run: python3 benchmarks/compare.py --record "$RUNNER_TEMP/record/runtime.json" --baseline "$RUNNER_TEMP/baseline.json" --report-only
+
+      - name: Upload the record
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-record-runtime
+          path: ${{ runner.temp }}/record/runtime.json
+          if-no-files-found: warn
+          retention-days: 14

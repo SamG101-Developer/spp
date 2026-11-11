@@ -8,7 +8,7 @@ import spp.utils.ptr;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericArgumentGroupAst);
+use_common(GenericArgumentGroupAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct ExprSubst);

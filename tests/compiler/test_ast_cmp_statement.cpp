@@ -11,6 +11,15 @@ SPP_TEST_SHOULD_FAIL_SEMANTIC(
     cmp x: S32 = false
 )");
 
+SPP_TEST_SHOULD_FAIL_SEMANTIC(
+  CmpStatementAst,
+  test_invalid_void_value,
+  SppInvalidVoidValueError, R"(
+    cmp fun nothing() -> Void { }
+
+    cmp x: Void = nothing()
+)");
+
 SPP_TEST_SHOULD_PASS_SEMANTIC(
   CmpStatementAst,
   test_valid_value_literal, R"(

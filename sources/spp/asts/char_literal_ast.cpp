@@ -20,17 +20,23 @@ import spp.codegen.llvm_type;
 import spp.utils.strings;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CharLiteralAst::CharLiteralAst(
+spp::asts::CharLiteralAst::CharLiteralAst(
   decltype(BytePrefix) &&byte_prefix,
   decltype(Val) &&val) :
   BytePrefix(std::move(byte_prefix)),
   Val(std::move(val)) {
 }
 
-CharLiteralAst::~CharLiteralAst() = default;
+spp::asts::CharLiteralAst::~CharLiteralAst() = default;
 
-auto CharLiteralAst::EqualsCharLiteral(
+auto spp::asts::CharLiteralAst::EqualsCharLiteral(
   CharLiteralAst const &other) const -> Ordering {
   // Equality based on the token data.
   const auto matching_byte_prefix =
@@ -41,37 +47,37 @@ auto CharLiteralAst::EqualsCharLiteral(
     : Ordering::less;
 }
 
-auto CharLiteralAst::Equals(
+auto spp::asts::CharLiteralAst::Equals(
   ExpressionAst const &other) const -> Ordering {
   // Reverse hook (double dispatch).
   return other.EqualsCharLiteral(*this);
 }
 
-auto CharLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::CharLiteralAst::PosStart() const -> std::size_t {
   // Use the value.
   return Val->PosStart();
 }
 
-auto CharLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::CharLiteralAst::PosEnd() const -> std::size_t {
   // Use the value.
   return Val->PosEnd();
 }
 
-auto CharLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CharLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CharLiteralAst>(
     AstClone(BytePrefix),
     AstClone(Val));
 }
 
-auto CharLiteralAst::ToString() const -> Str {
+auto spp::asts::CharLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(BytePrefix);
   SPP_STRING_APPEND(Val);
   SPP_STRING_END;
 }
 
-auto CharLiteralAst::Stage7_AnalyseSemantics(
+auto spp::asts::CharLiteralAst::Stage7_AnalyseSemantics(
   ScopeManager *, CompilerMetaData *) -> void {
   // A byte-prefixed literal ("b'...'") must decode to a single
   // to prevent truncation by the codegen mask, instead of being
@@ -102,7 +108,7 @@ auto CharLiteralAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto CharLiteralAst::Stage11_CodeGen(
+auto spp::asts::CharLiteralAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Decode the char literal token (which includes its
   // surrounding single quotes) into its code point.
@@ -110,8 +116,8 @@ auto CharLiteralAst::Stage11_CodeGen(
 
   // Resolve the llvm type from the inferred spp type (U8
   // for a byte-prefixed literal, else Char).
-  const auto type_sym = InferTypeRef(sm, meta).Symbol;
-  const auto llvm_type = codegen::GetLlvmType(*type_sym, ctx);
+  const auto llvm_type = codegen::GetLlvmTypeOf(
+    InferTypeRef(sm, meta).WithoutConvention(), ctx);
 
   // "b'a'" lowers to a raw U8 byte; a plain "'a'" lowers
   // to the Char aggregate (a struct wrapping a U32 unicode
@@ -127,14 +133,14 @@ auto CharLiteralAst::Stage11_CodeGen(
   return llvm::ConstantStruct::get(struct_type, {inner});
 }
 
-auto CharLiteralAst::EvaluateCompTime(
+auto spp::asts::CharLiteralAst::EvaluateCompTime(
   ScopeManager *, CompilerMetaData *meta) -> void {
   // Clone and return the char literal as is for compile-time
   // resolution.
   meta->CompTimeResult = AstClone(this);
 }
 
-auto CharLiteralAst::InferType(
+auto spp::asts::CharLiteralAst::InferType(
   ScopeManager *, CompilerMetaData *) -> Shared<TypeAst> {
   // A char literal is either a Char or U8 type, depending on
   // the "b" byte prefix.
@@ -145,7 +151,7 @@ auto CharLiteralAst::InferType(
     : CharType(Val->PosStart());
 }
 
-auto CharLiteralAst::InferTypeRef(
+auto spp::asts::CharLiteralAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *) -> TypeRef {
   using namespace generate::common_types_precompiled;
   return TypeRef::Of(BytePrefix != nullptr ? *U8 : *CHAR, *sm->CurrentScope);

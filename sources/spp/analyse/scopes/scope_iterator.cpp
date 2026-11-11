@@ -7,7 +7,7 @@ import gch;
 
 SPP_MOD_BEGIN
 /// [CHECKED]
-ScopeIterator::ScopeIterator(
+spp::analyse::scopes::ScopeIterator::ScopeIterator(
   Scope *root) {
   if (root != nullptr) {
     _Stack.emplace_back(root, 0);
@@ -15,23 +15,23 @@ ScopeIterator::ScopeIterator(
 }
 
 /// [CHECKED]
-ScopeIterator::ScopeIterator(ScopeIterator const &other) = default;
+spp::analyse::scopes::ScopeIterator::ScopeIterator(ScopeIterator const &other) = default;
 
-ScopeIterator::ScopeIterator(ScopeIterator &&other) noexcept = default;
+spp::analyse::scopes::ScopeIterator::ScopeIterator(ScopeIterator &&other) noexcept = default;
 
-auto ScopeIterator::operator=(ScopeIterator const &other) -> ScopeIterator& = default;
+auto spp::analyse::scopes::ScopeIterator::operator=(ScopeIterator const &other) -> ScopeIterator& = default;
 
-auto ScopeIterator::operator=(ScopeIterator &&other) noexcept -> ScopeIterator& = default;
+auto spp::analyse::scopes::ScopeIterator::operator=(ScopeIterator &&other) noexcept -> ScopeIterator& = default;
 
-ScopeIterator::~ScopeIterator() = default;
+spp::analyse::scopes::ScopeIterator::~ScopeIterator() = default;
 
-auto ScopeIterator::operator*() -> reference {
+auto spp::analyse::scopes::ScopeIterator::operator*() -> reference {
   // Hook into the node on the frame at the back of the stack.
   return _Stack.back().Node;
 }
 
 /// [CHECKED]
-auto ScopeIterator::operator++() -> ScopeIterator& {
+auto spp::analyse::scopes::ScopeIterator::operator++() -> ScopeIterator& {
   // Nothing in the stack means that no more iteration can be
   // done.
   if (_Stack.empty()) { return *this; }
@@ -64,13 +64,13 @@ auto ScopeIterator::operator++() -> ScopeIterator& {
 }
 
 /// [CHECKED]
-auto ScopeIterator::operator==(
+auto spp::analyse::scopes::ScopeIterator::operator==(
   ScopeIterator const &other) const -> bool {
   return _Stack.empty() and other._Stack.empty();
 }
 
 /// [CHECKED]
-auto ScopeIterator::operator!=(
+auto spp::analyse::scopes::ScopeIterator::operator!=(
   ScopeIterator const &other) const -> bool {
   return not(*this == other);
 }

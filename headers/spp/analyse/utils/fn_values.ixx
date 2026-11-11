@@ -17,6 +17,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct SupPrototypeExtensionAst);
 use(spp::asts, struct TypeAst);
 
+use_alias(spp::asts::meta, CompilerMetaData);
+
 namespace spp::analyse::utils::fn_values {
   /// A function value match struct contains information about
   /// the function prototype, the scope it is in, and the
@@ -40,6 +42,13 @@ namespace spp::analyse::utils::fn_values {
   SPP_EXP_FUN auto GetFnValueName(
     TypeRef const &type) -> Pair<Shared<IdentifierAst>, Scope const*>;
 
+  /// Whether "mock" is a named function's mock going into
+  /// "func", a function type held by value: what
+  /// "MatchFnValue" finds an overload for.
+  SPP_EXP_FUN auto NamesFnInto(
+    TypeRef const &mock, TypeRef const &func,
+    Scope const &func_scope) -> bool;
+
   /// Given a mock function type like $Type, and a genuine
   /// functional type like FunMov[(), Void], extract the match
   /// information based on what $Type superimposes. Prefer
@@ -58,7 +67,7 @@ namespace spp::analyse::utils::fn_values {
   /// and through a tuple or an array element by element.
   SPP_EXP_FUN auto InstantiateFnValue(
     TypeRef const &value, TypeRef const &target,
-    ScopeManager *sm, meta::CompilerMetaData *meta) -> void;
+    ScopeManager *sm, CompilerMetaData *meta) -> void;
 
   /// Lookup for a generic instantiation of a function based
   /// on the function's "$Type" and the function "FunMov"
@@ -74,5 +83,5 @@ namespace spp::analyse::utils::fn_values {
   /// want to return TypeAst here, or a TypeRef?
   SPP_EXP_FUN auto IndirectFnTypeOf(
     ExpressionAst &expr, ScopeManager &sm,
-    meta::CompilerMetaData *meta) -> Shared<const TypeAst>;
+    CompilerMetaData *meta) -> Shared<const TypeAst>;
 }

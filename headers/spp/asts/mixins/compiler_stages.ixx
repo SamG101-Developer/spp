@@ -5,6 +5,7 @@ export module spp.asts.mixins.compiler_stages;
 import llvm;
 import std;
 
+use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct Ast);
 use(spp::asts::mixins, struct CompilerStages);

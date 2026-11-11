@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.utils.overload_resolution;
 import spp.analyse.scopes.type_key;
+import spp.analyse.utils.packs;
 import spp.asts.meta.compiler_meta_data;
 import spp.utils.ptr;
 import spp.utils.types;
@@ -21,6 +22,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct PostfixExpressionOperatorFunctionCallAst);
 use(spp::asts, struct PostfixExpressionOperatorRuntimeMemberAccessAst);
 use(spp::asts, struct TypeAst);
+use_alias(spp::analyse::scopes, TypeId);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::overload_resolution {
   /// A function overload struct contains information about
@@ -60,14 +63,16 @@ namespace spp::analyse::utils::overload_resolution {
     /// The indices of the arguments taken, in the call's group.
     Vec<std::size_t> Args = {};
 
-    /// Whether this is the variadic parameter, taking a tuple of
-    /// the arguments.
+    /// Whether this is the variadic parameter, taking the arguments
+    /// as its elements ("Pack").
     bool IsPack = false;
+    packs::GivenPack Pack;
 
     /// The default value, for a parameter the call left out.
     Unique<ExpressionAst> Default;
 
-    /// The type of what the parameter is given.
+    /// The type of what the parameter is given; null for a pack,
+    /// which is given a list ("Pack").
     Shared<TypeAst> Type = nullptr;
 
     /// Whether this is "self", whose argument takes the
@@ -156,7 +161,7 @@ namespace spp::analyse::utils::overload_resolution {
     FunctionCallArgumentGroupAst &args,
     PassedOverload &overload,
     ScopeManager *sm,
-    meta::CompilerMetaData *meta)
+    CompilerMetaData *meta)
     -> void;
 
   /// One method a scope has under a name, once overrides are
@@ -188,7 +193,7 @@ namespace spp::analyse::utils::overload_resolution {
   /// are then processed for eligibility when calling.
   SPP_EXP_FUN auto GetAllFnScopes(
     IdentifierAst const &target_fn_name, Scope const *target_scope,
-    ScopeManager &sm, meta::CompilerMetaData *meta) -> Vec<FnOverload>;
+    ScopeManager &sm, CompilerMetaData *meta) -> Vec<FnOverload>;
 }
 
 /// One call's overload resolution, as a solver: what is called
@@ -206,7 +211,7 @@ public:
   /// here.
   OverloadSolver(
     PostfixExpressionOperatorFunctionCallAst &fn_call, ExpressionAst &callee,
-    ScopeManager &sm, meta::CompilerMetaData &meta);
+    ScopeManager &sm, CompilerMetaData &meta);
 
   ~OverloadSolver();
   OverloadSolver(OverloadSolver const &) = delete;
@@ -235,6 +240,12 @@ public:
   /// for a call of a named function.
   auto Resolve() -> Pair<PassedOverload, Shared<TypeAst const>>;
 
+  /// The most parameters any candidate has, not counting "self" or
+  /// a variadic one: past that many arguments, only a variadic
+  /// parameter takes more. Bounds the pack lengths a call spreading
+  /// an open tuple is resolved for.
+  SPP_ATTR_NODISCARD auto MaxParams() const -> std::size_t;
+
 private:
   /// Check one candidate against the call, without editing the
   /// call: what it is as it matched, or why it does not. An
@@ -245,7 +256,7 @@ private:
 
   PostfixExpressionOperatorFunctionCallAst &_Call;
   ScopeManager *_Sm;
-  meta::CompilerMetaData *_Meta;
+  CompilerMetaData *_Meta;
   CallSite _Site;
   OverloadCandidates _Candidates;
 };

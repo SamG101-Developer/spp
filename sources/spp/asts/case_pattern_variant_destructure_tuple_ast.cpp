@@ -15,8 +15,13 @@ import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 import genex;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
+spp::asts::CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
   decltype(TokL) &&tok_l,
   decltype(Elems) &&elems,
   decltype(TokR) &&tok_r) :
@@ -30,19 +35,19 @@ CasePatternVariantDestructureTupleAst::CasePatternVariantDestructureTupleAst(
     this->TokR, SppTokenType::TK_RIGHT_PARENTHESIS, ")");
 }
 
-CasePatternVariantDestructureTupleAst::~CasePatternVariantDestructureTupleAst() = default;
+spp::asts::CasePatternVariantDestructureTupleAst::~CasePatternVariantDestructureTupleAst() = default;
 
-auto CasePatternVariantDestructureTupleAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureTupleAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL->PosStart();
 }
 
-auto CasePatternVariantDestructureTupleAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantDestructureTupleAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR->PosEnd();
 }
 
-auto CasePatternVariantDestructureTupleAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantDestructureTupleAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto c = MakeUnique<CasePatternVariantDestructureTupleAst>(
     AstClone(TokL),
@@ -52,7 +57,7 @@ auto CasePatternVariantDestructureTupleAst::Clone() const -> Unique<Ast> {
   return c;
 }
 
-auto CasePatternVariantDestructureTupleAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantDestructureTupleAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Elems, ", ");
@@ -60,14 +65,14 @@ auto CasePatternVariantDestructureTupleAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto CasePatternVariantDestructureTupleAst::BindsByMove() const -> bool {
+auto spp::asts::CasePatternVariantDestructureTupleAst::BindsByMove() const -> bool {
   // A destructure binds if any of its elements does. An
   // empty one, or one made only of skips, is a shape test
   // and takes nothing.
   return genex::any_of(Elems, [](auto const &elem) { return elem->BindsByMove(); });
 }
 
-auto CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
+auto spp::asts::CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Map the pattern to a "let" over the condition, introducing
   // its bindings.
@@ -75,25 +80,25 @@ auto CasePatternVariantDestructureTupleAst::Stage7_AnalyseSemantics(
     meta->CaseCondition, Elems | genex::views::ptr | genex::to<Vec>(), sm, meta);
 }
 
-auto CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
+auto spp::asts::CasePatternVariantDestructureTupleAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Forward memory checking to the mapped let statement.
   _MappedLet->Stage8_CheckMemory(sm, meta);
 }
 
-auto CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
+auto spp::asts::CasePatternVariantDestructureTupleAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Run the mapped "let"; the "case"'s plan tests the literals.
   return CodeGenDestructure(sm, meta, ctx);
 }
 
-auto CasePatternVariantDestructureTupleAst::EvaluateCompTime(
+auto spp::asts::CasePatternVariantDestructureTupleAst::EvaluateCompTime(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Resolve the mapped "let"; the "case"'s plan tests the literals.
   EvaluateCompTimeDestructure(sm, meta);
 }
 
-auto CasePatternVariantDestructureTupleAst::ConvToVar(
+auto spp::asts::CasePatternVariantDestructureTupleAst::ConvToVar(
   CompilerMetaData *meta) -> Unique<LocalVariableAst> {
   // Recursively map the elements to their local variable
   // counterparts.

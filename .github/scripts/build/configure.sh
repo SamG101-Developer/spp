@@ -6,11 +6,11 @@ set -euo pipefail
 
 args=()
 
-# SPP_NO_COMPILER_LAUNCHER is set when the compiler cache is
+# SPP_CI_NO_COMPILER_LAUNCHER is set when the compiler cache is
 # off (CodeQL), which forces the compiler to be invoked
 # directly. Windows gets sccache, which can drive cl and
 # clang-cl; everything else gets ccache.
-if [ -z "${SPP_NO_COMPILER_LAUNCHER:-}" ]; then
+if [ -z "${SPP_CI_NO_COMPILER_LAUNCHER:-}" ]; then
   if [ "$RUNNER_OS" = "Windows" ]; then LAUNCHER=sccache; else LAUNCHER=ccache; fi
   args+=(-DCMAKE_C_COMPILER_LAUNCHER="$LAUNCHER" -DCMAKE_CXX_COMPILER_LAUNCHER="$LAUNCHER")
 fi

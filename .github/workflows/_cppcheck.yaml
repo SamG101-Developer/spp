@@ -47,7 +47,7 @@ jobs:
       # GCC compiles it, and no project toolchain is set up.
       - name: Install CMake & Ninja (cache miss)
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
-        uses: lukka/get-cmake@a89e43e22a96abafcd7a62db652a65ecd33052c9 # v4.4.4
+        uses: lukka/get-cmake@30aea713799f46b5b60e60f5fa83f849abd52c22 # v4.5.0-rc3
         with:
           cmakeVersion: ${{ env.CMAKE_VERSION }}
           ninjaVersion: ${{ env.NINJA_VERSION }}
@@ -59,7 +59,7 @@ jobs:
         run: bash .github/scripts/setup/install-cppcheck.sh
 
       - name: Expose cppcheck
-        run: echo "$SPP_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
+        run: echo "$SPP_CI_CPPCHECK_PREFIX/bin" >> "$GITHUB_PATH"
 
       # Findings fail the job. The rule selection lives in the
       # script and in .cppcheck-suppressions.

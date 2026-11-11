@@ -30,8 +30,14 @@ import spp.lex.tokens;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-LoopControlFlowStatementAst::LoopControlFlowStatementAst(
+spp::asts::LoopControlFlowStatementAst::LoopControlFlowStatementAst(
   decltype(TokSeqExit) &&tok_seq_exit,
   decltype(TokSkip) &&tok_skip,
   decltype(Expr) &&expr) :
@@ -40,19 +46,19 @@ LoopControlFlowStatementAst::LoopControlFlowStatementAst(
   Expr(std::move(expr)) {
 }
 
-LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
+spp::asts::LoopControlFlowStatementAst::~LoopControlFlowStatementAst() = default;
 
-auto LoopControlFlowStatementAst::PosStart() const -> std::size_t {
+auto spp::asts::LoopControlFlowStatementAst::PosStart() const -> std::size_t {
   // Use the first "exit" or "skip".
   return TokSeqExit.empty() ? TokSkip->PosStart() : TokSeqExit.front()->PosStart();
 }
 
-auto LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
+auto spp::asts::LoopControlFlowStatementAst::PosEnd() const -> std::size_t {
   // Use expression or "skip" or last "exit".
   return Expr ? Expr->PosEnd() : TokSkip ? TokSkip->PosEnd() : TokSeqExit.back()->PosEnd();
 }
 
-auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
+auto spp::asts::LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto p = MakeUnique<LoopControlFlowStatementAst>(
     AstCloneVec(TokSeqExit),
@@ -62,7 +68,7 @@ auto LoopControlFlowStatementAst::Clone() const -> Unique<Ast> {
   return p;
 }
 
-auto LoopControlFlowStatementAst::ToString() const -> Str {
+auto spp::asts::LoopControlFlowStatementAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(TokSeqExit, " ");
   SPP_STRING_APPEND_RAW(" ");
@@ -72,7 +78,7 @@ auto LoopControlFlowStatementAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
+auto spp::asts::LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
   using generate::common_types_precompiled::VoidAt;
@@ -118,7 +124,7 @@ auto LoopControlFlowStatementAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto LoopControlFlowStatementAst::Stage8_CheckMemory(
+auto spp::asts::LoopControlFlowStatementAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   //
   IMPORT_UTILS;
@@ -182,7 +188,7 @@ auto LoopControlFlowStatementAst::Stage8_CheckMemory(
     TokSeqExit.size(), TokSkip != nullptr, *sm, meta);
 }
 
-auto LoopControlFlowStatementAst::Stage11_CodeGen(
+auto spp::asts::LoopControlFlowStatementAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   //
 
@@ -244,14 +250,14 @@ auto LoopControlFlowStatementAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto LoopControlFlowStatementAst::Diverges(
+auto spp::asts::LoopControlFlowStatementAst::Diverges(
   ScopeManager *, CompilerMetaData *) -> bool {
   // An "exit" or a "skip" always jumps, so nothing after it
   // in this scope runs.
   return true;
 }
 
-auto LoopControlFlowStatementAst::InferType(
+auto spp::asts::LoopControlFlowStatementAst::InferType(
   ScopeManager *sm, CompilerMetaData *meta) -> Shared<TypeAst> {
   // If there is an attached expression, return its type,
   // otherwise Void.
@@ -259,7 +265,7 @@ auto LoopControlFlowStatementAst::InferType(
   return Expr != nullptr ? Expr->InferType(sm, meta) : VoidAt(PosStart());
 }
 
-auto LoopControlFlowStatementAst::InferTypeRef(
+auto spp::asts::LoopControlFlowStatementAst::InferTypeRef(
   ScopeManager *sm, CompilerMetaData *meta) -> TypeRef {
   using generate::common_types_precompiled::VOID;
   return Expr != nullptr

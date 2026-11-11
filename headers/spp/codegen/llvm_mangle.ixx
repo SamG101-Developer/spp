@@ -5,46 +5,34 @@ export module spp.codegen.llvm_mangle;
 import spp.utils.types;
 import std;
 
-namespace spp::asts {
-  SPP_EXP_CLS struct CmpStatementAst;
-  SPP_EXP_CLS struct FunctionPrototypeAst;
-}
-
-namespace spp::analyse::scopes {
-  SPP_EXP_CLS class Scope;
-  SPP_EXP_CLS struct TypeSymbol;
-}
+use(spp::asts, struct CmpStatementAst);
+use(spp::asts, struct FunctionPrototypeAst);
+use(spp::analyse::scopes, class Scope);
+use(spp::analyse::scopes, struct TypeSymbol);
 
 namespace spp::codegen::mangle {
-  SPP_EXP_FUN auto MangleTypeName(
-    analyse::scopes::TypeSymbol const &type_sym)
-    -> Str;
+  /// Produce a stringification of a type's name for the LLVM system to identify
+  /// uniquely. This will be unique per generic instantiation, per type.
+  SPP_EXP_FUN auto MangleTypeName(TypeSymbol const &type_sym) -> Str;
 
-  SPP_EXP_FUN auto MangleModName(
-    analyse::scopes::Scope const &mod_scope)
-    -> Str;
+  /// Produce a stringification of a module's name for the LLVM system to
+  /// identify uniquely. This will be unique per module.
+  SPP_EXP_FUN auto MangleModName(Scope const &mod_scope) -> Str;
 
+  /// Produce a stringification of a constant's name for the LLVM system to
+  /// identify uniquely. This will be unique per constant, per module.
   SPP_EXP_FUN auto MangleCmpName(
-    analyse::scopes::Scope const &owner_scope,
-    asts::CmpStatementAst const &cmp_stmt)
-    -> Str;
+    Scope const &owner_scope, CmpStatementAst const &cmp_stmt) -> Str;
 
-  /// A function's symbol: its readable name, fully qualified,
-  /// like "std::result::expect[T=S32, E=Str]") and "$h" with a
-  /// hash of its full signature, which is what keeps overloads
-  /// (return type included) apart. Backtraces print it without
-  /// the hash.
+  /// Produce a stringification of a function's name for the LLVM system to
+  /// identify uniquely. This will be unique per function, per overload,
+  /// per module/owner-type, and include the signature (hashed).
   SPP_EXP_FUN auto MangleFnName(
-    analyse::scopes::Scope const &owner_scope,
-    asts::FunctionPrototypeAst const &fun_proto)
-    -> Str;
+    Scope const &owner_scope, FunctionPrototypeAst const &fun_proto) -> Str;
 
-  /// The symbol of the "index"-th closure written in the
-  /// function whose symbol is "enclosing": the enclosing
-  /// function's readable name, then "::{closure#index}",
-  /// then the enclosing function's hash.
+  /// Produce a stringification of a closure's name for the LLVM system to
+  /// identify uniquely. This will be unique per symbol storing the closure,
+  /// and includes the storage's name, and "::{closure#index}".
   SPP_EXP_FUN auto MangleClosureName(
-    Str const &enclosing,
-    std::size_t index)
-    -> Str;
+    Str const &enclosing, std::size_t index) -> Str;
 }

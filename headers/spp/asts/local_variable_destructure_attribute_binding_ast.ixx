@@ -7,7 +7,7 @@ import spp.asts.local_variable_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LocalVariableDestructureAttributeBindingAst);
+use_common(LocalVariableDestructureAttributeBindingAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TokenAst);
 

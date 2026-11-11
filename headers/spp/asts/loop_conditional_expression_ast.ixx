@@ -9,7 +9,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(LoopConditionalExpressionAst);
+use_common(LoopConditionalExpressionAst);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::asts, struct DeferStatementAst);
 use(spp::asts, struct TypeAst);

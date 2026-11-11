@@ -15,103 +15,109 @@ import spp.codegen.llvm_ctx;
 import spp.lsp.resolution_index;
 import genex;
 
-use_ns(spp::analyse::utils);
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
 
 SPP_MOD_BEGIN
-namespace {
-  /// For the normal caller, once we get an error, we raise it
-  /// and stop the compiler execution. If the sink is enabled
-  /// however, this is for the IDEA plugin's indexing, so we
-  /// store the error in the sink against the member, which
-  /// "poisons" it so every later stage skips it, allowing
-  /// multiple errors, from different members, to show at once.
-  /// Answers whether the member ran without an error.
-  template <typename F>
-  auto CheckMember(Ast *const member, F &&check) -> bool {
-    using namespace spp::analyse::errors;
-    namespace sink = diagnostic_sink;
-    // Normal behaviour: run the member, an error stops execution,
-    // displays the error and terminates the compiler.
-    if (not sink::IsEnabled()) {
-      check(member);
-      return true;
+namespace spp::asts {
+  namespace {
+    /// For the normal caller, once we get an error, we raise it
+    /// and stop the compiler execution. If the sink is enabled
+    /// however, this is for the IDEA plugin's indexing, so we
+    /// store the error in the sink against the member, which
+    /// "poisons" it so every later stage skips it, allowing
+    /// multiple errors, from different members, to show at once.
+    /// Answers whether the member ran without an error.
+    template <typename F>
+    auto CheckMember(Ast *const member, F &&check) -> bool {
+      using namespace spp::analyse::errors;
+      namespace sink = diagnostic_sink;
+      // Normal behaviour: run the member, an error stops execution,
+      // displays the error and terminates the compiler.
+      if (not sink::IsEnabled()) {
+        check(member);
+        return true;
+      }
+
+      // A member that an earlier stage "poisoned" (via the "report"
+      // method) is not run again.
+      if (sink::IsPoisoned(member)) { return false; }
+
+      // Otherwise, try to run the check for the member, and if it
+      // raises an error, then report it to the sink.
+      try {
+        check(member);
+        return true;
+      }
+      catch (SemanticError const &e) {
+        sink::Report(e, member);
+        return false;
+      }
     }
 
-    // A member that an earlier stage "poisoned" (via the "report"
-    // method) is not run again.
-    if (sink::IsPoisoned(member)) { return false; }
-
-    // Otherwise, try to run the check for the member, and if it
-    // raises an error, then report it to the sink.
-    try {
-      check(member);
-      return true;
+    /// Whether a member has scopes of its own for the walk to skip.
+    /// A member's scope is where it was declared unless it makes
+    /// one, and skipping past the scope the walk is already in (or
+    /// one above it) would throw away the rest of the module.
+    auto OwnsScope(Ast const &member, Scope const &walk_scope) -> bool {
+      for (auto const *s = &walk_scope; s != nullptr; s = s->Parent) {
+        if (s == member.GetAstScope()) { return false; }
+      }
+      return member.GetAstScope() != nullptr;
     }
-    catch (SemanticError const &e) {
-      sink::Report(e, member);
-      return false;
-    }
-  }
 
-  /// Whether a member has scopes of its own for the walk to skip.
-  /// A member's scope is where it was declared unless it makes
-  /// one, and skipping past the scope the walk is already in (or
-  /// one above it) would throw away the rest of the module.
-  auto OwnsScope(Ast const &member, Scope const &walk_scope) -> bool {
-    for (auto const *s = &walk_scope; s != nullptr; s = s->Parent) {
-      if (s == member.GetAstScope()) { return false; }
-    }
-    return member.GetAstScope() != nullptr;
-  }
-
-  /// "CheckMember" for a stage that walks the scopes: a member
-  /// that did not run to the end is skipped past, so the walk
-  /// continues at the next member. The walk only moves forwards,
-  /// and an error can be raised after the member has walked past
-  /// its own scopes (a value left unconsumed is found as the
-  /// function's scope is left), so it is first put back where it
-  /// stood before the member, from where the member's scopes are
-  /// all still ahead.
-  template <typename F>
-  auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
-    const auto start = sm->Position();
-    if (not CheckMember(member, std::forward<F>(stage))) {
-      sm->ReturnTo(start);
-      if (OwnsScope(*member, *start.At)) { spp::ignore = sm->SkipSubtree(member->GetAstScope()); }
+    /// "CheckMember" for a stage that walks the scopes: a member
+    /// that did not run to the end is skipped past, so the walk
+    /// continues at the next member. The walk only moves forwards,
+    /// and an error can be raised after the member has walked past
+    /// its own scopes (a value left unconsumed is found as the
+    /// function's scope is left), so it is first put back where it
+    /// stood before the member, from where the member's scopes are
+    /// all still ahead.
+    template <typename F>
+    auto RunMember(Ast *const member, ScopeManager *const sm, F &&stage) -> void {
+      const auto start = sm->Position();
+      if (not CheckMember(member, std::forward<F>(stage))) {
+        sm->ReturnTo(start);
+        if (OwnsScope(*member, *start.At)) { spp::ignore = sm->SkipSubtree(member->GetAstScope()); }
+      }
     }
   }
 }
 
-ModuleImplementationAst::ModuleImplementationAst(
+spp::asts::ModuleImplementationAst::ModuleImplementationAst(
   decltype(Members) &&members) :
   Members(std::move(members)) {
 }
 
-ModuleImplementationAst::~ModuleImplementationAst() = default;
+spp::asts::ModuleImplementationAst::~ModuleImplementationAst() = default;
 
-auto ModuleImplementationAst::PosStart() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::PosStart() const -> std::size_t {
   // Use the first member.
   return Members.empty() ? 0 : Members.front()->PosStart();
 }
 
-auto ModuleImplementationAst::PosEnd() const -> std::size_t {
+auto spp::asts::ModuleImplementationAst::PosEnd() const -> std::size_t {
   // Use the last member.
   return Members.empty() ? 0 : Members.back()->PosEnd();
 }
 
-auto ModuleImplementationAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ModuleImplementationAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ModuleImplementationAst>(
     AstCloneVec(Members));
 }
 
-auto ModuleImplementationAst::ToString() const -> Str {
+auto spp::asts::ModuleImplementationAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_EXTEND(Members, "\n");
   SPP_STRING_END;
 }
 
-auto ModuleImplementationAst::Stage1_PreProcess(
+auto spp::asts::ModuleImplementationAst::Stage1_PreProcess(
   Ast *ctx) -> void {
   // Shift to members (copy because function pre-processing
   // edits this module's member).
@@ -119,31 +125,31 @@ auto ModuleImplementationAst::Stage1_PreProcess(
   for (auto *member : members_ptrs) { member->Stage1_PreProcess(ctx); }
 }
 
-auto ModuleImplementationAst::Stage2_GenTopLvlScopes(
+auto spp::asts::ModuleImplementationAst::Stage2_GenTopLvlScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage2_GenTopLvlScopes(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage3_GenTopLvlAliases(
+auto spp::asts::ModuleImplementationAst::Stage3_GenTopLvlAliases(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage3_GenTopLvlAliases(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage4_ResolveDeclarations(
+auto spp::asts::ModuleImplementationAst::Stage4_ResolveDeclarations(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage4_ResolveDeclarations(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage5_LoadSupScopes(
+auto spp::asts::ModuleImplementationAst::Stage5_LoadSupScopes(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) { member->Stage5_LoadSupScopes(sm, meta); }
 }
 
-auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
+auto spp::asts::ModuleImplementationAst::Stage6_PreAnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -151,7 +157,7 @@ auto ModuleImplementationAst::Stage6_PreAnalyseSemantics(
   }
 }
 
-auto ModuleImplementationAst::Stage7_AnalyseSemantics(
+auto spp::asts::ModuleImplementationAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -166,7 +172,7 @@ auto ModuleImplementationAst::Stage7_AnalyseSemantics(
   }
 }
 
-auto ModuleImplementationAst::Stage8_CheckMemory(
+auto spp::asts::ModuleImplementationAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Shift to members.
   for (auto const &member : Members) {
@@ -174,21 +180,21 @@ auto ModuleImplementationAst::Stage8_CheckMemory(
   }
 }
 
-auto ModuleImplementationAst::Stage10_PreCodeGen(
+auto spp::asts::ModuleImplementationAst::Stage10_PreCodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to members.
   for (auto const &member : Members) { member->Stage10_PreCodeGen(sm, meta, ctx); }
   return nullptr;
 }
 
-auto ModuleImplementationAst::Stage11_CodeGen(
+auto spp::asts::ModuleImplementationAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Shift to members.
   for (auto const &member : Members) { member->Stage11_CodeGen(sm, meta, ctx); }
   return nullptr;
 }
 
-auto ModuleImplementationAst::CheckExtensionMembers(
+auto spp::asts::ModuleImplementationAst::CheckExtensionMembers(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check the members of each extension block against its super
   // class. Nothing walks the scopes here, so there is nothing to

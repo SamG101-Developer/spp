@@ -12,8 +12,8 @@ use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::analyse::scopes, class SymbolTable);
 use(spp::analyse::scopes, struct TransparentStringHash);
-use(spp::analyse::scopes, template <typename I, typename S> class IndividualSymbolTable);
-use(spp::analyse::scopes, template <typename I> struct SymbolTableKeyOf;);
+use(spp::analyse::scopes, (typename I, typename S) class IndividualSymbolTable);
+use(spp::analyse::scopes, (typename I) struct SymbolTableKeyOf;);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeIdentifierAst);
 

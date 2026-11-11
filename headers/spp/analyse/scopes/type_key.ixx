@@ -3,6 +3,7 @@ module;
 
 export module spp.analyse.scopes.type_key;
 import spp.utils.interner;
+import spp.utils.stats;
 import spp.utils.types;
 import gch;
 import std;
@@ -12,7 +13,7 @@ use(spp::analyse::scopes, struct CompKey);
 use(spp::analyse::scopes, struct TypeSymbol);
 
 namespace spp::analyse::scopes {
-  SPP_EXP_CLS struct TypeIdHead;
+  SPP_EXP_CLS struct TypeKeyHeader;
   SPP_EXP_CLS struct TypeIdParams;
   using Word = std::uint64_t;
 
@@ -23,7 +24,7 @@ namespace spp::analyse::scopes {
   inline auto TextWord(const StrView text) -> Word {
     // Call the low level intern function and cast the result
     // from an "InternId" into a "Word" (raw, hashable number).
-    return static_cast<Word>(utils::Intern(text));
+    return static_cast<Word>(spp::utils::Intern(text));
   }
 
   SPP_EXP_CLS struct TypeKey;
@@ -40,19 +41,17 @@ namespace spp::analyse::scopes {
   SPP_EXP_CLS using CompId = CompKey const*;
   SPP_EXP_CLS struct TypeIdArg;
 
-  /// Read the outermost part of "id" ("TypeIdHead"). Memoised.
-  SPP_EXP_CLS SPP_ATTR_HOT auto HeadOf(
-    TypeKey const *id) -> TypeIdHead const&;
+  /// Read the outermost part of "id" ("TypeKeyHeader"). Memoised.
+  SPP_EXP_CLS SPP_ATTR_HOT auto HeaderOf(
+    TypeKey const *id) -> TypeKeyHeader const&;
 
   /// "id" without its convention: the type a "TypeRef" holds
   /// under its own "Conv". Memoised.
   SPP_EXP_CLS SPP_ATTR_HOT auto BareOf(
     TypeKey const *id) -> TypeKey const*;
 
-  /// The arguments an instantiation's arguments key lists,
-  /// in order.
-  SPP_EXP_CLS auto ArgsOf(
-    TypeKey const *args) -> Vec<TypeIdArg>;
+  /// The arguments an instantiation's arguments key lists, in order. Extract per part and
+  SPP_EXP_CLS auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
 
   /// The argument an instantiation's arguments key holds for the
   /// parameter "param_id", decoded as "ArgsOf" decodes it; read in
@@ -71,15 +70,22 @@ namespace spp::analyse::scopes {
     /// A large set of possible types of a type, which might
     /// require certain behaviour and handling.
     enum class Tag : std::uint8_t {
-      Pos, Conv, Unresolved, TypeBound, TypeParam,
-      Symbol, CompId, Inst, Variant, Len, TypeId, CompParam,
-      TypePack, CompPack, Arg
+      Pos, Conv, Unresolved, TypeParam,
+      Symbol, CompId, Inst, Variant, Len, TypeId,
+      Arg, Pack
     };
 
     /// The interned parts of the instance information. This
     /// might include things like generic argument interned
     /// information.
     SmallVec<Word, 16> Words;
+
+    /// The words as a read-only span: a cursor the decoders
+    /// advance ("subspan"), and the helpers take for part of a
+    /// key as for a whole one.
+    SPP_ATTR_NODISCARD auto ViewWords() const -> Span<Word const> {
+      return {Words.data(), Words.size()};
+    }
 
     /// The "intern" of this entire instantiation. This is
     /// the master value used for things like comparisons.
@@ -94,12 +100,12 @@ namespace spp::analyse::scopes {
     /// it (its enclosing type) or a binding of 0. Not one of the parameters a key names ("ParamsNamedBy").
     bool HasSelf = false;
 
-    /// What "HeadOf", "ParamsNamedBy" and "BareOf" read off an interned key, kept on it: an interned
+    /// What "HeaderOf", "ParamsNamedBy" and "BareOf" read off an interned key, kept on it: an interned
     /// key never changes, so each is worked out once. Not part of the key; written only by those functions.
     ///   - the "head" of this type key (the template for this type, "Vec" for "Vec[S32]" etc);
     ///   - the generic params it names;
     ///   - the "bare" version of this type (with the convention removed).
-    mutable TypeIdHead const *_CachedHead = nullptr;
+    mutable TypeKeyHeader const *_CachedHead = nullptr;
     mutable TypeIdParams const *_CachedParams = nullptr;
     mutable TypeKey const *_CachedBare = nullptr;
 
@@ -178,7 +184,7 @@ namespace spp::analyse::scopes {
     }
 
   private:
-    friend auto HeadOf(TypeKey const *id) -> TypeIdHead const&;
+    friend auto HeaderOf(TypeKey const *id) -> TypeKeyHeader const&;
     friend auto BareOf(TypeKey const *id) -> TypeKey const*;
     friend auto ArgsOf(TypeKey const *args) -> Vec<TypeIdArg>;
     friend auto FindArgOf(TypeKey const *args, std::uint64_t param_id) -> Opt<TypeIdArg>;
@@ -213,9 +219,9 @@ namespace spp::analyse::scopes {
     static auto _DecodePart(Span<const Word> words, std::size_t &taken) -> TypeKey const*;
 
     /// Decode the argument at the front of an arguments key's
-    /// "words" into "arg", and move "words" past it; false at
-    /// the end, or on words cut short.
-    static auto _DecodeArg(Span<const Word> &words, TypeIdArg &arg) -> bool;
+    /// "words", and move "words" past it; nothing at the end,
+    /// or on words cut short.
+    static auto _DecodeArg(Span<const Word> &words) -> Opt<TypeIdArg>;
   };
 
   /// A key hashes as the hash it accumulated while it was built.
@@ -238,13 +244,14 @@ namespace spp::analyse::scopes {
 
   /// Every type key interned so far: a "TypeId" is the address
   /// of one. Kept until "ClearTypeIds".
-  inline auto InternedTypeKeys() -> StableSet<TypeKey, TypeKeyHash>& {
+  SPP_EXP_FUN inline auto InternedTypeKeys() -> StableSet<TypeKey, TypeKeyHash>& {
     static auto interned = StableSet<TypeKey, TypeKeyHash>();
     return interned;
   }
 
   /// Produce a "type id" from an "instance key".
   SPP_EXP_FUN SPP_ATTR_HOT inline auto InternTypeKey(TypeKey &&key) -> TypeId {
+    spp::utils::stats::Bump(spp::utils::stats::Counter::TypeKeyInterns);
     auto &interned = InternedTypeKeys();
     if (const auto hit = interned.find(key); hit != interned.end()) { return &*hit; }
     return &*interned.emplace(std::move(key)).first;
@@ -268,6 +275,17 @@ namespace spp::analyse::scopes {
   SPP_EXP_FUN auto ParamTypeId(
     std::uint64_t param_id) -> TypeId;
 
+  /// The identity of a type pack's list ("..Ts" bound to "S32,
+  /// Bool"): the "Pack" tag, then each element. Not a type: what
+  /// a variadic type parameter is bound to, as a comp pack is to
+  /// "CompKey::OfPack".
+  SPP_EXP_FUN auto PackIdOf(
+    Vec<TypeId> const &elems) -> TypeId;
+
+  /// Whether "id" is a type pack's list ("PackIdOf").
+  SPP_EXP_FUN auto IsPackTypeId(
+    TypeId id) -> bool;
+
   /// Whether "id" is "Self" itself (parameter 0), with or without a convention ("&Self").
   SPP_EXP_FUN auto IsSelfTypeId(
     TypeId id) -> bool;
@@ -279,15 +297,12 @@ namespace spp::analyse::scopes {
 
   /// The identity of the instantiation of "tmpl" whose arguments
   /// have the identity "args" ("Scope::ArgsIdOf"): an "Inst"
-  /// head, then the arguments as one part.
-  SPP_EXP_FUN inline auto InstanceIdOfArgs(
-    TypeSymbol const &tmpl, const TypeId args) -> TypeId {
-    auto key = TypeKey();
-    key.Push(TypeKey::Tag::Inst);
-    key.PushSymbol(&tmpl);
-    key.PushKey(*args);
-    return InternTypeKey(std::move(key));
-  }
+  /// head, then the arguments as one part. A class of only packs,
+  /// each given no elements, is the template itself, as it is
+  /// named bare ("()" is "Tup"): one identity for its empty
+  /// instance however it is reached.
+  SPP_EXP_FUN auto InstanceIdOfArgs(
+    TypeSymbol const &tmpl, TypeId args) -> TypeId;
 
   /// The outermost part of a "TypeId", decoded: what kind of
   /// type it is, its convention, and that kind's payload (the
@@ -295,9 +310,9 @@ namespace spp::analyse::scopes {
   /// the parameter). Not the template itself: "&Vec[Str]" heads
   /// as an "&" "Inst" of "Vec" with the arguments "[Str]", and
   /// "Str" as a "Symbol" of "Str".
-  SPP_EXP_CLS struct TypeIdHead {
-    /// "Self", "TypeParam", "TypeBound", "Symbol" (a closed
-    /// class), "Inst", "Variant" or "Unresolved".
+  SPP_EXP_CLS struct TypeKeyHeader {
+    /// "TypeParam" (0 being "Self"), "Symbol" (a closed class),
+    /// "Inst", "Variant", "Pack" or "Unresolved".
     TypeKey::Tag Kind = TypeKey::Tag::Unresolved;
 
     /// The convention tag, 0 for none.
@@ -307,8 +322,7 @@ namespace spp::analyse::scopes {
     /// the variant template.
     void const *Ptr = nullptr;
 
-    /// "TypeParam" and "TypeBound": the type parameter's
-    /// "ParamId".
+    /// "TypeParam": the type parameter's "ParamId".
     std::uint64_t TypeParamId = 0;
 
     /// "Inst": the arguments' key, interned as the template's
@@ -317,6 +331,10 @@ namespace spp::analyse::scopes {
 
     /// "Variant": the members, in their canonical order.
     Vec<TypeId> VariantMembers;
+
+    /// "Pack": the elements of a type pack's list, in order. A pack
+    /// is what a variadic type parameter is bound to; no type.
+    Vec<TypeId> PackElements;
 
     /// "Ptr" as the symbol it is: the class ("Symbol"), the
     /// template ("Inst") or the variant template ("Variant").
@@ -342,7 +360,7 @@ namespace spp::analyse::scopes {
     TypeId id) -> TypeIdParams const&;
 
   /// Forget every interned type key and what is remembered about
-  /// each ("HeadOf", "ParamsNamedBy"). A key holds its compile's
+  /// each ("HeaderOf", "ParamsNamedBy"). A key holds its compile's
   /// symbols by address, so it is that compile's alone: called
   /// once a compile is freed, when nothing holds a "TypeId".
   SPP_EXP_FUN auto ClearTypeIds() -> void;
@@ -365,10 +383,11 @@ namespace spp::analyse::scopes {
     TypeId id) -> bool;
 
   /// One argument of an instantiation's identity
-  /// ("TypeIdHead::Args"): for a parameter (by its "ParamId",
+  /// ("TypeKeyHeader::Args"): for a parameter (by its "ParamId",
   /// "Arg"), or positional (by its index, "Pos": a pack's element,
   /// or one past the parameters), then a type or a comp value's
-  /// interned identity.
+  /// interned identity. A variadic parameter's argument is its pack's
+  /// list ("PackIdOf"), under the parameter, as any other's.
   SPP_EXP_CLS struct TypeIdArg {
     /// For a parameter: not positional.
     bool Named = false;

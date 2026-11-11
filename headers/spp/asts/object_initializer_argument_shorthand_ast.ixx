@@ -7,7 +7,7 @@ import spp.asts.object_initializer_argument_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ObjectInitializerArgumentShorthandAst);
+use_common(ObjectInitializerArgumentShorthandAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct TokenAst);
 

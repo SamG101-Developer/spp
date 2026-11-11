@@ -13,15 +13,16 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(TypeStatementAst);
+use_common(TypeStatementAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::asts, struct AnnotationAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct TokenAst);
-use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct UseStatementAst);
+
+use_alias(spp::asts, TypeAst);
 
 /// Aliases a type to a new name in this scope. Generic
 /// parameters allow aliasing more complex types, such as

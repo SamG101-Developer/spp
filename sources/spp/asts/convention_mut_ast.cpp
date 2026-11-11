@@ -7,8 +7,13 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ConventionMutAst::ConventionMutAst(
+spp::asts::ConventionMutAst::ConventionMutAst(
   decltype(TokBorrow) &&tok_borrow,
   decltype(TokMut) &&tok_mut) :
   ConventionAst(ConventionTag::MUT),
@@ -18,26 +23,26 @@ ConventionMutAst::ConventionMutAst(
   SPP_SET_AST_TO_DEFAULT_IF_NULLPTR(this->TokMut, lex::SppTokenType::KW_MUT, "mut");
 }
 
-ConventionMutAst::~ConventionMutAst() = default;
+spp::asts::ConventionMutAst::~ConventionMutAst() = default;
 
-auto ConventionMutAst::PosStart() const -> std::size_t {
+auto spp::asts::ConventionMutAst::PosStart() const -> std::size_t {
   // Use the "&" token.
   return TokBorrow->PosStart();
 }
 
-auto ConventionMutAst::PosEnd() const -> std::size_t {
+auto spp::asts::ConventionMutAst::PosEnd() const -> std::size_t {
   // Use the "mut" token.
   return TokMut->PosEnd();
 }
 
-auto ConventionMutAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ConventionMutAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<ConventionMutAst>(
     AstClone(TokBorrow),
     AstClone(TokMut));
 }
 
-auto ConventionMutAst::ToString() const -> Str {
+auto spp::asts::ConventionMutAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokBorrow);
   SPP_STRING_APPEND(TokMut).append(" ");

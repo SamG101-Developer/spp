@@ -80,6 +80,10 @@ namespace spp::lsp {
   /// one line of json, for an editor to grey out.
   SPP_EXP_FUN auto ToJson(lsp::resolution_index::InactiveRegion const &region) -> Str;
 
+  /// What one "sup ext" block could still override, as one line
+  /// of JSON.
+  SPP_EXP_FUN auto ToJson(lsp::resolution_index::OverridableList const &list) -> Str;
+
   /// Render what one part of a file can name as one line of
   /// json.
   SPP_EXP_FUN auto ToJson(lsp::resolution_index::NamesInScope const &scope) -> Str;

@@ -1,0 +1,4 @@
+description = "A register bytecode interpreter running 30M iterations: dense case dispatch (a jump table), Vec reads, U64 arithmetic"
+layer = "core"
+output = "exact"
+covers = ["codegen:llvm_jump_tables"]

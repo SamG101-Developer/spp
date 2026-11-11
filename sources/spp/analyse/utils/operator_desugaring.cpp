@@ -1,4 +1,5 @@
 module;
+#include <spp/macros.hpp>
 #include <spp/analyse/macros.hpp>
 
 module spp.analyse.utils.operator_desugaring;
@@ -7,6 +8,7 @@ import spp.analyse.errors.semantic_error_builder;
 import spp.analyse.scopes.scope;
 import spp.analyse.scopes.scope_manager;
 import spp.analyse.scopes.symbols;
+import spp.analyse.utils.expr_utils;
 import spp.asts.ast;
 import spp.asts.binary_expression_ast;
 import spp.asts.boolean_literal_ast;
@@ -26,7 +28,6 @@ import spp.asts.inner_scope_expression_ast;
 import spp.asts.is_expression_ast;
 import spp.asts.let_statement_initialized_ast;
 import spp.asts.local_variable_single_identifier_alias_ast;
-import spp.asts.local_variable_single_identifier_ast;
 import spp.asts.pattern_guard_ast;
 import spp.asts.postfix_expression_ast;
 import spp.asts.postfix_expression_operator_function_call_ast;
@@ -36,8 +37,32 @@ import spp.asts.token_ast;
 import spp.asts.type_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
-import spp.utils.uid;
 import genex;
+
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, BinaryExpressionAst);
+use_alias(spp::asts, BooleanLiteralAst);
+use_alias(spp::asts, CaseExpressionAst);
+use_alias(spp::asts, CaseExpressionBranchAst);
+use_alias(spp::asts, CasePatternVariantAst);
+use_alias(spp::asts, CasePatternVariantElseAst);
+use_alias(spp::asts, ConventionRefAst);
+use_alias(spp::asts, ExpressionAst);
+use_alias(spp::asts, FunctionCallArgumentAst);
+use_alias(spp::asts, FunctionCallArgumentGroupAst);
+use_alias(spp::asts, FunctionCallArgumentPositionalAst);
+use_alias(spp::asts, IdentifierAst);
+use_alias(spp::asts, InnerScopeExpressionAst);
+use_alias(spp::asts, IsExpressionAst);
+use_alias(spp::asts, LetStatementInitializedAst);
+use_alias(spp::asts, PostfixExpressionAst);
+use_alias(spp::asts, PostfixExpressionOperatorFunctionCallAst);
+use_alias(spp::asts, PostfixExpressionOperatorRuntimeMemberAccessAst);
+use_alias(spp::asts, StatementAst);
+use_alias(spp::asts, TokenAst);
+use_alias(spp::asts::meta, CompilerMetaData);
 
 namespace spp::analyse::utils::operator_desugaring {
   namespace {
@@ -58,27 +83,13 @@ namespace spp::analyse::utils::operator_desugaring {
           std::move(bin_expr.Rhs));
       }
 
-      // Non-symbolic value being reused -> put it into a variable
-      // first. Todo: Standardise materialization?
-      if (sm->CurrentScope->FindVarSymbolOutermost(*bin_lhs->Rhs).first == nullptr) {
-        const auto temp_var_name = [&] {
-          const auto uid = spp::utils::Uid();
-          return MakeShared<IdentifierAst>(
-            bin_lhs->Rhs->PosStart(), uid);
-        }();
-
-        auto temp_let = [&] {
-          auto var = MakeUnique<LocalVariableSingleIdentifierAst>(
-            nullptr, temp_var_name, nullptr);
-          return MakeUnique<LetStatementInitializedAst>(
-            nullptr, std::move(var), nullptr, nullptr, std::move(bin_lhs->Rhs));
-        }();
-
-        temp_let->Stage7_AnalyseSemantics(sm, meta);
-        bin_lhs->Rhs = AstClone(temp_var_name);
-
-        // Kept by the caller: nothing else would give it storage.
-        if (temps != nullptr) { temps->emplace_back(std::move(temp_let)); }
+      // The middle operand is read by both comparisons, so is evaluated once
+      // via hoisting. The caller keeps the hoisted "let", as nothing else would
+      // give it storage.
+      auto hoisted = expr_utils::HoistOnce(*bin_lhs->Rhs, "$cmp", sm, meta);
+      if (hoisted.Let != nullptr) {
+        bin_lhs->Rhs = AstClone(hoisted.Name);
+        if (temps != nullptr) { temps->emplace_back(std::move(hoisted.Let)); }
       }
 
       // Otherwise, re-arrange the ASTs, with an "and" combinator

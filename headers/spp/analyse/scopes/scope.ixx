@@ -157,6 +157,12 @@ public:
   /// scope of its own.
   bool SupsAttached = false;
 
+  /// Whether attaching this scope's super scopes was put off until
+  /// they are first read: the sweep leaves a "$" mock this way, as
+  /// almost none are read. Not carried by a copy, as a clone is a
+  /// scope of its own.
+  bool SupsDeferred = false;
+
   /// The last "GetSupScopes()" answer and the "TypeStructureGeneration" it was computed at. The walk is the transitive
   /// super-scope graph - 29 nodes per call, measured, 4.9M node visits over a std build - and the graph only changes
   /// when a sup is attached, which bumps that generation. Left out of the copy constructor's list, so a clone starts
@@ -174,11 +180,17 @@ public:
   /// super scopes are attached already.
   inline static Func<void(Scope const &)> OnSupScopesRead;
 
+  /// Called with a scope before its super scopes are read, if
+  /// attaching them was put off ("SupsDeferred"). Set from the end of
+  /// the sweep until the scope tree is destroyed.
+  inline static Func<void(Scope const &)> OnDeferredSupsRead;
+
   /// "DirectSupScopes", attached first while the sweep runs
   /// ("OnSupScopesRead"): what every read of the super-scope graph
   /// reaches them through.
   SPP_ATTR_NODISCARD auto GetDirectSupScopes() const -> Vec<Scope*> const& {
     if (OnSupScopesRead) { OnSupScopesRead(*this); }
+    if (SupsDeferred and OnDeferredSupsRead) { OnDeferredSupsRead(*this); }
     return DirectSupScopes;
   }
 
@@ -389,6 +401,13 @@ public:
   /// are filed under it; a type's under "InstanceIdOf".
   SPP_ATTR_NODISCARD auto ArgsIdOf(
     Vec<GenericArgumentAst*> const &args, GenericParameterGroupAst const *params = nullptr) const -> TypeId;
+
+  /// The identity of a type pack's list ("PackIdOf") from the types
+  /// written as its elements, read from this scope: an element that
+  /// is itself a bound pack ("Ts" where "Ts" is "S32, Bool") is
+  /// spliced in. An unresolved element is keyed by its spelling.
+  SPP_ATTR_NODISCARD auto PackIdOfElements(
+    Vec<TypeAst const*> const &elems) const -> TypeId;
 
   /// Create a type id for a type and its arguments, handling
   /// the variant case specially too. This builds an "instantiation"

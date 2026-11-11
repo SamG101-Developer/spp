@@ -15,24 +15,32 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, struct AliasInfo);
-use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, struct Symbol);
 use(spp::analyse::scopes, struct NamespaceSymbol);
 use(spp::analyse::scopes, struct TypeRef);
 use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::scopes, struct VariableSymbol);
+use(spp::analyse::scopes, struct PackInfo);
 use(spp::analyse::scopes, enum class VariableKind);
 use(spp::analyse::scopes, enum class TypeKind);
 use(spp::asts, struct AnnotationAst);
+use(spp::asts::mixins, struct VisibilityAst);
 use(spp::asts, struct ClassPrototypeAst);
 use(spp::asts, struct CmpStatementAst);
-use(spp::asts, struct ConventionAst);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
 use(spp::asts, struct TypeIdentifierAst);
 use(spp::asts, struct TypeStatementAst);
+use(spp::codegen, class Abi);
+
+use_alias(spp::analyse::scopes, ExprSubst);
+use_alias(spp::asts, Ast);
+use_alias(spp::asts, ConventionAst);
+use_alias(spp::asts, ConventionTag);
+use_alias(spp::asts::utils, Visibility);
+use_alias(spp::codegen, LlvmTypeSymbolInfo);
 
 /// What a type resolves to: the symbol of the type, and how
 /// a value of it is held. The convention is not part of the
@@ -169,7 +177,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeRef {
     GenericSubst const &subst, Scope const &scope, OnMissing missing = OnMissing::Open) const -> TypeRef;
 
   /// The template this type instantiates: for an instantiation,
-  /// the one its identity's head names ("HeadOf"; "Vec" for
+  /// the one its identity's head names ("HeaderOf"; "Vec" for
   /// "Vec[Str]", the variant template for a variant); for a
   /// binding, parameter or "Self", the template of what it
   /// stands for.
@@ -286,6 +294,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::NamespaceSymbol final : Symbol {
   /// project ("Module::Owner").
   Opt<Str> Owner;
 
+  /// For a top-level namespace, the dependencies its owner declares
+  /// ("Module::Declares"), which are the ones its modules can name.
+  Vec<Str> Declares;
+
   /// Whether this top-level namespace is an ffi package, which
   /// only its owner's modules can name what is in.
   bool IsFfiPackage = false;
@@ -379,6 +391,23 @@ namespace spp::analyse::scopes {
 
 }
 
+/// A function's pack ("..xs: Ts"): a list of values, one per argument a call passes, that is not itself a value
+/// (pack-design.md D1); or a template's comp pack ("cmp ..ns: Bool"), which is not either ("(..ns)" is its tuple; D5
+/// superseded 2026-11-05). Held by its parameter's symbol.
+SPP_EXP_CLS struct spp::analyse::scopes::PackInfo {
+  /// The type the pack declares for each element, with its convention ("&Ts" for "..xs: &Ts", "S32" for
+  /// "..xs: S32"): what "xs.N" is in a template.
+  Shared<TypeAst> Element;
+
+  /// Whether its length is unknown where it is read: a template's, whose spreads are resolved per length. An
+  /// instance's is closed, a list of the call's elements.
+  bool Open = true;
+
+  /// A closed pack's elements: the parameters an instance has in its place ("xs#0", "xs#1", ...), one per element, in
+  /// order. "..xs" is them, and "xs.N" the Nth. Empty while open.
+  Vec<Shared<IdentifierAst>> Elements;
+};
+
 /// A variable symbol is used extremely often, for class fields,
 /// constants, parameters, variables, captures, etc etc. It has
 /// a host of flags for fine-tuning usage.
@@ -426,6 +455,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// for "..n: Bool"), so this is what says it holds a tuple.
   bool IsVariadic = false;
 
+  /// For a function's variadic parameter, what its pack is: a whole use of it is no value ("PackInfo").
+  Opt<PackInfo> Pack;
+
   /// Whether the symbol is mutable, ie can the variable it
   /// represents be re-assigned a new value.
   bool IsMutable = false;
@@ -448,16 +480,19 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// always uses the FunMov technique and memory analysis.
   Shared<const TypeAst> IndirectFnType;
 
-  /// The visibility that this variable has. This is only
-  /// applicable in contexts such as module/sup-level constants,
-  /// and is only queried when needed (nullptr is fine).
-  asts::utils::Visibility Visibility;
+  /// The visibility of a symbol no visibility-enabled ast declares (a generic
+  /// argument or parameter is public, a local private). Read through
+  /// "GetVisibility".
+  Visibility VisibilityFallback;
 
-  /// Reflecting the above "Visibility", the ast representing
-  /// the visibility is also used, for error reporting diagnostics.
-  /// This is needed to ensure there are no visibility conflicts
-  /// for all overloads of the same function.
-  AnnotationAst *VisibilityAnnotation = nullptr;
+  /// The declaration whose visibility this is, read through rather than copied:
+  /// its annotations set it in stage 4 or 5, after the symbol is made. A
+  /// function's mock reads its latest overload's ("FunctionPrototypeAst"), which
+  /// the next overload's visibility is checked against.
+  VisibilityAst const *VisibilityFrom = nullptr;
+
+  /// The visibility: its declaration's ("VisibilityFrom"), else "VisibilityFallback".
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> Visibility;
 
   /// The memory info for this variable, unique per symbol and
   /// used extensively in stage 8 memory analysis. Holds all move,
@@ -483,7 +518,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
   /// The statement declaring this constant, which a fold reading it before stage 7 has reached it analyses first
   /// ("CmpStatementAst::AnalyseAhead"). Null for anything else, and for a copy made per instantiation, whose value is
   /// read through its template's.
-  asts::CmpStatementAst *Stmt = nullptr;
+  CmpStatementAst *Stmt = nullptr;
 
   VariableSymbol(
     Shared<IdentifierAst> name,
@@ -491,7 +526,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::VariableSymbol final : Symbol {
     Scope *ScopeDefinedIn,
     VariableKind kind,
     bool is_mutable = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate);
+    Visibility visibility = Visibility::kPrivate);
 
   VariableSymbol(VariableSymbol const &that);
   ~VariableSymbol() override;
@@ -620,6 +655,10 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// are all the generic arguments concrete etc.
   bool IsConcrete = true;
 
+  /// "marker_sups::HoldsNoValueOfItsArgs", worked out once for a class or template: its sups are attached before it is
+  /// first asked, and do not change after. Not copied with the symbol.
+  Opt<bool> HoldsNoValueOfArgs;
+
   /// On a generic type parameter, its own identity: non-zero, unique to its declaration and kept by every copy of the
   /// symbol (the name alone is shared by every parameter spelled the same). Zero on anything else.
   std::uint64_t OwnParamId = 0;
@@ -653,15 +692,27 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// value of the next generic symbol.
   Shared<TypeAst> BoundTypeVal;
 
+  /// For a type pack's binding ("..Ts" bound to "S32, Bool"), its
+  /// list ("PackIdOf"): no type, so nothing to link to; keyed as it
+  /// ("KeyBinding"), which splices it wherever it is named.
+  TypeId BoundPack = nullptr;
+
   /// There is sometimes a case where we want to derive information
   /// off of another symbol, such as a generic base might be copyable
   /// so any instantiation also needs to be.
   Shared<TypeSymbol> DerivesFromSymbol;
 
-  /// The visibility tag on the type symbol, like for the variable
-  /// symbol/ Needed for checking this type is accessible outside
-  /// it's module or type (sup-defined).
-  asts::utils::Visibility Visibility;
+  /// The visibility of a type symbol no visibility-enabled ast declares, as for
+  /// a variable symbol (a generic argument or parameter is public). Read
+  /// through "GetVisibility".
+  Visibility VisibilityFallback;
+
+  /// The declaration whose visibility this is, read through rather than copied, as for a variable symbol: a class's,
+  /// an alias's. An instance has none of its own, and is its template's.
+  VisibilityAst const *VisibilityFrom = nullptr;
+
+  /// The visibility: its declaration's, else its template's for an instance ("InstanceOf"), else "VisibilityFallback".
+  SPP_ATTR_NODISCARD auto GetVisibility() const -> Visibility;
 
   /// How a binding holds what it is bound to: the convention its
   /// argument was written with ("T=&Str" holds "Str" by "&");
@@ -671,7 +722,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// The LLVM metadata for this type, used during stage 10 and 11
   /// of the compilation pipeline. Currently, tracks the LLVM type
   /// and the field index map for S++ layout convention.
-  Shared<codegen::LlvmTypeSymbolInfo> LlvmInfo;
+  Shared<LlvmTypeSymbolInfo> LlvmInfo;
 
   /// Set when this symbol names an alias rather than a class. It
   /// contains all the alias information required.
@@ -688,6 +739,11 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// Track whether this type has been marked as a thread hazard
   /// with the "!thread_hazard" annotation.
   bool IsDirectlyThreadHazard = false;
+
+  /// The convention a "!conv" or "!ffi" annotation gave the class:
+  /// how its fields are laid out. Null for the default ("spp"); read
+  /// it through "codegen::AbiOf".
+  Abi const *DeclaredAbi = nullptr;
 
   /// The cached fully qualified name of this symbol. This is an
   /// expensive operation given how often it's used, so we can
@@ -707,7 +763,7 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
     Scope *scope_defined_in,
     TypeKind kind,
     bool is_directly_copyable = false,
-    asts::utils::Visibility visibility = asts::utils::Visibility::kPrivate,
+    Visibility visibility = Visibility::kPrivate,
     ConventionTag convention = ConventionTag::MOV,
     Vec<Shared<TypeAst>> const &generic_constraints = {});
 
@@ -859,9 +915,9 @@ SPP_EXP_CLS struct spp::analyse::scopes::TypeSymbol final : Symbol {
   /// scope (no ast built); no type if there is none. Name it with "TypeRef::AstIn" where syntax or a message needs it.
   SPP_ATTR_NODISCARD auto TypeArgRef(Str const &name) const -> TypeRef;
 
-  /// Every type argument of that instantiation, in order (a
-  /// tuple's stay positional, with no names to read), each as
-  /// "TypeArgRef" reads one: off the identity, in the
+  /// Every type argument of that instantiation, in order (a type
+  /// pack's list as its elements, so a tuple's are its elements),
+  /// each as "TypeArgRef" reads one: off the identity, in the
   /// instantiation's scope, no ast built. Name one with
   /// "TypeRef::AstIn" where syntax needs it.
   SPP_ATTR_NODISCARD auto TypeArgRefs() const -> Vec<TypeRef>;

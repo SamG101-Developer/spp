@@ -7,8 +7,13 @@ import spp.asts.token_ast;
 import spp.asts.utils.ast_utils;
 import spp.lex.tokens;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
+spp::asts::ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
   decltype(Name) name,
   decltype(TokAssign) &&tok_assign,
   decltype(Val) &&val) :
@@ -16,19 +21,19 @@ ObjectInitializerArgumentKeywordAst::ObjectInitializerArgumentKeywordAst(
   TokAssign(std::move(tok_assign)) {
 }
 
-ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
+spp::asts::ObjectInitializerArgumentKeywordAst::~ObjectInitializerArgumentKeywordAst() = default;
 
-auto ObjectInitializerArgumentKeywordAst::PosStart() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::PosStart() const -> std::size_t {
   // Use the name.
   return Name->PosStart();
 }
 
-auto ObjectInitializerArgumentKeywordAst::PosEnd() const -> std::size_t {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::PosEnd() const -> std::size_t {
   // Use the val.
   return Val->PosEnd();
 }
 
-auto ObjectInitializerArgumentKeywordAst::Clone() const -> Unique<Ast> {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   auto ast = MakeUnique<ObjectInitializerArgumentKeywordAst>(
     AstCloneShared(Name),
@@ -39,7 +44,7 @@ auto ObjectInitializerArgumentKeywordAst::Clone() const -> Unique<Ast> {
   return ast;
 }
 
-auto ObjectInitializerArgumentKeywordAst::ToString() const -> Str {
+auto spp::asts::ObjectInitializerArgumentKeywordAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Name);
   SPP_STRING_APPEND_RAW("=");

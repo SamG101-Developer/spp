@@ -7,27 +7,23 @@ import llvm;
 import std;
 
 namespace spp::codegen {
-  /// The triple every module is built for, normalised once:
-  /// the selected target, or the host when none was asked for.
-  /// Being different from the host is a "cross compilation".
-  /// For the code generation that decides by target.
+  /// The target triple is the triple for the platform that s++ is compiling
+  /// for. It gets normalized, and cones from the "selected target". If it
+  /// doesn't match the host triple, then we are cross compiling.
   SPP_EXP_FUN auto TargetTriple() -> llvm::Triple const&;
 
-  /// Choose the triple every module is built for. Must be
-  /// called before any code generation: the target machine,
-  /// the triple and the data layout are each resolved once, on
-  /// first use, and a selection made after that is ignored
-  /// rather than honoured - which would leave modules
-  /// describing one target and the object describing another.
-  ///
-  /// The triple is normalised, so a short name ("riscv64",
-  /// "aarch64") is accepted like a full triple; null or empty
-  /// means the host. A target whose backend this llvm was not
-  /// built with is rejected here, listing the ones it does
-  /// have, rather than when an object cannot be emitted for
-  /// it. Answers whether the target was registered and
-  /// selected.
+  /// Choose the triple for the build. This is checked against a currently
+  /// selected triple, if present, otherwise this triple becomes the master
+  /// check. Normalized for short names too.
   SPP_EXP_FUN auto SelectTarget(char const *triple) -> bool;
+
+  /// Choose the CPU the program is built for ("[target.floor] cpu"):
+  /// "generic", the target's baseline (the default), "native", this
+  /// machine's CPU when building for it, or an LLVM CPU name for the
+  /// target ("x86-64-v3", "apple-m1"). Must come before anything builds
+  /// the target machine. Answers false, having said why, for a CPU the
+  /// target does not have, or "native" when cross compiling.
+  SPP_EXP_FUN auto SelectCpu(char const *cpu) -> bool;
 
   /// Whether the selected target is the machine this compiler
   /// is running on. Only a host build can be run here; another
@@ -42,33 +38,18 @@ namespace spp::codegen {
   /// libraries have no fortified (glibc "_chk") calls to check.
   SPP_EXP_FUN auto TargetIsMusl() -> bool;
 
+  /// Whether the selected target's code is position independent, and so its
+  /// executables PIE. Every target but m68k, whose backend reaches calls and
+  /// the GOT from PIC code through 16-bit offsets, so past about 32 KB of code
+  /// the program cannot link.
+  SPP_EXP_FUN auto TargetIsPositionIndependent() -> bool;
+
   /// A target folder as a GNU toolchain names the target, the
   /// prefix of its cross tools ("s390x-linux-gnu" for
   /// "s390x-linux-gnu-gcc"): the folder name, but for the
   /// architectures GNU spells otherwise (i386 as i686, sparcv9 as
   /// sparc64).
   SPP_EXP_FUN auto GnuTripleOf(StrView folder) -> Str;
-
-  /// Whether LLVM has somewhere to keep the unsafe stack pointer
-  /// for a triple, which "[memory.stack] split" (safestack) needs:
-  /// the runtime's thread-local, or a libc's accessor. Without it,
-  /// LLVM reports an error and emits code that writes through an
-  /// arbitrary register.
-  SPP_EXP_FUN auto HasSafeStack(StrView triple) -> bool;
-
-  /// The selected target's "HasSafeStack".
-  SPP_EXP_FUN auto TargetHasSafeStack() -> bool;
-
-  /// Whether LLVM's safestack pass can check a canary for a
-  /// triple, which "[memory.stack] protect" and "split" together
-  /// need: the pass checks it itself, always through
-  /// "__stack_chk_fail", never a target's own route (MSVC's
-  /// "__security_check_cookie"). Without it, LLVM reports an error
-  /// for every protected function.
-  SPP_EXP_FUN auto HasSafeStackCanary(StrView triple) -> bool;
-
-  /// The selected target's "HasSafeStackCanary".
-  SPP_EXP_FUN auto TargetHasSafeStackCanary() -> bool;
 
   /// The selected target's "GnuTripleOf".
   SPP_EXP_FUN auto TargetGnuTriple() -> char const*;
@@ -92,13 +73,9 @@ namespace spp::codegen {
   /// one that never holds.
   SPP_EXP_FUN auto IsCfgValueValid(StrView key, StrView value) -> bool;
 
-  /// The selected target as a folder name: "<arch>-<os>[-<env>]",
-  /// such as "x86_64-linux-gnu", "aarch64-macos" or
-  /// "x86_64-windows-msvc". It names the target's folder in the
-  /// "out" tree, and the folder an ffi package ships its library
-  /// for the target in. One spelling per target, however the
-  /// target was asked for. Fixes the target to the host if read
-  /// before "SelectTarget".
+  /// The selected target as a folder name, formatted as "<arch>-<os>[-<env>]",
+  /// ie "x86_64-linux-gnu", "aarch64-macos" or "x64_64-windows-msvc". This is
+  /// the target's folder in the "out" directory.
   SPP_EXP_FUN auto TargetFolderName() -> char const*;
 
   /// The host's folder name, in the same spelling. Safe to read
@@ -117,32 +94,45 @@ namespace spp::codegen {
   /// "dll". "folder" must pass "IsTargetFolderName".
   SPP_EXP_FUN auto SharedLibraryExtension(char const *folder) -> char const*;
 
+  /// The extension of the import library a shared library is
+  /// linked through on the target a folder names, without the
+  /// leading dot: "lib" on an MSVC target, which links
+  /// "sppc.lib" and loads "sppc.dll". Null where the shared
+  /// library itself is linked. "folder" must pass
+  /// "IsTargetFolderName".
+  SPP_EXP_FUN auto ImportLibraryExtension(char const *folder) -> char const*;
+
+  /// What an executable's name ends in on the target a folder
+  /// names: ".exe" on Windows, nothing elsewhere. Nothing for a
+  /// folder that names no target.
+  SPP_EXP_FUN auto ExecutableSuffix(char const *folder) -> char const*;
+
   /// Stamp an "llvm::Module" (passed as an opaque pointer)
   /// with the selected target's triple and data layout.
   SPP_EXP_FUN auto ApplyTargetToModule(void *llvm_module) -> void;
 
+  /// Give every function defined in "llvm_module" (an opaque pointer)
+  /// the selected CPU and its features, as the "target-cpu" and
+  /// "target-features" LLVM reads each function's target from. A
+  /// function's own features are kept, after the program's, so they
+  /// win: where a function built for a wider CPU than the program's
+  /// would say so.
+  SPP_EXP_FUN auto ApplyTargetToFunctions(void *llvm_module) -> void;
+
+  /// The selected target's machine, built once on first use;
+  /// every module is built against it. Null when no backend
+  /// serves the selected triple.
+  SPP_EXP_FUN auto SelectedTargetMachine() -> llvm::TargetMachine*;
+
   /// Emit an "llvm::Module" (passed as an opaque pointer) as a
   /// native object file at "path". Answers whether the object
-  /// file was written.
-  SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path) -> bool;
+  /// file was written. "opt_level" (0 to 3, as the optimisation
+  /// pipeline takes it) sets how hard the backend works:
+  /// instruction selection and register allocation.
+  SPP_EXP_FUN auto EmitObjectFile(void *llvm_module, char const *path, unsigned opt_level) -> bool;
 
-  /// Check that llvm can still spell an overloaded intrinsic's
-  /// name, and stop if it cannot.
-  ///
-  /// The names come from "Intrinsic::getName" as a
-  /// "std::string", and a libstdc++ incompatibility (GCC bug
-  /// 127228) makes that come back padded with uninitialised
-  /// bytes; "-fvisibility-inlines-hidden" (CMakeLists.txt)
-  /// keeps this compiler clear of it. While it bites, no
-  /// overloaded intrinsic can be named correctly and every
-  /// module holding one is rejected - by the verifier, whose
-  /// complaint is about the name and says nothing about why it
-  /// is wrong. This asks for one name and compares it, so the
-  /// failure is reported where the cause is rather than
-  /// several layers downstream.
-  ///
-  /// Runs its check once per process, so it costs nothing to
-  /// call wherever it is convenient. The diagnosis is printed,
-  /// and the build stopped, in any build.
+  /// Check that all the intrinsic names are sound, ie spelled correctly and
+  /// non-corrupted. This is because of some LLVM and GCC bugs causing mangled
+  /// intrinsic names. GCC bug 127228 has been patched, keeping as failsafe.
   SPP_EXP_FUN auto AssertIntrinsicNamingIsSound() -> void;
 }

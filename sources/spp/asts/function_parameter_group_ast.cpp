@@ -26,8 +26,16 @@ import spp.utils.types;
 import genex;
 import llvm;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, Scope);
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::asts::meta, MetaGuard);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-FunctionParameterGroupAst::FunctionParameterGroupAst(
+spp::asts::FunctionParameterGroupAst::FunctionParameterGroupAst(
   decltype(TokL) &&tok_l,
   decltype(Params) &&params,
   decltype(TokR) &&tok_r) :
@@ -36,19 +44,19 @@ FunctionParameterGroupAst::FunctionParameterGroupAst(
   TokR(std::move(tok_r)) {
 }
 
-FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
+spp::asts::FunctionParameterGroupAst::~FunctionParameterGroupAst() = default;
 
-auto FunctionParameterGroupAst::PosStart() const -> std::size_t {
+auto spp::asts::FunctionParameterGroupAst::PosStart() const -> std::size_t {
   // Use the "(" token.
   return TokL != nullptr ? TokL->PosStart() : Params.empty() ? 0 : Params.front()->PosStart();
 }
 
-auto FunctionParameterGroupAst::PosEnd() const -> std::size_t {
+auto spp::asts::FunctionParameterGroupAst::PosEnd() const -> std::size_t {
   // Use the ")" token.
   return TokR != nullptr ? TokR->PosEnd() : Params.empty() ? 0 : Params.back()->PosEnd();
 }
 
-auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
+auto spp::asts::FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<FunctionParameterGroupAst>(
     AstClone(TokL),
@@ -56,7 +64,7 @@ auto FunctionParameterGroupAst::Clone() const -> Unique<Ast> {
     AstClone(TokR));
 }
 
-auto FunctionParameterGroupAst::ToString() const -> Str {
+auto spp::asts::FunctionParameterGroupAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(TokL);
   SPP_STRING_EXTEND(Params, ", ");
@@ -64,19 +72,19 @@ auto FunctionParameterGroupAst::ToString() const -> Str {
   SPP_STRING_END;
 }
 
-auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
+auto spp::asts::FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
   // Create sets of parameters based on conditions.
   const auto self_params = Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<FunctionParameterSelfAst*>()
+    | genex::views::cast_dynamic<FunctionParameterSelfAst*>
     | genex::to<Vec>();
 
   const auto variadic_params = Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<FunctionParameterVariadicAst*>()
+    | genex::views::cast_dynamic<FunctionParameterVariadicAst*>
     | genex::to<Vec>();
 
   const auto param_names = Params
@@ -88,7 +96,7 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
 
   const auto unordered_params = order_utils::DoOrderParams(Params
     | genex::views::ptr
-    | genex::views::cast_dynamic<mixins::OrderableAst*>()
+    | genex::views::cast_dynamic<mixins::OrderableAst*>
     | genex::to<Vec>());
 
   // Check there is only 1 "self" parameter.
@@ -117,13 +125,13 @@ auto FunctionParameterGroupAst::Stage7_AnalyseSemantics(
   for (auto const &param : Params) { param->Stage7_AnalyseSemantics(sm, meta); }
 }
 
-auto FunctionParameterGroupAst::Stage8_CheckMemory(
+auto spp::asts::FunctionParameterGroupAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   // Check each parameter's memory.
   for (auto const &param : Params) { param->Stage8_CheckMemory(sm, meta); }
 }
 
-auto FunctionParameterGroupAst::Stage11_CodeGen(
+auto spp::asts::FunctionParameterGroupAst::Stage11_CodeGen(
   ScopeManager *sm, CompilerMetaData *meta, codegen::LlvmCtx *ctx) -> llvm::Value* {
   // Bind each parameter's storage to its actual incoming
   // llvm::Argument, in declaration order. For closures, the
@@ -140,14 +148,14 @@ auto FunctionParameterGroupAst::Stage11_CodeGen(
   return nullptr;
 }
 
-auto FunctionParameterGroupAst::GetAllParams() const -> Vec<FunctionParameterAst*> {
+auto spp::asts::FunctionParameterGroupAst::GetAllParams() const -> Vec<FunctionParameterAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) { out.push_back(param.get()); }
   return out;
 }
 
-auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst* {
+auto spp::asts::FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterSelfAst*>();
   for (auto const &param : Params) {
@@ -156,7 +164,7 @@ auto FunctionParameterGroupAst::GetSelfParam() const -> FunctionParameterSelfAst
   return out.empty() ? nullptr : out[0];
 }
 
-auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*> {
+auto spp::asts::FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParameterOptionalAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterOptionalAst*>();
   for (auto const &param : Params) {
@@ -165,7 +173,7 @@ auto FunctionParameterGroupAst::GetOptionalParams() const -> Vec<FunctionParamet
   return out;
 }
 
-auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVariadicAst* {
+auto spp::asts::FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVariadicAst* {
   // Filter by casting.
   auto out = Vec<FunctionParameterVariadicAst*>();
   for (auto const &param : Params) {
@@ -174,7 +182,7 @@ auto FunctionParameterGroupAst::GetVariadicParam() const -> FunctionParameterVar
   return out.empty() ? nullptr : out[0];
 }
 
-auto FunctionParameterGroupAst::IsVoidParam(
+auto spp::asts::FunctionParameterGroupAst::IsVoidParam(
   FunctionParameterAst const &param, Scope const &scope) -> bool {
   IMPORT_UTILS;
   // Build a type-ref to the parameters type, and run a simple
@@ -183,7 +191,7 @@ auto FunctionParameterGroupAst::IsVoidParam(
     TypeRef::ForKindCheck(*param.Type, scope), scope);
 }
 
-auto FunctionParameterGroupAst::RemoveVoidParams(
+auto spp::asts::FunctionParameterGroupAst::RemoveVoidParams(
   Scope const &scope) -> void {
   // Strip any parameter that is the Void type, using the other
   // helper.
@@ -192,7 +200,7 @@ auto FunctionParameterGroupAst::RemoveVoidParams(
   });
 }
 
-auto FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {
+auto spp::asts::FunctionParameterGroupAst::GetNonSelfParams() const -> Vec<FunctionParameterAst*> {
   // Filter by casting.
   auto out = Vec<FunctionParameterAst*>();
   for (auto const &param : Params) {

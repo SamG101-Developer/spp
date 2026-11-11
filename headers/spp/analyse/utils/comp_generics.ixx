@@ -17,6 +17,8 @@ use(spp::asts, struct GenericArgumentGroupAst);
 use(spp::asts, struct GenericParameterGroupAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
+use_alias(spp::analyse::scopes, CompId);
+use_alias(spp::analyse::scopes, TypeId);
 
 namespace spp::analyse::utils::comp_generics {
   /// Read a constant, such as "Buf::n" or "Box[S32]::n", and
@@ -45,7 +47,8 @@ namespace spp::analyse::utils::comp_generics {
   /// where the parameter it binds ("type_resolution::ParamsBoundByArgs") has one of its own ("cmp n: [Opt[U64]; 2_uz]",
   /// not "cmp n: T", nor a variadic one), read where "params" is declared.
   SPP_EXP_FUN auto ExpectCompParamTypes(
-    GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params, Scope const &params_scope) -> void;
+    GenericArgumentGroupAst const &args, GenericParameterGroupAst const &params,
+    Scope const &params_scope) -> void;
 
   /// A comp value with a function call in it ("ct()", "n + ct()"),
   /// evaluated as a "cmp" statement's value is: the literal it
@@ -58,12 +61,11 @@ namespace spp::analyse::utils::comp_generics {
   /// in a template, which each instantiation folds for itself.
   /// "value" is analysed already.
   SPP_EXP_FUN auto FoldCompCall(
-    ExpressionAst &value, ScopeManager *sm, asts::meta::CompilerMetaData *meta) -> Unique<ExpressionAst>;
+    ExpressionAst &value, ScopeManager *sm, CompilerMetaData *meta) -> Unique<ExpressionAst>;
 
   /// Whether a comp value (or an element of it) is an operation,
   /// which is analysed on a copy, as its operator call.
-  SPP_EXP_FUN auto IsCompOperator(
-    ExpressionAst const &value) -> bool;
+  SPP_EXP_FUN auto IsCompOperator(ExpressionAst const &value) -> bool;
 }
 
 /// A "cmp" constant being resolved at compile time, for as long

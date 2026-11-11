@@ -27,6 +27,8 @@ use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct IntegerLiteralAst);
 use(spp::asts, struct ObjectInitializerAst);
 
+use_alias(spp::asts::meta, CompTimeCallArgs);
+
 namespace spp {
   /// An argument as the intrinsic's parameter type. Analysis
   /// has checked the call, so any other kind is an internal
@@ -41,28 +43,31 @@ namespace spp {
     using Type = void;
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<true, false, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<false, true, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   template <typename Ret, typename... Args>
   struct DetermineCompTimeFnSig_<true, true, Ret, Args...> {
     using Type = Ret(*)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
-      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       std::remove_reference_t<Args> &...);
   };
 
@@ -78,8 +83,8 @@ namespace spp {
 
 namespace spp::analyse::utils::comp_time_intrinsics {
   SPP_EXP_CLS struct CompTimeFn {
-    decltype(meta::CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
-    decltype(meta::CompTimeCallArgs::GnCompArgs) GnCompArgs;
+    decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) GnTypeArgs;
+    decltype(asts::meta::CompTimeCallArgs::GnCompArgs) GnCompArgs;
     ScopeManager *Sm;
 
     virtual ~CompTimeFn() = default;
@@ -90,8 +95,8 @@ namespace spp::analyse::utils::comp_time_intrinsics {
 
     auto PreloadGns(
       ScopeManager *sm,
-      decltype(meta::CompTimeCallArgs::GnTypeArgs) gn_type_args,
-      decltype(meta::CompTimeCallArgs::GnCompArgs) gn_comp_args)
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) gn_type_args,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) gn_comp_args)
       -> CompTimeFn& {
       Sm = sm;
       GnTypeArgs = std::move(gn_type_args);
@@ -100,6 +105,7 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     }
   };
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_CLS template <bool HasGnTypeArgs, bool HasGnCompArgs, typename Ret, typename... Args>
   struct CompTimeFnImpl final : CompTimeFn {
     using FnPtr = DetermineCompTimeFnSig<HasGnTypeArgs, HasGnCompArgs, Ret, Args...>;
@@ -109,17 +115,17 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     }
 
     auto Invoke(
-      Vec<Unique<ExpressionAst>> const &args)
-      -> Unique<ExpressionAst> override {
+      Vec<Unique<asts::ExpressionAst>> const &args)
+      -> Unique<asts::ExpressionAst> override {
       return _InvokeImpl(args, std::index_sequence_for<Args...>{});
     }
 
   private:
     template <std::size_t... I>
     auto _InvokeImpl(
-      Vec<Unique<ExpressionAst>> const &args,
+      Vec<Unique<asts::ExpressionAst>> const &args,
       std::index_sequence<I...>)
-      -> Unique<ExpressionAst> {
+      -> Unique<asts::ExpressionAst> {
       if constexpr (HasGnTypeArgs and HasGnCompArgs) {
         INVOKE_PATTERN(*Sm, GnTypeArgs, GnCompArgs);
       }
@@ -148,35 +154,38 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     return MakeUnique<CompTimeFnImpl<false, false, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and not HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, false, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (not HasGnTypeArgs and HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<false, true, Ret, Args...>>(fn);
   }
 
+  MSVC_DEVCOM_11179620_TEMPLATE_USING_DECL
   SPP_EXP_FUN template <bool HasGnTypeArgs, bool HasGnCompArgs = false, typename Ret, typename... Args>
     requires (HasGnTypeArgs and HasGnCompArgs)
   auto MakeCompTimeFn(
     Ret (*fn)(
-      ScopeManager const &,
-      decltype(meta::CompTimeCallArgs::GnTypeArgs) const &,
-      decltype(meta::CompTimeCallArgs::GnCompArgs) const &,
+      analyse::scopes::ScopeManager const &,
+      decltype(asts::meta::CompTimeCallArgs::GnTypeArgs) const &,
+      decltype(asts::meta::CompTimeCallArgs::GnCompArgs) const &,
       Args...))
     -> Unique<CompTimeFn> {
     return MakeUnique<CompTimeFnImpl<true, true, Ret, Args...>>(fn);
@@ -293,6 +302,16 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     -> Unique<IntegerLiteralAst>;
 
   SPP_EXP_FUN auto StdIntrinsicsBitShrAssign(
+    IntegerLiteralAst &lhs,
+    IntegerLiteralAst const &rhs)
+    -> void;
+
+  SPP_EXP_FUN auto StdIntrinsicsBitAShr(
+    IntegerLiteralAst const &lhs,
+    IntegerLiteralAst const &rhs)
+    -> Unique<IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto StdIntrinsicsBitAShrAssign(
     IntegerLiteralAst &lhs,
     IntegerLiteralAst const &rhs)
     -> void;
@@ -553,6 +572,13 @@ namespace spp::analyse::utils::comp_time_intrinsics {
     ScopeManager const &sm,
     Vec<Shared<TypeRef>> const &types)
     -> Unique<IntegerLiteralAst>;
+
+  SPP_EXP_FUN auto StdHintsBranch(
+    BooleanLiteralAst const &condition)
+    -> Unique<BooleanLiteralAst>;
+
+  SPP_EXP_FUN auto StdHintsColdPath()
+    -> void;
 
   SPP_EXP_FUN auto StdMemOpsAlignOf(
     ScopeManager const &sm,

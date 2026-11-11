@@ -8,7 +8,7 @@ import spp.asts.convention_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ConventionMutAst);
+use_common(ConventionMutAst);
 use(spp::asts, struct TokenAst);
 
 /// A convention for mutable borrows. If the borrow is for an

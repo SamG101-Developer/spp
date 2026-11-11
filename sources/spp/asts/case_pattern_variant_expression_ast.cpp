@@ -14,37 +14,42 @@ import spp.asts.let_statement_initialized_ast;
 import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
+spp::asts::CasePatternVariantExpressionAst::CasePatternVariantExpressionAst(
   decltype(Expr) &&expr) :
   Expr(std::move(expr)) {
 }
 
-CasePatternVariantExpressionAst::~CasePatternVariantExpressionAst() = default;
+spp::asts::CasePatternVariantExpressionAst::~CasePatternVariantExpressionAst() = default;
 
-auto CasePatternVariantExpressionAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantExpressionAst::PosStart() const -> std::size_t {
   // Use the expression.
   return Expr->PosStart();
 }
 
-auto CasePatternVariantExpressionAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantExpressionAst::PosEnd() const -> std::size_t {
   // Use the expression.
   return Expr->PosEnd();
 }
 
-auto CasePatternVariantExpressionAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantExpressionAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CasePatternVariantExpressionAst>(
     AstClone(Expr));
 }
 
-auto CasePatternVariantExpressionAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantExpressionAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Expr);
   SPP_STRING_END;
 }
 
-auto CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
+auto spp::asts::CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 
@@ -53,7 +58,7 @@ auto CasePatternVariantExpressionAst::Stage7_AnalyseSemantics(
   common_errors::RequirePrimary(*Expr, *sm);
 }
 
-auto CasePatternVariantExpressionAst::Stage8_CheckMemory(
+auto spp::asts::CasePatternVariantExpressionAst::Stage8_CheckMemory(
   ScopeManager *sm, CompilerMetaData *meta) -> void {
   IMPORT_UTILS;
 

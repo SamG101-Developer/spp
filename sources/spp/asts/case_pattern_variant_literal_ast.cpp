@@ -16,37 +16,42 @@ import spp.asts.meta.compiler_meta_data;
 import spp.asts.utils.ast_utils;
 import spp.utils.uid;
 
+MSVC_DEVCOM_11179619_IMPL_UNIT_USING_DECL
+use_alias(spp::analyse::scopes, ScopeManager);
+use_alias(spp::asts::meta, CompilerMetaData);
+use_alias(spp::codegen, LlvmCtx);
+
 SPP_MOD_BEGIN
-CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
+spp::asts::CasePatternVariantLiteralAst::CasePatternVariantLiteralAst(
   decltype(Literal) &&literal) :
   Literal(std::move(literal)) {
 }
 
-CasePatternVariantLiteralAst::~CasePatternVariantLiteralAst() = default;
+spp::asts::CasePatternVariantLiteralAst::~CasePatternVariantLiteralAst() = default;
 
-auto CasePatternVariantLiteralAst::PosStart() const -> std::size_t {
+auto spp::asts::CasePatternVariantLiteralAst::PosStart() const -> std::size_t {
   // Use the literal.
   return Literal->PosStart();
 }
 
-auto CasePatternVariantLiteralAst::PosEnd() const -> std::size_t {
+auto spp::asts::CasePatternVariantLiteralAst::PosEnd() const -> std::size_t {
   // Use the literal.
   return Literal->PosEnd();
 }
 
-auto CasePatternVariantLiteralAst::Clone() const -> Unique<Ast> {
+auto spp::asts::CasePatternVariantLiteralAst::Clone() const -> Unique<Ast> {
   // Clone all the members of the ast.
   return MakeUnique<CasePatternVariantLiteralAst>(
     AstClone(Literal));
 }
 
-auto CasePatternVariantLiteralAst::ToString() const -> Str {
+auto spp::asts::CasePatternVariantLiteralAst::ToString() const -> Str {
   SPP_STRING_START;
   SPP_STRING_APPEND(Literal);
   SPP_STRING_END;
 }
 
-auto CasePatternVariantLiteralAst::ConvToVar(
+auto spp::asts::CasePatternVariantLiteralAst::ConvToVar(
   CompilerMetaData *) -> Unique<LocalVariableAst> {
   IMPORT_UTILS_AND_UID;
   // Create the local variable literal binding AST.

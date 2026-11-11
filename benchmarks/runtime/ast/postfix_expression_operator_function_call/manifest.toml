@@ -1,0 +1,4 @@
+description = "Recursive Fibonacci of 39: about 200M calls and returns that cannot be inlined away"
+layer = "core"
+output = "exact"
+covers = ["ast:ret_statement", "codegen:llvm_fn", "codegen:llvm_fn_impls"]

@@ -7,7 +7,7 @@ import spp.asts.function_parameter_ast;
 import spp.utils.types;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(FunctionParameterRequiredAst);
+use_common(FunctionParameterRequiredAst);
 
 SPP_EXP_CLS struct spp::asts::FunctionParameterRequiredAst final : FunctionParameterAst {
   SPP_AST_KEY_FUNCTIONS(FunctionParameterRequiredAst);

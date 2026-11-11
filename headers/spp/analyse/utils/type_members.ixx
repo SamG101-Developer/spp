@@ -9,8 +9,6 @@ import std;
 
 use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
-use(spp::analyse::scopes, struct TypeRef);
-use(spp::analyse::scopes, struct TypeSymbol);
 use(spp::analyse::utils::type_members, struct TypePart);
 use(spp::asts, struct ClassAttributeAst);
 use(spp::asts, struct ClassPrototypeAst);
@@ -18,6 +16,9 @@ use(spp::asts, struct CmpStatementAst);
 use(spp::asts, struct FunctionPrototypeAst);
 use(spp::asts, struct IdentifierAst);
 use(spp::asts, struct TypeAst);
+
+use_alias(spp::analyse::scopes, TypeRef);
+use_alias(spp::analyse::scopes, TypeSymbol);
 
 /// A uniform way to handle "parts" of types, making attribute
 /// vs indexing a lot easier / cleaner. Provides one way to
@@ -130,11 +131,21 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto SuperClsReads(
     Vec<Scope*> const &sup_scopes) -> Vec<Pair<TypeRef, Scope const*>>;
 
+  /// How many pointers a value of the type "ref" is: 2 for the
+  /// "Fun*" family (and a "$" mock of one), a { fn_ptr, env_ptr }
+  /// pair; 1 for "Gen"/"GenOnce", the bare "llvm.coro.begin"
+  /// handle; 0 for anything else. The one place this is decided:
+  /// lowering such a type ("RegisterLlvmTypeInfo") and the fields
+  /// a class superimposing one gets prepended
+  /// ("GetSuperimposedFatPointerFieldCount") both read it.
+  SPP_EXP_FUN auto FatPointerWidthOf(
+    TypeRef const &ref, Scope const &scope) -> std::size_t;
+
   /// Get the number of synthetic fat-pointer fields on this
-  /// type, typically the resume_fn/env_ptr or fn_ptr/env_ptr
-  /// fields prepended ahead of a type's own declared fields.
-  /// The fat pointer fields are always at the start of the
-  /// types for simplicity.
+  /// type: those of the first "Fun*"/"Gen*" type it superimposes
+  /// ("FatPointerWidthOf"), prepended ahead of its own declared
+  /// fields. The fat pointer fields are always at the start of
+  /// the types for simplicity.
   SPP_EXP_FUN auto GetSuperimposedFatPointerFieldCount(
     TypeSymbol const &type_sym) -> std::size_t;
 
@@ -165,19 +176,9 @@ namespace spp::analyse::utils::type_members {
   SPP_EXP_FUN auto GetNthTypeOfIndexableType(
     std::size_t index, TypeRef const &ref, Scope const &scope) -> TypeRef;
 
-  /// A variant's members in their one canonical order ("Bool or S32"
-  /// is "S32 or Bool"): by the qualified name of what each names (the
-  /// symbol given with it), else by its spelling, ties kept in order.
-  /// The analysed variant ("TypeIdentifierAst::Stage7") and the one
-  /// built from an identity ("Scope::TypeAstOf") are both put in it,
-  /// so their members' tags agree.
-  SPP_EXP_FUN auto OrderVariantMembers(
-    Vec<Pair<Shared<TypeAst>, TypeSymbol const*>> members)
-    -> Vec<Shared<TypeAst>>;
-
-  /// A variant's members as types, flattened through nested
-  /// variants and without duplicates: "Str or Str or S32" is
-  /// "Str, S32". Members written directly keep their spelling.
+  /// A variant's members as types, as its identity has them:
+  /// flattened, without duplicates and in their tags' order
+  /// ("VariantMemberRefs"), each spelled from its identity.
   SPP_EXP_FUN auto VariantMembers(
     TypeAst const &type, Scope const &scope) -> Vec<Shared<TypeAst>>;
 

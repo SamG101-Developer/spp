@@ -10,7 +10,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(ClassImplementationAst);
+use_common(ClassImplementationAst);
 
 SPP_EXP_CLS struct spp::asts::ClassImplementationAst final : InnerScopeAst<Unique<Ast>> {
   SPP_AST_KIND(ClassImplementationAst)

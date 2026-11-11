@@ -10,6 +10,8 @@ use(spp::analyse::scopes, class Scope);
 use(spp::analyse::scopes, class ScopeManager);
 use(spp::asts, struct FunctionPrototypeAst);
 
+use_alias(spp::asts::meta, CompilerMetaData);
+
 /// Comparing function signatures: whether a new overload conflicts
 /// with one already declared, and whether a method is a genuine
 /// override of a super type's.
@@ -24,7 +26,7 @@ namespace spp::analyse::utils::fn_signatures {
   SPP_EXP_FUN auto CheckForConflictingOverload(
     Scope const &this_scope, Scope const *target_scope,
     FunctionPrototypeAst const &new_fn, ScopeManager &sm,
-    meta::CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*>;
+    CompilerMetaData *meta) -> Pair<FunctionPrototypeAst*, Scope const*>;
 
   /// The core of the override checker, checking whether "fn_a"
   /// (the override or implementation) has "fn_b"'s signature: the
@@ -40,7 +42,7 @@ namespace spp::analyse::utils::fn_signatures {
   /// "target_scope" with the same signature, if any. This is used
   /// to ensure function overriding is a genuine match.
   SPP_EXP_FUN auto CheckForConflictingOverride(
-    Scope const &this_scope, Scope const *target_scope, FunctionPrototypeAst const &new_fn,
-    ScopeManager &sm, meta::CompilerMetaData *meta)
-    -> FunctionPrototypeAst*;
+    Scope const &this_scope, Scope const *target_scope,
+    FunctionPrototypeAst const &new_fn, ScopeManager &sm,
+    CompilerMetaData *meta) -> FunctionPrototypeAst*;
 }

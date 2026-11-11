@@ -14,7 +14,6 @@ find_package(unordered_dense CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
-find_package(stringzilla CONFIG REQUIRED)
 find_package(small_vector CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(GenEx CONFIG REQUIRED)
@@ -26,6 +25,25 @@ if (MSVC)
     TARGET ColEx::ColEx GenEx::GenEx NumEx::NumEx
     PROPERTY MSVC_RUNTIME_LIBRARY "${CMAKE_MSVC_RUNTIME_LIBRARY}")
 endif ()
+
+# brew's LLVM (macOS) links LLVMSupport against the zstd dylib
+# and libz3, neither of which is part of macOS, so a released
+# binary would not run without brew. libzstd.a stands in for
+# the one; the other only serves Z3Solver.cpp.o, which nothing
+# here pulls out of libLLVMSupport.a.
+if (APPLE)
+  if (NOT TARGET zstd::libzstd_static)
+    message(FATAL_ERROR
+      "No static libzstd beside ${zstd_LIBRARY}; macOS links zstd statically.")
+  endif ()
+  get_target_property(_spp_support_libs LLVMSupport INTERFACE_LINK_LIBRARIES)
+  list(TRANSFORM _spp_support_libs REPLACE
+    "zstd::libzstd_shared" "zstd::libzstd_static")
+  list(FILTER _spp_support_libs EXCLUDE REGEX "libz3[.]")
+  set_target_properties(LLVMSupport PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${_spp_support_libs}")
+endif ()
+
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_compile_options(${LLVM_DEFINITIONS_LIST})
 

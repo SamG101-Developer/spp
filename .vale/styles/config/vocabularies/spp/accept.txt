@@ -32,6 +32,7 @@ Todo
 [Ll]ockfiles?
 [Ll]ockdown
 [Mm]ergeable
+[Mm]isordering
 [Mm]itigations?
 [Mm]onomorphis(e|es|ed|ing|ation)
 [Mm]ultiprecision
@@ -67,6 +68,7 @@ Todo
 
 # S++ identifiers and abbreviations that appear in running prose.
 APIs?
+ASTs?
 STL
 Deref
 Ptr

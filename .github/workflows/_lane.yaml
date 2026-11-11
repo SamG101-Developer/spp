@@ -36,7 +36,7 @@ on:
       modes:
         required: false
         type: string
-        default: "rel"
+        default: "rel dev"
       shard-count:
         required: false
         type: number
@@ -48,16 +48,12 @@ on:
       valgrind:
         required: false
         type: boolean
-        default: false
+        default: true
       codegen:
         required: false
         type: boolean
-        default: false
+        default: true
       differential:
-        required: false
-        type: boolean
-        default: false
-      pack:
         required: false
         type: boolean
         default: true
@@ -110,12 +106,15 @@ jobs:
       valgrind: ${{ inputs.valgrind }}
       codegen: ${{ inputs.codegen }}
       differential: ${{ inputs.differential }}
-      pack: ${{ inputs.pack }}
       advisory: ${{ inputs.advisory }}
 
+  # An advisory build that fails still reads as a success here
+  # (continue-on-error), so the test cells wait for staged
+  # binaries rather than for the job's result.
   test:
     name: Test
     needs: [ build ]
+    if: needs.build.outputs.artifact != ''
     permissions:
       contents: read
     uses: ./.github/workflows/_test.yaml

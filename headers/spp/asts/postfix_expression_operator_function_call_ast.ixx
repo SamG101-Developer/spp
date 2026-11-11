@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(PostfixExpressionOperatorFunctionCallAst);
+use_common(PostfixExpressionOperatorFunctionCallAst);
 use(spp::analyse::scopes, struct ExprSubst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
@@ -32,6 +32,7 @@ use(spp::asts, struct TypeAst);
 use(spp::asts, struct UnaryExpressionOperatorAsyncAst);
 
 SPP_EXP_CLS struct spp::asts::PostfixExpressionOperatorFunctionCallAst final : PostfixExpressionOperatorAst {
+  SPP_GCC_VTABLE_FIX
   SPP_AST_KEY_FUNCTIONS(PostfixExpressionOperatorFunctionCallAst);
 
   /// The generic arguments for the function call.
@@ -128,7 +129,7 @@ private:
   struct _IndirectInfo {
     Shared<TypeAst const> FnType;
     ConventionTag Conv;
-    TypeSymbol const *Callee;
+    Shared<TypeRef> Callee;
     Shared<TypeRef> FnSup;
     bool Borrowed;
   };
@@ -144,7 +145,15 @@ private:
   /// an argument group of its own, checked against what the body
   /// already holds.
   Unique<FunctionCallArgumentGroupAst> _CalleeArgGroup;
-  Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _FoldedAsts;
+
+  /// A fold's calls, one per element, each a whole call over
+  /// "_FoldCallee" ("PostfixExpressionAst::NewOverAnalysedLhs").
+  Vec<Unique<PostfixExpressionAst>> _FoldedAsts;
+
+  /// What a fold's calls call: the left-hand side, or for a method
+  /// on a receiver that is no place ("make().m(xs)..") the method on
+  /// the temporary the receiver was evaluated into, once.
+  Shared<ExpressionAst> _FoldCallee;
 
   /// The scope a fold's arguments are analysed in, as written: only
   /// to type them and find the tuples folded over, as each folded
@@ -152,9 +161,28 @@ private:
   /// are kept in this one, which the later stages skip as one.
   Scope *_FoldArgsScope = nullptr;
 
-  /// A folded tuple argument that is not a name, evaluated once into
-  /// a temporary that each folded call reads its element off.
+  /// What a fold evaluates once, in order, before its calls
+  /// ("expr_utils::HoistOnce"): a receiver, then each argument that
+  /// is no place, folded or not. Each call reads the temporaries.
   Vec<Unique<LetStatementInitializedAst>> _FoldTemps;
+
+  /// A temporary in "_FoldTemps" its calls do not consume (a
+  /// receiver or argument only borrowed, or any, when no call reads
+  /// it) is consumed by the fold after them, as a linear value must
+  /// be ("expr_utils::DropCall").
+  Vec<Unique<PostfixExpressionAst>> _FoldDrops;
+
+  /// A template's open packs this fold is over ("j(xs).."): one call is checked, on their first element, and the memory
+  /// checks take each pack whole (pack-design.md phase 7).
+  Vec<Unique<IdentifierAst>> _OpenFoldPacks;
+
+  /// The type of a fold over an open pack: the open tuple of a hidden result pack ("packs::DeclareHiddenPack"), each
+  /// element the type of the call checked, as long as the pack.
+  Shared<TypeAst> _OpenFoldType;
+
+  /// A call fold whose callee returns "Void": run for its effects, so the fold is "Void", not a tuple of "Void"s, and
+  /// can stand as a statement ("drop(xs)..").
+  bool _FoldIsVoid = false;
 
   /// Step the walk past "_FoldArgsScope", before the temporaries'
   /// and the folded calls' scopes (it was created before them).
@@ -165,6 +193,43 @@ private:
 
   auto _HandleFnFolding(
     ScopeManager *sm,
+    CompilerMetaData *meta,
+    Vec<Shared<IdentifierAst>> &unconsumed)
+    -> Vec<Unique<PostfixExpressionAst>>;
+
+  /// This call again with other arguments ("group"): a fold's call
+  /// per element, a spread's call per length. Fresh, so nothing this
+  /// call worked out (a fold, a resolved overload) is carried.
+  SPP_ATTR_NODISCARD auto _CallWith(
+    Unique<FunctionCallArgumentGroupAst> group) const
+    -> Unique<PostfixExpressionOperatorFunctionCallAst>;
+
+  /// A call spreading an open tuple ("f(..b)" in a template, "b" a
+  /// variadic parameter) is not resolved itself: one call per pack
+  /// length is, each with that many of the pack's elements ("b.0",
+  /// ...), and one more with the pack's remainder still open, which
+  /// only a variadic parameter takes. Every one must resolve, to one
+  /// return type, which is this call's. Each instance, where the pack
+  /// is a tuple, resolves the call as written.
+  Vec<Unique<PostfixExpressionOperatorFunctionCallAst>> _OpenSpreadAsts;
+
+  /// The return type the calls in "_OpenSpreadAsts" agree on.
+  Shared<TypeAst> _OpenSpreadType;
+
+  /// Set on the last call "_ResolveOpenSpread" builds, whose open
+  /// remainder must reach a variadic parameter rather than being
+  /// split per length again.
+  bool _IsOpenSpreadRemainder = false;
+
+  /// Resolve a call spreading an open tuple, as "_OpenSpreadAsts"
+  /// describes. "max_params" is the most parameters (not "self", not
+  /// variadic) any candidate has, which bounds the lengths tried.
+  auto _ResolveOpenSpread(
+    std::size_t spread_index,
+    std::size_t max_params,
+    ScopeManager *sm,
     CompilerMetaData *meta)
-    -> Vec<Unique<PostfixExpressionOperatorFunctionCallAst>>;
+    -> void;
 };
+
+SPP_GCC_VTABLE_FIX_IMPL(spp::asts::PostfixExpressionOperatorFunctionCallAst)

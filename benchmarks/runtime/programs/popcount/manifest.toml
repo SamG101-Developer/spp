@@ -1,0 +1,7 @@
+description = "SWAR population count (Hacker's Delight 5-2) of 100M LCG values: masks, shifts, wrapping arithmetic"
+layer = "core"
+output = "exact"
+gaps = [
+  "no popcount peephole: LLVM may or may not recognise the SWAR form for any of the three",
+]
+covers = ["codegen:builtins", "ast:function_implementation_lowered"]

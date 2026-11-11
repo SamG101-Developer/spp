@@ -11,7 +11,7 @@ import spp.utils.types;
 import llvm;
 import std;
 
-SPP_AST_COMMON_FWD_DECL(GenericParameterAst);
+use_common(GenericParameterAst);
 use(spp::analyse::scopes, class Scope);
 use(spp::asts, struct ExpressionAst);
 use(spp::asts, struct GenericParameterTypeConstraintsAst);

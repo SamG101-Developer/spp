@@ -12,6 +12,8 @@ use(spp::analyse::scopes, struct VariableSymbol);
 use(spp::asts, struct Ast);
 use(spp::asts, struct ExpressionAst);
 
+use_alias(spp::asts::meta, CompilerMetaData);
+
 namespace spp::analyse::utils::mem_utils {
   /// What "ValidateSymbolMemory" checks and records for a use: everything by default.
   SPP_EXP_CLS struct SymbolMemoryOptions {
@@ -40,7 +42,7 @@ namespace spp::analyse::utils::mem_utils {
   /// memory-related errors can be raised.
   SPP_EXP_FUN auto ValidateSymbolMemory(
     ExpressionAst &value_ast, Ast const &move_ast,
-    ScopeManager &sm, meta::CompilerMetaData *meta,
+    ScopeManager &sm, CompilerMetaData *meta,
     SymbolMemoryOptions const &options = {}) -> void;
 
   /// Raise if the value "sym" holds has already been moved out,
@@ -52,5 +54,5 @@ namespace spp::analyse::utils::mem_utils {
   /// binding a "let" is declaring while its value is checked (not
   /// declared yet, so not found by name), else what the name finds.
   SPP_EXP_FUN auto AssignmentTargetSymbol(
-    Scope const &scope, meta::CompilerMetaData const &meta) -> VariableSymbol*;
+    Scope const &scope, CompilerMetaData const &meta) -> VariableSymbol*;
 }
