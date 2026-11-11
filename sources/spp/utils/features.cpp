@@ -42,6 +42,13 @@ namespace spp::utils::features {
       return linkers;
     }
 
+    /// The measures this build found it cannot have (the toolchain cannot keep
+    /// them), with why: on by default, so left out rather than refused.
+    auto CurrentLeftOut() -> auto& {
+      static auto left_out = Map<ConfigKey, Str>();
+      return left_out;
+    }
+
     /// [CHECKED]
     /// Whether the defaults have been put in place yet, so that a query before
     /// any load still answers correctly. Once set to true, it will always be
@@ -480,6 +487,29 @@ auto spp::utils::features::Schema() -> Vec<SectionSpec> const& {
           "until this is turned off."
         },
         KeySpec{
+          .Key = ConfigKey::BinaryCodegenBti,
+          .Name = "bti",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Start every function, and every block an indirect jump can reach, with a landing pad, and have "
+          "the processor fault on an indirect branch to anywhere else (BTI). One instruction per function. "
+          "AArch64 Linux and FreeBSD; elsewhere 'cfi' stands in for it (x86-64, macOS and Windows on AArch64), "
+          "and a target without either fails the build until this is turned off."
+        },
+        KeySpec{
+          .Key = ConfigKey::BinaryCodegenPacRet,
+          .Name = "pac_ret",
+          .Kind = ValueKind::Bool,
+          .Required = false,
+          .Default = true,
+          .Help = "Sign every return address a function saves to the stack, and stop the program when one comes back "
+          "altered (pointer authentication). Two instructions per function that calls another; no-ops on a "
+          "processor without it. AArch64 Linux and FreeBSD; elsewhere 'split' in [memory.stack] stands in for "
+          "it, keeping what could overflow away from return addresses, and a target without either fails the "
+          "build until this is turned off."
+        },
+        KeySpec{
           .Key = ConfigKey::BinaryCodegenJumpTableBounds,
           .Name = "jump_table_bounds",
           .Kind = ValueKind::Bool,
@@ -731,7 +761,18 @@ auto spp::utils::features::IsApplied(
   // A flag is applied if it is enabled, and not incompatible with the system
   // constraints.
   return IsEnabled(key)
-    and not IsFlagIncompatibleWithSystem(key, target_linux).first;
+    and not IsFlagIncompatibleWithSystem(key, target_linux).first
+    and not CurrentLeftOut().contains(key);
+}
+
+auto spp::utils::features::IsExplicit(
+  const ConfigKey key) -> bool {
+  return IsManuallySet(key);
+}
+
+auto spp::utils::features::LeaveOut(
+  const ConfigKey key, const StrView why) -> void {
+  CurrentLeftOut().insert_or_assign(key, Str(why));
 }
 
 /// [CHECKED]
@@ -820,6 +861,7 @@ auto spp::utils::features::Reset() -> void {
   CurrentTexts().clear();
   CurrentSet().clear();
   CurrentLinkers().clear();
+  CurrentLeftOut().clear();
   ApplyDefaults();
 }
 /// [CHECKED]
@@ -858,6 +900,9 @@ auto spp::utils::features::EffectiveSettings(
       else if (const auto [is_incompatible_flag, why] =
           IsFlagIncompatibleWithSystem(k.Key, target_linux);
         is_incompatible_flag) { value = "left out (" + why + ")"; }
+      else if (const auto it = CurrentLeftOut().find(k.Key); it != CurrentLeftOut().end()) {
+        value = "left out (" + it->second + ")";
+      }
       else { value = IsEnabled(k.Key) ? "true" : "false"; }
       out += Str(section.Name) + "." + Str(k.Name) + " = " + value + "\n";
     }

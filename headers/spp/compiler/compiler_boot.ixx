@@ -131,17 +131,6 @@ private:
   /// meaningless. Todo: Enforce no main.spp for LIB builds?
   auto _ValidateEntryPoint(analyse::scopes::ScopeManager *sm) -> void;
 
-  /// Copy every module into one and run the optimization pipeline over that, so
-  /// the optimizer can see across the file boundaries the per-module walk
-  /// leaves in place. Written beside the per-module ir as "lto.ll" rather than
-  /// replacing it. Return true for a successful link.
-  SPP_ATTR_NODISCARD auto _LinkTimeOptimize(
-    OutLayout const &out, unsigned opt_level) -> bool;
-
-  /// Link the emitted object against the ffi runtimes the project's packages
-  /// ship, producing the executable. Return for a successful link.
-  SPP_ATTR_NODISCARD auto _LinkExecutable(OutLayout const &out) -> bool;
-
   /// The source of the entry point a test build is run through: a "main" that
   /// calls every discovered unit test in turn, naming each one before it runs
   /// so that a test which takes the process down with it is still identifiable.

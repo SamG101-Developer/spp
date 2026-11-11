@@ -26,6 +26,8 @@ namespace spp::utils::features {
     BinaryCodegenSls,
     BinaryCodegenScrub,
     BinaryCodegenCfi,
+    BinaryCodegenBti,
+    BinaryCodegenPacRet,
     BinaryCodegenJumpTableBounds,
     BinaryCodegenFfiUnwindGuard,
     BinaryCodegenAirIntegers,
@@ -90,8 +92,19 @@ namespace spp::utils::features {
   SPP_EXP_FUN auto IsEnabled(ConfigKey key) -> bool;
 
   /// Whether a measure goes into the program: turned on, and not left out
-  /// because of incompatibilities.
+  /// because of incompatibilities, or by "LeaveOut".
   SPP_EXP_FUN auto IsApplied(ConfigKey key, bool target_linux) -> bool;
+
+  /// Whether the project's "spp.toml" sets the key itself, rather than leaving
+  /// it to its default: a measure set on explicitly is refused where it cannot
+  /// be had, where its default is only left out.
+  SPP_EXP_FUN auto IsExplicit(ConfigKey key) -> bool;
+
+  /// Leave out a measure the build found it cannot have (the toolchain cannot
+  /// keep it), saying why: it is not applied, and the record reads "left out
+  /// (why)". Only for one on by default; one set on explicitly is refused
+  /// instead. Cleared by "Reset".
+  SPP_EXP_FUN auto LeaveOut(ConfigKey key, StrView why) -> void;
 
   /// The value of a string or version key, set or defaulted.
   SPP_EXP_FUN auto Text(ConfigKey key) -> Str;
