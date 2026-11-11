@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_harden_codegen;
+import spp.codegen.llvm_support;
 import spp.codegen.llvm_target;
 import spp.utils.types;
 import llvm;
@@ -9,36 +10,13 @@ import std;
 
 namespace spp::codegen {
   namespace {
-    /// Whether the selected target has straight-line speculation
-    /// hardening: x86 and AArch64 do, nothing else does. Not
-    /// AArch64 Mach-O: LLVM calls its indirect-call thunks by the
-    /// unprefixed name, so every call is an undefined symbol.
-    /// Todo: drop the Mach-O case once fixed; .triages/upstream-watch.md U16.
-    auto TargetHasSlsHardening() -> bool {
-      return TargetTriple().isX86() or (TargetTriple().isAArch64() and not TargetTriple().isOSBinFormatMachO());
-    }
-
-    /// Whether the selected target can scrub registers on return:
-    /// x86 and AArch64 can.
-    auto TargetHasRegisterScrubbing() -> bool {
-      return TargetTriple().isX86() or TargetTriple().isAArch64();
-    }
-
-    /// Whether LLVM writes the selected target's personality and
-    /// LSDA pointers PC-relative, as a position-independent
-    /// executable needs: every target but m68k, which it leaves
-    /// absolute (TargetLoweringObjectFileELF has no case for it).
-    auto TargetHasPcRelEhPointers() -> bool {
-      return TargetTriple().getArch() != llvm::Triple::m68k;
-    }
-
   }
 }
 
 auto spp::codegen::ApplySlsHardening(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  if (not TargetHasSlsHardening()) {
+  if (not DoesTargetSupportSlsHardening()) {
     llvm::errs()
       << "This target has no straight-line speculation hardening.\n"
       << "  To build without it, set 'sls = false' under [binary.codegen] in spp.toml.\n";
@@ -67,7 +45,7 @@ auto spp::codegen::ApplySlsHardening(
 auto spp::codegen::ApplyRegisterScrubbing(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
-  if (not TargetHasRegisterScrubbing()) {
+  if (not DoesTargetSupportRegisterScrubbing()) {
     llvm::errs()
       << "This target cannot scrub registers on return.\n"
       << "  To build without it, set 'scrub = false' under [binary.codegen] in spp.toml.\n";
@@ -89,7 +67,7 @@ auto spp::codegen::ApplyFfiUnwindGuard(
   void *llvm_module) -> bool {
   auto &llvm_mod = *static_cast<llvm::Module*>(llvm_module);
   auto &ctx = llvm_mod.getContext();
-  if (not TargetHasPcRelEhPointers()) {
+  if (not DoesTargetSupportPcRelEhPointers()) {
     llvm::errs()
       << "This target cannot guard foreign calls against unwinding.\n"
       << "  To build without it, set 'ffi_unwind_guard = false' under [binary.codegen] in spp.toml.\n";

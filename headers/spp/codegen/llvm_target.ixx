@@ -51,27 +51,6 @@ namespace spp::codegen {
   /// sparc64).
   SPP_EXP_FUN auto GnuTripleOf(StrView folder) -> Str;
 
-  /// Whether LLVM has somewhere to keep the unsafe stack pointer
-  /// for a triple, which "[memory.stack] split" (safestack) needs:
-  /// the runtime's thread-local, or a libc's accessor. Without it,
-  /// LLVM reports an error and emits code that writes through an
-  /// arbitrary register.
-  SPP_EXP_FUN auto HasSafeStack(StrView triple) -> bool;
-
-  /// The selected target's "HasSafeStack".
-  SPP_EXP_FUN auto TargetHasSafeStack() -> bool;
-
-  /// Whether LLVM's safestack pass can check a canary for a
-  /// triple, which "[memory.stack] protect" and "split" together
-  /// need: the pass checks it itself, always through
-  /// "__stack_chk_fail", never a target's own route (MSVC's
-  /// "__security_check_cookie"). Without it, LLVM reports an error
-  /// for every protected function.
-  SPP_EXP_FUN auto HasSafeStackCanary(StrView triple) -> bool;
-
-  /// The selected target's "HasSafeStackCanary".
-  SPP_EXP_FUN auto TargetHasSafeStackCanary() -> bool;
-
   /// The selected target's "GnuTripleOf".
   SPP_EXP_FUN auto TargetGnuTriple() -> char const*;
 

@@ -28,6 +28,7 @@ import spp.analyse.errors.semantic_error;
 import spp.analyse.scopes.scope_manager;
 import spp.asts.module_prototype_ast;
 import spp.codegen.llvm_artefact;
+import spp.codegen.llvm_support;
 import spp.codegen.llvm_target;
 import spp.compiler.compiler;
 import spp.compiler.compiler_boot;
@@ -238,8 +239,8 @@ namespace spp::cli {
       auto config_errors = Vec<Str>();
       const auto config_file = std::filesystem::current_path() / CONFIG_FILE;
       const auto target = utils::features::TargetFacts{
-        .SafeStack = codegen::TargetHasSafeStack(),
-        .SafeStackCanary = codegen::TargetHasSafeStackCanary(),
+        .SafeStack = codegen::DoesTargetSupportSafeStack(),
+        .SafeStackCanary = codegen::DoesTargetSupportSafeStackCanary(),
         .IsLinux = codegen::TargetIsLinux(),
         .Folder = codegen::TargetFolderName()
       };

@@ -2,6 +2,7 @@ module;
 #include <spp/macros.hpp>
 
 module spp.codegen.llvm_jump_tables;
+import spp.codegen.llvm_support;
 import spp.codegen.llvm_target;
 import spp.utils.types;
 import genex;
@@ -159,7 +160,7 @@ auto spp::codegen::ApplyHardenedJumpTables(
   for (auto &fn : llvm_mod) {
     if (not fn.isDeclaration()) { fn.addFnAttr(kNoJumpTablesAttr, "true"); }
   }
-  if (TargetTriple().isWasm()) { return; }
+  if (not DoesTargetSupportIndirectBranches()) { return; }
 
   // Collected first, as lowering one replaces it.
   for (auto &fn : llvm_mod) {

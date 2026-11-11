@@ -24,5 +24,6 @@ codegen:llvm_ctx                      # the LLVM context and module set-up
 codegen:llvm_type                     # LLVM types for S++ types: shapes no instruction on its own
 codegen:llvm_layout                   # field layout: shapes no instruction on its own
 codegen:llvm_size                     # sizes and alignments: shapes no instruction on its own
+codegen:llvm_support                  # what the target can do, asked before a measure is applied: emits nothing
 codegen:llvm_pass_pipeline            # the optimisation pipeline, which every benchmark runs through
 codegen:llvm_pass_cold_path           # branch weights from "cold_path" markers, which no benchmark uses; tests/codegen/check-branch-hints.sh
