@@ -27,6 +27,7 @@ check() {
     new_project "${dir}" "
 [binary.codegen]
 cfi = false
+bti = false
 sls = false"
     cat > "${dir}/src/main.spp" <<'EOF'
 fun main() -> Void {
@@ -42,7 +43,7 @@ EOF
 
     local missing=""
     for line in "spp ${VERSION}" "target ${HOST_FFI}" "mode ${mode}" \
-        "binary.codegen.cfi = false" "binary.codegen.sls = false" "memory.stack.protect = true" \
+        "binary.codegen.cfi = false" "binary.codegen.bti = false" "binary.codegen.sls = false" "memory.stack.protect = true" \
         "memory.map.deny_wx = left out (needs Linux 6.6, above the floor 4.18)" \
         "memory.map.seal = left out (needs Linux 6.10, above the floor 4.18)" "target.floor.linux = 4.18"; do
         grep -qxF "${line}" "${dir}/audit.log" || missing="${line}"

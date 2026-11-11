@@ -148,6 +148,23 @@ require_x86_64() {
     fi
 }
 
+# For a check built for aarch64-unknown-linux-gnu and run under qemu: the cross
+# gcc (its ffi helper), objdump and qemu, and the sysroot qemu loads from.
+readonly AARCH64_SYSROOT=/usr/aarch64-linux-gnu
+require_aarch64_cross() {
+    local tool
+    for tool in aarch64-linux-gnu-gcc aarch64-linux-gnu-objdump qemu-aarch64; do
+        if ! command -v "${tool}" > /dev/null; then
+            echo "skipped: no ${tool}"
+            exit 0
+        fi
+    done
+    if [[ ! -d "${AARCH64_SYSROOT}" ]]; then
+        echo "skipped: no AArch64 sysroot at ${AARCH64_SYSROOT}"
+        exit 0
+    fi
+}
+
 finish() {
     if (( failures > 0 )); then
         echo "${failures} case(s) failed"

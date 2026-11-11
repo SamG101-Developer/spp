@@ -34,6 +34,8 @@ read -r -d '' CONFIG <<'TOML'
 sls = false
 scrub = false
 cfi = false
+bti = false
+pac_ret = false
 
 [memory.stack]
 split = false
