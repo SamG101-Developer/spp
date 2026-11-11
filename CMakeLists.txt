@@ -87,7 +87,6 @@ target_link_libraries(
   tomlplusplus::tomlplusplus
   nlohmann_json::nlohmann_json
   magic_enum::magic_enum
-  stringzilla::header
   gch::small_vector
   CLI11::CLI11
   ColEx::ColEx

@@ -197,19 +197,6 @@ cmake-flags = [
 ]
 
 [[library]]
-name = "stringzilla"
-repo = "https://github.com/ashvardanian/stringzilla.git"
-commit = "ff22abca2e1f271f37bd8cb10174bc9dd37ed4e7"
-cmake-flags = [
-  "-DSTRINGZILLA_INSTALL=ON",
-  "-DSTRINGZILLA_BUILD_TEST=OFF",
-  "-DSTRINGZILLA_BUILD_BENCHMARK=OFF",
-  "-DSTRINGZILLA_BUILD_SHARED=OFF",
-  "-DSTRINGZILLAS_BUILD_SHARED=OFF",
-  "-DSTRINGZILLA_BUILD_CUDA=OFF",
-]
-
-[[library]]
 name = "small_vector"
 repo = "https://github.com/gharveymn/small_vector.git"
 commit = "efcab60e5360b699f45d2a44dcb9a79bba40c356"

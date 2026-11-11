@@ -66,10 +66,10 @@ namespace spp {
   using OrderedMap = std::map<K, V>;
 
   SPP_EXP_CLS
-  using Str = std::string; // stringzilla
+  using Str = std::string;
 
   SPP_EXP_CLS
-  using StrView = std::string_view; // stringzilla
+  using StrView = std::string_view;
 
   SPP_EXP_CLS
   using Ordering = std::strong_ordering;
