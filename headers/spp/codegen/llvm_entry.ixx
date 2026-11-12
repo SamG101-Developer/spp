@@ -16,7 +16,8 @@ namespace spp::codegen {
   /// point named "spp_main_name", so the program has an entry point of the
   /// shape that the linker and libc start-up expect. The S++ entry point cannot
   /// be it directly: its name is mangled, and S++ "main" doesn't take the argv/
-  /// argc pair.
+  /// argc pair. They go to sppc instead ("sppc_set_args"), first, where
+  /// "std::process::args" reads them.
   SPP_EXP_FUN auto EmitCEntryPoint(
     void *llvm_module, char const *spp_main_name, bool split_stacks,
     bool deny_wx, bool seal) -> void;
