@@ -855,7 +855,7 @@ auto spp::asts::PostfixExpressionOperatorFunctionCallAst::EvaluateCompTime(
   // Each nested call is a nested evaluation on the compiler's
   // own stack, so recursion that never bottoms out has to be
   // stopped here, rather than left to overflow it.
-  static thread_local auto cmp_call_depth = 0uz;
+  thread_local auto cmp_call_depth = 0uz;
   constexpr auto kMaxCompTimeCallDepth = 1000uz;
   struct CompTimeCallDepthGuard {
     decltype(cmp_call_depth) &Depth;

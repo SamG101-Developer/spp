@@ -334,7 +334,7 @@ auto spp::codegen::EnsureLlvmTypeComplete(
   // Laying the body out asks for the sizes of the attributes, which comes back
   // through here for each of them, so a type that contains itself would recurse
   // forever. Prevent this with a guard.
-  static thread_local auto in_progress = Set<llvm::StructType const*>();
+  thread_local auto in_progress = Set<llvm::StructType const*>();
   if (not in_progress.insert(struct_type).second) { return; }
   type_sym.Type->FillLlvmLayout(&sm, &type_sym, ctx);
   in_progress.erase(struct_type);
